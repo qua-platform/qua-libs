@@ -35,9 +35,8 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
 
     II = declare(fixed, size=number_of_divisions)

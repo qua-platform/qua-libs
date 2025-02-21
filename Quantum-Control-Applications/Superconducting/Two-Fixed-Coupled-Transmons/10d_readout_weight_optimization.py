@@ -10,10 +10,9 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results.data_handler import DataHandler
 
-###########
-# Helpers #
-###########
-
+####################
+# Helper functions #
+####################
 
 def normalize_complex_array(arr):
     # Calculate the simple norm of the complex array
@@ -79,9 +78,8 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     II = declare(fixed, size=number_of_divisions)
     IQ = declare(fixed, size=number_of_divisions)

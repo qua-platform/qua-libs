@@ -25,13 +25,11 @@ from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout, active_reset
 import math
 from qualang_tools.results.data_handler import DataHandler
-import matplotlib
 
-matplotlib.use("TkAgg")
-
-###################
-# The QUA program #
 ##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 8 * 60  # The number of averages
 t_max = 8_000
 t_min = 4
@@ -49,9 +47,8 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     state = [declare(bool) for _ in range(2)]

@@ -38,12 +38,11 @@ assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / d
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "config": config,
     "num_of_sequences": num_of_sequences,
     "delta_clifford": delta_clifford,
     "max_circuit_depth": max_circuit_depth,
+    "config": config,
 }
-
 
 ###################################
 # Helper functions and QUA macros #
@@ -148,9 +147,8 @@ def play_sequence(sequence_list, depth, qb):
 
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     depth = declare(int)  # QUA variable for the varying depth
     depth_target = declare(int)  # QUA variable for the current depth (changes in steps of delta_clifford)

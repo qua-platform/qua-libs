@@ -51,15 +51,14 @@ saturation_scaling = 0.5  # pre-factor to the value defined in the config - rest
 save_data_dict = {
     "n_avg": n_avg,
     "dfs": dfs,
-    "config": config,
     "saturation_scaling": saturation_scaling,
     "saturation_len": saturation_len,
+    "config": config,
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the readout frequency

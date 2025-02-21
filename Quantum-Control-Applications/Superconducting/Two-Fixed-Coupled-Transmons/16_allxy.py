@@ -21,8 +21,15 @@ n_avg = 10
 qubit = "q1_xy"
 
 # Data to save
-save_data_dict = {"n_avg": n_avg, "config": config, "qubit": qubit}
+save_data_dict = {
+    "n_avg": n_avg,
+    "qubit": qubit,
+    "config": config,
+}
 
+###################################
+# Helper functions and QUA macros #
+###################################
 # All XY sequences. The sequence names must match corresponding operation in the config
 sequence = [
     ("I", "I"),
@@ -69,11 +76,9 @@ def allXY(pulses, qb):
 
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
-
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
 
     with for_(n, 0, n < n_avg, n + 1):
@@ -81,7 +86,6 @@ with program() as PROGRAM:
         save(n, n_st)
 
         for i in range(len(sequence)):
-
             align()
 
             allXY(sequence[i], qubit)
@@ -95,8 +99,8 @@ with program() as PROGRAM:
     with stream_processing():
         n_st.save("iteration")
         for ind in range(2):
-            I_st[ind].buffer(21).average().save(f"I{ind+1}")
-            Q_st[ind].buffer(21).average().save(f"Q{ind+1}")
+            I_st[ind].buffer(21).average().save(f"I{ind + 1}")
+            Q_st[ind].buffer(21).average().save(f"Q{ind + 1}")
 
 #####################################
 #  Open Communication with the QOP  #

@@ -43,9 +43,8 @@ save_data_dict = {
 
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     state = [declare(bool) for _ in range(2)]

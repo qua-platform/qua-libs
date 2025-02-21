@@ -16,11 +16,14 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 from configuration import *
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+element = "rr1"
 ###################
 # The QUA program #
 ###################
-element = "rr1"
-
 with program() as cw_output:
     with infinite_loop_():
         # It is best to calibrate LO leakage first and without any power played (cf. note below)

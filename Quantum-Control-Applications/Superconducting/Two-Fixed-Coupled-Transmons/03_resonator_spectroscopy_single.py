@@ -27,7 +27,7 @@ from qualang_tools.results.data_handler import DataHandler
 ##################
 #   Parameters   #
 ##################
-
+# Parameters Definition
 resonator = "rr1"
 resonator_LO = resonator_LO
 
@@ -37,6 +37,7 @@ frequencies = {
     "rr2": np.arange(-50e6, +50e6, 100e3),
 }
 
+# Data to save
 save_data_dict = {
     "resonator": resonator,
     "resonator_LO": resonator_LO,
@@ -46,9 +47,8 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     n = declare(int)  # QUA variable for the averaging loop
     f = declare(int)  # QUA variable for the readout frequency --> Hz int 32 up to 2^32

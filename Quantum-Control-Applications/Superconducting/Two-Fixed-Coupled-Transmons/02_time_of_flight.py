@@ -26,7 +26,7 @@ from qualang_tools.results.data_handler import DataHandler
 ##################
 #   Parameters   #
 ##################
-
+# Parameters Definition
 n_avg = 5000  # The number of averages
 save_data_dict = {
     "n_avg": n_avg,
@@ -34,9 +34,8 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     n = declare(int)  # QUA variable for the averaging loop
     adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace

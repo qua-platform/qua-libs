@@ -29,7 +29,6 @@ from scipy import signal
 ##################
 #   Parameters   #
 ##################
-
 # Parameters Definition
 n_avg = 1_000  # The number of averages
 # The frequency sweep parameters (for both resonators)
@@ -45,9 +44,8 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the readout frequency detuning around the resonance

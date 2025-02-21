@@ -34,7 +34,6 @@ from scipy import signal
 ##################
 #   Parameters   #
 ##################
-
 # Parameters Definition
 n_avg = 20  # The number of averages
 # The frequency sweep around the resonators' frequency
@@ -56,9 +55,8 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     # QUA macro to declare the measurement variables and their corresponding streams for a given number of resonators
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
