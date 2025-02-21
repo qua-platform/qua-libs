@@ -63,7 +63,6 @@ sequence = [
     ("y90", "y90"),
 ]
 
-
 # All-XY macro generating the pulse sequences from a python list.
 def allXY(pulses):
     """
@@ -98,15 +97,9 @@ def allXY(pulses):
     )
     return I_xy, Q_xy
 
-
 ###################
-# The QUA program #
+#   QUA Program   #
 ###################
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-}
 with program() as ALL_XY:
     n = declare(int)
     r = Random()  # Pseudo random number generator
