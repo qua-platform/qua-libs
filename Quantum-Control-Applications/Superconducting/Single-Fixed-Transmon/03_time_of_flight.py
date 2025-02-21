@@ -21,12 +21,15 @@ from configuration import *
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 
-
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # Number of averaging loops
 
+###################
+#   QUA Program   #
+###################
 with program() as raw_trace_prog:
     n = declare(int)  # QUA variable for the averaging loop
     adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace
@@ -46,7 +49,6 @@ with program() as raw_trace_prog:
         # Will save only last run:
         adc_st.input1().save("adc1_single_run")
         adc_st.input2().save("adc2_single_run")
-
 
 #####################################
 #  Open Communication with the QOP  #

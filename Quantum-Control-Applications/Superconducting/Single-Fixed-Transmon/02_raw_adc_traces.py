@@ -14,12 +14,15 @@ from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+n_avg = 100  # Number of averaging loops
 
 ###################
-# The QUA program #
+#   QUA Program   #
 ###################
-n_avg = 100  # The number of averages
-
 with program() as raw_trace_prog:
     n = declare(int)  # QUA variable for the averaging loop
     adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace

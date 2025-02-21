@@ -7,9 +7,8 @@ from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 
-
 ###################
-# The QUA program #
+#   QUA Program   #
 ###################
 with program() as hello_qua:
     a = declare(fixed)
@@ -24,11 +23,9 @@ with program() as hello_qua:
 # qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_83")
 
-
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = True
 
 if simulate:

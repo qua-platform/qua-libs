@@ -94,9 +94,10 @@ def update_readout_length(new_readout_length, ringdown_length):
     }
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # number of averages
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = 5 * u.us  # Readout pulse duration
@@ -121,6 +122,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+#   QUA Program   #
+###################
 with program() as opt_weights:
     n = declare(int)
     ind = declare(int)

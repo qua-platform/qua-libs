@@ -32,9 +32,10 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-#############################################
-# Program dependent variables and functions #
-#############################################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 num_of_sequences = 50  # Number of random sequences
 n_avg = 20  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
@@ -51,6 +52,11 @@ inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 # 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
 interleaved_gate_index = 2
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 
 ###################################
 # Helper functions and QUA macros #
@@ -175,16 +181,9 @@ def play_sequence(sequence_list, depth):
                 play("y90", "qubit")
                 play("-x90", "qubit")
 
-
 ###################
-# The QUA program #
+#   QUA Program   #
 ###################
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-}
-
 with program() as rb:
     depth = declare(int)  # QUA variable for the varying depth
     depth_target = declare(int)  # QUA variable for the the current depth (changes in steps of delta_clifford)

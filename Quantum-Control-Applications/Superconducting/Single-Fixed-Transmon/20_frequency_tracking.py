@@ -27,12 +27,6 @@ n_avg = 20
 tau_vec = np.arange(4, 50_000, 50)
 print(f"Initial frequency: {freq_track_obj.f_res:.0f} Hz")
 
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "tau_vec": tau_vec,
-    "config": config,
-}
 
 # Repeat the measurement twice, without and with correction of the frequency
 for arg in ["Pe_initial", "Pe_corrected"]:
@@ -66,7 +60,16 @@ d_f = 2 * u.kHz
 f_vec = np.arange(f_min, f_max, d_f)
 oscillation = 1
 
-# The QUA program
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "tau_vec": tau_vec,
+    "config": config,
+}
+
+###################
+#   QUA Program   #
+###################
 with program() as prog:
     freq_track_obj.initialization()
     freq_track_obj.freq_domain_ramsey_full_sweep(n_avg, f_vec, oscillation)

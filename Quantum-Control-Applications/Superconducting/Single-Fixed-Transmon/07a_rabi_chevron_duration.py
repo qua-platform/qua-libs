@@ -25,9 +25,10 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 50  # The number of averages
 # The frequency sweep parameters
 span = 20 * u.MHz
@@ -47,6 +48,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+#   QUA Program   #
+###################
 with program() as rabi_amp_freq:
     n = declare(int)  # QUA variable for the averaging loop
     f = declare(int)  # QUA variable for the qubit frequency

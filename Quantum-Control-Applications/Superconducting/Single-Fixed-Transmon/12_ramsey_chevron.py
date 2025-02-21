@@ -24,9 +24,10 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # Number of averaging loops
 
 # Frequency sweep in Hz
@@ -48,6 +49,10 @@ save_data_dict = {
     "taus": taus,
     "config": config,
 }
+
+###################
+#   QUA Program   #
+###################
 with program() as ramsey_freq_duration:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the qubit detuning

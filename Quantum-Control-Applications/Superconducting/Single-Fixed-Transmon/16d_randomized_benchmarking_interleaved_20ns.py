@@ -37,9 +37,10 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-##############################
-# Program-specific variables #
-##############################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 num_of_sequences = 50  # Number of random sequences
 n_avg = 20  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
@@ -103,6 +104,11 @@ for i in range(len(single_qubit_gates)):
     for j in range(len(single_qubit_gates)):
         single_qubit_gate_pairs.append(((single_qubit_gates[i],) + (single_qubit_gates[j],)))
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 
 def get_interleaved_gate(gate_index):
     if gate_index == 0:
@@ -343,15 +349,9 @@ def play_sequence(sequence_list, number_of_gates):
                         else:
                             play(single_qubit_gate_pairs[ii][iii], "qubit")
 
-
-# ###################
-# # The QUA program #
-# ###################
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-}
+###################
+#   QUA Program   #
+###################
 with program() as rb:
     depth = declare(int)  # Current depth
     depth_target = declare(int)  # Play the sequence every depth target

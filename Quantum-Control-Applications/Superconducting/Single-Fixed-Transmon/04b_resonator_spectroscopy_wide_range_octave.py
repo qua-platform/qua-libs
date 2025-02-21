@@ -28,10 +28,10 @@ import matplotlib.pyplot as plt
 from scipy.signal import detrend
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # The number of averages
 # The intermediate frequency sweep parameters
 f_min = 21 * u.MHz
@@ -56,6 +56,10 @@ save_data_dict = {
     "frequencies": frequency,
     "config": config,
 }
+
+###################
+#   QUA Program   #
+###################
 with program() as resonator_spec:
     n = declare(int)  # QUA variable for the averaging loop
     i = declare(int)  # QUA variable for the LO frequency sweep
@@ -100,7 +104,6 @@ with program() as resonator_spec:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-
 ###############
 # Run Program #
 ###############
@@ -111,7 +114,7 @@ qm = qmm.open_qm(config)
 calibrate = True
 if calibrate:
     for lo in LOs:
-        print(f"Calibrate (LO, IF) = ({lo/u.MHz}, {IFs[len(IFs) // 2]/u.MHz}) MHz")
+        print(f"Calibrate (LO, IF) = ({lo / u.MHz}, {IFs[len(IFs) // 2] / u.MHz}) MHz")
         qm.calibrate_element("resonator", {lo: (IFs[len(IFs) // 2],)})
 
 # Send the QUA program to the OPX, which compiles and executes it. It will stop at the 'pause' statement.

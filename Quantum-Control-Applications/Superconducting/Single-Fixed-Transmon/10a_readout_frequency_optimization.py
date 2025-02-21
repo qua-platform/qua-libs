@@ -25,9 +25,10 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # The number of averages
 # The frequency sweep parameters
 span = 10 * u.MHz
@@ -40,6 +41,10 @@ save_data_dict = {
     "IF_frequencies": dfs,
     "config": config,
 }
+
+###################
+#   QUA Program   #
+###################
 with program() as ro_freq_opt:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the readout frequency

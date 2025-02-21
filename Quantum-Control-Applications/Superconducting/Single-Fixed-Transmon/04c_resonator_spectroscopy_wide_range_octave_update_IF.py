@@ -37,10 +37,10 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Open the quantum machine
 qm = qmm.open_qm(config)
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # The number of averages
 # The intermediate frequency sweep parameters
 f_min = 21 * u.MHz
@@ -78,6 +78,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+#   QUA Program   #
+###################
 with program() as resonator_spec:
     n = declare(int)  # QUA variable for the averaging loop
     i = declare(int)  # QUA variable for the LO frequency sweep

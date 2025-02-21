@@ -34,9 +34,9 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 10000  # The number of averages
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 10 * u.us  # In ns
@@ -47,7 +47,6 @@ span = 10 * u.MHz
 df = 100 * u.kHz
 dfs = np.arange(-span, +span + 0.1, df)
 
-
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
@@ -56,6 +55,10 @@ save_data_dict = {
     "saturation_amp": saturation_amp,
     "config": config,
 }
+
+###################
+#   QUA Program   #
+###################
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the qubit frequency

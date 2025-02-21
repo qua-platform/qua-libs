@@ -27,9 +27,10 @@ from macros import readout_macro
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100
 
 # Scan the DRAG coefficient pre-factor
@@ -54,6 +55,10 @@ save_data_dict = {
     "iters": iters,
     "config": config,
 }
+
+###################
+#   QUA Program   #
+###################
 with program() as drag:
     n = declare(int)  # QUA variable for the averaging loop
     a = declare(fixed)  # QUA variable for the DRAG coefficient pre-factor

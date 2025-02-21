@@ -149,10 +149,10 @@ bloch_sphere.label_bra(bloch_sphere.West * 1.1, "Y")
 # bloch_sphere.plot_vector((1, 1, 0), 'Test', color='r')
 # bloch_sphere.plot_vector((1, 0, 1), bra_tex('k'), color='g')
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 10000
 
 # Data to save
@@ -160,6 +160,10 @@ save_data_dict = {
     "n_avg": n_avg,
     "config": config,
 }
+
+###################
+#   QUA Program   #
+###################
 with program() as state_tomography:
     n = declare(int)  # QUA variable for average loop
     state = declare(bool)  # QUA variable for the qubit state
