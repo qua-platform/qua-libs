@@ -24,9 +24,11 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from scipy import signal
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # Number of averaging loops
 # The frequency axis
 frequencies = np.linspace(50 * u.MHz, 350 * u.MHz, 101)
@@ -37,6 +39,10 @@ save_data_dict = {
     "IF_frequencies": frequencies,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as reflectometry_spectro:
     f = declare(int)  # QUA variable for the frequency sweep
     n = declare(int)  # QUA variable for the averaging loop

@@ -39,9 +39,11 @@ from qdac2_driver import QDACII, load_voltage_list
 import matplotlib.pyplot as plt
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # Number of averages
 n_points_slow = 101  # Number of points for the slow axis
 n_points_fast = 100  # Number of points for the fast axis
@@ -62,6 +64,10 @@ save_data_dict = {
     "voltage_values_fast": voltage_values_fast,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as charge_stability_prog:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     counter = declare(int)  # QUA integer used as an index for the Coulomb pulse

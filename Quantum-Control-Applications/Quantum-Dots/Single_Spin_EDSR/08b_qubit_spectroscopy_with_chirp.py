@@ -38,10 +38,10 @@ import matplotlib.pyplot as plt
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100
 
 # Chirp parameters - Defined in configuration
@@ -81,6 +81,10 @@ save_data_dict = {
     "B_fields": B_fields,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as qubit_spectroscopy_prog:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     f = declare(int)  # QUA variable for the qubit pulse duration

@@ -33,10 +33,11 @@ from qualang_tools.loops import from_array
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100
 # Pulse duration sweep in ns - must be larger than 4 clock cycles
 durations = np.arange(16, 200, 4)
@@ -55,6 +56,10 @@ save_data_dict = {
     "durations": durations,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as Ramsey_chevron:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     t = declare(int)  # QUA variable for the qubit pulse duration

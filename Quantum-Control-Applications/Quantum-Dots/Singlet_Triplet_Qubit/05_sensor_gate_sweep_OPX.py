@@ -27,9 +27,11 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # Number of averaging loops
 offsets = np.linspace(-0.2, 0.2, 101)
 d_offset = np.diff(offsets)[0]
@@ -41,6 +43,10 @@ save_data_dict = {
     "d_offset": d_offset,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as charge_sensor_sweep:
     dc = declare(fixed)  # QUA variable for the voltage sweep
     n = declare(int)  # QUA variable for the averaging loop

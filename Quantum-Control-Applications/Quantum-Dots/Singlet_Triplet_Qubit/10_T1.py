@@ -35,10 +35,10 @@ import matplotlib.pyplot as plt
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100
 # Wait time sweep in ns - must be larger than 4 clock cycles
 durations = np.arange(16, 2000, 100)
@@ -55,6 +55,10 @@ save_data_dict = {
     "durations": durations,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as T1_prog:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     t = declare(int)  # QUA variable for the qubit pulse duration

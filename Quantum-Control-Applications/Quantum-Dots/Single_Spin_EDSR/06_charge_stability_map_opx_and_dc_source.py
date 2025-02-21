@@ -28,9 +28,11 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from macros import RF_reflectometry_macro, DC_current_sensing_macro, get_filtered_voltage
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100
 n_points_slow = 10
 n_points_fast = 101
@@ -51,6 +53,10 @@ save_data_dict = {
     "voltage_values_fast": voltage_values_fast,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as charge_stability_prog:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     i = declare(int)  # QUA integer used as an index to loop over the voltage points
