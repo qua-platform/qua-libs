@@ -60,18 +60,6 @@ octaves = [octave_1]
 # Configure the Octaves
 octave_config = octave_declaration(octaves)
 
-#####################
-# OPX configuration #
-#####################
-con = "con1"
-fem = 5  # Should be the LF-FEM index, e.g., 1
-
-# Set octave_config to None if no octave are present
-octave_config = None
-
-
-sampling_rate = int(1e9)  # or, int(2e9)
-
 #############
 # Save Path #
 #############
@@ -81,10 +69,14 @@ save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
-    "configuration_mw_fem.py": "configuration_mw_fem.py",
+    Path(__file__).name: Path(__file__).name,
     "optimal_weights.npz": "optimal_weights.npz",
 }
 
+#####################
+# OPX configuration #
+#####################
+sampling_rate = int(1e9)  # or, int(2e9)
 
 #############################################
 #                  Qubits                   #

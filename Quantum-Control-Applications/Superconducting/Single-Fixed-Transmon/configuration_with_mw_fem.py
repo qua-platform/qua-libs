@@ -21,8 +21,19 @@ octave_config = None
 con = "con1"
 fem = 1
 
+#############
+# Save Path #
+#############
+
 # Path to save data
-save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
+save_dir = Path().absolute() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
+
 #############################################
 #                  Qubits                   #
 #############################################
