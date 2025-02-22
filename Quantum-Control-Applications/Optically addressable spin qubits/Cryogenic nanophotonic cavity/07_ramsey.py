@@ -1,34 +1,44 @@
 """
-hahn_echo.py: Measures T2.
+07_ramsey.py: Measures T2*.
 """
 
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from qm import LoopbackInterface
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
+from qualang_tools.results.data_handler import DataHandler
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+t_min = 16 // 4  # in clock cycles units (must be >= 4)
+t_max = 1000 // 4  # in clock cycles units
+dt = 40 // 4  # in clock cycles units
+t_vec = np.arange(t_min, t_max + 0.1, dt)  # +0.1 to include t_max in array
+n_avg = 1e6
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "t_vec": t_vec,
+    "config": config,
+}
 
 ###################
 # The QUA program #
 ###################
-
-t_min = 4  # in clock cycles units (must be >= 4)
-t_max = 500  # in clock cycles units
-dt = 20  # in clock cycles units
-t_vec = np.arange(t_min, t_max + 0.1, dt)  # +0.1 to include t_max in array
-n_avg = 1e6
-
-with program() as hahn_echo:
+with program() as ramsey:
     counts1 = declare(int)  # saves number of photon counts
     counts2 = declare(int)  # saves number of photon counts
     times1 = declare(int, size=100)
     times2 = declare(int, size=100)
-    t = declare(int)  # variable to sweep over in time
-    n = declare(int)  # variable to for_loop
     counts_1_st = declare_stream()  # stream for counts
     counts_2_st = declare_stream()  # stream for counts
+    t = declare(int)  # variable to sweep over in time
+    n = declare(int)  # variable to for_loop
     n_st = declare_stream()  # stream to save iterations
 
     with for_(n, 0, n < n_avg, n + 1):
@@ -40,15 +50,14 @@ with program() as hahn_echo:
             play("switch_ON", "excited_state_mw")
             align()
 
+            # pulse sequence
             play("pi_half", "Yb")  # Pi/2 pulse to qubit
-            wait(t, "Yb")  # variable delay in spin Echo
-            play("pi", "Yb")  # Pi pulse to qubit
             wait(t, "Yb")  # variable delay in spin Echo
             play("pi_half", "Yb")  # Pi/2 pulse to qubit
 
             align()
 
-            # readout laser
+            # laser readout
             play("laser_ON", "A_transition", duration=int(meas_len // 4))
             # does it needs buffer to prevent damage?
 
@@ -68,10 +77,7 @@ with program() as hahn_echo:
             play("switch_ON", "excited_state_mw")
             align()
 
-            # pulse sequence
             play("pi_half", "Yb")  # Pi/2 pulse to qubit
-            wait(t, "Yb")  # variable delay in spin Echo
-            play("pi", "Yb")  # Pi pulse to qubit
             wait(t, "Yb")  # variable delay in spin Echo
             frame_rotation_2pi(0.5, "Yb")  # Turns next pulse to -x
             play("pi_half", "Yb")  # Pi/2 pulse to qubit
@@ -83,7 +89,7 @@ with program() as hahn_echo:
             play("laser_ON", "A_transition", duration=int(meas_len // 4))
             # does it needs buffer to prevent damage?
 
-            align()  # global align
+            align()
 
             # decay readout
             measure("readout", "SNSPD", None, time_tagging.analog(times2, meas_len, counts2))
@@ -100,13 +106,14 @@ with program() as hahn_echo:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 simulate = False
 if simulate:
-    simulation_config = SimulationConfig(duration=28_000, simulation_interface=LoopbackInterface(["1"]))
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=28_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, hahn_echo, simulation_config)
+    job = qmm.simulate(config, ramsey, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -117,10 +124,11 @@ if simulate:
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
     waveform_report.create_plot(samples, plot=True, save_path="./")
+
 else:
     qm = qmm.open_qm(config)
     # execute QUA program
-    job = qm.execute(hahn_echo)
+    job = qm.execute(ramsey)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["counts1", "counts2", "iteration"], mode="live")
     # Live plotting
@@ -137,5 +145,12 @@ else:
         plt.plot(4 * t_vec, counts1 / 1000 / (meas_len / u.s), counts2 / 1000 / (meas_len / u.s))
         plt.xlabel("Dephasing time [ns]")
         plt.ylabel("Intensity [kcps]")
-        plt.title("Hahn Echo")
+        plt.legend(("counts 1", "counts 2"))
+        plt.title("Ramsey")
         plt.pause(0.1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

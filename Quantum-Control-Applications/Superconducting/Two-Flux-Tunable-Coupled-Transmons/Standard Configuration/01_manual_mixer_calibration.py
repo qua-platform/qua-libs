@@ -16,11 +16,15 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 from configuration import *
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+element = "rr1"
+
 ###################
 # The QUA program #
 ###################
-element = "rr1"
-
 with program() as manual_mixer_calib:
     with infinite_loop_():
         play("cw" * amp(0), element)

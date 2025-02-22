@@ -12,7 +12,6 @@ from configuration import *
 ###################
 # The QUA program #
 ###################
-
 with program() as mixer_cal:
     with infinite_loop_():
         play("const", "ensemble")

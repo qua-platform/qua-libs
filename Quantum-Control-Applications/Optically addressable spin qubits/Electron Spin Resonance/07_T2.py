@@ -10,23 +10,34 @@ from configuration import *
 import matplotlib.pyplot as plt
 from macros import get_c2c_time
 from qualang_tools.loops import from_array
+from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 pi_len = 320 // 4  # Calibrated pi-pulse
 pi_half_len = 160 // 4  # Calibrated pi/2 pulse
 
 delay_min = safe_delay
 delay_max = 20000 // 4
-ddelay = 1000 // 4
-delay_vec = np.arange(delay_min, delay_max + 0.1, ddelay)
+d_delay = 1000 // 4
+delay_vec = np.arange(delay_min, delay_max + 0.1, d_delay)
 
 cooldown_time = 10e6 // 4
 
 n_avg = 100
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "delay_vec": delay_vec,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as T2:
     n = declare(int)
     t_delay = declare(int)
@@ -164,3 +175,9 @@ else:
         plt.ylabel("Echo magnitude I & Q [a. u.]")
         plt.legend()
         plt.pause(0.2)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

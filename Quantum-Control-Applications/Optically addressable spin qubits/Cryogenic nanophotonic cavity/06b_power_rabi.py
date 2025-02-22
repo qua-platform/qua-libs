@@ -1,5 +1,5 @@
 """
-power_rabi.py: A Rabi experiment sweeping the amplitude of the MW pulse.
+06b_power_rabi.py: A Rabi experiment sweeping the amplitude of the MW pulse.
 """
 
 from qm import QuantumMachinesManager
@@ -8,17 +8,28 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
+from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 a_min = 0.1  # proportional factor to the pulse amplitude
 a_max = 1  # proportional factor to the pulse amplitude
 da = 0.02
 a_vec = np.arange(a_min, a_max + da / 2, da)  # +da/2 to include a_max
 n_avg = 1e6  # number of iterations
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "a_vec": a_vec,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as power_rabi:
     counts = declare(int)  # variable for number of counts
     times = declare(int, size=100)
@@ -102,3 +113,9 @@ else:
         plt.ylabel("Intensity [kcps]")
         plt.title("Power Rabi")
         plt.pause(0.1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

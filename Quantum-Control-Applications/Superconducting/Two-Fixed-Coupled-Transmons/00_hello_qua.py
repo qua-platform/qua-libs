@@ -7,11 +7,9 @@ from qm import QuantumMachinesManager, SimulationConfig
 from configuration_lf_fem_and_octave import *
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
-
     play("cw", "rr1")
     play("cw", "q2_xy")
 

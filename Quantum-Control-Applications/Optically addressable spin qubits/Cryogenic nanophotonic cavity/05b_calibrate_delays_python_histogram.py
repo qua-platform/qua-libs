@@ -8,11 +8,12 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
+from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 initial_delay_cycles = 500 // 4  # delay before laser (units of clock cycles = 4 ns)
 laser_len_cycles = 2000 // 4  # laser duration length (units of clock cycles = 4 ns)
 mw_len_cycles = 1000 // 4  # MW duration length (units of clock cycles = 4 ns)
@@ -25,6 +26,16 @@ t_vec = np.arange(0, meas_len, 1)
 
 assert (laser_len_cycles - mw_len_cycles) > 4, "The MW must be shorter than the laser pulse"
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "t_vec": t_vec,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as calib_delays:
     times = declare(int, size=100)  # 'size' defines the max number of photons to be counted
     times_st = declare_stream()  # stream for 'times'
@@ -98,3 +109,9 @@ while b_cont or b_last:
 
     b_cont = res_handles.is_processing()
     b_last = not (b_cont or b_last)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

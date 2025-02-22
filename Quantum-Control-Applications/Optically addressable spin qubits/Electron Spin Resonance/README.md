@@ -9,16 +9,16 @@ These files were tested in a real setup, but are given as-is with no guarantee.
 While these can serve as a template for new labs or for new experiments, certain adaptations will probably have to be made.
 Use with care.
 
-1. [Hello QUA](hello_qua.py) - A script used for playing with QUA
-2. [Mixer Calibration](mixer_cal.py) - A script used to calibrate the corrections for mixer imbalances
-3. [Input calibration](input_calibration.py) - A script to measure the analog signal when no drive is applied. Allows you to correct for offsets
-4. [Signal test](signal_test.py) - A script that mimics a `pi/2 - pi` pulse sequence but with arbitrary pulse duration. Helps you check if signal is being generated from your setup
-5. [Pi pulse calibration](pi_pulse_calibration.py) - A script that changes the duration of the pulses send to the ensemble to determine which pulse duration maximizes the echo amplitude
-6. [Time Rabi](time_rabi.py) - Having calibrated roughly a `pi` pulse this script allows you fix the `pi` pulse duration and change the duration of the first pulse to obtain Rabi oscillations 
+1. [Hello QUA](00_hello_qua.py) - A script used for playing with QUA
+2. [Mixer Calibration](01_mixer_cal.py) - A script used to calibrate the corrections for mixer imbalances
+3. [Input calibration](02_input_calibration.py) - A script to measure the analog signal when no drive is applied. Allows you to correct for offsets
+4. [Signal test](03_signal_test.py) - A script that mimics a `pi/2 - pi` pulse sequence but with arbitrary pulse duration. Helps you check if signal is being generated from your setup
+5. [Pi pulse calibration](04_pi_pulse_calibration.py) - A script that changes the duration of the pulses send to the ensemble to determine which pulse duration maximizes the echo amplitude
+6. [Time Rabi](05_time_rabi.py) - Having calibrated roughly a `pi` pulse this script allows you fix the `pi` pulse duration and change the duration of the first pulse to obtain Rabi oscillations 
 throughout the sequence. This allows measuring all the delays in the system, as well as the NV initialization duration
-7. [T1](T1.py) - Measures T1 either from |0> or |1> to the thermal state, i.e., prior to initialization
-8. [T2](T2.py) - A script that measures T2 after initialization of the ensemble
-9. [CPMG](cpmg.py) - A script that measures the echo amplitude for a wide range of delays between `pi` pulses in a CPMG pulse sequence
+7. [T1](06_T1.py) - Measures T1 either from |0> or |1> to the thermal state, i.e., prior to initialization
+8. [T2](07_T2.py) - A script that measures T2 after initialization of the ensemble
+9. [CPMG](08_cpmg.py) - A script that measures the echo amplitude for a wide range of delays between `pi` pulses in a CPMG pulse sequence
 
 ## Use Cases
 

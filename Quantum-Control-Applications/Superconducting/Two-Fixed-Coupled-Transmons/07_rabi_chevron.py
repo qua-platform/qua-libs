@@ -49,11 +49,9 @@ save_data_dict = {
     "config": config,
 }
 
-
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the qubit detuning
@@ -165,7 +163,7 @@ else:
         data_handler = DataHandler(root_data_folder=save_dir)
         save_data_dict.update({"fig_live": fig})
         data_handler.additional_files = {script_name: script_name, **default_additional_files}
-        data_handler.save_data(data=save_data_dict, name="rabi_chevron")
+        data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
 
     except Exception as e:
         print(f"An exception occurred: {e}")

@@ -21,11 +21,15 @@ import matplotlib.pyplot as plt
 from configuration import *
 from qm import SimulationConfig
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+n_avg = 1_000
+
 ###################
 # The QUA program #
 ###################
-n_avg = 1_000
-
 with program() as TimeTagging_calibration:
     n = declare(int)  # QUA variable for the averaging loop
     adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace

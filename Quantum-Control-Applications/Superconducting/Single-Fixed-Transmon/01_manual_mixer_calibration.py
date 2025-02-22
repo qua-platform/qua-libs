@@ -16,11 +16,15 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 from configuration import *
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+element = "resonator"
+
 ###################
 # The QUA program #
 ###################
-element = "resonator"
-
 with program() as cw_output:
     with infinite_loop_():
         # It is best to calibrate LO leakage first and without any power played (cf. note below)
@@ -110,5 +114,3 @@ job = qm.execute(cw_output)
 #     plt.ylabel("Phase imbalance [rad]")
 #     plt.title(f"Minimum at (I={centers[0]:.3f}, Q={centers[1]:.3f}) = {image[minimum[0]][minimum[1]]:.1f} dBm")
 # plt.suptitle(f"Image cancellation for {element}")
-#
-# print(f"For {element}, gain is {centers[0]} and phase is {centers[1]}")
