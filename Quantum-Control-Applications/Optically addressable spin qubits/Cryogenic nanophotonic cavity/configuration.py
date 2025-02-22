@@ -11,7 +11,7 @@ pio.renderers.default = "browser"
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
-
+u = unit(coerce_to_integer=True)
 
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
@@ -28,19 +28,17 @@ def IQ_imbalance(g, phi):
     N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
+######################
+# Network parameters #
+######################
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_port = None  # Write the QOP port if version < QOP220
 
-#############
-# VARIABLES #
-#############
-u = unit()
-qop_ip = "172.16.2.103"
-cluster_name = None
-qop_port = None
 
 #############
 # Save Path #
 #############
-
 # Path to save data
 save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
@@ -50,9 +48,9 @@ default_additional_files = {
     "optimal_weights.npz": "optimal_weights.npz",
 }
 
-#############################################
-#              OPX PARAMETERS               #
-#############################################
+#####################
+# OPX configuration #
+#####################
 # Set octave_config to None if no octave are present
 octave_config = None
 

@@ -52,9 +52,9 @@ octaves = [octave_1]
 octave_config = octave_declaration(octaves)
 
 
-#############################################
-#              OPX PARAMETERS               #
-#############################################
+#####################
+# OPX configuration #
+#####################
 
 ######################
 #       READOUT      #

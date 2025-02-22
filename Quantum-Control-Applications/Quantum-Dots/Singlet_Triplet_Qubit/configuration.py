@@ -31,9 +31,9 @@ default_additional_files = {
     "optimal_weights.npz": "optimal_weights.npz",
 }
 
-#############################################
-#              OPX PARAMETERS               #
-#############################################
+#####################
+# OPX configuration #
+#####################
 # Set octave_config to None if no octave are present
 octave_config = None
 

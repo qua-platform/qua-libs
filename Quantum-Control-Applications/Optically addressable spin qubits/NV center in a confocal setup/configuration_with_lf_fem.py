@@ -16,7 +16,6 @@ pio.renderers.default = "browser"
 #######################
 u = unit(coerce_to_integer=True)
 
-
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
     """
@@ -42,7 +41,6 @@ qop_port = None  # Write the QOP port if version < QOP220
 #############
 # Save Path #
 #############
-
 # Path to save data
 save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
@@ -52,12 +50,11 @@ default_additional_files = {
     "optimal_weights.npz": "optimal_weights.npz",
 }
 
-#############################################
-#              OPX PARAMETERS               #
-#############################################
+#####################
+# OPX configuration #
+#####################
 con = "con1"
 fem = 1  # This should be the index of the LF-FEM module, e.g., 1
-
 # Set octave_config to None if no octave are present
 octave_config = None
 

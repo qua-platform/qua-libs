@@ -29,7 +29,6 @@ qop_port = None  # Write the QOP port if version < QOP220
 #############
 # Save Path #
 #############
-
 # Path to save data
 save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
@@ -49,10 +48,9 @@ octave_config = QmOctaveConfig()
 octave_config.set_calibration_db(os.getcwd())
 octave_config.add_device_info("octave1", octave_ip, octave_port)
 
-#############################################
-#              OPX PARAMETERS               #
-#############################################
-
+#####################
+# OPX configuration #
+#####################
 con = "con1"
 fem = 1  # Should be the LF-FEM index, e.g., 1
 

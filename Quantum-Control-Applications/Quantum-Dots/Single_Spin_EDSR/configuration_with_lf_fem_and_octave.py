@@ -61,9 +61,9 @@ octaves = [octave_1]
 octave_config = octave_declaration(octaves)
 
 
-#############################################
-#              OPX PARAMETERS               #
-#############################################
+#####################
+# OPX configuration #
+#####################
 sampling_rate = int(1e9)  # or, int(2e9)
 
 ######################
