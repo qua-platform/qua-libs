@@ -47,7 +47,9 @@ class BaseQuAM(QuamRoot):
         if qualibrate_config_path.exists():
             config = tomllib.loads(qualibrate_config_path.read_text())
             quam_state_path = config.get("quam", {}).get("state_path", None)
-            return Path(quam_state_path)
+            if quam_state_path is not None:
+                quam_state_path = Path(quam_state_path)
+            return quam_state_path
         else:
             return None
 
