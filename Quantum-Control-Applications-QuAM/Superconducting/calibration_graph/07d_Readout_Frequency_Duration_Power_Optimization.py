@@ -21,20 +21,23 @@ Next steps before going to the next node:
 import logging
 
 from typing import Optional, List
+
+import numpy as np
 from tqdm import tqdm
 
-from qm import Program
+from qm import Program, generate_qua_script
 from qualibrate import QualibrationNode
 
 from quam_experiments.experiments.readout_optimization_3d.analysis.calculate_readout_fidelity import \
     calculate_readout_fidelity, get_maximum_fidelity_per_qubit
+from quam_experiments.experiments.readout_optimization_3d.analysis.combine_batches import combine_batches
 from quam_experiments.experiments.readout_optimization_3d.analysis.fetch_dataset import fetch_dataset
 from quam_experiments.experiments.readout_optimization_3d.analysis.filtering import filter_readout_fidelity
 from quam_experiments.experiments.readout_optimization_3d.analysis.plotting import plot_fidelity_3d, plot_fidelity_2d
 from quam_experiments.experiments.readout_optimization_3d.make_qua_streams_per_qubit import make_qua_streams_per_qubit
 from quam_experiments.experiments.readout_optimization_3d.make_qua_variables_per_qubit import \
     make_qua_variables_per_qubit
-from quam_experiments.experiments.readout_optimization_3d.skip_qubits_for_resource_allocation import \
+from quam_experiments.experiments.readout_optimization_3d.measurement_batching import \
     generate_measurement_batches, get_max_accumulated_readouts
 from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
 from quam_libs.trackable_object import tracked_updates
@@ -61,7 +64,7 @@ node = QualibrationNode(
         qubits=None,
         multiplexed=True,
         flux_point_joint_or_independent="joint",
-        num_runs=1000,
+        num_runs=20,
         frequency_span_in_mhz=5,
         frequency_step_in_mhz=0.2,
         min_amplitude_factor=0.5,
@@ -73,9 +76,9 @@ node = QualibrationNode(
         plotting_dimension="2D",
         fidelity_smoothing_intensity=0.5,
         max_readout_amplitude=0.125,
-        simulate=True,
-        simulation_duration_ns=1000,
-        use_waveform_report=True
+        # simulate=True,
+        # simulation_duration_ns=10000,
+        # use_waveform_report=True
     )
 )
 
@@ -122,8 +125,10 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
         a = declare(fixed)
 
         # Create QUA variables and streams only if the qubit is in the measurement batch
-        II_g, IQ_g, QI_g, QQ_g, II_e, IQ_e, QI_e, QQ_e = make_qua_variables_per_qubit(qubits, measurement_batch, node.parameters)
-        I_g_st, Q_g_st, I_e_st, Q_e_st = make_qua_streams_per_qubit(qubits, measurement_batch)
+        II_g, IQ_g, QI_g, QQ_g, I_g, Q_g, II_e, IQ_e, QI_e, QQ_e, I_e, Q_e = make_qua_variables_per_qubit(
+            measurement_batch, node.parameters
+        )
+        I_g_st, Q_g_st, I_e_st, Q_e_st = make_qua_streams_per_qubit(measurement_batch)
         n_st = declare_stream()
 
         for multiplexed_qubits in qubits.batch():
@@ -134,7 +139,7 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
 
                 with for_(*from_array(df, dfs)):
                     with for_(*from_array(a, amps)):
-                        for i, qubit in multiplexed_qubits.items():
+                        for qubit in multiplexed_qubits.values():
                             update_frequency(
                                 qubit.resonator.name,
                                 qubit.resonator.intermediate_frequency + df
@@ -144,8 +149,9 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
                             wait(machine.thermalization_time * u.ns)
 
                         align()
-                        for i, qubit in multiplexed_qubits.items():
+                        for qubit in multiplexed_qubits.values():
                             if qubit in measurement_batch:
+                                i = measurement_batch.index(qubit)
                                 qubit.resonator.measure_accumulated(
                                     pulse_name=readout_pulse_name,
                                     qua_vars=(II_g[i], IQ_g[i], QI_g[i], QQ_g[i]),
@@ -160,12 +166,13 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
                         if not node.parameters.simulate:
                             wait(machine.thermalization_time * u.ns)
 
-                        for i, qubit in multiplexed_qubits.items():
+                        for qubit in multiplexed_qubits.values():
                             qubit.xy.play("x180")
 
                         align()
-                        for i, qubit in multiplexed_qubits.items():
+                        for qubit in multiplexed_qubits.values():
                             if qubit in measurement_batch:
+                                i = measurement_batch.index(qubit)
                                 qubit.resonator.measure_accumulated(
                                     pulse_name=readout_pulse_name,
                                     qua_vars=(II_e[i], IQ_e[i], QI_e[i], QQ_e[i]),
@@ -176,31 +183,29 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
                                 # play, but don't demodulate
                                 qubit.resonator.play(pulse_name=readout_pulse_name, amplitude_scale=a)
 
-                        for i, qubit in multiplexed_qubits.items():
-                            if qubits[i] not in measurement_batch:
-                                continue
-
+                        for i, qubit in enumerate(measurement_batch):
                             j = declare(int)
                             with for_(j, 0, j < node.parameters.num_durations, j+1):
-                                save(II_g[i][j] + IQ_g[i][j], I_g_st[i])
-                                save(QI_g[i][j] + QQ_g[i][j], Q_g_st[i])
-                                save(II_e[i][j] + IQ_e[i][j], I_e_st[i])
-                                save(QI_e[i][j] + QQ_e[i][j], Q_e_st[i])
+                                assign(I_g[i][j], II_g[i][j] + IQ_g[i][j])
+                                save(I_g[i][j], I_g_st[i])
+                                assign(Q_g[i][j], QI_g[i][j] + QQ_g[i][j])
+                                save(Q_g[i][j], Q_g_st[i])
+                                assign(I_e[i][j], II_e[i][j] + IQ_e[i][j])
+                                save(I_e[i][j], I_e_st[i])
+                                assign(Q_e[i][j], QI_e[i][j] + QQ_e[i][j])
+                                save(Q_e[i][j], Q_e_st[i])
 
-            with stream_processing():
-                n_st.save("n")
-                for i in range(num_qubits):
-                    if qubits[i] not in measurement_batch:
-                        continue
-
-                    streams = {"I_g": I_g_st, "Q_g": Q_g_st, "I_e": I_e_st, "Q_e": Q_e_st}
-                    for name, stream in streams.items():
-                        stream[i] \
-                            .buffer(node.parameters.num_durations) \
-                            .buffer(len(amps)) \
-                            .buffer(len(dfs)) \
-                            .buffer(node.parameters.num_runs) \
-                            .save(f"{name}{i + 1}")
+        with stream_processing():
+            n_st.save("n")
+            for i in range(len(measurement_batch)):
+                streams = {"I_g": I_g_st, "Q_g": Q_g_st, "I_e": I_e_st, "Q_e": Q_e_st}
+                for name, stream in streams.items():
+                    stream[i] \
+                        .buffer(node.parameters.num_durations) \
+                        .buffer(len(amps)) \
+                        .buffer(len(dfs)) \
+                        .buffer(n_avg) \
+                        .save(f"{name}{i + 1}")
 
         return readout_optimization_3d
 
@@ -208,8 +213,8 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
 max_accumulated_readouts = get_max_accumulated_readouts(qubits, node.parameters)
 measurement_batches = generate_measurement_batches(qubits, max_accumulated_readouts)
 
-if n_avg % len(measurement_batches) != 0:
-    raise ValueError(f"Expected the number of averages {n_avg} to be a multiple of {len(measurement_batches)}.")
+# This number represents how many times a qubit is present in any batch
+qubit_representation = len(measurement_batches) * max_accumulated_readouts / len(qubits)
 
 if len(measurement_batches) > 1:
     logging.info(
@@ -217,11 +222,20 @@ if len(measurement_batches) > 1:
         f"Splitting into {len(measurement_batches)} batches."
     )
 
+if n_avg % len(measurement_batches) != 0:
+    raise ValueError(f"Expected the number of averages {n_avg} to be a multiple of {qubit_representation} "
+                     f"in order to be measured {n_avg} times over {len(measurement_batches)} batches.")
+
+n_avg = n_avg // qubit_representation
+
 programs = []
 for measurement_batch in measurement_batches:
     programs.append(
-        readout_optimization_3d_measured_in_batches(n_avg // len(measurement_batches), measurement_batch)
+        readout_optimization_3d_measured_in_batches(n_avg, measurement_batch)
     )
+
+with open("debug.py", "w+") as f:
+    f.write(generate_qua_script(programs[0], config))
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
@@ -231,7 +245,8 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    for program in tqdm(programs, unit='measurement batch'):
+    datasets = []
+    for i, program in tqdm(enumerate(programs), unit='measurement batch'):
         with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
             job = qm.execute(program)
             results = fetching_tool(job, ["n"], mode="live")
@@ -239,11 +254,15 @@ elif node.parameters.load_data_id is None:
                 n = results.fetch_all()[0]
                 progress_counter(n, n_avg, start_time=results.start_time)
 
+        run_axis = np.arange(i*n_avg, (i+1)*n_avg)
+        datasets.append(fetch_dataset(job, measurement_batches[i], run_axis, node.parameters))
+
+    ds = combine_batches(datasets)
+
+
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
-    if node.parameters.load_data_id is None:
-        ds = fetch_dataset(job, qubits, node.parameters)
-    else:
+    if node.parameters.load_data_id is not None:
         load_data_id = node.parameters.load_data_id
         node = node.load_from_id(load_data_id)
         node.parameters.load_data_id = load_data_id
