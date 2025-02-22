@@ -13,9 +13,9 @@ The data undergoes post-processing to calibrate three distinct parameters:
 """
 
 from qualibrate import QualibrationNode, NodeParameters
-from configuration.my_quam import QuAM
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_config import QuAM
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit

@@ -18,12 +18,12 @@ Before proceeding to the next node:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from configuration.my_quam import QuAM
-from experiments.macros import qua_declaration
-from quam_libs.lib.fit_utils import fit_resonator
-from quam_libs.lib.qua_datasets import apply_angle, subtract_slope, convert_IQ_to_V
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_config import QuAM
+from quam_experiments.macros import qua_declaration
+from quam_experiments.analysis.fit_utils import fit_resonator
+from quam_libs.qua_datasets import apply_angle, subtract_slope, convert_IQ_to_V
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session

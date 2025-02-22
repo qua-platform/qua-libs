@@ -7,7 +7,7 @@ A simple program to close all other open QMs.
 from typing import Optional, List
 from qualibrate import QualibrationNode, NodeParameters
 
-from configuration.my_quam import QuAM
+from quam_config import QuAM
 
 
 # %% {Node_parameters}

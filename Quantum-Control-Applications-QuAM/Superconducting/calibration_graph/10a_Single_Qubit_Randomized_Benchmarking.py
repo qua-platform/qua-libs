@@ -21,11 +21,11 @@ Prerequisites:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from configuration.my_quam import QuAM, Transmon
-from experiments.macros import qua_declaration, active_reset, readout_state
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
-from quam_libs.lib.fit import fit_decay_exp, decay_exp
+from quam_config import QuAM, Transmon
+from quam_experiments.macros import qua_declaration, active_reset, readout_state
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
+from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.multi_user import qm_session

@@ -19,13 +19,13 @@ Next steps before going to the next node:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from configuration.my_quam import QuAM
-from experiments.macros import qua_declaration, active_reset
-from quam_libs.lib.instrument_limits import instrument_limits
-from quam_libs.lib.qua_datasets import convert_IQ_to_V
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
-from quam_libs.lib.fit import fit_oscillation, oscillation
+from quam_config import QuAM
+from quam_experiments.macros import qua_declaration, active_reset
+from quam_libs.instrument_limits import instrument_limits
+from quam_libs.qua_datasets import convert_IQ_to_V
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
+from quam_experiments.analysis.fit import fit_oscillation, oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
