@@ -246,7 +246,7 @@ if node.parameters.simulate:
 
 elif node.parameters.load_data_id is None:
     datasets = []
-    for i, program in tqdm(enumerate(programs), unit='measurement batch'):
+    for i, program in enumerate(tqdm(programs, unit='measurement batch')):
         with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
             job = qm.execute(program)
             results = fetching_tool(job, ["n"], mode="live")
