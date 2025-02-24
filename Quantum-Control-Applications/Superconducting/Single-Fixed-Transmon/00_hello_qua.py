@@ -21,7 +21,9 @@ with program() as hello_qua:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+# qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_83")
+
 
 ###########################
 # Run or Simulate Program #
@@ -34,8 +36,16 @@ if simulate:
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, hello_qua, simulation_config)
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
     # Plot the simulated samples
-    job.get_simulated_samples().con1.plot()
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True)
 else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)
