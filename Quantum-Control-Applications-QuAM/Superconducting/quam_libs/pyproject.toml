@@ -1,0 +1,18 @@
+[project]
+name = "quam-libs"
+version = "0.1.0"
+dependencies = [
+    "quam",
+    "plotly",
+    "xarray",
+]
+requires-python = ">=3.9, <3.13"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.poetry.dependencies]
+
+[tool.setuptools]
+py-modules = []

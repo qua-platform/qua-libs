@@ -1,12 +1,10 @@
 from qm.qua import *
 from qm import SimulationConfig
-from qualang_tools.units import unit
-from quam_libs.components import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import savgol_filter
 from qualang_tools.units import unit
-from quam_libs.components import QuAM
+from quam_config import QuAM
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -14,8 +12,7 @@ from quam_libs.components import QuAM
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = r"C:\Users\KevinAVillegasRosale\OneDrive - QM Machines LTD\Documents\GitKraken\CS_installations\configuration\quam_state"
-machine = QuAM.load()
+machine = QuAM.load("C:\git\qua-libs\Quantum-Control-Applications-QuAM\Superconducting\configuration\quam_state")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
@@ -59,7 +56,7 @@ if simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -68,5 +65,3 @@ else:
     job = qm.execute(prog)
 
 plt.show()
-
-

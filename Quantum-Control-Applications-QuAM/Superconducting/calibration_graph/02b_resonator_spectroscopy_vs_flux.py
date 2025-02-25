@@ -20,12 +20,12 @@ Before proceeding to the next node:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from quam_libs.components import QuAM
-from quam_libs.macros import qua_declaration
-from quam_libs.lib.qua_datasets import convert_IQ_to_V
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
-from quam_libs.lib.fit import fit_oscillation
+from quam_config import QuAM
+from quam_experiments.macros import qua_declaration
+from quam_libs.qua_datasets import convert_IQ_to_V
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
+from quam_experiments.analysis.fit import fit_oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -57,6 +57,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
 
+
 node = QualibrationNode(name="02b_Resonator_Spectroscopy_vs_Flux", parameters=Parameters())
 
 
@@ -64,7 +65,8 @@ node = QualibrationNode(name="02b_Resonator_Spectroscopy_vs_Flux", parameters=Pa
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()
+machine = QuAM.load("C:\git\qua-libs\Quantum-Control-Applications-QuAM\Superconducting\configuration\quam_state")
+
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
@@ -83,7 +85,6 @@ config = machine.generate_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
-    
 
 
 # %% {QUA_program}
@@ -151,7 +152,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -215,7 +216,7 @@ if not node.parameters.simulate:
     flux_min = flux_min * (np.abs(flux_min) < 0.5) + 0.5 * (flux_min > 0.5) - 0.5 * (flux_min < -0.5)
     # finding the frequency as the sweet spot flux
     rel_freq_shift = peak_freq.sel(flux=idle_offset, method="nearest")
-    abs_freqs = ds.sel(flux=idle_offset, method="nearest").sel(freq = rel_freq_shift).freq_full
+    abs_freqs = ds.sel(flux=idle_offset, method="nearest").sel(freq=rel_freq_shift).freq_full
     # Save fitting results
     fit_results = {}
     for q in qubits:
@@ -279,8 +280,7 @@ if not node.parameters.simulate:
         # Location of the current resonator frequency
         ax.plot(
             idle_offset.loc[qubit].values,
-            abs_freqs.sel(qubit=qubit["qubit"]).values
-            * 1e-9,
+            abs_freqs.sel(qubit=qubit["qubit"]).values * 1e-9,
             "r*",
             markersize=10,
         )
@@ -315,7 +315,6 @@ if not node.parameters.simulate:
         node.results["initial_parameters"] = node.parameters.model_dump()
         node.machine = machine
         node.save()
-
 
 
 # %%

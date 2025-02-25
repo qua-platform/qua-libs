@@ -5,7 +5,7 @@ A simple program to calibrate Octave mixers for all qubits and resonators
 """
 
 from qualibrate import QualibrationNode, NodeParameters
-from quam_libs.components import QuAM
+from quam_config import QuAM
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from typing import Optional, List
@@ -45,4 +45,3 @@ with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         qubit.calibrate_octave(
             qm, calibrate_drive=node.parameters.calibrate_drive, calibrate_resonator=node.parameters.calibrate_resonator
         )
-

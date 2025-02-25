@@ -18,12 +18,12 @@ Before proceeding to the next node:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from quam_libs.components import QuAM
-from quam_libs.macros import qua_declaration
-from quam_libs.lib.fit_utils import fit_resonator
-from quam_libs.lib.qua_datasets import apply_angle, subtract_slope, convert_IQ_to_V
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_config import QuAM
+from quam_experiments.macros import qua_declaration
+from quam_experiments.analysis.fit_utils import fit_resonator
+from quam_libs.qua_datasets import apply_angle, subtract_slope, convert_IQ_to_V
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -40,13 +40,13 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 100
-    frequency_span_in_mhz: float = 30.0
-    frequency_step_in_mhz: float = 0.1
+    frequency_span_in_mhz: float = 18.0
+    frequency_step_in_mhz: float = 0.01
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    load_data_id: Optional[int] = None
-    multiplexed: bool = True
+    load_data_id: Optional[int] = None  # 217
+    multiplexed: bool = False
 
 
 node = QualibrationNode(name="02a_Resonator_Spectroscopy", parameters=Parameters())
@@ -90,10 +90,10 @@ with program() as multi_res_spec:
     # Bring the active qubits to the minimum frequency point
     machine.apply_all_flux_to_min()
 
-    with for_(n, 0, n < n_avg, n + 1):
-        save(n, n_st)
-        with for_(*from_array(df, dfs)):
-            for i, rr in enumerate(resonators):
+    for i, rr in enumerate(resonators):
+        with for_(n, 0, n < n_avg, n + 1):
+            save(n, n_st)
+            with for_(*from_array(df, dfs)):
                 # Update the resonator frequencies for all resonators
                 update_frequency(rr.name, df + rr.intermediate_frequency)
                 # Measure the resonator
@@ -103,8 +103,8 @@ with program() as multi_res_spec:
                 # save data
                 save(I[i], I_st[i])
                 save(Q[i], Q_st[i])
-    if not node.parameters.multiplexed:
-        align()
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
@@ -123,7 +123,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -149,6 +149,7 @@ if not node.parameters.simulate:
     if node.parameters.load_data_id is not None:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
+        qubits = [machine.qubits[qb_name] for qb_name in ds.qubit.values]  # TODO
     else:
         ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs})
         # Convert IQ data into volts
@@ -175,7 +176,7 @@ if not node.parameters.simulate:
     fit_results = {}
 
     for index, q in enumerate(qubits):
-        fit, fit_eval = fit_resonator(ds.sel(qubit=q.name), q.resonator.RF_frequency)
+        fit, fit_eval = fit_resonator(ds.sel(qubit=q.name), q.resonator.RF_frequency, print_report=True)
         fits[q.name] = fit
         fit_evals[q.name] = fit_eval
         Qe = np.abs(fit.params["Qe_real"].value + 1j * fit.params["Qe_imag"].value)
@@ -239,7 +240,3 @@ if not node.parameters.simulate:
         node.results["initial_parameters"] = node.parameters.model_dump()
         node.machine = machine
         node.save()
-        print("Results saved")
-
-
-# %%
