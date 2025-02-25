@@ -109,7 +109,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
     # The lines of code below allow you to retrieve information from the simulated waveform to assert
     # their position in time and manually estimate internal delays.
