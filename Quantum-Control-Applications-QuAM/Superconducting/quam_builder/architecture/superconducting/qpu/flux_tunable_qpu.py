@@ -5,7 +5,6 @@ from quam_builder.architecture.superconducting.qubit_pair.flux_tunable_transmons
 from quam_builder.architecture.superconducting.qpu.base_quam import BaseQuAM
 
 
-
 from dataclasses import field
 from typing import Dict, Union, ClassVar, Type
 
@@ -63,7 +62,9 @@ class QuAM(BaseQuAM):
 
     def set_all_fluxes(self, flux_point: str, target: Union[FluxTunableTransmon, TransmonPair]):
         if flux_point == "independent":
-            assert isinstance(target, FluxTunableTransmon), "Independent flux point is only supported for individual transmons"
+            assert isinstance(
+                target, FluxTunableTransmon
+            ), "Independent flux point is only supported for individual transmons"
         elif flux_point == "pairwise":
             assert isinstance(target, TransmonPair), "Pairwise flux point is only supported for transmon pairs"
 
@@ -88,4 +89,3 @@ class QuAM(BaseQuAM):
         target.z.settle()
         target.align()
         return target_bias
-

@@ -17,7 +17,6 @@ Next steps before going to the next node:
     - Update the DRAG coefficient (alpha) in the state.
 """
 
-
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
@@ -53,7 +52,6 @@ class Parameters(NodeParameters):
     alpha_setpoint: Optional[float] = -1.0
     load_data_id: Optional[int] = None
     multiplexed: bool = False
-
 
 
 node = QualibrationNode(name="09b_DRAG_Calibration_180_minus_180", parameters=Parameters())
@@ -163,7 +161,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -189,12 +187,12 @@ if not node.parameters.simulate:
         ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
         # Add the qubit pulse absolute alpha coefficient to the dataset
         ds = ds.assign_coords(
-        {
-            "alpha": (
-                ["qubit", "amp"],
-                np.array([q.xy.operations[operation].alpha * amps for q in qubits]),
-            )
-        }
+            {
+                "alpha": (
+                    ["qubit", "amp"],
+                    np.array([q.xy.operations[operation].alpha * amps for q in qubits]),
+                )
+            }
         )
     else:
         node = node.load_from_id(node.parameters.load_data_id)
@@ -244,4 +242,3 @@ if not node.parameters.simulate:
         node.results["initial_parameters"] = node.parameters.model_dump()
         node.machine = machine
         node.save()
-

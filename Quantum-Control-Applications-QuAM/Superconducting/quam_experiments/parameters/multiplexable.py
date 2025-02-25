@@ -10,8 +10,8 @@ class MultiplexableNodeParameters(RunnableParameters):
     multiplexed: bool = Field(
         default=False,
         description="Whether to play control pulses, readout pulses and active/thermal reset "
-                    "at the same time for all qubits (True) or to play the experiment sequentially"
-                    "for each qubit (False)"
+        "at the same time for all qubits (True) or to play the experiment sequentially"
+        "for each qubit (False)",
     )
 
 

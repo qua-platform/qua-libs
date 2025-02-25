@@ -12,7 +12,7 @@ from quam_experiments.parameters import (
     FluxControlledNodeParameters,
     MultiplexableNodeParameters,
     DataLoadableNodeParameters,
-    QmSessionNodeParameters
+    QmSessionNodeParameters,
 )
 
 
@@ -25,14 +25,16 @@ class ReadoutOptimization3dParameters(RunnableParameters):
     num_amplitudes: int = 10
     max_duration_in_ns: int = 4000
     num_durations: int = 8
-    plotting_dimension: Literal['2D', '3D'] = '2D'
+    plotting_dimension: Literal["2D", "3D"] = "2D"
     fidelity_smoothing_intensity: float = 0.5
-    max_readout_amplitude: float = Field(0.125, description="upper limit for readout pulse amplitude to "
-                                                            "avoid saturation when doing multiplexed readout")
+    max_readout_amplitude: float = Field(
+        0.125,
+        description="upper limit for readout pulse amplitude to " "avoid saturation when doing multiplexed readout",
+    )
 
     @model_validator(mode="after")
     def check_plot_type_is_2d_or_3d(self):
-        if self.plotting_dimension not in ['2D', '3D']:
+        if self.plotting_dimension not in ["2D", "3D"]:
             raise ValueError(f"Expected plot dimension to be '2D' or '3D', got {self.plotting_dimension}")
 
         return self
@@ -46,6 +48,7 @@ class ReadoutOptimization3dParameters(RunnableParameters):
                 f"{self.max_duration_in_ns / self.num_durations}"
             )
         return self
+
 
 class Parameters(
     NodeParameters,
@@ -75,17 +78,13 @@ def get_amplitude_factors(node_parameters: ReadoutOptimization3dParameters):
     amps = np.linspace(
         start=node_parameters.min_amplitude_factor,
         stop=node_parameters.max_amplitude_factor,
-        num=node_parameters.num_amplitudes
+        num=node_parameters.num_amplitudes,
     )
 
     return amps
 
 
 def get_durations(node_parameters: ReadoutOptimization3dParameters):
-    durations = np.linspace(
-        start=0,
-        stop=node_parameters.max_duration_in_ns,
-        num=node_parameters.num_durations + 1
-    )[1:]
+    durations = np.linspace(start=0, stop=node_parameters.max_duration_in_ns, num=node_parameters.num_durations + 1)[1:]
 
     return durations

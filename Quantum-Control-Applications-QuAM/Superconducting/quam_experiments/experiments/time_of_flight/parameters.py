@@ -10,5 +10,3 @@ class Parameters(QubitsExperimentNodeParameters, SimulatableNodeParameters):
     readout_amplitude_in_v: Optional[float] = 0.1
     readout_length_in_ns: Optional[int] = None
     timeout: int = 100
-
-

@@ -7,6 +7,7 @@ import numpy as np
 
 # TODO: to do properly and compare with oqc
 
+
 def get_band(freq):
     if 50e6 <= freq < 5.5e9:
         return 1
@@ -81,9 +82,14 @@ for i, q in enumerate(machine.qubits):
 
     # Add new pulses
     from quam.components.pulses import (
-        SquarePulse, DragGaussianPulse, DragCosinePulse, FlatTopGaussianPulse, WaveformPulse,
-        SquareReadoutPulse
+        SquarePulse,
+        DragGaussianPulse,
+        DragCosinePulse,
+        FlatTopGaussianPulse,
+        WaveformPulse,
+        SquareReadoutPulse,
     )
+
     # e.g., machine.qubits[q].xy.operations["new_pulse"] = FlatTopGaussianPulse(...)
 
 # %%

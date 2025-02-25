@@ -9,7 +9,9 @@ from quam_builder.builder.superconducting.pulses import add_default_transmon_pul
 from quam_builder.builder.superconducting.add_transmon_drive_component import add_transmon_drive_component
 from quam_builder.builder.superconducting.add_transmon_flux_component import add_transmon_flux_component
 from quam_builder.builder.superconducting.add_transmon_pair_component import (
-    add_transmon_pair_tunable_coupler_component, add_transmon_pair_cross_resonance_component, add_transmon_pair_zz_drive_component
+    add_transmon_pair_tunable_coupler_component,
+    add_transmon_pair_cross_resonance_component,
+    add_transmon_pair_zz_drive_component,
 )
 from quam_builder.builder.superconducting.add_transmon_resonator_component import add_transmon_resonator_component
 from qualang_tools.wirer.connectivity.wiring_spec import WiringLineType
@@ -27,6 +29,7 @@ def build_quam(machine: Union[AnyQuAM], calibration_db_path: Optional[Union[Path
     save_machine(machine)
 
     return machine
+
 
 def add_ports(machine: Union[AnyQuAM]):
     """
@@ -76,7 +79,9 @@ def add_transmons(machine: Union[AnyQuAM]):
             for qubit_pair_id, wiring_by_line_type in wiring_by_element.items():
                 qc, qt = qubit_pair_id.split("-")
                 qt = f"q{qt}"
-                transmon_pair = machine.qubit_pair_type(id=qubit_pair_id, qubit_control=f"#/qubits/{qc}",qubit_target=f"#/qubits/{qt}")
+                transmon_pair = machine.qubit_pair_type(
+                    id=qubit_pair_id, qubit_control=f"#/qubits/{qc}", qubit_target=f"#/qubits/{qt}"
+                )
                 for line_type, ports in wiring_by_line_type.items():
                     wiring_path = f"#/wiring/{element_type}/{qubit_pair_id}/{line_type}"
                     if line_type == WiringLineType.COUPLER.value:
@@ -86,7 +91,7 @@ def add_transmons(machine: Union[AnyQuAM]):
                     elif line_type == WiringLineType.ZZ_DRIVE.value:
                         add_transmon_pair_zz_drive_component(transmon_pair, wiring_path, ports)
                     else:
-                        raise ValueError(f'Unknown line type: {line_type}')
+                        raise ValueError(f"Unknown line type: {line_type}")
                     machine.qubit_pairs[transmon_pair.name] = transmon_pair
                     machine.active_qubit_pair_names.append(transmon_pair.name)
 
@@ -113,7 +118,7 @@ def add_octaves(machine: Union[AnyQuAM], calibration_db_path: Optional[Union[Pat
             for line_type, references in wiring_by_line_type.items():
                 for reference in references:
                     if "octaves" in references.get_unreferenced_value(reference):
-                        octave_name = references.get_unreferenced_value(reference).split('/')[2]
+                        octave_name = references.get_unreferenced_value(reference).split("/")[2]
                         octave = Octave(
                             name=octave_name,
                             calibration_db_path=calibration_db_path,
@@ -123,22 +128,23 @@ def add_octaves(machine: Union[AnyQuAM], calibration_db_path: Optional[Union[Pat
 
     return machine
 
+
 def add_external_mixers(machine: Union[AnyQuAM]):
     for wiring_by_element in machine.wiring.values():
         for qubit, wiring_by_line_type in wiring_by_element.items():
             for line_type, references in wiring_by_line_type.items():
                 for reference in references:
                     if "mixers" in references.get_unreferenced_value(reference):
-                        mixer_name = references.get_unreferenced_value(reference).split('/')[2]
+                        mixer_name = references.get_unreferenced_value(reference).split("/")[2]
                         transmon_channel = {
                             WiringLineType.DRIVE.value: "xy",
-                            WiringLineType.RESONATOR.value: "resonator"
+                            WiringLineType.RESONATOR.value: "resonator",
                         }
                         frequency_converter = FrequencyConverter(
                             local_oscillator=LocalOscillator(),
                             mixer=StandaloneMixer(
                                 intermediate_frequency=f"#/qubits/{qubit}/{transmon_channel[line_type]}/intermediate_frequency",
-                            )
+                            ),
                         )
                         machine.mixers[mixer_name] = frequency_converter
 

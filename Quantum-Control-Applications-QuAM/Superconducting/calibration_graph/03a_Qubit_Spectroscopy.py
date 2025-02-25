@@ -21,7 +21,6 @@ Before proceeding to the next node:
     - Save the current state
 """
 
-
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 
@@ -108,9 +107,7 @@ if node.parameters.arbitrary_flux_bias is not None:
     arb_flux_bias_offset = {q.name: node.parameters.arbitrary_flux_bias for q in qubits}
     detunings = {q.name: q.freq_vs_flux_01_quad_term * arb_flux_bias_offset[q.name] ** 2 for q in qubits}
 elif node.parameters.arbitrary_qubit_frequency_in_ghz is not None:
-    detunings = {
-        q.name: 1e9 * node.parameters.arbitrary_qubit_frequency_in_ghz - qubit_freqs[q.name] for q in qubits
-    }
+    detunings = {q.name: 1e9 * node.parameters.arbitrary_qubit_frequency_in_ghz - qubit_freqs[q.name] for q in qubits}
     arb_flux_bias_offset = {q.name: np.sqrt(detunings[q.name] / q.freq_vs_flux_01_quad_term) for q in qubits}
 
 else:
@@ -139,7 +136,9 @@ with program() as qubit_spec:
                 # Update the qubit frequency
                 qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency + detunings[qubit.name])
                 qubit.align()
-                duration = operation_len * u.ns if operation_len is not None else qubit.xy.operations[operation].length * u.ns
+                duration = (
+                    operation_len * u.ns if operation_len is not None else qubit.xy.operations[operation].length * u.ns
+                )
                 # duration = operation_len * u.ns if operation_len is not None else (qubit.xy.operations[operation].length + qubit.z.settle_time) * u.ns
                 # Bring the qubit to the desired point during the saturation pulse
                 # qubit.z.play("const", amplitude_scale=arb_flux_bias_offset[qubit.name] / qubit.z.operations["const"].amplitude, duration=duration)
@@ -182,7 +181,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -239,7 +238,7 @@ if not node.parameters.simulate:
         ds.sel(freq=shifts).I - ds.I.mean(dim="freq"),
     )
     # rotate the data to the new I axis
-    ds = ds.assign({"I_rot" : ds.I * np.cos(angle) + ds.Q * np.sin(angle)})
+    ds = ds.assign({"I_rot": ds.I * np.cos(angle) + ds.Q * np.sin(angle)})
     # Find the peak with minimal prominence as defined, if no such peak found, returns nan
     result = peaks_dips(ds.I_rot, dim="freq", prominence_factor=5)
     # The resonant RF frequency of the qubits
@@ -247,9 +246,10 @@ if not node.parameters.simulate:
         [
             (
                 q.name,
-                ds.freq_full.sel(freq = result.position.sel(qubit=q.name).values).sel(qubit=q.name).values,
+                ds.freq_full.sel(freq=result.position.sel(qubit=q.name).values).sel(qubit=q.name).values,
             )
-            for q in qubits if not np.isnan(result.sel(qubit=q.name).position.values)
+            for q in qubits
+            if not np.isnan(result.sel(qubit=q.name).position.values)
         ]
     )
 

@@ -1,5 +1,6 @@
 import xarray as xr
 
+
 def extract_string(input_string):
     # Find the index of the first occurrence of a digit in the input string
     index = next((i for i, c in enumerate(input_string) if c.isdigit()), None)

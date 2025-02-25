@@ -23,7 +23,7 @@ def fetch_dataset(job: QmJob, qubits: List[AnyTransmon], frequencies: List[float
     Returns:
         xarray.Dataset containing the following variables:
             - I: In-phase component in volts
-            - Q: Quadrature component in volts 
+            - Q: Quadrature component in volts
             - IQ_abs: Magnitude of the IQ signal in volts
             - phase: Phase of the IQ signal in radians, with linear frequency dependence subtracted
 
@@ -50,6 +50,7 @@ def fetch_dataset(job: QmJob, qubits: List[AnyTransmon], frequencies: List[float
     )
     return ds
 
+
 def fit_resonators(ds: xr.Dataset, qubits: List[AnyTransmon]):
     """
     Fits the resonator frequency and quality factors for each qubit in the dataset.
@@ -69,6 +70,6 @@ def fit_resonators(ds: xr.Dataset, qubits: List[AnyTransmon]):
         fit_results[q.name]["resonator_freq_full"] = fit.params["omega_r"].value + q.resonator.RF_frequency
         fit_results[q.name]["Quality_external"] = Qe
         fit_results[q.name]["Quality_internal"] = Qi
-    
-    ds = ds.assign({"fit_evals": (("qubit","freq"),np.array([fit_evals[q.name] for q in qubits]))})
+
+    ds = ds.assign({"fit_evals": (("qubit", "freq"), np.array([fit_evals[q.name] for q in qubits]))})
     return ds, fit_results

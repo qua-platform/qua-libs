@@ -1,7 +1,11 @@
 import numpy as np
 
-from quam_experiments.experiments.readout_optimization_3d.parameters import get_frequency_detunings_in_hz, \
-    ReadoutOptimization3dParameters, get_amplitude_factors, get_durations
+from quam_experiments.experiments.readout_optimization_3d.parameters import (
+    get_frequency_detunings_in_hz,
+    ReadoutOptimization3dParameters,
+    get_amplitude_factors,
+    get_durations,
+)
 from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.save_utils import fetch_results_as_xarray
 
@@ -15,12 +19,7 @@ def fetch_dataset(job, qubits, run_axis: np.ndarray, node_parameters: ReadoutOpt
     ds = fetch_results_as_xarray(
         handles=job.result_handles,
         qubits=qubits,
-        measurement_axis={
-            "duration": durations,
-            "amp": amps,
-            "freq": dfs,
-            "run": run_axis
-        }
+        measurement_axis={"duration": durations, "amp": amps, "freq": dfs, "run": run_axis},
     )
     ds = convert_IQ_to_V(ds, qubits, ["I_g", "Q_g", "I_e", "Q_e"])
 
@@ -34,8 +33,8 @@ def fetch_dataset(job, qubits, run_axis: np.ndarray, node_parameters: ReadoutOpt
     ds = ds.assign(
         {
             "D": np.sqrt((ds.I_g - ds.I_e) ** 2 + (ds.Q_g - ds.Q_e) ** 2),
-            "IQ_abs_g": np.sqrt(ds.I_g ** 2 + ds.Q_g ** 2),
-            "IQ_abs_e": np.sqrt(ds.I_e ** 2 + ds.Q_e ** 2),
+            "IQ_abs_g": np.sqrt(ds.I_g**2 + ds.Q_g**2),
+            "IQ_abs_e": np.sqrt(ds.I_e**2 + ds.Q_e**2),
         }
     )
     # Add the absolute frequency to the dataset

@@ -11,6 +11,4 @@ class Parameters(SimulatableNodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True    
-
-
+    multiplexed: bool = True

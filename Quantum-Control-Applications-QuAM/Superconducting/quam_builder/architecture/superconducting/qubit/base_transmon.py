@@ -2,7 +2,8 @@ from quam.core import quam_dataclass
 from quam.components.channels import IQChannel, MWChannel, Pulse
 from quam import QuamComponent
 from quam_builder.architecture.superconducting.components.readout_resonator import (
-    ReadoutResonatorIQ, ReadoutResonatorMW
+    ReadoutResonatorIQ,
+    ReadoutResonatorMW,
 )
 from qualang_tools.octave_tools import octave_calibration_tool
 from qm import QuantumMachine, logger

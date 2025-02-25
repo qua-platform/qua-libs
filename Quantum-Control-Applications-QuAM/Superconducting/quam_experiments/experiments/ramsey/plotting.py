@@ -9,8 +9,9 @@ from quam_experiments.experiments.ramsey.parameters import Parameters
 from quam_libs.plot_utils import QubitGrid, grid_iter
 
 
-def plot_ramseys_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon],
-                               node_parameters: Parameters, fits: Dict[str, RamseyFit]):
+def plot_ramseys_data_with_fit(
+    ds: xr.Dataset, qubits: List[AnyTransmon], node_parameters: Parameters, fits: Dict[str, RamseyFit]
+):
     """
     Plot qubit data for Ramsey experiments.
     """
@@ -57,12 +58,8 @@ def plot_ramsey_data_with_fit(ax, ds, qubit, node_parameters, fit=None):
 
 def plot_state(ax, ds, qubit, fitted=None):
     """Plot state data for a qubit."""
-    ds.sel(sign=1).loc[qubit].state.plot(
-        ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +"
-    )
-    ds.sel(sign=-1).loc[qubit].state.plot(
-        ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
-    )
+    ds.sel(sign=1).loc[qubit].state.plot(ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +")
+    ds.sel(sign=-1).loc[qubit].state.plot(ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -")
     if fitted is not None:
         ax.plot(ds.time, fitted.fit.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
         ax.plot(ds.time, fitted.fit.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)
@@ -70,12 +67,8 @@ def plot_state(ax, ds, qubit, fitted=None):
 
 def plot_transmission_amplitude(ax, ds, qubit, fitted=None):
     """Plot transmission amplitude for a qubit."""
-    (ds.sel(sign=1).loc[qubit].I * 1e3).plot(
-        ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +"
-    )
-    (ds.sel(sign=-1).loc[qubit].I * 1e3).plot(
-        ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
-    )
+    (ds.sel(sign=1).loc[qubit].I * 1e3).plot(ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +")
+    (ds.sel(sign=-1).loc[qubit].I * 1e3).plot(ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -")
     if fitted is not None:
         ax.plot(ds.time, 1e3 * fitted.fit.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
         ax.plot(ds.time, 1e3 * fitted.fit.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)
@@ -86,7 +79,7 @@ def add_fit_text(ax, fit):
     ax.text(
         0.1,
         0.9,
-        f'T2* = {1e6 * fit.decay:.1f} ± {1e6 * fit.decay_error:.1f} µs',
+        f"T2* = {1e6 * fit.decay:.1f} ± {1e6 * fit.decay_error:.1f} µs",
         transform=ax.transAxes,
         fontsize=10,
         verticalalignment="top",

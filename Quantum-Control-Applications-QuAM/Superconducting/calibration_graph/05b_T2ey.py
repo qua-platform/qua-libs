@@ -48,6 +48,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
     multiplexed: bool = False
 
+
 node = QualibrationNode(name="05b_T2e", parameters=Parameters())
 
 
@@ -97,7 +98,7 @@ with program() as t1:
     t = [declare(int) for _ in range(num_qubits)]
 
     if node.parameters.multiplexed:
-        for i , qubit in enumerate(qubits):
+        for i, qubit in enumerate(qubits):
             machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
     for i, qubit in enumerate(qubits):
@@ -257,9 +258,8 @@ if not node.parameters.simulate:
 
     # %% {Update_state}
 
-
     # %% {Save_results}
-    if node.parameters.load_data_id is None:        
+    if node.parameters.load_data_id is None:
         node.results["initial_parameters"] = node.parameters.model_dump()
         node.machine = machine
         node.save()

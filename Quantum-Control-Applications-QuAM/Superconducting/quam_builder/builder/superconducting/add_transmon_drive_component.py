@@ -9,7 +9,9 @@ from quam_builder.architecture.superconducting.qubit import FixedFrequencyTransm
 u = unit(coerce_to_integer=True)
 
 
-def add_transmon_drive_component(transmon: Union[FixedFrequencyTransmon, FluxTunableTransmon], wiring_path: str, ports: Dict[str, str]):
+def add_transmon_drive_component(
+    transmon: Union[FixedFrequencyTransmon, FluxTunableTransmon], wiring_path: str, ports: Dict[str, str]
+):
     digital_outputs = get_digital_outputs(wiring_path, ports)
 
     if all(key in ports for key in iq_out_channel_ports):

@@ -56,9 +56,14 @@ class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
         amplitude = self.operations[operation].amplitude
         return self.frequency_converter_up.gain + u.volts2dBm(amplitude, Z=Z)
 
-    def set_output_power(self, power_in_dbm: float, gain: Optional[int] = None,
-                         max_amplitude: Optional[float] = None, Z: int = 50,
-                         operation: Optional[str] = "readout"):
+    def set_output_power(
+        self,
+        power_in_dbm: float,
+        gain: Optional[int] = None,
+        max_amplitude: Optional[float] = None,
+        Z: int = 50,
+        operation: Optional[str] = "readout",
+    ):
         """
         Configure the output power for a specific operation by setting the gain or amplitude.
         Note that exactly one of `gain` or `amplitude` must be specified and the function calculates
@@ -100,10 +105,7 @@ class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
         self.frequency_converter_up.gain = gain
         self.operations[operation].amplitude = amplitude
 
-        return {
-            "gain": gain,
-            "amplitude": max_amplitude
-        }
+        return {"gain": gain, "amplitude": max_amplitude}
 
 
 @quam_dataclass
@@ -119,9 +121,13 @@ class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
         x_v = amplitude * np.sqrt(2 * Z * x_mw / 1000)
         return 10 * np.log10(((x_v / np.sqrt(2)) ** 2 * 1000) / Z)
 
-
-    def set_output_power(self, power_in_dbm: float, full_scale_power_dbm: Optional[int] = None,
-                         max_amplitude: Optional[float] = 1, operation: Optional[str] = 'readout'):
+    def set_output_power(
+        self,
+        power_in_dbm: float,
+        full_scale_power_dbm: Optional[int] = None,
+        max_amplitude: Optional[float] = 1,
+        operation: Optional[str] = "readout",
+    ):
         """
         Sets the power level in dBm for a specified operation, increasing the full-scale power
         in 3 dB steps if necessary until it covers the target power level, then scaling the

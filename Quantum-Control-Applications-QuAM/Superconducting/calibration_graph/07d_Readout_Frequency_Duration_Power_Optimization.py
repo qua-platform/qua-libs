@@ -17,6 +17,7 @@ Next steps before going to the next node:
     - Update the readout frequency and dispersive shift chi in the state.
     - Save the current state
 """
+
 # %% {Imports}
 import logging
 
@@ -28,24 +29,29 @@ from tqdm import tqdm
 from qm import Program, generate_qua_script
 from qualibrate import QualibrationNode
 
-from quam_experiments.experiments.readout_optimization_3d.analysis.calculate_readout_fidelity import \
-    calculate_readout_fidelity, get_maximum_fidelity_per_qubit
+from quam_experiments.experiments.readout_optimization_3d.analysis.calculate_readout_fidelity import (
+    calculate_readout_fidelity,
+    get_maximum_fidelity_per_qubit,
+)
 from quam_experiments.experiments.readout_optimization_3d.analysis.combine_batches import combine_batches
 from quam_experiments.experiments.readout_optimization_3d.analysis.fetch_dataset import fetch_dataset
 from quam_experiments.experiments.readout_optimization_3d.analysis.filtering import filter_readout_fidelity
 from quam_experiments.experiments.readout_optimization_3d.analysis.plotting import plot_fidelity_3d, plot_fidelity_2d
 from quam_experiments.experiments.readout_optimization_3d.make_qua_streams_per_qubit import make_qua_streams_per_qubit
-from quam_experiments.experiments.readout_optimization_3d.make_qua_variables_per_qubit import \
-    make_qua_variables_per_qubit
-from quam_experiments.experiments.readout_optimization_3d.measurement_batching import \
-    generate_measurement_batches, get_max_accumulated_readouts
+from quam_experiments.experiments.readout_optimization_3d.make_qua_variables_per_qubit import (
+    make_qua_variables_per_qubit,
+)
+from quam_experiments.experiments.readout_optimization_3d.measurement_batching import (
+    generate_measurement_batches,
+    get_max_accumulated_readouts,
+)
 from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
 from quam_libs.trackable_object import tracked_updates
 from quam_config import QuAM
 from quam_experiments.experiments.readout_optimization_3d.parameters import Parameters, get_durations
 from quam_experiments.experiments.readout_optimization_3d.parameters import (
     get_frequency_detunings_in_hz,
-    get_amplitude_factors
+    get_amplitude_factors,
 )
 from quam_experiments.workflow.simulation import simulate_and_plot
 
@@ -79,7 +85,7 @@ node = QualibrationNode(
         # simulate=True,
         # simulation_duration_ns=10000,
         # use_waveform_report=True
-    )
+    ),
 )
 
 # %% {Initialize_QuAM_and_QOP}
@@ -113,6 +119,7 @@ durations = get_durations(node.parameters)
 
 flux_point = node.parameters.flux_point_joint_or_independent
 
+
 def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: Optional[List[str]] = None) -> Program:
     """
     Returns the 3D readout optimization program, but only measures those
@@ -140,10 +147,7 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
                 with for_(*from_array(df, dfs)):
                     with for_(*from_array(a, amps)):
                         for qubit in multiplexed_qubits.values():
-                            update_frequency(
-                                qubit.resonator.name,
-                                qubit.resonator.intermediate_frequency + df
-                            )
+                            update_frequency(qubit.resonator.name, qubit.resonator.intermediate_frequency + df)
 
                         if not node.parameters.simulate:
                             wait(machine.thermalization_time * u.ns)
@@ -185,7 +189,7 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
 
                         for i, qubit in enumerate(measurement_batch):
                             j = declare(int)
-                            with for_(j, 0, j < node.parameters.num_durations, j+1):
+                            with for_(j, 0, j < node.parameters.num_durations, j + 1):
                                 assign(I_g[i][j], II_g[i][j] + IQ_g[i][j])
                                 save(I_g[i][j], I_g_st[i])
                                 assign(Q_g[i][j], QI_g[i][j] + QQ_g[i][j])
@@ -200,12 +204,9 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
             for i in range(len(measurement_batch)):
                 streams = {"I_g": I_g_st, "Q_g": Q_g_st, "I_e": I_e_st, "Q_e": Q_e_st}
                 for name, stream in streams.items():
-                    stream[i] \
-                        .buffer(node.parameters.num_durations) \
-                        .buffer(len(amps)) \
-                        .buffer(len(dfs)) \
-                        .buffer(n_avg) \
-                        .save(f"{name}{i + 1}")
+                    stream[i].buffer(node.parameters.num_durations).buffer(len(amps)).buffer(len(dfs)).buffer(
+                        n_avg
+                    ).save(f"{name}{i + 1}")
 
         return readout_optimization_3d
 
@@ -223,16 +224,16 @@ if len(measurement_batches) > 1:
     )
 
 if n_avg % len(measurement_batches) != 0:
-    raise ValueError(f"Expected the number of averages {n_avg} to be a multiple of {qubit_representation} "
-                     f"in order to be measured {n_avg} times over {len(measurement_batches)} batches.")
+    raise ValueError(
+        f"Expected the number of averages {n_avg} to be a multiple of {qubit_representation} "
+        f"in order to be measured {n_avg} times over {len(measurement_batches)} batches."
+    )
 
 n_avg = n_avg // qubit_representation
 
 programs = []
 for measurement_batch in measurement_batches:
-    programs.append(
-        readout_optimization_3d_measured_in_batches(n_avg, measurement_batch)
-    )
+    programs.append(readout_optimization_3d_measured_in_batches(n_avg, measurement_batch))
 
 with open("debug.py", "w+") as f:
     f.write(generate_qua_script(programs[0], config))
@@ -246,7 +247,7 @@ if node.parameters.simulate:
 
 elif node.parameters.load_data_id is None:
     datasets = []
-    for i, program in enumerate(tqdm(programs, unit='measurement batch')):
+    for i, program in enumerate(tqdm(programs, unit="measurement batch")):
         with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
             job = qm.execute(program)
             results = fetching_tool(job, ["n"], mode="live")
@@ -254,7 +255,7 @@ elif node.parameters.load_data_id is None:
                 n = results.fetch_all()[0]
                 progress_counter(n, n_avg, start_time=results.start_time)
 
-        run_axis = np.arange(i*n_avg, (i+1)*n_avg)
+        run_axis = np.arange(i * n_avg, (i + 1) * n_avg)
         datasets.append(fetch_dataset(job, measurement_batches[i], run_axis, node.parameters))
 
     ds = combine_batches(datasets)
@@ -312,7 +313,7 @@ if not node.parameters.simulate:
                     power_in_dbm=power,
                     full_scale_power_dbm=lowest_possible_full_scale_power_dbm,
                     max_amplitude=node.parameters.max_readout_amplitude,
-                    operation=readout_pulse_name
+                    operation=readout_pulse_name,
                 )
 
                 if lowest_possible_full_scale_power_dbm is None:

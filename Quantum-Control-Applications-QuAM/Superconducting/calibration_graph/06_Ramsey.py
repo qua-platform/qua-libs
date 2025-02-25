@@ -16,6 +16,7 @@ Next steps before going to the next node:
     - Update the qubits frequency and T2_ramsey in the state.
     - Save the current state
 """
+
 from dataclasses import asdict
 
 # %% {Imports}
@@ -50,7 +51,7 @@ node = QualibrationNode(
         flux_point_joint_or_independent="joint",
         multiplexed=False,
         simulate=True,
-    )
+    ),
 )
 
 # %% {Initialize_QuAM_and_QOP}
@@ -126,22 +127,10 @@ with program() as ramsey:
         n_st.save("n")
         for i in range(num_qubits):
             if node.parameters.use_state_discrimination:
-                state_st[i] \
-                    .buffer(len(detuning_signs)) \
-                    .buffer(len(idle_times)) \
-                    .average() \
-                    .save(f"state{i + 1}")
+                state_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"state{i + 1}")
             else:
-                I_st[i] \
-                    .buffer(len(detuning_signs)) \
-                    .buffer(len(idle_times)) \
-                    .average() \
-                    .save(f"I{i + 1}")
-                Q_st[i] \
-                    .buffer(len(detuning_signs)) \
-                    .buffer(len(idle_times)) \
-                    .average() \
-                    .save(f"Q{i + 1}")
+                I_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"I{i + 1}")
+                Q_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate_or_execute}

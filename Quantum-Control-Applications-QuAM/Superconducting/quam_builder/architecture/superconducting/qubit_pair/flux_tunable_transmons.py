@@ -25,7 +25,22 @@ class TransmonPair(QuamComponent):
         return self.id if isinstance(self.id, str) else f"q{self.qubit_control.id}-{self.qubit_target.id}"
 
     def align(self):
-        align(self.qubit_control.xy.name, self.qubit_control.z.name, self.qubit_control.resonator.name, self.qubit_target.xy.name, self.qubit_target.z.name, self.qubit_target.resonator.name)
+        align(
+            self.qubit_control.xy.name,
+            self.qubit_control.z.name,
+            self.qubit_control.resonator.name,
+            self.qubit_target.xy.name,
+            self.qubit_target.z.name,
+            self.qubit_target.resonator.name,
+        )
 
     def wait(self, duration):
-        wait(duration, self.qubit_control.xy.name, self.qubit_control.z.name, self.qubit_control.resonator.name, self.qubit_target.xy.name, self.qubit_target.z.name, self.qubit_target.resonator.name)
+        wait(
+            duration,
+            self.qubit_control.xy.name,
+            self.qubit_control.z.name,
+            self.qubit_control.resonator.name,
+            self.qubit_target.xy.name,
+            self.qubit_target.z.name,
+            self.qubit_target.resonator.name,
+        )

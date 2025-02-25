@@ -112,7 +112,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -212,4 +212,3 @@ else:
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
-

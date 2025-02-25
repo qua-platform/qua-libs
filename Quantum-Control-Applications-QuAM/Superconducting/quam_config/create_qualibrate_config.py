@@ -5,16 +5,23 @@ from colorama import init, Fore, Style
 
 init(autoreset=True)
 
+
 def get_input_with_default(prompt, default):
-    user_input = input(f"{Fore.CYAN}{prompt}{Style.RESET_ALL} (default: {Fore.YELLOW}{default}{Style.RESET_ALL}): ").strip()
+    user_input = input(
+        f"{Fore.CYAN}{prompt}{Style.RESET_ALL} (default: {Fore.YELLOW}{default}{Style.RESET_ALL}): "
+    ).strip()
     return user_input if user_input else default
+
 
 config_supports_quam_state = False
 try:
     import qualibrate_config
+
     config_supports_quam_state = True
 except ImportError:
-    print(f"{Fore.RED}Warning:{Style.RESET_ALL} 'qualibrate_config' not found. QUAM state configuration will be skipped.")
+    print(
+        f"{Fore.RED}Warning:{Style.RESET_ALL} 'qualibrate_config' not found. QUAM state configuration will be skipped."
+    )
 
 current_dir = Path(__file__).parent.absolute()
 
@@ -32,9 +39,10 @@ for key, value in parameters.items():
     print(f"{Fore.BLUE}{key}{Style.RESET_ALL}: {Fore.GREEN}{value}{Style.RESET_ALL}")
 
 print(f"\n{Fore.LIGHTBLACK_EX}Selecting 'n' will allow you to customize each entry.{Style.RESET_ALL}")
-use_all_defaults = input(
-    f"{Fore.CYAN}Use all default values?{Style.RESET_ALL} {Fore.YELLOW}(y/n){Style.RESET_ALL} "
-).strip().lower() == "y"
+use_all_defaults = (
+    input(f"{Fore.CYAN}Use all default values?{Style.RESET_ALL} {Fore.YELLOW}(y/n){Style.RESET_ALL} ").strip().lower()
+    == "y"
+)
 
 if not use_all_defaults:
     parameters["project"] = get_input_with_default("Enter project name", parameters["project"])
@@ -49,9 +57,12 @@ if not use_all_defaults:
 config_args = [
     "qualibrate",
     "config",
-    "--project", parameters["project"],
-    "--storage-location", parameters["storage_location"],
-    "--calibration-library-folder", parameters["calibration_library_folder"]
+    "--project",
+    parameters["project"],
+    "--storage-location",
+    parameters["storage_location"],
+    "--calibration-library-folder",
+    parameters["calibration_library_folder"],
 ]
 
 if config_supports_quam_state:

@@ -16,7 +16,6 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
@@ -56,6 +55,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
+
 
 node = QualibrationNode(name="04_Power_Rabi", parameters=Parameters())
 
@@ -117,7 +117,7 @@ with program() as power_rabi:
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the minimum frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
-        
+
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(npi, N_pi_vec)):
@@ -206,11 +206,11 @@ if not node.parameters.simulate:
             ds = convert_IQ_to_V(ds, qubits)
         # Add the qubit pulse absolute amplitude to the dataset
         ds = ds.assign_coords(
-        {
-            "abs_amp": (
-                ["qubit", "amp"],
-                np.array([q.xy.operations[operation].amplitude * amps for q in qubits]),
-            )
+            {
+                "abs_amp": (
+                    ["qubit", "amp"],
+                    np.array([q.xy.operations[operation].amplitude * amps for q in qubits]),
+                )
             }
         )
     else:

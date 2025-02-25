@@ -23,7 +23,9 @@ def extract_dict(ds: xr.Dataset, data_var) -> dict:
     return ds[[data_var]].to_dataframe().to_dict()[data_var]
 
 
-def convert_IQ_to_V(da: xr.DataArray, qubits: list[AnyTransmon], IQ_list: list[str] = ("I", "Q"), single_demod: bool = False) -> xr.DataArray:
+def convert_IQ_to_V(
+    da: xr.DataArray, qubits: list[AnyTransmon], IQ_list: list[str] = ("I", "Q"), single_demod: bool = False
+) -> xr.DataArray:
     # TODO: this is Transmon specific so it should probably not belong here
     """
     return data array with the 'I' and 'Q' quadratures converted to Volts.

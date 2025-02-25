@@ -1,6 +1,7 @@
 from pydantic import Field
 from qualibrate.parameters import RunnableParameters
 
+
 class QmSessionNodeParameters(RunnableParameters):
     timeout: int = Field(
         default=120,

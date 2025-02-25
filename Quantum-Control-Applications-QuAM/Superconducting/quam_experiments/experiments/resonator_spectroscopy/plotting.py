@@ -13,8 +13,9 @@ def plot_raw_amplitude(ds, qubits) -> Figure:
         ax.set_title(qubit["qubit"])
     grid.fig.suptitle("Resonator spectroscopy (raw data)")
     plt.tight_layout()
-    
+
     return grid.fig
+
 
 def plot_raw_phase(ds, qubits) -> Figure:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
@@ -27,6 +28,7 @@ def plot_raw_phase(ds, qubits) -> Figure:
     plt.tight_layout()
     return grid.fig
 
+
 def plot_fit_amplitude(ds, qubits) -> Figure:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
@@ -38,4 +40,3 @@ def plot_fit_amplitude(ds, qubits) -> Figure:
     grid.fig.suptitle("Resonator spectroscopy (fit)")
     plt.tight_layout()
     return grid.fig
-

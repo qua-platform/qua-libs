@@ -15,11 +15,13 @@ class QubitsExperimentNodeParameters(RunnableParameters):
     qubits: Optional[Union[List[str], str]] = Field(
         default=None,
         description="A list of qubit names, or comma-separated list of qubit names"
-                    " which should participate in the execution of the node."
+        " which should participate in the execution of the node.",
     )
 
 
-def get_qubits_used_in_node(machine: BaseQuAM, node_parameters: QubitsExperimentNodeParameters) -> BatchableList[AnyTransmon]:
+def get_qubits_used_in_node(
+    machine: BaseQuAM, node_parameters: QubitsExperimentNodeParameters
+) -> BatchableList[AnyTransmon]:
     # todo: make a method once https://github.com/qua-platform/qualibrate-core/pull/89 is merged
     qubits = _get_qubits(machine, node_parameters)
 
@@ -41,4 +43,3 @@ def _get_qubits(machine: BaseQuAM, node_parameters: QubitsExperimentNodeParamete
         qubits = [machine.qubits[q] for q in node_parameters.qubits]
 
     return qubits
-

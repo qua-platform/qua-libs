@@ -32,7 +32,7 @@ def fetch_dataset(job: QmJob, qubits: List[AnyTransmon], resonators: List[Readou
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"time": time_axis})
 
     # Convert raw ADC traces into volts
-    ds = ds.assign({key: -ds[key] / 2 ** 12 for key in ("adcI", "adcQ", "adc_single_runI", "adc_single_runQ")})
+    ds = ds.assign({key: -ds[key] / 2**12 for key in ("adcI", "adcQ", "adc_single_runI", "adc_single_runQ")})
     ds = ds.assign({"IQ_abs": np.sqrt(ds["adcI"] ** 2 + ds["adcQ"] ** 2)})
 
     return ds
@@ -58,7 +58,9 @@ def analyze_pulse_arrival_times(ds: xr.Dataset, qubits: List[AnyTransmon]) -> Tu
     return ds, fit_results
 
 
-def detect_pulse_arrival(ds: xr.Dataset, qubits: List[AnyTransmon], window_length=11, polyorder=3) -> Tuple[List[int], dict]:
+def detect_pulse_arrival(
+    ds: xr.Dataset, qubits: List[AnyTransmon], window_length=11, polyorder=3
+) -> Tuple[List[int], dict]:
     """
     Detects the pulse arrival times for each qubit by analyzing the filtered IQ_abs signal.
 
@@ -96,7 +98,5 @@ def add_coordinates_to_dataset(ds, delays, qubits):
     ds = ds.assign_coords({"delays": (["qubit"], delays)})
     ds = ds.assign_coords({"offsets_I": ds.adcI.mean(dim="time")})
     ds = ds.assign_coords({"offsets_Q": ds.adcQ.mean(dim="time")})
-    ds = ds.assign_coords(
-        {"con": (["qubit"], [qubit.resonator.opx_input_I.controller_id for qubit in qubits])}
-    )
+    ds = ds.assign_coords({"con": (["qubit"], [qubit.resonator.opx_input_I.controller_id for qubit in qubits])})
     return ds

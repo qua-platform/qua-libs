@@ -3,13 +3,16 @@ from typing import List
 from qualang_tools.wirer.connectivity.element import QubitReference
 from qualang_tools.wirer.connectivity.wiring_spec import WiringLineType
 from quam_builder.builder.qop_connectivity.paths import (
-    OCTAVES_BASE_JSON_PATH, PORTS_BASE_JSON_PATH, MIXERS_BASE_JSON_PATH
+    OCTAVES_BASE_JSON_PATH,
+    PORTS_BASE_JSON_PATH,
+    MIXERS_BASE_JSON_PATH,
 )
 from qualang_tools.wirer.instruments.instrument_channel import AnyInstrumentChannel
 
 
-def create_external_mixer_reference(channel: AnyInstrumentChannel, element_id: QubitReference,
-                                    line_type: WiringLineType) -> (str, str):
+def create_external_mixer_reference(
+    channel: AnyInstrumentChannel, element_id: QubitReference, line_type: WiringLineType
+) -> (str, str):
     """
     Generates a key/JSON reference pair from which a QuAM port can be created
     for a single Octave channel.

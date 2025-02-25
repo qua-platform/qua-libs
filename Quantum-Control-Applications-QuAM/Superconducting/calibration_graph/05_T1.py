@@ -48,6 +48,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
     multiplexed: bool = False
 
+
 node = QualibrationNode(name="05_T1", parameters=Parameters())
 
 
@@ -61,7 +62,7 @@ config = machine.generate_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
-    
+
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
@@ -241,8 +242,8 @@ if not node.parameters.simulate:
         with node.record_state_updates():
             for index, q in enumerate(qubits):
                 if (
-                float(tau.sel(qubit=q.name).values) > 0
-                and tau_error.sel(qubit=q.name).values / float(tau.sel(qubit=q.name).values) < 1
+                    float(tau.sel(qubit=q.name).values) > 0
+                    and tau_error.sel(qubit=q.name).values / float(tau.sel(qubit=q.name).values) < 1
                 ):
                     q.T1 = float(tau.sel(qubit=q.name).values) * 1e-6
 
@@ -250,4 +251,3 @@ if not node.parameters.simulate:
         node.results["initial_parameters"] = node.parameters.model_dump()
         node.machine = machine
         node.save()
-

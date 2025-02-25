@@ -15,7 +15,6 @@ Before proceeding to the next node:
     - Save the current state
 """
 
-
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
@@ -118,7 +117,11 @@ with program() as multi_qubit_spec_vs_flux:
                 qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
                 with for_(*from_array(dc, dcs)):
                     # Flux sweeping for a qubit
-                    duration = operation_len * u.ns if operation_len is not None else qubit.xy.operations[operation].length * u.ns
+                    duration = (
+                        operation_len * u.ns
+                        if operation_len is not None
+                        else qubit.xy.operations[operation].length * u.ns
+                    )
                     # Bring the qubit to the desired point during the saturation pulse
                     qubit.z.play("const", amplitude_scale=dc / qubit.z.operations["const"].amplitude, duration=duration)
                     # Apply saturation pulse to all qubits
@@ -157,7 +160,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -231,13 +234,17 @@ if not node.parameters.simulate:
                     offset = q.z.joint_offset
                 else:
                     offset = 0.0
-                print(f"flux offset for qubit {q.name} is {offset*1e3 + flux_shift.sel(qubit = q.name).values*1e3:.0f} mV")
+                print(
+                    f"flux offset for qubit {q.name} is {offset*1e3 + flux_shift.sel(qubit = q.name).values*1e3:.0f} mV"
+                )
                 print(f"(shift of  {flux_shift.sel(qubit = q.name).values*1e3:.0f} mV)")
                 print(
                     f"Drive frequency for {q.name} is {(freq_shift.sel(qubit = q.name).values + q.xy.RF_frequency)/1e9:.3f} GHz"
                 )
                 print(f"(shift of {freq_shift.sel(qubit = q.name).values/1e6:.0f} MHz)")
-                print(f"quad term for qubit {q.name} is {float(coeff.sel(degree = 2, qubit = q.name)/1e9):.3e} GHz/V^2 \n")
+                print(
+                    f"quad term for qubit {q.name} is {float(coeff.sel(degree = 2, qubit = q.name)/1e9):.3e} GHz/V^2 \n"
+                )
                 fit_results[q.name]["flux_shift"] = float(flux_shift.sel(qubit=q.name).values)
                 fit_results[q.name]["drive_freq"] = float(freq_shift.sel(qubit=q.name).values)
                 fit_results[q.name]["quad_term"] = float(coeff.sel(degree=2, qubit=q.name))
@@ -252,7 +259,7 @@ if not node.parameters.simulate:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
     for ax, qubit in grid_iter(grid):
-        freq_ref = (ds.freq_full-ds.freq).sel(qubit = qubit["qubit"]).values[0]
+        freq_ref = (ds.freq_full - ds.freq).sel(qubit=qubit["qubit"]).values[0]
         ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].I.plot(
             ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
         )

@@ -10,7 +10,7 @@ from quam_experiments.parameters import (
     FluxControlledNodeParameters,
     MultiplexableNodeParameters,
     DataLoadableNodeParameters,
-    QmSessionNodeParameters
+    QmSessionNodeParameters,
 )
 
 
@@ -23,6 +23,7 @@ class RamseyParameters(RunnableParameters):
     log_or_linear_sweep: Literal["log", "linear"] = "log"
     use_state_discrimination: bool = False
 
+
 class Parameters(
     NodeParameters,
     SimulatableNodeParameters,
@@ -34,6 +35,7 @@ class Parameters(
     QubitsExperimentNodeParameters,
 ):
     pass
+
 
 def get_idle_times_in_clock_cycles(node_parameters: RamseyParameters) -> np.ndarray:
     """
@@ -51,14 +53,17 @@ def get_idle_times_in_clock_cycles(node_parameters: RamseyParameters) -> np.ndar
 
     return idle_times
 
+
 def _get_idle_times_linear_sweep_in_clock_cycles(node_parameters: RamseyParameters):
     return (
         np.linspace(
             node_parameters.min_wait_time_in_ns,
             node_parameters.max_wait_time_in_ns,
             node_parameters.num_time_points,
-        ) // 4
+        )
+        // 4
     ).astype(int)
+
 
 def _get_idle_times_log_sweep_in_clock_cycles(node_parameters: RamseyParameters):
     return np.unique(
@@ -66,5 +71,6 @@ def _get_idle_times_log_sweep_in_clock_cycles(node_parameters: RamseyParameters)
             node_parameters.min_wait_time_in_ns,
             node_parameters.max_wait_time_in_ns,
             node_parameters.num_time_points,
-        ) // 4
+        )
+        // 4
     ).astype(int)

@@ -11,7 +11,8 @@ from quam_experiments.analysis.fit import fit_oscillation_decay_exp
 
 @dataclass
 class RamseyFit:
-    """ Stores the relevant Ramsey experiment fit parameters for a single qubit"""
+    """Stores the relevant Ramsey experiment fit parameters for a single qubit"""
+
     freq_offset: float
     decay: float
     decay_error: float
@@ -30,8 +31,7 @@ class RamseyFit:
         logger.info(f"T2* for qubit {self.qubit_name} : {1e6 * self.decay:.2f} us")
 
 
-def fit_frequency_detuning_and_t2_decay(ds: xr.Dataset, node_parameters: Parameters) \
-        -> dict[str, RamseyFit]:
+def fit_frequency_detuning_and_t2_decay(ds: xr.Dataset, node_parameters: Parameters) -> dict[str, RamseyFit]:
     """
     Fit the frequency detuning and T2 decay of the Ramsey oscillations for each qubit.
 
@@ -44,23 +44,21 @@ def fit_frequency_detuning_and_t2_decay(ds: xr.Dataset, node_parameters: Paramet
 
     detuning = int(node_parameters.frequency_detuning_in_mhz * 1e6)
 
-    freq_offset, decay, decay_error = calculate_fit_results(
-        frequency, tau, tau_error, fit, detuning
-    )
+    freq_offset, decay, decay_error = calculate_fit_results(frequency, tau, tau_error, fit, detuning)
 
     fits = {
         q.name: RamseyFit(
-            qubit_name = q.item(),
+            qubit_name=q.item(),
             freq_offset=1e9 * freq_offset.loc[q].values,
             decay=decay.loc[q].values,
             decay_error=decay_error.loc[q].values,
-            raw_fit_results=fit.to_dataset(name="fit")
+            raw_fit_results=fit.to_dataset(name="fit"),
         )
-
         for q in freq_offset.qubit
     }
 
     return fits
+
 
 def fit_ramsey_oscillations_with_exponential_decay(ds, use_state_discrimination):
     """

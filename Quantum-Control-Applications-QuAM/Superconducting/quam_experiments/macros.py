@@ -19,8 +19,9 @@ __all__ = [
 ]
 
 
-def qua_declaration(num_qubits) -> tuple[
-    list[QuaVariable], list[_ResultSource], list[QuaVariable], list[_ResultSource], QuaVariable, _ResultSource]:
+def qua_declaration(
+    num_qubits,
+) -> tuple[list[QuaVariable], list[_ResultSource], list[QuaVariable], list[_ResultSource], QuaVariable, _ResultSource]:
     """
     Macro to declare the necessary QUA variables
 
@@ -160,11 +161,12 @@ def active_reset_gef(
 
 
 def active_reset(
-        qubit: AnyTransmon,
-        save_qua_var: Optional[StreamType] = None,
-        pi_pulse_name: str = "x180",
-        readout_pulse_name: str = "readout",
-        max_attempts: int = 15):
+    qubit: AnyTransmon,
+    save_qua_var: Optional[StreamType] = None,
+    pi_pulse_name: str = "x180",
+    readout_pulse_name: str = "readout",
+    max_attempts: int = 15,
+):
     pulse = qubit.resonator.operations[readout_pulse_name]
 
     I = declare(fixed)

@@ -89,7 +89,7 @@ def add_default_transmon_pulses(transmon: Union[FixedFrequencyTransmon, FluxTuna
             amplitude=0.25, length=20 * u.us, axis_angle=0, digital_marker="ON"
         )
 
-    if hasattr(transmon, "z"): # TODO: maybe these two line can be combined...
+    if hasattr(transmon, "z"):  # TODO: maybe these two line can be combined...
         if transmon.z is not None:
             transmon.z.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
 
@@ -111,4 +111,3 @@ def add_default_transmon_pair_pulses(transmon_pair):
     if hasattr(transmon_pair, "zz_drive"):
         if transmon_pair.zz_drive is not None:
             transmon_pair.zz_drive.operations["square"] = pulses.SquarePulse(amplitude=0.1, length=100)
-

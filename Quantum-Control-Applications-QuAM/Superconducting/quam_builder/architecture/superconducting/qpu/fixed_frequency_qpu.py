@@ -9,7 +9,6 @@ from typing import Dict, ClassVar, Type
 __all__ = ["QuAM", "FixedFrequencyTransmon", "TransmonPair"]
 
 
-
 @quam_dataclass
 class QuAM(BaseQuAM):
     """Example QuAM root component."""

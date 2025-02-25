@@ -34,7 +34,7 @@ def get_max_accumulated_readouts(qubits: Sequence[AnyTransmon], node_parameters:
     # `max_accumulated_readouts` * 4 + `leftover_qubits` < limit
     max_reads = 0
     while max_reads < len(qubits):
-        if ((max_reads+1) * res_per_demod + len(qubits) - (max_reads+1)) > resource_limit:
+        if ((max_reads + 1) * res_per_demod + len(qubits) - (max_reads + 1)) > resource_limit:
             break
         max_reads += 1
 
@@ -71,6 +71,6 @@ def _generate_balanced_subsets_indices(N: int, S: int) -> List[List[int]]:
     K = math.lcm(N, S) // S
 
     objects = list(range(N)) * K
-    subsets = [objects[i:i+S] for i in range(K)]
+    subsets = [objects[i : i + S] for i in range(K)]
 
     return subsets

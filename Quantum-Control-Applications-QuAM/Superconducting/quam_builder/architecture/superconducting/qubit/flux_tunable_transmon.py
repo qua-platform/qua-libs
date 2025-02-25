@@ -45,6 +45,7 @@ class FluxTunableTransmon(FixedFrequencyTransmon):
                 return qubit_pair
         else:
             raise ValueError("Qubit pair not found: qubit_control={self.name}, " "qubit_target={other.name}")
+
     def align(self):
         align(self.xy.name, self.z.name, self.resonator.name)
 

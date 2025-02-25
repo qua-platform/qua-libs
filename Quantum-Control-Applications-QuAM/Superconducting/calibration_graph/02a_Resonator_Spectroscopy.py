@@ -45,7 +45,7 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    load_data_id: Optional[int] = None#217
+    load_data_id: Optional[int] = None  # 217
     multiplexed: bool = False
 
 
@@ -123,7 +123,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()

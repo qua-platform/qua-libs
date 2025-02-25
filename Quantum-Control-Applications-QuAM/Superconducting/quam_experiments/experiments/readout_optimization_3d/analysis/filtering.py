@@ -16,7 +16,7 @@ def filter_readout_fidelity(ds: xr.Dataset, node_parameters: ReadoutOptimization
     fidelity = ds.raw_fidelity.copy()
     for qubit in ds.qubit:
         for duration in ds.duration:
-            fidelity.loc[{'duration': duration, 'qubit': qubit}] = gaussian_filter(
+            fidelity.loc[{"duration": duration, "qubit": qubit}] = gaussian_filter(
                 fidelity.sel(duration=duration, qubit=qubit).values, sigma=(sigma, sigma)
             )
 

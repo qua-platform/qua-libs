@@ -18,7 +18,6 @@ Next steps before going to the next node:
     - Update the DRAG coefficient (alpha) in the state.
 """
 
-
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
@@ -53,6 +52,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
+
 
 node = QualibrationNode(name="09c_DRAG_Calibration_180_90", parameters=Parameters())
 
@@ -146,7 +146,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()

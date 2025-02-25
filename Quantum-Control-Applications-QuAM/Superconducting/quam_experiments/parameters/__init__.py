@@ -11,5 +11,5 @@ __all__ = [
     "MultiplexableNodeParameters",
     "QmSessionNodeParameters",
     "QubitsExperimentNodeParameters",
-    "SimulatableNodeParameters"
+    "SimulatableNodeParameters",
 ]

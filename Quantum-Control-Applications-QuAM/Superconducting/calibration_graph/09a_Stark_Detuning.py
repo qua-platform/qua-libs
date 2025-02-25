@@ -19,7 +19,6 @@ Next steps before going to the next node:
     - Update the DRAG detuning and set-point (alpha) in the state.
 """
 
-
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
@@ -55,6 +54,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
+
 
 node = QualibrationNode(name="09a_Stark_Detuning", parameters=Parameters())
 
@@ -112,7 +112,6 @@ with program() as stark_detuning:
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the desired frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
-        
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -166,7 +165,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -239,4 +238,3 @@ if not node.parameters.simulate:
         node.results["initial_parameters"] = node.parameters.model_dump()
         node.machine = machine
         node.save()
-

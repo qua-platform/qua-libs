@@ -8,5 +8,6 @@ BaseQuAM = FluxTunableQuAM
 
 # BaseQuAM = BaseQuAM  # use this for a clean-slate, custom QuAM
 
+
 class QuAM(BaseQuAM):
     pass

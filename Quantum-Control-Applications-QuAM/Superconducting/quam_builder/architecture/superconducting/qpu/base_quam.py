@@ -20,6 +20,7 @@ except ModuleNotFoundError:
 
 __all__ = ["BaseQuAM"]
 
+
 @quam_dataclass
 class BaseQuAM(QuamRoot):
     """Example QuAM root component."""
@@ -69,11 +70,11 @@ class BaseQuAM(QuamRoot):
         return super().load(*args, **kwargs)
 
     def save(
-            self,
-            path: Union[Path, str] = None,
-            content_mapping: Dict[Union[Path, str], Sequence[str]] = None,
-            include_defaults: bool = False,
-            ignore: Sequence[str] = None,
+        self,
+        path: Union[Path, str] = None,
+        content_mapping: Dict[Union[Path, str], Sequence[str]] = None,
+        include_defaults: bool = False,
+        ignore: Sequence[str] = None,
     ):
         if path is None:
             path = self.get_quam_state_path()
@@ -106,7 +107,7 @@ class BaseQuAM(QuamRoot):
         )
         if "port" in self.network:
             settings["port"] = self.network["port"]
-        self.qmm = QuantumMachinesManager(**settings) # TODO: how to fix this warning?
+        self.qmm = QuantumMachinesManager(**settings)  # TODO: how to fix this warning?
         return self.qmm
 
     def calibrate_octave_ports(self, QM: QuantumMachine) -> None:
@@ -127,7 +128,9 @@ class BaseQuAM(QuamRoot):
     def data_handler(self) -> DataHandler:
         """Return the existing data handler or open a new one to conveniently handle data saving."""
         if self._data_handler is None:
-            self._data_handler = DataHandler(root_data_folder=self.network["data_folder"]) # TODO: how to fix this warning?
+            self._data_handler = DataHandler(
+                root_data_folder=self.network["data_folder"]
+            )  # TODO: how to fix this warning?
             DataHandler.node_data = {"quam": "./state.json"}
         return self._data_handler
 

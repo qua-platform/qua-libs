@@ -6,8 +6,9 @@ from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from quam_experiments.experiments.readout_optimization_3d.parameters import ReadoutOptimization3dParameters
 
 
-def make_qua_variables_per_qubit(measurement_batch: Sequence[AnyTransmon],
-                                 node_parameters: ReadoutOptimization3dParameters) -> Tuple[List[Union[QuaVariableType, None]]]:
+def make_qua_variables_per_qubit(
+    measurement_batch: Sequence[AnyTransmon], node_parameters: ReadoutOptimization3dParameters
+) -> Tuple[List[Union[QuaVariableType, None]]]:
     """
     Create lists of QUA readout variables for accumulated demodulation for each
     qubit only if the qubit is in the measurement batch, otherwise, no variable

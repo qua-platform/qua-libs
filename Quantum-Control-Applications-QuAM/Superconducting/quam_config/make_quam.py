@@ -23,7 +23,7 @@ instruments.add_lf_fem(controller=1, slots=[3, 4])
 # %%                                 Define which qubit ids are present in the system
 ########################################################################################################################
 qubits = [1, 2, 3, 4, 5, 6, 7, 8]
-qubit_pairs = [(qubits[i], qubits[i+1]) for i in range(len(qubits)-1)]
+qubit_pairs = [(qubits[i], qubits[i + 1]) for i in range(len(qubits) - 1)]
 
 ########################################################################################################################
 # %%                                 Define any custom/hardcoded channel addresses
@@ -53,7 +53,7 @@ connectivity.add_qubit_flux_lines(qubits=qubits)
 # The flux lines for the tunable couplers
 connectivity.add_qubit_pair_flux_lines(qubit_pairs=qubit_pairs)
 # Allocate the wiring
-allocate_wiring(connectivity, instruments) # TODO: need a docstring for this function
+allocate_wiring(connectivity, instruments)  # TODO: need a docstring for this function
 # View wiring schematic
 visualize(connectivity.elements, available_channels=instruments.available_channels)
 

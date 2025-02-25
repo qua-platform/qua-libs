@@ -17,7 +17,6 @@ Next steps before going to the next node:
     - Save the current state by calling machine.save("quam")
 """
 
-
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
@@ -53,6 +52,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
+
 
 node = QualibrationNode(name="08_Ramsey_vs_Flux_Calibration", parameters=Parameters())
 
@@ -105,7 +105,6 @@ with program() as ramsey:
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the desired frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
-        
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -228,9 +227,15 @@ if not node.parameters.simulate:
                 / fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients
             ).values
         )
-        freq_offset[q.name] = 1e6 * (flux_offset[q.name]**2 * float(fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values) +
-                                     flux_offset[q.name] * float(fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients.values) + 
-                                     float(fitvals.sel(qubit=q.name, degree=0).polyfit_coefficients.values)) - detuning
+        freq_offset[q.name] = (
+            1e6
+            * (
+                flux_offset[q.name] ** 2 * float(fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values)
+                + flux_offset[q.name] * float(fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients.values)
+                + float(fitvals.sel(qubit=q.name, degree=0).polyfit_coefficients.values)
+            )
+            - detuning
+        )
 
     # Save fitting results
     node.results["fit_results"] = {}

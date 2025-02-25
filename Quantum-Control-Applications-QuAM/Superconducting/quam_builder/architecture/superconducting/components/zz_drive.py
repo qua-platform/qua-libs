@@ -3,11 +3,13 @@ from quam.components.channels import IQChannel, MWChannel
 
 __all__ = ["ZZDriveIQ", "ZZDriveMW"]
 
+
 @quam_dataclass
 class ZZDriveBase:
     target_qubit_LO_frequency: int = None
     target_qubit_IF_frequency: int = None
     detuning: int = None
+
 
 @quam_dataclass
 class ZZDriveIQ(IQChannel, ZZDriveBase):

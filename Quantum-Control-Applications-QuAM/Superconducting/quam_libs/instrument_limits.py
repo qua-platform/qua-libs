@@ -15,9 +15,7 @@ class InstrumentLimits:
 def instrument_limits(channel: Union[IQChannel, MWChannel]) -> InstrumentLimits:
     # Todo: these parameters should be accessible to the user
     if not (isinstance(channel, IQChannel) ^ isinstance(channel, MWChannel)):
-        raise TypeError(
-            f"Expected channel to be type IQChannel xor MWChannel for type checking, got {type(channel)}."
-        )
+        raise TypeError(f"Expected channel to be type IQChannel xor MWChannel for type checking, got {type(channel)}.")
 
     if isinstance(channel, MWChannel):
         limits = InstrumentLimits(
@@ -27,7 +25,7 @@ def instrument_limits(channel: Union[IQChannel, MWChannel]) -> InstrumentLimits:
             max_x180_wf_amplitude=0.6,
             # A subjective "safe" value assuming up to 10 qubits on the same channel
             max_readout_amplitude=0.1,
-            units="(scaled by `full_scale_power_dbm`)"
+            units="(scaled by `full_scale_power_dbm`)",
         )
     elif isinstance(channel, IQChannel):
         limits = InstrumentLimits(
@@ -37,7 +35,7 @@ def instrument_limits(channel: Union[IQChannel, MWChannel]) -> InstrumentLimits:
             max_x180_wf_amplitude=0.3,
             # A subjective "safe" value assuming up to 10 qubits on the same channel
             max_readout_amplitude=0.05,
-            units="V"
+            units="V",
         )
     else:
         raise TypeError()
