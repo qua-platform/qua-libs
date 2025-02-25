@@ -3,13 +3,7 @@ from typing import Dict, Union
 from quam_builder.architecture.superconducting.components.cross_resonance import CrossResonanceIQ, CrossResonanceMW
 from quam_builder.architecture.superconducting.components.zz_drive import ZZDriveIQ, ZZDriveMW
 from quam_builder.architecture.superconducting.qubit_pair.flux_tunable_transmons import TunableCoupler
-from quam_builder.architecture.superconducting.qubit_pair.fixed_frequency_transmons import (
-    TransmonPair as FluxTunableTransmonPair,
-)
-from quam_builder.architecture.superconducting.qubit_pair.flux_tunable_transmons import (
-    TransmonPair as FixedFrequencyTransmonPair,
-)
-from quam_builder.builder.qop_connectivity.channel_ports import iq_in_out_channel_ports, mw_in_out_channel_ports
+from quam_builder.architecture.superconducting.qubit_pair import FixedFrequencyTransmonPair, FluxTunableTransmonPair
 
 
 def add_transmon_pair_tunable_coupler_component(

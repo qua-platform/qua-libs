@@ -1,14 +1,14 @@
 import warnings
 from quam.core import quam_dataclass
-from quam_builder.architecture.superconducting.qubit.flux_tunable_transmon import FluxTunableTransmon
-from quam_builder.architecture.superconducting.qubit_pair.flux_tunable_transmons import TransmonPair
+from quam_builder.architecture.superconducting.qubit import FluxTunableTransmon
+from quam_builder.architecture.superconducting.qubit_pair import FluxTunableTransmonPair
 from quam_builder.architecture.superconducting.qpu.base_quam import BaseQuAM
 
 
 from dataclasses import field
 from typing import Dict, Union, ClassVar, Type
 
-__all__ = ["QuAM", "FluxTunableTransmon", "TransmonPair"]
+__all__ = ["QuAM", "FluxTunableTransmon", "FluxTunableTransmonPair"]
 
 
 @quam_dataclass
@@ -16,10 +16,10 @@ class QuAM(BaseQuAM):
     """Example QuAM root component."""
 
     qubit_type: ClassVar[Type[FluxTunableTransmon]] = FluxTunableTransmon
-    qubit_pair_type: ClassVar[Type[TransmonPair]] = TransmonPair
+    qubit_pair_type: ClassVar[Type[FluxTunableTransmonPair]] = FluxTunableTransmonPair
 
     qubits: Dict[str, FluxTunableTransmon] = field(default_factory=dict)
-    qubit_pairs: Dict[str, TransmonPair] = field(default_factory=dict)
+    qubit_pairs: Dict[str, FluxTunableTransmonPair] = field(default_factory=dict)
 
     @classmethod
     def load(cls, *args, **kwargs) -> "QuAM":
@@ -60,18 +60,18 @@ class QuAM(BaseQuAM):
         for q in self.active_qubits:
             q.z.to_zero()
 
-    def set_all_fluxes(self, flux_point: str, target: Union[FluxTunableTransmon, TransmonPair]):
+    def set_all_fluxes(self, flux_point: str, target: Union[FluxTunableTransmon, FluxTunableTransmonPair]):
         if flux_point == "independent":
             assert isinstance(
                 target, FluxTunableTransmon
             ), "Independent flux point is only supported for individual transmons"
         elif flux_point == "pairwise":
-            assert isinstance(target, TransmonPair), "Pairwise flux point is only supported for transmon pairs"
+            assert isinstance(target, FluxTunableTransmonPair), "Pairwise flux point is only supported for transmon pairs"
 
         target_bias = None
         if flux_point == "joint":
             self.apply_all_flux_to_joint_idle()
-            if isinstance(target, TransmonPair):
+            if isinstance(target, FluxTunableTransmonPair):
                 target_bias = target.mutual_flux_bias
             else:
                 target_bias = target.z.joint_offset

@@ -5,7 +5,7 @@ from quam.components import FrequencyConverter
 from quam.core import QuamRoot, quam_dataclass
 from quam.components.octave import Octave
 from quam.components.ports import FEMPortsContainer, OPXPlusPortsContainer
-from quam_builder.architecture.superconducting.qubit_pair.flux_tunable_transmons import TransmonPair
+from quam_builder.architecture.superconducting.qubit_pair import AnyTransmonPair
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
@@ -29,7 +29,7 @@ class BaseQuAM(QuamRoot):
     mixers: Dict[str, FrequencyConverter] = field(default_factory=dict)
 
     qubits: Dict[str, AnyTransmon] = field(default_factory=dict)
-    qubit_pairs: Dict[str, TransmonPair] = field(default_factory=dict)
+    qubit_pairs: Dict[str, AnyTransmonPair] = field(default_factory=dict)
     wiring: dict = field(default_factory=dict)
     network: dict = field(default_factory=dict)
 
@@ -140,7 +140,7 @@ class BaseQuAM(QuamRoot):
         return [self.qubits[q] for q in self.active_qubit_names]
 
     @property
-    def active_qubit_pairs(self) -> List[TransmonPair]:
+    def active_qubit_pairs(self) -> List[AnyTransmonPair]:
         """Return the list of active qubits."""
         return [self.qubit_pairs[q] for q in self.active_qubit_pair_names]
 

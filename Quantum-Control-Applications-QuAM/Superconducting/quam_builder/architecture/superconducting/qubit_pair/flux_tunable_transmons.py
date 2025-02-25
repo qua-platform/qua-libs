@@ -7,11 +7,11 @@ from quam_builder.architecture.superconducting.qubit.flux_tunable_transmon impor
 from quam_builder.architecture.superconducting.components.tunable_coupler import TunableCoupler
 
 
-__all__ = ["TransmonPair"]
+__all__ = ["FluxTunableTransmonPair"]
 
 
 @quam_dataclass
-class TransmonPair(QuamComponent):
+class FluxTunableTransmonPair(QuamComponent):
     id: Union[int, str]
     qubit_control: FluxTunableTransmon = None
     qubit_target: FluxTunableTransmon = None

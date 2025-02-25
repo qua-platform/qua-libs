@@ -8,11 +8,11 @@ from quam_builder.architecture.superconducting.components.cross_resonance import
 from quam_builder.architecture.superconducting.components.zz_drive import ZZDriveIQ, ZZDriveMW
 
 
-__all__ = ["TransmonPair"]
+__all__ = ["FixedFrequencyTransmonPair"]
 
 
 @quam_dataclass
-class TransmonPair(QuamComponent):
+class FixedFrequencyTransmonPair(QuamComponent):
     id: Union[int, str]
     qubit_control: FixedFrequencyTransmon = None
     qubit_target: FixedFrequencyTransmon = None
