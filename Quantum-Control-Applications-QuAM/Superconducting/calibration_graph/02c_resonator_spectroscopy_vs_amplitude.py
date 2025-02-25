@@ -20,15 +20,14 @@ Before proceeding to the next node:
     - Save the current state
 """
 
-
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from configuration.my_quam import QuAM
-from quam_libs.lib.fit_utils import fit_resonator
-from experiments.macros import qua_declaration
-from quam_libs.lib.qua_datasets import convert_IQ_to_V, subtract_slope, apply_angle
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_config import QuAM
+from quam_experiments.analysis.fit_utils import fit_resonator
+from quam_experiments.macros import qua_declaration
+from quam_libs.qua_datasets import convert_IQ_to_V, subtract_slope, apply_angle
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -64,6 +63,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
     load_data_id: Optional[int] = None
 
+
 node = QualibrationNode(name="02c_Resonator_Spectroscopy_vs_Amplitude", parameters=Parameters())
 
 
@@ -85,10 +85,7 @@ num_qubits = len(qubits)
 tracked_resonators = []
 for i, qubit in enumerate(qubits):
     with tracked_updates(qubit.resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
-        resonator.set_output_power(
-            power_in_dbm=node.parameters.max_power_dbm,
-            max_amplitude=node.parameters.max_amp
-        )
+        resonator.set_output_power(power_in_dbm=node.parameters.max_power_dbm, max_amplitude=node.parameters.max_amp)
         tracked_resonators.append(resonator)
 
 # Generate the OPX and Octave configurations
@@ -96,7 +93,6 @@ config = machine.generate_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
-    
 
 
 # %% {QUA_program}
@@ -104,8 +100,7 @@ n_avg = node.parameters.num_averages  # The number of averages
 
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 amp_min = resonators[0].calculate_voltage_scaling_factor(
-    fixed_power_dBm=node.parameters.max_power_dbm,
-    target_power_dBm=node.parameters.min_power_dbm
+    fixed_power_dBm=node.parameters.max_power_dbm, target_power_dBm=node.parameters.min_power_dbm
 )
 amp_max = 1
 
@@ -128,7 +123,7 @@ with program() as multi_res_spec_vs_amp:
 
         # Bring the active qubits to the desired frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
-        
+
         # resonator of this qubit
         rr = qubit.resonator
 
@@ -167,7 +162,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -193,11 +188,10 @@ if not node.parameters.simulate:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
     else:
-        power_dbm = np.linspace(
-            node.parameters.min_power_dbm,
-            node.parameters.max_power_dbm,
-            node.parameters.num_power_points
-        ) - node.parameters.ro_line_attenuation_dB
+        power_dbm = (
+            np.linspace(node.parameters.min_power_dbm, node.parameters.max_power_dbm, node.parameters.num_power_points)
+            - node.parameters.ro_line_attenuation_dB
+        )
         ds = fetch_results_as_xarray(job.result_handles, qubits, {"power_dbm": power_dbm, "freq": dfs})
         # Convert IQ data into volts
         ds = convert_IQ_to_V(ds, qubits)
@@ -225,13 +219,18 @@ if not node.parameters.simulate:
     # Calculate the derivative along the power_dbm axis
     ds["rr_min_response_diff"] = ds.rr_min_response.differentiate(coord="power_dbm").dropna("power_dbm")
     # Calculate the moving average of the derivative
-    ds["rr_min_response_diff_avg"] = ds.rr_min_response_diff.rolling(
-        power_dbm=node.parameters.derivative_smoothing_window_num_points,  # window size in points
-        center=True
-    ).mean().dropna("power_dbm")
+    ds["rr_min_response_diff_avg"] = (
+        ds.rr_min_response_diff.rolling(
+            power_dbm=node.parameters.derivative_smoothing_window_num_points, center=True  # window size in points
+        )
+        .mean()
+        .dropna("power_dbm")
+    )
     # Apply a filter to scale down the initial noisy values in the moving average if needed
     for j in range(node.parameters.moving_average_filter_window_num_points):
-        ds.rr_min_response_diff_avg.isel(power_dbm=j).data /= (node.parameters.moving_average_filter_window_num_points - j)
+        ds.rr_min_response_diff_avg.isel(power_dbm=j).data /= (
+            node.parameters.moving_average_filter_window_num_points - j
+        )
     # Find the first position where the moving average crosses below the threshold
     below_threshold = ds.rr_min_response_diff_avg < node.parameters.derivative_crossing_threshold_in_hz_per_dbm
     # Get the first occurrence below the derivative threshold
@@ -239,7 +238,9 @@ if not node.parameters.simulate:
     rr_optimal_frequencies = {}
     for qubit in qubits:
         if below_threshold.sel(qubit=qubit.name).any():
-            rr_optimal_power_dbm[qubit.name] = below_threshold.sel(qubit=qubit.name).idxmax(dim="power_dbm")  # Get the first occurrence
+            rr_optimal_power_dbm[qubit.name] = below_threshold.sel(qubit=qubit.name).idxmax(
+                dim="power_dbm"
+            )  # Get the first occurrence
             if node.parameters.buffer_from_crossing_threshold_in_dbm is not None:
                 rr_optimal_power_dbm[qubit.name] -= node.parameters.buffer_from_crossing_threshold_in_dbm
         else:
@@ -247,14 +248,15 @@ if not node.parameters.simulate:
 
         if not np.isnan(rr_optimal_power_dbm[qubit.name]):
             fit, fit_eval = fit_resonator(
-                s21_data=ds.sel(power_dbm=rr_optimal_power_dbm[qubit.name].data, method='nearest').sel(qubit=qubit.name),
+                s21_data=ds.sel(power_dbm=rr_optimal_power_dbm[qubit.name].data, method="nearest").sel(
+                    qubit=qubit.name
+                ),
                 frequency_LO_IF=qubit.resonator.RF_frequency,
-                print_report=True
+                print_report=True,
             )
             rr_optimal_frequencies[qubit.name] = int(fit.params["omega_r"].value)
         else:
             rr_optimal_frequencies[qubit.name] = np.nan
-
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
@@ -276,22 +278,22 @@ if not node.parameters.simulate:
             linewidth=0.5,
         )
         # Plot where the optimum readout power was found
-        if not np.isnan(rr_optimal_power_dbm[qubit['qubit']]):
+        if not np.isnan(rr_optimal_power_dbm[qubit["qubit"]]):
             ax.axhline(
-                y=rr_optimal_power_dbm[qubit['qubit']],
+                y=rr_optimal_power_dbm[qubit["qubit"]],
                 color="g",
                 linestyle="-",
             )
             if node.parameters.buffer_from_crossing_threshold_in_dbm is not None:
                 # Plot the optimal power if there was no buffer
                 ax.axhline(
-                    y=rr_optimal_power_dbm[qubit['qubit']] + node.parameters.buffer_from_crossing_threshold_in_dbm,
+                    y=rr_optimal_power_dbm[qubit["qubit"]] + node.parameters.buffer_from_crossing_threshold_in_dbm,
                     color="g",
                     linestyle="--",
                 )
-        if not np.isnan(rr_optimal_frequencies[qubit['qubit']]):
+        if not np.isnan(rr_optimal_frequencies[qubit["qubit"]]):
             ax.axvline(
-                x=rr_optimal_frequencies[qubit['qubit']] + machine.qubits[qubit['qubit']].resonator.RF_frequency,
+                x=rr_optimal_frequencies[qubit["qubit"]] + machine.qubits[qubit["qubit"]].resonator.RF_frequency,
                 color="blue",
                 linestyle="--",
             )
@@ -314,8 +316,7 @@ if not node.parameters.simulate:
             with node.record_state_updates():
                 if not np.isnan(rr_optimal_power_dbm[q.name]):
                     power_settings = q.resonator.set_output_power(
-                        power_in_dbm=rr_optimal_power_dbm[q.name].item(),
-                        max_amplitude=0.1
+                        power_in_dbm=rr_optimal_power_dbm[q.name].item(), max_amplitude=0.1
                     )
                 if not np.isnan(rr_optimal_frequencies[q.name]):
                     q.resonator.intermediate_frequency += rr_optimal_frequencies[q.name]

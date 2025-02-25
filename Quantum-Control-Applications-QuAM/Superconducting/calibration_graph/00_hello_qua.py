@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import savgol_filter
 from qualang_tools.units import unit
-from configuration.my_quam import QuAM
+from quam_config import QuAM
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -56,7 +56,7 @@ if simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -65,5 +65,3 @@ else:
     job = qm.execute(prog)
 
 plt.show()
-
-

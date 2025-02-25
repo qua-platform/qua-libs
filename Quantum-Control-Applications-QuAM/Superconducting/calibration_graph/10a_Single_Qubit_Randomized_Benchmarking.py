@@ -21,11 +21,11 @@ Prerequisites:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from configuration.my_quam import QuAM, Transmon
-from experiments.macros import qua_declaration, active_reset, readout_state
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
-from quam_libs.lib.fit import fit_decay_exp, decay_exp
+from quam_config import QuAM, Transmon
+from quam_experiments.macros import qua_declaration, active_reset, readout_state
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
+from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.multi_user import qm_session
@@ -56,6 +56,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = True
+
 
 node = QualibrationNode(name="10a_Single_Qubit_Randomized_Benchmarking", parameters=Parameters())
 
@@ -227,7 +228,7 @@ with program() as randomized_benchmarking_individual:
             # Generate the random sequence of length max_circuit_depth
             sequence_list, inv_gate_list = generate_sequence()
             assign(depth_target, 0)  # Initialize the current depth to 0
-            
+
             with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
                 # Replacing the last gate in the sequence with the sequence's inverse gate
                 # The original gate is saved in 'saved_gate' and is being restored at the end
@@ -296,7 +297,7 @@ with program() as randomized_benchmarking_multiplexed:
         # Generate the random sequence of length max_circuit_depth
         sequence_list, inv_gate_list = generate_sequence()
         assign(depth_target, 0)  # Initialize the current depth to 0
-        
+
         with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
             # Replacing the last gate in the sequence with the sequence's inverse gate
             # The original gate is saved in 'saved_gate' and is being restored at the end
@@ -359,7 +360,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -382,15 +383,14 @@ elif node.parameters.load_data_id is None:
             # Progress bar
             progress_counter(m, num_of_sequences, start_time=results.start_time)
 
-
     # %% {Data_fetching_and_dataset_creation}
     if node.parameters.load_data_id is None:
         depths = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
         depths[0] = 1
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(
-        job.result_handles,
-        qubits,
+            job.result_handles,
+            qubits,
             {"depths": depths, "sequence": np.arange(num_of_sequences)},
         )
     else:
@@ -431,7 +431,7 @@ if not node.parameters.simulate:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         da_state_qubit = da_state.sel(qubit=qubit["qubit"])
-        da_state_std = ds["state"].std(dim="sequence").sel(qubit=qubit["qubit"])/np.sqrt(ds.sequence.size)
+        da_state_std = ds["state"].std(dim="sequence").sel(qubit=qubit["qubit"]) / np.sqrt(ds.sequence.size)
         ax.errorbar(
             da_state_qubit.m,
             da_state_qubit,
@@ -455,7 +455,6 @@ if not node.parameters.simulate:
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
-
 
     # %% {Save_results}
     if not node.parameters.simulate:

@@ -16,17 +16,19 @@ Next steps before going to the next node:
     - Update the qubits frequency and T2_ramsey in the state.
     - Save the current state
 """
+
 from dataclasses import asdict
 
 # %% {Imports}
 from qualibrate import QualibrationNode
-from configuration.my_quam import QuAM
-from experiments.ramsey.analysis.fetch_dataset import fetch_dataset
-from experiments.ramsey.analysis.fitting import fit_frequency_detuning_and_t2_decay
-from experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
-from experiments.ramsey.plotting import plot_ramseys_data_with_fit
-from experiments.simulation import simulate_and_plot
-from experiments.macros import qua_declaration, readout_state
+from quam_config import QuAM
+from quam_experiments.experiments.ramsey.analysis.fetch_dataset import fetch_dataset
+from quam_experiments.experiments.ramsey.analysis.fitting import fit_frequency_detuning_and_t2_decay
+from quam_experiments.experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
+from quam_experiments.experiments.ramsey.plotting import plot_ramseys_data_with_fit
+from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
+from quam_experiments.workflow.simulation import simulate_and_plot
+from quam_experiments.macros import qua_declaration, readout_state
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -49,7 +51,7 @@ node = QualibrationNode(
         flux_point_joint_or_independent="joint",
         multiplexed=False,
         simulate=True,
-    )
+    ),
 )
 
 # %% {Initialize_QuAM_and_QOP}
@@ -57,7 +59,7 @@ u = unit(coerce_to_integer=True)
 
 machine = QuAM.load()
 
-qubits = machine.get_qubits_used_in_node(node.parameters)
+qubits = get_qubits_used_in_node(machine, node.parameters)
 num_qubits = len(qubits)
 
 config = machine.generate_config()
@@ -125,22 +127,10 @@ with program() as ramsey:
         n_st.save("n")
         for i in range(num_qubits):
             if node.parameters.use_state_discrimination:
-                state_st[i] \
-                    .buffer(len(detuning_signs)) \
-                    .buffer(len(idle_times)) \
-                    .average() \
-                    .save(f"state{i + 1}")
+                state_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"state{i + 1}")
             else:
-                I_st[i] \
-                    .buffer(len(detuning_signs)) \
-                    .buffer(len(idle_times)) \
-                    .average() \
-                    .save(f"I{i + 1}")
-                Q_st[i] \
-                    .buffer(len(detuning_signs)) \
-                    .buffer(len(idle_times)) \
-                    .average() \
-                    .save(f"Q{i + 1}")
+                I_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"I{i + 1}")
+                Q_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate_or_execute}

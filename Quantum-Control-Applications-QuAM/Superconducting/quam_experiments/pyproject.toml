@@ -1,0 +1,22 @@
+[project]
+name = "quam_experiments"
+version = "0.1.0"
+dependencies=[
+    "plotly",
+    "xarray",
+    "qm-qua>=1.2.1",
+    "lmfit",
+    "quam_config",
+    "quam_builder",
+    "scipy",
+    "qiskit-experiments",
+    "tqdm"
+]
+requires-python = ">=3.9, <3.13"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = []
