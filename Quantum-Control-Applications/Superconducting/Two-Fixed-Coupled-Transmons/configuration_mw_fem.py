@@ -29,7 +29,7 @@ octave_config = None
 # Save Path #
 #############
 # Path to save data
-save_dir = Path().absolute() / "Data"
+save_dir = Path(__file__).parent.resolve() / "Data"
 save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
