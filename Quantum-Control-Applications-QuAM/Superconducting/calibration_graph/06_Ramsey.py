@@ -50,7 +50,7 @@ node = QualibrationNode(
         use_state_discrimination=False,
         flux_point_joint_or_independent="joint",
         multiplexed=False,
-        simulate=True,
+        simulate=False,
     ),
 )
 
@@ -101,12 +101,12 @@ with program() as ramsey:
                             assign(virtual_detuning_phases[i], Cast.mul_fixed_by_int(-detuning * 1e-9, 4 * idle_time))
 
                     align()
-                    with strict_timing_():
-                        for i, qubit in multiplexed_qubits.items():
-                            qubit.xy.play("x90")
-                            qubit.xy.frame_rotation_2pi(virtual_detuning_phases[i])
-                            qubit.xy.wait(idle_time)
-                            qubit.xy.play("x90")
+                    # with strict_timing_():
+                    for i, qubit in multiplexed_qubits.items():
+                        qubit.xy.play("x90")
+                        qubit.xy.frame_rotation_2pi(virtual_detuning_phases[i])
+                        qubit.xy.wait(idle_time)
+                        qubit.xy.play("x90")
 
                     align()
                     for i, qubit in multiplexed_qubits.items():

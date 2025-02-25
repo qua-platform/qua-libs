@@ -16,51 +16,35 @@ calibration_db_path = None  # "/path/to/some/config/folder"
 # %%                                      Define the available instrument setup
 ########################################################################################################################
 instruments = Instruments()
-instruments.add_mw_fem(controller=1, slots=[2, 3, 5, 7])
+instruments.add_opx_plus(controllers=[1, 2])
+instruments.add_external_mixer(indices=[1, 2, 3])
 
 ########################################################################################################################
 # %%                                 Define which qubit ids are present in the system
 ########################################################################################################################
-qubits = [i + 1 for i in range(8)]
-qubit_pairs = [(i + 1, i + 2) for i in range(7)]
-qubit_pairs.append((8, 1))
+qubits = [1, 2]
+qubit_pairs = [(qubits[i], qubits[i + 1]) for i in range(len(qubits) - 1)]
 
 ########################################################################################################################
 # %%                                 Define any custom/hardcoded channel addresses
 ########################################################################################################################
-rr_slots = [2, 2, 3, 3, 5, 5, 7, 7]
-rr_out_ports = [1, 8, 1, 8, 1, 8, 1, 8]
-rr_in_ports = [1, 2, 1, 2, 1, 2, 1, 2]
-xy_slots = rr_slots
-xy_ports = [2, 3, 2, 3, 2, 3, 2, 3]
+# multiplexed readout for qubits 1 to 5
+q1_res_ch = opx_iq_ext_mixer_spec(in_port_i=1, in_port_q=2, out_port_i=1, out_port_q=2)
 
 ########################################################################################################################
 # %%                 Allocate the wiring to the connectivity object based on the available instruments
 ########################################################################################################################
 connectivity = Connectivity()
-# Single qubit individual drive and readout lines
-for i in range(8):
-    connectivity.add_resonator_line(
-        qubits=qubits[i],
-        constraints=mw_fem_spec(con=1, slot=rr_slots[i], in_port=rr_in_ports[i], out_port=rr_out_ports[i]),
-    )
-    connectivity.add_qubit_drive_lines(
-        qubits=qubits[i], constraints=mw_fem_spec(con=1, slot=xy_slots[i], out_port=xy_ports[i])
-    )
-# Don't block the xy channels to connect the CR and ZZ drives to the same ports
-allocate_wiring(connectivity, instruments, block_used_channels=False)
-# Two-qubit drives
-for i in range(len(qubit_pairs)):
-    # Add CR lines
-    connectivity.add_qubit_pair_cross_resonance_lines(
-        qubit_pairs=qubit_pairs[i], constraints=mw_fem_spec(con=1, slot=xy_slots[i], out_port=xy_ports[i])
-    )
-    allocate_wiring(connectivity, instruments, block_used_channels=False)
-    # Add ZZ lines
-    connectivity.add_qubit_pair_zz_drive_lines(
-        qubit_pairs=qubit_pairs[i], constraints=mw_fem_spec(con=1, slot=xy_slots[i], out_port=xy_ports[i])
-    )
-    allocate_wiring(connectivity, instruments, block_used_channels=False)
+# The readout line
+connectivity.add_resonator_line(qubits=qubits, constraints=q1_res_ch)
+# The individual xy drive lines
+connectivity.add_qubit_drive_lines(qubits=qubits)
+# The flux lines for the individual qubits
+connectivity.add_qubit_flux_lines(qubits=qubits)
+# The flux lines for the tunable couplers
+connectivity.add_qubit_pair_flux_lines(qubit_pairs=qubit_pairs)
+# Allocate the wiring
+allocate_wiring(connectivity, instruments)
 # View wiring schematic
 visualize(connectivity.elements, available_channels=instruments.available_channels)
 
