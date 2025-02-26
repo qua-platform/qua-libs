@@ -26,7 +26,7 @@ def _get_wait_times_linear_sweep_in_clock_cycles(node_parameters: RamseyParamete
         np.linspace(
             node_parameters.min_wait_time_in_ns,
             node_parameters.max_wait_time_in_ns,
-            node_parameters.num_time_points,
+            node_parameters.wait_time_num_points,
         )
         // 4
     ).astype(int)
@@ -37,7 +37,7 @@ def _get_wait_times_log_sweep_in_clock_cycles(node_parameters: RamseyParameters)
         np.geomspace(
             node_parameters.min_wait_time_in_ns,
             node_parameters.max_wait_time_in_ns,
-            node_parameters.num_time_points,
+            node_parameters.wait_time_num_points,
         )
         // 4
     ).astype(int)

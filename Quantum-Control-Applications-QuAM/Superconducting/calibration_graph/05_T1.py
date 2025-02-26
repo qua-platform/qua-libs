@@ -16,7 +16,7 @@ Next steps before going to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode
 from quam_config import QuAM
-from quam_experiments.macros import qua_declaration, active_reset, readout_state
+from quam_experiments.macros import qua_declaration, readout_state, reset_qubit
 from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
@@ -40,7 +40,7 @@ node = QualibrationNode(
         num_averages=100,
         min_wait_time_in_ns=16,
         max_wait_time_in_ns=100000,
-        wait_time_step_in_ns=600,
+        wait_time_num_points=600,
         log_or_linear_sweep="linear",
         use_state_discrimination=False,
         qubits=None,
@@ -49,7 +49,7 @@ node = QualibrationNode(
         timeout=120,
         load_data_id=None,
         simulate=True,
-        simulation_duration_ns=2500,
+        simulation_duration_ns=25000,
         use_waveform_report=True,
     ),
 )
@@ -77,25 +77,19 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
         if node.parameters.use_state_discrimination:
             state = [declare(int) for _ in range(num_qubits)]
             state_st = [declare_stream() for _ in range(num_qubits)]
-        for i, qubit in enumerate(qubits):
 
+        for i, qubit in enumerate(qubits):
             # Bring the active qubits to the desired frequency point
             node.machine.set_all_fluxes(flux_point=node.parameters.flux_point_joint_or_independent, target=qubit)
 
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_each_(t, idle_times):
-                    if node.parameters.reset_type == "active":
-                        active_reset(qubit, "readout")
-                    else:
-                        qubit.resonator.wait(qubit.thermalization_time * u.ns)
-                        qubit.align()
-
+                    reset_qubit(qubit, node.parameters)
+                    qubit.align()
                     qubit.xy.play("x180")
                     qubit.align()
-                    qubit.wait(t)
-                    qubit.align()
-
+                    qubit.resonator.wait(t)
                     # Measure the state of the resonators
                     if node.parameters.use_state_discrimination:
                         readout_state(qubit, state[i])

@@ -19,7 +19,7 @@ class RamseyParameters(RunnableParameters):
     frequency_detuning_in_mhz: float = 1.0
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 3000
-    num_time_points: int = 500
+    wait_time_num_points: int = 500
     log_or_linear_sweep: Literal["log", "linear"] = "log"
     use_state_discrimination: bool = False
 

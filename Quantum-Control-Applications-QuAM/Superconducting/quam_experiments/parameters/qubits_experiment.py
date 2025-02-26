@@ -18,7 +18,7 @@ class QubitsExperimentNodeParameters(RunnableParameters):
         " which should participate in the execution of the node.",
     )
     reset_type: Literal["thermal", "active"] = "thermal"
-
+    use_state_discrimination: bool = False
 
 def get_qubits_used_in_node(
     machine: BaseQuAM, node_parameters: QubitsExperimentNodeParameters
