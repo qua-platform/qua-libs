@@ -18,7 +18,6 @@ from qualibrate import QualibrationNode
 from quam_config import QuAM
 from quam_experiments.macros import qua_declaration, readout_state, reset_qubit
 from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
@@ -31,6 +30,8 @@ from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_nod
 from quam_experiments.workflow.simulation import simulate_and_plot
 from quam_experiments.experiments.T1.parameters import Parameters
 from quam_experiments.experiments.T1.fetch_dataset import fetch_dataset
+from quam_experiments.experiments.T1.fitting import fit_t1_decay
+from quam_experiments.experiments.T1.plotting import plot_t1s_data_with_fit
 
 # %% {Node_parameters}
 node = QualibrationNode(
@@ -39,7 +40,7 @@ node = QualibrationNode(
         num_averages=100,
         min_wait_time_in_ns=16,
         max_wait_time_in_ns=100000,
-        wait_time_num_points=600,
+        wait_time_num_points=151,
         log_or_linear_sweep="linear",
         use_state_discrimination=False,
         qubits=None,
@@ -47,7 +48,7 @@ node = QualibrationNode(
         flux_point_joint_or_independent="joint",
         timeout=120,
         load_data_id=None,
-        simulate=True,
+        simulate=False,
         simulation_duration_ns=25000,
         use_waveform_report=True,
     ),
@@ -85,7 +86,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_each_(t, idle_times):
-                    reset_qubit(qubit, node.parameters)
+                    # reset_qubit(qubit, node.parameters)
                     qubit.align()
                     qubit.xy.play("x180")
                     qubit.align()
@@ -143,7 +144,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
 # %% {Data_fetching_and_dataset_creation}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, QuAM]):
-    #TODO: temp fix
+    # TODO: temp fix
     load_data_id = node.parameters.load_data_id
     node = node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
@@ -160,75 +161,29 @@ def fetch_data(node: QualibrationNode[Parameters, QuAM]):
 # %% {Data_analysis}
 @node.run_action(skip_if=node.parameters.simulate)
 def data_analysis(node: QualibrationNode[Parameters, QuAM]):
-    ds = node.results["ds"]
-    # Fit the exponential decay
-    if node.parameters.use_state_discrimination:
-        fit_data = fit_decay_exp(ds.state, "idle_time")
-    else:
-        fit_data = fit_decay_exp(ds.I, "idle_time")
-    fit_data.attrs = {"long_name": "time", "units": "µs"}
-    node.results["fitted_data"] = fit_data.to_dataset(name="fitted_data")
-    # Fitted decay
-    node.results["fitted"] = decay_exp(
-        ds.idle_time,
-        node.results["fitted_data"].sel(fit_vals="a"),
-        node.results["fitted_data"].sel(fit_vals="offset"),
-        node.results["fitted_data"].sel(fit_vals="decay"),
-    )
-    # T1
-    tau = -1 / node.results["fitted_data"].sel(fit_vals="decay")
-    node.results["fitted_data"] = node.results["fitted_data"].assign_coords(tau=("qubit", tau.fitted_data.data))
-    node.results["fitted_data"].tau.attrs = {"long_name": "T1", "units": "µs"}
-    # and its uncertainty
-    decay = node.results["fitted_data"].sel(fit_vals="decay")
-    decay_res = node.results["fitted_data"].sel(fit_vals="decay_decay")
-    tau_error = -tau * (np.sqrt(decay_res) / decay)
-    node.results["fitted_data"] = node.results["fitted_data"].assign_coords(
-        tau_error=("qubit", tau_error.fitted_data.data)
-    )
-    node.results["fitted_data"].tau_error.attrs = {"long_name": "T1 error", "units": "µs"}
-    # Assess whether the fit was successful or not
-    success_criteria = (tau.fitted_data.values > 0) & (tau_error.fitted_data.values / tau.fitted_data.values < 1)
-    node.results["fitted_data"] = node.results["fitted_data"].assign_coords(success=("qubit", success_criteria))
+    # todo check the units with real data
+    node.results["fit_results"] = fit_t1_decay(node.results["ds"], node.parameters)
 
 
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
-def data_analysis(node: QualibrationNode[Parameters, QuAM]):
-    ds = node.results["ds"]
-    grid = QubitGrid(ds, [q.grid_location for q in node.qubits])
-    for ax, qubit in grid_iter(grid):
-        if node.parameters.use_state_discrimination:
-            ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
-            ax.set_ylabel("State")
-        else:
-            ds.sel(qubit=qubit["qubit"]).I.plot(ax=ax)
-            ax.set_ylabel("I (V)")
-        ax.plot(ds.idle_time, node.results["fitted"].fitted_data.loc[qubit], "r--")
-        ax.set_title(qubit["qubit"])
-        ax.set_xlabel("Idle_time (uS)")
-        ax.text(
-            0.1,
-            0.9,
-            f'T1 = {node.results["fitted_data"].sel(qubit=qubit["qubit"]).tau.values:.1f} ± {node.results["fitted_data"].sel(qubit=qubit["qubit"]).tau_error.values:.1f} µs',
-            transform=ax.transAxes,
-            fontsize=10,
-            verticalalignment="top",
-            bbox=dict(facecolor="white", alpha=0.5),
-        )
-    grid.fig.suptitle("T1")
+def data_plotting(node: QualibrationNode[Parameters, QuAM]):
+    qubits = get_qubits_used_in_node(node.machine, node.parameters)
+    fig = plot_t1s_data_with_fit(node.results["ds"], qubits, node.parameters, node.results["fit_results"])
+    node.results["figure"] = fig
+
     plt.tight_layout()
     plt.show()
-    node.results["figure_raw"] = grid.fig
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def state_update(node: QualibrationNode[Parameters, QuAM]):
+    qubits = get_qubits_used_in_node(node.machine, node.parameters)
     with node.record_state_updates():
-        for index, q in enumerate(node.qubits):
-            if node.results["fitted_data"].sel(qubit=q.name).success:
-                q.T1 = float(node.results["fitted_data"].sel(qubit=q.name).tau.values) * 1e-6
+        for index, q in enumerate(qubits):
+            if node.results["fit_results"].sel(qubit=q.name).success:
+                q.T1 = float(node.results["fit_results"].sel(qubit=q.name).tau.values) * 1e-9
 
 
 # %% {Save_results}
