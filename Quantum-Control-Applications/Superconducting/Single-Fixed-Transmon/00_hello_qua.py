@@ -7,7 +7,6 @@ from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 
-
 ###################
 # The QUA program #
 ###################
@@ -24,11 +23,9 @@ with program() as hello_qua:
 # qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_83")
 
-
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = True
 
 if simulate:
@@ -45,7 +42,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True)
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)

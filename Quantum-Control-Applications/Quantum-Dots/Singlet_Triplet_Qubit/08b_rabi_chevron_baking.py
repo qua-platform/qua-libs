@@ -33,8 +33,12 @@ from qualang_tools.loops import from_array
 from qualang_tools.bakery import baking
 import matplotlib.pyplot as plt
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
+from qualang_tools.results.data_handler import DataHandler
 
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100
 # Pulse amplitude sweep as the absolute voltage level in V
 pi_levels = np.arange(0.21, 0.3, 0.01)
@@ -73,6 +77,17 @@ for t in durations:  # Create the different baked sequences
     pi_list.append(b)
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "durations": durations,
+    "pi_levels": pi_levels,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as Rabi_prog:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     t = declare(int)  # QUA variable for the qubit pulse duration
@@ -169,7 +184,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -205,3 +220,9 @@ else:
         plt.ylabel("Vpi [V]")
         plt.tight_layout()
         plt.pause(0.1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

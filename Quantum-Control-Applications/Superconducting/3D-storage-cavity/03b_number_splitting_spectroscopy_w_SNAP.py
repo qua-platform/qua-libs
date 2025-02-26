@@ -28,21 +28,33 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros
 import numpy as np
+from qualang_tools.results.data_handler import DataHandler
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000  # The number of averages
 
-# Qubit detuning sweep
 center = 178 * u.MHz
 top = 2.5 * u.MHz
 bottom = -3.5 * u.MHz
 df = 10 * u.kHz
-dfs = np.arange(bottom, top, df)
+dfs = np.arange(bottom, top, df)  # Qubit detuning sweep
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "center_frequency": center,
+    "dfs": dfs,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as number_splitting_spectroscopy:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the qubit frequency
@@ -117,7 +129,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -158,3 +170,9 @@ else:
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("Qubit intermediate frequency [MHz]")
         ax2.set_ylim(0, 1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

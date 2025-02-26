@@ -56,7 +56,6 @@ from cr_hamiltonian_tomography import (
 ##################
 #   Parameters   #
 ##################
-
 # Qubits and resonators
 qc = 1  # index of control qubit
 qt = 2  # index of target qubit
@@ -98,9 +97,8 @@ save_data_dict = {
 
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     state = [declare(bool) for _ in range(2)]
@@ -216,7 +214,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     try:
         # Open the quantum machine
@@ -263,7 +261,7 @@ else:
         script_name = Path(__file__).name
         data_handler = DataHandler(root_data_folder=save_dir)
         data_handler.additional_files = {script_name: script_name, **default_additional_files}
-        data_handler.save_data(data=save_data_dict, name="cr_calib_ham_tomo")
+        data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
 
     except Exception as e:
         print(f"An exception occurred: {e}")

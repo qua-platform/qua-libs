@@ -1,6 +1,5 @@
 """
-A script that changes the duration of the pulses send to the ensemble to determine
-which pulse duration maximizes the echo amplitude
+A script that measures T2 after initialization of the ensemble
 """
 
 from qm import SimulationConfig
@@ -9,41 +8,50 @@ from qm import LoopbackInterface
 from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
-from qualang_tools.loops import from_array
 from macros import get_c2c_time
+from qualang_tools.loops import from_array
+from qualang_tools.results.data_handler import DataHandler
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+pi_len = 320 // 4  # Calibrated pi-pulse
+pi_half_len = 160 // 4  # Calibrated pi/2 pulse
+
+delay_min = safe_delay
+delay_max = 20000 // 4
+d_delay = 1000 // 4
+delay_vec = np.arange(delay_min, delay_max + 0.1, d_delay)
+
+cooldown_time = 10e6 // 4
+
+n_avg = 100
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "delay_vec": delay_vec,
+    "config": config,
+}
 
 ###################
 # The QUA program #
 ###################
-
-# Pi/2 pulse duration to be scanned
-pulse1_min = 20 // 4
-pulse1_max = 400 // 4
-dpulse1 = 40 // 4
-pulse1_vec = np.arange(pulse1_min, pulse1_max + 0.1, dpulse1)
-
-# Resonator or qubit relaxation time
-cooldown_time = 10 * u.ms // 4
-
-n_avg = 100
-
-with program() as pi_pulse_cal:
+with program() as T2:
     n = declare(int)
-    pulse1_len = declare(int)
-    pulse2_len = declare(int)
+    t_delay = declare(int)
     pulse_delay = declare(int)
     readout_delay = declare(int)
 
     I = declare(fixed)
     Q = declare(fixed)
+    n_st = declare_stream()
     I_st = declare_stream()
     Q_st = declare_stream()
-    n_st = declare_stream()
-    echo = declare_stream(adc_trace=True)
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(pulse1_len, pulse1_vec)):
+        with for_(*from_array(t_delay, delay_vec)):
             # initialization
             play("initialization", "green_laser")
 
@@ -58,42 +66,35 @@ with program() as pi_pulse_cal:
             reset_phase("resonator")
             reset_frame("ensemble")
 
-            # Set pulse2_len to 2*pulse1_len so that pulse2 is pi if pulse1 is pi/2
-            assign(pulse2_len, 2 * pulse1_len)
-            # Set pulse_delay to safe_delay - center_to_center - internal_delay (found with simulation)
-            assign(
-                pulse_delay,
-                safe_delay - Cast.mul_int_by_fixed(pulse1_len + pulse2_len, 0.5) - 8,
-            )
-            # Set pulse_delay to safe_delay - center_to_center - internal_delay (found with simulation)
-            assign(
-                readout_delay,
-                safe_delay - Cast.mul_int_by_fixed(pulse2_len + readout_len // 4, 0.5) - 5,
-            )
-            # Play first pulse along X
-            play("const", "ensemble", duration=pulse1_len)
+            assign(pulse_delay, t_delay - (pi_half_len + pi_len) // 2)
+            assign(readout_delay, t_delay - (pi_len + readout_len // 4) // 2 - 5)
+
+            # Pi/2 pulse
+            play("const", "ensemble", duration=pi_half_len)
             # we delay the switches because `duration` for digital pulses is faster than for analog
             # We use the simulator to make the adjustments and find `8`
             wait(8, "switch_1", "switch_2")
-            play("activate", "switch_1", duration=pulse1_len)
-            play("activate", "switch_2", duration=pulse1_len)
+            play("activate", "switch_1", duration=pi_half_len)
+            play("activate", "switch_2", duration=pi_half_len)
             # Wait some time corresponding to the echo time which also avoids sending pulses in the measurement window
             wait(pulse_delay, "ensemble", "switch_1", "switch_2")
-            # Play second pulse along -X
+
+            # Pi pulse
             frame_rotation_2pi(-0.5, "ensemble")
-            play("activate", "switch_1", duration=pulse2_len)
-            play("activate", "switch_2", duration=pulse2_len)
-            play("const", "ensemble", duration=pulse2_len)
+            play("activate", "switch_1", duration=pi_len)
+            play("activate", "switch_2", duration=pi_len)
+            play("const", "ensemble", duration=pi_len)
 
             align()  # global align
             # Wait the same amount of time as earlier in order to let the spin rephase after the echo
             wait(readout_delay, "resonator", "switch_receiver")
+
             # Readout
             play("activate_resonator", "switch_receiver")
             measure(
                 "readout",
                 "resonator",
-                echo,
+                None,
                 dual_demod.full("cos", "out1", "sin", "out2", I),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
             )
@@ -102,12 +103,9 @@ with program() as pi_pulse_cal:
         save(n, n_st)
 
     with stream_processing():
-        echo.input1().buffer(len(pulse1_vec)).average().save("echo1")
-        echo.input2().buffer(len(pulse1_vec)).average().save("echo2")
-        I_st.buffer(len(pulse1_vec)).average().save("I")
-        Q_st.buffer(len(pulse1_vec)).average().save("Q")
+        I_st.buffer(len(delay_vec)).average().save("I")
+        Q_st.buffer(len(delay_vec)).average().save("Q")
         n_st.save("iteration")
-
 
 ################################
 # Open quantum machine manager #
@@ -119,17 +117,17 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Simulate or execute #
 #######################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
     simulate_config = SimulationConfig(
-        duration=4000,
+        duration=2000,
         include_analog_waveforms=True,
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, pi_pulse_cal, simulate_config)
+    job = qmm.simulate(config, T2, simulate_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -139,10 +137,10 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
     # The lines of code below allow you to retrieve information from the simulated waveform to assert
-    # their position in time and manually estimate internal delays.
+    # their position in time.
     # ver_t1: center-to-center time between first two pulses arriving to 'ensemble'
     ver_t1 = get_c2c_time(job, ("ensemble", 0), ("ensemble", 2))
     print(
@@ -156,7 +154,7 @@ if simulate:
 
 else:
     qm = qmm.open_qm(config)
-    job = qm.execute(pi_pulse_cal)  # execute QUA program
+    job = qm.execute(T2)  # execute QUA program
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     fig = plt.figure()
@@ -171,9 +169,15 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(pulse1_vec * 4, I, label="I")
-        plt.plot(pulse1_vec * 4, Q, label="Q")
-        plt.xlabel("Pulse duration [ns]")
-        plt.ylabel("Signal amplitude [V]")
+        plt.plot(delay_vec * 4, I, label="I")
+        plt.plot(delay_vec * 4, Q, label="Q")
+        plt.xlabel("Delay before refocusing pulse [ns]")
+        plt.ylabel("Echo magnitude I & Q [a. u.]")
         plt.legend()
         plt.pause(0.2)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

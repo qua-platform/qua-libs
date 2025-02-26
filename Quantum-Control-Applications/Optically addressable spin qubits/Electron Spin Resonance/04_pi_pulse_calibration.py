@@ -1,7 +1,6 @@
 """
-Having calibrated roughly a pi pulse, this script allows you to fix the pi pulse duration and change the duration of the
-first pulse to obtain Rabi oscillations throughout the sequence.
-This allows measuring all the delays in the system, as well as the NV initialization duration
+A script that changes the duration of the pulses send to the ensemble to determine
+which pulse duration maximizes the echo amplitude
 """
 
 from qm import SimulationConfig
@@ -12,34 +11,45 @@ from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from macros import get_c2c_time
+from qualang_tools.results.data_handler import DataHandler
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+pulse1_min = 20 // 4
+pulse1_max = 400 // 4
+dpulse1 = 40 // 4
+pulse1_vec = np.arange(pulse1_min, pulse1_max + 0.1, dpulse1)  # Pi/2 pulse duration to be scanned
+
+# Resonator or qubit relaxation time
+cooldown_time = 10 * u.ms // 4
+
+n_avg = 100
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "pulse1_vec": pulse1_vec,
+    "config": config,
+}
 
 ###################
 # The QUA program #
 ###################
-# Pi pulse duration calibrated with 'pi_pulse_calibration.py'
-pi_len = 320 // 4
-
-pulse1_min = 40 // 4
-pulse1_max = 400 // 4
-dpulse1 = 4 // 4
-pulse1_vec = np.arange(pulse1_min, pulse1_max + 0.1, dpulse1)
-
-cooldown_time = 10 * u.ms // 4
-
-n_avg = 1000
-# This delay is defined as the duration between the center of the pi pulse and the center of the readout pulse
-readout_delay = safe_delay - (pi_len + readout_len // 4) // 2 - 5
-
-with program() as time_rabi:
+with program() as pi_pulse_cal:
     n = declare(int)
-    n_st = declare_stream()
     pulse1_len = declare(int)
+    pulse2_len = declare(int)
     pulse_delay = declare(int)
+    readout_delay = declare(int)
 
     I = declare(fixed)
     Q = declare(fixed)
     I_st = declare_stream()
     Q_st = declare_stream()
+    n_st = declare_stream()
+    echo = declare_stream(adc_trace=True)
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(pulse1_len, pulse1_vec)):
@@ -57,8 +67,19 @@ with program() as time_rabi:
             reset_phase("resonator")
             reset_frame("ensemble")
 
-            assign(pulse_delay, safe_delay - Cast.mul_int_by_fixed(pulse1_len, 0.5) - pi_len // 2 - 4)
-            # Rabi pulse
+            # Set pulse2_len to 2*pulse1_len so that pulse2 is pi if pulse1 is pi/2
+            assign(pulse2_len, 2 * pulse1_len)
+            # Set pulse_delay to safe_delay - center_to_center - internal_delay (found with simulation)
+            assign(
+                pulse_delay,
+                safe_delay - Cast.mul_int_by_fixed(pulse1_len + pulse2_len, 0.5) - 8,
+            )
+            # Set pulse_delay to safe_delay - center_to_center - internal_delay (found with simulation)
+            assign(
+                readout_delay,
+                safe_delay - Cast.mul_int_by_fixed(pulse2_len + readout_len // 4, 0.5) - 5,
+            )
+            # Play first pulse along X
             play("const", "ensemble", duration=pulse1_len)
             # we delay the switches because `duration` for digital pulses is faster than for analog
             # We use the simulator to make the adjustments and find `8`
@@ -67,11 +88,11 @@ with program() as time_rabi:
             play("activate", "switch_2", duration=pulse1_len)
             # Wait some time corresponding to the echo time which also avoids sending pulses in the measurement window
             wait(pulse_delay, "ensemble", "switch_1", "switch_2")
-            # Pi pulse
+            # Play second pulse along -X
             frame_rotation_2pi(-0.5, "ensemble")
-            play("const", "ensemble", duration=pi_len)
-            play("activate", "switch_1", duration=pi_len)
-            play("activate", "switch_2", duration=pi_len)
+            play("activate", "switch_1", duration=pulse2_len)
+            play("activate", "switch_2", duration=pulse2_len)
+            play("const", "ensemble", duration=pulse2_len)
 
             align()  # global align
             # Wait the same amount of time as earlier in order to let the spin rephase after the echo
@@ -81,7 +102,7 @@ with program() as time_rabi:
             measure(
                 "readout",
                 "resonator",
-                None,
+                echo,
                 dual_demod.full("cos", "out1", "sin", "out2", I),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
             )
@@ -90,6 +111,8 @@ with program() as time_rabi:
         save(n, n_st)
 
     with stream_processing():
+        echo.input1().buffer(len(pulse1_vec)).average().save("echo1")
+        echo.input2().buffer(len(pulse1_vec)).average().save("echo2")
         I_st.buffer(len(pulse1_vec)).average().save("I")
         Q_st.buffer(len(pulse1_vec)).average().save("Q")
         n_st.save("iteration")
@@ -110,12 +133,12 @@ simulate = True
 if simulate:
     # Simulates the QUA program for the specified duration
     simulate_config = SimulationConfig(
-        duration=2000,
+        duration=4000,
         include_analog_waveforms=True,
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, time_rabi, simulate_config)
+    job = qmm.simulate(config, pi_pulse_cal, simulate_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -125,10 +148,10 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
     # The lines of code below allow you to retrieve information from the simulated waveform to assert
-    # their position in time.
+    # their position in time and manually estimate internal delays.
     # ver_t1: center-to-center time between first two pulses arriving to 'ensemble'
     ver_t1 = get_c2c_time(job, ("ensemble", 0), ("ensemble", 2))
     print(
@@ -142,7 +165,7 @@ if simulate:
 
 else:
     qm = qmm.open_qm(config)
-    job = qm.execute(time_rabi)  # execute QUA program
+    job = qm.execute(pi_pulse_cal)  # execute QUA program
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     fig = plt.figure()
@@ -150,15 +173,22 @@ else:
     while results.is_processing():
         # Fetch results
         I, Q, iteration = results.fetch_all()
-        # Progress bar
+        # Convert I & Q to Volts
+        I = u.demod2volts(I, readout_len)
+        Q = u.demod2volts(Q, readout_len)
+        # Display progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
         plt.plot(pulse1_vec * 4, I, label="I")
         plt.plot(pulse1_vec * 4, Q, label="Q")
-        plt.title(f"iteration: {iteration}")
-        plt.xlabel("pi/2 pulse length [ns]")
-        plt.ylabel("Echo magnitude I & Q [a. u.]")
+        plt.xlabel("Pulse duration [ns]")
+        plt.ylabel("Signal amplitude [V]")
         plt.legend()
-        plt.tight_layout()
         plt.pause(0.2)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

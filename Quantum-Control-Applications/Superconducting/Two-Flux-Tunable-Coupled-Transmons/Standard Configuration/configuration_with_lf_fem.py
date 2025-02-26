@@ -10,6 +10,11 @@ import plotly.io as pio
 
 pio.renderers.default = "browser"
 
+#######################
+# AUXILIARY FUNCTIONS #
+#######################
+u = unit(coerce_to_integer=True)
+
 
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
@@ -33,23 +38,29 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+#############
+# Save Path #
+#############
 # Path to save data
-save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 #####################
 # OPX configuration #
 #####################
 con = "con1"
 fem = 1  # Should be the LF-FEM index, e.g., 1
-
 # Set octave_config to None if no octave are present
 octave_config = None
 
 #############################################
 #                  Qubits                   #
 #############################################
-u = unit(coerce_to_integer=True)
-
 sampling_rate = int(1e9)  # or, int(2e9)
 
 qubit_LO_q1 = 3.95 * u.GHz

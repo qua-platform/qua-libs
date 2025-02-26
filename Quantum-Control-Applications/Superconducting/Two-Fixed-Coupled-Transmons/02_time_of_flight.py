@@ -26,7 +26,7 @@ from qualang_tools.results.data_handler import DataHandler
 ##################
 #   Parameters   #
 ##################
-
+# Parameters Definition
 n_avg = 5000  # The number of averages
 save_data_dict = {
     "n_avg": n_avg,
@@ -34,9 +34,8 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     n = declare(int)  # QUA variable for the averaging loop
     adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace
@@ -87,7 +86,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     try:
         # Open a quantum machine to execute the QUA program
@@ -143,7 +142,7 @@ else:
         data_handler = DataHandler(root_data_folder=save_dir)
         save_data_dict.update({"fig_live": fig})
         data_handler.additional_files = {script_name: script_name, **default_additional_files}
-        data_handler.save_data(data=save_data_dict, name="time_of_flight")
+        data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
 
     except Exception as e:
         print(f"An exception occurred: {e}")

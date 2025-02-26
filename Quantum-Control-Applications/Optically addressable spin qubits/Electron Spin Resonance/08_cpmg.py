@@ -9,11 +9,12 @@ from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 from macros import get_c2c_time
+from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 pi_len = 320 // 4  # Calibrated pi-pulse
 pi_half_len = 160 // 4  # Calibrated pi/2 pulse
 
@@ -33,6 +34,16 @@ total_num_echoes = np.sum(num_echo_array)  # total number of echoes played in th
 
 n_avg = 100
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "tau_array": tau_array,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as cpmg:
     n = declare(int)
     n_st = declare_stream()
@@ -156,7 +167,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
     # The lines of code below allow you to retrieve information from the simulated waveform to assert
     # their position in time.
@@ -195,3 +206,9 @@ else:
         plt.tight_layout()
         plt.title(f"iteration: {iteration}")
         plt.pause(0.2)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

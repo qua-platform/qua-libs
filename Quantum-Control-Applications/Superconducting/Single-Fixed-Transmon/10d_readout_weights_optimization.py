@@ -28,6 +28,7 @@ from qm import SimulationConfig
 from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
 
 ####################
@@ -94,9 +95,10 @@ def update_readout_length(new_readout_length, ringdown_length):
     }
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # number of averages
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = 5 * u.us  # Readout pulse duration
@@ -111,6 +113,19 @@ print("The readout has been sliced in the following number of divisions", number
 # Time axis for the plots at the end
 x_plot = np.arange(division_length * 4, readout_len + ringdown_len + 1, division_length * 4)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "readout_len": readout_len,
+    "ringdown_len": ringdown_len,
+    "division_length": division_length,
+    "number_of_divisions": number_of_divisions,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as opt_weights:
     n = declare(int)
     ind = declare(int)
@@ -198,7 +213,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -282,3 +297,9 @@ else:
     #     opt_weights_minus_imag = [(1.0, readout_len)]
     #     opt_weights_imag = [(1.0, readout_len)]
     #     opt_weights_minus_real = [(1.0, readout_len)]
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

@@ -45,6 +45,7 @@ from qualang_tools.bakery import baking
 from macros import ge_averaged_measurement
 from scipy import signal, optimize
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
 
 ####################
@@ -118,9 +119,10 @@ def baked_waveform(waveform, pulse_duration):
     return pulse_segments
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 10_000  # Number of averages
 # Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
@@ -140,6 +142,16 @@ step_response_th = (
 )  # Perfect step response (square)
 xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - Must be in ns.
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "flux_waveform": flux_waveform,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
     segment = declare(int)  # QUA variable for the flux pulse segment index
@@ -245,7 +257,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -372,3 +384,9 @@ else:
     plt.tight_layout()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

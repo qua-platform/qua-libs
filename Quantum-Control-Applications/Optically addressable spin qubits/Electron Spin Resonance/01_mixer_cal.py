@@ -12,7 +12,6 @@ from configuration import *
 ###################
 # The QUA program #
 ###################
-
 with program() as mixer_cal:
     with infinite_loop_():
         play("const", "ensemble")
@@ -47,7 +46,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     qm = qmm.open_qm(config)
 

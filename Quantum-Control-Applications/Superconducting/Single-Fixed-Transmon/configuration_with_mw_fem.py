@@ -9,6 +9,12 @@ from qualang_tools.units import unit
 import plotly.io as pio
 
 pio.renderers.default = "browser"
+
+#######################
+# AUXILIARY FUNCTIONS #
+#######################
+u = unit(coerce_to_integer=True)
+
 ######################
 # Network parameters #
 ######################
@@ -16,17 +22,30 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
-octave_config = None
+#############
+# Save Path #
+############
+# Path to save data
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
+
+#####################
+# OPX configuration #
+#####################
 
 con = "con1"
 fem = 1
+# Set octave_config to None if no octave are present
+octave_config = None
 
-# Path to save data
-save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 #############################################
 #                  Qubits                   #
 #############################################
-u = unit(coerce_to_integer=True)
 
 qubit_LO = 7 * u.GHz
 qubit_IF = 50 * u.MHz

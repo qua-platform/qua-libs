@@ -22,12 +22,12 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000  # The number of averages
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 a_min = 0
@@ -35,6 +35,16 @@ a_max = 1.0
 n_a = 101
 amplitudes = np.linspace(a_min, a_max, n_a)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "amplitudes": amplitudes,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as power_rabi:
     n = declare(int)  # QUA variable for the averaging loop
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
@@ -97,7 +107,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -128,3 +138,9 @@ else:
         plt.ylabel("Q quadrature [V]")
         plt.pause(0.1)
         plt.tight_layout()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

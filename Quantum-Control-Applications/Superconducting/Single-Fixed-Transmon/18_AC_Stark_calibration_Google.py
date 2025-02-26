@@ -28,12 +28,12 @@ from qualang_tools.results import fetching_tool
 from qualang_tools.loops import from_array
 from macros import readout_macro
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100
 # Detuning to compensate for the AC STark-shift
 detunings = np.arange(-10e6, 10e6, 1e6)
@@ -43,6 +43,17 @@ iter_max = 25
 d = 1
 iters = np.arange(iter_min, iter_max + 0.1, d)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "detunings": detunings,
+    "iters": iters,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as ac_stark_shift:
     n = declare(int)  # QUA variable for the averaging loop
     it = declare(int)  # QUA variable for the number of qubit pulses
@@ -101,7 +112,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
 else:
     xaxis = []
@@ -164,3 +175,9 @@ else:
         plt.tight_layout()
         plt.pause(0.01)
     print(f"Optimal DRAG detuning = {xaxis[np.argmin(np.sum(I_tot, axis=1))]:.0f} Hz")
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

@@ -29,20 +29,31 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros
 import numpy as np
+from qualang_tools.results.data_handler import DataHandler
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+n_avg = 500  # The number of averages
+detuning = 20 * u.kHz
+
+t_min = 10000 // 4
+t_max = 100000 // 4
+dt = 1000 // 4
+durations = np.arange(t_min, t_max, dt)  # Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "detuning": detuning,
+    "durations": durations,
+    "config": config,
+}
 
 ###################
 # The QUA program #
 ###################
-n_avg = 500  # The number of averages
-detuning = 20 * u.kHz
-
-# Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
-t_min = 10000 // 4
-t_max = 100000 // 4
-dt = 1000 // 4
-durations = np.arange(t_min, t_max, dt)
-
-
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the qubit frequency
@@ -124,7 +135,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -184,3 +195,9 @@ else:
         print(f"Detuning to add: {-qubit_detuning / u.kHz:.3f} kHz")
     except (Exception,):
         pass
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

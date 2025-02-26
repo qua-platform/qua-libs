@@ -20,11 +20,12 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array, get_equivalent_log_array
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000
 # The wait time sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
 tau_min = 16 // 4
@@ -33,6 +34,16 @@ d_tau = 100 // 4
 taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # Linear sweep
 # taus = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "taus": taus,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as T1:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the wait time
@@ -103,7 +114,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
 else:
     # Open the quantum machine
@@ -151,3 +162,9 @@ else:
         plt.title("T1 measurement")
     except (Exception,):
         pass
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

@@ -35,11 +35,12 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from macros import readout_macro
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-
-##############################
-# Program-specific variables #
-##############################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 num_of_sequences = 50  # Number of random sequences
 n_avg = 20  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
@@ -102,6 +103,12 @@ single_qubit_gate_pairs = []
 for i in range(len(single_qubit_gates)):
     for j in range(len(single_qubit_gates)):
         single_qubit_gate_pairs.append(((single_qubit_gates[i],) + (single_qubit_gates[j],)))
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 
 
 def get_interleaved_gate(gate_index):
@@ -344,9 +351,9 @@ def play_sequence(sequence_list, number_of_gates):
                             play(single_qubit_gate_pairs[ii][iii], "qubit")
 
 
-# ###################
-# # The QUA program #
-# ###################
+###################
+# The QUA program #
+###################
 with program() as rb:
     depth = declare(int)  # Current depth
     depth_target = declare(int)  # Play the sequence every depth target
@@ -462,7 +469,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
 else:
     # Open the quantum machine
@@ -551,4 +558,9 @@ else:
     plt.ylabel("Sequence Fidelity")
     plt.title(f"Single qubit interleaved RB {get_interleaved_gate(interleaved_gate_index)}")
 
-    # np.savez("rb_values", value)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

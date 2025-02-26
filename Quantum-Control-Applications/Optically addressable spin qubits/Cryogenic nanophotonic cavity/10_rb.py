@@ -10,7 +10,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qm import SimulationConfig
+from qualang_tools.results.data_handler import DataHandler
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = 100
 delta_depth = 1
@@ -18,9 +23,10 @@ num_of_sequences = 50
 n_avg = 1
 seed = 345324
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-
+###################################
+# Helper functions and QUA macros #
+###################################
 def generate_sequence():
     cayley = declare(int, value=c1_table.flatten().tolist())
     inv_list = declare(int, value=inv_gates)
@@ -116,6 +122,15 @@ def play_sequence(sequence_list, depth):
                 play("-x90", "Yb")
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as rb:
     depth = declare(int)
     saved_gate = declare(int)
@@ -167,6 +182,10 @@ with program() as rb:
     with stream_processing():
         counts_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_of_sequences, max_circuit_depth).save("res")
 
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 simulate = True
 
@@ -184,7 +203,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
 else:
     qm = qmm.open_qm(config)
@@ -240,3 +259,9 @@ else:
     )
 
     np.savez("rb_values", value)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

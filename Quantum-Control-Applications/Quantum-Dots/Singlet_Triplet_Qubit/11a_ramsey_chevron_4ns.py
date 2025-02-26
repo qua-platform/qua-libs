@@ -32,11 +32,12 @@ from qualang_tools.addons.variables import assign_variables_to_element
 from qualang_tools.loops import from_array
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100
 # Pulse duration sweep in ns - must be larger than 4 clock cycles
 durations = np.arange(16, 200, 4)
@@ -48,6 +49,17 @@ seq.add_points("initialization", level_init, duration_init)
 seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, duration_readout)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "idle_levels": idle_levels,
+    "durations": durations,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as Ramsey_chevron:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     t = declare(int)  # QUA variable for the qubit pulse duration
@@ -154,7 +166,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -190,3 +202,9 @@ else:
         plt.ylabel("Idle level [V]")
         plt.tight_layout()
         plt.pause(0.1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

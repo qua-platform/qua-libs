@@ -38,10 +38,10 @@ assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / d
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "config": config,
     "num_of_sequences": num_of_sequences,
     "delta_clifford": delta_clifford,
     "max_circuit_depth": max_circuit_depth,
+    "config": config,
 }
 
 
@@ -148,9 +148,8 @@ def play_sequence(sequence_list, depth, qb):
 
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     depth = declare(int)  # QUA variable for the varying depth
     depth_target = declare(int)  # QUA variable for the current depth (changes in steps of delta_clifford)
@@ -232,7 +231,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     try:
         # Open the quantum machine
@@ -279,7 +278,7 @@ else:
         data_handler = DataHandler(root_data_folder=save_dir)
         save_data_dict.update({"fig_live": fig})
         data_handler.additional_files = {script_name: script_name, **default_additional_files}
-        data_handler.save_data(data=save_data_dict, name="rb")
+        data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
 
     except Exception as e:
         print(f"An exception occurred: {e}")

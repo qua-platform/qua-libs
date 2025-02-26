@@ -23,6 +23,7 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from macros import qua_declaration, multiplexed_readout
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
 
 # Get the resonator frequency vs flux trend from the node 05_resonator_spec_vs_flux.py in order to always measure on
@@ -31,9 +32,10 @@ def cosine_func(x, amplitude, frequency, phase, offset):
     return amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000  # The number of averages
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 10 * u.us  # In ns
@@ -48,6 +50,19 @@ fitted_curve1 = (cosine_func(dcs, amplitude_fit1, frequency_fit1, phase_fit1, of
 fitted_curve2 = (cosine_func(dcs, amplitude_fit2, frequency_fit2, phase_fit2, offset_fit2)).astype(int)
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "saturation_len": saturation_len,
+    "saturation_amp": saturation_amp,
+    "dfs": dfs,
+    "dcs": dcs,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as multi_qubit_spec_vs_flux:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the qubit detuning
@@ -118,7 +133,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
     plt.show()
 else:
     # Open a quantum machine to execute the QUA program
@@ -171,3 +186,9 @@ else:
         plt.pause(0.1)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

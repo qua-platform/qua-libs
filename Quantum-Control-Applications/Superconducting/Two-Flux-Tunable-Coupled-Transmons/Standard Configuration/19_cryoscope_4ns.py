@@ -44,6 +44,7 @@ from qualang_tools.plot import interrupt_on_close
 import numpy as np
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.loops import from_array
+from qualang_tools.results.data_handler import DataHandler
 
 
 ####################
@@ -101,13 +102,12 @@ def filter_calc(exponential):
     return feedforward_taps, feedback_taps
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 # Index of the qubit to measure
 qubit = 1
-
-
 n_avg = 10_000  # Number of averages
 # Flux pulse durations in clock cycles (4ns) - must be > 4 or the pulse won't be played.
 durations = np.arange(3, const_flux_len // 4, 1)  # Starts at 3 clock-cycles to have the first point without pulse.
@@ -116,6 +116,17 @@ xplot = durations * 4  # x-axis for plotting and deriving the filter taps - must
 step_response_th = [1.0] * len(xplot)  # Perfect step response (square)
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "durations": durations,
+    "flux_waveform": flux_waveform,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as cryoscope:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the flux pulse duration
@@ -195,7 +206,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -334,3 +345,9 @@ else:
     plt.tight_layout()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

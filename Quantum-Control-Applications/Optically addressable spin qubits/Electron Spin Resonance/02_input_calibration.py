@@ -9,11 +9,15 @@ from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+n_avg = 5000
+
 ###################
 # The QUA program #
 ###################
-n_avg = 5000
-
 with program() as input_cal:
     n = declare(int)
     adc_st = declare_stream(adc_trace=True)
@@ -61,7 +65,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(input_cal)  # execute QUA program

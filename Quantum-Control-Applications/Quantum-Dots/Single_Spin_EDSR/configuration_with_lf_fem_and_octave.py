@@ -2,6 +2,7 @@
 QUA-Config supporting OPX1000 w/ LF-FEM & Octave
 """
 
+from pathlib import Path
 import numpy as np
 from scipy.signal.windows import gaussian
 from qualang_tools.units import unit
@@ -11,12 +12,29 @@ import plotly.io as pio
 
 pio.renderers.default = "browser"
 
+#######################
+# AUXILIARY FUNCTIONS #
+#######################
+u = unit(coerce_to_integer=True)
+
 ######################
 # Network parameters #
 ######################
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = "my_cluster"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+
+#############
+# Save Path #
+#############
+# Path to save data
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 #####################
 # OPX configuration #
@@ -43,16 +61,14 @@ octaves = [octave_1]
 octave_config = octave_declaration(octaves)
 
 
-#############################################
-#              OPX PARAMETERS               #
-#############################################
+#####################
+# OPX configuration #
+#####################
 sampling_rate = int(1e9)  # or, int(2e9)
 
 ######################
 #       READOUT      #
 ######################
-u = unit(coerce_to_integer=True)
-
 # DC readout parameters
 readout_len = 1 * u.us
 readout_amp = 0.0

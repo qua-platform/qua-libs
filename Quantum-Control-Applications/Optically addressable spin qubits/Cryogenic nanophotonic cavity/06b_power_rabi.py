@@ -1,5 +1,5 @@
 """
-A Rabi experiment sweeping the duration of the MW pulse.
+06b_power_rabi.py: A Rabi experiment sweeping the amplitude of the MW pulse.
 """
 
 from qm import QuantumMachinesManager
@@ -7,27 +7,39 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+from qualang_tools.loops import from_array
+from qualang_tools.results.data_handler import DataHandler
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+a_min = 0.1  # proportional factor to the pulse amplitude
+a_max = 1  # proportional factor to the pulse amplitude
+da = 0.02
+a_vec = np.arange(a_min, a_max + da / 2, da)  # +da/2 to include a_max
+n_avg = 1e6  # number of iterations
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "a_vec": a_vec,
+    "config": config,
+}
 
 ###################
 # The QUA program #
 ###################
-
-t_min = 16 // 4  # in clock cycles units (must be >= 4)
-t_max = 400 // 4  # in clock cycles units
-dt = 4 // 4  # in clock cycles units
-t_vec = np.arange(t_min, t_max + 0.1, dt)  # +0.1 to include t_max in array
-n_avg = 1e6
-
-with program() as time_rabi:
+with program() as power_rabi:
     counts = declare(int)  # variable for number of counts
-    counts_st = declare_stream()  # stream for counts
     times = declare(int, size=100)
-    t = declare(int)  # variable to sweep over in time
+    a = declare(fixed)  # variable to sweep over the amplitude
     n = declare(int)  # variable to for_loop
+    counts_st = declare_stream()  # stream for counts
     n_st = declare_stream()  # stream to save iterations
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(t, t_min, t <= t_max, t + dt):
+        with for_(*from_array(a, a_vec)):
             # initialization
             play("laser_ON", "F_transition")
             align()
@@ -36,13 +48,13 @@ with program() as time_rabi:
             align()
 
             # pulse sequence
-            play("pi", "Yb", duration=t)  # pulse of varied lengths
-            # does it needs buffer to prevent damage?
+            play("pi" * amp(a), "Yb")  # pulse of varied amplitude
 
             align()
 
-            # laser readout
+            # readout laser
             play("laser_ON", "A_transition", duration=int(meas_len // 4))
+            # does it needs buffer to prevent damage?
 
             align()
 
@@ -54,7 +66,7 @@ with program() as time_rabi:
         save(n, n_st)  # save number of iteration inside for_loop
 
     with stream_processing():
-        counts_st.buffer(len(t_vec)).average().save("counts")
+        counts_st.buffer(len(a_vec)).average().save("counts")
         n_st.save("iteration")
 
 #####################################
@@ -67,7 +79,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=28_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, time_rabi, simulation_config)
+    job = qmm.simulate(config, power_rabi, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -77,12 +89,12 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
 else:
     qm = qmm.open_qm(config)
     # execute QUA program
-    job = qm.execute(time_rabi)
+    job = qm.execute(power_rabi)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
     # Live plotting
@@ -96,8 +108,14 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(4 * t_vec, counts / 1000 / (meas_len / u.s))
-        plt.xlabel("Tau [ns]")
+        plt.plot(a_vec * pi_amp_NV, counts / 1000 / (meas_len * 1e-9))
+        plt.xlabel("Amplitude [volts]")
         plt.ylabel("Intensity [kcps]")
-        plt.title("Time Rabi")
+        plt.title("Power Rabi")
         plt.pause(0.1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

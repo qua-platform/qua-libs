@@ -11,10 +11,10 @@ from configuration import *
 import matplotlib.pyplot as plt
 from macros import get_c2c_time
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 pulse1_len = 400 // 4  # Pi/2 pulse
 pulse2_len = pulse1_len * 2  # Pi pulse
 
@@ -23,11 +23,14 @@ safe_delay = 2 * u.us // 4  # Delay to safely avoid sending pulses during measur
 
 # Center to center time between first and second pulse
 pulse_delay = safe_delay - (pulse1_len + pulse2_len) // 2
-# Center to center time betwen second pulse and readout
+# Center to center time between the second pulse and the readout pulse
 readout_delay = safe_delay - (pulse2_len + readout_len // 4) // 2
 
 n_avg = 100
 
+###################
+# The QUA program #
+###################
 with program() as signal_test:
     n = declare(int)
     n_st = declare_stream()
@@ -106,7 +109,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
     # The lines of code below allow you to retrieve information from the simulated waveform to assert
     # their position in time and manually estimate internal delays.

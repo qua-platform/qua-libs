@@ -10,9 +10,9 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results.data_handler import DataHandler
 
-###########
-# Helpers #
-###########
+####################
+# Helper functions #
+####################
 
 
 def normalize_complex_array(arr):
@@ -79,9 +79,8 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
-
 with program() as PROGRAM:
     II = declare(fixed, size=number_of_divisions)
     IQ = declare(fixed, size=number_of_divisions)
@@ -183,7 +182,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     try:
         # Open the quantum machine
@@ -228,7 +227,7 @@ else:
         data_handler = DataHandler(root_data_folder=save_dir)
         save_data_dict.update({"fig_live": fig})
         data_handler.additional_files = {script_name: script_name, **default_additional_files}
-        data_handler.save_data(data=save_data_dict, name="ro_opt_weights")
+        data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
 
         # Reshape the optimal integration weights to match the configuration
         weights_real = normalized_subtracted_trace.real

@@ -10,19 +10,22 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
-# Total duration of the measurement
-total_integration_time = int(100 * u.ms)  # 100ms
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+total_integration_time = int(100 * u.ms)  # Total duration of the measurement
 # Duration of a single chunk. Needed because the OPX cannot measure for more than ~1ms
 single_integration_time_ns = int(500 * u.us)  # 500us
 single_integration_time_cycles = single_integration_time_ns // 4
 # Number of chunks to get the total measurement time
 n_count = int(total_integration_time / single_integration_time_ns)
 
+###################
+# The QUA program #
+###################
 with program() as counter:
     times = declare(int, size=1000)  # QUA vector for storing the time-tags
     counts = declare(int)  # variable for number of counts of a single chunk
@@ -71,7 +74,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     qm = qmm.open_qm(config)
 
@@ -99,3 +102,9 @@ else:
         plt.ylabel("Counts [kcps]")
         plt.title("Counter")
         plt.pause(0.1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

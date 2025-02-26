@@ -9,9 +9,10 @@ from configuration import *
 import matplotlib.pyplot as plt
 from qm import generate_qua_script
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 level_init = [0.1, -0.1]
 level_manip = [0.2, -0.2]
 level_readout = [0.1, -0.1]
@@ -25,6 +26,9 @@ seq.add_points("initialization", level_init, duration_init)
 seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, duration_readout)
 
+###################
+# The QUA program #
+###################
 with program() as hello_qua:
     t = declare(int, value=16)
     a = declare(fixed, value=0.2)
@@ -62,7 +66,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)

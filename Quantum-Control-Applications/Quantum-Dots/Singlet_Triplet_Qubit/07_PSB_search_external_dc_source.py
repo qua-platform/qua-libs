@@ -32,10 +32,12 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # Number of averages
 n_points_slow = 101  # Number of points for the slow axis
 n_points_fast = 100  # Number of points for the fast axis
@@ -56,6 +58,19 @@ seq.add_points("readout", level_readout, duration_readout)
 voltage_values_slow = np.linspace(-1.5, 1.5, n_points_slow)
 voltage_values_fast = np.linspace(-1.5, 1.5, n_points_fast)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "Coulomb_amp": Coulomb_amp,
+    "N_coulomb_pulses": N,
+    "voltage_values_slow": voltage_values_slow,
+    "voltage_values_fast": voltage_values_fast,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as PSB_search_prog:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     counter = declare(int)  # QUA integer used as an index for the Coulomb pulse
@@ -135,7 +150,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -184,3 +199,9 @@ else:
         plt.ylabel("Slow voltage axis [V]")
         plt.tight_layout()
         plt.pause(0.1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

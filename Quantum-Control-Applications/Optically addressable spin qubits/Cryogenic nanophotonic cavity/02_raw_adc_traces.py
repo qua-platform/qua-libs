@@ -1,5 +1,5 @@
 """
-raw_adc_traces.py: a script used to look at the raw ADC data from inputs 1 and 2,
+02_raw_adc_traces.py: a script used to look at the raw ADC data from inputs 1 and 2,
 this allows checking that the ADC is not saturated, correct for DC offsets and define the time of flight and
 threshold for time-tagging.
 """
@@ -9,11 +9,15 @@ from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+n_avg = 1000
+
 ###################
 # The QUA program #
 ###################
-n_avg = 1000
-
 with program() as TimeTagging_calibration:
     n = declare(int)
     adc_st = declare_stream(adc_trace=True)
@@ -52,7 +56,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open Quantum Machine
     qm = qmm.open_qm(config)

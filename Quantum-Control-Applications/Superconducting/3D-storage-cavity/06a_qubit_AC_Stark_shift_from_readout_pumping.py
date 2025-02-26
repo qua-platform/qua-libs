@@ -26,10 +26,12 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros
+from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000  # The number of averages
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 100 * u.us  # In ns
@@ -37,13 +39,26 @@ saturation_amp = 0.005  # Pre-factor to the value defined in the config - restri
 # Adjust the pulse amplitude and frequency to the storage cavity
 off_saturation_amp = 1  # Pre-factor to the value defined in the config - restricted to [-2; 2)
 detuning = 20 * u.MHz  # Detuning frequency of the storage off pump pulse
-# Qubit detuning sweep
+
 center = 100 * u.MHz
 span = 2 * u.MHz
 df = 1 * u.kHz
-dfs = np.arange(-span, +span + 0.1, df)
+dfs = np.arange(-span, +span + 0.1, df)  # Qubit detuning sweep
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "readout_len": readout_len,
+    "saturation_amp": saturation_amp,
+    "center_frequency": center,
+    "dfs": dfs,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as qubit_AC_stark_shift:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the qubit frequency
@@ -111,7 +126,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -152,3 +167,9 @@ else:
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("Qubit intermediate frequency [MHz]")
         ax2.set_ylim(0, 1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

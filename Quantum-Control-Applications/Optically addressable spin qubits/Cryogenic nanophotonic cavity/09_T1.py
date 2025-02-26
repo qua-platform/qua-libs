@@ -1,5 +1,5 @@
 """
-T1.py: Measures T1. Can measure the decay from either |1> or |0>.
+09_T1.py: Measures T1. Can measure the decay from either |1> or |0>.
 """
 
 from qm import QuantumMachinesManager
@@ -8,11 +8,12 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
+from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 t_min = 16 // 4  # in clock cycles units (must be >= 4)
 t_max = 1000 // 4  # in clock cycles units
 dt = 40 // 4  # in clock cycles units
@@ -20,6 +21,17 @@ t_vec = np.arange(t_min, t_max + 0.1, dt)  # +0.1 to include t_max in array
 n_avg = 1e6
 start_from_one = False
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "start_from_one": start_from_one,
+    "t_vec": t_vec,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as T1:
     counts1 = declare(int)  # saves number of photon counts
     counts2 = declare(int)  # saves number of photon counts
@@ -104,7 +116,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
 else:
     qm = qmm.open_qm(config)
@@ -129,3 +141,9 @@ else:
         plt.legend(("counts 1", "counts 2"))
         plt.title(f"T1 - {'|1>' if start_from_one else '|0>'}")
         plt.pause(0.1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

@@ -33,11 +33,12 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 import numpy as np
 from macros import qua_declaration, multiplexed_readout
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 qubit_in_e = 2  # Qubit number to put in |e> at the beginning of the sequence
 qubit_to_flux_tune = 1  # Qubit number to flux-tune
 
@@ -50,6 +51,18 @@ flux_bias = config["controllers"]["con1"]["analog_outputs"][
 ]["offset"]
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "ts": ts,
+    "amps": amps,
+    "flux_bias": flux_bias,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as iswap:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the flux pulse duration
@@ -113,7 +126,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -160,4 +173,9 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
-    # np.savez(save_dir / 'iswap', I1=I1, Q1=Q1, I2=I2, ts=ts, amps=amps)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

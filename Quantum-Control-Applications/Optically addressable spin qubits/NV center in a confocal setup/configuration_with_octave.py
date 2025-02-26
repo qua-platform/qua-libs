@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import numpy as np
 from qm.octave import QmOctaveConfig
 from qualang_tools.units import unit
@@ -8,33 +9,44 @@ from qualang_tools.loops import from_array
 import plotly.io as pio
 
 pio.renderers.default = "browser"
+
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
 u = unit(coerce_to_integer=True)
 
-
-#############
-# VARIABLES #
-#############
+######################
+# Network parameters #
+######################
 qop_ip = "127.0.0.1"  # Write the OPX IP address
 cluster_name = "Cluster_1"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
-octave_ip = qop_ip  # Write the Octave IP address
-octave_port = 11050  # 11xxx, where xxx are the last three digits of the Octave IP address
 
+
+#############
+# Save Path #
+#############
+# Path to save data
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 ############################
 # Set octave configuration #
 ############################
+octave_ip = qop_ip  # Write the Octave IP address
+octave_port = 11050  # 11xxx, where xxx are the last three digits of the Octave IP address
 octave_config = QmOctaveConfig()
 octave_config.set_calibration_db(os.getcwd())
 octave_config.add_device_info("octave1", octave_ip, octave_port)
 
-
-#############
-# VARIABLES #
-#############
+#####################
+# OPX configuration #
+#####################
 # Frequencies
 NV_IF_freq = 40 * u.MHz
 NV_LO_freq = 2.83 * u.GHz

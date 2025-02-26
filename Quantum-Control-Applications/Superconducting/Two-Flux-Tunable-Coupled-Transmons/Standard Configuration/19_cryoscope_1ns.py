@@ -45,6 +45,7 @@ from qualang_tools.plot import interrupt_on_close
 import numpy as np
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.bakery import baking
+from qualang_tools.results.data_handler import DataHandler
 
 
 ####################
@@ -119,13 +120,12 @@ def baked_waveform(waveform, pulse_duration, qubit_index):
     return pulse_segments
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 # Index of the qubit to measure
 qubit = 1
-
-
 n_avg = 10_000  # Number of averages
 # FLux pulse waveform generation
 # The zeros are just here to visualize the rising and falling times of the flux pulse. they need to be set to 0 before
@@ -143,6 +143,16 @@ step_response_th = (
 xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - must be in ns
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "flux_waveform": flux_waveform,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as cryoscope:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     segment = declare(int)  # QUA variable for the flux pulse segment index
@@ -223,7 +233,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -362,3 +372,9 @@ else:
     plt.tight_layout()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

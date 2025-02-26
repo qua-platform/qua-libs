@@ -1,11 +1,10 @@
 """
-manual_mixer_calibration.py: Calibration for mixer imperfections
+01_manual_mixer_calibration.py: Calibration for mixer imperfections
 """
 
 from qm import QuantumMachinesManager
 from qm.qua import *
 from configuration import *
-
 
 ###################
 # The QUA program #

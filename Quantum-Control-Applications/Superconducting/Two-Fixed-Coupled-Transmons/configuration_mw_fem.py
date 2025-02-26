@@ -16,7 +16,6 @@ pio.renderers.default = "browser"
 #######################
 u = unit(coerce_to_integer=True)
 
-
 ######################
 # Network parameters #
 ######################
@@ -29,16 +28,17 @@ octave_config = None
 #############
 # Save Path #
 #############
-
 # Path to save data
-save_dir = Path().absolute() / "Data"
+save_dir = Path(__file__).parent.resolve() / "Data"
 save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
-    "configuration_mw_fem.py": "configuration_mw_fem.py",
+    Path(__file__).name: Path(__file__).name,
     "optimal_weights.npz": "optimal_weights.npz",
 }
-
+#####################
+# OPX configuration #
+#####################
 
 #############################################
 #                  Qubits                   #

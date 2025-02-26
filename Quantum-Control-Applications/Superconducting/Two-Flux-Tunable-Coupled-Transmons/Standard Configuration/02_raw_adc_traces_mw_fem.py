@@ -14,12 +14,15 @@ from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+n_avg = 100  # The number of averages
 
 ###################
 # The QUA program #
 ###################
-n_avg = 100  # The number of averages
-
 with program() as raw_trace_prog:
     n = declare(int)  # QUA variable for the averaging loop
     adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace
@@ -65,7 +68,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)

@@ -25,12 +25,14 @@ from configuration import *
 from qualang_tools.analysis.discriminator import two_state_discriminator
 
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-##############################
-# Program-specific variables #
-##############################
-# "thermalization", "active_reset_one_threshold", "active_reset_two_thresholds", "active_reset_fast"
-initialization_method = "active_reset_one_threshold"
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+initialization_method = "active_reset_one_threshold"  # "thermalization", "active_reset_one_threshold", "active_reset_two_thresholds", "active_reset_fast"
+
 n_shot = 10000  # Number of acquired shots
 # The thresholds ar calibrated with the IQ_blobs.py script:
 # If I > threshold_e, then the qubit is assumed to be in |e> and a pi pulse is played to reset it.
@@ -41,7 +43,16 @@ ge_threshold_e = ge_threshold
 # Maximum number of tries for active reset
 max_tries = 2
 
+# Data to save
+save_data_dict = {
+    "n_shot": n_shot,
+    "config": config,
+}
 
+
+###################################
+# Helper functions and QUA macros #
+###################################
 def qubit_initialization(method: str = "thermalization"):
     """
     Allows to switch between several initialization methods.
@@ -147,7 +158,6 @@ def active_reset_fast(threshold_g: float):
 ###################
 # The QUA program #
 ###################
-
 with program() as active_reset_prog:
     n = declare(int)  # Averaging index
     I = declare(fixed)
@@ -236,7 +246,7 @@ if simulation:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(active_reset_prog)
@@ -257,3 +267,9 @@ else:
     print(f"{average_tries=}")
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

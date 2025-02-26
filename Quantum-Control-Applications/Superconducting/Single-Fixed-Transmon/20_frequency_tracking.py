@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import time
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
-
+from qualang_tools.results.data_handler import DataHandler
 
 ######################################
 #  Open Communication with the QOP  #
@@ -26,6 +26,7 @@ freq_track_obj = qubit_frequency_tracking("qubit", "resonator", qubit_IF, ge_thr
 n_avg = 20
 tau_vec = np.arange(4, 50_000, 50)
 print(f"Initial frequency: {freq_track_obj.f_res:.0f} Hz")
+
 
 # Repeat the measurement twice, without and with correction of the frequency
 for arg in ["Pe_initial", "Pe_corrected"]:
@@ -59,7 +60,16 @@ d_f = 2 * u.kHz
 f_vec = np.arange(f_min, f_max, d_f)
 oscillation = 1
 
-# The QUA program
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "tau_vec": tau_vec,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as prog:
     freq_track_obj.initialization()
     freq_track_obj.freq_domain_ramsey_full_sweep(n_avg, f_vec, oscillation)
@@ -161,3 +171,9 @@ while results.is_processing():
     plt.ylabel("time [minutes]")
     plt.tight_layout()
     plt.pause(0.01)
+# Save results
+script_name = Path(__file__).name
+data_handler = DataHandler(root_data_folder=save_dir)
+save_data_dict.update({"fig_live": fig})
+data_handler.additional_files = {script_name: script_name, **default_additional_files}
+data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

@@ -26,13 +26,23 @@ import matplotlib.pyplot as plt
 from qualang_tools.results import fetching_tool
 from qualang_tools.analysis import two_state_discriminator
 from macros import qua_declaration, multiplexed_readout
+from qualang_tools.results.data_handler import DataHandler
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+n_runs = 10000  # Number of runs
+
+# Data to save
+save_data_dict = {
+    "n_runs": n_runs,
+    "config": config,
+}
 
 ###################
 # The QUA program #
 ###################
-n_runs = 10000  # Number of runs
-
 with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
@@ -86,7 +96,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -145,3 +155,9 @@ else:
     #     assign(cont_condition, ((I > threshold) & (count < 3)))
     #
     #########################################
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

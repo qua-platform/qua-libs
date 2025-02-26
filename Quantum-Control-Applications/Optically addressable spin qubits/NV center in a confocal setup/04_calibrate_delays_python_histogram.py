@@ -15,11 +15,12 @@ from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
 from qm import SimulationConfig
+from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 laser_delay = 500  # delay before laser [ns]
 initialization_len = 2_000  # laser duration length [ns]
 mw_len = 1_000  # MW duration length [ns]
@@ -32,6 +33,16 @@ t_vec = np.arange(0, meas_len, 1)
 
 assert (initialization_len - mw_len) > 4, "The MW must be shorter than the laser pulse"
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "t_vec": t_vec,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as calib_delays:
     times = declare(int, size=100)  # 'size' defines the max number of photons to be counted
     times_st = declare_stream()  # stream for 'times'
@@ -89,7 +100,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -134,3 +145,9 @@ else:
 
         b_cont = res_handles.is_processing()
         b_last = not (b_cont or b_last)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

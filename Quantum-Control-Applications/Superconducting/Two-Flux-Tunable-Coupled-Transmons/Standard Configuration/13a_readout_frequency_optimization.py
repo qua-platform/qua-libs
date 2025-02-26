@@ -24,15 +24,26 @@ import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter
 from macros import multiplexed_readout, qua_declaration
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 4000
 # The frequency sweep around the resonators' frequency "resonator_IF_q"
 dfs = np.arange(-10e6, 10e6, 0.1e6)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "dfs": dfs,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as ro_freq_opt:
     Ig, Ig_st, Qg, Qg_st, n, n_st = qua_declaration(nb_of_qubits=2)
     Ie, Ie_st, Qe, Qe_st, _, _ = qua_declaration(nb_of_qubits=2)
@@ -111,7 +122,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -187,3 +198,9 @@ else:
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

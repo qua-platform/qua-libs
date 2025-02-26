@@ -20,17 +20,26 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+from qualang_tools.results.data_handler import DataHandler
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+f_vec = np.arange(-30 * u.MHz, 70 * u.MHz, 2 * u.MHz)  # Frequency vector
+n_avg = 1_000_000  # number of averages
+readout_len = long_meas_len_1  # Readout duration for this experiment
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "IF_frequencies": f_vec,
+    "config": config,
+}
 
 ###################
 # The QUA program #
 ###################
-
-# Frequency vector
-f_vec = np.arange(-30 * u.MHz, 70 * u.MHz, 2 * u.MHz)
-n_avg = 1_000_000  # number of averages
-readout_len = long_meas_len_1  # Readout duration for this experiment
-
 with program() as cw_odmr:
     times = declare(int, size=100)  # QUA vector for storing the time-tags
     counts = declare(int)  # variable for number of counts
@@ -102,7 +111,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -128,3 +137,9 @@ else:
         plt.title("ODMR")
         plt.legend()
         plt.pause(0.1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

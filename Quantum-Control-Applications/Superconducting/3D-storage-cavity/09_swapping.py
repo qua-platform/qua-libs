@@ -30,21 +30,34 @@ import matplotlib.pyplot as plt
 import macros as macros
 import numpy as np
 import scipy.optimize as spo
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 500  # The number of averages
 
-# Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 t_min = 16 // 4
 t_max = 100000 // 4
 dt = 400 // 4
 # Detuning of the off pump pulses
-durations = np.arange(t_min, t_max, dt)
+durations = np.arange(t_min, t_max, dt)  # Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
+
 
 detuning = 30 * u.MHz
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "detuning": detuning,
+    "durations": durations,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as swap:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the qubit pulse duration
@@ -125,7 +138,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True, save_path="./")
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -185,3 +198,9 @@ ax3.plot(x, func(x, *x0))
 ax3.set_ylabel(r"$P_e$")
 ax3.set_xlabel("Pulse duration [ns]")
 plt.show()
+# Save results
+script_name = Path(__file__).name
+data_handler = DataHandler(root_data_folder=save_dir)
+save_data_dict.update({"fig_live": fig})
+data_handler.additional_files = {script_name: script_name, **default_additional_files}
+data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
