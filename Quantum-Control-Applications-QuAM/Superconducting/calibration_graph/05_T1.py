@@ -58,18 +58,6 @@ node.results["initial_parameters"] = node.parameters.model_dump()
 u = unit(coerce_to_integer=True)
 
 
-
-
-# %% {Initialize_QuAM_and_QOP}
-# @node.run_action(skip_if=node.parameters.simulate or node.parameters.load_data_id is not None)
-# def initialize_the_machine(node: QualibrationNode[Parameters, QuAM]):
-#     if node.parameters.load_data_id is None:
-#         qmm = node.machine.connect()
-#         # node.machine.
-
-
-
-
 # %% {QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
@@ -96,7 +84,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
         for i, qubit in enumerate(qubits):
 
             # Bring the active qubits to the desired frequency point
-            node.machine.set_all_fluxes(flux_point=node.parameters.flux_point_joint_or_independent_or_arbitrary, target=qubit)
+            node.machine.set_all_fluxes(
+                flux_point=node.parameters.flux_point_joint_or_independent_or_arbitrary, target=qubit
+            )
 
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
@@ -156,13 +146,14 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.results = {"figure": fig}
     node.save()
 
+
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Open Communication with the QOP
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        node.job = job = qm.execute(node.qua_program) # TODO: how to pass the job between actions?
+        node.job = job = qm.execute(node.qua_program)  # TODO: how to pass the job between actions?
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
             # Fetch results
@@ -170,6 +161,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
             # Progress bar
             progress_counter(n, node.parameters.num_averages, start_time=results.start_time)
         print(job.execution_report())
+
 
 # %% {Data_fetching_and_dataset_creation}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
@@ -187,7 +179,7 @@ def fetch_data(node: QualibrationNode[Parameters, QuAM]):
     else:
         qubits = [node.machine.qubits[q] for q in node.parameters.qubits]
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    #TODO: avoid recalculate it here
+    # TODO: avoid recalculate it here
     idle_times = np.arange(
         node.parameters.min_wait_time_in_ns // 4,
         node.parameters.max_wait_time_in_ns // 4,
@@ -201,6 +193,7 @@ def fetch_data(node: QualibrationNode[Parameters, QuAM]):
     ds.idle_time.attrs = {"long_name": "idle time", "units": "µs"}
     # Add the dataset to the node
     node.results = {"ds": ds}
+
 
 # %% {Data_analysis}
 @node.run_action(skip_if=node.parameters.simulate)
@@ -228,11 +221,14 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     decay = node.results["fitted_data"].sel(fit_vals="decay")
     decay_res = node.results["fitted_data"].sel(fit_vals="decay_decay")
     tau_error = -tau * (np.sqrt(decay_res) / decay)
-    node.results["fitted_data"] = node.results["fitted_data"].assign_coords(tau_error=("qubit", tau_error.fitted_data.data))
+    node.results["fitted_data"] = node.results["fitted_data"].assign_coords(
+        tau_error=("qubit", tau_error.fitted_data.data)
+    )
     node.results["fitted_data"].tau_error.attrs = {"long_name": "T1 error", "units": "µs"}
     # Assess whether the fit was successful or not
     success_criteria = (tau.fitted_data.values > 0) & (tau_error.fitted_data.values / tau.fitted_data.values < 1)
     node.results["fitted_data"] = node.results["fitted_data"].assign_coords(success=("qubit", success_criteria))
+
 
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
@@ -269,6 +265,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     plt.show()
     node.results["figure_raw"] = grid.fig
 
+
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def state_update(node: QualibrationNode[Parameters, QuAM]):
@@ -281,6 +278,7 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
         for index, q in enumerate(qubits):
             if node.results["fitted_data"].sel(qubit=q.name).success:
                 q.T1 = float(node.results["fitted_data"].sel(qubit=q.name).tau.values) * 1e-6
+
 
 # %% {Save_results}
 @node.run_action(skip_if=node.parameters.simulate)
