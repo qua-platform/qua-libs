@@ -17,14 +17,11 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode
 from quam_config import QuAM
 from quam_experiments.macros import qua_declaration, readout_state, reset_qubit
-from quam_libs.plot_utils import QubitGrid, grid_iter
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm.qua import *
 import matplotlib.pyplot as plt
-import numpy as np
-
 from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
 from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
 from quam_experiments.workflow.simulation import simulate_and_plot
@@ -86,7 +83,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_each_(t, idle_times):
-                    # reset_qubit(qubit, node.parameters)
+                    reset_qubit(qubit, node.parameters)
                     qubit.align()
                     qubit.xy.play("x180")
                     qubit.align()
