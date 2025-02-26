@@ -80,6 +80,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
         for i, qubit in enumerate(qubits):
             # Bring the active qubits to the desired frequency point
+            # TODO: need to get rid of this for fixed frequency transmons
             node.machine.set_all_fluxes(flux_point=node.parameters.flux_point_joint_or_independent, target=qubit)
 
             with for_(n, 0, n < n_avg, n + 1):
@@ -143,7 +144,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
 # %% {Data_fetching_and_dataset_creation}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, QuAM]):
+    #TODO: temp fix
+    load_data_id = node.parameters.load_data_id
     node = node.load_from_id(node.parameters.load_data_id)
+    node.parameters.load_data_id = load_data_id
     # Add the dataset to the node
     node.results = {"ds": node.results["ds"]}
 
