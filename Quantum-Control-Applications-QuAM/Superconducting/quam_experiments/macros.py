@@ -18,6 +18,7 @@ __all__ = [
     "node_save",
     "active_reset",
     "readout_state",
+    "reset_qubit"
 ]
 
 

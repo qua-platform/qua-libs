@@ -4,7 +4,7 @@ from quam_experiments.experiments.ramsey.parameters import RamseyParameters
 from quam_experiments.experiments.T1.parameters import T1Parameters
 
 
-def get_wait_times_in_clock_cycles(node_parameters: Union[RamseyParameters, T1Parameters]) -> np.ndarray:
+def get_idle_times_in_clock_cycles(node_parameters: Union[RamseyParameters, T1Parameters]) -> np.ndarray:
     """
     Get the idle-times sweep axis according to the sweep type.
 
@@ -12,16 +12,16 @@ def get_wait_times_in_clock_cycles(node_parameters: Union[RamseyParameters, T1Pa
     The minimum is 4 clock cycles.
     """
     if node_parameters.log_or_linear_sweep == "linear":
-        idle_times = _get_wait_times_linear_sweep_in_clock_cycles(node_parameters)
+        idle_times = _get_idle_times_linear_sweep_in_clock_cycles(node_parameters)
     elif node_parameters.log_or_linear_sweep == "log":
-        idle_times = _get_wait_times_log_sweep_in_clock_cycles(node_parameters)
+        idle_times = _get_idle_times_log_sweep_in_clock_cycles(node_parameters)
     else:
         raise ValueError(f"Expected sweep type to be 'log' or 'linear', got {node_parameters.log_or_linear_sweep}")
 
     return idle_times
 
 
-def _get_wait_times_linear_sweep_in_clock_cycles(node_parameters: RamseyParameters):
+def _get_idle_times_linear_sweep_in_clock_cycles(node_parameters: RamseyParameters):
     return (
         np.linspace(
             node_parameters.min_wait_time_in_ns,
@@ -32,7 +32,7 @@ def _get_wait_times_linear_sweep_in_clock_cycles(node_parameters: RamseyParamete
     ).astype(int)
 
 
-def _get_wait_times_log_sweep_in_clock_cycles(node_parameters: RamseyParameters):
+def _get_idle_times_log_sweep_in_clock_cycles(node_parameters: RamseyParameters):
     return np.unique(
         np.geomspace(
             node_parameters.min_wait_time_in_ns,

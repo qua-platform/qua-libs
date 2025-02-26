@@ -17,9 +17,7 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode
 from quam_config import QuAM
 from quam_experiments.macros import qua_declaration, readout_state, reset_qubit
-from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_libs.save_utils import fetch_results_as_xarray
 from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.multi_user import qm_session
@@ -28,10 +26,11 @@ from qm.qua import *
 import matplotlib.pyplot as plt
 import numpy as np
 
-from quam_experiments.parameters.sweep_parameters import get_wait_times_in_clock_cycles
+from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
 from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
 from quam_experiments.workflow.simulation import simulate_and_plot
 from quam_experiments.experiments.T1.parameters import Parameters
+from quam_experiments.experiments.T1.fetch_dataset import fetch_dataset
 
 # %% {Node_parameters}
 node = QualibrationNode(
@@ -65,11 +64,11 @@ u = unit(coerce_to_integer=True)
 # %% {QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
-    qubits = get_qubits_used_in_node(node.machine, node.parameters)
+    node.qubits = qubits = get_qubits_used_in_node(node.machine, node.parameters)
     num_qubits = len(qubits)
 
     n_avg = node.parameters.num_averages  # The number of averages
-    idle_times = get_wait_times_in_clock_cycles(node.parameters)
+    idle_times = get_idle_times_in_clock_cycles(node.parameters)
 
     with program() as node.qua_program:
         I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
@@ -154,17 +153,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def fetch_data(node: QualibrationNode[Parameters, QuAM]):
-    qubits = get_qubits_used_in_node(node.machine, node.parameters)
-    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    # TODO: avoid recalculate it here
-    idle_times = get_wait_times_in_clock_cycles(node.parameters)
-    ds = fetch_results_as_xarray(node.job.result_handles, qubits, {"idle_time": idle_times})
-    # Convert IQ data into volts
-    ds = convert_IQ_to_V(ds, qubits)
-    # Convert time into µs
-    ds = ds.assign_coords(idle_time=4 * ds.idle_time / u.us)  # convert to µs
-    ds.idle_time.attrs = {"long_name": "idle time", "units": "µs"}
-    # Add the dataset to the node
+    ds = fetch_dataset(node.job, node.qubits, node.parameters)
     node.results = {"ds": ds}
 
 
@@ -207,8 +196,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     ds = node.results["ds"]
-    qubits = get_qubits_used_in_node(node.machine, node.parameters)
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+    grid = QubitGrid(ds, [q.grid_location for q in node.qubits])
     for ax, qubit in grid_iter(grid):
         if node.parameters.use_state_discrimination:
             ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
@@ -237,9 +225,8 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def state_update(node: QualibrationNode[Parameters, QuAM]):
-    qubits = get_qubits_used_in_node(node.machine, node.parameters)
     with node.record_state_updates():
-        for index, q in enumerate(qubits):
+        for index, q in enumerate(node.qubits):
             if node.results["fitted_data"].sel(qubit=q.name).success:
                 q.T1 = float(node.results["fitted_data"].sel(qubit=q.name).tau.values) * 1e-6
 
