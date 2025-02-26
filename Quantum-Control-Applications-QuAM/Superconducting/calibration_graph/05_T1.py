@@ -31,25 +31,44 @@ from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
 
+from quam_experiments.parameters.sweep_parameters import get_wait_times_in_clock_cycles
+from quam_experiments.experiments.T1.parameters import Parameters
 
 # %% {Node_parameters}
-class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None
-    num_averages: int = 100
-    min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 100000
-    wait_time_step_in_ns: int = 600
-    flux_point_joint_or_independent_or_arbitrary: Literal["joint", "independent", "arbitrary"] = "independent"
-    reset_type: Literal["active", "thermal"] = "thermal"
-    use_state_discrimination: bool = False
-    simulate: bool = False
-    simulation_duration_ns: int = 2500
-    timeout: int = 100
-    load_data_id: Optional[int] = 3
-    multiplexed: bool = False
+# class Parameters(NodeParameters):
+#     qubits: Optional[List[str]] = None
+#     flux_point_joint_or_independent_or_arbitrary: Literal["joint", "independent", "arbitrary"] = "independent"
+#     reset_type: Literal["active", "thermal"] = "thermal"
+#     simulate: bool = False
+#     simulation_duration_ns: int = 2500
+#     timeout: int = 100
+#     load_data_id: Optional[int] = 3
+#     multiplexed: bool = False
+#     num_averages: int = 100
+#     min_wait_time_in_ns: int = 16
+#     max_wait_time_in_ns: int = 100000
+#     wait_time_step_in_ns: int = 600
+#     use_state_discrimination: bool = False
+node = QualibrationNode(
+    name="05_T1",
+    parameters=Parameters(
+        num_averages=100,
+        min_wait_time_in_ns=16,
+        max_wait_time_in_ns=100000,
+        wait_time_step_in_ns=600,
+        log_or_linear_sweep="linear",
+        use_state_discrimination=False,
+        qubits=None,
+        multiplexed=False,
+        flux_point_joint_or_independent="joint",
+        timeout=120,
+        load_data_id=None,
+        simulate=False,
+        simulation_duration_ns=2500,
+        use_waveform_report=False,
+    ),
+)
 
-
-node = QualibrationNode(name="05_T1", parameters=Parameters())
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
 node.results["initial_parameters"] = node.parameters.model_dump()
@@ -180,6 +199,7 @@ def fetch_data(node: QualibrationNode[Parameters, QuAM]):
         qubits = [node.machine.qubits[q] for q in node.parameters.qubits]
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     # TODO: avoid recalculate it here
+    idle_times = get_wait_times_in_clock_cycles(node.parameters)
     idle_times = np.arange(
         node.parameters.min_wait_time_in_ns // 4,
         node.parameters.max_wait_time_in_ns // 4,
