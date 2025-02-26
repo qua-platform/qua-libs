@@ -1,17 +1,18 @@
-from typing import Tuple
+from typing import Tuple, Union, Dict
 
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
 from qm import SimulationConfig, QuantumMachinesManager, Program
 from qm.results.simulator_samples import SimulatorSamples
+from qm.waveform_report import WaveformReport
 
 from quam_experiments.experiments.time_of_flight.parameters import Parameters
 
 
 def simulate_and_plot(
     qmm: QuantumMachinesManager, config: dict, program: Program, node_parameters: Parameters
-) -> Tuple[SimulatorSamples, Figure]:
+) -> Tuple[SimulatorSamples, Figure, Dict]:
 
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=node_parameters.simulation_duration_ns // 4)
@@ -32,6 +33,8 @@ def simulate_and_plot(
     if node_parameters.use_waveform_report:
         wf_report = job.get_simulated_waveform_report()
         # todo: make save_path use node's storage location
+        # todo can we serialize the full report, or at least the plotly figure?
         wf_report.create_plot(samples, plot=True, save_path="./")
+        return samples, fig, wf_report.to_dict()
 
-    return samples, fig
+    return samples, fig, {}

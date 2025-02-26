@@ -14,7 +14,7 @@ Next steps before going to the next node:
 """
 
 # %% {Imports}
-from qualibrate import QualibrationNode, NodeParameters
+from qualibrate import QualibrationNode
 from quam_config import QuAM
 from quam_experiments.macros import qua_declaration, active_reset, readout_state
 from quam_libs.qua_datasets import convert_IQ_to_V
@@ -25,30 +25,15 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
-from qm import SimulationConfig
 from qm.qua import *
-from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
 
 from quam_experiments.parameters.sweep_parameters import get_wait_times_in_clock_cycles
+from quam_experiments.workflow.simulation import simulate_and_plot
 from quam_experiments.experiments.T1.parameters import Parameters
 
 # %% {Node_parameters}
-# class Parameters(NodeParameters):
-#     qubits: Optional[List[str]] = None
-#     flux_point_joint_or_independent_or_arbitrary: Literal["joint", "independent", "arbitrary"] = "independent"
-#     reset_type: Literal["active", "thermal"] = "thermal"
-#     simulate: bool = False
-#     simulation_duration_ns: int = 2500
-#     timeout: int = 100
-#     load_data_id: Optional[int] = 3
-#     multiplexed: bool = False
-#     num_averages: int = 100
-#     min_wait_time_in_ns: int = 16
-#     max_wait_time_in_ns: int = 100000
-#     wait_time_step_in_ns: int = 600
-#     use_state_discrimination: bool = False
 node = QualibrationNode(
     name="05_T1",
     parameters=Parameters(
@@ -63,9 +48,9 @@ node = QualibrationNode(
         flux_point_joint_or_independent="joint",
         timeout=120,
         load_data_id=None,
-        simulate=False,
+        simulate=True,
         simulation_duration_ns=2500,
-        use_waveform_report=False,
+        use_waveform_report=True,
     ),
 )
 
@@ -104,7 +89,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
             # Bring the active qubits to the desired frequency point
             node.machine.set_all_fluxes(
-                flux_point=node.parameters.flux_point_joint_or_independent_or_arbitrary, target=qubit
+                flux_point=node.parameters.flux_point_joint_or_independent, target=qubit
             )
 
             with for_(n, 0, n < n_avg, n + 1):
@@ -147,22 +132,11 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 # %% {Simulate_or_execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
-    # Open Communication with the QOP
     qmm = node.machine.connect()
     config = node.machine.generate_config()
-    # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns // 4)
-    job = qmm.simulate(config, node.qua_program, simulation_config)
-    # Get the simulated samples and plot them for all controllers
-    samples = job.get_simulated_samples()
-    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
-    for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()), 1, i + 1)
-        samples[con].plot()
-        plt.title(con)
-    plt.tight_layout()
-    # Save the figure
-    node.results = {"figure": fig}
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.qua_program, node.parameters)
+    # todo: we can't serialize the simulated samples
+    node.results["simulation"] = {"figure": fig, "wf_report": wf_report}
     node.save()
 
 

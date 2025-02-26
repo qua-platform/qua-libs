@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Literal
 
 from pydantic import Field
 from qualibrate.parameters import RunnableParameters
@@ -17,6 +17,7 @@ class QubitsExperimentNodeParameters(RunnableParameters):
         description="A list of qubit names, or comma-separated list of qubit names"
         " which should participate in the execution of the node.",
     )
+    reset_type: Literal["thermal", "active"] = "thermal"
 
 
 def get_qubits_used_in_node(
