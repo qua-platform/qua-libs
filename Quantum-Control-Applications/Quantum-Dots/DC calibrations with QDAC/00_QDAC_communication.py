@@ -9,16 +9,16 @@ from qcodes_contrib_drivers.drivers.QDevil import QDAC2
 # USB communication #
 #####################
 # 1. Connect the QDAC USB port to the PC and check the USB connection.
-# 2. Look for the relevant connection by listing the visa resources.
+# 2. List available VISA resources to find the relevant connection
 rm = visa.ResourceManager("")
 rm.list_resources()
 
-# 3. Insert serial port found with rm.list_resources() and pen communication through USB port
+# 3. Insert the correct serial port from the listed resources
 qdac_serial_addr = (
     "ASRL/dev/cu.usbserial-14210::INSTR"  # This is typical for a mac, for windows it will look like 'ASRL5::INSTR'
 )
 qdac = QDAC2.QDac2("QDAC", visalib="@py", address=qdac_serial_addr)
-# 4. check the communication with the QDAC
+# 4. Check the communication with the QDAC
 print(qdac.IDN())  # query the QDAC's identity
 print(qdac.errors())  # read and clear all errors from the QDAC's error queue
 
