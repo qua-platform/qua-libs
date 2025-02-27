@@ -1,5 +1,4 @@
 from typing import List, Optional, Union, Literal
-
 from pydantic import Field
 from qualibrate import QualibrationNode
 from qualibrate.parameters import RunnableParameters
@@ -18,8 +17,29 @@ class QubitsExperimentNodeParameters(RunnableParameters):
         description="A list of qubit names, or comma-separated list of qubit names"
         " which should participate in the execution of the node.",
     )
-    reset_type: Literal["thermal", "active"] = "thermal"
-    use_state_discrimination: bool = False
+    multiplexed: bool = Field(
+        default=False,
+        description="Whether to play control pulses, readout pulses and active/thermal reset "
+        "at the same time for all qubits (True) or to play the experiment sequentially"
+        "for each qubit (False)",
+    )
+    use_state_discrimination: bool = Field(
+        default=False,
+        description="Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated quadratures 'I' and 'Q'.",
+    )
+    reset_type: Literal["thermal", "active", "active_gef"] = Field(
+        default="thermal",
+        description="The qubit reset method to use. Must be implemented as a method of QuAM.qubit.",
+    )
+
+
+def make_batchable_list_from_multiplexed(items: List, multiplexed: bool) -> BatchableList:
+    if multiplexed:
+        batched_groups = [[i for i in range(len(items))]]
+    else:
+        batched_groups = [[i] for i in range(len(items))]
+
+    return BatchableList(items, batched_groups)
 
 def get_qubits(node: QualibrationNode) -> BatchableList[QuAM.qubit_type]:
     # todo: make a method once https://github.com/qua-platform/qualibrate-core/pull/89 is merged

@@ -8,11 +8,8 @@ from qualibrate.parameters import RunnableParameters
 
 from quam_experiments.parameters import (
     QubitsExperimentNodeParameters,
-    SimulatableNodeParameters,
     FluxControlledNodeParameters,
-    MultiplexableNodeParameters,
-    DataLoadableNodeParameters,
-    QmSessionNodeParameters,
+    CommonNodeParameters,
 )
 
 
@@ -52,12 +49,9 @@ class ReadoutOptimization3dParameters(RunnableParameters):
 
 class Parameters(
     NodeParameters,
-    SimulatableNodeParameters,
-    DataLoadableNodeParameters,
-    QmSessionNodeParameters,
-    ReadoutOptimization3dParameters,
     FluxControlledNodeParameters,
-    MultiplexableNodeParameters,
+    CommonNodeParameters,
+    ReadoutOptimization3dParameters,
     QubitsExperimentNodeParameters,
 ):
     pass
