@@ -13,13 +13,15 @@ def _flatten_sweep_parameters(params) -> Tuple[dict, dict]:
         if "data" in params[param]:
             meas_axis[param] = params[param]["data"]
         else:
-            raise RuntimeError(f"The registered sweep parameter '{param}' doesn't have data." + "sweep_parameters = {param: {'data': data, 'attrs': {**attrs}}}")
+            raise RuntimeError(
+                f"The registered sweep parameter '{param}' doesn't have data."
+                + "sweep_parameters = {param: {'data': data, 'attrs': {**attrs}}}"
+            )
         if "attrs" in params[param]:
             meas_attr[param] = params[param]["attrs"]
         else:
             meas_attr[param] = {}
     return meas_axis, meas_attr
-
 
 
 def fetch_dataset(job, qubits, node_parameters: Parameters, sweep_axes: dict) -> xr.Dataset:

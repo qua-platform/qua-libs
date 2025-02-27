@@ -18,14 +18,15 @@ from qualibrate import QualibrationNode
 from quam_config import QuAM
 from quam_experiments.macros import qua_declaration, readout_state, reset_qubit
 from qualang_tools.results import progress_counter, fetching_tool
+from dataclasses import asdict
+
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm.qua import *
 import matplotlib.pyplot as plt
 from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
 from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
-from quam_experiments.workflow.simulation import simulate_and_plot
-from quam_experiments.workflow.fetch_dataset import fetch_dataset
+from quam_experiments.workflow import simulate_and_plot, fetch_dataset, print_progress_bar
 from quam_experiments.experiments.T1 import Parameters, fit_t1_decay, log_t1, plot_t1s_data_with_fit
 
 # %% {Node_parameters}
@@ -56,8 +57,6 @@ node.results["initial_parameters"] = node.parameters.model_dump()
 
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
-
-
 
 
 # %% {QUA_program}
@@ -138,12 +137,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     config = node.machine.generate_config()
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         node.job = job = qm.execute(node.qua_program)  # TODO: how to pass the job between actions?
-        results = fetching_tool(job, ["n"], mode="live")
-        while results.is_processing():
-            # Fetch results
-            n = results.fetch_all()[0]
-            # Progress bar
-            progress_counter(n, node.parameters.num_averages, start_time=results.start_time)
+        print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
         print(job.execution_report())
 
 
@@ -169,16 +163,19 @@ def fetch_data(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     # todo check the units with real data
-    node.results["fit_results"] = fit_t1_decay(node.results["ds"], node.parameters)
+    node.results["fit_data"], fit_results = fit_t1_decay(node.results["ds"], node.parameters)
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     # todo: How to get the looger to print on the console?
     from qualibrate.utils.logger_m import logger
-    log_t1(node.results["fit_results"], logger)
+
+    log_t1(node.results["fit_data"], logger)
+
 
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     qubits = get_qubits_used_in_node(node.machine, node.parameters)
-    fig = plot_t1s_data_with_fit(node.results["ds"], qubits, node.parameters, node.results["fit_results"])
+    fig = plot_t1s_data_with_fit(node.results["ds"], qubits, node.parameters, node.results["fit_data"])
     node.results["figure"] = fig
     plt.tight_layout()
     plt.show()
@@ -190,8 +187,8 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
     qubits = get_qubits_used_in_node(node.machine, node.parameters)
     with node.record_state_updates():
         for index, q in enumerate(qubits):
-            if node.results["fit_results"].sel(qubit=q.name).success:
-                q.T1 = float(node.results["fit_results"].sel(qubit=q.name).tau.values) * 1e-9
+            if node.results["fit_data"].sel(qubit=q.name).success:
+                q.T1 = float(node.results["fit_data"].sel(qubit=q.name).tau.values) * 1e-9
 
 
 # %% {Save_results}
