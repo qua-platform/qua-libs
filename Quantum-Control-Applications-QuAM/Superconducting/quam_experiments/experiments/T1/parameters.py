@@ -37,7 +37,7 @@ class Parameters(
     QmSessionNodeParameters,
     FluxControlledNodeParameters,
     MultiplexableNodeParameters,
-    QubitsExperimentNodeParameters,
     T1Parameters,
+    QubitsExperimentNodeParameters,
 ):
     pass

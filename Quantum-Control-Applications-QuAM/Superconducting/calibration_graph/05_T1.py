@@ -1,4 +1,20 @@
-"""
+# %% {Imports}
+from qm.qua import *
+import matplotlib.pyplot as plt
+from dataclasses import asdict
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+from qualibrate import QualibrationNode
+from quam_config import QuAM
+from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
+from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
+from quam_experiments.macros import qua_declaration, readout_state, reset_qubit
+from quam_experiments.workflow import simulate_and_plot, fetch_dataset, print_progress_bar
+from quam_experiments.experiments.T1 import Parameters, fit_t1_decay, log_t1, plot_t1s_data_with_fit
+
+
+# %% {Node_parameters}
+description = """
         T1 MEASUREMENT
 The sequence consists in putting the qubit in the excited stated by playing the x180 pulse and measuring the resonator
 after a varying time. The qubit T1 is extracted by fitting the exponential decay of the measured quadratures.
@@ -7,53 +23,30 @@ Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, power_rabi and updated the state.
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
-    - Set the desired flux bias.
+    - Set the desired flux biases if relevant.
 
-Next steps before going to the next node:
-    - Update the qubit T1 in the state.
+State update:
+    - The T1 relaxation time for each qubit: qubit.T1
 """
 
-# %% {Imports}
-from qualibrate import QualibrationNode
-from quam_config import QuAM
-from quam_experiments.macros import qua_declaration, readout_state, reset_qubit
-from qualang_tools.results import progress_counter, fetching_tool
-from dataclasses import asdict
+class my_parameters(Parameters):
+    param1 = 0
 
-from qualang_tools.multi_user import qm_session
-from qualang_tools.units import unit
-from qm.qua import *
-import matplotlib.pyplot as plt
-from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
-from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
-from quam_experiments.workflow import simulate_and_plot, fetch_dataset, print_progress_bar
-from quam_experiments.experiments.T1 import Parameters, fit_t1_decay, log_t1, plot_t1s_data_with_fit
-
-# %% {Node_parameters}
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="05_T1",
+    description=description,
     parameters=Parameters(
-        num_averages=100,
-        min_wait_time_in_ns=16,
-        max_wait_time_in_ns=100000,
-        wait_time_num_points=151,
-        log_or_linear_sweep="linear",
-        use_state_discrimination=False,
-        qubits=None,
-        multiplexed=False,
-        flux_point_joint_or_independent="joint",
-        timeout=120,
-        load_data_id=None,
-        simulate=False,
-        simulation_duration_ns=25000,
-        use_waveform_report=True,
     ),
 )
+#
+if node.modes.interactive:
+    # node.parameters.some_parameter = 123
+    pass
 
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
 # Store the node parameters to the results
-node.results["initial_parameters"] = node.parameters.model_dump()
+node.results["initial_parameters"] = node.parameters.model_dump()  # todo: to be removed
 
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
@@ -62,14 +55,15 @@ u = unit(coerce_to_integer=True)
 # %% {QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
-    node.qubits = qubits = get_qubits_used_in_node(node.machine, node.parameters)
+    qubits = get_qubits_used_in_node(node.machine, node.parameters)
     num_qubits = len(qubits)
 
     n_avg = node.parameters.num_averages  # The number of averages
     idle_times = get_idle_times_in_clock_cycles(node.parameters)
 
     # Register the sweep axes to be added to the dataset when fetching data
-    node.sweep_axes = {
+    #todo: set as a DataArray instead
+    node.namespace["sweep_axes"] = {
         "idle_time": {
             "data": 4 * idle_times,
             "attrs": {"long_name": "idle time", "units": "ns"},
@@ -87,11 +81,16 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             # Bring the active qubits to the desired frequency point
             # TODO: need to get rid of this for fixed frequency transmons
             node.machine.set_all_fluxes(flux_point=node.parameters.flux_point_joint_or_independent, target=qubit)
-
+            # todo: remove the flux points from the parameters and use initialize
+            node.machine.initialize_qubit(target=qubit)
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_each_(t, idle_times):
                     reset_qubit(qubit, node.parameters)
+                    # todo: qubit.reset(node.parameters)
+                    # qubit.reset_thermal()
+                    # qubit.reset_active()
+                    # qubit.reset_active_gef()
                     qubit.align()
                     qubit.xy.play("x180")
                     qubit.align()
