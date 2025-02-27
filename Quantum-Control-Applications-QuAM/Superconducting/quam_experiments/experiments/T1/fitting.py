@@ -1,37 +1,20 @@
 import logging
-from dataclasses import dataclass
-from typing import Optional
-
 import numpy as np
 import xarray as xr
-
 from quam_experiments.experiments.T1.parameters import Parameters
 from quam_experiments.analysis.fit import fit_decay_exp
 
-
-@dataclass
-class T1Fit:
-    """Stores the relevant Ramsey experiment fit parameters for a single qubit"""
-
-    freq_offset: float
-    decay: float
-    decay_error: float
-
-    qubit_name: Optional[str] = ""
-    raw_fit_results: Optional[xr.Dataset] = None
-
-    def log_frequency_offset(self, logger=None):
-        if logger is None:
-            logger = logging.getLogger(__name__)
-        logger.info(f"Frequency offset for qubit {self.qubit_name} : {self.freq_offset / 1e6:.2f} MHz ")
-
-    def log_t2(self, logger=None):
-        if logger is None:
-            logger = logging.getLogger(__name__)
-        logger.info(f"T2* for qubit {self.qubit_name} : {1e6 * self.decay:.2f} us")
+def log_t1(ds: xr.Dataset, logger=None):
+    if logger is None:
+        logger = logging.getLogger(__name__)
+    for q in ds.qubit.values:
+        if ds.sel(qubit=q).success.values:
+            logger.info(f"T1 for qubit {q} : {1e-3 * ds.sel(qubit=q).tau.values:.2f} +/- {1e-3 * ds.sel(qubit=q).tau_error.values:.2f} us --> SUCCESS!")
+        else:
+            logger.error(f"T1 for qubit {q} : {1e-3 * ds.sel(qubit=q).tau.values:.2f} +/- {1e-3 * ds.sel(qubit=q).tau_error.values:.2f} us --> FAIL!")
 
 
-def fit_t1_decay(ds: xr.Dataset, node_parameters: Parameters) -> dict[str, T1Fit]:
+def fit_t1_decay(ds: xr.Dataset, node_parameters: Parameters) -> xr.Dataset:
     """
     Fit the frequency detuning and T2 decay of the Ramsey oscillations for each qubit.
 
@@ -86,7 +69,7 @@ def extract_relevant_fit_parameters(fit):
     fit = fit.assign_coords(tau_error=("qubit", tau_error.data))
     fit.tau_error.attrs = {"long_name": "T1 error", "units": "ns"}
     # Assess whether the fit was successful or not
-    success_criteria = (tau.values > 0) & (tau_error.values / tau.values < 1)
+    success_criteria = (tau.values > 16) & (tau_error.values / tau.values < 1)
     fit = fit.assign_coords(success=("qubit", success_criteria))
 
     return fit, tau, tau_error

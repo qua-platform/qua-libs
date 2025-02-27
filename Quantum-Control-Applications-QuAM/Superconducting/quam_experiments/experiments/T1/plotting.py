@@ -21,7 +21,7 @@ def plot_t1s_data_with_fit(
         plot_t1_data_with_fit(ax, ds, qubit, node_parameters, fits.sel(qubit=qubit["qubit"]))
 
     grid.fig.suptitle("T1 vs. idle time")
-
+    grid.fig.set_size_inches(15, 9)
     return grid.fig
 
 
@@ -51,7 +51,6 @@ def plot_t1_data_with_fit(ax, ds, qubit, node_parameters, fit=None):
     ax.set_title(qubit["qubit"])
     if fit is not None:
         add_fit_text(ax, fit)
-    ax.legend()
 
 
 def plot_state(ax, ds, qubit, fitted=None):

@@ -27,7 +27,7 @@ from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_nod
 from quam_experiments.workflow.simulation import simulate_and_plot
 from quam_experiments.workflow.fetch_dataset import fetch_dataset
 from quam_experiments.experiments.T1.parameters import Parameters
-from quam_experiments.experiments.T1.fitting import fit_t1_decay
+from quam_experiments.experiments.T1.fitting import fit_t1_decay, log_t1
 from quam_experiments.experiments.T1.plotting import plot_t1s_data_with_fit
 
 # %% {Node_parameters}
@@ -70,6 +70,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
     n_avg = node.parameters.num_averages  # The number of averages
     idle_times = get_idle_times_in_clock_cycles(node.parameters)
+
     # Register the sweep axes to be added to the dataset when fetching data
     node.sweep_axes = {
         "idle_time": {
@@ -171,7 +172,9 @@ def fetch_data(node: QualibrationNode[Parameters, QuAM]):
 def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     # todo check the units with real data
     node.results["fit_results"] = fit_t1_decay(node.results["ds"], node.parameters)
-
+    # todo: How to get the looger to print on the console?
+    from qualibrate.utils.logger_m import logger
+    log_t1(node.results["fit_results"], logger)
 
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
