@@ -53,6 +53,7 @@ node = QualibrationNode(
 
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
+# Store the node parameters to the results
 node.results["initial_parameters"] = node.parameters.model_dump()
 
 # Class containing tools to help handle units and conversions.
@@ -138,7 +139,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
         print(job.execution_report())
 
 
-# %% {Data_fetching_and_dataset_creation}
+# %% {Data_loading_and_dataset_creation}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, QuAM]):
     # TODO: temp fix
@@ -149,6 +150,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
     node.results = {"ds": node.results["ds"]}
 
 
+# %% {Data_fetching_and_dataset_creation}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def fetch_data(node: QualibrationNode[Parameters, QuAM]):
     ds = fetch_dataset(node.job, node.qubits, node.parameters)
@@ -168,7 +170,6 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     qubits = get_qubits_used_in_node(node.machine, node.parameters)
     fig = plot_t1s_data_with_fit(node.results["ds"], qubits, node.parameters, node.results["fit_results"])
     node.results["figure"] = fig
-
     plt.tight_layout()
     plt.show()
 
