@@ -22,7 +22,7 @@ def _flatten_sweep_parameters(params) -> Tuple[dict, dict]:
 
 
 
-def fetch_dataset(job, qubits, node_parameters: Parameters, sweep_parameters: dict) -> xr.Dataset:
+def fetch_dataset(job, qubits, node_parameters: Parameters, sweep_axes: dict) -> xr.Dataset:
     """
     Fetches and processes a dataset from a quantum job.
 
@@ -37,8 +37,8 @@ def fetch_dataset(job, qubits, node_parameters: Parameters, sweep_parameters: di
         A list of qubits involved in the program.
     node_parameters : Parameters
         Parameters related to the node, including whether state discrimination is used.
-    sweep_parameters : dict
-        A dictionary of sweep parameters, where keys are parameter names and values are dictionaries
+    sweep_axes : dict
+        A dictionary of sweep axes, where keys are axis names and values are dictionaries
         containing 'data' and 'attrs'. The optional 'attrs' dictionary should include the standard xarray coordinate attributes.
         Example:
         {
@@ -62,7 +62,7 @@ def fetch_dataset(job, qubits, node_parameters: Parameters, sweep_parameters: di
 
     Example:
     --------
-        >>> ds = fetch_dataset(job, qubits, node_parameters, sweep_parameters)
+        >>> ds = fetch_dataset(job, qubits, node_parameters, sweep_axes)
         >>> print(ds)
         Dimensions:    (qubit: 2, idle_time: 151)
         Coordinates:
@@ -73,13 +73,13 @@ def fetch_dataset(job, qubits, node_parameters: Parameters, sweep_parameters: di
             I          (qubit, idle_time)
     """
 
-    measurement_axis, measurement_attributes = _flatten_sweep_parameters(sweep_parameters)
+    measurement_axis, measurement_attributes = _flatten_sweep_parameters(sweep_axes)
     ds = fetch_results_as_xarray(job.result_handles, qubits, measurement_axis)
     if getattr(node_parameters, "use_state_discrimination"):
         if not node_parameters.use_state_discrimination:
             ds = convert_IQ_to_V(ds, qubits)
             ds.variables["I"].attrs = {"long_name": "I quadrature", "units": "V"}
             ds.variables["Q"].attrs = {"long_name": "Q quadrature", "units": "V"}
-    for param in sweep_parameters:
+    for param in sweep_axes:
         ds.coords[param].attrs = measurement_attributes[param]
     return ds

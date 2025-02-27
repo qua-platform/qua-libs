@@ -70,7 +70,8 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
     n_avg = node.parameters.num_averages  # The number of averages
     idle_times = get_idle_times_in_clock_cycles(node.parameters)
-    node.sweep_parameters = {
+    # Register the sweep axes to be added to the dataset when fetching data
+    node.sweep_axes = {
         "idle_time": {
             "data": 4 * idle_times,
             "attrs": {"long_name": "idle time", "units": "ns"},
@@ -161,7 +162,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 # %% {Data_fetching_and_dataset_creation}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def fetch_data(node: QualibrationNode[Parameters, QuAM]):
-    ds = fetch_dataset(node.job, node.qubits, node.parameters, node.sweep_parameters)
+    ds = fetch_dataset(node.job, node.qubits, node.parameters, node.sweep_axes)
     node.results = {"ds": ds}
 
 
