@@ -25,8 +25,8 @@ import matplotlib.pyplot as plt
 from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
 from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
 from quam_experiments.workflow.simulation import simulate_and_plot
+from quam_experiments.workflow.fetch_dataset import fetch_dataset
 from quam_experiments.experiments.T1.parameters import Parameters
-from quam_experiments.experiments.T1.fetch_dataset import fetch_dataset
 from quam_experiments.experiments.T1.fitting import fit_t1_decay
 from quam_experiments.experiments.T1.plotting import plot_t1s_data_with_fit
 
@@ -60,6 +60,8 @@ node.results["initial_parameters"] = node.parameters.model_dump()
 u = unit(coerce_to_integer=True)
 
 
+
+
 # %% {QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
@@ -68,6 +70,12 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
     n_avg = node.parameters.num_averages  # The number of averages
     idle_times = get_idle_times_in_clock_cycles(node.parameters)
+    node.sweep_parameters = {
+        "idle_time": {
+            "data": 4 * idle_times,
+            "attrs": {"long_name": "idle time", "units": "ns"},
+        },
+    }
 
     with program() as node.qua_program:
         I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
@@ -153,7 +161,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 # %% {Data_fetching_and_dataset_creation}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def fetch_data(node: QualibrationNode[Parameters, QuAM]):
-    ds = fetch_dataset(node.job, node.qubits, node.parameters)
+    ds = fetch_dataset(node.job, node.qubits, node.parameters, node.sweep_parameters)
     node.results = {"ds": ds}
 
 
