@@ -26,9 +26,7 @@ from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock
 from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
 from quam_experiments.workflow.simulation import simulate_and_plot
 from quam_experiments.workflow.fetch_dataset import fetch_dataset
-from quam_experiments.experiments.T1.parameters import Parameters
-from quam_experiments.experiments.T1.fitting import fit_t1_decay, log_t1
-from quam_experiments.experiments.T1.plotting import plot_t1s_data_with_fit
+from quam_experiments.experiments.T1 import Parameters, fit_t1_decay, log_t1, plot_t1s_data_with_fit
 
 # %% {Node_parameters}
 node = QualibrationNode(
