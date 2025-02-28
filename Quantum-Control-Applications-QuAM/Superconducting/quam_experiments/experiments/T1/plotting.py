@@ -43,6 +43,7 @@ def plot_t1s_data_with_fit(
 
     grid.fig.suptitle("T1 vs. idle time")
     grid.fig.set_size_inches(15, 9)
+    grid.fig.tight_layout()
     return grid.fig
 
 
