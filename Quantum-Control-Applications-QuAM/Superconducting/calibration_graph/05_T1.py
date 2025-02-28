@@ -128,7 +128,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     # todo: we can't serialize the simulated samples
-    node.results["simulation"] = {"figure": fig, "wf_report": wf_report}
+    node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
