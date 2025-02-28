@@ -33,8 +33,7 @@ State update:
 node = QualibrationNode[Parameters, QuAM](
     name="05_T1",  # Name should be unique
     description=description,
-    parameters=Parameters(
-    ),
+    parameters=Parameters(),
 )
 
 
@@ -61,7 +60,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     idle_times = get_idle_times_in_clock_cycles(node.parameters)
 
     # Register the sweep axes to be added to the dataset when fetching data
-    #todo: set as a DataArray instead
+    # todo: set as a DataArray instead
     node.namespace["sweep_axes"] = {
         "idle_time": {
             "data": 4 * idle_times,
@@ -134,7 +133,9 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])  # TODO: how to pass the job between actions?
+        node.namespace["job"] = job = qm.execute(
+            node.namespace["qua_program"]
+        )  # TODO: how to pass the job between actions?
         print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
         print(job.execution_report())
 
@@ -172,7 +173,9 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
-    fig = plot_t1s_data_with_fit(node.results["ds"], node.namespace["qubits"], node.parameters, node.results["fit_data"])
+    fig = plot_t1s_data_with_fit(
+        node.results["ds"], node.namespace["qubits"], node.parameters, node.results["fit_data"]
+    )
     node.results["figure"] = fig
     plt.tight_layout()
     plt.show()
