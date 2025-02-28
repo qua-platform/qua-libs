@@ -37,8 +37,9 @@ def make_batchable_list_from_multiplexed(items: List, multiplexed: bool) -> Batc
 
     return BatchableList(items, batched_groups)
 
+
 def get_qubits(node: QualibrationNode) -> BatchableList[QuAM.qubit_type]:
-    #todo: need a docstring!
+    # todo: need a docstring!
     # todo: make a method once https://github.com/qua-platform/qualibrate-core/pull/89 is merged
     qubits = _get_qubits(node.machine, node.parameters)
 

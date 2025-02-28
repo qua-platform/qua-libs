@@ -14,6 +14,7 @@ class CommonNodeParameters(RunnableParameters):
     timeout (int): Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 seconds.
     load_data_id (Optional[int]): Qualibrate node run index for loading historical data. Default is None.
     """
+
     simulate: bool = Field(
         default=False, description="Simulate the waveforms on the OPX instead of executing the program."
     )
