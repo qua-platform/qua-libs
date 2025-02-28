@@ -13,6 +13,7 @@ from quam_experiments.experiments.time_of_flight.parameters import Parameters
 def simulate_and_plot(
     qmm: QuantumMachinesManager, config: dict, program: Program, node_parameters: Parameters
 ) -> Tuple[SimulatorSamples, Figure, Dict]:
+    # todo: Need a docstring here!
 
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=node_parameters.simulation_duration_ns // 4)

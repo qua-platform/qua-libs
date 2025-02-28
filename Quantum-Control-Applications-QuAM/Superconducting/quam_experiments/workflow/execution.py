@@ -3,6 +3,7 @@ from qm import QmJob
 
 
 def print_progress_bar(job: QmJob, iteration_variable: str, total_number_of_iterations: int) -> None:
+    # todo: Need a docstring!
     results = fetching_tool(job, [iteration_variable], mode="live")
     while results.is_processing():
         # Fetch results

@@ -53,7 +53,7 @@ def log_t1(ds: xr.Dataset, logger=None):
 
 def fit_t1_decay(ds: xr.Dataset, node_parameters: Parameters) -> Tuple[xr.Dataset, dict[str, T1Fit]]:
     """
-    Fit the T1 relaxation time for each qubit.
+    Fit the T1 relaxation time for each qubit according to ``a * np.exp(t * decay) + offset``.
 
     Parameters:
     -----------

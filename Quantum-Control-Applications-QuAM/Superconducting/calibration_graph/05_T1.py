@@ -14,6 +14,7 @@ from quam_experiments.experiments.T1 import Parameters, fit_t1_decay, log_t1, pl
 
 
 # %% {Node_parameters}
+#todo: improve the prerequisite section by highlighting the nodes to run for instance
 description = """
         T1 MEASUREMENT
 The sequence consists in putting the qubit in the excited stated by playing the x180 pulse and measuring the resonator
@@ -38,9 +39,8 @@ node = QualibrationNode[Parameters, QuAM](
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
-# You van get type hinting in your IDE by typing node.parameters.
 if node.modes.interactive:
-    # node.parameters.some_parameter = 123
+    # You can get type hinting in your IDE by typing node.parameters.
     pass
 
 # Instantiate the QuAM class from the state file
@@ -158,7 +158,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
     # Load the specified dataset
     node = node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active qubits from the node
+    # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
 
 

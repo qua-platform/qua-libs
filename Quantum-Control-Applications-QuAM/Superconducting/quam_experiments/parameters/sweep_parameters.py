@@ -6,7 +6,7 @@ from quam_experiments.experiments.T1.parameters import T1Parameters
 
 def get_idle_times_in_clock_cycles(node_parameters: Union[RamseyParameters, T1Parameters]) -> np.ndarray:
     """
-    Get the idle-times sweep axis according to the sweep type.
+    Get the idle-times sweep axis according to the sweep type given by ``node.parameters.log_or_linear_sweep``.
 
     The dephasing time sweep is in units of clock cycles (4ns).
     The minimum is 4 clock cycles.
