@@ -25,6 +25,11 @@ from ..cloud_infrastructure import CloudQuantumMachinesManager
 
 __all__ = ["QuAM", "FEMQuAM", "OPXPlusQuAM"]
 
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:
+    import tomli as tomllib
+
 
 @quam_dataclass
 class QuAM(QuamRoot):
@@ -44,16 +49,34 @@ class QuAM(QuamRoot):
     qmm: ClassVar[Optional[QuantumMachinesManager]] = None
 
     @classmethod
+    def get_quam_state_path(cls) -> Optional[Path]:
+        qualibrate_config_path = Path.home() / ".qualibrate" / "config.toml"
+
+        if qualibrate_config_path.exists():
+            config = tomllib.loads(qualibrate_config_path.read_text())
+            quam_state_path = config.get("quam", {}).get("state_path", None)
+            if quam_state_path is not None:
+                quam_state_path = Path(quam_state_path)
+            return quam_state_path
+        else:
+            return None
+
+    @classmethod
     def load(cls, *args, **kwargs) -> "QuAM":
         if not args:
-            if "QUAM_STATE_PATH" in os.environ:
-                args = (os.environ["QUAM_STATE_PATH"],)
+            quam_state_path = cls.get_quam_state_path()
+            if quam_state_path is None:
+                if "QUAM_STATE_PATH" in os.environ:
+                    args = (os.environ["QUAM_STATE_PATH"],)
+                else:
+                    raise ValueError(
+                        "No path argument provided to load the QuAM state. "
+                        "Please provide a path or set the 'QUAM_STATE_PATH' environment variable. "
+                        "See the README for instructions."
+                    )
             else:
-                raise ValueError(
-                    "No path argument provided to load the QuAM state. "
-                    "Please provide a path or set the 'QUAM_STATE_PATH' environment variable. "
-                    "See the README for instructions."
-                )
+                args = (quam_state_path,)
+
         return super().load(*args, **kwargs)
 
     def save(
@@ -63,8 +86,17 @@ class QuAM(QuamRoot):
         include_defaults: bool = False,
         ignore: Sequence[str] = None,
     ):
-        if path is None and "QUAM_STATE_PATH" in os.environ:
-            path = os.environ["QUAM_STATE_PATH"]
+        if path is None:
+            path = self.get_quam_state_path()
+            if path is None:
+                if "QUAM_STATE_PATH" in os.environ:
+                    path = os.environ["QUAM_STATE_PATH"]
+                else:
+                    raise ValueError(
+                        "No path argument provided to save the QuAM state. "
+                        "Please provide a path or set the 'QUAM_STATE_PATH' environment variable. "
+                        "See the README for instructions."
+                    )
 
         super().save(path, content_mapping, include_defaults, ignore)
 
