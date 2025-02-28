@@ -132,7 +132,7 @@ class QuAM(QuamRoot):
             q.z.to_zero()
         
         
-    def set_all_fluxes(self, flux_point : str, target : Union[Transmon, TransmonPair]):
+    def set_all_fluxes(self, flux_point : str, target : Union[Transmon, TransmonPair], do_align: bool = True) -> float:
         if flux_point == "independent":
             assert isinstance(target, Transmon), "Independent flux point is only supported for individual transmons"
         elif flux_point == "pairwise":
@@ -160,7 +160,10 @@ class QuAM(QuamRoot):
         elif isinstance(target, TransmonPair):
             target.qubit_control.z.settle()
             target.qubit_target.z.settle()
-        target.align()
+        
+        if do_align:
+            target.align()
+            
         return target_bias      
 
     def connect(self) -> QuantumMachinesManager:
