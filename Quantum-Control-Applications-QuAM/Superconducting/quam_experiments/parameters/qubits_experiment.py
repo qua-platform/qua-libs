@@ -6,9 +6,7 @@ from qualibrate.parameters import RunnableParameters
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from quam_config.my_quam import QuAM
 
-from quam_experiments.parameters import MultiplexableNodeParameters
 from quam_libs.batchable_list import BatchableList
-from quam_experiments.parameters.multiplexable import make_batchable_list_from_multiplexed
 
 
 class QubitsExperimentNodeParameters(RunnableParameters):
@@ -45,7 +43,7 @@ def get_qubits(node: QualibrationNode) -> BatchableList[QuAM.qubit_type]:
     # todo: make a method once https://github.com/qua-platform/qualibrate-core/pull/89 is merged
     qubits = _get_qubits(node.machine, node.parameters)
 
-    if isinstance(node.parameters, MultiplexableNodeParameters):
+    if isinstance(node.parameters, QubitsExperimentNodeParameters):
         multiplexed = node.parameters.multiplexed
     else:
         multiplexed = False

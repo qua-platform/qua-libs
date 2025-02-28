@@ -3,11 +3,8 @@ from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from quam_experiments.parameters import (
     QubitsExperimentNodeParameters,
-    SimulatableNodeParameters,
     FluxControlledNodeParameters,
-    MultiplexableNodeParameters,
-    DataLoadableNodeParameters,
-    QmSessionNodeParameters,
+    CommonNodeParameters,
 )
 
 
@@ -32,11 +29,8 @@ class T1Parameters(RunnableParameters):
 
 class Parameters(
     NodeParameters,
-    SimulatableNodeParameters,
-    DataLoadableNodeParameters,
-    QmSessionNodeParameters,
     FluxControlledNodeParameters,
-    MultiplexableNodeParameters,
+    CommonNodeParameters,
     T1Parameters,
     QubitsExperimentNodeParameters,
 ):
