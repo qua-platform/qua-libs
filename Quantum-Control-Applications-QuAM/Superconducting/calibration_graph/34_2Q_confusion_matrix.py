@@ -44,7 +44,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
-from typing import Literal, Optional, List
+from typing import Literal, Optional, List, ClassVar
 import matplotlib.pyplot as plt
 import numpy as np
 import warnings
@@ -57,7 +57,7 @@ from quam_libs.lib.pulses import FluxPulse
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
+    targets_name: ClassVar[Optional[str]] = "qubit_pairs"
     qubit_pairs: Optional[List[str]] = None
     num_shots: int = 2000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
