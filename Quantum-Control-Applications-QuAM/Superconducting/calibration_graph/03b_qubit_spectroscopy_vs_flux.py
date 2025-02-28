@@ -265,8 +265,6 @@ if not node.parameters.simulate:
         ax.set_xlabel("Flux (V)")
         ax.set_title(qubit["qubit"])
     grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time}")
-    # Add color bar
-    cbar = grid.fig.colorbar(im, orientation='vertical')
     
     plt.tight_layout()
     plt.show()
