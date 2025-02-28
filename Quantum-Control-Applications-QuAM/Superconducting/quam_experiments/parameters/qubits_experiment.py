@@ -35,7 +35,7 @@ def get_qubits(node: QualibrationNode) -> BatchableList[QuAM.qubit_type]:
     return qubits_batchable_list
 
 
-def _get_qubits(machine: BaseQuAM, node_parameters: QubitsExperimentNodeParameters) -> List[AnyTransmon]:
+def _get_qubits(machine: QuAM, node_parameters: QubitsExperimentNodeParameters) -> List[AnyTransmon]:
     # todo: make a method once https://github.com/qua-platform/qualibrate-core/pull/89 is merged
     if node_parameters.qubits is None or node_parameters.qubits == "":
         qubits = machine.active_qubits
