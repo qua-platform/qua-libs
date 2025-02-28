@@ -45,7 +45,7 @@ from quam_experiments.experiments.readout_optimization_3d.measurement_batching i
     generate_measurement_batches,
     get_max_accumulated_readouts,
 )
-from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
+from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_libs.trackable_object import tracked_updates
 from quam_config import QuAM
 from quam_experiments.experiments.readout_optimization_3d.parameters import Parameters, get_durations
@@ -96,7 +96,7 @@ machine = QuAM.load()
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
 
-qubits = get_qubits_used_in_node(machine, node.parameters)
+qubits = get_qubits(machine, node.parameters)
 num_qubits = len(qubits)
 
 readout_pulse_name = "readout"

@@ -7,7 +7,7 @@ from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from quam_config import QuAM
 from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
-from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
+from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.macros import qua_declaration, readout_state, reset_qubit
 from quam_experiments.workflow import simulate_and_plot, fetch_dataset, print_progress_bar
 from quam_experiments.experiments.T1 import Parameters, fit_t1_decay, log_t1, plot_t1s_data_with_fit
@@ -29,33 +29,32 @@ State update:
     - The T1 relaxation time for each qubit: qubit.T1
 """
 
-class my_parameters(Parameters):
-    param1 = 0
-
+# Be sure to include [Parameters, QuAM] so the node has proper type hinting
 node = QualibrationNode[Parameters, QuAM](
-    name="05_T1",
+    name="05_T1",  # Name should be unique
     description=description,
     parameters=Parameters(
     ),
 )
-#
+
+
+# Any parameters that should change for debugging purposes only should go in here
+# These parameters are ignored when run through the GUI or as part of a graph
 if node.modes.interactive:
     # node.parameters.some_parameter = 123
     pass
 
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
-# Store the node parameters to the results
-node.results["initial_parameters"] = node.parameters.model_dump()  # todo: to be removed
-
-# Class containing tools to help handle units and conversions.
-u = unit(coerce_to_integer=True)
 
 
 # %% {QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
-    qubits = get_qubits_used_in_node(node.machine, node.parameters)
+    # Class containing tools to help handle units and conversions.
+    u = unit(coerce_to_integer=True)
+
+    qubits = get_qubits(node.machine, node.parameters)
     num_qubits = len(qubits)
 
     n_avg = node.parameters.num_averages  # The number of averages
@@ -173,7 +172,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
-    qubits = get_qubits_used_in_node(node.machine, node.parameters)
+    qubits = get_qubits(node.machine, node.parameters)
     fig = plot_t1s_data_with_fit(node.results["ds"], qubits, node.parameters, node.results["fit_data"])
     node.results["figure"] = fig
     plt.tight_layout()
@@ -183,7 +182,7 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def state_update(node: QualibrationNode[Parameters, QuAM]):
-    qubits = get_qubits_used_in_node(node.machine, node.parameters)
+    qubits = get_qubits(node.machine, node.parameters)
     with node.record_state_updates():
         for index, q in enumerate(qubits):
             if node.results["fit_data"].sel(qubit=q.name).success:

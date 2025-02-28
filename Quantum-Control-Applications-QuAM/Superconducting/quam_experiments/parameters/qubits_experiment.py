@@ -1,10 +1,11 @@
 from typing import List, Optional, Union, Literal
 
 from pydantic import Field
+from qualibrate import QualibrationNode
 from qualibrate.parameters import RunnableParameters
 
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
-from quam_config.my_quam import BaseQuAM
+from quam_config.my_quam import QuAM
 
 from quam_experiments.parameters import MultiplexableNodeParameters
 from quam_libs.batchable_list import BatchableList
@@ -20,14 +21,12 @@ class QubitsExperimentNodeParameters(RunnableParameters):
     reset_type: Literal["thermal", "active"] = "thermal"
     use_state_discrimination: bool = False
 
-def get_qubits_used_in_node(
-    machine: BaseQuAM, node_parameters: QubitsExperimentNodeParameters
-) -> BatchableList[AnyTransmon]:
+def get_qubits(node: QualibrationNode) -> BatchableList[QuAM.qubit_type]:
     # todo: make a method once https://github.com/qua-platform/qualibrate-core/pull/89 is merged
-    qubits = _get_qubits(machine, node_parameters)
+    qubits = _get_qubits(node.machine, node.parameters)
 
-    if isinstance(node_parameters, MultiplexableNodeParameters):
-        multiplexed = node_parameters.multiplexed
+    if isinstance(node.parameters, MultiplexableNodeParameters):
+        multiplexed = node.parameters.multiplexed
     else:
         multiplexed = False
 
