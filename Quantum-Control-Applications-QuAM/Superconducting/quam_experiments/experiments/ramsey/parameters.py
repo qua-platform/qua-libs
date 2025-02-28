@@ -6,11 +6,8 @@ from qualibrate.parameters import RunnableParameters
 
 from quam_experiments.parameters import (
     QubitsExperimentNodeParameters,
-    SimulatableNodeParameters,
     FluxControlledNodeParameters,
-    MultiplexableNodeParameters,
-    DataLoadableNodeParameters,
-    QmSessionNodeParameters,
+    CommonNodeParameters,
 )
 
 
@@ -21,17 +18,13 @@ class RamseyParameters(RunnableParameters):
     max_wait_time_in_ns: int = 3000
     wait_time_num_points: int = 500
     log_or_linear_sweep: Literal["log", "linear"] = "log"
-    use_state_discrimination: bool = False
 
 
 class Parameters(
     NodeParameters,
-    SimulatableNodeParameters,
-    DataLoadableNodeParameters,
-    QmSessionNodeParameters,
-    RamseyParameters,
     FluxControlledNodeParameters,
-    MultiplexableNodeParameters,
+    CommonNodeParameters,
+    RamseyParameters,
     QubitsExperimentNodeParameters,
 ):
     pass

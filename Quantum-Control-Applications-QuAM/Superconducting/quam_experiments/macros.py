@@ -10,7 +10,7 @@ from qm.qua._expressions import QuaVariable
 from quam_config import QuAM
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from quam_experiments.parameters.qubits_experiment import QubitsExperimentNodeParameters
-from quam_experiments.parameters.simulatable import SimulatableNodeParameters
+from quam_experiments.parameters import CommonNodeParameters
 
 __all__ = [
     "qua_declaration",
@@ -196,7 +196,7 @@ def active_reset(
     if save_qua_var is not None:
         save(attempts, save_qua_var)
 
-def reset_qubit(qubit: AnyTransmon, node_parameters: Union[QubitsExperimentNodeParameters, SimulatableNodeParameters], **kwargs):
+def reset_qubit(qubit: AnyTransmon, node_parameters: Union[QubitsExperimentNodeParameters, CommonNodeParameters], **kwargs):
     """Reset the qubit with the specified method. When simulating the QUA program, the qubit reset will be skipped to save simulated samples."""
     if not node_parameters.simulate:
         if node_parameters.reset_type == "thermal":
