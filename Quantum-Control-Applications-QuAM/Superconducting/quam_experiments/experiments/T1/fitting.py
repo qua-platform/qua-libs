@@ -2,7 +2,7 @@ import logging
 import numpy as np
 import xarray as xr
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 from quam_experiments.experiments.T1.parameters import Parameters
 from quam_experiments.analysis.fit import fit_decay_exp
 
@@ -51,7 +51,7 @@ def log_t1(ds: xr.Dataset, logger=None):
             )
 
 
-def fit_t1_decay(ds: xr.Dataset, node_parameters: Parameters) -> xr.Dataset:
+def fit_t1_decay(ds: xr.Dataset, node_parameters: Parameters) -> Tuple[xr.Dataset, dict[str, T1Fit]]:
     """
     Fit the T1 relaxation time for each qubit.
 
