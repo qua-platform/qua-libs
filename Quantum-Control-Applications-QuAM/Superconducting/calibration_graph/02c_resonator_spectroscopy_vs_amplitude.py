@@ -22,6 +22,7 @@ Before proceeding to the next node:
 
 
 # %% {Imports}
+from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.fit_utils import fit_resonator
@@ -52,10 +53,10 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     max_power_dbm: int = -30
-    min_power_dbm: int = -50
+    min_power_dbm: int = -90
     num_power_points: int = 100
     max_amp: float = 0.1
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     ro_line_attenuation_dB: float = 0
     derivative_crossing_threshold_in_hz_per_dbm: int = int(-50e3)
     derivative_smoothing_window_num_points: int = 30
@@ -176,6 +177,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(multi_res_spec_vs_amp)
         results = fetching_tool(job, ["n"], mode="live")
@@ -286,7 +288,7 @@ if not node.parameters.simulate:
                 linestyle="--",
             )
 
-    grid.fig.suptitle("Resonator spectroscopy VS. power at base")
+    grid.fig.suptitle(f"Resonator spectroscopy VS. power at base \n {date_time}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

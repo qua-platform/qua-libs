@@ -18,6 +18,7 @@ Next steps before going to the next node:
 """
 
 # %% {Imports}
+from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
@@ -154,6 +155,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(ro_freq_opt)
         results = fetching_tool(job, ["n"], mode="live")
@@ -220,6 +222,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Detuning [MHz]")
         ax.set_ylabel("Distance between IQ blobs [mv]")
         ax.legend(loc="upper left")
+    plt.suptitle(f"{date_time}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
@@ -237,6 +240,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Detuning [MHz]")
         ax.set_ylabel("Resonator response [mV]")
         ax.legend(loc="upper left")
+    plt.suptitle(f"{date_time}")
     plt.tight_layout()
     plt.show()
     node.results["figure2"] = grid.fig

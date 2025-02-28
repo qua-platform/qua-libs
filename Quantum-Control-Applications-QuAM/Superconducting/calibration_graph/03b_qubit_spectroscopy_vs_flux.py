@@ -17,6 +17,7 @@ Before proceeding to the next node:
 
 
 # %% {Imports}
+from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
@@ -167,6 +168,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(multi_qubit_spec_vs_flux)
         results = fetching_tool(job, ["n"], mode="live")
@@ -253,7 +255,7 @@ if not node.parameters.simulate:
 
     for ax, qubit in grid_iter(grid):
         freq_ref = (ds.freq_full-ds.freq).sel(qubit = qubit["qubit"]).values[0]
-        ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].I.plot(
+        im = ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].I.plot(
             ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
         )
         ((fitted + freq_ref) / 1e9).loc[qubit].plot(ax=ax, linewidth=0.5, ls="--", color="r")
@@ -262,8 +264,10 @@ if not node.parameters.simulate:
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Flux (V)")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("Qubit spectroscopy vs flux ")
-
+    grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time}")
+    # Add color bar
+    cbar = grid.fig.colorbar(im, orientation='vertical')
+    
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

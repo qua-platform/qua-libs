@@ -22,6 +22,7 @@ Next steps before going to the next node:
 
 
 # %% {Imports}
+from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
@@ -157,6 +158,7 @@ if node.parameters.simulate:
     node.save()
     
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(iq_blobs)
         for i in range(num_qubits):
@@ -300,7 +302,7 @@ if not node.parameters.simulate:
         ax.text(1, 1, f"{100 * confusion[1][1]:.1f}%", ha="center", va="center", color="k")
         ax.set_title(qubit["qubit"])
 
-    grid.fig.suptitle("g.s. and e.s. fidelity")
+    grid.fig.suptitle(f"g.s. and e.s. fidelity \n {date_time}")
     plt.tight_layout()
     plt.show()
     node.results["figure_fidelity"] = grid.fig
