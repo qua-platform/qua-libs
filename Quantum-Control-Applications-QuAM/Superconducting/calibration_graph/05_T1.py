@@ -166,9 +166,9 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def fetch_data(node: QualibrationNode[Parameters, QuAM]):
     """Fetch data from the executed QUA program and build the xarray dataset with the sweep_axes as coordinates."""
-    ds = fetch_dataset(node.namespace["job"], node.namespace["qubits"], node.parameters, node.namespace["sweep_axes"])
+    ds_raw = fetch_dataset(node.namespace["job"], node.namespace["qubits"], node.parameters, node.namespace["sweep_axes"])
     # Store the raw dataset
-    node.results["ds"] = ds
+    node.results["ds_raw"] = ds_raw
 
 
 # %% {Data_analysis}
@@ -176,12 +176,12 @@ def fetch_data(node: QualibrationNode[Parameters, QuAM]):
 def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     """Analysis the raw data and store the fitted data in another xarray dataset and the fitted results in the fit_results class."""
     # todo check the units with real data
-    node.results["fit_data"], fit_results = fit_t1_decay(node.results["ds"], node.parameters)
+    node.results["ds_fit"], fit_results = fit_t1_decay(node.results["ds_raw"], node.parameters)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     # todo: How to get the looger to print on the console?
     from qualibrate.utils.logger_m import logger
     # Log the relevant information extracted from the data analysis
-    log_t1(node.results["fit_data"], logger)
+    log_t1(node.results["ds_fit"], logger)
 
 
 # %% {Plotting}
@@ -189,7 +189,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit.grid_location."""
     fig = plot_t1s_data_with_fit(
-        node.results["ds"], node.namespace["qubits"], node.parameters, node.results["fit_data"]
+        node.results["ds_raw"], node.namespace["qubits"], node.parameters, node.results["ds_fit"]
     )
     plt.show()
     # Store the generated figures
@@ -203,8 +203,8 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
     # todo: explain what this context manager does
     with node.record_state_updates():
         for index, q in enumerate(node.namespace["qubits"]):
-            if node.results["fit_data"].sel(qubit=q.name).success:
-                q.T1 = float(node.results["fit_data"].sel(qubit=q.name).tau.values) * 1e-9
+            if node.results["ds_fit"].sel(qubit=q.name).success:
+                q.T1 = float(node.results["ds_fit"].sel(qubit=q.name).tau.values) * 1e-9
 
 
 # %% {Save_results}
