@@ -4,9 +4,6 @@ from qualibrate.parameters import RunnableParameters
 
 
 class CommonNodeParameters(RunnableParameters):
-    load_data_id: Optional[int] = Field(
-        default=None, description="Qualibrate node run index for loading historical data."
-    )
     simulate: bool = Field(
         default=False, description="Simulate the waveforms on the OPX instead of executing the program."
     )
@@ -19,4 +16,7 @@ class CommonNodeParameters(RunnableParameters):
     timeout: int = Field(
         default=120,
         description="Waiting time for the OPX resources to become available before giving up (in seconds).",
+    )
+    load_data_id: Optional[int] = Field(
+        default=None, description="Qualibrate node run index for loading historical data."
     )
