@@ -1,17 +1,12 @@
-from typing import List, Dict
-
+from typing import List
 import xarray as xr
-
 from quam_experiments.analysis.fit import decay_exp
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
-from quam_experiments.experiments.ramsey.analysis.fitting import RamseyFit
 from quam_experiments.experiments.ramsey.parameters import Parameters
 from quam_libs.plot_utils import QubitGrid, grid_iter
 
 
-def plot_t1s_data_with_fit(
-    ds: xr.Dataset, qubits: List[AnyTransmon], node_parameters: Parameters, fits: xr.Dataset
-):
+def plot_t1s_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], node_parameters: Parameters, fits: xr.Dataset):
     """
     Plots T1 data with fit results for multiple qubits.
 
@@ -36,7 +31,7 @@ def plot_t1s_data_with_fit(
         >>> fig = plot_t1s_data_with_fit(ds, qubits, node_parameters, fits)
         >>> fig.show()
     """
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+    grid = QubitGrid(ds.to_dataarray(), [q.grid_location for q in qubits])
 
     for ax, qubit in grid_iter(grid):
         _plot_t1_data_with_fit(ax, ds, qubit, node_parameters, fits.sel(qubit=qubit["qubit"]))
