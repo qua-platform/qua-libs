@@ -1,27 +1,8 @@
 import xarray as xr
 from typing import Tuple
-
 from quam_experiments.experiments.T1.parameters import Parameters
 from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.save_utils import fetch_results_as_xarray
-
-
-def _flatten_sweep_parameters(params) -> Tuple[dict, dict]:
-    meas_axis = {}
-    meas_attr = {}
-    for param in params.keys():
-        if "data" in params[param]:
-            meas_axis[param] = params[param]["data"]
-        else:
-            raise RuntimeError(
-                f"The registered sweep parameter '{param}' doesn't have data."
-                + "sweep_parameters = {param: {'data': data, 'attrs': {**attrs}}}"
-            )
-        if "attrs" in params[param]:
-            meas_attr[param] = params[param]["attrs"]
-        else:
-            meas_attr[param] = {}
-    return meas_axis, meas_attr
 
 
 def fetch_dataset(job, qubits, node_parameters: Parameters, sweep_axes: dict) -> xr.Dataset:
@@ -85,3 +66,21 @@ def fetch_dataset(job, qubits, node_parameters: Parameters, sweep_axes: dict) ->
     for param in sweep_axes:
         ds.coords[param].attrs = measurement_attributes[param]
     return ds
+
+
+def _flatten_sweep_parameters(params) -> Tuple[dict, dict]:
+    meas_axis = {}
+    meas_attr = {}
+    for param in params.keys():
+        if "data" in params[param]:
+            meas_axis[param] = params[param]["data"]
+        else:
+            raise RuntimeError(
+                f"The registered sweep parameter '{param}' doesn't have data."
+                + "sweep_parameters = {param: {'data': data, 'attrs': {**attrs}}}"
+            )
+        if "attrs" in params[param]:
+            meas_attr[param] = params[param]["attrs"]
+        else:
+            meas_attr[param] = {}
+    return meas_axis, meas_attr
