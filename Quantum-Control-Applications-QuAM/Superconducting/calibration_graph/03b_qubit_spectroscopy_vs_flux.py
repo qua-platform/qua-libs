@@ -255,7 +255,7 @@ if not node.parameters.simulate:
 
     for ax, qubit in grid_iter(grid):
         freq_ref = (ds.freq_full-ds.freq).sel(qubit = qubit["qubit"]).values[0]
-        im = ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].I.plot(
+        ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].I.plot(
             ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
         )
         ((fitted + freq_ref) / 1e9).loc[qubit].plot(ax=ax, linewidth=0.5, ls="--", color="r")
