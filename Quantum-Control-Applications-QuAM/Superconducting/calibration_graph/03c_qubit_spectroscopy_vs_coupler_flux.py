@@ -34,6 +34,7 @@ from qm.qua import *
 from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.signal import find_peaks
 
 
 # %% {Node_parameters}
@@ -212,66 +213,48 @@ if not node.parameters.simulate:
     # %% {Data_analysis}
     # # Find the resonance dips for each flux point
     peaks = peaks_dips(ds.I, dim="freq", prominence_factor=3)
-    # Fit the result with a parabola
-    parabolic_fit_results = peaks.position.polyfit("flux", 2)
-    # Try to fit again with a smaller prominence factor (may need some adjustment)
-    if np.any(np.isnan(np.concatenate(parabolic_fit_results.polyfit_coefficients.values))):
-        # Find the resonance dips for each flux point
-        peaks = peaks_dips(ds.I, dim="freq", prominence_factor=4)
-        # Fit the result with a parabola
-        parabolic_fit_results = peaks.position.polyfit("flux", 2)
-    # Extract relevant fitted parameters
-    coeff = parabolic_fit_results.polyfit_coefficients
-    fitted = coeff.sel(degree=2) * ds.flux**2 + coeff.sel(degree=1) * ds.flux + coeff.sel(degree=0)
-    flux_shift = -coeff[1] / (2 * coeff[0])
-    freq_shift = coeff.sel(degree=2) * flux_shift**2 + coeff.sel(degree=1) * flux_shift + coeff.sel(degree=0)
-
+    # obtain the derivative of the peaks vs flux
+    peaks_d = np.abs(peaks.position.differentiate("flux"))
+    # identify avoided crossings flux points
+    avoided_crossing = {}
+    for q in qubits:
+        q_name = q.name
+        peaks_d_per_qubit = peaks_d.loc[{"qubit": q_name}]
+        divs_loc_vals, _ = find_peaks(peaks_d_per_qubit.values, height=peaks_d_per_qubit.values.max() * 0.1, distance=peaks_d_per_qubit["flux"].shape[0]//2) 
+        divs_loc_vals = [min(divs_loc_vals), max(divs_loc_vals)] # if there are more than two the the fathest ones
+        avoided_crossing[q_name] = peaks_d_per_qubit["flux"].values[divs_loc_vals]
+        
     # Save fitting results
     if node.parameters.load_data_id is None:
         fit_results = {}
         for q in qubits:
-            fit_results[q.name] = {}
-            if not np.isnan(flux_shift.sel(qubit=q.name).values):
-                if flux_point == "independent":
-                    offset = q.z.independent_offset
-                elif flux_point == "joint":
-                    offset = q.z.joint_offset
-                else:
-                    offset = 0.0
-                print(f"flux offset for qubit {q.name} is {offset*1e3 + flux_shift.sel(qubit = q.name).values*1e3:.0f} mV")
-                print(f"(shift of  {flux_shift.sel(qubit = q.name).values*1e3:.0f} mV)")
-                print(
-                    f"Drive frequency for {q.name} is {(freq_shift.sel(qubit = q.name).values + q.xy.RF_frequency)/1e9:.3f} GHz"
-                )
-                print(f"(shift of {freq_shift.sel(qubit = q.name).values/1e6:.0f} MHz)")
-                print(f"quad term for qubit {q.name} is {float(coeff.sel(degree = 2, qubit = q.name)/1e9):.3e} GHz/V^2 \n")
-                fit_results[q.name]["flux_shift"] = float(flux_shift.sel(qubit=q.name).values)
-                fit_results[q.name]["drive_freq"] = float(freq_shift.sel(qubit=q.name).values)
-                fit_results[q.name]["quad_term"] = float(coeff.sel(degree=2, qubit=q.name))
-            else:
-                print(f"No fit for qubit {q.name}")
-                fit_results[q.name]["flux_shift"] = np.nan
-                fit_results[q.name]["drive_freq"] = np.nan
-                fit_results[q.name]["quad_term"] = np.nan
+            avoided_crossing_val = avoided_crossing[q.name]
+            fit_results[q.name] = {"avoided_crossing": avoided_crossing_val, "decouple_offset": np.mean(avoided_crossing_val)}
+        
+        fit_results["decouple_offset_mean"] = np.mean([fit_results[q.name]["decouple_offset"] for q in qubits])
         node.results["fit_results"] = fit_results
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
+    ds = ds.assign_coords(freq_GHz=ds.freq_full / 1e9)
     for ax, qubit in grid_iter(grid):
-        freq_ref = (ds.freq_full-ds.freq).sel(qubit = qubit["qubit"]).values[0]
-        im = ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].I.plot(
-            ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
-        )
-        ((fitted + freq_ref) / 1e9).loc[qubit].plot(ax=ax, linewidth=0.5, ls="--", color="r")
-        ax.plot(flux_shift.loc[qubit], ((freq_shift.loc[qubit] + freq_ref) / 1e9), "r*")
-        ((peaks.position.loc[qubit] + freq_ref) / 1e9).plot(ax=ax, ls="", marker=".", color="g", ms=0.5)
+        ds.loc[qubit].I.plot(ax=ax, x="flux", y="freq_GHz", robust=True)
+        
+        avoided_crossing = fit_results[qubit["qubit"]]["avoided_crossing"]
+        decouple_offset = fit_results[qubit["qubit"]]["decouple_offset"]
+        min_vline = ds["freq_GHz"].values.min()
+        max_vline = ds["freq_GHz"].values.max()
+        
+        for flux_val in avoided_crossing:
+            ax.vlines(flux_val, min_vline, max_vline, color="red", linestyle="--")
+
+        ax.vlines(decouple_offset, min_vline, max_vline, color="red", linestyle="-")
+        
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Flux (V)")
         ax.set_title(qubit["qubit"])
     grid.fig.suptitle(f"Qubit spectroscopy vs {qubit_pair.coupler.name} flux \n {date_time}")
-    # Add color bar
-    cbar = grid.fig.colorbar(im, orientation='vertical')
     
     plt.tight_layout()
     plt.show()
@@ -280,18 +263,13 @@ if not node.parameters.simulate:
     # %% {Update_state}
     if node.parameters.load_data_id is None:
         with node.record_state_updates():
-            for q in qubits:
-                if not np.isnan(flux_shift.sel(qubit=q.name).values):
-                    if flux_point == "independent":
-                        q.z.independent_offset += fit_results[q.name]["flux_shift"]
-                    elif flux_point == "joint":
-                        q.z.joint_offset += fit_results[q.name]["flux_shift"]
-                    q.xy.intermediate_frequency += fit_results[q.name]["drive_freq"]
-                    q.freq_vs_flux_01_quad_term = fit_results[q.name]["quad_term"]
-
+            # take decouple offset as the average of the avoided crossing points
+            qubit_pair.coupler.decouple_offset = fit_results["decouple_offset_mean"]
     # %% {Save_results}
     node.results["ds"] = ds
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
+
+# %%
