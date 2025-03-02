@@ -18,6 +18,7 @@ Next steps before going to the next node:
 
 
 # %% {Imports}
+from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
@@ -48,7 +49,7 @@ class Parameters(NodeParameters):
     amp_factor_step: float = 0.05
     max_number_rabi_pulses_per_sweep: int = 1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     state_discrimination: bool = False
     update_x90: bool = True
     simulate: bool = False
@@ -185,6 +186,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(power_rabi)
         results = fetching_tool(job, ["n"], mode="live")
@@ -298,7 +300,7 @@ if not node.parameters.simulate:
             ax.axvline(1e3 * ds.abs_amp.loc[qubit][data_max_idx.loc[qubit]], color="r")
         ax.set_xlabel("Amplitude [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("Rabi : I vs. amplitude")
+    grid.fig.suptitle(f"Rabi : I vs. amplitude \n {date_time}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

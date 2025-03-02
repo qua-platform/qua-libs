@@ -21,6 +21,7 @@ Next steps before going to the next node:
 # TODO: this script isn't working great, the readout amp found at the end isn't always correct maybe because of SNR...
 
 # %% {Imports}
+from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
@@ -160,6 +161,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(iq_blobs)
         results = fetching_tool(job, ["n"], mode="live")
@@ -308,7 +310,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Relative power")
         ax.set_ylabel("Fidelity / outliers")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("Assignment fidelity and non-outlier probability")
+    grid.fig.suptitle(f"Assignment fidelity and non-outlier probability \n {date_time}")
 
     plt.tight_layout()
     plt.show()
@@ -360,7 +362,7 @@ if not node.parameters.simulate:
         ax.set_title(qubit["qubit"])
 
     ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
-    grid.fig.suptitle("g.s. and e.s. discriminators (rotated)")
+    grid.fig.suptitle(f"g.s. and e.s. discriminators (rotated) \n {date_time}")
     plt.tight_layout()
     node.results["figure_IQ_blobs"] = grid.fig
 
@@ -380,7 +382,7 @@ if not node.parameters.simulate:
         ax.text(1, 1, f"{100 * confusion[1][1]:.1f}%", ha="center", va="center", color="k")
         ax.set_title(qubit["qubit"])
 
-    grid.fig.suptitle("g.s. and e.s. fidelity")
+    grid.fig.suptitle(f"g.s. and e.s. fidelity \n {date_time}")
     plt.tight_layout()
     plt.show()
     node.results["figure_fidelities"] = grid.fig

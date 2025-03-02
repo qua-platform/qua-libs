@@ -121,8 +121,8 @@ idle_times = np.arange(node.parameters.idle_time_min, node.parameters.idle_time_
 
 with program() as CPhase_Oscillations:
     n = declare(int)
-    flux_coupler = declare(float)
-    comp_flux_qubit = declare(float)
+    flux_coupler = declare(fixed)
+    comp_flux_qubit = declare(fixed)
     idle_time = declare(int)
     n_st = declare_stream()
     if node.parameters.use_state_discrimination:
@@ -133,10 +133,10 @@ with program() as CPhase_Oscillations:
         state_st_target = [declare_stream() for _ in range(num_qubit_pairs)]
         state_st = [declare_stream() for _ in range(num_qubit_pairs)]
     else:
-        I_control = [declare(float) for _ in range(num_qubit_pairs)]
-        Q_control = [declare(float) for _ in range(num_qubit_pairs)]
-        I_target = [declare(float) for _ in range(num_qubit_pairs)]
-        Q_target = [declare(float) for _ in range(num_qubit_pairs)]
+        I_control = [declare(fixed) for _ in range(num_qubit_pairs)]
+        Q_control = [declare(fixed) for _ in range(num_qubit_pairs)]
+        I_target = [declare(fixed) for _ in range(num_qubit_pairs)]
+        Q_target = [declare(fixed) for _ in range(num_qubit_pairs)]
         I_st_control = [declare_stream() for _ in range(num_qubit_pairs)]
         Q_st_control = [declare_stream() for _ in range(num_qubit_pairs)]
         I_st_target = [declare_stream() for _ in range(num_qubit_pairs)]
