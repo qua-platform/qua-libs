@@ -41,7 +41,7 @@ import xarray as xr
 
 
 # %% {Node_parameters}
-class Parameters(NodeParameter\s):
+class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_runs: int = 2000
