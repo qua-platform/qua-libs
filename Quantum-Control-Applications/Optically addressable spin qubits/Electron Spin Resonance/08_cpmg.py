@@ -37,7 +37,6 @@ n_avg = 100
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "tau_array": tau_array,
     "config": config,
 }
 
@@ -211,6 +210,8 @@ else:
     data_handler = DataHandler(root_data_folder=save_dir)
     save_data_dict.update({"I_data": I})
     save_data_dict.update({"Q_data": Q})
+    save_data_dict.update({"tau": tau})
+    save_data_dict.update({"echo": i_echo})
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
