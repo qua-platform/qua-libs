@@ -129,8 +129,8 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(a_vec * pi_amp_NV, counts / 1000 / (meas_len_1 * 1e-9), label="photon counts")
-        plt.plot(a_vec * pi_amp_NV, counts_dark / 1000 / (meas_len_1 * 1e-9), label="dark_counts")
+        plt.plot(a_vec * x180_amp_NV, counts / 1000 / (meas_len_1 * 1e-9), label="photon counts")
+        plt.plot(a_vec * x180_amp_NV, counts_dark / 1000 / (meas_len_1 * 1e-9), label="dark_counts")
         plt.xlabel("Rabi pulse amplitude [V]")
         plt.ylabel("Intensity [kcps]")
         plt.title("Power Rabi")
@@ -139,8 +139,8 @@ else:
     # Save results
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
-    save_data_dict.update({"I_data": I})
-    save_data_dict.update({"Q_data": Q})
+    save_data_dict.update({"counts_data": counts})
+    save_data_dict.update({"counts_dark_data": counts_dark})
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
