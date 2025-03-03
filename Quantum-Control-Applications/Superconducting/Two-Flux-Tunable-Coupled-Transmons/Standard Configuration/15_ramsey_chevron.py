@@ -136,7 +136,7 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, I1)
-        plt.title(f"qubit 1 I, fcent={(qubit_LO + qubit_IF_q1) / u.MHz} MHz")
+        plt.title(f"qubit 1 I, fcent={(qubit_LO_q1 + qubit_IF_q1) / u.MHz} MHz")
         plt.ylabel("Frequency detuning [MHz]")
         plt.subplot(223)
         plt.cla()
@@ -147,7 +147,7 @@ else:
         plt.subplot(222)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, I2)
-        plt.title(f"qubit 2 I, fcent={(qubit_LO + qubit_IF_q2) / u.MHz} MHz")
+        plt.title(f"qubit 2 I, fcent={(qubit_LO_q2 + qubit_IF_q2) / u.MHz} MHz")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, Q2)
@@ -160,8 +160,10 @@ else:
     # Save results
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
-    save_data_dict.update({"I_data": I})
-    save_data_dict.update({"Q_data": Q})
+    save_data_dict.update({"I1_data": I1})
+    save_data_dict.update({"Q1_data": Q1})
+    save_data_dict.update({"I2_data": I2})
+    save_data_dict.update({"Q2_data": Q2})
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

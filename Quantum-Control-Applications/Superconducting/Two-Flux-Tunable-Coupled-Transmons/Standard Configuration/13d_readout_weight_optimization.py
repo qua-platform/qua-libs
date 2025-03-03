@@ -194,7 +194,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Run or Simulate Program #
 ###########################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -254,10 +254,10 @@ else:
         plt.suptitle(f"Integration weight optimization for qubit {i+1}")
         plt.tight_layout()
 
-        weights_real = norm_subtracted_trace.real
-        weights_minus_imag = -norm_subtracted_trace.imag
-        weights_imag = norm_subtracted_trace.imag
-        weights_minus_real = -norm_subtracted_trace.real
+        weights_real = norm_subtracted_trace[i].real
+        weights_minus_imag = -norm_subtracted_trace[i].imag
+        weights_imag = norm_subtracted_trace[i].imag
+        weights_minus_real = -norm_subtracted_trace[i].real
         # Save the weights for later use in the config
         np.savez(
             f"optimal_weights_q{i+1}",
@@ -267,6 +267,10 @@ else:
             weights_minus_real=weights_minus_real,
             division_length=division_length,
         )
+        save_data_dict.update({f"Ie{i+1}_data": Ie})
+        save_data_dict.update({f"Ig{i+1}_data": Ig})
+        save_data_dict.update({f"Qe{i+1}_data": Qe})
+        save_data_dict.update({f"Qg{i+1}_data": Qg})
     # After obtaining the optimal weights, you need to load them to the 'integration_weights' dictionary in the config.
     # For this, you can just copy and paste the following lines into the "integration_weights" section:
     # "opt_cosine_weights": {
@@ -310,8 +314,5 @@ else:
     # Save results
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
-    save_data_dict.update({"I_data": I})
-    save_data_dict.update({"Q_data": Q})
-    save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
