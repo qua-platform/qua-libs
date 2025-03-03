@@ -260,8 +260,6 @@ else:
         # plt.pause(1)
 
         # Save data
-        save_data_dict.update({"I_data": I})
-        save_data_dict.update({"Q_data": Q})
         save_data_dict.update({"fig_live": fig})
         for fname, r in zip(fetch_names[1:], res[1:]):
             save_data_dict[fname] = r
