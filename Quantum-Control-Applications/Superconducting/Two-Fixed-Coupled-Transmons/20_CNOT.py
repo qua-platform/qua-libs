@@ -199,6 +199,8 @@ else:
             I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
 
         # Save data
+        save_data_dict.update({"I_data": I})
+        save_data_dict.update({"Q_data": Q})
         save_data_dict.update({"fig_live": fig})
         for fname, r in zip(fetch_names[1:], res[1:]):
             save_data_dict[fname] = r
