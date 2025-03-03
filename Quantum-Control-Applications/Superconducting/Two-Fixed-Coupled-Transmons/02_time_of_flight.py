@@ -21,17 +21,12 @@ from qm import SimulationConfig
 from configuration_mw_fem import *
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
-from qualang_tools.results.data_handler import DataHandler
 
 ##################
 #   Parameters   #
 ##################
 # Parameters Definition
 n_avg = 5000  # The number of averages
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-}
 
 ###################
 # The QUA program #
@@ -101,9 +96,6 @@ else:
         adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
         adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
 
-        save_data_dict["adc1"] = adc1
-        save_data_dict["adc1_single"] = adc1_single_run
-
         # Derive the average values
         adc1_mean = np.mean(adc1)
         # Remove the average values
@@ -136,15 +128,6 @@ else:
         plt.xlabel("Time [ns]")
         plt.legend()
         plt.tight_layout()
-
-        # Save results
-        script_name = Path(__file__).name
-        data_handler = DataHandler(root_data_folder=save_dir)
-        save_data_dict.update({"I_data": I})
-        save_data_dict.update({"Q_data": Q})
-        save_data_dict.update({"fig_live": fig})
-        data_handler.additional_files = {script_name: script_name, **default_additional_files}
-        data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
 
     except Exception as e:
         print(f"An exception occurred: {e}")
