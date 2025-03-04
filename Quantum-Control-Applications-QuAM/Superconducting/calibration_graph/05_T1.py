@@ -39,8 +39,11 @@ node = QualibrationNode[Parameters, QuAM](
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
-if node.modes.interactive:
+# todo: why not doing it like this?
+@node.run_action(skip_if=not node.modes.interactive)
+def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.num_averages = 500
     pass
 
 # Instantiate the QuAM class from the state file
