@@ -45,8 +45,8 @@ class Parameters(NodeParameters):
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 2000
     wait_time_step_in_ns: int = 20
-    flux_span: float = 0.04
-    flux_step: float = 0.002
+    flux_span: float = 0.025
+    flux_step: float = 0.001
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500

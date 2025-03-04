@@ -10,7 +10,7 @@ library = QualibrationLibrary.get_active_library()
 
 
 class Parameters(GraphParameters):
-    qubits: List[str] = None
+    qubits: List[str] = ["qubitC4", "qubitC5"]
 
 
 multiplexed = True
@@ -59,8 +59,9 @@ g = QualibrationGraph(
         "single_qubit_randomized_benchmarking": library.nodes["IQCC_10a_Single_Qubit_Randomized_Benchmarking"].copy(
             flux_point_joint_or_independent=flux_point,
             multiplexed=False,
-            delta_clifford=100,
-            num_random_sequences=1000,
+            delta_clifford=25,
+            max_circuit_depth=400,
+            num_random_sequences=500,
             name="single_qubit_randomized_benchmarking",
         ),
     },
@@ -74,5 +75,5 @@ g = QualibrationGraph(
 )
 # %%
 
-g.run(qubits=["qubitC4", "qubitC5"])
+g.run()
 # %%
