@@ -49,3 +49,8 @@ ax.grid(which="minor", color="grey", linewidth=1.5)
 plt.gca().invert_yaxis()
 colorbar = fig.colorbar(img)
 colorbar.set_label("Resistance (MΩ)")
+
+# free all internal triggers, 12 internal triggers are available
+qdac.free_all_triggers()
+# close to qdac instance so you can create it again.
+qdac.close()
