@@ -103,7 +103,7 @@ dfs = np.arange(-span // 2, +span // 2, step, dtype=np.int32)
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 
 with program() as qubit_spec:
-    # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
+    # Macro to declare I, Q, n and their respective streams for a given number of qubit
     I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
     df = declare(int)  # QUA variable for the qubit frequency
 

@@ -99,7 +99,7 @@ dcs = np.linspace(
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 
 with program() as multi_qubit_spec_vs_flux:
-    # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
+    # Macro to declare I, Q, n and their respective streams for a given number of qubit
     I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
     df = declare(int)  # QUA variable for the qubit frequency
     dc = declare(fixed)  # QUA variable for the flux dc level
