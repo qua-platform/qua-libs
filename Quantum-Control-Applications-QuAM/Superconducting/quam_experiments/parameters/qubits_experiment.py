@@ -4,7 +4,7 @@ from qualibrate import QualibrationNode
 from qualibrate.parameters import RunnableParameters
 from quam_libs.batchable_list import BatchableList
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
-from quam_config.my_quam import QuAM
+from quam_config import QuAM
 
 
 class QubitsExperimentNodeParameters(RunnableParameters):
