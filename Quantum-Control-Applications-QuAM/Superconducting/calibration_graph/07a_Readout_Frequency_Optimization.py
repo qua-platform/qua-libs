@@ -222,7 +222,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Detuning [MHz]")
         ax.set_ylabel("Distance between IQ blobs [mv]")
         ax.legend(loc="upper left")
-    plt.suptitle(f"{date_time} \n {node_id}")
+    plt.suptitle(f"{date_time} \n #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
@@ -240,7 +240,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Detuning [MHz]")
         ax.set_ylabel("Resonator response [mV]")
         ax.legend(loc="upper left")
-    plt.suptitle(f"{date_time}")
+    plt.suptitle(f"{date_time} \n #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure2"] = grid.fig
