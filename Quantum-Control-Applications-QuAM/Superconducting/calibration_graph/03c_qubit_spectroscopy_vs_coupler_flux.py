@@ -23,7 +23,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from quam_libs.lib.fit import peaks_dips
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -40,9 +40,9 @@ from scipy.signal import find_peaks
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ["qA3"]
-    qubit_pair: str = "coupler_qA3_qA4"
-    num_averages: int = 50
+    qubits: Optional[List[str]] = ["qB4"]
+    qubit_pair: str = "coupler_qA5_qB4"
+    num_averages: int = 25
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.1
     operation_len_in_ns: Optional[int] = None
@@ -56,10 +56,11 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True
 
 
 node = QualibrationNode(name="03c_Qubit_Spectroscopy_vs_Coupler_Flux", parameters=Parameters())
+node_id = get_node_id()
+
 
 if node.parameters.qubit_pair is None:
     raise ValueError("Please specify the qubit_pair name")
@@ -144,9 +145,7 @@ with program() as multi_qubit_spec_vs_flux:
                     # Wait for the qubits to decay to the ground state
                     qubit.resonator.wait(machine.depletion_time * u.ns)
 
-        # Measure sequentially
-        if not node.parameters.multiplexed:
-            align()
+        align()
 
     with stream_processing():
         n_st.save("n")
@@ -239,7 +238,7 @@ if not node.parameters.simulate:
 
     ds = ds.assign_coords(freq_GHz=ds.freq_full / 1e9)
     for ax, qubit in grid_iter(grid):
-        ds.loc[qubit].I.plot(ax=ax, x="flux", y="freq_GHz", robust=True)
+        ds.loc[qubit].I.plot(ax=ax, x="flux", y="freq_GHz", robust=True, add_colorbar=False)
         
         avoided_crossing = fit_results[qubit["qubit"]]["avoided_crossing"]
         decouple_offset = fit_results[qubit["qubit"]]["decouple_offset"]
@@ -251,10 +250,13 @@ if not node.parameters.simulate:
 
         ax.vlines(decouple_offset, min_vline, max_vline, color="red", linestyle="-")
         
+        ax.vlines(qubit_pair.coupler.decouple_offset, min_vline, max_vline, color="orange", linestyle="-", label = "current")
+        
+        ax.legend(fontsize=8)
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Flux (V)")
-        ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Qubit spectroscopy vs {qubit_pair.coupler.name} flux \n {date_time}")
+        ax.set_title(f"{qubit["qubit"]} - {qubit_pair.coupler.name}")
+    grid.fig.suptitle(f"Qubit spectroscopy vs coupler flux \n {date_time}  #{node_id}")
     
     plt.tight_layout()
     plt.show()

@@ -16,7 +16,7 @@ from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
@@ -33,7 +33,7 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 100
-    time_of_flight_in_ns: Optional[int] = 28
+    time_of_flight_in_ns: Optional[int] = None
     intermediate_frequency_in_mhz: Optional[float] = 50
     readout_amplitude_in_dBm: Optional[float] = -3
     readout_length_in_ns: Optional[int] = None
@@ -43,7 +43,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(name="01b_Time_of_Flight_MW_FEM", parameters=Parameters())
-
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -176,7 +176,7 @@ else:
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("Readout amplitude [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Single run \n {date_time}")
+    grid.fig.suptitle(f"Single run \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.legend(loc="upper right", ncols=4, bbox_to_anchor=(0.5, 1.35))
     node.results["adc_single_run"] = grid.fig
@@ -190,7 +190,7 @@ else:
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("Readout amplitude [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Averaged run \n {date_time}")
+    grid.fig.suptitle(f"Averaged run \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.legend(loc="upper right", ncols=4, bbox_to_anchor=(0.5, 1.35))
     node.results["adc_averaged"] = grid.fig

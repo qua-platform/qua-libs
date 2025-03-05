@@ -29,7 +29,7 @@ from quam_libs.lib.fit_utils import fit_resonator
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V, subtract_slope, apply_angle
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -45,7 +45,7 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ["qA4"]
     num_averages: int = 100
     frequency_span_in_mhz: float = 15
     frequency_step_in_mhz: float = 0.1
@@ -54,7 +54,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
     max_power_dbm: int = -30
     min_power_dbm: int = -90
-    num_power_points: int = 100
+    num_power_points: int = 40
     max_amp: float = 0.1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     ro_line_attenuation_dB: float = 0
@@ -65,7 +65,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
 
 node = QualibrationNode(name="02c_Resonator_Spectroscopy_vs_Amplitude", parameters=Parameters())
-
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 u = unit(coerce_to_integer=True)
@@ -288,7 +288,7 @@ if not node.parameters.simulate:
                 linestyle="--",
             )
 
-    grid.fig.suptitle(f"Resonator spectroscopy VS. power at base \n {date_time}")
+    grid.fig.suptitle(f"Resonator spectroscopy VS. power at base \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

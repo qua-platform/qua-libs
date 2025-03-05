@@ -25,7 +25,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from quam_libs.lib.fit import fit_oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -52,14 +52,14 @@ class Parameters(NodeParameters):
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     input_line_impedance_in_ohm: float = 50
     line_attenuation_in_db: float = 0
-    update_flux_min: bool = False
+    update_flux_min: bool = True
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
 
 node = QualibrationNode(name="02b_Resonator_Spectroscopy_vs_Flux", parameters=Parameters())
-
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -85,7 +85,6 @@ config = machine.generate_config()
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
     
-
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
@@ -289,7 +288,7 @@ if not node.parameters.simulate:
         ax.set_title(qubit["qubit"])
         ax.set_xlabel("Flux (V)")
 
-    grid.fig.suptitle(f"Resonator spectroscopy vs flux \n {date_time}")
+    grid.fig.suptitle(f"Resonator spectroscopy vs flux \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

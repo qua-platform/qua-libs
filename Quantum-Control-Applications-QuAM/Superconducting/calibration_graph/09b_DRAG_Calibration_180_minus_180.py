@@ -24,7 +24,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -58,7 +58,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(name="09b_DRAG_Calibration_180_minus_180", parameters=Parameters())
-
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -226,7 +226,7 @@ if not node.parameters.simulate:
         ax.set_ylabel("num. of pulses")
         ax.set_xlabel(r"DRAG coeff $\alpha$")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"DRAG calibration \n {date_time}")
+    grid.fig.suptitle(f"DRAG calibration \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

@@ -23,7 +23,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from quam_libs.lib.fit import peaks_dips
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -58,7 +58,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(name="03b_Qubit_Spectroscopy_vs_Flux", parameters=Parameters())
-
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -264,7 +264,7 @@ if not node.parameters.simulate:
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Flux (V)")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time}")
+    grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time} #{node_id}")
     
     plt.tight_layout()
     plt.show()

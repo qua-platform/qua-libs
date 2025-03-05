@@ -26,7 +26,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from qualang_tools.analysis import two_state_discriminator
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -61,7 +61,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(name="07c_Readout_Power_Optimization", parameters=Parameters())
-
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -310,7 +310,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Relative power")
         ax.set_ylabel("Fidelity / outliers")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Assignment fidelity and non-outlier probability \n {date_time}")
+    grid.fig.suptitle(f"Assignment fidelity and non-outlier probability \n {date_time} #{node_id}")
 
     plt.tight_layout()
     plt.show()
@@ -362,7 +362,7 @@ if not node.parameters.simulate:
         ax.set_title(qubit["qubit"])
 
     ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
-    grid.fig.suptitle(f"g.s. and e.s. discriminators (rotated) \n {date_time}")
+    grid.fig.suptitle(f"g.s. and e.s. discriminators (rotated) \n {date_time} #{node_id}")
     plt.tight_layout()
     node.results["figure_IQ_blobs"] = grid.fig
 
@@ -382,7 +382,7 @@ if not node.parameters.simulate:
         ax.text(1, 1, f"{100 * confusion[1][1]:.1f}%", ha="center", va="center", color="k")
         ax.set_title(qubit["qubit"])
 
-    grid.fig.suptitle(f"g.s. and e.s. fidelity \n {date_time}")
+    grid.fig.suptitle(f"g.s. and e.s. fidelity \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure_fidelities"] = grid.fig
