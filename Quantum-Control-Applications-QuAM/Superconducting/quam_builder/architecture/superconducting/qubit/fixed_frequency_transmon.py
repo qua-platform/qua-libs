@@ -4,7 +4,8 @@ from qm.qua import align, wait
 
 __all__ = ["FixedFrequencyTransmon"]
 
-#todo: shall this on be the base Transmon directly?
+
+# todo: shall this on be the base Transmon directly?
 @quam_dataclass
 class FixedFrequencyTransmon(BaseTransmon):
     """

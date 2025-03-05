@@ -157,8 +157,10 @@ class BaseQuAM(QuamRoot):
         return max(q.thermalization_time for q in self.active_qubits)
 
     def qua_declaration(
-        self
-    ) -> tuple[list[QuaVariable], list[_ResultSource], list[QuaVariable], list[_ResultSource], QuaVariable, _ResultSource]:
+        self,
+    ) -> tuple[
+        list[QuaVariable], list[_ResultSource], list[QuaVariable], list[_ResultSource], QuaVariable, _ResultSource
+    ]:
         """Macro to declare the necessary QUA variables"""
 
         n = declare(int)

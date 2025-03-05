@@ -66,7 +66,9 @@ class QuAM(BaseQuAM):
                 target, FluxTunableTransmon
             ), "Independent flux point is only supported for individual transmons"
         elif flux_point == "pairwise":
-            assert isinstance(target, FluxTunableTransmonPair), "Pairwise flux point is only supported for transmon pairs"
+            assert isinstance(
+                target, FluxTunableTransmonPair
+            ), "Pairwise flux point is only supported for transmon pairs"
 
         target_bias = None
         if flux_point == "joint":
