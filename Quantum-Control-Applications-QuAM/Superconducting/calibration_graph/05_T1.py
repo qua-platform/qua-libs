@@ -8,7 +8,7 @@ from qualibrate import QualibrationNode
 from quam_config import QuAM
 from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
 from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.macros import qua_declaration, readout_state, reset_qubit
+from quam_experiments.macros import qua_declaration
 from quam_experiments.workflow import simulate_and_plot, fetch_dataset, print_progress_bar
 from quam_experiments.experiments.T1 import Parameters, fit_t1_decay, log_t1, plot_t1s_data_with_fit
 
@@ -58,7 +58,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     u = unit(coerce_to_integer=True)
     # todo: explain the batchable list here
     # Get the active qubits from the node and organize them by batches
+    # todo: node.namespace loses the autocompletion
     node.namespace["qubits"] = get_qubits(node)
+    qubits = get_qubits(node)
     num_qubits = len(node.namespace["qubits"])
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_averages
@@ -79,7 +81,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             state = [declare(int) for _ in range(num_qubits)]
             state_st = [declare_stream() for _ in range(num_qubits)]
 
-        for i, qubit in enumerate(node.namespace["qubits"]):
+        for i, qubit in enumerate(qubits):
             # Bring the active qubits to the desired frequency point
             node.machine.set_all_fluxes(flux_point=node.parameters.flux_point_joint_or_independent, target=qubit)
             # todo: remove the flux points from the parameters and use initialize
@@ -87,7 +89,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_each_(t, idle_times):
-                    reset_qubit(qubit, node.parameters)
+                    qubit.reset_qubit(node.parameters)
                     # todo: qubit.reset(node.parameters)
                     # qubit.reset_thermal()
                     # qubit.reset_active()
@@ -98,7 +100,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                     qubit.resonator.wait(t)
                     # Measure the state of the resonators
                     if node.parameters.use_state_discrimination:
-                        readout_state(qubit, state[i])
+                        qubit.readout_state(state[i])
                         save(state[i], state_st[i])
                     else:
                         qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))

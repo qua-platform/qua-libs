@@ -22,7 +22,7 @@ Prerequisites:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM, Transmon
-from quam_experiments.macros import qua_declaration, active_reset, readout_state
+from quam_experiments.macros import qua_declaration
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
 from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
@@ -253,7 +253,7 @@ with program() as randomized_benchmarking_individual:
                             play_sequence(sequence_list, depth, qubit)
                         # Align the two elements to measure after playing the circuit.
                         qubit.align()
-                        readout_state(qubit, state[i])
+                        qubit.readout_state(state[i])
 
                         save(state[i], state_st[i])
 
@@ -334,7 +334,7 @@ with program() as randomized_benchmarking_multiplexed:
                     # Align the two elements to measure after playing the circuit.
                     for i, qubit in enumerate(qubits):
 
-                        readout_state(qubit, state[i])
+                        qubit.readout_state(state[i])
 
                         save(state[i], state_st[i])
 

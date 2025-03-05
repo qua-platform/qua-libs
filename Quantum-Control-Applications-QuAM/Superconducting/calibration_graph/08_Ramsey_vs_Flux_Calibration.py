@@ -20,8 +20,7 @@ Next steps before going to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
-from quam_experiments.macros import qua_declaration, readout_state
-from quam_libs.qua_datasets import convert_IQ_to_V
+from quam_experiments.macros import qua_declaration
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
 from quam_experiments.analysis.fit import fit_oscillation_decay_exp, oscillation_decay_exp
@@ -111,7 +110,7 @@ with program() as ramsey:
             with for_(*from_array(flux, fluxes)):
                 with for_(*from_array(t, idle_times)):
                     # Read the state of the qubit before Ramsey starts
-                    readout_state(qubit, init_state)
+                    qubit.readout_state(init_state)
                     qubit.align()
                     # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
                     # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
@@ -130,7 +129,7 @@ with program() as ramsey:
                     # Align the elements to measure after playing the qubit pulse.
                     align()
                     # Measure the state of the resonators
-                    readout_state(qubit, state[i])
+                    qubit.readout_state(state[i])
                     assign(state[i], init_state ^ state[i])
                     save(state[i], state_st[i])
 

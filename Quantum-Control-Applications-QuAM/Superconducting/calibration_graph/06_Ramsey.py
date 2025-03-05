@@ -28,7 +28,7 @@ from quam_experiments.experiments.ramsey.parameters import Parameters, get_idle_
 from quam_experiments.experiments.ramsey.plotting import plot_ramseys_data_with_fit
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow.simulation import simulate_and_plot
-from quam_experiments.macros import qua_declaration, readout_state
+from quam_experiments.macros import qua_declaration
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -111,7 +111,7 @@ with program() as ramsey:
                     align()
                     for i, qubit in multiplexed_qubits.items():
                         if node.parameters.use_state_discrimination:
-                            readout_state(qubit, state[i])
+                            qubit.readout_state(state[i])
                             save(state[i], state_st[i])
                         else:
                             qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))

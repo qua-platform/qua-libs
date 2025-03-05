@@ -16,7 +16,7 @@ Next steps before going to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
-from quam_experiments.macros import qua_declaration, active_reset, readout_state
+from quam_experiments.macros import qua_declaration
 from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
@@ -139,7 +139,7 @@ with program() as t1:
 
                 # Measure the state of the resonators
                 if node.parameters.use_state_discrimination:
-                    readout_state(qubit, state[i])
+                    qubit.readout_state(state[i])
                     save(state[i], state_st[i])
                 else:
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))

@@ -5,9 +5,26 @@ from quam_builder.architecture.superconducting.components.readout_resonator impo
     ReadoutResonatorIQ,
     ReadoutResonatorMW,
 )
+from quam_experiments.parameters.qubits_experiment import QubitsExperimentNodeParameters
+from quam_experiments.parameters import CommonNodeParameters
 from qualang_tools.octave_tools import octave_calibration_tool
 from qm import QuantumMachine, logger
-from typing import Dict, Any, Union
+from qm.qua import (
+    save,
+    declare,
+    fixed,
+    assign,
+    wait,
+    while_,
+    StreamType,
+    if_,
+    update_frequency,
+    QuaVariableType,
+    Math,
+    Cast,
+)
+import warnings
+from typing import Dict, Any, Union, Optional
 from dataclasses import field
 
 __all__ = ["BaseTransmon"]
@@ -135,3 +152,114 @@ class BaseTransmon(QuamComponent):
                 return qubit_pair
         else:
             raise ValueError("Qubit pair not found: qubit_control={self.name}, " "qubit_target={other.name}")
+
+    def readout_state(
+        self, state, pulse_name: str = "readout", threshold: float = None, save_qua_var: StreamType = None
+    ):
+        I = declare(fixed)
+        Q = declare(fixed)
+        if threshold is None:
+            threshold = self.resonator.operations[pulse_name].threshold
+        self.resonator.measure(pulse_name, qua_vars=(I, Q))
+        assign(state, Cast.to_int(I > threshold))
+        wait(self.resonator.depletion_time // 4, self.resonator.name)
+
+    def reset_qubit(self, node_parameters: Union[QubitsExperimentNodeParameters, CommonNodeParameters], **kwargs):
+        """Reset the qubit with the specified method. When simulating the QUA program, the qubit reset will be skipped to save simulated samples."""
+        if not node_parameters.simulate:
+            if node_parameters.reset_type == "thermal":
+                self.reset_qubit_thermal()
+            elif node_parameters.reset_type == "active":
+                self.reset_qubit_active(**kwargs)
+            elif node_parameters.reset_type == "active_gef":
+                self.reset_qubit_active_gef(**kwargs)
+        else:
+            warnings.warn("For simulating the QUA program, the qubit reset has been skipped.")
+
+    def reset_qubit_thermal(self):
+        self.wait(self.thermalization_time // 4)
+
+    def reset_qubit_active(
+        self,
+        save_qua_var: Optional[StreamType] = None,
+        pi_pulse_name: str = "x180",
+        readout_pulse_name: str = "readout",
+        max_attempts: int = 15,
+    ):
+        pulse = self.resonator.operations[readout_pulse_name]
+
+        I = declare(fixed)
+        Q = declare(fixed)
+        state = declare(bool)
+        attempts = declare(int, value=1)
+        assign(attempts, 1)
+        self.align()
+        self.resonator.measure("readout", qua_vars=(I, Q))
+        assign(state, I > pulse.threshold)
+        wait(self.resonator.depletion_time // 2, self.resonator.name)
+        self.xy.play(pi_pulse_name, condition=state)
+        self.align()
+        with while_((I > pulse.rus_exit_threshold) & (attempts < max_attempts)):
+            self.align()
+            self.resonator.measure("readout", qua_vars=(I, Q))
+            assign(state, I > pulse.threshold)
+            wait(self.resonator.depletion_time // 2, self.resonator.name)
+            self.xy.play(pi_pulse_name, condition=state)
+            self.align()
+            assign(attempts, attempts + 1)
+        wait(500, self.xy.name)
+        self.align()
+        if save_qua_var is not None:
+            save(attempts, save_qua_var)
+
+    def reset_qubit_active_gef(
+        self,
+        readout_pulse_name: str = "readout",
+        pi_01_pulse_name: str = "x180",
+        pi_12_pulse_name: str = "EF_x180",
+    ):
+        res_ar = declare(int)
+        success = declare(int)
+        assign(success, 0)
+        attempts = declare(int)
+        assign(attempts, 0)
+        self.align()
+        with while_(success < 2):
+            self.readout_state_gef(res_ar, readout_pulse_name)
+            wait(self.rr.res_deplete_time // 4, self.xy.name)
+            self.align()
+            with if_(res_ar == 0):
+                assign(success, success + 1)  # we need to measure 'g' two times in a row to increase our confidence
+            with if_(res_ar == 1):
+                update_frequency(self.xy.name, int(self.xy.intermediate_frequency))
+                self.xy.play(pi_01_pulse_name)
+                assign(success, 0)
+            with if_(res_ar == 2):
+                update_frequency(
+                    self.xy.name,
+                    int(self.xy.intermediate_frequency - self.anharmonicity),
+                )
+                self.xy.play(pi_12_pulse_name)
+                update_frequency(self.xy.name, int(self.xy.intermediate_frequency))
+                self.xy.play(pi_01_pulse_name)
+                assign(success, 0)
+            self.align()
+            assign(attempts, attempts + 1)
+
+    def readout_state_gef(self, state: QuaVariableType, pulse_name: str = "readout", save_qua_var: StreamType = None):
+        I = declare(fixed)
+        Q = declare(fixed)
+        diff = declare(fixed, size=3)
+
+        self.resonator.update_frequency(self.resonator.intermediate_frequency - self.resonator.GEF_frequency_shift)
+        self.resonator.measure(pulse_name, qua_vars=(I, Q))
+        self.resonator.update_frequency(self.resonator.intermediate_frequency)
+
+        gef_centers = [self.resonator.gef_centers.g, self.resonator.gef_centers.e, self.resonator.gef_centers.f]
+        for p in range(3):
+            assign(
+                diff[p],
+                (I - gef_centers[p][0]) * (I - gef_centers[p][0]) + (Q - gef_centers[p][1]) * (Q - gef_centers[p][1]),
+            )
+        assign(state, Math.argmin(diff))
+        wait(self.resonator.depletion_time // 4, self.resonator.name)
