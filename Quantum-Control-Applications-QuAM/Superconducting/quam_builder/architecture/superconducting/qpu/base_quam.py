@@ -9,7 +9,9 @@ from quam_builder.architecture.superconducting.qubit_pair import AnyTransmonPair
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
-
+from qm.qua._dsl import _ResultSource
+from qm.qua._expressions import QuaVariable
+from qm.qua import declare_stream, declare, fixed
 from dataclasses import field
 from typing import List, Dict, ClassVar, Optional, Sequence, Union
 
@@ -153,3 +155,16 @@ class BaseQuAM(QuamRoot):
     def thermalization_time(self) -> int:
         """Return the longest thermalization time amongst the active qubits."""
         return max(q.thermalization_time for q in self.active_qubits)
+
+    def qua_declaration(
+        self
+    ) -> tuple[list[QuaVariable], list[_ResultSource], list[QuaVariable], list[_ResultSource], QuaVariable, _ResultSource]:
+        """Macro to declare the necessary QUA variables"""
+
+        n = declare(int)
+        n_st = declare_stream()
+        I = [declare(fixed) for _ in range(len(self.qubits))]
+        Q = [declare(fixed) for _ in range(len(self.qubits))]
+        I_st = [declare_stream() for _ in range(len(self.qubits))]
+        Q_st = [declare_stream() for _ in range(len(self.qubits))]
+        return I, I_st, Q, Q_st, n, n_st

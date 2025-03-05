@@ -19,7 +19,7 @@ Before proceeding to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
-from quam_experiments.macros import qua_declaration
+
 from quam_experiments.analysis.fit_utils import fit_resonator
 from quam_libs.qua_datasets import apply_angle, subtract_slope, convert_IQ_to_V
 from quam_libs.plot_utils import QubitGrid, grid_iter
@@ -84,7 +84,7 @@ dfs = np.arange(-span / 2, +span / 2, step)
 with program() as multi_res_spec:
     # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
     # For instance, here 'I' is a python list containing two QUA fixed variables.
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
     df = declare(int)  # QUA variable for the readout frequency
 
     # Bring the active qubits to the minimum frequency point

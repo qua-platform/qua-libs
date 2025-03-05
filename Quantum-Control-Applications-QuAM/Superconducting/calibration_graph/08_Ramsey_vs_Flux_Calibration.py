@@ -20,7 +20,7 @@ Next steps before going to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
-from quam_experiments.macros import qua_declaration
+
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
 from quam_experiments.analysis.fit import fit_oscillation_decay_exp, oscillation_decay_exp
@@ -93,7 +93,7 @@ fluxes = np.arange(
 )
 
 with program() as ramsey:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
     init_state = declare(int)
     state = [declare(int) for _ in range(num_qubits)]
     state_st = [declare_stream() for _ in range(num_qubits)]

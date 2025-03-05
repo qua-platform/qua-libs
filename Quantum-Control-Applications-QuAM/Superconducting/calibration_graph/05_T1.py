@@ -8,7 +8,6 @@ from qualibrate import QualibrationNode
 from quam_config import QuAM
 from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
 from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.macros import qua_declaration
 from quam_experiments.workflow import simulate_and_plot, fetch_dataset, print_progress_bar
 from quam_experiments.experiments.T1 import Parameters, fit_t1_decay, log_t1, plot_t1s_data_with_fit
 
@@ -75,7 +74,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     }
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
-        I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+        I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
         t = declare(int)
         if node.parameters.use_state_discrimination:
             state = [declare(int) for _ in range(num_qubits)]

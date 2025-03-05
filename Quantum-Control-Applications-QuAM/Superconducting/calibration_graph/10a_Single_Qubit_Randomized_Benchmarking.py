@@ -21,8 +21,7 @@ Prerequisites:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM, Transmon
-from quam_experiments.macros import qua_declaration
+from quam_config import QuAM
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
 from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
@@ -126,7 +125,7 @@ def generate_sequence():
     return sequence, inv_gate
 
 
-def play_sequence(sequence_list, depth, qubit: Transmon):
+def play_sequence(sequence_list, depth, qubit):
     i = declare(int)
     with for_(i, 0, i <= depth, i + 1):
         with switch_(sequence_list[i], unsafe=True):
@@ -209,7 +208,7 @@ with program() as randomized_benchmarking_individual:
     # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
     saved_gate = declare(int)
     m = declare(int)  # QUA variable for the loop over random sequences
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
     state = [declare(int) for _ in range(num_qubits)]
     # The relevant streams
     m_st = declare_stream()
@@ -239,7 +238,7 @@ with program() as randomized_benchmarking_individual:
                     with for_(n, 0, n < n_avg, n + 1):
                         # Initialize the qubits
                         if reset_type == "active":
-                            active_reset(qubit, "readout")
+                            qubit.reset_qubit_active()
                         else:
                             qubit.resonator.wait(qubit.thermalization_time * u.ns)
                         # Align the two elements to play the sequence after qubit initialization
@@ -280,7 +279,7 @@ with program() as randomized_benchmarking_multiplexed:
     # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
     saved_gate = declare(int)
     m = declare(int)  # QUA variable for the loop over random sequences
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
     state = [declare(int) for _ in range(num_qubits)]
     # The relevant streams
     m_st = declare_stream()
@@ -312,7 +311,7 @@ with program() as randomized_benchmarking_multiplexed:
 
                         # Initialize the qubits
                         if reset_type == "active":
-                            active_reset(qubit, "readout")
+                            qubit.reset_qubit_active()
                         else:
                             qubit.resonator.wait(qubit.thermalization_time * u.ns)
                         # Align the two elements to play the sequence after qubit initialization

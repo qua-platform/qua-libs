@@ -21,7 +21,6 @@ Before proceeding to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
-from quam_experiments.macros import qua_declaration
 from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
@@ -106,7 +105,7 @@ update_flux_min = node.parameters.update_flux_min  # Update the min flux point
 with program() as multi_res_spec_vs_flux:
     # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
     # For instance, here 'I' is a python list containing two QUA fixed variables.
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
     dc = declare(fixed)  # QUA variable for the flux bias
     df = declare(int)  # QUA variable for the readout frequency
 

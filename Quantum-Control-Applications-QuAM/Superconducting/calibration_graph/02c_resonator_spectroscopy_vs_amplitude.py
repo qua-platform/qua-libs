@@ -24,7 +24,7 @@ Before proceeding to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
 from quam_experiments.analysis.fit_utils import fit_resonator
-from quam_experiments.macros import qua_declaration
+
 from quam_libs.qua_datasets import convert_IQ_to_V, subtract_slope, apply_angle
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
@@ -115,7 +115,7 @@ flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or
 with program() as multi_res_spec_vs_amp:
     # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
     # For instance, here 'I' is a python list containing two QUA fixed variables.
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
     a = declare(fixed)  # QUA variable for the readout amplitude pre-factor
     df = declare(int)  # QUA variable for the readout frequency
 

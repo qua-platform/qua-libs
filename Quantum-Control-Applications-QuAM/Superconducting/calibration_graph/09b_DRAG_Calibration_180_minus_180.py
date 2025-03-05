@@ -20,7 +20,7 @@ Next steps before going to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
-from quam_experiments.macros import qua_declaration, active_reset
+
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
 from quam_libs.trackable_object import tracked_updates
@@ -106,7 +106,7 @@ N_pi = node.parameters.max_number_pulses_per_sweep  # Maximum number of qubit pu
 N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")
 
 with program() as drag_calibration:
-    I, _, Q, _, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, _, Q, _, n, n_st = node.machine.qua_declaration()
     state = [declare(bool) for _ in range(num_qubits)]
     state_stream = [declare_stream() for _ in range(num_qubits)]
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
@@ -123,7 +123,7 @@ with program() as drag_calibration:
                 with for_(*from_array(a, amps)):
                     # Initialize the qubits
                     if reset_type == "active":
-                        active_reset(qubit, "readout")
+                        qubit.reset_qubit_active()
                     else:
                         qubit.wait(qubit.thermalization_time * u.ns)
 

@@ -31,7 +31,7 @@ Before proceeding to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
-from quam_experiments.macros import qua_declaration
+
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
 from quam_experiments.analysis.fit import peaks_dips
@@ -104,7 +104,7 @@ flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or
 
 with program() as qubit_spec:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
     df = declare(int)  # QUA variable for the qubit frequency
 
     for i, qubit in enumerate(qubits):

@@ -3,34 +3,11 @@ from pathlib import Path
 from typing import Optional, Union
 import warnings
 
-from qm.qua import *
-from qm.qua._dsl import _ResultSource
-from qm.qua._expressions import QuaVariable
-
 from quam_config import QuAM
 
 __all__ = [
-    "qua_declaration",
     "node_save",
 ]
-
-
-def qua_declaration(
-    num_qubits,
-) -> tuple[list[QuaVariable], list[_ResultSource], list[QuaVariable], list[_ResultSource], QuaVariable, _ResultSource]:
-    """
-    Macro to declare the necessary QUA variables
-
-    :param num_qubits: Number of qubits used in this experiment
-    :return:
-    """
-    n = declare(int)
-    n_st = declare_stream()
-    I = [declare(fixed) for _ in range(num_qubits)]
-    Q = [declare(fixed) for _ in range(num_qubits)]
-    I_st = [declare_stream() for _ in range(num_qubits)]
-    Q_st = [declare_stream() for _ in range(num_qubits)]
-    return I, I_st, Q, Q_st, n, n_st
 
 def node_save(
     quam: QuAM,

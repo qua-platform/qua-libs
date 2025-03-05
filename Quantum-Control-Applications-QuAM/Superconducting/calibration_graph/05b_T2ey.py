@@ -16,7 +16,6 @@ Next steps before going to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
-from quam_experiments.macros import qua_declaration
 from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
@@ -89,7 +88,7 @@ else:
     detunings = {q.name: 0.0 for q in qubits}
 
 with program() as t1:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
     if node.parameters.use_state_discrimination:
         state = [declare(int) for _ in range(num_qubits)]
         state_st = [declare_stream() for _ in range(num_qubits)]
@@ -112,7 +111,7 @@ with program() as t1:
 
             with for_(*from_array(t[i], idle_times)):
                 if node.parameters.reset_type == "active":
-                    active_reset(qubit, "readout")
+                    qubit.reset_qubit_active()
                 else:
                     qubit.resonator.wait(qubit.thermalization_time * u.ns)
                     qubit.align()

@@ -19,7 +19,7 @@ Next steps before going to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
-from quam_experiments.macros import qua_declaration, active_reset
+
 from quam_libs.instrument_limits import instrument_limits
 from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.plot_utils import QubitGrid, grid_iter
@@ -106,7 +106,7 @@ else:
 
 
 with program() as power_rabi:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
     if state_discrimination:
         state = [declare(bool) for _ in range(num_qubits)]
         state_stream = [declare_stream() for _ in range(num_qubits)]
@@ -124,7 +124,7 @@ with program() as power_rabi:
                 with for_(*from_array(a, amps)):
                     # Initialize the qubits
                     if reset_type == "active":
-                        active_reset(qubit, "readout")
+                        qubit.reset_qubit_active()
                     else:
                         qubit.wait(qubit.thermalization_time * u.ns)
 

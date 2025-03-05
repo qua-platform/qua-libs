@@ -28,7 +28,7 @@ from quam_experiments.experiments.ramsey.parameters import Parameters, get_idle_
 from quam_experiments.experiments.ramsey.plotting import plot_ramseys_data_with_fit
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow.simulation import simulate_and_plot
-from quam_experiments.macros import qua_declaration
+
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -75,7 +75,7 @@ flux_point = node.parameters.flux_point_joint_or_independent
 detuning_signs = [-1, 1]
 
 with program() as ramsey:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
     idle_time = declare(int)
     detuning_sign = declare(int)
     virtual_detuning_phases = [declare(fixed) for _ in range(num_qubits)]

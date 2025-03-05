@@ -23,7 +23,6 @@ Next steps before going to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
-from quam_experiments.macros import qua_declaration, active_reset
 from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
@@ -82,8 +81,8 @@ flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
 operation_name = node.parameters.operation_name
 with program() as iq_blobs:
-    I_g, I_g_st, Q_g, Q_g_st, n, n_st = qua_declaration(num_qubits=num_qubits)
-    I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(num_qubits=num_qubits)
+    I_g, I_g_st, Q_g, Q_g_st, n, n_st = node.machine.qua_declaration()
+    I_e, I_e_st, Q_e, Q_e_st, _, _ = node.machine.qua_declaration()
 
     for i, qubit in enumerate(qubits):
 
@@ -94,7 +93,7 @@ with program() as iq_blobs:
             # ground iq blobs for all qubits
             save(n, n_st)
             if reset_type == "active":
-                active_reset(qubit, "readout")
+                qubit.reset_qubit_active()
             elif reset_type == "thermal":
                 qubit.wait(4 * qubit.thermalization_time * u.ns)
             else:
@@ -110,7 +109,7 @@ with program() as iq_blobs:
             qubit.align()
             # excited iq blobs for all qubits
             if reset_type == "active":
-                active_reset(qubit, "readout")
+                qubit.reset_qubit_active()
             elif reset_type == "thermal":
                 qubit.wait(qubit.thermalization_time * u.ns)
             else:
