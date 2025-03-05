@@ -165,7 +165,25 @@ class BaseTransmon(QuamComponent):
         wait(self.resonator.depletion_time // 4, self.resonator.name)
 
     def reset_qubit(self, node_parameters: Union[QubitsExperimentNodeParameters, CommonNodeParameters], **kwargs):
-        """Reset the qubit with the specified method. When simulating the QUA program, the qubit reset will be skipped to save simulated samples."""
+        """
+        Reset the qubit with the specified method based on the node parameters.
+
+        This function resets the qubit using the method specified in the node parameters.
+        It supports thermal reset, active reset, and active GEF reset. When simulating the
+        QUA program, the qubit reset is skipped to save simulated samples.
+
+        Args:
+            node_parameters (Union[QubitsExperimentNodeParameters, CommonNodeParameters]):
+                The parameters defining the qubit reset method and simulation mode.
+            **kwargs: Additional keyword arguments passed to the active reset methods.
+
+        Returns:
+            None
+
+        Raises:
+            Warning: If the function is called in simulation mode, a warning is issued indicating
+                     that the qubit reset has been skipped.
+        """
         if not node_parameters.simulate:
             if node_parameters.reset_type == "thermal":
                 self.reset_qubit_thermal()
@@ -177,6 +195,13 @@ class BaseTransmon(QuamComponent):
             warnings.warn("For simulating the QUA program, the qubit reset has been skipped.")
 
     def reset_qubit_thermal(self):
+        """
+        Perform a thermal reset of the qubit.
+
+        This function waits for a duration specified by the thermalization time
+        to allow the qubit to return to its ground state through natural thermal
+        relaxation.
+        """
         self.wait(self.thermalization_time // 4)
 
     def reset_qubit_active(
@@ -218,6 +243,22 @@ class BaseTransmon(QuamComponent):
         pi_01_pulse_name: str = "x180",
         pi_12_pulse_name: str = "EF_x180",
     ):
+        """
+        Reset the qubit to the ground state ('g') using active reset with GEF state readout.
+
+        This function performs an active reset of the qubit by repeatedly measuring its state
+        and applying appropriate pulses to bring it back to the ground state ('g'). The process
+        continues until the qubit is measured in the ground state twice in a row to ensure high
+        confidence in the reset.
+
+        Args:
+            readout_pulse_name (str, optional): The name of the pulse to use for the readout. Defaults to "readout".
+            pi_01_pulse_name (str, optional): The name of the pulse to use for the 0-1 transition. Defaults to "x180".
+            pi_12_pulse_name (str, optional): The name of the pulse to use for the 1-2 transition. Defaults to "EF_x180".
+
+        Returns:
+            None
+        """
         res_ar = declare(int)
         success = declare(int)
         assign(success, 0)
@@ -246,7 +287,22 @@ class BaseTransmon(QuamComponent):
             self.align()
             assign(attempts, attempts + 1)
 
-    def readout_state_gef(self, state: QuaVariableType, pulse_name: str = "readout", save_qua_var: StreamType = None):
+    def readout_state_gef(self, state: QuaVariableType, pulse_name: str = "readout"):
+        """
+        Perform a GEF state readout using the specified pulse and update the state variable.
+
+        This function measures the 'I' and 'Q' quadrature components of the resonator's response
+        to a given pulse, calculates the squared Euclidean distance between the measured
+        (I, Q) values and the predefined GEF state centers, and assigns the state variable
+        to the index of the closest GEF state.
+
+        Args:
+            state (QuaVariableType): The variable to store the readout state (0 for 'g', 1 for 'e', 2 for 'f').
+            pulse_name (str, optional): The name of the pulse to use for the readout. Defaults to "readout".
+
+        Returns:
+            None
+        """
         I = declare(fixed)
         Q = declare(fixed)
         diff = declare(fixed, size=3)
