@@ -1,6 +1,6 @@
-from quam_builder.architecture.superconducting.qpu.base_quam import BaseQuAM
-from quam_builder.architecture.superconducting.qpu.flux_tunable_qpu import QuAM as FluxTunableQuAM
-from quam_builder.architecture.superconducting.qpu.fixed_frequency_qpu import QuAM as FixedFrequencyQuAM
+# from quam_builder.architecture.superconducting.qpu import BaseQuAM
+from quam_builder.architecture.superconducting.qpu import FluxTunableQuAM
+# from quam_builder.architecture.superconducting.qpu import FixedFrequencyQuAM
 
 
 BaseQuAM = FluxTunableQuAM

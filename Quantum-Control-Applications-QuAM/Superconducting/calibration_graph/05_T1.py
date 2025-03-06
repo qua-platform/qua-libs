@@ -38,16 +38,17 @@ node = QualibrationNode[Parameters, QuAM](
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
-# todo: why not doing it like this?
-@node.run_action(skip_if=not node.modes.interactive)
+# todo: why not doing it like this?  -> let's do it like this!
+# todo node.modes.external is False when running from the IDE
+@node.run_action(skip_if=not node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.num_averages = 500
+    node.parameters.simulate = True
     pass
 
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
-
 
 # %% {QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
@@ -80,35 +81,39 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             state = [declare(int) for _ in range(num_qubits)]
             state_st = [declare_stream() for _ in range(num_qubits)]
 
-        for i, qubit in enumerate(qubits):
-            # Bring the active qubits to the desired frequency point
-            node.machine.set_all_fluxes(flux_point=node.parameters.flux_point_joint_or_independent, target=qubit)
-            # todo: remove the flux points from the parameters and use initialize
-            # node.machine.initialize_qubit(target=qubit)
+        # [["q1", "q2", "q3", "q4"]] --> fully multiplexed
+        # [["q1"], ["q2"], ["q3"], ["q4"]] --> fully sequential
+        # [["q1", "q3"], ["q2", "q4"]] --> multiplexed by batches
+        for multiplexed_qubits in qubits.batch():
+            # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
+            # todo: is this the right behaviour?
+            for qubit in multiplexed_qubits.values():
+                node.machine.initialize_qpu(target=qubit)
+
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_each_(t, idle_times):
-                    qubit.reset_qubit(node.parameters)
-                    # todo: qubit.reset(node.parameters)
-                    # qubit.reset_thermal()
-                    # qubit.reset_active()
-                    # qubit.reset_active_gef()
-                    qubit.align()
-                    qubit.xy.play("x180")
-                    qubit.align()
-                    qubit.resonator.wait(t)
+                    # Reset the qubits to the ground state
+                    for i, qubit in multiplexed_qubits.items():
+                        qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+
+                    # The qubit manipulation sequence
+                    for i, qubit in multiplexed_qubits.items():
+                        qubit.align()
+                        qubit.xy.play("x180")
+                        qubit.align()
+                        qubit.resonator.wait(t)
+
                     # Measure the state of the resonators
-                    if node.parameters.use_state_discrimination:
-                        qubit.readout_state(state[i])
-                        save(state[i], state_st[i])
-                    else:
-                        qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                        # save data
-                        save(I[i], I_st[i])
-                        save(Q[i], Q_st[i])
-            # Measure sequentially
-            if not node.parameters.multiplexed:
-                align()
+                    for i, qubit in multiplexed_qubits.items():
+                        if node.parameters.use_state_discrimination:
+                            qubit.readout_state(state[i])
+                            save(state[i], state_st[i])
+                        else:
+                            qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                            # save data
+                            save(I[i], I_st[i])
+                            save(Q[i], Q_st[i])
 
         with stream_processing():
             n_st.save("n")
@@ -143,6 +148,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    # todo: create a data_array
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
@@ -160,7 +166,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
     # TODO: temp fix
     load_data_id = node.parameters.load_data_id
     # Load the specified dataset
-    node = node.load_from_id(node.parameters.load_data_id)
+    node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
@@ -182,7 +188,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     # todo check the units with real data
     node.results["ds_fit"], fit_results = fit_t1_decay(node.results["ds_raw"], node.parameters)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-    # todo: How to get the looger to print on the console?
+    # todo: Serwan to add node.log so that we can do node.log.add(log_t1(node.results["ds_fit"])) or similar
     from qualibrate.utils.logger_m import logger
     # Log the relevant information extracted from the data analysis
     log_t1(node.results["ds_fit"], logger)
@@ -198,6 +204,7 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     plt.show()
     # Store the generated figures
     node.results["figure"] = fig
+
 
 
 # %% {Update_state}

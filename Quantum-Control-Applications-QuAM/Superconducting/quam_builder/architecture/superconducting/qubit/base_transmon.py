@@ -5,8 +5,6 @@ from quam_builder.architecture.superconducting.components.readout_resonator impo
     ReadoutResonatorIQ,
     ReadoutResonatorMW,
 )
-from quam_experiments.parameters.qubits_experiment import QubitsExperimentNodeParameters
-from quam_experiments.parameters import CommonNodeParameters
 from qualang_tools.octave_tools import octave_calibration_tool
 from qm import QuantumMachine, logger
 from qm.qua import (
@@ -24,7 +22,7 @@ from qm.qua import (
     Cast,
 )
 import warnings
-from typing import Dict, Any, Union, Optional
+from typing import Dict, Any, Union, Optional, Literal
 from dataclasses import field
 
 __all__ = ["BaseTransmon"]
@@ -164,8 +162,9 @@ class BaseTransmon(QuamComponent):
         assign(state, Cast.to_int(I > threshold))
         wait(self.resonator.depletion_time // 4, self.resonator.name)
 
-    def reset_qubit(self, node_parameters: Union[QubitsExperimentNodeParameters, CommonNodeParameters], **kwargs):
+    def reset_qubit(self, reset_type: Literal["thermal", "active", "active_gef"]="thermal", simulate: bool=False, **kwargs):
         """
+        todo: update the docstring
         Reset the qubit with the specified method based on the node parameters.
 
         This function resets the qubit using the method specified in the node parameters.
@@ -184,12 +183,12 @@ class BaseTransmon(QuamComponent):
             Warning: If the function is called in simulation mode, a warning is issued indicating
                      that the qubit reset has been skipped.
         """
-        if not node_parameters.simulate:
-            if node_parameters.reset_type == "thermal":
+        if not simulate:
+            if reset_type == "thermal":
                 self.reset_qubit_thermal()
-            elif node_parameters.reset_type == "active":
+            elif reset_type == "active":
                 self.reset_qubit_active(**kwargs)
-            elif node_parameters.reset_type == "active_gef":
+            elif reset_type == "active_gef":
                 self.reset_qubit_active_gef(**kwargs)
         else:
             warnings.warn("For simulating the QUA program, the qubit reset has been skipped.")
