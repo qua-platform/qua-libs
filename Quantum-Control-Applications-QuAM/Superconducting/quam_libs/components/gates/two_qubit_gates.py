@@ -324,13 +324,13 @@ class CZGate_SNZ_2elements(TwoQubitGate):
 
 
     def execute(self, amplitude_scale=None, amplitude_scale_2=None, phase_shift_control=None, phase_shift_target=None):        
-        phase_shift_control_qua = declare(fixed, self.phase_shift_control)
-        phase_shift_target_qua = declare(fixed, self.phase_shift_target)
-        
-        if phase_shift_control is not None:
-            assign(phase_shift_control_qua, phase_shift_control)
-        if phase_shift_target is not None:
-            assign(phase_shift_target_qua, phase_shift_target)
+        # phase_shift_control_qua = declare(fixed, self.phase_shift_control)
+        # phase_shift_target_qua = declare(fixed, self.phase_shift_target)
+        #
+        # if phase_shift_control is not None:
+        #     assign(phase_shift_control_qua, phase_shift_control)
+        # if phase_shift_target is not None:
+        #     assign(phase_shift_target_qua, phase_shift_target)
         
         self.transmon_pair.align()
         
@@ -345,11 +345,17 @@ class CZGate_SNZ_2elements(TwoQubitGate):
             amplitude_scale=amplitude_scale_2,
         )
         
-        
-        
         self.transmon_pair.align()
-        frame_rotation_2pi(phase_shift_control_qua, self.qubit_control.xy.name)
-        frame_rotation_2pi(phase_shift_target_qua, self.qubit_target.xy.name)
+        if phase_shift_control is None:
+            frame_rotation_2pi(self.phase_shift_control, self.qubit_control.xy.name)
+        else:
+            frame_rotation_2pi(phase_shift_control, self.qubit_control.xy.name)
+
+        if phase_shift_target is None:
+            frame_rotation_2pi(self.phase_shift_target, self.qubit_target.xy.name)
+        else:
+            frame_rotation_2pi(phase_shift_target, self.qubit_control.xy.name)
+
         self.qubit_control.xy.play("x180", amplitude_scale=0.0, duration=4)
         self.qubit_target.xy.play("x180", amplitude_scale=0.0, duration=4)
         self.transmon_pair.align()
