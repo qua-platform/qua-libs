@@ -3,7 +3,7 @@ from typing import Dict, Any
 from dataclasses import field
 from copy import copy
 
-from qm.qua import align, declare, fixed, frame_rotation_2pi
+from qm.qua import align, declare, fixed, frame_rotation_2pi, assign
 
 from quam.components.pulses import Pulse
 from quam.core import quam_dataclass, QuamComponent
@@ -280,3 +280,113 @@ class SWAP_Coupler_Gate(TwoQubitGate):
         element_config_control["operations"][self.flux_pulse_control_label] = pulse_control.pulse_name
         element_config_coupler = config["elements"][self.coupler.name]
         element_config_coupler["operations"][self.coupler_pulse_control_label] = pulse_coupler.pulse_name
+
+
+
+@quam_dataclass
+class CZGate_SNZ_2elements(TwoQubitGate):
+    """CZ Operation for a qubit pair"""
+
+    # Pulses will be added to qubit elements
+    # The reason we don't add "flux_to_q1" directly to q1.z is because it is part of
+    # the CZ operation, i.e. it is only applied as part of a CZ operation
+
+    flux_pulse_control: Pulse
+    flux_pulse_control_2: Pulse
+    
+    phase_shift_control: float = 0.0
+    phase_shift_target: float = 0.0
+
+    @property
+    def gate_label(self) -> str:
+        try:
+            return self.parent.get_attr_name(self)
+        except AttributeError:
+            return "CZ"
+
+    @property
+    def flux_pulse_control_label(self) -> str:
+        if self.flux_pulse_control.id is not None:
+            pulse_label = self.flux_pulse_control.id
+        else:
+            pulse_label = "flux_pulse_control"
+
+        return f"{self.gate_label}{str_ref.DELIMITER}{pulse_label}"
+
+    @property
+    def flux_pulse_control_2_label(self) -> str:
+        if self.flux_pulse_control_2.id is not None:
+            pulse_label = self.flux_pulse_control_2.id
+        else:
+            pulse_label = "flux_pulse_control_2"
+
+        return f"{self.gate_label}{str_ref.DELIMITER}{pulse_label}"
+
+
+    def execute(self, amplitude_scale=None, amplitude_scale_2=None, phase_shift_control=None, phase_shift_target=None):        
+        phase_shift_control_qua = declare(fixed, self.phase_shift_control)
+        phase_shift_target_qua = declare(fixed, self.phase_shift_target)
+        
+        if phase_shift_control is not None:
+            assign(phase_shift_control_qua, phase_shift_control)
+        if phase_shift_target is not None:
+            assign(phase_shift_target_qua, phase_shift_target)
+        
+        self.transmon_pair.align()
+        
+        self.qubit_control.z.play(
+            self.flux_pulse_control_label,
+            validate=False,
+            amplitude_scale=amplitude_scale,
+        )
+        self.qubit_control.z2.play(
+            self.flux_pulse_control_2_label,
+            validate=False,
+            amplitude_scale=amplitude_scale_2,
+        )
+        
+        
+        
+        self.transmon_pair.align()
+        frame_rotation_2pi(self.phase_shift_control, self.qubit_control.xy.name)
+        frame_rotation_2pi(self.phase_shift_target, self.qubit_target.xy.name)
+        self.qubit_control.xy.play("x180", amplitude_scale=0.0, duration=4)
+        self.qubit_target.xy.play("x180", amplitude_scale=0.0, duration=4)
+        self.transmon_pair.align()
+
+    @property
+    def config_settings(self):
+        return {"after": [self.qubit_control.z, self.qubit_control.z2]}
+
+    def apply_to_config(self, config: dict) -> None:
+        pulse = copy(self.flux_pulse_control)
+        pulse.id = self.flux_pulse_control_label
+        pulse.parent = None  # Reset parent so it can be attached to new parent
+        pulse.parent = self.qubit_control.z
+        
+        pulse_2 = copy(self.flux_pulse_control_2)
+        pulse_2.id = self.flux_pulse_control_2_label
+        pulse_2.parent = None  # Reset parent so it can be attached to new parent
+        pulse_2.parent = self.qubit_control.z2
+
+        if self.flux_pulse_control_label in self.qubit_control.z.operations:
+            raise ValueError(
+                "Pulse name already exists in pulse operations. "
+                f"Channel: {self.qubit_control.z.get_reference()}, "
+                f"Pulse: {self.flux_pulse_control.get_reference()}, "
+                f"Pulse name: {self.flux_pulse_control_label}"
+            )
+        if self.flux_pulse_control_2_label in self.qubit_control.z2.operations:
+            raise ValueError(
+                "Pulse name already exists in pulse operations. "
+                f"Channel: {self.qubit_control.z2.get_reference()}, "
+                f"Pulse: {self.flux_pulse_control_2.get_reference()}, "
+                f"Pulse name: {self.flux_pulse_control_2_label}"
+            )
+
+        pulse.apply_to_config(config)
+        pulse_2.apply_to_config(config)
+        element_config = config["elements"][self.qubit_control.z.name]
+        element_config_2 = config["elements"][self.qubit_control.z2.name]
+        element_config["operations"][self.flux_pulse_control_label] = pulse.pulse_name
+        element_config_2["operations"][self.flux_pulse_control_2_label] = pulse_2.pulse_name

@@ -32,6 +32,11 @@ class TransmonPair(QuamComponent):
         channels = [self.qubit_control.xy.name, self.qubit_control.z.name, self.qubit_control.resonator.name, self.qubit_target.xy.name, 
                   self.qubit_target.z.name, self.qubit_target.resonator.name]
         
+        if hasattr(self.qubit_control, 'z2'):
+            channels += [self.qubit_control.z2.name]
+        if hasattr(self.qubit_target, 'z2'):
+            channels += [self.qubit_target.z2.name]
+        
         if self.coupler:
              channels += [self.coupler.name]
         
