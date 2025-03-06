@@ -6,7 +6,6 @@ from qualibrate.parameters import RunnableParameters
 
 from quam_experiments.parameters import (
     QubitsExperimentNodeParameters,
-    FluxControlledNodeParameters,
     CommonNodeParameters,
 )
 
@@ -22,7 +21,6 @@ class RamseyParameters(RunnableParameters):
 
 class Parameters(
     NodeParameters,
-    FluxControlledNodeParameters,
     CommonNodeParameters,
     RamseyParameters,
     QubitsExperimentNodeParameters,

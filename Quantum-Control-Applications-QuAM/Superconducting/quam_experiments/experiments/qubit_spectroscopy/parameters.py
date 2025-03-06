@@ -3,7 +3,6 @@ from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from quam_experiments.parameters import (
     QubitsExperimentNodeParameters,
-    FluxControlledNodeParameters,
     CommonNodeParameters,
 )
 
@@ -18,7 +17,6 @@ class QubitSpectroscopyParameters(RunnableParameters):
 
 class Parameters(
     NodeParameters,
-    FluxControlledNodeParameters,
     CommonNodeParameters,
     QubitSpectroscopyParameters,
     QubitsExperimentNodeParameters,

@@ -15,7 +15,7 @@ class FluxLine(SingleChannel):
         joint_offset (float): the flux bias corresponding to the resonator maximum frequency when the active qubits are interacting (joint offset) in V.
         min_offset (float): the flux bias corresponding to the resonator minimum frequency in V.
         arbitrary_offset (float): arbitrary flux bias in V.
-        flux_point (str): name of the flux point to set the qubit at. Can be among ["joint", "independent", "arbitrary", "min"]. Default is "independent".
+        flux_point (str): name of the flux point to set the qubit at. Can be among ["joint", "independent", "min", "arbitrary", "zero"]. Default is "independent".
         settle_time (float): the flux line settle time in ns.
     """
 
@@ -23,7 +23,7 @@ class FluxLine(SingleChannel):
     joint_offset: float = 0.0
     min_offset: float = 0.0 # todo: what is it?
     arbitrary_offset: float = 0.0
-    flux_point: Literal["joint", "independent", "arbitrary", "zero"] = "independent"
+    flux_point: Literal["joint", "independent", "min", "arbitrary", "zero"] = "independent"
     settle_time: float = 1000.00
 
     def settle(self):

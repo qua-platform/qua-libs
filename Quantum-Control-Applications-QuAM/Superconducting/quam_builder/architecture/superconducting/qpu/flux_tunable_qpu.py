@@ -61,6 +61,7 @@ class QuAM(BaseQuAM):
             q.z.to_zero()
 
     def set_all_fluxes(self, flux_point: str, target: Union[FluxTunableTransmon, FluxTunableTransmonPair]):
+        # todo: check this with Tom & Dean
         if flux_point == "independent":
             assert isinstance(
                 target, FluxTunableTransmon
@@ -91,3 +92,8 @@ class QuAM(BaseQuAM):
         target.z.settle()
         target.align()
         return target_bias
+
+    def initialize_qpu(self, **kwargs):
+        flux_point = kwargs.get('flux_point', "min")
+        target = kwargs.get('target', None)
+        self.set_all_fluxes(flux_point, target)

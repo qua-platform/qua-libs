@@ -19,7 +19,7 @@ class CommonNodeParameters(RunnableParameters):
         default=False, description="Simulate the waveforms on the OPX instead of executing the program."
     )
     simulation_duration_ns: int = Field(
-        default=50_000, description="Duration over which the simulation will collect samples (in nanoseconds)."
+        default=50_000, gt=16, lt=1e6
     )
     use_waveform_report: bool = Field(
         default=True, description="Whether to use the interactive waveform report in simulation."

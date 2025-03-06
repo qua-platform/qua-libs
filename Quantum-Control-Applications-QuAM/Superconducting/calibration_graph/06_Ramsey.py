@@ -48,7 +48,6 @@ node = QualibrationNode(
         wait_time_num_points=500,
         log_or_linear_sweep="log",
         use_state_discrimination=False,
-        flux_point_joint_or_independent="joint",
         multiplexed=False,
         simulate=False,
     ),
