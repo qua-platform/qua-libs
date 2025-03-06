@@ -37,7 +37,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef, active_reset_simple
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -78,6 +78,7 @@ node = QualibrationNode(
     name="61_coupler_zeropoint_calibration", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -224,6 +225,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(CPhase_Oscillations)
 
@@ -306,7 +308,7 @@ if not node.parameters.simulate:
         sec_ax.set_xlabel('Detuning [MHz]')
         ax.set_xlabel('Qubit flux pulse [mV]')
         ax.set_ylabel('Coupler flux pulse [mV]')
-    grid.fig.suptitle('Control')
+    grid.fig.suptitle(f'Control \n {date_time} #{node_id}')
     plt.tight_layout()
     plt.show()
     node.results['figure_control'] = grid.fig
@@ -335,9 +337,9 @@ if not node.parameters.simulate:
 
         sec_ax = ax.secondary_xaxis('top', functions=(flux_to_detuning, detuning_to_flux))
         sec_ax.set_xlabel('Detuning [MHz]')
-        ax.set_xlabel('Qubit flux shift [V]')
-        ax.set_ylabel('Coupler flux [V]')
-    grid.fig.suptitle('Target')
+        ax.set_xlabel('Qubit flux shift [mV]')
+        ax.set_ylabel('Coupler flux [mV]')
+    grid.fig.suptitle(f'Target \n {date_time} #{node_id}')
     plt.tight_layout()
     plt.show()
     node.results['figure_target'] = grid.fig
