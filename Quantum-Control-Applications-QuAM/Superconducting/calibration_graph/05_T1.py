@@ -14,12 +14,13 @@ Next steps before going to the next node:
 """
 
 # %% {Imports}
+from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset, readout_state
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from quam_libs.lib.fit import fit_decay_exp, decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -49,7 +50,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 node = QualibrationNode(name="05_T1", parameters=Parameters())
-
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handle units and conversions.
@@ -160,6 +161,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(t1)
         results = fetching_tool(job, ["n"], mode="live")
@@ -217,9 +219,9 @@ if not node.parameters.simulate:
             ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
             ax.set_ylabel("State")
         else:
-            ds.sel(qubit=qubit["qubit"]).I.plot(ax=ax)
-            ax.set_ylabel("I (V)")
-        ax.plot(ds.idle_time, fitted.loc[qubit], "r--")
+            (ds.sel(qubit=qubit["qubit"]).I * 1e3).plot(ax=ax)
+            ax.set_ylabel("I (mV)")
+        ax.plot(ds.idle_time, fitted.loc[qubit] * 1e3, "r--")
         ax.set_title(qubit["qubit"])
         ax.set_xlabel("Idle_time (uS)")
         ax.text(
@@ -231,7 +233,8 @@ if not node.parameters.simulate:
             verticalalignment="top",
             bbox=dict(facecolor="white", alpha=0.5),
         )
-    grid.fig.suptitle("T1")
+        
+    grid.fig.suptitle(f"T1 \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure_raw"] = grid.fig
@@ -251,3 +254,4 @@ if not node.parameters.simulate:
         node.machine = machine
         node.save()
 
+# %%

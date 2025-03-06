@@ -19,12 +19,13 @@ Next steps before going to the next node:
 
 
 # %% {Imports}
+from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, readout_state
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -46,7 +47,7 @@ class Parameters(NodeParameters):
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 3000
     num_time_points: int = 500
-    log_or_linear_sweep: Literal["log", "linear"] = "log"
+    log_or_linear_sweep: Literal["log", "linear"] = "linear"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     use_state_discrimination: bool = False
     simulate: bool = False
@@ -56,7 +57,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = True
 
 node = QualibrationNode(name="06_Ramsey", parameters=Parameters())
-
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handle units and conversions.
@@ -124,10 +125,7 @@ with program() as ramsey:
                 #  with for_(*from_array(t, idle_times)):
                 with for_(*from_array(sign, [-1, 1])):
                     # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
-                    with if_(sign == 1):
-                        assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
-                    with else_():
-                        assign(phi, Cast.mul_fixed_by_int(-detuning * 1e-9, 4 * t))
+                    assign(phi, Util.cond((sign == 1),  Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t), Cast.mul_fixed_by_int(-detuning * 1e-9, 4 * t)))
                     qubit.align()
                     # # Strict_timing ensures that the sequence will be played without gaps
                     # with strict_timing_():
@@ -184,6 +182,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(ramsey)
         results = fetching_tool(job, ["n"], mode="live")
@@ -200,7 +199,8 @@ if not node.parameters.simulate:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(job.result_handles, qubits, {"sign": [-1, 1], "time": idle_times})
         # Convert IQ data into volts
-        ds = convert_IQ_to_V(ds, qubits)
+        if not node.parameters.use_state_discrimination:
+            ds = convert_IQ_to_V(ds, qubits)
         # Add the absolute time to the dataset
         ds = ds.assign_coords({"time": (["time"], 4 * idle_times)})
         ds.time.attrs["long_name"] = "idle_time"
@@ -309,7 +309,7 @@ if not node.parameters.simulate:
             bbox=dict(facecolor="white", alpha=0.5),
         )
         ax.legend()
-    grid.fig.suptitle("Ramsey : I vs. idle time")
+    grid.fig.suptitle(f"Ramsey : I vs. idle time \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

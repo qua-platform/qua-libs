@@ -1,3 +1,6 @@
+from qualibrate.config.resolvers import get_quam_state_path
+from qualibrate.storage.local_storage_manager import LocalStorageManager
+from qualibrate_config.resolvers import get_qualibrate_config_path, get_qualibrate_config
 from qualibrate_app.config import get_config_path, get_settings
 from quam_libs.components import QuAM
 import os
@@ -119,3 +122,15 @@ def load_dataset(serial_number, target_filename = "ds", parameters = None):
     else:
         print(f"No .nc file found in folder: {base_folder}")
         return None
+
+def get_node_id() -> int:
+    
+    q_config_path = get_qualibrate_config_path()
+    qs = get_qualibrate_config(q_config_path)
+    state_path = get_quam_state_path(qs)
+    storage_manager = LocalStorageManager(
+                root_data_folder=qs.storage.location,
+                active_machine_path=state_path,
+            )
+    
+    return storage_manager.data_handler.generate_node_contents()['id']
