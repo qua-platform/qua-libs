@@ -44,7 +44,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
-from typing import Literal, Optional, List
+from typing import Literal, Optional, List, ClassVar
 import matplotlib.pyplot as plt
 import numpy as np
 import warnings
@@ -55,22 +55,23 @@ from scipy.optimize import curve_fit
 from quam_libs.components.gates.two_qubit_gates import CZGate
 from quam_libs.lib.pulses import FluxPulse
 
+
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
+    targets_name: ClassVar[Optional[str]] = "qubit_pairs"
     qubit_pairs: Optional[List[str]] = None
     num_shots: int = 2000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "active"
+    reset_type: Literal["active", "thermal"] = "active"
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
 
 
-node = QualibrationNode(
-    name="40b_Bell_state_tomography", parameters=Parameters()
-)
-assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
+node = QualibrationNode(name="40b_Bell_state_tomography", parameters=Parameters())
+assert not (
+    node.parameters.simulate and node.parameters.load_data_id is not None
+), "If simulate is True, load_data_id must be None, and vice versa."
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -99,8 +100,9 @@ if node.parameters.load_data_id is None:
 ####################
 from matplotlib.colors import LinearSegmentedColormap
 
-def plot_3d_hist_with_frame(data,ideal, title = ''):
-    fig, axs = plt.subplots(1, 2, figsize=(8, 4), subplot_kw={'projection': '3d'})
+
+def plot_3d_hist_with_frame(data, ideal, title=""):
+    fig, axs = plt.subplots(1, 2, figsize=(8, 4), subplot_kw={"projection": "3d"})
     # Create a grid of positions for the bars
     xpos, ypos = np.meshgrid(np.arange(4) + 0.5, np.arange(4) + 0.5, indexing="ij")
     xpos = xpos.ravel()
@@ -108,98 +110,99 @@ def plot_3d_hist_with_frame(data,ideal, title = ''):
     zpos = np.zeros_like(xpos)
     # Create a custom colormap with two distinct colors for positive and negative values
     colors = [(0.1, 0.1, 0.6), (0.55, 0.55, 1.0)]  # Light blue for positive, dark blue for negative
-    cmap = LinearSegmentedColormap.from_list('custom_cmap', colors, N=256)
+    cmap = LinearSegmentedColormap.from_list("custom_cmap", colors, N=256)
 
     # finding global min,max
-    gmin = np.min([np.min(np.real(data)),np.min(np.imag(data)),np.min(np.real(ideal)),np.min(np.imag(ideal))])
-    gmax = np.max([np.max(np.real(data)),np.max(np.imag(data)),np.max(np.real(ideal)),np.max(np.imag(ideal))])
+    gmin = np.min([np.min(np.real(data)), np.min(np.imag(data)), np.min(np.real(ideal)), np.min(np.imag(ideal))])
+    gmax = np.max([np.max(np.real(data)), np.max(np.imag(data)), np.max(np.real(ideal)), np.max(np.imag(ideal))])
 
     # Use the bar3d function with the 'color' parameter to color the bars
     for i in range(2):
         if i == 0:
             dz = np.real(data).ravel()
             dzi = np.real(ideal).ravel()
-            axs[i].set_title('real')
+            axs[i].set_title("real")
         else:
             dz = np.imag(data).ravel()
             dzi = np.imag(ideal).ravel()
-            axs[i].set_title('imaginary')            
-        axs[i].bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dz, alpha= 1, color=cmap(np.sign(dz)))
-        axs[i].bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dzi, alpha= 0.1, edgecolor = 'k')
+            axs[i].set_title("imaginary")
+        axs[i].bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dz, alpha=1, color=cmap(np.sign(dz)))
+        axs[i].bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dzi, alpha=0.1, edgecolor="k")
         # Set tick labels for x and y axes
         axs[i].set_xticks(np.arange(1, 5))
         axs[i].set_yticks(np.arange(1, 5))
-        axs[i].set_xticklabels(['00', '01', '10', '11'])
-        axs[i].set_yticklabels(['00', '01', '10', '11'])
-        axs[i].set_xticklabels(['00', '01', '10', '11'], rotation=45)
-        axs[i].set_yticklabels(['00', '01', '10', '11'], rotation=45)
-        axs[i].set_zlim([gmin,gmax])
+        axs[i].set_xticklabels(["00", "01", "10", "11"])
+        axs[i].set_yticklabels(["00", "01", "10", "11"])
+        axs[i].set_xticklabels(["00", "01", "10", "11"], rotation=45)
+        axs[i].set_yticklabels(["00", "01", "10", "11"], rotation=45)
+        axs[i].set_zlim([gmin, gmax])
     fig.suptitle(title)
     # Show the plot
-    
+
     return fig
 
 
-def plot_3d_hist_with_frame_real(data,ideal, ax ):
+def plot_3d_hist_with_frame_real(data, ideal, ax):
     xpos, ypos = np.meshgrid(np.arange(4) + 0.5, np.arange(4) + 0.5, indexing="ij")
     xpos = xpos.ravel()
     ypos = ypos.ravel()
     zpos = np.zeros_like(xpos)
     # Create a custom colormap with two distinct colors for positive and negative values
     colors = [(0.1, 0.1, 0.6), (0.55, 0.55, 1.0)]  # Light blue for positive, dark blue for negative
-    cmap = LinearSegmentedColormap.from_list('custom_cmap', colors, N=256)
+    cmap = LinearSegmentedColormap.from_list("custom_cmap", colors, N=256)
 
     # finding global min,max
-    gmin = np.min([np.min(np.real(data)),np.min(np.imag(data)),np.min(np.real(ideal)),np.min(np.imag(ideal))])
-    gmax = np.max([np.max(np.real(data)),np.max(np.imag(data)),np.max(np.real(ideal)),np.max(np.imag(ideal))])
+    gmin = np.min([np.min(np.real(data)), np.min(np.imag(data)), np.min(np.real(ideal)), np.min(np.imag(ideal))])
+    gmax = np.max([np.max(np.real(data)), np.max(np.imag(data)), np.max(np.real(ideal)), np.max(np.imag(ideal))])
 
     # Use the bar3d function with the 'color' parameter to color the bars
     dz = np.real(data).ravel()
     dzi = np.real(ideal).ravel()
-    ax.set_title('real')
-    
-    ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dz, alpha= 1, color=cmap(np.sign(dz)))
-    ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dzi, alpha= 0.1, edgecolor = 'k')
+    ax.set_title("real")
+
+    ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dz, alpha=1, color=cmap(np.sign(dz)))
+    ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dzi, alpha=0.1, edgecolor="k")
     # Set tick labels for x and y axes
     ax.set_xticks(np.arange(1, 5))
     ax.set_yticks(np.arange(1, 5))
-    ax.set_xticklabels(['00', '01', '10', '11'])
-    ax.set_yticklabels(['00', '01', '10', '11'])
-    ax.set_xticklabels(['00', '01', '10', '11'], rotation=45)
-    ax.set_yticklabels(['00', '01', '10', '11'], rotation=45)
-    ax.set_zlim([gmin,gmax])
+    ax.set_xticklabels(["00", "01", "10", "11"])
+    ax.set_yticklabels(["00", "01", "10", "11"])
+    ax.set_xticklabels(["00", "01", "10", "11"], rotation=45)
+    ax.set_yticklabels(["00", "01", "10", "11"], rotation=45)
+    ax.set_zlim([gmin, gmax])
     # Show the plot
 
-def plot_3d_hist_with_frame_imag(data,ideal, axs):
+
+def plot_3d_hist_with_frame_imag(data, ideal, axs):
     xpos, ypos = np.meshgrid(np.arange(4) + 0.5, np.arange(4) + 0.5, indexing="ij")
     xpos = xpos.ravel()
     ypos = ypos.ravel()
     zpos = np.zeros_like(xpos)
     # Create a custom colormap with two distinct colors for positive and negative values
     colors = [(0.1, 0.1, 0.6), (0.55, 0.55, 1.0)]  # Light blue for positive, dark blue for negative
-    cmap = LinearSegmentedColormap.from_list('custom_cmap', colors, N=256)
+    cmap = LinearSegmentedColormap.from_list("custom_cmap", colors, N=256)
 
     # finding global min,max
-    gmin = np.min([np.min(np.real(data)),np.min(np.imag(data)),np.min(np.real(ideal)),np.min(np.imag(ideal))])
-    gmax = np.max([np.max(np.real(data)),np.max(np.imag(data)),np.max(np.real(ideal)),np.max(np.imag(ideal))])
+    gmin = np.min([np.min(np.real(data)), np.min(np.imag(data)), np.min(np.real(ideal)), np.min(np.imag(ideal))])
+    gmax = np.max([np.max(np.real(data)), np.max(np.imag(data)), np.max(np.real(ideal)), np.max(np.imag(ideal))])
 
     # Use the bar3d function with the 'color' parameter to color the bars
     dz = np.imag(data).ravel()
     dzi = np.imag(ideal).ravel()
-    ax.set_title('imaginary')
-    
-    ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dz, alpha= 1, color=cmap(np.sign(dz)))
-    ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dzi, alpha= 0.1, edgecolor = 'k')
+    ax.set_title("imaginary")
+
+    ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dz, alpha=1, color=cmap(np.sign(dz)))
+    ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dzi, alpha=0.1, edgecolor="k")
     # Set tick labels for x and y axes
     ax.set_xticks(np.arange(1, 5))
     ax.set_yticks(np.arange(1, 5))
-    ax.set_xticklabels(['00', '01', '10', '11'])
-    ax.set_yticklabels(['00', '01', '10', '11'])
-    ax.set_xticklabels(['00', '01', '10', '11'], rotation=45)
-    ax.set_yticklabels(['00', '01', '10', '11'], rotation=45)
-    ax.set_zlim([gmin,gmax])
+    ax.set_xticklabels(["00", "01", "10", "11"])
+    ax.set_yticklabels(["00", "01", "10", "11"])
+    ax.set_xticklabels(["00", "01", "10", "11"], rotation=45)
+    ax.set_yticklabels(["00", "01", "10", "11"], rotation=45)
+    ax.set_zlim([gmin, gmax])
     # Show the plot
-    
+
 
 def flatten(data):
     if isinstance(data, tuple):
@@ -209,23 +212,26 @@ def flatten(data):
             return flatten(data[0]) + flatten(data[1:])
     else:
         return (data,)
-    
-def generate_pauli_basis(n_qubits):    
-    pauli = np.array([0,1,2,3])
+
+
+def generate_pauli_basis(n_qubits):
+    pauli = np.array([0, 1, 2, 3])
     paulis = pauli
-    for i in range(n_qubits-1):
+    for i in range(n_qubits - 1):
         new_paulis = []
         for ps in paulis:
             for p in pauli:
                 new_paulis.append(flatten((ps, p)))
         paulis = new_paulis
     return paulis
-        
+
+
 def gen_inverse_hadamard(n_qubits):
-    H = np.array([[1,1],[1,-1]])/2
-    for _ in range(n_qubits-1):
+    H = np.array([[1, 1], [1, -1]]) / 2
+    for _ in range(n_qubits - 1):
         H = np.kron(H, H)
     return np.linalg.inv(H)
+
 
 def get_pauli_data(da):
 
@@ -237,21 +243,21 @@ def get_pauli_data(da):
     paulis_data = xr.Dataset(
         {
             "value": (["pauli_op"], np.zeros(len(pauli_basis))),
-            "appearances": (["pauli_op"], np.zeros(len(pauli_basis), dtype=int))
+            "appearances": (["pauli_op"], np.zeros(len(pauli_basis), dtype=int)),
         },
-        coords={'pauli_op': [','.join(map(str, op)) for op in pauli_basis]}
+        coords={"pauli_op": [",".join(map(str, op)) for op in pauli_basis]},
     )
 
-    for tomo_axis in da.coords['tomo_axis'].values:
-        tomo_data = da.sel(tomo_axis = tomo_axis)
+    for tomo_axis in da.coords["tomo_axis"].values:
+        tomo_data = da.sel(tomo_axis=tomo_axis)
         pauli_data = inverse_hadamard @ tomo_data.data
         paulis = ["0,0", f"{tomo_axis[0]+1},0", f"0,{tomo_axis[1]+1}", f"{tomo_axis[0]+1},{tomo_axis[1]+1}"]
         for i, pauli in enumerate(paulis):
-            paulis_data.value.loc[{'pauli_op': pauli}] += pauli_data[i]
-            paulis_data.appearances.loc[{'pauli_op': pauli}] += 1
-        
+            paulis_data.value.loc[{"pauli_op": pauli}] += pauli_data[i]
+            paulis_data.appearances.loc[{"pauli_op": pauli}] += 1
+
     paulis_data = xr.where(paulis_data.appearances != 0, paulis_data.value / paulis_data.appearances, paulis_data.value)
-    
+
     return paulis_data
 
 
@@ -266,13 +272,14 @@ def get_density_matrix(paulis_data):
     # Create a vector of the Pauli matrices
     pauli_matrices = [I, X, Y, Z]
 
-    rho = np.zeros((4,4))
+    rho = np.zeros((4, 4))
 
     for i, pauli_i in enumerate(pauli_matrices):
         for j, pauli_j in enumerate(pauli_matrices):
-            rho = rho + 0.25*paulis_data.sel(pauli_op = f"{i},{j}").values * np.kron(pauli_i, pauli_j)
-    
+            rho = rho + 0.25 * paulis_data.sel(pauli_op=f"{i},{j}").values * np.kron(pauli_i, pauli_j)
+
     return rho
+
 
 # %% {QUA_program}
 n_shots = node.parameters.num_shots  # The number of averages
@@ -290,48 +297,48 @@ with program() as CPhase_Oscillations:
     state_st = [declare_stream() for _ in range(num_qubit_pairs)]
     tomo_axis_control = declare(int)
     tomo_axis_target = declare(int)
-    
+
     for i, qp in enumerate(qubit_pairs):
         # Bring the active qubits to the minimum frequency point
         machine.set_all_fluxes(flux_point, qp.qubit_control)
 
         with for_(n, 0, n < n_shots, n + 1):
-            save(n, n_st) 
+            save(n, n_st)
             with for_(tomo_axis_control, 0, tomo_axis_control < 3, tomo_axis_control + 1):
                 with for_(tomo_axis_target, 0, tomo_axis_target < 3, tomo_axis_target + 1):
                     # reset
                     if node.parameters.reset_type == "active":
-                            # wait(2*qp.qubit_control.thermalization_time * u.ns)
-                            active_reset(qp.qubit_control)
-                            active_reset(qp.qubit_target)
+                        # wait(2*qp.qubit_control.thermalization_time * u.ns)
+                        active_reset(qp.qubit_control)
+                        active_reset(qp.qubit_target)
                     else:
-                        wait(5*qp.qubit_control.thermalization_time * u.ns)
+                        wait(5 * qp.qubit_control.thermalization_time * u.ns)
                     qp.align()
                     # Bell state
                     qp.qubit_control.xy.play("-y90")
                     qp.qubit_target.xy.play("y90")
-                    qp.gates['Cz'].execute()
+                    qp.gates["Cz"].execute()
                     qp.qubit_control.xy.play("y90")
                     qp.align()
                     # tomography pulses
-                    with if_(tomo_axis_control == 0): #X axis
+                    with if_(tomo_axis_control == 0):  # X axis
                         qp.qubit_control.xy.play("y90")
-                    with elif_(tomo_axis_control == 1): #Y axis
+                    with elif_(tomo_axis_control == 1):  # Y axis
                         qp.qubit_control.xy.play("x90")
-                    with if_(tomo_axis_target == 0): #X axis
+                    with if_(tomo_axis_target == 0):  # X axis
                         qp.qubit_target.xy.play("y90")
-                    with elif_(tomo_axis_target == 1): #Y axis
+                    with elif_(tomo_axis_target == 1):  # Y axis
                         qp.qubit_target.xy.play("x90")
-                    qp.align()            
+                    qp.align()
                     # readout
                     readout_state(qp.qubit_control, state_control[i])
                     readout_state(qp.qubit_target, state_target[i])
-                    assign(state[i], state_control[i]*2 + state_target[i])
+                    assign(state[i], state_control[i] * 2 + state_target[i])
                     save(state_control[i], state_st_control[i])
                     save(state_target[i], state_st_target[i])
                     save(state[i], state_st[i])
                 align()
-        
+
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubit_pairs):
@@ -349,7 +356,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 elif node.parameters.load_data_id is None:
-    with qm_session(qmm, config, timeout=node.parameters.timeout ) as qm:
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(CPhase_Oscillations)
 
         results = fetching_tool(job, ["n"], mode="live")
@@ -363,34 +370,39 @@ elif node.parameters.load_data_id is None:
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubit_pairs, {"tomo_axis_target": [0,1,2], "tomo_axis_control": [0,1,2], "N": np.linspace(1, n_shots, n_shots)})
+        ds = fetch_results_as_xarray(
+            job.result_handles,
+            qubit_pairs,
+            {"tomo_axis_target": [0, 1, 2], "tomo_axis_control": [0, 1, 2], "N": np.linspace(1, n_shots, n_shots)},
+        )
     else:
         ds, machine = load_dataset(node.parameters.load_data_id)
-        
+
     node.results = {"ds": ds}
-    
+
 # %%
 import xarray as xr
+
 if not node.parameters.simulate:
-    states = [0,1,2,3]
+    states = [0, 1, 2, 3]
 
     results = []
     for state in states:
-        results.append((ds.state == state).sum(dim = "N") / node.parameters.num_shots)
-        
+        results.append((ds.state == state).sum(dim="N") / node.parameters.num_shots)
+
 results_xr = xr.concat(results, dim=xr.DataArray(states, name="state"))
 results_xr = results_xr.rename({"dim_0": "state"})
-results_xr = results_xr.stack(
-        tomo_axis=['tomo_axis_target', 'tomo_axis_control'])
+results_xr = results_xr.stack(tomo_axis=["tomo_axis_target", "tomo_axis_control"])
 
 corrected_results = []
 for qp in qubit_pairs:
-    corrected_results_qp = [] 
-    for tomo_axis_control in [0,1,2]:
+    corrected_results_qp = []
+    for tomo_axis_control in [0, 1, 2]:
         corrected_results_control = []
-        for tomo_axis_target in [0,1,2]:
-            results = results_xr.sel(tomo_axis_control = tomo_axis_control, tomo_axis_target = tomo_axis_target, 
-                                     qubit = qp.name)
+        for tomo_axis_target in [0, 1, 2]:
+            results = results_xr.sel(
+                tomo_axis_control=tomo_axis_control, tomo_axis_target=tomo_axis_target, qubit=qp.name
+            )
             results = np.linalg.inv(qp.confusion) @ results.data
             # results = np.linalg.inv(np.diag((1,1,1,1))) @ results.data
 
@@ -405,16 +417,15 @@ for qp in qubit_pairs:
     # Convert corrected_results to an xarray DataArray
     corrected_results_xr = xr.DataArray(
         corrected_results,
-        dims=['qubit', 'tomo_axis_control', 'tomo_axis_target', 'state'],
+        dims=["qubit", "tomo_axis_control", "tomo_axis_target", "state"],
         coords={
-            'qubit': [qp.name for qp in qubit_pairs],
-            'tomo_axis_control': [0, 1, 2],
-            'tomo_axis_target': [0, 1, 2],
-            'state': ['00', '01', '10', '11']
-        }
+            "qubit": [qp.name for qp in qubit_pairs],
+            "tomo_axis_control": [0, 1, 2],
+            "tomo_axis_target": [0, 1, 2],
+            "state": ["00", "01", "10", "11"],
+        },
     )
-    corrected_results_xr = corrected_results_xr.stack(
-            tomo_axis=['tomo_axis_target', 'tomo_axis_control'])
+    corrected_results_xr = corrected_results_xr.stack(tomo_axis=["tomo_axis_target", "tomo_axis_control"])
 
     # Store the xarray in the node results
 
@@ -423,12 +434,13 @@ for qp in qubit_pairs:
     paulis_data = {}
     rhos = {}
     for qp in qubit_pairs:
-        paulis_data[qp.name] = get_pauli_data(corrected_results_xr.sel(qubit = qp.name))
+        paulis_data[qp.name] = get_pauli_data(corrected_results_xr.sel(qubit=qp.name))
         rhos[qp.name] = get_density_matrix(paulis_data[qp.name])
-        
+
     # %%
     from scipy.linalg import sqrtm
-    ideal_dat = np.array([[1,0,0,1],[0,0,0,0],[0,0,0,0],[1,0,0,1]])/2
+
+    ideal_dat = np.array([[1, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 1]]) / 2
     s_ideal = sqrtm(ideal_dat)
     for qp in qubit_pairs:
         fidelity = float(np.abs(np.trace(sqrtm(s_ideal @rhos[qp.name] @ s_ideal)))**2)
@@ -440,56 +452,55 @@ for qp in qubit_pairs:
         node.results[f"{qp.name}_purity"] = purity
 
 
-
 # %%
 if not node.parameters.simulate:
-    
+
     for qp in qubit_pairs:
-        ideal_dat = np.array([[1,0,0,1],[0,0,0,0],[0,0,0,0],[1,0,0,1]])/2
-        fig = plot_3d_hist_with_frame(rhos[qp.name], ideal_dat, title = qp.name)
+        ideal_dat = np.array([[1, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 1]]) / 2
+        fig = plot_3d_hist_with_frame(rhos[qp.name], ideal_dat, title=qp.name)
         node.results[f"{qp.name}_figure_city"] = fig
-    
+
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
     grid = QubitPairGrid(grid_names, qubit_pair_names)
     for ax, qubit_pair in grid_iter(grid):
-        rho = np.real(rhos[qubit_pair['qubit']])
-        ax.pcolormesh(rho, vmin = -0.5, vmax = 0.5, cmap = "RdBu")
+        rho = np.real(rhos[qubit_pair["qubit"]])
+        ax.pcolormesh(rho, vmin=-0.5, vmax=0.5, cmap="RdBu")
         # plt.colorbar(ax.pcolormesh(rho), ax=ax)
         for i in range(4):
             for j in range(4):
                 if np.abs(rho[i][j]) < 0.1:
-                    ax.text(i+0.5, j+0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="k")
+                    ax.text(i + 0.5, j + 0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="k")
                 else:
-                    ax.text(i+0.5, j+0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="w")
-        ax.set_title(qubit_pair['qubit'])
-        ax.set_xlabel('Pauli Operators')
-        ax.set_ylabel('Pauli Operators')
-        ax.set_xticks(range(4), ['00', '01', '10', '11'])
-        ax.set_yticks(range(4), ['00', '01', '10', '11'])
-        ax.set_xticklabels(['00', '01', '10', '11'], rotation=45, ha='right')
-        ax.set_yticklabels(['00', '01', '10', '11'])
+                    ax.text(i + 0.5, j + 0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="w")
+        ax.set_title(qubit_pair["qubit"])
+        ax.set_xlabel("Pauli Operators")
+        ax.set_ylabel("Pauli Operators")
+        ax.set_xticks(range(4), ["00", "01", "10", "11"])
+        ax.set_yticks(range(4), ["00", "01", "10", "11"])
+        ax.set_xticklabels(["00", "01", "10", "11"], rotation=45, ha="right")
+        ax.set_yticklabels(["00", "01", "10", "11"])
     grid.fig.suptitle(f"Bell state tomography (real part)")
     node.results["figure_rho_real"] = grid.fig
-        
+
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
     grid = QubitPairGrid(grid_names, qubit_pair_names)
     for ax, qubit_pair in grid_iter(grid):
-        rho = np.imag(rhos[qubit_pair['qubit']])
-        ax.pcolormesh(rho, vmin = -0.1, vmax = 0.1, cmap = "RdBu")
+        rho = np.imag(rhos[qubit_pair["qubit"]])
+        ax.pcolormesh(rho, vmin=-0.1, vmax=0.1, cmap="RdBu")
         # plt.colorbar(ax.pcolormesh(rho), ax=ax)
         for i in range(4):
             for j in range(4):
                 if np.abs(rho[i][j]) < 0.1:
-                    ax.text(i+0.5, j+0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="k")
+                    ax.text(i + 0.5, j + 0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="k")
                 else:
-                    ax.text(i+0.5, j+0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="w")
-        ax.set_title(qubit_pair['qubit'])
-        ax.set_xlabel('Pauli Operators')
-        ax.set_ylabel('Pauli Operators')
-        ax.set_xticks(range(4), ['00', '01', '10', '11'])
-        ax.set_yticks(range(4), ['00', '01', '10', '11'])
-        ax.set_xticklabels(['00', '01', '10', '11'], rotation=45, ha='right')
-        ax.set_yticklabels(['00', '01', '10', '11'])
+                    ax.text(i + 0.5, j + 0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="w")
+        ax.set_title(qubit_pair["qubit"])
+        ax.set_xlabel("Pauli Operators")
+        ax.set_ylabel("Pauli Operators")
+        ax.set_xticks(range(4), ["00", "01", "10", "11"])
+        ax.set_yticks(range(4), ["00", "01", "10", "11"])
+        ax.set_xticklabels(["00", "01", "10", "11"], rotation=45, ha="right")
+        ax.set_yticklabels(["00", "01", "10", "11"])
     grid.fig.suptitle(f"Bell state tomography (imaginary part)")
     node.results["figure_rho_imag"] = grid.fig
 
@@ -497,26 +508,24 @@ if not node.parameters.simulate:
     grid = QubitPairGrid(grid_names, qubit_pair_names)
     for ax, qubit_pair in grid_iter(grid):
         # Extract the values and labels for plotting
-        values = paulis_data[qubit_pair['qubit']].values
-        labels = paulis_data[qubit_pair['qubit']].coords['pauli_op'].values
+        values = paulis_data[qubit_pair["qubit"]].values
+        labels = paulis_data[qubit_pair["qubit"]].coords["pauli_op"].values
 
         # Create a bar plot
         bars = ax.bar(range(len(values)), values)
 
         # Customize the plot
-        ax.set_xlabel('Pauli Operators')
-        ax.set_ylabel('Value')
-        ax.set_title(qubit_pair['qubit'])
-        ax.set_xticks(range(len(labels)), labels, rotation=45, ha='right')
+        ax.set_xlabel("Pauli Operators")
+        ax.set_ylabel("Value")
+        ax.set_title(qubit_pair["qubit"])
+        ax.set_xticks(range(len(labels)), labels, rotation=45, ha="right")
 
         # Add value labels on top of each bar
         for bar in bars:
             height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height,
-                    f'{height:.2f}',
-                    ha='center', va='bottom')
+            ax.text(bar.get_x() + bar.get_width() / 2.0, height, f"{height:.2f}", ha="center", va="bottom")
 
-# Adjust layout and display the plot
+    # Adjust layout and display the plot
     plt.tight_layout()
     plt.show()
     node.results["figure_paulis"] = grid.fig
@@ -530,5 +539,5 @@ if not node.parameters.simulate:
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
-        
+
 # %%

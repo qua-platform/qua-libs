@@ -43,7 +43,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
-from typing import Literal, Optional, List
+from typing import Literal, Optional, List, ClassVar
 import matplotlib.pyplot as plt
 import numpy as np
 import warnings
@@ -54,9 +54,10 @@ from scipy.optimize import curve_fit
 from quam_libs.components.gates.two_qubit_gates import CZGate
 from quam_libs.lib.pulses import FluxPulse
 
+
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
+    targets_name: ClassVar[Optional[str]] = "qubit_pairs"
     qubit_pairs: Optional[List[str]] = None
     num_averages: int = 1000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -202,7 +203,7 @@ if not node.parameters.simulate:
 
         
     node.results = {"ds": ds}
-    
+
 
 # %% Analysis
 if not node.parameters.simulate:
@@ -236,7 +237,7 @@ for qp in qubit_pairs:
     phases_control[qp.name] = phase_control
     
     print(f'measured phase offsets for {qp.name } are target: {phase_target:.3f}, control: {phase_control:.3f}')
-    
+
 # %%
 if not node.parameters.simulate:
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
@@ -281,12 +282,12 @@ if not node.parameters.simulate:
                 qp.gates['Cz'].phase_shift_control = qp.gates['Cz'].phase_shift_control  % (1.0)
                 qp.gates['Cz'].phase_shift_target -= (phase_target[qp.name]/ 1.0)
                 qp.gates['Cz'].phase_shift_target = qp.gates['Cz'].phase_shift_target  % (1.0)
-                
+
 # %% {Save_results}
 if not node.parameters.simulate:
     node.outcomes = {qp.name: "successful" for qp in qubit_pairs}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
-        
+
 # %%
