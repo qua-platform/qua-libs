@@ -443,7 +443,7 @@ for qp in qubit_pairs:
     ideal_dat = np.array([[1, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 1]]) / 2
     s_ideal = sqrtm(ideal_dat)
     for qp in qubit_pairs:
-        fidelity = float(np.abs(np.trace(sqrtm(s_ideal @rhos[qp.name] @ s_ideal)))**2)
+        fidelity = np.abs(np.trace(sqrtm(s_ideal @ rhos[qp.name] @ s_ideal))) ** 2
         print(f"Fidelity of {qp.name}: {fidelity:.3f}")
         purity = np.abs(np.trace(rhos[qp.name] @ rhos[qp.name]))
         print(f"Purity of {qp.name}: {purity:.3f}")
