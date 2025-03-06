@@ -301,7 +301,7 @@ with program() as CPhase_Oscillations:
                 with for_(tomo_axis_target, 0, tomo_axis_target < 3, tomo_axis_target + 1):
                     # reset
                     if node.parameters.reset_type == "active":
-                            wait(2*qp.qubit_control.thermalization_time * u.ns)
+                            # wait(2*qp.qubit_control.thermalization_time * u.ns)
                             active_reset(qp.qubit_control)
                             active_reset(qp.qubit_target)
                     else:
