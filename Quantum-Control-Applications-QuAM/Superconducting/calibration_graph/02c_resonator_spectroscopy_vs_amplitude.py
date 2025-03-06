@@ -45,7 +45,7 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ["qA4"]
+    qubits: Optional[List[str]] = None
     num_averages: int = 100
     frequency_span_in_mhz: float = 15
     frequency_step_in_mhz: float = 0.1
@@ -53,8 +53,8 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     max_power_dbm: int = -30
-    min_power_dbm: int = -90
-    num_power_points: int = 40
+    min_power_dbm: int = -50
+    num_power_points: int = 100
     max_amp: float = 0.1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     ro_line_attenuation_dB: float = 0

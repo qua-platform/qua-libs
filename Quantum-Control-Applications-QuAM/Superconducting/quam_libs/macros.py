@@ -4,6 +4,7 @@ from typing import Optional, Union
 import warnings
 
 from qm.qua import *
+from qm.qua._dsl import Scalar
 from quam_libs.components import QuAM
 from quam_libs.components import Transmon
 
@@ -104,7 +105,7 @@ def readout_state(qubit, state, pulse_name: str = "readout", threshold: float = 
 
 def readout_state_gef(
     qubit: Transmon, 
-    state, # : QuaVariableType, # TODO: Fix this type hinting error. for qua 1.2.2rc there is an import error
+    state: Scalar[int], # : QuaVariableType, # TODO: Fix this type hinting error. for qua 1.2.2rc there is an import error
     pulse_name: str = "readout", save_qua_var: StreamType = None
 ):
     I = declare(fixed)
