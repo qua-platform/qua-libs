@@ -94,6 +94,6 @@ class QuAM(BaseQuAM):
         return target_bias
 
     def initialize_qpu(self, **kwargs):
-        flux_point = kwargs.get('flux_point', "min")
-        target = kwargs.get('target', None)
+        flux_point = kwargs.get("flux_point", "min")
+        target = kwargs.get("target", None)
         self.set_all_fluxes(flux_point, target)

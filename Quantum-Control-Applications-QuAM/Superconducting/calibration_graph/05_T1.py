@@ -13,7 +13,7 @@ from quam_experiments.experiments.T1 import Parameters, fit_t1_decay, log_t1, pl
 
 
 # %% {Node_parameters}
-#todo: improve the prerequisite section by highlighting the nodes to run for instance
+# todo: improve the prerequisite section by highlighting the nodes to run for instance
 description = """
         T1 MEASUREMENT
 The sequence consists in putting the qubit in the excited stated by playing the x180 pulse and measuring the resonator
@@ -36,19 +36,21 @@ node = QualibrationNode[Parameters, QuAM](
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
 
+
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
-# todo: why not doing it like this?  -> let's do it like this!
 # todo node.modes.external is False when running from the IDE
-@node.run_action(skip_if=not node.modes.external)
+@node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.num_averages = 500
     node.parameters.simulate = True
     pass
 
+
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
+
 
 # %% {QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
@@ -56,7 +58,6 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
-    # todo: explain the batchable list here
     # Get the active qubits from the node and organize them by batches
     # todo: node.namespace loses the autocompletion
     node.namespace["qubits"] = get_qubits(node)
@@ -73,6 +74,8 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             "attrs": {"long_name": "idle time", "units": "ns"},
         },
     }
+    from qualibrate.utils.logger_m import logger
+
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
@@ -95,7 +98,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 with for_each_(t, idle_times):
                     # Reset the qubits to the ground state
                     for i, qubit in multiplexed_qubits.items():
-                        qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+                        qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate, logger=logger)
 
                     # The qubit manipulation sequence
                     for i, qubit in multiplexed_qubits.items():
@@ -163,7 +166,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, QuAM]):
     """Load a previously acquired dataset."""
-    # TODO: temp fix
     load_data_id = node.parameters.load_data_id
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
@@ -176,7 +178,9 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def fetch_data(node: QualibrationNode[Parameters, QuAM]):
     """Fetch data from the executed QUA program and build the xarray dataset with the sweep_axes as coordinates."""
-    ds_raw = fetch_dataset(node.namespace["job"], node.namespace["qubits"], node.parameters, node.namespace["sweep_axes"])
+    ds_raw = fetch_dataset(
+        node.namespace["job"], node.namespace["qubits"], node.parameters, node.namespace["sweep_axes"]
+    )
     # Store the raw dataset
     node.results["ds_raw"] = ds_raw
 
@@ -190,6 +194,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     # todo: Serwan to add node.log so that we can do node.log.add(log_t1(node.results["ds_fit"])) or similar
     from qualibrate.utils.logger_m import logger
+
     # Log the relevant information extracted from the data analysis
     log_t1(node.results["ds_fit"], logger)
 
@@ -204,7 +209,6 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     plt.show()
     # Store the generated figures
     node.results["figure"] = fig
-
 
 
 # %% {Update_state}

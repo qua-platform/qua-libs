@@ -21,7 +21,7 @@ class FluxLine(SingleChannel):
 
     independent_offset: float = 0.0
     joint_offset: float = 0.0
-    min_offset: float = 0.0 # todo: what is it?
+    min_offset: float = 0.0  # todo: what is it?
     arbitrary_offset: float = 0.0
     flux_point: Literal["joint", "independent", "min", "arbitrary", "zero"] = "independent"
     settle_time: float = 1000.00

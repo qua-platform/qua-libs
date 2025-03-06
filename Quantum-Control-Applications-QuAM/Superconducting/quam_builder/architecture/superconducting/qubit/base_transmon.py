@@ -21,9 +21,9 @@ from qm.qua import (
     Math,
     Cast,
 )
-import warnings
 from typing import Dict, Any, Union, Optional, Literal
 from dataclasses import field
+from logging import getLogger
 
 __all__ = ["BaseTransmon"]
 
@@ -162,7 +162,13 @@ class BaseTransmon(QuamComponent):
         assign(state, Cast.to_int(I > threshold))
         wait(self.resonator.depletion_time // 4, self.resonator.name)
 
-    def reset_qubit(self, reset_type: Literal["thermal", "active", "active_gef"]="thermal", simulate: bool=False, **kwargs):
+    def reset_qubit(
+        self,
+        reset_type: Literal["thermal", "active", "active_gef"] = "thermal",
+        simulate: bool = False,
+        logger=None,
+        **kwargs,
+    ):
         """
         todo: update the docstring
         Reset the qubit with the specified method based on the node parameters.
@@ -191,7 +197,9 @@ class BaseTransmon(QuamComponent):
             elif reset_type == "active_gef":
                 self.reset_qubit_active_gef(**kwargs)
         else:
-            warnings.warn("For simulating the QUA program, the qubit reset has been skipped.")
+            if logger is None:
+                logger = getLogger(__name__)
+            logger.warning("For simulating the QUA program, the qubit reset has been skipped.")
 
     def reset_qubit_thermal(self):
         """
