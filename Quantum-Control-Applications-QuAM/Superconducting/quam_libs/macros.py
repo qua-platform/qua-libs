@@ -7,6 +7,7 @@ from qm.qua import *
 from qm.qua._dsl import Scalar
 from quam_libs.components import QuAM
 from quam_libs.components import Transmon
+from qm.qua._dsl import Scalar
 
 __all__ = [
     "qua_declaration",
