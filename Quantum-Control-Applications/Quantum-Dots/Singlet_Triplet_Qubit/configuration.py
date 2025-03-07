@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import numpy as np
 from qualang_tools.units import unit
 from qualang_tools.voltage_gates import VoltageGateSequence
@@ -36,6 +34,11 @@ default_additional_files = {
 #####################
 # Set octave_config to None if no octave are present
 octave_config = None
+
+
+#############################################
+#              OPX PARAMETERS               #
+#############################################
 
 ######################
 #       READOUT      #
