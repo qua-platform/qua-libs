@@ -62,6 +62,14 @@ class BatchableList(MutableSequence[T]):
         return repr(self._items)
 
     def batch(self) -> List[Dict[int, T]]:
+        """
+        todo: clear docstring
+        Examples:
+            [["q1", "q2", "q3", "q4"]] --> fully multiplexed
+            [["q1"], ["q2"], ["q3"], ["q4"]] --> fully sequential
+            [["q1", "q3"], ["q2", "q4"]] --> multiplexed by batches
+        :return:
+        """
         batched_items = []
         for group in self._batch_groups:
             batch = {idx: self._items[idx] for idx in group}

@@ -84,9 +84,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             state = [declare(int) for _ in range(num_qubits)]
             state_st = [declare_stream() for _ in range(num_qubits)]
 
-        # [["q1", "q2", "q3", "q4"]] --> fully multiplexed
-        # [["q1"], ["q2"], ["q3"], ["q4"]] --> fully sequential
-        # [["q1", "q3"], ["q2", "q4"]] --> multiplexed by batches
+
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             # todo: is this the right behaviour?
