@@ -104,6 +104,11 @@ if N_pi > 1:
 else:
     N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
 
+sweeps = {
+    "qubits": [q.name for q in qubits],
+    "amplitudes": amps,
+    "N_pi_pulses": N_pi_vec,
+}
 
 with program() as power_rabi:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)

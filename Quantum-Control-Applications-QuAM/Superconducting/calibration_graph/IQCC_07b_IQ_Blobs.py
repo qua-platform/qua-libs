@@ -28,7 +28,7 @@ from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from qualang_tools.analysis.discriminator import two_state_discriminator
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter, fetching_tool, XarrayDataFetcher
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm import SimulationConfig
@@ -41,7 +41,6 @@ import xarray as xr
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
     qubits: Optional[List[str]] = None
     num_runs: int = 2000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
