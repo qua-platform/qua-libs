@@ -2,7 +2,10 @@ import numpy as np
 
 from typing import Optional
 
+from quam.components import IQChannel
 from quam.components.channels import MWChannel
+
+from qualang_tools.units import unit
 
 
 def set_output_power_mw_channel(
@@ -18,7 +21,7 @@ def set_output_power_mw_channel(
     given operation’s amplitude to match exactly the target power level.
 
     Parameters:
-        channel:
+        channel: A MW-FEM channel.
         power_in_dbm (float): The target power level in dBm for the operation.
         operation (str): The operation for which the power setting is applied.
         full_scale_power_dbm (Optional[int]): The full-scale power in dBm within [-41, 10] in 3 dB increments.
@@ -70,6 +73,100 @@ def set_output_power_mw_channel(
     channel.opx_output.full_scale_power_dbm = temp_full_scale_power_dbm
 
     return {"full_scale_power_dbm": temp_full_scale_power_dbm, "amplitude": channel.operations[operation].amplitude}
+
+
+def get_output_power_mw_channel(channel: MWChannel, operation, Z=50) -> float:
+    """
+    Calculate the output power in dBm for a given MW-FEM channel.
+
+    Parameters:
+        channel: A MW-FEM channel.
+        operation (str): The name of the operation to retrieve the amplitude.
+        Z (float): The impedance in ohms. Default is 50 ohms.
+
+    Returns:
+        float: The output power in dBm.
+
+    The function calculates the output power based on the full-scale power in dBm and the amplitude of the specified operation.
+    """
+    power = channel.opx_output.full_scale_power_dbm
+    amplitude = channel.operations[operation].amplitude
+    x_mw = 10 ** (power / 10)
+    x_v = amplitude * np.sqrt(2 * Z * x_mw / 1000)
+    return 10 * np.log10(((x_v / np.sqrt(2)) ** 2 * 1000) / Z)
+
+
+def set_output_power_iq_channel(
+    channel: IQChannel,
+    power_in_dbm: float,
+    gain: Optional[int] = None,
+    max_amplitude: Optional[float] = None,
+    Z: int = 50,
+    operation: Optional[str] = "readout",
+):
+    """
+    Configure the output power for a specific operation by setting the gain or amplitude.
+    Note that exactly one of `gain` or `amplitude` must be specified and the function calculates
+    the other parameter specifically to meet the desired output power.
+
+    Parameters:
+        channel (IQChannel): The IQ channel.
+        power_in_dbm (float): Desired output power in dBm.
+        gain (Optional[int]): Optional Octave gain in dB to set, must be within [-20, 20].
+        max_amplitude (Optional[float]): Optional pulse amplitude in volts, must be within [-0.5, 0.5).
+        Z (int): Impedance in ohms, default is 50.
+        operation (Optional[str]): Name of the operation to configure, default is "readout".
+
+    Raises:
+        RuntimeError: If neither nor both `gain` and `amplitude` are specified.
+        ValueError: If `gain` or `amplitude` is outside their valid ranges.
+
+    """
+
+    u = unit(coerce_to_integer=True)
+
+    if not ((max_amplitude is None) ^ (gain is None)):
+        raise RuntimeError("Either or gain or amplitude must be specified.")
+    elif max_amplitude is not None:
+        gain = round((power_in_dbm - u.volts2dBm(max_amplitude, Z=Z)) * 2) / 2
+        gain = min(max(gain, 20), -20)
+        amplitude = u.dBm2volts(power_in_dbm - gain)
+    elif gain is not None:
+        amplitude = u.dBm2volts(power_in_dbm - channel.frequency_converter_up.gain)
+
+    if not -20 <= gain <= 20:
+        raise ValueError(f"Expected Octave gain within [-20:0.5:20] dB, got {gain} dB.")
+
+    if not -0.5 <= max_amplitude < 0.5:
+        raise ValueError("The OPX+ pulse amplitude must be within [-0.5, 0.5) V.")
+
+    print(f"Setting the Octave gain to {gain} dB")
+    print(f"Setting the {operation} amplitude to {amplitude} V")
+
+    channel.frequency_converter_up.gain = gain
+    channel.operations[operation].amplitude = amplitude
+
+    return {"gain": gain, "amplitude": max_amplitude}
+
+
+def get_output_power_iq_channel(channel: IQChannel, operation, Z=50) -> float:
+    """
+    Calculate the output power in dBm for a given IQ channel.
+
+    Parameters:
+        channel (IQChannel): The IQ channel.
+        operation (str): The name of the operation to retrieve the amplitude.
+        Z (float): The impedance in ohms. Default is 50 ohms.
+
+    Returns:
+        float: The output power in dBm.
+
+    The function calculates the output power based on the amplitude of the specified operation and the gain of the frequency up-converter.
+    It converts the amplitude to dBm using the specified impedance.
+    """
+    u = unit(coerce_to_integer=True)
+    amplitude = channel.operations[operation].amplitude
+    return channel.frequency_converter_up.gain + u.volts2dBm(amplitude, Z=Z)
 
 
 def calculate_voltage_scaling_factor(fixed_power_dBm: float, target_power_dBm: float):
