@@ -19,12 +19,11 @@ Next steps before going to the next node:
 
 
 # %% {Imports}
-from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
-from quam_libs.macros import qua_declaration, active_reset
+from quam_libs.macros import qua_declaration, active_reset, readout_state_gef, readout_state
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -40,12 +39,12 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
-    num_averages: int = 10
+    num_averages: int = 100
     operation: str = "x180"
     min_amp_factor: float = -1.5
     max_amp_factor: float = 1.5
     amp_factor_step: float = 0.02
-    max_number_pulses_per_sweep: int = 40
+    max_number_pulses_per_sweep: int = 200
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     simulate: bool = False
@@ -57,8 +56,8 @@ class Parameters(NodeParameters):
 
 
 
-node = QualibrationNode(name="09b_DRAG_Calibration_180_minus_180", parameters=Parameters())
-node_id = get_node_id()
+node = QualibrationNode(name="09b_DRAG_Calibration_GEF_180_minus_180", parameters=Parameters())
+
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -110,8 +109,10 @@ N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")
 
 with program() as drag_calibration:
     I, _, Q, _, n, n_st = qua_declaration(num_qubits=num_qubits)
-    state = [declare(bool) for _ in range(num_qubits)]
+    state = [declare(int) for _ in range(num_qubits)]
     state_stream = [declare_stream() for _ in range(num_qubits)]
+    state_F = [declare(int) for _ in range(num_qubits)]
+    state_F_stream = [declare_stream() for _ in range(num_qubits)]
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
     npi = declare(int)  # QUA variable for the number of qubit pulses
     count = declare(int)  # QUA variable for counting the qubit pulses
@@ -134,7 +135,7 @@ with program() as drag_calibration:
                     with for_(count, 0, count < npi, count + 1):
                         if operation == "x180":
                             play(operation * amp(1, 0, 0, a), qubit.xy.name)
-                            play(operation * amp(-1, 0, 0, -a), qubit.xy.name)
+                            play(operation * amp(1, 0, 0, a), qubit.xy.name)
                         elif operation == "x90":
                             play(operation * amp(1, 0, 0, a), qubit.xy.name)
                             play(operation * amp(1, 0, 0, a), qubit.xy.name)
@@ -142,9 +143,14 @@ with program() as drag_calibration:
                             play(operation * amp(-1, 0, 0, -a), qubit.xy.name)
 
                     qubit.align()
-                    qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
+                    readout_state_gef(qubit, state[i])
+                    assign(state_F[i], 0)
+                    with if_(state[i] == 2):
+                        assign(state_F[i], 1)
+                    # qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                    # assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
                     save(state[i], state_stream[i])
+                    save(state_F[i], state_F_stream[i])
         # Measure sequentially
         if not node.parameters.multiplexed:
             align()
@@ -152,8 +158,8 @@ with program() as drag_calibration:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            state_stream[i].boolean_to_int().buffer(len(amps)).buffer(N_pi).average().save(f"state{i + 1}")
-
+            state_stream[i].buffer(len(amps)).buffer(N_pi).average().save(f"state{i + 1}")
+            state_F_stream[i].buffer(len(amps)).buffer(N_pi).average().save(f"state_F{i + 1}")
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
@@ -174,7 +180,6 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(drag_calibration)
         results = fetching_tool(job, ["n"], mode="live")
@@ -226,7 +231,7 @@ if not node.parameters.simulate:
         ax.set_ylabel("num. of pulses")
         ax.set_xlabel(r"DRAG coeff $\alpha$")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"DRAG calibration \n {date_time} #{node_id}")
+    grid.fig.suptitle("DRAG calibration")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

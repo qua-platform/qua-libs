@@ -12,10 +12,11 @@ The data undergoes post-processing to calibrate three distinct parameters:
     the variable gain of the OPX analog input, ranging from -12 dB to 20 dB, can be modified to fit the signal within the ADC range of +/-0.5V.
 """
 
+from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
@@ -32,7 +33,7 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 100
-    time_of_flight_in_ns: Optional[int] = 24
+    time_of_flight_in_ns: Optional[int] = 32
     intermediate_frequency_in_mhz: Optional[float] = 50
     readout_amplitude_in_dBm: Optional[float] = -3
     readout_length_in_ns: Optional[int] = None
@@ -42,7 +43,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(name="01b_Time_of_Flight_MW_FEM", parameters=Parameters())
-
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -119,6 +120,8 @@ if node.parameters.simulate:
     # save the figure
     node.results = {"figure": plt.gcf()}
 else:
+    
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(raw_trace_prog)
@@ -173,7 +176,7 @@ else:
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("Readout amplitude [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("Single run")
+    grid.fig.suptitle(f"Single run \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.legend(loc="upper right", ncols=4, bbox_to_anchor=(0.5, 1.35))
     node.results["adc_single_run"] = grid.fig
@@ -187,7 +190,7 @@ else:
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("Readout amplitude [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("Averaged run")
+    grid.fig.suptitle(f"Averaged run \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.legend(loc="upper right", ncols=4, bbox_to_anchor=(0.5, 1.35))
     node.results["adc_averaged"] = grid.fig
@@ -213,3 +216,5 @@ else:
     node.machine = machine
     node.save()
 
+
+# %%

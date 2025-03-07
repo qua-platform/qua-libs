@@ -19,12 +19,13 @@ Before proceeding to the next node:
 """
 
 # %% {Imports}
+from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from quam_libs.lib.fit import fit_oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -58,7 +59,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
 
 node = QualibrationNode(name="02b_Resonator_Spectroscopy_vs_Flux", parameters=Parameters())
-
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -84,7 +85,6 @@ config = machine.generate_config()
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
     
-
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
@@ -113,15 +113,15 @@ with program() as multi_res_spec_vs_flux:
         # resonator of the qubit
         rr = resonators[i]
         # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
-
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit, do_align=False)
+        align()
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(dc, dcs)):
                 # Flux sweeping by tuning the OPX dc offset associated with the flux_line element
                 qubit.z.set_dc_offset(dc)
                 qubit.z.settle()
-                qubit.align()
+                align()
                 with for_(*from_array(df, dfs)):
                     # Update the resonator frequencies for resonator
                     update_frequency(rr.name, df + rr.intermediate_frequency)
@@ -160,6 +160,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(multi_res_spec_vs_flux)
         results = fetching_tool(job, ["n"], mode="live")
@@ -287,7 +288,7 @@ if not node.parameters.simulate:
         ax.set_title(qubit["qubit"])
         ax.set_xlabel("Flux (V)")
 
-    grid.fig.suptitle("Resonator spectroscopy vs flux ")
+    grid.fig.suptitle(f"Resonator spectroscopy vs flux \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

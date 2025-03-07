@@ -17,13 +17,14 @@ Before proceeding to the next node:
 """
 
 # %% {Imports}
+from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.fit_utils import fit_resonator
 from quam_libs.lib.qua_datasets import apply_angle, subtract_slope, convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -53,6 +54,7 @@ node = QualibrationNode(name="02a_Resonator_Spectroscopy", parameters=Parameters
 assert not (
     node.parameters.simulate and node.parameters.load_data_id is not None
 ), "If simulate is True, load_data_id must be None, and vice versa."
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -134,6 +136,7 @@ if node.parameters.simulate:
 
 elif node.parameters.load_data_id is None:
     # Open a quantum machine to execute the QUA program
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(multi_res_spec)
         results = fetching_tool(job, ["n"], mode="live")
@@ -198,7 +201,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Resonator detuning [MHz]")
         ax.set_ylabel("Trans. amp. [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("Resonator spectroscopy (raw data)")
+    grid.fig.suptitle(f"Resonator spectroscopy (raw data) \n {date_time} #{node_id}")
     plt.tight_layout()
     node.results["raw_amplitude"] = grid.fig
 
@@ -208,7 +211,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Resonator detuning [MHz]")
         ax.set_ylabel("Trans. phase [mrad]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("Resonator spectroscopy (raw data)")
+    grid.fig.suptitle(f"Resonator spectroscopy (raw data) \n {date_time} #{node_id}")
     plt.tight_layout()
     node.results["raw_phase"] = grid.fig
 
@@ -222,7 +225,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Resonator freq [GHz]")
         ax.set_ylabel("Trans. amp. [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("Resonator spectroscopy (fit)")
+    grid.fig.suptitle(f"Resonator spectroscopy (fit) \n {date_time} #{node_id}")
     node.results["fitted_amp"] = grid.fig
 
     plt.tight_layout()

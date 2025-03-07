@@ -20,8 +20,9 @@ class Parameters(NodeParameters):
     zeros_before_after_pulse: int = 36  # Beginning/End of the flux pulse (before we put zeros to see the rising time)
     z_pulse_amplitude: float = 0.1  # defines how much you want to detune the qubit in frequency
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
-    reset_type_thermal_or_active: Literal['thermal', 'active'] = "active"
+    reset_type_thermal_or_active: Literal['thermal', 'active'] = "thermal"
     simulate: bool = False
+    multiplexed: bool = True
     timeout: int = 100
 
 
@@ -144,7 +145,7 @@ with program() as xy_z_delay_calibration:
         # Bring the active qubits to the minimum frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
-        align()
+        qubit.align()
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -177,8 +178,8 @@ with program() as xy_z_delay_calibration:
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                     assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
                     save(state[i], state_stream[i])
-
-        align()
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
