@@ -71,7 +71,7 @@ machine = QuAM.load()
 config = machine.generate_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
-    qmm = machine.connect()
+    qmm = machine.connect(return_existing=True)
 
 if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
@@ -101,7 +101,7 @@ strict_timing = node.parameters.use_strict_timing
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 
 qubit_labels = [q.name for q in qubits]
-sweeps = {
+axes = {
     "qubit": xr.DataArray(qubit_labels, dims=["qubit"], attrs={"long_name": "Qubit name"}),
     "sequence": xr.DataArray(
         data=np.arange(num_of_sequences), dims=["sequence"], attrs={"long_name": "Sequence number"}
@@ -112,7 +112,7 @@ sweeps = {
         attrs={"long_name": "Circuit depth"},
     ),
 }
-sweeps["depths"][0] = 1
+axes["depths"][0] = 1
 
 
 # %% {Utility functions}
@@ -395,7 +395,25 @@ elif node.parameters.load_data_id is None:
             # Fetch results
             m = results.fetch_all()[0]
             # Progress bar
-            progress_counter(m, num_of_sequences, start_time=results.start_time)
+            progress_counter(iteration=m, total=num_of_sequences, start_time=results.start_time)
+
+    # with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    #     from qualang_tools.results.xarray_data_fetcher import XarrayDataFetcher
+    #     from qua_dashboards.data_dashboard import DataDashboardClient
+
+    #     if not node.parameters.multiplexed:
+    #         job = qm.execute(randomized_benchmarking_individual)
+    #     else:
+    #         job = qm.execute(randomized_benchmarking_multiplexed)
+    #     data_fetcher = XarrayDataFetcher(job, axes)
+    #     data_dashboard = DataDashboardClient()
+
+    #     while data_fetcher.acquire_data():
+    #         data_dashboard.send_data({"dataset": data_fetcher.dataset})
+
+    #         # Progress bar
+    #         progress_counter(data_fetcher.get("n", 0), n_avg, start_time=data_fetcher.t_start)
+    # node.results = {"ds": data_fetcher.dataset}
 
     # %% {Data_fetching_and_dataset_creation}
     if node.parameters.load_data_id is None:

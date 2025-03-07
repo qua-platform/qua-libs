@@ -162,44 +162,48 @@ class QuAM(QuamRoot):
         """Apply the offsets that bring all the active qubits to the zero bias point."""
         for q in self.active_qubits:
             q.z.to_zero()
-        
-        
-    def set_all_fluxes(self, flux_point : str, target : Union[Transmon, TransmonPair]):
+
+    def set_all_fluxes(self, flux_point: str, target: Union[Transmon, TransmonPair]):
         if flux_point == "independent":
             assert isinstance(target, Transmon), "Independent flux point is only supported for individual transmons"
         elif flux_point == "pairwise":
             assert isinstance(target, TransmonPair), "Pairwise flux point is only supported for transmon pairs"
-        
+
         if flux_point == "joint":
             self.apply_all_flux_to_joint_idle()
             if isinstance(target, TransmonPair):
-                target_bias =target.mutual_flux_bias
+                target_bias = target.mutual_flux_bias
             else:
                 target_bias = target.z.joint_offset
         else:
             self.apply_all_flux_to_min()
-        
+
         if flux_point == "independent":
             target.z.to_independent_idle()
             target_bias = target.z.independent_offset
-            
+
         elif flux_point == "pairwise":
             target.to_mutual_idle()
             target_bias = target.mutual_flux_bias
-        
+
         if isinstance(target, Transmon):
             target.z.settle()
         elif isinstance(target, TransmonPair):
             target.qubit_control.z.settle()
             target.qubit_target.z.settle()
         target.align()
-        return target_bias      
+        return target_bias
 
-    def connect(self) -> QuantumMachinesManager:
+    def connect(self, return_existing: bool = False) -> QuantumMachinesManager:
         """Open a Quantum Machine Manager with the credentials ("host" and "cluster_name") as defined in the network file.
 
         Returns: the opened Quantum Machine Manager.
         """
+        if return_existing and self.__class__.qmm is not None:
+            return self.__class__.qmm
+
+        print("Connecting to Quantum Machine Manager")
+
         if self.network.get("cloud", False):
             self.qmm = CloudQuantumMachinesManager(self.network["quantum_computer_backend"])
         else:
@@ -212,7 +216,8 @@ class QuAM(QuamRoot):
             if "port" in self.network:
                 settings["port"] = self.network["port"]
 
-            self.qmm = QuantumMachinesManager(**settings)
+            self.__class__.qmm = QuantumMachinesManager(**settings)
+            # self.qmm = QuantumMachinesManager(**settings)
 
         return self.qmm
 

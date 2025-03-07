@@ -20,7 +20,6 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
@@ -67,7 +66,7 @@ machine = QuAM.load()
 config = machine.generate_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
-    qmm = machine.connect()
+    qmm = machine.connect(return_existing=True)
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
@@ -97,7 +96,7 @@ with program() as iq_blobs:
             if reset_type == "active":
                 active_reset(qubit, "readout")
             elif reset_type == "thermal":
-                qubit.wait(4* qubit.thermalization_time * u.ns)
+                qubit.wait(4 * qubit.thermalization_time * u.ns)
             else:
                 raise ValueError(f"Unrecognized reset type {reset_type}.")
 
@@ -124,7 +123,7 @@ with program() as iq_blobs:
             # save data
             save(I_e[i], I_e_st[i])
             save(Q_e[i], Q_e_st[i])
-        
+
         # Measure sequentially
         if not node.parameters.multiplexed:
             align()
@@ -147,7 +146,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -155,7 +154,7 @@ if node.parameters.simulate:
     node.results = {"figure": plt.gcf()}
     node.machine = machine
     node.save()
-    
+
 elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(iq_blobs)
@@ -189,7 +188,7 @@ if not node.parameters.simulate:
     else:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
-    
+
     # %% {Data_analysis}
     node.results = {"ds": ds, "figs": {}, "results": {}}
     plot_individual = False

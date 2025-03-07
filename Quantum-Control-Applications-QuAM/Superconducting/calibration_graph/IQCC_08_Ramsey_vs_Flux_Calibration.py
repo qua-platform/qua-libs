@@ -66,7 +66,7 @@ machine = QuAM.load()
 config = machine.generate_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
-    qmm = machine.connect()
+    qmm = machine.connect(return_existing=True)
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
