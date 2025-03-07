@@ -77,16 +77,16 @@ class BaseTransmon(QuamComponent):
 
     f_01: float = None
     f_12: float = None
-    anharmonicity: int = 150e6
+    anharmonicity: float = None
 
-    T1: float = 10e-6
+    T1: float = None
     T2ramsey: float = None
     T2echo: float = None
     thermalization_time_factor: int = 5
     sigma_time_factor: int = 5
 
-    GEF_frequency_shift: int = 10
-    chi: float = 0.0
+    GEF_frequency_shift: int = None
+    chi: float = None
     grid_location: str = None
     extras: Dict[str, Any] = field(default_factory=dict)
 
@@ -131,12 +131,16 @@ class BaseTransmon(QuamComponent):
         return self.f_12 - self.f_01
 
     def sigma(self, operation: Pulse):
+        # todo: check if really needed
         return operation.length / self.sigma_time_factor
 
     @property
     def thermalization_time(self):
         """The transmon thermalization time in ns."""
-        return int(self.thermalization_time_factor * self.T1 * 1e9 / 4) * 4
+        if self.T1 is not None:
+            return int(self.thermalization_time_factor * self.T1 * 1e9 / 4) * 4
+        else:
+            return int(self.thermalization_time_factor * 10e-6 * 1e9 / 4) * 4
 
     # todo: do we really want this one here?
     def calibrate_octave(
@@ -180,7 +184,12 @@ class BaseTransmon(QuamComponent):
     def set_gate_shape(self, gate_shape: str) -> None:
         """Set the shape fo the single qubit gates defined as ["x180", "x90" "-x90", "y180", "y90", "-y90"]"""
         for gate in ["x180", "x90", "-x90", "y180", "y90", "-y90"]:
-            self.xy.operations[gate] = f"#./{gate}_{gate_shape}"
+            if f"{gate}_{gate_shape}" in self.xy.operations:
+                self.xy.operations[gate] = f"#./{gate}_{gate_shape}"
+            else:
+                raise AttributeError(
+                    f"The gate '{gate}_{gate_shape}' is not part of the existing operations for {self.xy.name} --> {self.xy.operations.keys()}."
+                )
 
     def readout_state(self, state, pulse_name: str = "readout", threshold: float = None):
         """
