@@ -2,21 +2,35 @@ from typing import Optional
 
 from quam.core import quam_dataclass
 from quam.components.channels import InOutIQChannel, InOutMWChannel
-from quam_libs.power_tools import calculate_voltage_scaling_factor, set_output_power_mw_channel
-import numpy as np
+from quam_libs.power_tools import (
+    calculate_voltage_scaling_factor,
+    set_output_power_mw_channel,
+    get_output_power_mw_channel,
+    set_output_power_iq_channel,
+    get_output_power_iq_channel,
+)
 
-from qualang_tools.units import unit
 
 __all__ = ["ReadoutResonatorIQ", "ReadoutResonatorMW"]
 
 
 @quam_dataclass
 class ReadoutResonatorBase:
-    """QuAM component for a readout resonator
+    """
+    QuAM component for a readout resonator.
 
-    Args:
-        depletion_time (int): the resonator depletion time in ns.
-        frequency_bare (int, float): the bare resonator frequency in Hz.
+    Attributes:
+        depletion_time (int): The resonator depletion time in ns. Default is 5000.
+        frequency_bare (float): The bare resonator frequency in Hz.
+        f_01 (float): The frequency of the 0-1 transition in Hz.
+        f_12 (float): The frequency of the 1-2 transition in Hz.
+        confusion_matrix (list): The confusion matrix for the resonator.
+        gef_centers (list): The centers of the GEF states.
+        gef_confusion_matrix (list): The confusion matrix for the GEF states.
+        GEF_frequency_shift (float): The frequency shift for the GEF states.
+
+    Methods:
+        calculate_voltage_scaling_factor(fixed_power_dBm, target_power_dBm): Calculate the voltage scaling factor required to scale fixed power to target power.
     """
 
     depletion_time: int = 5000
@@ -49,12 +63,24 @@ class ReadoutResonatorBase:
 class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
     @property
     def upconverter_frequency(self):
+        """Returns the up-converter/LO frequency in Hz."""
         return self.LO_frequency
 
     def get_output_power(self, operation, Z=50) -> float:
-        u = unit(coerce_to_integer=True)
-        amplitude = self.operations[operation].amplitude
-        return self.frequency_converter_up.gain + u.volts2dBm(amplitude, Z=Z)
+        """
+        Calculate the output power in dBm of the specified operation.
+
+        Parameters:
+            operation (str): The name of the operation to retrieve the amplitude.
+            Z (float): The impedance in ohms. Default is 50 ohms.
+
+        Returns:
+            float: The output power in dBm.
+
+        The function calculates the output power based on the amplitude of the specified operation and the gain of the frequency up-converter.
+        It converts the amplitude to dBm using the specified impedance.
+        """
+        return get_output_power_iq_channel(self, operation, Z)
 
     def set_output_power(
         self,
@@ -81,45 +107,30 @@ class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
             ValueError: If `gain` or `amplitude` is outside their valid ranges.
 
         """
-
-        u = unit(coerce_to_integer=True)
-
-        if not ((max_amplitude is None) ^ (gain is None)):
-            raise RuntimeError("Either or gain or amplitude must be specified.")
-        elif max_amplitude is not None:
-            gain = round((power_in_dbm - u.volts2dBm(max_amplitude, Z=Z)) * 2) / 2
-            gain = min(max(gain, 20), -20)
-            amplitude = u.dBm2volts(power_in_dbm - gain)
-        elif gain is not None:
-            amplitude = u.dBm2volts(power_in_dbm - self.frequency_converter_up.gain)
-
-        if not -20 <= gain <= 20:
-            raise ValueError(f"Expected Octave gain within [-20:0.5:20] dB, got {gain} dB.")
-
-        if not -0.5 <= max_amplitude < 0.5:
-            raise ValueError("The OPX+ pulse amplitude must be within [-0.5, 0.5) V.")
-
-        print(f"Setting the Octave gain to {gain} dB")
-        print(f"Setting the {operation} amplitude to {amplitude} V")
-
-        self.frequency_converter_up.gain = gain
-        self.operations[operation].amplitude = amplitude
-
-        return {"gain": gain, "amplitude": max_amplitude}
+        return set_output_power_iq_channel(self, power_in_dbm, gain, max_amplitude, Z, operation)
 
 
 @quam_dataclass
 class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
     @property
     def upconverter_frequency(self):
+        """Returns the up-converter/LO frequency in Hz."""
         return self.opx_output.upconverter_frequency
 
     def get_output_power(self, operation, Z=50) -> float:
-        power = self.opx_output.full_scale_power_dbm
-        amplitude = self.operations[operation].amplitude
-        x_mw = 10 ** (power / 10)
-        x_v = amplitude * np.sqrt(2 * Z * x_mw / 1000)
-        return 10 * np.log10(((x_v / np.sqrt(2)) ** 2 * 1000) / Z)
+        """
+        Calculate the output power in dBm of the specified operation.
+
+        Parameters:
+            operation (str): The name of the operation to retrieve the amplitude.
+            Z (float): The impedance in ohms. Default is 50 ohms.
+
+        Returns:
+            float: The output power in dBm.
+
+        The function calculates the output power based on the full-scale power in dBm and the amplitude of the specified operation.
+        """
+        return get_output_power_mw_channel(self, operation, Z)
 
     def set_output_power(
         self,
