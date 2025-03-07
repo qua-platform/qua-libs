@@ -8,7 +8,6 @@ Last updated: 2024-04-30
 import pandas as pd
 from matplotlib import pyplot as plt, colors
 from qm.qua import *
-from qualang_tools.addons.variables import assign_variables_to_element
 import numpy as np
 from scipy.optimize import optimize
 from scipy.stats import stats
@@ -38,9 +37,6 @@ def qua_declaration(n_qubits: int, readout_elements: list):
     """
     I, Q = [[declare(fixed) for _ in range(n_qubits)] for _ in range(2)]
     I_st, Q_st = [[declare_stream() for _ in range(n_qubits)] for _ in range(2)]
-    # Workaround to manually assign the results variables to the readout elements
-    for i in range(n_qubits):
-        assign_variables_to_element(readout_elements[i], I[i], Q[i])
     return I, I_st, Q, Q_st
 
 
