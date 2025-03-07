@@ -78,6 +78,9 @@ Set-ups including the Octave and/or QDAC2 are also supported.
 These files showcase various experiments that can be done on a singlet-triplet qubit.
 Set-ups including the QDAC2 are also supported.
 
+### [DC calibrations with QDAC](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Quantum-Dots/DC%20calibrations%20with%20QDAC)
+These files provide guidance on establishing communication with the QDAC and performing various DC calibrations using its internal current sensor.
+
 #### <u> Advanced use-cases: </u>
 * [Fast 2D scans using a spiral pattern](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Quantum-Dots/Use%20Case%201%20-%20Fast%202D%20Scans#fast-two-dimensional-scans-using-a-spiral-pattern)
   performed in the lab of Prof. Natalia Ares in the University of Oxford.
