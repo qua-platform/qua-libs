@@ -2,10 +2,14 @@
 from qm.qua import *
 import matplotlib.pyplot as plt
 from dataclasses import asdict
+import xarray as xr
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
+from qualang_tools.results import progress_counter
 from qualibrate import QualibrationNode
+from qualibrate.utils.logger_m import logger
 from quam_config import QuAM
+from quam_libs.xarray_data_fetcher import XarrayDataFetcher
 from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot, fetch_dataset, print_progress_bar
@@ -43,8 +47,7 @@ node = QualibrationNode[Parameters, QuAM](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.num_averages = 500
-    node.parameters.simulate = True
+    node.parameters.num_averages = 5000
     pass
 
 
@@ -67,14 +70,10 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     n_avg = node.parameters.num_averages
     idle_times = get_idle_times_in_clock_cycles(node.parameters)
     # Register the sweep axes to be added to the dataset when fetching data
-    # todo: set as a DataArray instead
     node.namespace["sweep_axes"] = {
-        "idle_time": {
-            "data": 4 * idle_times,
-            "attrs": {"long_name": "idle time", "units": "ns"},
-        },
+        "qubit": xr.DataArray(["q1", "q2"]),
+        "idle_time": xr.DataArray(4 * idle_times, attrs={"long_name": "idle time", "units": "ns"}),
     }
-    from qualibrate.utils.logger_m import logger
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
@@ -143,22 +142,24 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
-    """Connect to the QOP and execute the QUA program"""
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
-    # todo: create a data_array
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
         # Display the progress bar
-        print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
+        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+        for dataset in data_fetcher:  # todo: is there any use-case where we have several datasets?
+            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
+            progress_counter(data_fetcher["n"], node.parameters.num_averages, start_time=data_fetcher.t_start)
         # Display the execution report to expose possible runtime errors
-        # TODO: shall we log it?
-        print(job.execution_report())
-
+        print(job.execution_report())  # TODO: shall we log it?
+    # Register the raw dataset
+    node.results["ds_raw"] = dataset
 
 # %% {Data_loading_and_dataset_creation}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
@@ -170,17 +171,6 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
-
-
-# %% {Data_fetching_and_dataset_creation}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
-def fetch_data(node: QualibrationNode[Parameters, QuAM]):
-    """Fetch data from the executed QUA program and build the xarray dataset with the sweep_axes as coordinates."""
-    ds_raw = fetch_dataset(
-        node.namespace["job"], node.namespace["qubits"], node.parameters, node.namespace["sweep_axes"]
-    )
-    # Store the raw dataset
-    node.results["ds_raw"] = ds_raw
 
 
 # %% {Data_analysis}

@@ -71,14 +71,14 @@ def _plot_state(ax, ds, qubit, fitted=None):
     """Plot state data for a qubit."""
     ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
     if fitted is not None:
-        ax.plot(ds.idle_time, fitted.fit_results, "r--")
+        ax.plot(ds.idle_time, fitted.ds_fit, "r--")
 
 
 def _plot_transmission_amplitude(ax, ds, qubit, fitted=None):
     """Plot transmission amplitude for a qubit."""
     (ds.sel(qubit=qubit["qubit"]).I * 1e3).plot(ax=ax)
     if fitted is not None:
-        ax.plot(ds.idle_time, 1e3 * fitted.fit_results, "r--")
+        ax.plot(ds.idle_time, 1e3 * fitted.ds_fit, "r--")
 
 
 def _add_fit_text(ax, fit):

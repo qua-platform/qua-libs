@@ -71,9 +71,9 @@ def fit_t1_decay(ds: xr.Dataset, node_parameters: Parameters) -> Tuple[xr.Datase
     # Fit the exponential decay
     fit_results = _fit_t1_with_exponential_decay(ds, node_parameters.use_state_discrimination)
     # Extract the relevant fitted parameters
-    fit_data, fit_results = _extract_relevant_fit_parameters(fit_results)
+    fit_data, fit_results = _extract_relevant_fit_parameters(fit_results.to_dataset(name="ds_fit"))
 
-    return fit_data.to_dataset(name="fit_results"), fit_results
+    return fit_data, fit_results
 
 
 def _fit_t1_with_exponential_decay(ds, use_state_discrimination):
@@ -85,20 +85,20 @@ def _fit_t1_with_exponential_decay(ds, use_state_discrimination):
     return fit
 
 
-def _extract_relevant_fit_parameters(fit):
+def _extract_relevant_fit_parameters(fit: xr.Dataset):
     """Add metadata to the dataset and fit results."""
     # Add metadata to fit results
     fit.attrs = {"long_name": "time", "units": "ns"}
     # Get the fitted T1
     tau = -1 / fit.sel(fit_vals="decay")
-    fit = fit.assign_coords(tau=("qubit", tau.data))
+    fit = fit.assign_coords(tau=("qubit", tau.ds_fit.data))
     fit.tau.attrs = {"long_name": "T1", "units": "ns"}
     # Get the error on T1
     tau_error = -tau * (np.sqrt(fit.sel(fit_vals="decay_decay")) / fit.sel(fit_vals="decay"))
-    fit = fit.assign_coords(tau_error=("qubit", tau_error.data))
+    fit = fit.assign_coords(tau_error=("qubit", tau_error.ds_fit.data))
     fit.tau_error.attrs = {"long_name": "T1 error", "units": "ns"}
     # Assess whether the fit was successful or not
-    success_criteria = (tau.values > 16) & (tau_error.values / tau.values < 1)
+    success_criteria = (tau.ds_fit.data > 16) & (tau_error.ds_fit.data / tau.ds_fit.data < 1)
     fit = fit.assign_coords(success=("qubit", success_criteria))
 
     fit_results = {
