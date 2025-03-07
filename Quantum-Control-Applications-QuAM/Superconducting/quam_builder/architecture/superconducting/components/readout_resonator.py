@@ -20,7 +20,7 @@ class ReadoutResonatorBase:
     QuAM component for a readout resonator.
 
     Attributes:
-        depletion_time (int): The resonator depletion time in ns. Default is 5000.
+        depletion_time (int): The resonator depletion time in ns. Default is 16ns.
         frequency_bare (float): The bare resonator frequency in Hz.
         f_01 (float): The frequency of the 0-1 transition in Hz.
         f_12 (float): The frequency of the 1-2 transition in Hz.
@@ -33,7 +33,7 @@ class ReadoutResonatorBase:
         calculate_voltage_scaling_factor(fixed_power_dBm, target_power_dBm): Calculate the voltage scaling factor required to scale fixed power to target power.
     """
 
-    depletion_time: int = 5000
+    depletion_time: int = 16
     frequency_bare: float = None
 
     f_01: float = None
