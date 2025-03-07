@@ -33,7 +33,7 @@ class BaseTransmon(QuamComponent):
     """
     Example QuAM component for a transmon qubit.
 
-    Args:
+    Attributes:
         id (str, int): The id of the Transmon, used to generate the name.
             Can be a string, or an integer in which case it will add`Channel._default_label`.
         xy (IQChannel): The xy drive component.
@@ -70,6 +70,26 @@ class BaseTransmon(QuamComponent):
     extras: Dict[str, Any] = field(default_factory=dict)
 
     @property
+    def name(self):
+        """The name of the transmon"""
+        return self.id if isinstance(self.id, str) else f"q{self.id}"
+
+    def __matmul__(self, other):
+        if not isinstance(other, BaseTransmon):
+            raise ValueError(
+                "Cannot create a qubit pair (q1 @ q2) with a non-qubit object, " f"where q1={self} and q2={other}"
+            )
+
+        if self is other:
+            raise ValueError("Cannot create a qubit pair with same qubit (q1 @ q1), where q1={self}")
+
+        for qubit_pair in self._root.qubit_pairs.values():
+            if qubit_pair.qubit_control is self and qubit_pair.qubit_target is other:
+                return qubit_pair
+        else:
+            raise ValueError("Qubit pair not found: qubit_control={self.name}, " "qubit_target={other.name}")
+
+    @property
     def inferred_f_12(self) -> float:
         """The 0-2 (e-f) transition frequency in Hz, derived from f_01 and anharmonicity"""
         name = getattr(self, "name", self.__class__.__name__)
@@ -97,6 +117,7 @@ class BaseTransmon(QuamComponent):
         """The transmon thermalization time in ns."""
         return int(self.thermalization_time_factor * self.T1 * 1e9 / 4) * 4
 
+    #todo: do we really want this one here?
     def calibrate_octave(
         self, QM: QuantumMachine, calibrate_drive: bool = True, calibrate_resonator: bool = True
     ) -> None:
@@ -109,51 +130,53 @@ class BaseTransmon(QuamComponent):
             calibrate_resonator (bool): flag to calibrate the resonator line.
         """
         if calibrate_resonator and self.resonator is not None:
-            logger.info(f"Calibrating {self.resonator.name}")
-            octave_calibration_tool(
-                QM,
-                self.resonator.name,
-                lo_frequencies=self.resonator.frequency_converter_up.LO_frequency,
-                intermediate_frequencies=self.resonator.intermediate_frequency,
-            )
-
+            if hasattr(self.resonator, "frequency_converter_up"):
+                logger.info(f"Calibrating {self.resonator.name}")
+                octave_calibration_tool(
+                    QM,
+                    self.resonator.name,
+                    lo_frequencies=self.resonator.frequency_converter_up.LO_frequency,
+                    intermediate_frequencies=self.resonator.intermediate_frequency,
+                )
+            else:
+                raise RuntimeError(f"{self.resonator.name} doesn't have a 'frequency_converter_up' attribute, it is thus most likely not connected to an Octave.")
         if calibrate_drive and self.xy is not None:
-            logger.info(f"Calibrating {self.xy.name}")
-            octave_calibration_tool(
-                QM,
-                self.xy.name,
-                lo_frequencies=self.xy.frequency_converter_up.LO_frequency,
-                intermediate_frequencies=self.xy.intermediate_frequency,
-            )
+            if hasattr(self.xy, "frequency_converter_up"):
+                logger.info(f"Calibrating {self.xy.name}")
+                octave_calibration_tool(
+                    QM,
+                    self.xy.name,
+                    lo_frequencies=self.xy.frequency_converter_up.LO_frequency,
+                    intermediate_frequencies=self.xy.intermediate_frequency,
+                )
+            else:
+                raise RuntimeError(f"{self.xy.name} doesn't have a 'frequency_converter_up' attribute, it is thus most likely not connected to an Octave.")
+
 
     def set_gate_shape(self, gate_shape: str) -> None:
         """Set the shape fo the single qubit gates defined as ["x180", "x90" "-x90", "y180", "y90", "-y90"]"""
         for gate in ["x180", "x90", "-x90", "y180", "y90", "-y90"]:
             self.xy.operations[gate] = f"#./{gate}_{gate_shape}"
 
-    @property
-    def name(self):
-        """The name of the transmon"""
-        return self.id if isinstance(self.id, str) else f"q{self.id}"
 
-    def __matmul__(self, other):
-        if not isinstance(other, BaseTransmon):
-            raise ValueError(
-                "Cannot create a qubit pair (q1 @ q2) with a non-qubit object, " f"where q1={self} and q2={other}"
-            )
+    def readout_state(self, state, pulse_name: str = "readout", threshold: float = None):
+        """
+        Perform a readout of the qubit state using the specified pulse.
 
-        if self is other:
-            raise ValueError("Cannot create a qubit pair with same qubit (q1 @ q1), where q1={self}")
+        This function measures the qubit state using the specified readout pulse and assigns the result to the given state variable.
+        If no threshold is provided, the default threshold for the specified pulse is used.
 
-        for qubit_pair in self._root.qubit_pairs.values():
-            if qubit_pair.qubit_control is self and qubit_pair.qubit_target is other:
-                return qubit_pair
-        else:
-            raise ValueError("Qubit pair not found: qubit_control={self.name}, " "qubit_target={other.name}")
+        Args:
+            state: The variable to assign the readout result to.
+            pulse_name (str): The name of the readout pulse to use. Default is "readout".
+            threshold (float, optional): The threshold value for the readout. If None, the default threshold for the pulse is used.
 
-    def readout_state(
-        self, state, pulse_name: str = "readout", threshold: float = None, save_qua_var: StreamType = None
-    ):
+        Returns:
+            None
+
+        The function declares fixed variables I and Q, measures the qubit state using the specified pulse, and assigns the result to the state variable based on the threshold.
+        It then waits for the resonator depletion time.
+        """
         I = declare(fixed)
         Q = declare(fixed)
         if threshold is None:
@@ -170,16 +193,15 @@ class BaseTransmon(QuamComponent):
         **kwargs,
     ):
         """
-        todo: update the docstring
-        Reset the qubit with the specified method based on the node parameters.
+        Reset the qubit with the specified method.
 
-        This function resets the qubit using the method specified in the node parameters.
-        It supports thermal reset, active reset, and active GEF reset. When simulating the
-        QUA program, the qubit reset is skipped to save simulated samples.
+        This function resets the qubit using the specified method: thermal reset, active reset, or active GEF reset.
+        When simulating the QUA program, the qubit reset is skipped to save simulated samples.
 
         Args:
-            node_parameters (Union[QubitsExperimentNodeParameters, CommonNodeParameters]):
-                The parameters defining the qubit reset method and simulation mode.
+            reset_type (Literal["thermal", "active", "active_gef"]): The type of reset to perform. Default is "thermal".
+            simulate (bool): If True, the qubit reset is skipped for simulation purposes. Default is False.
+            logger (optional): Logger instance to log warnings. If None, a default logger is used.
             **kwargs: Additional keyword arguments passed to the active reset methods.
 
         Returns:
@@ -314,11 +336,11 @@ class BaseTransmon(QuamComponent):
         Q = declare(fixed)
         diff = declare(fixed, size=3)
 
-        self.resonator.update_frequency(self.resonator.intermediate_frequency - self.resonator.GEF_frequency_shift)
+        self.resonator.update_frequency(self.resonator.intermediate_frequency + self.resonator.GEF_frequency_shift)
         self.resonator.measure(pulse_name, qua_vars=(I, Q))
         self.resonator.update_frequency(self.resonator.intermediate_frequency)
 
-        gef_centers = [self.resonator.gef_centers.g, self.resonator.gef_centers.e, self.resonator.gef_centers.f]
+        gef_centers = [self.resonator.gef_centers[0], self.resonator.gef_centers[1], self.resonator.gef_centers[2]]
         for p in range(3):
             assign(
                 diff[p],
