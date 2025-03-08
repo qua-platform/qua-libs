@@ -24,7 +24,10 @@ from quam_libs.lib.instrument_limits import instrument_limits
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
-from quam_libs.lib.fit import fit_oscillation, oscillation
+
+from quam_libs.xarray_data_fetcher import XarrayDataFetcher
+from qua_dashboards.data_dashboard import DataDashboardClient
+
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -34,6 +37,7 @@ from qm.qua import *
 from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
+import xarray as xr
 
 
 # %% {Node_parameters}
@@ -76,7 +80,7 @@ if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
 else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
-num_qubits = len(qubits)
+num_qubits: int = len(qubits)
 
 
 # %% {QUA_program}
@@ -104,10 +108,10 @@ if N_pi > 1:
 else:
     N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
 
-sweeps = {
-    "qubits": [q.name for q in qubits],
-    "amplitudes": amps,
-    "N_pi_pulses": N_pi_vec,
+sweep_axes = {
+    "qubits": xr.DataArray([q.name for q in qubits]),
+    "amplitudes": xr.DataArray(amps),
+    "N_pi_pulses": xr.DataArray(N_pi_vec),
 }
 
 with program() as power_rabi:
@@ -192,18 +196,17 @@ if node.parameters.simulate:
 elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(power_rabi)
-        results = fetching_tool(job, ["n"], mode="live")
-        while results.is_processing():
-            # Fetch results
-            n = results.fetch_all()[0]
-            # Progress bar
-            progress_counter(n, n_avg, start_time=results.start_time)
+        data_fetcher = XarrayDataFetcher(job, sweep_axes)
+        data_dashboard = DataDashboardClient()
+        for ds in data_fetcher:
+
+            progress_counter(data_fetcher["n"], n_avg, start_time=data_fetcher.t_start)
 
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
+        # ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
         if not state_discrimination:
             ds = convert_IQ_to_V(ds, qubits)
         # Add the qubit pulse absolute amplitude to the dataset
