@@ -43,16 +43,15 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
-from typing import Literal, Optional, List, ClassVar
+from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
-import warnings
-from qualang_tools.bakery import baking
 from quam_libs.lib.fit import fit_oscillation, oscillation, fix_oscillation_phi_2pi
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
 from scipy.optimize import curve_fit
-from quam_libs.components.gates.two_qubit_gates import CZGate
-from quam_libs.lib.pulses import FluxPulse
+import xarray as xr
+from qualang_tools.data_fetcher import XarrayDataFetcher
+from qualang_tools.data_dashboard import DataDashboardClient
 
 
 # %% {Node_parameters}
@@ -124,6 +123,14 @@ flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or
 # Loop parameters
 amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
 frames = np.arange(0, 1, 1 / node.parameters.num_frames)
+
+# Define sweep axes for data fetcher
+sweep_axes = {
+    "qubit": xr.DataArray([qp.name for qp in qubit_pairs]),
+    "control_axis": xr.DataArray([0, 1]),
+    "frame": xr.DataArray(frames),
+    "amp": xr.DataArray(amplitudes),
+}
 
 with program() as CPhase_Oscillations:
     amp = declare(fixed)
@@ -204,102 +211,126 @@ if node.parameters.simulate:
     node.results = {"figure": plt.gcf()}
     node.machine = machine
     node.save()
-elif node.parameters.load_data_id is None:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        job = qm.execute(CPhase_Oscillations)
+    exit()
 
-        results = fetching_tool(job, ["n"], mode="live")
-        while results.is_processing():
-            # Fetch results
-            n = results.fetch_all()[0]
-            # Progress bar
-            progress_counter(n, n_avg, start_time=results.start_time)
+with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    job = qm.execute(CPhase_Oscillations)
+    data_fetcher = XarrayDataFetcher(job, sweep_axes)
+    data_dashboard = DataDashboardClient()
+    for ds in data_fetcher:
+        progress_counter(data_fetcher["n"], n_avg, start_time=data_fetcher.t_start)
 
 # %% {Data_fetching_and_dataset_creation}
-if not node.parameters.simulate:
-    if node.parameters.load_data_id is None:
-        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(
-            job.result_handles,
-            qubit_pairs,
-            {"control_axis": [0, 1], "frame": frames, "amp": amplitudes, "N": np.linspace(1, n_avg, n_avg)},
-        )
-    else:
-        ds, machine = load_dataset(node.parameters.load_data_id)
+if node.parameters.load_data_id is None:
+    # Add amplitude and detuning coordinates
+    ds = ds.assign_coords(
+        {
+            "amp_full": (["qubit", "amp"], np.array([abs_amp(qp, ds.amp) for qp in qubit_pairs])),
+            "detuning": (["qubit", "amp"], np.array([detuning(qp, ds.amp) for qp in qubit_pairs])),
+        }
+    )
+else:
+    ds, machine = load_dataset(node.parameters.load_data_id)
 
-    node.results = {"ds": ds}
+node.results = {"ds": ds}
 
 # %% {Data_analysis}
-if not node.parameters.simulate:
 
-    def abs_amp(qp, amp):
-        return amp * qp.gates["Cz"].flux_pulse_control.amplitude
 
-    def detuning(qp, amp):
-        return -((amp * qp.gates["Cz"].flux_pulse_control.amplitude) ** 2) * qp.qubit_control.freq_vs_flux_01_quad_term
+def abs_amp(qp, amp):
+    return amp * qp.gates["Cz"].flux_pulse_control.amplitude
 
-    ds = ds.assign_coords({"amp_full": (["qubit", "amp"], np.array([abs_amp(qp, ds.amp) for qp in qubit_pairs]))})
-    ds = ds.assign_coords({"detuning": (["qubit", "amp"], np.array([detuning(qp, ds.amp) for qp in qubit_pairs]))})
-# %% Analysis
-if not node.parameters.simulate:
 
-    phase_diffs = {}
-    optimal_amps = {}
-    leaks = {}
-    fitted = {}
-    for qp in qubit_pairs:
-        ds_qp = ds.sel(qubit=qp.name)
-        fit_data = fit_oscillation(ds_qp.state_target.mean(dim="N"), "frame")
+def detuning(qp, amp):
+    return -((amp * qp.gates["Cz"].flux_pulse_control.amplitude) ** 2) * qp.qubit_control.freq_vs_flux_01_quad_term
 
-        ds_qp = ds_qp.assign(
-            {
-                "fitted": oscillation(
-                    ds_qp.frame,
-                    fit_data.sel(fit_vals="a"),
-                    fit_data.sel(fit_vals="f"),
-                    fit_data.sel(fit_vals="phi"),
-                    fit_data.sel(fit_vals="offset"),
-                )
-            }
-        )
-        if node.parameters.plot_raw:
-            plt.figure()
-            ds_qp.mean(dim="N").to_array().sel(variable=["state_target", "fitted"]).stack(
-                control_axis_fit=("control_axis", "variable")
-            ).plot.line(x="frame", col="amp", col_wrap=4)
-            plt.show()
 
-        phase = fix_oscillation_phi_2pi(fit_data)
-        phase_diff = (phase.sel(control_axis=0) - phase.sel(control_axis=1)) % 1
-        try:
-            fit_params, _ = curve_fit(tanh_fit, phase_diff.amp, phase_diff, p0=[-0.5, 100, -100, 0.5])
-            optimal_amp = (np.arctanh((0.5 - fit_params[3]) / fit_params[0]) - fit_params[2]) / fit_params[1]
-            fitted[qp.name] = tanh_fit(phase_diff.amp, *fit_params)
-        except:
-            print(f"Fitting failed for {qp.name}")
-            optimal_amp = float(np.abs(phase_diff - 0.5).idxmin("amp"))
+ds = ds.assign_coords({"amp_full": (["qubit", "amp"], np.array([abs_amp(qp, ds.amp) for qp in qubit_pairs]))})
+ds = ds.assign_coords({"detuning": (["qubit", "amp"], np.array([detuning(qp, ds.amp) for qp in qubit_pairs]))})
+# %% {Analysis}
+phase_diffs = {}
+optimal_amps = {}
+leaks = {}
+fitted = {}
+for qp in qubit_pairs:
+    ds_qp = ds.sel(qubit=qp.name)
+    fit_data = fit_oscillation(ds_qp.state_target.mean(dim="N"), "frame")
 
-        phase_diffs[qp.name] = phase_diff
-        optimal_amps[qp.name] = optimal_amp * qp.gates["Cz"].flux_pulse_control.amplitude
+    ds_qp = ds_qp.assign(
+        {
+            "fitted": oscillation(
+                ds_qp.frame,
+                fit_data.sel(fit_vals="a"),
+                fit_data.sel(fit_vals="f"),
+                fit_data.sel(fit_vals="phi"),
+                fit_data.sel(fit_vals="offset"),
+            )
+        }
+    )
+    if node.parameters.plot_raw:
+        plt.figure()
+        ds_qp.mean(dim="N").to_array().sel(variable=["state_target", "fitted"]).stack(
+            control_axis_fit=("control_axis", "variable")
+        ).plot.line(x="frame", col="amp", col_wrap=4)
+        plt.show()
 
-        print(f"parameters for {qp.name}: amp={optimal_amps[qp.name]}")
+    phase = fix_oscillation_phi_2pi(fit_data)
+    phase_diff = (phase.sel(control_axis=0) - phase.sel(control_axis=1)) % 1
+    try:
+        fit_params, _ = curve_fit(tanh_fit, phase_diff.amp, phase_diff, p0=[-0.5, 100, -100, 0.5])
+        optimal_amp = (np.arctanh((0.5 - fit_params[3]) / fit_params[0]) - fit_params[2]) / fit_params[1]
+        fitted[qp.name] = tanh_fit(phase_diff.amp, *fit_params)
+    except:
+        print(f"Fitting failed for {qp.name}")
+        optimal_amp = float(np.abs(phase_diff - 0.5).idxmin("amp"))
 
-        if node.parameters.measure_leak:
-            all_counts = (ds_qp.state_control < 3).sum(dim="N").sel(control_axis=1).sum(dim="frame")
-            leak_counts = (ds_qp.state_control == 2).sum(dim="N").sel(control_axis=1).sum(dim="frame")
-            leaks[qp.name] = leak_counts / all_counts
+    phase_diffs[qp.name] = phase_diff
+    optimal_amps[qp.name] = optimal_amp * qp.gates["Cz"].flux_pulse_control.amplitude
 
-# %%
-if not node.parameters.simulate:
-    grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
+    print(f"parameters for {qp.name}: amp={optimal_amps[qp.name]}")
+
+    if node.parameters.measure_leak:
+        all_counts = (ds_qp.state_control < 3).sum(dim="N").sel(control_axis=1).sum(dim="frame")
+        leak_counts = (ds_qp.state_control == 2).sum(dim="N").sel(control_axis=1).sum(dim="frame")
+        leaks[qp.name] = leak_counts / all_counts
+
+# %% {Plotting}
+grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
+grid = QubitPairGrid(grid_names, qubit_pair_names)
+for ax, qubit_pair in grid_iter(grid):
+    phase_diffs[qubit_pair["qubit"]].plot.line(ax=ax, x="amp_full")
+    if qubit_pair["qubit"] in fitted:
+        ax.plot(phase_diffs[qubit_pair["qubit"]].amp_full, fitted[qubit_pair["qubit"]])
+    ax.plot([optimal_amps[qubit_pair["qubit"]]], [0.5], marker="o", color="red")
+    ax.axhline(y=0.5, color="red", linestyle="--", lw=0.5)
+    ax.axvline(x=optimal_amps[qubit_pair["qubit"]], color="red", linestyle="--", lw=0.5)
+
+    # Add secondary x-axis for detuning in MHz
+    def amp_to_detuning_MHz(amp):
+        return -(amp**2) * qp.qubit_control.freq_vs_flux_01_quad_term / 1e6  # Convert Hz to MHz
+
+    def detuning_MHz_to_amp(detuning_MHz):
+        return np.sqrt(-detuning_MHz * 1e6 / qp.qubit_control.freq_vs_flux_01_quad_term)
+
+    secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
+    secax.set_xlabel("Detuning (MHz)")
+    ax.set_title(qubit_pair["qubit"])
+    ax.set_xlabel("Amplitude (V)")
+    ax.set_ylabel("Phase difference")
+
+plt.suptitle("Cz phase calibration", y=0.95)
+plt.tight_layout()
+plt.show()
+node.results["figure_phase"] = grid.fig
+
+if node.parameters.measure_leak:
     grid = QubitPairGrid(grid_names, qubit_pair_names)
     for ax, qubit_pair in grid_iter(grid):
-        phase_diffs[qubit_pair["qubit"]].plot.line(ax=ax, x="amp_full")
-        if qubit_pair["qubit"] in fitted:
-            ax.plot(phase_diffs[qubit_pair["qubit"]].amp_full, fitted[qubit_pair["qubit"]])
-        ax.plot([optimal_amps[qubit_pair["qubit"]]], [0.5], marker="o", color="red")
-        ax.axhline(y=0.5, color="red", linestyle="--", lw=0.5)
-        ax.axvline(x=optimal_amps[qubit_pair["qubit"]], color="red", linestyle="--", lw=0.5)
+        leaks[qubit_pair["qubit"]].plot(ax=ax, x="amp_full")
+        ax.axvline(optimal_amps[qubit_pair["qubit"]], color="r", linestyle="--", lw=0.5)
+        ax.set_title(qubit_pair["qubit"])
+        ax.set_xlabel("Amplitude (V)")
+        ax.set_ylabel("Leak probability")
 
         # Add secondary x-axis for detuning in MHz
         def amp_to_detuning_MHz(amp):
@@ -310,52 +341,23 @@ if not node.parameters.simulate:
 
         secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
         secax.set_xlabel("Detuning (MHz)")
-        ax.set_title(qubit_pair["qubit"])
-        ax.set_xlabel("Amplitude (V)")
-        ax.set_ylabel("Phase difference")
 
-    plt.suptitle("Cz phase calibration", y=0.95)
+    plt.suptitle("F state probability", y=0.95)
     plt.tight_layout()
     plt.show()
-    node.results["figure_phase"] = grid.fig
-
-    if node.parameters.measure_leak:
-        grid = QubitPairGrid(grid_names, qubit_pair_names)
-        for ax, qubit_pair in grid_iter(grid):
-            leaks[qubit_pair["qubit"]].plot(ax=ax, x="amp_full")
-            ax.axvline(optimal_amps[qubit_pair["qubit"]], color="r", linestyle="--", lw=0.5)
-            ax.set_title(qubit_pair["qubit"])
-            ax.set_xlabel("Amplitude (V)")
-            ax.set_ylabel("Leak probability")
-
-            # Add secondary x-axis for detuning in MHz
-            def amp_to_detuning_MHz(amp):
-                return -(amp**2) * qp.qubit_control.freq_vs_flux_01_quad_term / 1e6  # Convert Hz to MHz
-
-            def detuning_MHz_to_amp(detuning_MHz):
-                return np.sqrt(-detuning_MHz * 1e6 / qp.qubit_control.freq_vs_flux_01_quad_term)
-
-            secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
-            secax.set_xlabel("Detuning (MHz)")
-
-        plt.suptitle("F state probability", y=0.95)
-        plt.tight_layout()
-        plt.show()
-        node.results["figure_leak"] = grid.fig
+    node.results["figure_leak"] = grid.fig
 
 # %% {Update_state}
-if not node.parameters.simulate:
-    if node.parameters.load_data_id is None:
-        with node.record_state_updates():
-            for qp in qubit_pairs:
-                qp.gates["Cz"].flux_pulse_control.amplitude = optimal_amps[qp.name]
+if node.parameters.load_data_id is None:
+    with node.record_state_updates():
+        for qp in qubit_pairs:
+            qp.gates["Cz"].flux_pulse_control.amplitude = optimal_amps[qp.name]
 
 
 # %% {Save_results}
-if not node.parameters.simulate:
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+node.outcomes = {q.name: "successful" for q in qubits}
+node.results["initial_parameters"] = node.parameters.model_dump()
+node.machine = machine
+node.save()
 
 # %%
