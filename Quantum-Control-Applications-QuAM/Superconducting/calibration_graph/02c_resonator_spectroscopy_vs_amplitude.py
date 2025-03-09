@@ -288,7 +288,7 @@ if not node.parameters.simulate:
                 linestyle="--",
             )
 
-    grid.fig.suptitle(f"Resonator spectroscopy VS. power at base \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"Resonator spectroscopy VS. power at base \n {date_time} #{node_id} \n multplexed = {node.parameters.multplexed}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

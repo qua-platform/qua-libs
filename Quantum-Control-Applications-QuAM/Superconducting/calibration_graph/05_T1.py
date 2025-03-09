@@ -234,7 +234,7 @@ if not node.parameters.simulate:
             bbox=dict(facecolor="white", alpha=0.5),
         )
         
-    grid.fig.suptitle(f"T1 \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"T1 \n {date_time} #{node_id} \n multplexed = {node.parameters.multplexed} reset type = {node.parameters.reset_type}")
     plt.tight_layout()
     plt.show()
     node.results["figure_raw"] = grid.fig

@@ -288,7 +288,7 @@ if not node.parameters.simulate:
         ax.set_title(qubit["qubit"])
         ax.set_xlabel("Flux (V)")
 
-    grid.fig.suptitle(f"Resonator spectroscopy vs flux \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"Resonator spectroscopy vs flux \n {date_time} #{node_id} \n multplexed = {node.parameters.multplexed}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

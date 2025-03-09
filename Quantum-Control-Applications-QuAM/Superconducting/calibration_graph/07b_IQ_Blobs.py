@@ -302,7 +302,7 @@ if not node.parameters.simulate:
         ax.text(1, 1, f"{100 * confusion[1][1]:.1f}%", ha="center", va="center", color="k")
         ax.set_title(qubit["qubit"])
 
-    grid.fig.suptitle(f"g.s. and e.s. fidelity \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"g.s. and e.s. fidelity \n {date_time} #{node_id} \n multplexed = {node.parameters.multplexed} reset Type = {node.parameters.reset_type_thermal_or_active}")
     plt.tight_layout()
     plt.show()
     node.results["figure_fidelity"] = grid.fig

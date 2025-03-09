@@ -310,7 +310,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Relative power")
         ax.set_ylabel("Fidelity / outliers")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Assignment fidelity and non-outlier probability \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"Assignment fidelity and non-outlier probability \n {date_time} #{node_id} \n multplexed = {node.parameters.multplexed} reset Type = {node.parameters.reset_type_thermal_or_active}")
 
     plt.tight_layout()
     plt.show()
@@ -362,7 +362,7 @@ if not node.parameters.simulate:
         ax.set_title(qubit["qubit"])
 
     ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
-    grid.fig.suptitle(f"g.s. and e.s. discriminators (rotated) \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"g.s. and e.s. discriminators (rotated) \n {date_time} #{node_id} \n multplexed = {node.parameters.multplexed} reset Type = {node.parameters.reset_type_thermal_or_active}")
     plt.tight_layout()
     node.results["figure_IQ_blobs"] = grid.fig
 
@@ -382,7 +382,7 @@ if not node.parameters.simulate:
         ax.text(1, 1, f"{100 * confusion[1][1]:.1f}%", ha="center", va="center", color="k")
         ax.set_title(qubit["qubit"])
 
-    grid.fig.suptitle(f"g.s. and e.s. fidelity \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"g.s. and e.s. fidelity \n {date_time} #{node_id} \n multplexed = {node.parameters.multplexed} reset Type = {node.parameters.reset_type_thermal_or_active}")
     plt.tight_layout()
     plt.show()
     node.results["figure_fidelities"] = grid.fig
