@@ -9,7 +9,7 @@ from quam_config import QuAM
 ########################################################################################################################
 host_ip = "172.16.33.101"  # QOP IP address
 port = None  # QOP Port
-cluster_name = "Cluster_81"  # Name of the cluster
+cluster_name = "CS_1"  # Name of the cluster
 calibration_db_path = None  # "/path/to/some/config/folder"
 
 ########################################################################################################################

@@ -3,12 +3,12 @@ import json
 from qualang_tools.units import unit
 from quam_config import QuAM
 from quam_builder.builder.superconducting.build_quam import save_machine
+from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses, add_Square_pulses
+from quam.components.pulses import GaussianPulse
 import numpy as np
 
-# TODO: to do properly
-path = "./quam_state"
 
-machine = QuAM.load(path)
+machine = QuAM.load()
 
 u = unit(coerce_to_integer=True)
 
@@ -32,13 +32,8 @@ xy_if = xy_freq - xy_LO
 for i, q in enumerate(machine.qubits):
     ## Update qubit rr freq and power
     machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
-
     ## Update qubit xy freq and power
     machine.qubits[q].xy.intermediate_frequency = xy_if[i]
-
-    # Update flux channels
-    machine.qubits[q].z.opx_output.output_mode = "amplified"
-    machine.qubits[q].z.opx_output.upsampling_mode = "pulse"
 
     ## Update pulses
     # readout
@@ -47,22 +42,15 @@ for i, q in enumerate(machine.qubits):
     # Qubit saturation
     machine.qubits[q].xy.operations["saturation"].length = 20 * u.us
     machine.qubits[q].xy.operations["saturation"].amplitude = 0.25
-    # Single qubit gates - DragCosine
-    machine.qubits[q].xy.operations["x180_DragCosine"].length = 48
-    machine.qubits[q].xy.operations["x180_DragCosine"].amplitude = 0.2
-    machine.qubits[q].xy.operations["x90_DragCosine"].amplitude = (
-        machine.qubits[q].xy.operations["x180_DragCosine"].amplitude / 2
-    )
-    # Single qubit gates - Square
-    machine.qubits[q].xy.operations["x180_Square"].length = 40
-    machine.qubits[q].xy.operations["x180_Square"].amplitude = 0.1
-    machine.qubits[q].xy.operations["x90_Square"].amplitude = (
-        machine.qubits[q].xy.operations["x180_Square"].amplitude / 2
-    )
+    # Single qubit gates - DragCosine & Square
+    add_DragCosine_pulses(machine.qubits[q], amplitude=0.25, length=48, alpha=0.0, detuning=0)
+    add_Square_pulses(machine.qubits[q], amplitude=0.1, length=48)
+    # Single Gaussian flux pulse
+    machine.qubits[q].z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
 
 # %%
 # save into state.json
-save_machine(machine, path)
+save_machine(machine)
 
 # %%
 # View the corresponding "raw-QUA" config
