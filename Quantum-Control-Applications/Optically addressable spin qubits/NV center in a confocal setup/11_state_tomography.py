@@ -183,7 +183,7 @@ with program() as state_tomography:
                 with case_(1):  # projection along Y
                     play("x90", "NV")
                 with case_(2):  # projection along Z
-                    wait(pi_len_NV * u.ns, "NV")
+                    wait(x180_len_NV * u.ns, "NV")
             align()  # Play the laser pulse after the mw sequence
             # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
