@@ -252,6 +252,10 @@ else:
         )
         crht.fit_params()
         fig_analysis = crht.plot_fit_result(do_show=False)
+        save_data_dict["I1"] = I1
+        save_data_dict["Q1"] = Q1
+        save_data_dict["I2"] = I2
+        save_data_dict["Q2"] = Q2
         save_data_dict["fig_live"] = fig
         save_data_dict["fig_analysis"] = fig_analysis
         save_data_dict["ham_tomo_params_fitted"] = crht.params_fitted_dict

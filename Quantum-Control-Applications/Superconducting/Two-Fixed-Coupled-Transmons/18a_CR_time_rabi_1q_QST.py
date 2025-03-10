@@ -187,6 +187,8 @@ else:
             plt.pause(1)
 
         # Save live plot
+        save_data_dict.update({"I_data": I})
+        save_data_dict.update({"Q_data": Q})
         save_data_dict.update({"fig_live": fig})
 
         # Save results
