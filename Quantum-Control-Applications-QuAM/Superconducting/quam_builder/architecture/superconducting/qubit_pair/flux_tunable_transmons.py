@@ -3,8 +3,12 @@ from dataclasses import field
 from qm.qua import align, wait
 
 from quam.core import QuamComponent, quam_dataclass
-from quam_builder.architecture.superconducting.qubit.flux_tunable_transmon import FluxTunableTransmon
-from quam_builder.architecture.superconducting.components.tunable_coupler import TunableCoupler
+from quam_builder.architecture.superconducting.qubit.flux_tunable_transmon import (
+    FluxTunableTransmon,
+)
+from quam_builder.architecture.superconducting.components.tunable_coupler import (
+    TunableCoupler,
+)
 
 
 __all__ = ["FluxTunableTransmonPair"]
@@ -22,7 +26,11 @@ class FluxTunableTransmonPair(QuamComponent):
     @property
     def name(self):
         """The name of the transmon pair"""
-        return self.id if isinstance(self.id, str) else f"q{self.qubit_control.id}-{self.qubit_target.id}"
+        return (
+            self.id
+            if isinstance(self.id, str)
+            else f"q{self.qubit_control.id}-{self.qubit_target.id}"
+        )
 
     def align(self):
         channels = [

@@ -20,14 +20,24 @@ class ZZDriveIQ(IQChannel, ZZDriveBase):
 
     @property
     def inferred_intermediate_frequency(self):
-        return self.target_qubit_LO_frequency + self.target_qubit_IF_frequency - self.LO_frequency + self.detuning
+        return (
+            self.target_qubit_LO_frequency
+            + self.target_qubit_IF_frequency
+            - self.LO_frequency
+            + self.detuning
+        )
 
 
 @quam_dataclass
 class ZZDriveMW(MWChannel, ZZDriveBase):
     @property
     def inferred_intermediate_frequency(self):
-        return self.target_qubit_LO_frequency + self.target_qubit_IF_frequency - self.LO_frequency + self.detuning
+        return (
+            self.target_qubit_LO_frequency
+            + self.target_qubit_IF_frequency
+            - self.LO_frequency
+            + self.detuning
+        )
 
     @property
     def upconverter_frequency(self):

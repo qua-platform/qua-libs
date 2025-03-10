@@ -124,15 +124,18 @@ class BaseQuAM(QuamRoot):
             try:
                 self.qubits[name].calibrate_octave(QM)
             except NoCalibrationElements:
-                print(f"No calibration elements found for {name}. Skipping calibration.")
+                print(
+                    f"No calibration elements found for {name}. Skipping calibration."
+                )
 
     @property
     def data_handler(self) -> DataHandler:
         """Return the existing data handler or open a new one to conveniently handle data saving."""
         if self._data_handler is None:
+            # TODO: how to fix this warning?
             self._data_handler = DataHandler(
                 root_data_folder=self.network["data_folder"]
-            )  # TODO: how to fix this warning?
+            )
             DataHandler.node_data = {"quam": "./state.json"}
         return self._data_handler
 
@@ -159,7 +162,12 @@ class BaseQuAM(QuamRoot):
     def qua_declaration(
         self,
     ) -> tuple[
-        list[QuaVariable], list[_ResultSource], list[QuaVariable], list[_ResultSource], QuaVariable, _ResultSource
+        list[QuaVariable],
+        list[_ResultSource],
+        list[QuaVariable],
+        list[_ResultSource],
+        QuaVariable,
+        _ResultSource,
     ]:
         """Macro to declare the necessary QUA variables"""
 

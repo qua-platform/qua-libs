@@ -12,7 +12,9 @@ from quam_builder.builder.qop_connectivity.create_analog_ports import (
     create_lf_opx_plus_port,
     create_external_mixer_reference,
 )
-from quam_builder.builder.qop_connectivity.create_digital_ports import create_digital_output_port
+from quam_builder.builder.qop_connectivity.create_digital_ports import (
+    create_digital_output_port,
+)
 from quam_builder.builder.qop_connectivity.paths import *
 
 
@@ -24,13 +26,25 @@ def create_wiring(connectivity: Connectivity) -> dict:
     wiring = {}
     for element_id, element in connectivity.elements.items():
         for line_type, channels in element.channels.items():
-            if line_type in [WiringLineType.RESONATOR, WiringLineType.DRIVE, WiringLineType.FLUX]:
+            if line_type in [
+                WiringLineType.RESONATOR,
+                WiringLineType.DRIVE,
+                WiringLineType.FLUX,
+            ]:
                 for k, v in qubit_wiring(channels, element_id, line_type).items():
-                    set_nested_value_with_path(wiring, f"qubits/{element_id}/{line_type.value}/{k}", v)
+                    set_nested_value_with_path(
+                        wiring, f"qubits/{element_id}/{line_type.value}/{k}", v
+                    )
 
-            elif line_type in [WiringLineType.COUPLER, WiringLineType.CROSS_RESONANCE, WiringLineType.ZZ_DRIVE]:
+            elif line_type in [
+                WiringLineType.COUPLER,
+                WiringLineType.CROSS_RESONANCE,
+                WiringLineType.ZZ_DRIVE,
+            ]:
                 for k, v in qubit_pair_wiring(channels, element_id).items():
-                    set_nested_value_with_path(wiring, f"qubit_pairs/{element_id}/{line_type.value}/{k}", v)
+                    set_nested_value_with_path(
+                        wiring, f"qubit_pairs/{element_id}/{line_type.value}/{k}", v
+                    )
 
             else:
                 raise ValueError(f"Unknown line type {line_type}")
@@ -38,7 +52,11 @@ def create_wiring(connectivity: Connectivity) -> dict:
     return wiring
 
 
-def qubit_wiring(channels: List[AnyInstrumentChannel], element_id: QubitReference, line_type: WiringLineType) -> dict:
+def qubit_wiring(
+    channels: List[AnyInstrumentChannel],
+    element_id: QubitReference,
+    line_type: WiringLineType,
+) -> dict:
     """
     Generates a dictionary containing QuAM-compatible JSON references for a
     list of channels from a single qubit and the same line type.
@@ -46,7 +64,9 @@ def qubit_wiring(channels: List[AnyInstrumentChannel], element_id: QubitReferenc
     qubit_line_wiring = {}
     for channel in channels:
         if channel.instrument_id == "external-mixer":
-            key, reference = create_external_mixer_reference(channel, element_id, line_type)
+            key, reference = create_external_mixer_reference(
+                channel, element_id, line_type
+            )
             qubit_line_wiring[key] = reference
         elif not (channel.signal_type == "digital" and channel.io_type == "input"):
             key, reference = get_channel_port(channel, channels)
@@ -55,7 +75,9 @@ def qubit_wiring(channels: List[AnyInstrumentChannel], element_id: QubitReferenc
     return qubit_line_wiring
 
 
-def qubit_pair_wiring(channels: List[AnyInstrumentChannel], element_id: QubitPairReference) -> dict:
+def qubit_pair_wiring(
+    channels: List[AnyInstrumentChannel], element_id: QubitPairReference
+) -> dict:
     """
     Generates a dictionary containing QuAM-compatible JSON references for a
     list of channels from a single qubit and the same line type.
@@ -72,7 +94,9 @@ def qubit_pair_wiring(channels: List[AnyInstrumentChannel], element_id: QubitPai
     return qubit_pair_line_wiring
 
 
-def get_channel_port(channel: AnyInstrumentChannel, channels: List[AnyInstrumentChannel]) -> tuple:
+def get_channel_port(
+    channel: AnyInstrumentChannel, channels: List[AnyInstrumentChannel]
+) -> tuple:
     if channel.signal_type == "digital":
         key, reference = create_digital_output_port(channel)
     else:
