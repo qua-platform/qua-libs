@@ -109,7 +109,7 @@ class BaseQuAM(QuamRoot):
         )
         if "port" in self.network:
             settings["port"] = self.network["port"]
-        self.qmm = QuantumMachinesManager(**settings)  # TODO: how to fix this warning?
+        self.qmm = QuantumMachinesManager(**settings)
         return self.qmm
 
     def calibrate_octave_ports(self, QM: QuantumMachine) -> None:
@@ -130,7 +130,6 @@ class BaseQuAM(QuamRoot):
     def data_handler(self) -> DataHandler:
         """Return the existing data handler or open a new one to conveniently handle data saving."""
         if self._data_handler is None:
-            # TODO: how to fix this warning?
             self._data_handler = DataHandler(root_data_folder=self.network["data_folder"])
             DataHandler.node_data = {"quam": "./state.json"}
         return self._data_handler
