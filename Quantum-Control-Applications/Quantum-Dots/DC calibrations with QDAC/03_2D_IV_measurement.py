@@ -9,11 +9,11 @@ from qcodes_contrib_drivers.drivers.QDevil import QDAC2
 ##########################
 # Ethernet communication #
 ##########################
-# insert IP
-qdac_ipaddr = "169.254.55.17"
-# open communication
+# Insert IP
+qdac_ipaddr = "127.0.0.1"  # write the QDAC IP address
+# Open communication
 qdac = QDAC2.QDac2("QDAC", visalib="@py", address=f"TCPIP::{qdac_ipaddr}::5025::SOCKET")
-# check the communication with the QDAC
+# Check the communication with the QDAC
 print(qdac.IDN())  # query the QDAC's identity
 print(qdac.errors())  # read and clear all errors from the QDAC's error queue
 
@@ -23,8 +23,8 @@ print(qdac.errors())  # read and clear all errors from the QDAC's error queue
 
 # define the plunger gates
 arrangement = qdac.arrange(
-    # QDAC channels 2 & 3 connected to the ends of two back-to-back Ge diodes
-    contacts={"p1": 2, "p2": 4},
+    # QDAC channels 2 and 3 are connected to p1 and p2 respectively
+    contacts={"p1": 2, "p2": 3},
     # Internal trigger for measuring current
     internal_triggers={"inner"},
 )
@@ -44,7 +44,7 @@ sweep = arrangement.virtual_sweep2d(
 
 
 # define the sensor parameters
-sensor_channel = 5  # define sensing channel
+sensor_channel = 4  # define sensing channel
 sensor_integration_time = (
     15e-3  # define time [s] to integrate current over #NOTE: sensor integration time should be <= step_time
 )

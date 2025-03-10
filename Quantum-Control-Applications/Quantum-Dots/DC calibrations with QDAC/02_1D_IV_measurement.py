@@ -9,36 +9,39 @@ from qcodes_contrib_drivers.drivers.QDevil import QDAC2
 ##########################
 # Ethernet communication #
 ##########################
-# insert IP
-qdac_ipaddr = "169.254.55.17"
-# open communication
+# Insert IP
+qdac_ipaddr = "127.0.0.1"  # Write the QDAC IP address
+# Open communication
 qdac = QDAC2.QDac2("QDAC", visalib="@py", address=f"TCPIP::{qdac_ipaddr}::5025::SOCKET")
-# check the communication with the QDAC
-print(qdac.IDN())  # query the QDAC's identity
-print(qdac.errors())  # read and clear all errors from the QDAC's error queue
+# Check the communication with the QDAC
+print(qdac.IDN())  # Query the QDAC's identity
+print(qdac.errors())  # Read and clear all errors from the QDAC's error queue
 
 
 ####################
 # 1D voltage sweep #
 ####################
 
-# define the sweep parameters
+# Define the sweep parameters
 arrangement = qdac.arrange(
-    contacts={"p1": 4, "p2": 6, "b1": 21}, internal_triggers={"inner"}  # name the channels
-)  # Internal trigger for measuring current
+    # QDAC channels 2,3 and 10 are connected to p1, p2 and b1 respectively
+    contacts={"p1": 2, "p2": 3, "b1": 10},
+    # Internal trigger for measuring current
+    internal_triggers={"inner"}  # name the channels
+)
 n_steps = 21  # define the number of voltage steps
 V_list = np.linspace(-0.3, 0.4, n_steps)  # define the voltage sweep
 step_time = 20e-3  # time [s] per voltage step
 
-# create the sweep
+# Create the sweep
 sweep = arrangement.virtual_sweep(
-    contact="p1",  # choose the contact channel
+    contact="p1",  #choose the contact channel
     voltages=V_list,  # choose the voltage list
     step_time_s=step_time,  # choose the time per voltage
     step_trigger="inner",
 )  # choose the trigger for the measurement
 
-# define the sensor parameters
+# Define the sensor parameters
 sensor_channel = 5  # define sensing channel
 sensor_integration_time = (
     15e-3  # define time [s] to integrate current over #NOTE: sensor_integration_time should be <= step_time
@@ -67,7 +70,7 @@ arrangement.set_virtual_voltage("p1", 0)
 raw = measurement.available_A()  # fetch the current measurements from the buffer
 available = list(map(lambda x: float(x), raw[-n_steps:]))
 
-# plot
+# Plot
 currents = np.array(available) * 1000  # current in mA
 fig, ax = plt.subplots()
 plt.title("IV measurement")
@@ -75,7 +78,7 @@ ax.plot(V_list, currents)
 ax.set_xlabel("Voltage [V]")
 ax.set_ylabel("Current [mA]")
 
-# free all internal triggers, 12 internal triggers are available
+# Free all internal triggers, 12 internal triggers are available
 qdac.free_all_triggers()
-# close to qdac instance so you can create it again.
+# Close to qdac instance so you can create it again.
 qdac.close()
