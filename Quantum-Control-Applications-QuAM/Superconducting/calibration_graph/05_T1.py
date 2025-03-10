@@ -43,11 +43,9 @@ node = QualibrationNode[Parameters, QuAM](
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
-# todo node.modes.external is False when running from the IDE
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.num_averages = 5000
     pass
 
 
@@ -63,8 +61,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
     # todo: node.namespace loses the autocompletion
-    node.namespace["qubits"] = get_qubits(node)
-    qubits = get_qubits(node)
+    node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(node.namespace["qubits"])
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_averages
