@@ -12,6 +12,13 @@ u = unit(coerce_to_integer=True)
 
 
 def add_default_transmon_pulses(transmon: Union[FixedFrequencyTransmon, FluxTunableTransmon]):
+    """
+
+    Adds default pulses to a transmon qubit.
+
+    Parameters:
+    transmon (Union[FixedFrequencyTransmon, FluxTunableTransmon]): The transmon qubit to which the pulses will be added.
+    """
     # TODO: Make gates amplitude a reference to x180 amplitude
     if transmon.xy is not None:
         transmon.xy.operations["x180_DragCosine"] = pulses.DragCosinePulse(
@@ -120,6 +127,12 @@ def add_default_transmon_pulses(transmon: Union[FixedFrequencyTransmon, FluxTuna
 
 
 def add_default_transmon_pair_pulses(transmon_pair):
+    """
+    Adds default pulses to a transmon qubit pair.
+
+    Parameters:
+    transmon_pair: The transmon qubit pair to which the pulses will be added.
+    """
     if hasattr(transmon_pair, "coupler"):
         if transmon_pair.coupler is not None:
             transmon_pair.coupler.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
