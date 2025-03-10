@@ -34,7 +34,7 @@ qdac.close()
 # Ethernet communication #
 ##########################
 # 7. Insert IP
-qdac_ipaddr =  "127.0.0.1"  # Write the QDAC IP address
+qdac_ipaddr = "127.0.0.1"  # Write the QDAC IP address
 # 8. Open communication through Ethernet port
 qdac = QDAC2.QDac2("QDAC", visalib="@py", address=f"TCPIP::{qdac_ipaddr}::5025::SOCKET")
 # 9. Check the communication with the QDAC

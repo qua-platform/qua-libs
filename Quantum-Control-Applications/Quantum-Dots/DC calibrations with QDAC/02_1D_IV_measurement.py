@@ -27,7 +27,7 @@ arrangement = qdac.arrange(
     # QDAC channels 1, 2 and 10 are connected to p1, p2 and b1 respectively
     contacts={"p1": 1, "p2": 2, "b1": 10},
     # Internal trigger for measuring current
-    internal_triggers={"inner"}  # name the channels
+    internal_triggers={"inner"},  # name the channels
 )
 n_steps = 21  # define the number of voltage steps
 V_list = np.linspace(-0.3, 0.4, n_steps)  # define the voltage sweep
