@@ -1,9 +1,7 @@
 from pathlib import Path
 from typing import Union, Optional
 from numpy import sqrt, ceil
-from quam.components import Octave, LocalOscillator
-from quam.components import FrequencyConverter
-
+from quam.components import Octave, LocalOscillator, FrequencyConverter
 from quam_builder.architecture.superconducting.components.mixer import StandaloneMixer
 from quam_builder.builder.superconducting.pulses import (
     add_default_transmon_pulses,
@@ -29,6 +27,16 @@ from quam_builder.builder.qop_connectivity.build_quam_wiring import save_machine
 
 
 def build_quam(machine: Union[AnyQuAM], calibration_db_path: Optional[Union[Path, str]] = None) -> Union[AnyQuAM]:
+    """
+    Builds the QuAM by adding various components and saving the machine configuration.
+
+    Parameters:
+    machine (Union[AnyQuAM]): The QuAM to be built.
+    calibration_db_path (Optional[Union[Path, str]]): The path to the Octave calibration database.
+
+    Returns:
+    Union[AnyQuAM]: The built QuAM.
+    """
     add_octaves(machine, calibration_db_path=calibration_db_path)
     add_external_mixers(machine)
     add_ports(machine)
@@ -42,8 +50,10 @@ def build_quam(machine: Union[AnyQuAM], calibration_db_path: Optional[Union[Path
 
 def add_ports(machine: Union[AnyQuAM]):
     """
-    Creates and stores all input/output ports according to what has been
-    allocated to each element in the machine's wiring.
+    Creates and stores all input/output ports according to what has been allocated to each element in the machine's wiring.
+
+    Parameters:
+    machine (Union[AnyQuAM]): The QuAM to which the ports will be added.
     """
     for wiring_by_element in machine.wiring.values():
         for wiring_by_line_type in wiring_by_element.values():
@@ -53,14 +63,30 @@ def add_ports(machine: Union[AnyQuAM]):
                         machine.ports.reference_to_port(ports.get_unreferenced_value(port), create=True)
 
 
-def _set_default_grid_location(qubit_number: int, total_nuber_of_qubits: int):
-    number_of_rows = int(ceil(sqrt(total_nuber_of_qubits)))
+def _set_default_grid_location(qubit_number: int, total_number_of_qubits: int):
+    """
+    Sets the default grid location for a qubit based on its number and the total number of qubits.
+
+    Parameters:
+    qubit_number (int): The number of the qubit.
+    total_number_of_qubits (int): The total number of qubits.
+
+    Returns:
+    str: The grid location in the format "x,y".
+    """
+    number_of_rows = int(ceil(sqrt(total_number_of_qubits)))
     y = qubit_number % number_of_rows
     x = qubit_number // number_of_rows
     return f"{x},{y}"
 
 
 def add_transmons(machine: Union[AnyQuAM]):
+    """
+    Adds transmon qubits and qubit pairs to the machine based on the wiring configuration.
+
+    Parameters:
+    machine (Union[AnyQuAM]): The QuAM to which the transmons will be added.
+    """
     for element_type, wiring_by_element in machine.wiring.items():
         if element_type == "qubits":
             machine.active_qubit_names = []
@@ -108,6 +134,12 @@ def add_transmons(machine: Union[AnyQuAM]):
 
 
 def add_pulses(machine: Union[AnyQuAM]):
+    """
+    Adds default pulses to the transmon qubits and qubit pairs in the machine.
+
+    Parameters:
+    machine (Union[AnyQuAM]): The QuAM to which the pulses will be added.
+    """
     if hasattr(machine, "qubits"):
         for transmon in machine.qubits.values():
             add_default_transmon_pulses(transmon)
@@ -118,6 +150,16 @@ def add_pulses(machine: Union[AnyQuAM]):
 
 
 def add_octaves(machine: Union[AnyQuAM], calibration_db_path: Optional[Union[Path, str]] = None):
+    """
+    Adds octave components to the machine based on the wiring configuration and initializes their frequency converters.
+
+    Parameters:
+    machine (Union[AnyQuAM]): The QuAM to which the octaves will be added.
+    calibration_db_path (Optional[Union[Path, str]]): The path to the calibration database.
+
+    Returns:
+    Union[AnyQuAM]: The QuAM with the added octaves.
+    """
     if calibration_db_path is None:
         calibration_db_path = machine.get_quam_state_path().parent
 
@@ -141,6 +183,15 @@ def add_octaves(machine: Union[AnyQuAM], calibration_db_path: Optional[Union[Pat
 
 
 def add_external_mixers(machine: Union[AnyQuAM]):
+    """
+    Adds external mixers to the machine based on the wiring configuration.
+
+    Parameters:
+    machine (Union[AnyQuAM]): The QuAM to which the external mixers will be added.
+
+    Returns:
+    Union[AnyQuAM]: The QuAM with the added external mixers.
+    """
     for wiring_by_element in machine.wiring.values():
         for qubit, wiring_by_line_type in wiring_by_element.items():
             for line_type, references in wiring_by_line_type.items():
