@@ -17,7 +17,7 @@ By default, the QDAC operates in DHCP mode. Once connected to the network, its I
 import pyvisa as visa
 from qcodes_contrib_drivers.drivers.QDevil import QDAC2
 
-qdac_ipaddr = "172.0.0.1" # QDAC'c IP
+qdac_ipaddr = "172.0.0.1" # Write the QDAC IP address
 # Open communication through Ethernet port
 qdac = QDAC2.QDac2("QDAC", visalib="@py", address=f"TCPIP::{qdac_ipaddr}::5025::SOCKET")
 ```

@@ -9,11 +9,11 @@ from qcodes_contrib_drivers.drivers.QDevil import QDAC2
 ##########################
 # Ethernet communication #
 ##########################
-# insert IP
-qdac_ipaddr = "169.254.55.17"
-# open communication
+# Insert IP
+qdac_ipaddr = "127.0.0.1"  # Write the QDAC IP address
+# Open communication
 qdac = QDAC2.QDac2("QDAC", visalib="@py", address=f"TCPIP::{qdac_ipaddr}::5025::SOCKET")
-# check the communication with the QDAC
+# Check the communication with the QDAC
 print(qdac.IDN())  # query the QDAC's identity
 print(qdac.errors())  # read and clear all errors from the QDAC's error queue
 
@@ -21,10 +21,10 @@ print(qdac.errors())  # read and clear all errors from the QDAC's error queue
 # Leakage matrix #
 ##################
 
-# For testing, connect resistors: 5M6 over ch 5, 33M between ch 3 & 4, and 5G over ch 1
-arrangement = qdac.arrange(contacts={"G1": 1, "G2": 2, "G3": 3, "G4": 4, "O5": 5})
+# Connect resistors P1 to channel 1, P2 to channel 2, B1 to channel 3, B2 to channel 4 and O1 to channel 5
+arrangement = qdac.arrange(contacts={"P1": 1, "P2": 2, "B1": 3, "B2": 4, "O1": 5})
 # Set initial voltage values
-arrangement.set_virtual_voltages({"G1": 0.0, "G2": 0.0, "G3": 0.0, "G4": 0.0, "O5": 0.0})
+arrangement.set_virtual_voltages({"P1": 0.0, "P2": 0.0, "B1": 0.0, "B2": 0.0, "O1": 0.0})
 sleep(0.5)
 
 # Measure leakage by raising the voltage by 5 mV on each channel in turn.
@@ -34,7 +34,7 @@ leakage_matrix_Ohm = arrangement.leakage(modulation_V=modulation_mV / 1000, nplc
 
 leakage_megaohm = leakage_matrix_Ohm / 1e6
 
-# plot
+# Plot
 # Show the leakage matrix but cap it off at 100 MΩ
 fig, ax = plt.subplots()
 plt.title(f"Gate Leakage ({modulation_mV}mV)")
@@ -50,7 +50,7 @@ plt.gca().invert_yaxis()
 colorbar = fig.colorbar(img)
 colorbar.set_label("Resistance (MΩ)")
 
-# free all internal triggers, 12 internal triggers are available
+# Free all internal triggers, 12 internal triggers are available
 qdac.free_all_triggers()
-# close to qdac instance so you can create it again.
+# Close to qdac instance so you can create it again.
 qdac.close()
