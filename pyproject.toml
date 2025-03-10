@@ -23,7 +23,7 @@ line-length = 120
 #include = '(Tutorials)/.+\.pyi?$'
 
 [tool.poe.tasks]
-format="black examples"
+format="black Quantum-Control-Applications"
 check_format="black --check ."
 
 [build-system]
