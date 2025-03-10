@@ -98,36 +98,26 @@ class BaseTransmon(QuamComponent):
     def __matmul__(self, other):
         if not isinstance(other, BaseTransmon):
             raise ValueError(
-                "Cannot create a qubit pair (q1 @ q2) with a non-qubit object, "
-                f"where q1={self} and q2={other}"
+                "Cannot create a qubit pair (q1 @ q2) with a non-qubit object, " f"where q1={self} and q2={other}"
             )
 
         if self is other:
-            raise ValueError(
-                "Cannot create a qubit pair with same qubit (q1 @ q1), where q1={self}"
-            )
+            raise ValueError("Cannot create a qubit pair with same qubit (q1 @ q1), where q1={self}")
 
         for qubit_pair in self._root.qubit_pairs.values():
             if qubit_pair.qubit_control is self and qubit_pair.qubit_target is other:
                 return qubit_pair
         else:
-            raise ValueError(
-                "Qubit pair not found: qubit_control={self.name}, "
-                "qubit_target={other.name}"
-            )
+            raise ValueError("Qubit pair not found: qubit_control={self.name}, " "qubit_target={other.name}")
 
     @property
     def inferred_f_12(self) -> float:
         """The 0-2 (e-f) transition frequency in Hz, derived from f_01 and anharmonicity"""
         name = getattr(self, "name", self.__class__.__name__)
         if not isinstance(self.f_01, (float, int)):
-            raise AttributeError(
-                f"Error inferring f_12 for channel {name}: {self.f_01=} is not a number"
-            )
+            raise AttributeError(f"Error inferring f_12 for channel {name}: {self.f_01=} is not a number")
         if not isinstance(self.anharmonicity, (float, int)):
-            raise AttributeError(
-                f"Error inferring f_12 for channel {name}: {self.anharmonicity=} is not a number"
-            )
+            raise AttributeError(f"Error inferring f_12 for channel {name}: {self.anharmonicity=} is not a number")
         return self.f_01 + self.anharmonicity
 
     @property
@@ -135,13 +125,9 @@ class BaseTransmon(QuamComponent):
         """The transmon anharmonicity in Hz, derived from f_01 and f_12."""
         name = getattr(self, "name", self.__class__.__name__)
         if not isinstance(self.f_01, (float, int)):
-            raise AttributeError(
-                f"Error inferring anharmonicity for channel {name}: {self.f_01=} is not a number"
-            )
+            raise AttributeError(f"Error inferring anharmonicity for channel {name}: {self.f_01=} is not a number")
         if not isinstance(self.f_12, (float, int)):
-            raise AttributeError(
-                f"Error inferring anharmonicity for channel {name}: {self.f_12=} is not a number"
-            )
+            raise AttributeError(f"Error inferring anharmonicity for channel {name}: {self.f_12=} is not a number")
         return self.f_12 - self.f_01
 
     def sigma(self, operation: Pulse):
@@ -208,9 +194,7 @@ class BaseTransmon(QuamComponent):
                     f"The gate '{gate}_{gate_shape}' is not part of the existing operations for {self.xy.name} --> {self.xy.operations.keys()}."
                 )
 
-    def readout_state(
-        self, state, pulse_name: str = "readout", threshold: float = None
-    ):
+    def readout_state(self, state, pulse_name: str = "readout", threshold: float = None):
         """
         Perform a readout of the qubit state using the specified pulse.
 
@@ -272,9 +256,7 @@ class BaseTransmon(QuamComponent):
         else:
             if logger is None:
                 logger = getLogger(__name__)
-            logger.warning(
-                "For simulating the QUA program, the qubit reset has been skipped."
-            )
+            logger.warning("For simulating the QUA program, the qubit reset has been skipped.")
 
     def reset_qubit_thermal(self):
         """
@@ -371,9 +353,7 @@ class BaseTransmon(QuamComponent):
             wait(self.rr.res_deplete_time // 4, self.xy.name)
             self.align()
             with if_(res_ar == 0):
-                assign(
-                    success, success + 1
-                )  # we need to measure 'g' two times in a row to increase our confidence
+                assign(success, success + 1)  # we need to measure 'g' two times in a row to increase our confidence
             with if_(res_ar == 1):
                 update_frequency(self.xy.name, int(self.xy.intermediate_frequency))
                 self.xy.play(pi_01_pulse_name)
@@ -410,9 +390,7 @@ class BaseTransmon(QuamComponent):
         Q = declare(fixed)
         diff = declare(fixed, size=3)
 
-        self.resonator.update_frequency(
-            self.resonator.intermediate_frequency + self.resonator.GEF_frequency_shift
-        )
+        self.resonator.update_frequency(self.resonator.intermediate_frequency + self.resonator.GEF_frequency_shift)
         self.resonator.measure(pulse_name, qua_vars=(I, Q))
         self.resonator.update_frequency(self.resonator.intermediate_frequency)
 
@@ -424,8 +402,7 @@ class BaseTransmon(QuamComponent):
         for p in range(3):
             assign(
                 diff[p],
-                (I - gef_centers[p][0]) * (I - gef_centers[p][0])
-                + (Q - gef_centers[p][1]) * (Q - gef_centers[p][1]),
+                (I - gef_centers[p][0]) * (I - gef_centers[p][0]) + (Q - gef_centers[p][1]) * (Q - gef_centers[p][1]),
             )
         assign(state, Math.argmin(diff))
         wait(self.resonator.depletion_time // 4, self.resonator.name)

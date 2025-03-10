@@ -32,9 +32,7 @@ def create_wiring(connectivity: Connectivity) -> dict:
                 WiringLineType.FLUX,
             ]:
                 for k, v in qubit_wiring(channels, element_id, line_type).items():
-                    set_nested_value_with_path(
-                        wiring, f"qubits/{element_id}/{line_type.value}/{k}", v
-                    )
+                    set_nested_value_with_path(wiring, f"qubits/{element_id}/{line_type.value}/{k}", v)
 
             elif line_type in [
                 WiringLineType.COUPLER,
@@ -42,9 +40,7 @@ def create_wiring(connectivity: Connectivity) -> dict:
                 WiringLineType.ZZ_DRIVE,
             ]:
                 for k, v in qubit_pair_wiring(channels, element_id).items():
-                    set_nested_value_with_path(
-                        wiring, f"qubit_pairs/{element_id}/{line_type.value}/{k}", v
-                    )
+                    set_nested_value_with_path(wiring, f"qubit_pairs/{element_id}/{line_type.value}/{k}", v)
 
             else:
                 raise ValueError(f"Unknown line type {line_type}")
@@ -64,9 +60,7 @@ def qubit_wiring(
     qubit_line_wiring = {}
     for channel in channels:
         if channel.instrument_id == "external-mixer":
-            key, reference = create_external_mixer_reference(
-                channel, element_id, line_type
-            )
+            key, reference = create_external_mixer_reference(channel, element_id, line_type)
             qubit_line_wiring[key] = reference
         elif not (channel.signal_type == "digital" and channel.io_type == "input"):
             key, reference = get_channel_port(channel, channels)
@@ -75,9 +69,7 @@ def qubit_wiring(
     return qubit_line_wiring
 
 
-def qubit_pair_wiring(
-    channels: List[AnyInstrumentChannel], element_id: QubitPairReference
-) -> dict:
+def qubit_pair_wiring(channels: List[AnyInstrumentChannel], element_id: QubitPairReference) -> dict:
     """
     Generates a dictionary containing QuAM-compatible JSON references for a
     list of channels from a single qubit and the same line type.
@@ -94,9 +86,7 @@ def qubit_pair_wiring(
     return qubit_pair_line_wiring
 
 
-def get_channel_port(
-    channel: AnyInstrumentChannel, channels: List[AnyInstrumentChannel]
-) -> tuple:
+def get_channel_port(channel: AnyInstrumentChannel, channels: List[AnyInstrumentChannel]) -> tuple:
     if channel.signal_type == "digital":
         key, reference = create_digital_output_port(channel)
     else:

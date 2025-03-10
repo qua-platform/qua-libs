@@ -37,17 +37,13 @@ class QuAM(BaseQuAM):
             if q.z is not None:
                 q.z.to_joint_idle()
             else:
-                warnings.warn(
-                    f"Didn't find z-element on qubit {q.name}, didn't set to joint-idle"
-                )
+                warnings.warn(f"Didn't find z-element on qubit {q.name}, didn't set to joint-idle")
         for q in self.qubits:
             if self.qubits[q] not in self.active_qubits:
                 if self.qubits[q].z is not None:
                     self.qubits[q].z.to_min()
                 else:
-                    warnings.warn(
-                        f"Didn't find z-element on qubit {q}, didn't set to min"
-                    )
+                    warnings.warn(f"Didn't find z-element on qubit {q}, didn't set to min")
         self.apply_all_couplers_to_min()
 
     def apply_all_flux_to_min(self) -> None:

@@ -13,9 +13,7 @@ def create_digital_output_port(channel: AnyInstrumentChannel) -> (str, str):
         reference += f"/con{channel.con}"
         reference += f"/{channel.slot}"
     else:
-        raise NotImplementedError(
-            f"Unhandled digital channel on instrument {channel.instrument_id}"
-        )
+        raise NotImplementedError(f"Unhandled digital channel on instrument {channel.instrument_id}")
     reference += f"/{channel.port}"
 
     return key, reference

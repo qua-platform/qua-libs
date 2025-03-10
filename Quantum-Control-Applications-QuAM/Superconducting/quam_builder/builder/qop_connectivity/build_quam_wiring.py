@@ -37,9 +37,7 @@ def add_ports_container(connectivity: Connectivity, machine: AnyQuAM):
                     machine.ports = OPXPlusPortsContainer()
 
 
-def add_name_and_ip(
-    machine: AnyQuAM, host_ip: str, cluster_name: str, port: Union[int, None]
-):
+def add_name_and_ip(machine: AnyQuAM, host_ip: str, cluster_name: str, port: Union[int, None]):
     """Stores the minimal information to connect to a QuantumMachinesManager."""
     machine.network = {"host": host_ip, "port": port, "cluster_name": cluster_name}
 

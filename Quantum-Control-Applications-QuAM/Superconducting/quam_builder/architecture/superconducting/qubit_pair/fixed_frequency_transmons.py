@@ -34,11 +34,7 @@ class FixedFrequencyTransmonPair(QuamComponent):
     @property
     def name(self):
         """The name of the transmon pair"""
-        return (
-            self.id
-            if isinstance(self.id, str)
-            else f"q{self.qubit_control.id}-{self.qubit_target.id}"
-        )
+        return self.id if isinstance(self.id, str) else f"q{self.qubit_control.id}-{self.qubit_target.id}"
 
     def align(self):
         align(

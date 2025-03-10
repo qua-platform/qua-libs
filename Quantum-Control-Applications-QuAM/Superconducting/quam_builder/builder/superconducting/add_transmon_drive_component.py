@@ -1,6 +1,5 @@
 from typing import Dict, Union
 from quam.components.channels import IQChannel, MWChannel
-
 from quam_builder.builder.qop_connectivity.channel_ports import (
     iq_out_channel_ports,
     mw_out_channel_ports,
@@ -8,11 +7,12 @@ from quam_builder.builder.qop_connectivity.channel_ports import (
 from quam_builder.builder.qop_connectivity.get_digital_outputs import (
     get_digital_outputs,
 )
-from qualang_tools.addons.calibration.calibrations import unit
 from quam_builder.architecture.superconducting.qubit import (
     FixedFrequencyTransmon,
     FluxTunableTransmon,
 )
+from qualang_tools.addons.calibration.calibrations import unit
+
 
 u = unit(coerce_to_integer=True)
 
@@ -22,6 +22,17 @@ def add_transmon_drive_component(
     wiring_path: str,
     ports: Dict[str, str],
 ):
+    """
+    Adds a drive component to a transmon qubit based on the provided wiring path and ports.
+
+    Parameters:
+    transmon (Union[FixedFrequencyTransmon, FluxTunableTransmon]): The transmon qubit to which the drive component will be added.
+    wiring_path (str): The path to the wiring configuration.
+    ports (Dict[str, str]): A dictionary mapping port names to their respective configurations.
+
+    Raises:
+    ValueError: If the port keys do not match any implemented mapping.
+    """
     digital_outputs = get_digital_outputs(wiring_path, ports)
 
     if all(key in ports for key in iq_out_channel_ports):
@@ -48,6 +59,4 @@ def add_transmon_drive_component(
         )
 
     else:
-        raise ValueError(
-            f"Unimplemented mapping of port keys to channel for ports: {ports}"
-        )
+        raise ValueError(f"Unimplemented mapping of port keys to channel for ports: {ports}")

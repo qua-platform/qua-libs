@@ -11,9 +11,7 @@ from typing import Union
 u = unit(coerce_to_integer=True)
 
 
-def add_default_transmon_pulses(
-    transmon: Union[FixedFrequencyTransmon, FluxTunableTransmon]
-):
+def add_default_transmon_pulses(transmon: Union[FixedFrequencyTransmon, FluxTunableTransmon]):
     # TODO: Make gates amplitude a reference to x180 amplitude
     if transmon.xy is not None:
         transmon.xy.operations["x180_DragCosine"] = pulses.DragCosinePulse(
@@ -111,33 +109,23 @@ def add_default_transmon_pulses(
 
     if hasattr(transmon, "z"):
         if transmon.z is not None:
-            transmon.z.operations["const"] = pulses.SquarePulse(
-                amplitude=0.1, length=100
-            )
+            transmon.z.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
 
     if hasattr(transmon, "resonator"):
         if transmon.resonator is not None:
             transmon.resonator.operations["readout"] = pulses.SquareReadoutPulse(
                 length=1024 * u.ns, amplitude=0.01, threshold=0.0, digital_marker="ON"
             )
-            transmon.resonator.operations["const"] = pulses.SquarePulse(
-                amplitude=0.125, length=100
-            )
+            transmon.resonator.operations["const"] = pulses.SquarePulse(amplitude=0.125, length=100)
 
 
 def add_default_transmon_pair_pulses(transmon_pair):
     if hasattr(transmon_pair, "coupler"):
         if transmon_pair.coupler is not None:
-            transmon_pair.coupler.operations["const"] = pulses.SquarePulse(
-                amplitude=0.1, length=100
-            )
+            transmon_pair.coupler.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
     if hasattr(transmon_pair, "cross_resonance"):
         if transmon_pair.cross_resonance is not None:
-            transmon_pair.cross_resonance.operations["square"] = pulses.SquarePulse(
-                amplitude=0.1, length=100
-            )
+            transmon_pair.cross_resonance.operations["square"] = pulses.SquarePulse(amplitude=0.1, length=100)
     if hasattr(transmon_pair, "zz_drive"):
         if transmon_pair.zz_drive is not None:
-            transmon_pair.zz_drive.operations["square"] = pulses.SquarePulse(
-                amplitude=0.1, length=100
-            )
+            transmon_pair.zz_drive.operations["square"] = pulses.SquarePulse(amplitude=0.1, length=100)
