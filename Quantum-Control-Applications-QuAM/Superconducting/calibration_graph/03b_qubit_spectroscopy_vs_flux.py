@@ -22,7 +22,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
+from quam_libs.lib.plot_utils import QubitGrid, grid_iter, make_unique_coordinates
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from quam_libs.lib.fit import peaks_dips
 from qualang_tools.results import progress_counter, fetching_tool
@@ -39,7 +39,8 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ["qA2", "qA2"]
+    flux_tuned_qubits: Optional[List[str]] = ["qA1", "qA3"]
     num_averages: int = 50
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.1
@@ -54,7 +55,7 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True
+    multiplexed: bool = False
 
 
 node = QualibrationNode(name="03b_Qubit_Spectroscopy_vs_Flux", parameters=Parameters())
@@ -78,6 +79,22 @@ else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
 
+if node.parameters.flux_tuned_qubits is None:
+    node.parameters.flux_tuned_qubits = node.parameters.qubits
+elif len(node.parameters.flux_tuned_qubits) != len(node.parameters.qubits):
+    raise ValueError("drive_to_flux_map must be the same length as qubits")
+
+drive_flux_qubits_equal = node.parameters.flux_tuned_qubits == node.parameters.qubits
+
+if (not drive_flux_qubits_equal) and node.parameters.multiplexed:
+    raise ValueError("flux_tuned_qubits != qubits is supported only if multiplexed is set to False")
+    
+flux_tuned_qubits = [machine.qubits[q] for q in node.parameters.flux_tuned_qubits]
+
+if len(node.parameters.qubits) == len(set(node.parameters.qubits)) and drive_flux_qubits_equal:
+    is_single_qubit_cal = True
+else:
+    is_single_qubit_cal = False
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
@@ -107,36 +124,38 @@ with program() as multi_qubit_spec_vs_flux:
     df = declare(int)  # QUA variable for the qubit frequency
     dc = declare(fixed)  # QUA variable for the flux dc level
 
-    for i, qubit in enumerate(qubits):
+    for i, (drive_qubit, flux_qubit) in enumerate(zip(qubits, flux_tuned_qubits)):
         # Bring the active qubits to the minimum frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        machine.set_all_fluxes(flux_point=flux_point, target=flux_qubit)
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
 
             with for_(*from_array(df, dfs)):
                 # Update the qubit frequency
-                qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
+                drive_qubit.xy.update_frequency(df + drive_qubit.xy.intermediate_frequency)
                 with for_(*from_array(dc, dcs)):
                     # Flux sweeping for a qubit
-                    duration = operation_len * u.ns if operation_len is not None else qubit.xy.operations[operation].length * u.ns
+                    duration = operation_len * u.ns if operation_len is not None else drive_qubit.xy.operations[operation].length * u.ns
                     # Bring the qubit to the desired point during the saturation pulse
-                    qubit.z.play("const", amplitude_scale=dc / qubit.z.operations["const"].amplitude, duration=duration)
+                    flux_qubit.z.play("const", amplitude_scale=dc / flux_qubit.z.operations["const"].amplitude, duration=duration)
                     # Apply saturation pulse to all qubits
                     # qubit.xy.wait(qubit.z.settle_time * u.ns)
-                    qubit.xy.play(
+                    drive_qubit.xy.play(
                         operation,
                         amplitude_scale=operation_amp,
                         duration=duration,
                     )
-                    qubit.align()
+                    drive_qubit.align()
+                    if drive_flux_qubits_equal:
+                        flux_qubit.align()
                     # QUA macro to read the state of the active resonators
-                    qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                    drive_qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                     # save data
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
                     # Wait for the qubits to decay to the ground state
-                    qubit.resonator.wait(machine.depletion_time * u.ns)
+                    drive_qubit.resonator.wait(machine.depletion_time * u.ns)
 
         # Measure sequentially
         if not node.parameters.multiplexed:
@@ -144,7 +163,7 @@ with program() as multi_qubit_spec_vs_flux:
 
     with stream_processing():
         n_st.save("n")
-        for i, qubit in enumerate(qubits):
+        for i, _ in enumerate(qubits):
             I_st[i].buffer(len(dcs)).buffer(len(dfs)).average().save(f"I{i + 1}")
             Q_st[i].buffer(len(dcs)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
@@ -222,27 +241,27 @@ if not node.parameters.simulate:
     freq_shift = coeff.sel(degree=2) * flux_shift**2 + coeff.sel(degree=1) * flux_shift + coeff.sel(degree=0)
 
     # Save fitting results
-    if node.parameters.load_data_id is None:
+    if node.parameters.load_data_id is None and is_single_qubit_cal:
         fit_results = {}
-        for q in qubits:
+        for i, q in enumerate(qubits):
             fit_results[q.name] = {}
-            if not np.isnan(flux_shift.sel(qubit=q.name).values):
+            if not np.isnan(flux_shift.isel(qubit=i).values):
                 if flux_point == "independent":
                     offset = q.z.independent_offset
                 elif flux_point == "joint":
                     offset = q.z.joint_offset
                 else:
                     offset = 0.0
-                print(f"flux offset for qubit {q.name} is {offset*1e3 + flux_shift.sel(qubit = q.name).values*1e3:.0f} mV")
-                print(f"(shift of  {flux_shift.sel(qubit = q.name).values*1e3:.0f} mV)")
+                print(f"flux offset for qubit {q.name} is {offset*1e3 + flux_shift.isel(qubit = i).values*1e3:.0f} mV")
+                print(f"(shift of  {flux_shift.isel(qubit = i).values*1e3:.0f} mV)")
                 print(
-                    f"Drive frequency for {q.name} is {(freq_shift.sel(qubit = q.name).values + q.xy.RF_frequency)/1e9:.3f} GHz"
+                    f"Drive frequency for {q.name} is {(freq_shift.isel(qubit = i).values + q.xy.RF_frequency)/1e9:.3f} GHz"
                 )
-                print(f"(shift of {freq_shift.sel(qubit = q.name).values/1e6:.0f} MHz)")
-                print(f"quad term for qubit {q.name} is {float(coeff.sel(degree = 2, qubit = q.name)/1e9):.3e} GHz/V^2 \n")
-                fit_results[q.name]["flux_shift"] = float(flux_shift.sel(qubit=q.name).values)
-                fit_results[q.name]["drive_freq"] = float(freq_shift.sel(qubit=q.name).values)
-                fit_results[q.name]["quad_term"] = float(coeff.sel(degree=2, qubit=q.name))
+                print(f"(shift of {freq_shift.isel(qubit = i).values/1e6:.0f} MHz)")
+                print(f"quad term for qubit {q.name} is {float(coeff.isel(qubit = i).sel(degree = 2)/1e9):.3e} GHz/V^2 \n")
+                fit_results[q.name]["flux_shift"] = float(flux_shift.isel(qubit=i).values)
+                fit_results[q.name]["drive_freq"] = float(freq_shift.isel(qubit=i).values)
+                fit_results[q.name]["quad_term"] = float(coeff.isel(qubit = i).sel(degree = 2))
             else:
                 print(f"No fit for qubit {q.name}")
                 fit_results[q.name]["flux_shift"] = np.nan
@@ -251,27 +270,38 @@ if not node.parameters.simulate:
         node.results["fit_results"] = fit_results
 
     # %% {Plotting}
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+    
+    grid_locations = [q.grid_location for q in qubits]
+    grid_locations = make_unique_coordinates(grid_locations)
+    grid = QubitGrid(ds, grid_locations)
 
-    for ax, qubit in grid_iter(grid):
-        freq_ref = (ds.freq_full-ds.freq).sel(qubit = qubit["qubit"]).values[0]
-        ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].I.plot(
+    for (i , (ax, qubit)) in enumerate(grid_iter(grid)):
+        freq_ref = (ds.freq_full-ds.freq).isel(qubit = i).values[0]
+        ds = ds.assign_coords(freq_GHz=ds.freq_full / 1e9)
+        ds.isel(qubit = i).I.plot(
             ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
         )
-        ((fitted + freq_ref) / 1e9).loc[qubit].plot(ax=ax, linewidth=0.5, ls="--", color="r")
-        ax.plot(flux_shift.loc[qubit], ((freq_shift.loc[qubit] + freq_ref) / 1e9), "r*")
-        ((peaks.position.loc[qubit] + freq_ref) / 1e9).plot(ax=ax, ls="", marker=".", color="g", ms=0.5)
+        
+        if is_single_qubit_cal:
+            ((fitted + freq_ref) / 1e9).isel(qubit = i).plot(ax=ax, linewidth=0.5, ls="--", color="r")
+            ax.plot(flux_shift.isel(qubit = i), ((freq_shift.isel(qubit = i) + freq_ref) / 1e9), "r*")
+        
+        ((peaks.position.isel(qubit = i) + freq_ref) / 1e9).plot(ax=ax, ls="", marker=".", color="g", ms=0.5)
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Flux (V)")
-        ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time} #{node_id} \n multplexed = {node.parameters.multplexed}")
+        if drive_flux_qubits_equal:
+            ax.set_title(qubit["qubit"])
+        else:
+            ax.set_title(f"{qubit['qubit']} (drive) and {node.parameters.flux_tuned_qubits[i]} (flux)")
+    
+    grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
 
     # %% {Update_state}
-    if node.parameters.load_data_id is None:
+    if node.parameters.load_data_id is None and is_single_qubit_cal:
         with node.record_state_updates():
             for q in qubits:
                 if not np.isnan(flux_shift.sel(qubit=q.name).values):
