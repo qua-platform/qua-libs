@@ -4,20 +4,20 @@ from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visu
 from quam_libs.quam_builder.machine import build_quam_wiring
 
 # Define static parameters
-host_ip = "127.0.0.1"  # QOP IP address
+host_ip = "10.1.1.6"  # QOP IP address
 port = None  # QOP Port
-cluster_name = "Cluster_1"  # Name of the cluster
+cluster_name = "Cluster_2"  # Name of the cluster
 # Desired location of wiring.json and state.json
 # The folder must not contain other json files.
 path = "./quam_state"
 
 # Define the available instrument setup
 instruments = Instruments()
-instruments.add_mw_fem(controller=1, slots=[1, 2])
-instruments.add_lf_fem(controller=1, slots=[3, 4])
+instruments.add_mw_fem(controller=1, slots=[1])
+instruments.add_lf_fem(controller=1, slots=[2])
 
 # Define which qubit indices are present in the system
-qubits = [1, 2, 3, 4, 5, 6]
+qubits = ["ubitC1", "ubitC2", "ubitC3", "ubitC4", "ubitC5"]
 # Allocate the wiring to the connectivity object based on the available instruments
 connectivity = Connectivity()
 

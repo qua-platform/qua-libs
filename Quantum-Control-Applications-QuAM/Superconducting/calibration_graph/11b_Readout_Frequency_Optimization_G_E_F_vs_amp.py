@@ -98,7 +98,7 @@ with program() as ro_freq_opt:
     I_f = [declare(fixed) for _ in range(num_qubits)]
     Q_f = [declare(fixed) for _ in range(num_qubits)]
     df = declare(int)
-    amp = declare(float)
+    amp = declare(fixed)
     I_g_st = [declare_stream() for _ in range(num_qubits)]
     Q_g_st = [declare_stream() for _ in range(num_qubits)]
     I_e_st = [declare_stream() for _ in range(num_qubits)]
@@ -144,7 +144,7 @@ with program() as ro_freq_opt:
                     # Play the x180 gate to put the qubits in the excited state
                     qubit.xy.play("x180")
                     # Align the elements to measure after playing the qubit pulses.
-                    align()
+                    qubit.align()
                     # Measure the state of the resonators
                     qubit.resonator.measure("readout", qua_vars=(I_e[i], Q_e[i]))
                     # wait(1000)
@@ -160,6 +160,7 @@ with program() as ro_freq_opt:
                     update_frequency(
                         qubit.xy.name, qubit.xy.intermediate_frequency  - qubit.anharmonicity
                     )
+                    wait(4, qubit.xy.name)
                     qubit.align()
                     qubit.xy.play(operation, amplitude_scale=amp)
                     qubit.align()
@@ -191,6 +192,12 @@ if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, ro_freq_opt, simulation_config)
+    samples = job.get_simulated_samples()
+    # get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    waveform_report.create_plot(samples, plot=True, save_path="./")
+ 
+ 
     job.get_simulated_samples().con1.plot()
     node.results = {"figure": plt.gcf()}
     node.machine = machine

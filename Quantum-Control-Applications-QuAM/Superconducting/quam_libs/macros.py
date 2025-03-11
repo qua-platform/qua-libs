@@ -147,6 +147,7 @@ def active_reset_gef(
             assign(success, success + 1)  # we need to measure 'g' two times in a row to increase our confidence
         with if_(res_ar == 1):
             update_frequency(qubit.xy.name, int(qubit.xy.intermediate_frequency))
+            wait(4,qubit.xy.name)
             qubit.xy.play(pi_01_pulse_name)
             assign(success, 0)
         with if_(res_ar == 2):
@@ -154,8 +155,10 @@ def active_reset_gef(
                 qubit.xy.name,
                 int(qubit.xy.intermediate_frequency - qubit.anharmonicity),
             )
+            wait(4,qubit.xy.name)
             qubit.xy.play(pi_12_pulse_name)
             update_frequency(qubit.xy.name, int(qubit.xy.intermediate_frequency))
+            wait(4,qubit.xy.name)
             qubit.xy.play(pi_01_pulse_name)
             assign(success, 0)
         qubit.align()
@@ -203,14 +206,17 @@ def active_reset(
     qubit.align()
     qubit.xy.play(pi_pulse_name, condition=state)
     qubit.align()
-    with while_((I > pulse.rus_exit_threshold) & (attempts < max_attempts)):
-        qubit.align()
+    with while_(broadcast.and_((I > pulse.rus_exit_threshold) , (attempts < max_attempts))):
+        # qubit.align()
+        align(qubit.resonator.name, qubit.xy.name)
         qubit.resonator.measure("readout", qua_vars=(I, Q))
         assign(state, I > pulse.threshold)
         wait(qubit.resonator.depletion_time // 4, qubit.resonator.name)
-        qubit.align()
+        # qubit.align()
+        align(qubit.resonator.name, qubit.xy.name)
         qubit.xy.play(pi_pulse_name, condition=state)
-        qubit.align()
+        align(qubit.resonator.name, qubit.xy.name)
+        # qubit.align()
         assign(attempts, attempts + 1)
     wait(500, qubit.xy.name)
     qubit.align()

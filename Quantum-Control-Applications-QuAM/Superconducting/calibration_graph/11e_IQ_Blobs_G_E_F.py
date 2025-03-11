@@ -173,8 +173,10 @@ with program() as iq_blobs:
             update_frequency(
                 qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity
             )
+            wait(4,qubit.xy.name)
             qubit.xy.play(GEF_operation)
             update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
+            wait(4,qubit.xy.name)
             qubit.align()
             qubit.resonator.measure("readout", qua_vars=(I_f[i], Q_f[i]))
             qubit.align()
