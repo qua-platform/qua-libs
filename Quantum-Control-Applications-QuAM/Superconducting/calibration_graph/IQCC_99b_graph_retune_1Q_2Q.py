@@ -19,7 +19,7 @@ reset_type_thermal_or_active = "active"
 
 
 g = QualibrationGraph(
-    name="retune_fine_graph",
+    name="retune_fine_1Q_2Q_graph",
     parameters=Parameters(),
     nodes={
         "IQ_blobs": library.nodes["IQCC_07b_IQ_Blobs"].copy(
@@ -64,12 +64,36 @@ g = QualibrationGraph(
             num_random_sequences=500,
             name="single_qubit_randomized_benchmarking",
         ),
+        "Cz_phase_calibration_frame": library.nodes["IQCC_32a_Cz_phase_calibration_frame"].copy(
+            flux_point_joint_or_independent=flux_point,
+            name="Cz_phase_calibration_frame",
+            reset_type=reset_type_thermal_or_active,
+        ),
+        "Cz_1Q_phase_calibration_frame": library.nodes["IQCC_33a_Cz_1Qphase_calibration_frame"].copy(
+            flux_point_joint_or_independent=flux_point,
+            name="Cz_1Q_phase_calibration_frame",
+            reset_type=reset_type_thermal_or_active,
+        ),
+        "2Q_confusion_matrix": library.nodes["IQCC_34_2Q_confusion_matrix"].copy(
+            flux_point_joint_or_independent=flux_point,
+            name="2Q_confusion_matrix",
+            reset_type=reset_type_thermal_or_active,
+        ),
+        "Bell_state_tomography": library.nodes["IQCC_40b_Bell_state_tomography"].copy(
+            flux_point_joint_or_independent=flux_point,
+            name="Bell_state_tomography",
+            reset_type=reset_type_thermal_or_active,
+        ),
     },
     connectivity=[
         ("IQ_blobs", "ramsey_flux_calibration"),
         ("ramsey_flux_calibration", "power_rabi_x180"),
         ("power_rabi_x180", "power_rabi_x90"),
         ("power_rabi_x90", "single_qubit_randomized_benchmarking"),
+        ("single_qubit_randomized_benchmarking", "Cz_phase_calibration_frame"),
+        ("Cz_phase_calibration_frame", "Cz_1Q_phase_calibration_frame"),
+        ("Cz_1Q_phase_calibration_frame", "2Q_confusion_matrix"),
+        ("2Q_confusion_matrix", "Bell_state_tomography"),
     ],
     orchestrator=BasicOrchestrator(skip_failed=True),
 )

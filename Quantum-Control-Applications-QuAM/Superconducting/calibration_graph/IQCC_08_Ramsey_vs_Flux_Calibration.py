@@ -45,8 +45,8 @@ class Parameters(NodeParameters):
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 2000
     wait_time_step_in_ns: int = 20
-    flux_span: float = 0.04
-    flux_step: float = 0.002
+    flux_span: float = 0.025
+    flux_step: float = 0.001
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500
@@ -66,7 +66,7 @@ machine = QuAM.load()
 config = machine.generate_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
-    qmm = machine.connect()
+    qmm = machine.connect(return_existing=True)
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
