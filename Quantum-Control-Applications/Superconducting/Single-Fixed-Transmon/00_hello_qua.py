@@ -7,6 +7,7 @@ from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 
+
 ###################
 # The QUA program #
 ###################
@@ -25,6 +26,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
+
 simulate = True
 
 if simulate:

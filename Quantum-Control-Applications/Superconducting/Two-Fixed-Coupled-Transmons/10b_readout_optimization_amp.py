@@ -162,6 +162,14 @@ else:
         # Save results
         script_name = Path(__file__).name
         data_handler = DataHandler(root_data_folder=save_dir)
+        save_data_dict.update({"I_g_q1_data": I_g_q1})
+        save_data_dict.update({"Q_g_q1_data": Q_g_q1})
+        save_data_dict.update({"I_e_q1_data": I_e_q1})
+        save_data_dict.update({"Q_e_q1_data": Q_e_q1})
+        save_data_dict.update({"I_g_q2_data": I_g_q2})
+        save_data_dict.update({"Q_g_q2_data": Q_g_q2})
+        save_data_dict.update({"I_e_q2_data": I_e_q2})
+        save_data_dict.update({"Q_e_q2_data": Q_e_q2})
         save_data_dict.update({"fig_live": fig})
         data_handler.additional_files = {script_name: script_name, **default_additional_files}
         data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

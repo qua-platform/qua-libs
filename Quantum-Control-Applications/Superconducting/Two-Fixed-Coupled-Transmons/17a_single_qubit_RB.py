@@ -254,6 +254,7 @@ else:
 
             # Fetch results
             res = results.fetch_all()
+
             # Progress bar
             progress_counter(res[0], num_of_sequences, start_time=results.start_time)
 
@@ -272,6 +273,10 @@ else:
 
             plt.tight_layout()
             plt.pause(2)
+
+            for ind in range(2):
+                save_data_dict[f"I{ind + 1}"] = res[2 * ind + 1]
+                save_data_dict[f"Q{ind + 1}"] = res[2 * ind + 2]
 
         # Save results
         script_name = Path(__file__).name

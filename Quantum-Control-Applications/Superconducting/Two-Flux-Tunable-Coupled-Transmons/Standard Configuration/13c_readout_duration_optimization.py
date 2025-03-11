@@ -296,6 +296,22 @@ else:
     # Save results
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"Ig_avg_data": Ig_avg_q1})
+    save_data_dict.update({"Qg_avg_data": Qg_avg_q1})
+    save_data_dict.update({"Ie_avg_data": Ie_avg_q1})
+    save_data_dict.update({"Qe_avg_data": Qe_avg_q1})
+    save_data_dict.update({"Ig_var_data": Ig_var_q1})
+    save_data_dict.update({"Qg_var_data": Qg_var_q1})
+    save_data_dict.update({"Ie_var_data": Ie_var_q1})
+    save_data_dict.update({"Qe_var_data": Qe_var_q1})
+    save_data_dict.update({"Ig_avg_data": Ig_avg_q2})
+    save_data_dict.update({"Qg_avg_data": Qg_avg_q2})
+    save_data_dict.update({"Ie_avg_data": Ie_avg_q2})
+    save_data_dict.update({"Qe_avg_data": Qe_avg_q2})
+    save_data_dict.update({"Ig_var_data": Ig_var_q2})
+    save_data_dict.update({"Qg_var_data": Qg_var_q2})
+    save_data_dict.update({"Ie_var_data": Ie_var_q2})
+    save_data_dict.update({"Qe_var_data": Qe_var_q2})
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
