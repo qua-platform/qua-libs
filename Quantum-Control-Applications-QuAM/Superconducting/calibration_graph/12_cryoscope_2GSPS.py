@@ -31,15 +31,15 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = ['qubitC2']    
-    num_averages: int = 10000
-    amplitude_factor: float = 0.25
-    cryoscope_len: int = 320
-    reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
+    num_averages: int = 40
+    amplitude_factor: float = 0.3
+    cryoscope_len: int = 64
+    reset_type_active_or_thermal: Literal['active', 'thermal'] = 'thermal'
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
     timeout: int = 100
-    reset_filters: bool = True
-    analysis_mode: Literal['exponential', 'FIR', 'none'] = 'exponential'
+    reset_filters: bool = False
+    analysis_mode: Literal['exponential', 'FIR', 'none'] = 'FIR'
     load_data_id: Optional[int] = None
     
 node = QualibrationNode(
@@ -56,6 +56,7 @@ plot_process = False
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 machine = QuAM.load()
+
 # machine = QuAM.load()
 # Get the relevant QuAM components
 if node.parameters.qubits is None:
@@ -65,13 +66,16 @@ else:
     
 if node.parameters.reset_filters:
     for qubit in qubits:
-        # qubit.z.opx_output.feedforward_filter = [1.0, 0.0]
+        qubit.z.opx_output.feedforward_filter = [1.0, 0.0]
         qubit.z.opx_output.exponential_filter = [(0.0, 10.0)]
+        
+for qubit in qubits:        
+    qubit.z.opx_output.sampling_rate = 2e9
         # qubit.z.opx_output.feedback_filter = [0.0, 0.0]
                 
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.get_octave_config()
+# octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
@@ -93,7 +97,7 @@ def baked_waveform(waveform_amp, qubit):
     waveform = [waveform_amp] * 16
 
     for i in range(1, 17):  # from first item up to pulse_duration (16)
-        with baking(config, padding_method="left") as b:
+        with baking(config, padding_method="left", sampling_rate=1e9) as b:
             wf = waveform[:i]
             b.add_op("flux_pulse", qubit.z.name, wf)
             b.play("flux_pulse", qubit.z.name)
@@ -103,6 +107,19 @@ def baked_waveform(waveform_amp, qubit):
 
     return pulse_segments
 
+def generate_cryoscope_config(config, amplitude):
+    
+    for i in range(128):
+        waveform = [0] * 128
+
+        for qubit in qubits:
+            for j in range(i+1):
+                waveform[j] = qubit.z.operations['const'].amplitude * amplitude
+            config["pulses"][f"{qubit.name}.z_pulse_{i}"] = {"operation": "control", "length" : 64, "waveforms" : {"single" : f"{qubit.name}.z_waveform_{i}"}}
+            config["waveforms"][f"{qubit.name}.z_waveform_{i}"] = {"type" : "arbitrary", "samples" : waveform}
+            config["elements"][f"{qubit.name}.z"]["operations"][f"z_pulse_{i}"] = f"{qubit.name}.z_pulse_{i}"
+    return config
+    
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
@@ -111,11 +128,11 @@ cryoscope_len = node.parameters.cryoscope_len  # The length of the cryoscope in 
 
 assert cryoscope_len % 16 == 0, 'cryoscope_len is not multiple of 16 nanoseconds'
 
-baked_signals = {}
+# baked_signals = {}
 # Baked flux pulse segments with 1ns resolution
 
-baked_signals = baked_waveform(qubits[0].z.operations['const'].amplitude * amplitude_factor, qubits[0]) 
-
+# baked_signals = baked_waveform(qubits[0].z.operations['const'].amplitude * amplitude_factor, qubits[0]) 
+config = generate_cryoscope_config(config, node.parameters.amplitude_factor)
 cryoscope_time = np.arange(1, cryoscope_len + 1, 1)  # x-axis for plotting - must be in ns
 
 # %%
@@ -140,49 +157,45 @@ with program() as cryoscope:
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
 
-        # The first 16 nanoseconds
-        with for_(idx, 0, idx<16, idx+1):
-            # Alternate between X/2 and Y/2 pulses
-            # for tomo in ['x90', 'y90']:
-            with for_each_(flag, [True, False]):
-                if reset_type == "active":
-                    for qubit in qubits:
-                        active_reset(qubit)
-                else:
-                    wait(qubit.thermalization_time * u.ns)
-                align()
-                # Play first X/2
-                for qubit in qubits:
-                    qubit.xy.play("x180", amplitude_scale = 0.5)
-                align()
-                # Delay between x90 and the flux pulse
-                # NOTE: it can be made larger than 16 nanoseconds it could be benefitial
-                wait(16 // 4)
-                align()
-                # with switch_(idx):
-                #     for j in range(16):
-                #         with case_(j):
-                #             baked_signals[j].run()
-                # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
-                # pulse arrives after the longest flux pulse
-                for qubit in qubits:
-                    qubit.xy.wait((cryoscope_len + 16) // 4)
-                    # Play second X/2 or Y/2
-                    # if tomo == 'x90':
-                    with if_(flag):
-                        qubit.xy.play("x90")
-                    # elif tomo == 'y90':
-                    with else_():
-                        qubit.xy.play("y90")
-                # Measure resonator state after the sequence
-                align()
-                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
-                save(state[i], state_st[i])
+
+        # # The first 16 nanoseconds
+        # with for_(idx, 0, idx<32, idx+1):
+        #     # Alternate between X/2 and Y/2 pulses
+        #     # for tomo in ['x90', 'y90']:
+        #     with for_each_(flag, [True, False]):
+        #         if reset_type == "active":
+        #             for qubit in qubits:
+        #                 active_reset(qubit)
+        #         else:
+        #             wait(qubit.thermalization_time * u.ns)
+        #         align()
+        #         # Play first X/2
+        #         for qubit in qubits:
+        #             qubit.xy.play("x90")
+        #         align()
+
+        #         wait(16 // 4)
+        #         align()
+
+        #         # pulse arrives after the longest flux pulse
+        #         for qubit in qubits:
+        #             qubit.xy.wait((cryoscope_len + 16) // 4)
+        #             # Play second X/2 or Y/2
+        #             # if tomo == 'x90':
+        #             with if_(flag):
+        #                 qubit.xy.play("x90")
+        #             # elif tomo == 'y90':
+        #             with else_():
+        #                 qubit.xy.play("y90")
+        #         # Measure resonator state after the sequence
+        #         align()
+        #         qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+        #         assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
+        #         save(state[i], state_st[i])
 
 
         # The first 16-32 nanoseconds
-        with for_(idx, 0, idx<16, idx+1):
+        with for_(idx, 0, idx<128, idx+1):
             # Alternate between X/2 and Y/2 pulses
             # for tomo in ['x90', 'y90']:
             with for_each_(flag, [True, False]):
@@ -190,20 +203,21 @@ with program() as cryoscope:
                     for qubit in qubits:
                         active_reset(qubit)      
                 else:
-                    wait(qubit.thermalization_time * u.ns)
+                    # wait(qubit.thermalization_time * u.ns)
+                    pass
                 align()
                 # Play first X/2
                 for qubit in qubits:
-                    qubit.xy.play("x180", amplitude_scale = 0.5)
+                    qubit.xy.play("x90")
                 align()
                 # Delay between x90 and the flux pulse
                 # NOTE: it can be made larger than 16 nanoseconds it could be benefitial
                 wait(16 // 4)
                 align()
                 with switch_(idx):
-                    for j in range(16):
+                    for j in range(128):
                         with case_(j):
-                            baked_signals[j].run()
+                            play(f"z_pulse_{j}", qubit.z.name)
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
                 # pulse arrives after the longest flux pulse
                 for qubit in qubits:
@@ -221,55 +235,56 @@ with program() as cryoscope:
                 assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
                 save(state[i], state_st[i])
 
-        with for_(t, 8, t < cryoscope_len // 4, t + 4):
+        # with for_(t, 8, t < cryoscope_len // 4, t + 4):
 
-            with for_(idx, 0, idx<16, idx+1):
+        #     with for_(idx, 0, idx<32, idx+1):
 
-                # Alternate between X/2 and Y/2 pulses
-                # for tomo in ['x90', 'y90']:
-                with for_each_(flag, [True, False]):
-                    # Initialize the qubits
-                    if reset_type == "active":
-                        for qubit in qubits:
-                            active_reset(qubit)       
-                    else:
-                        wait(qubit.thermalization_time * u.ns)
-                    align()
-                    # Play first X/2
-                    for qubit in qubits:
-                        qubit.xy.play("x90")
-                    align()
-                    # Delay between x90 and the flux pulse
-                    wait(16 // 4)
-                    align()
-                    with switch_(idx):
-                        for j in range(16):
-                            with case_(j):
-                                baked_signals[j].run() 
-                                qubits[0].z.play('const', duration=t-4, amplitude_scale =amplitude_factor)
+        #         # Alternate between X/2 and Y/2 pulses
+        #         # for tomo in ['x90', 'y90']:
+        #         with for_each_(flag, [True, False]):
+        #             # Initialize the qubits
+        #             if reset_type == "active":
+        #                 for qubit in qubits:
+        #                     active_reset(qubit)       
+        #             else:
+        #                 wait(qubit.thermalization_time * u.ns)
+        #             align()
+        #             # Play first X/2
+        #             for qubit in qubits:
+        #                 qubit.xy.play("x90")
+        #             align()
+        #             # Delay between x90 and the flux pulse
+        #             wait(16 // 4)
+        #             align()
+        #             with switch_(idx):
+        #                 for j in range(32):
+        #                     with case_(j):
+        #                         qubits[0].z.play('const', duration=t-4, amplitude_scale =amplitude_factor)
+        #                         play(f"z_pulse_{j}", qubit.z.name)
+                                
 
-                    # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
-                    # pulse arrives after the longest flux pulse
-                    for qubit in qubits:
-                        qubit.xy.wait((cryoscope_len + 16) // 4)
-                        # Play second X/2 or Y/2
-                        with if_(flag):
-                            qubit.xy.play("x90")
-                        # elif tomo == 'y90':
-                        with else_():
-                            qubit.xy.play("y90")
+        #             # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
+        #             # pulse arrives after the longest flux pulse
+        #             for qubit in qubits:
+        #                 qubit.xy.wait((cryoscope_len + 16) // 4)
+        #                 # Play second X/2 or Y/2
+        #                 with if_(flag):
+        #                     qubit.xy.play("x90")
+        #                 # elif tomo == 'y90':
+        #                 with else_():
+        #                     qubit.xy.play("y90")
 
-                    # Measure resonator state after the sequence
-                    align()
-                    qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
-                    save(state[i], state_st[i])
+        #             # Measure resonator state after the sequence
+        #             align()
+        #             qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+        #             assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
+        #             save(state[i], state_st[i])
 
     with stream_processing():
         # for the progress counter
         n_st.save("iteration")
         for i, qubit in enumerate(qubits):
-            state_st[i].buffer(2).buffer(cryoscope_len).average().save(f"state{i + 1}")
+            state_st[i].buffer(2).buffer(cryoscope_len*2).average().save(f"state{i + 1}")
 
 
 # %%
@@ -304,12 +319,16 @@ elif node.parameters.load_data_id is None:
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, [qubit], {"axis": ["x","y"], "time": cryoscope_time})
+        ds = fetch_results_as_xarray(job.result_handles, [qubit], {"axis": ["x","y"], "time": 0.5*np.arange(1, cryoscope_len*2+1, 1)})
         plot_process = True
         node.results['ds'] = ds
     else:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
+
+# %%
+ds.state.plot(hue = "axis")
+        
 # %%
 if not node.parameters.simulate:
     if plot_process:
@@ -589,20 +608,17 @@ if not node.parameters.simulate and node.parameters.analysis_mode == 'exponentia
 # %%
 node.results['initial_parameters'] = node.parameters.model_dump()
 node.machine = machine
-node.save()
+# node.save()
 # %%
 # Create step function
-step_len = 100
+step_len = len(optimized_fir) * 2
 step = np.heaviside(np.arange(step_len) - step_len//4, 0.5)
 
-times= np.arange(step_len)
-bipolar_step = (times > 16 ) * (times < 46) + (-1)*(times > 40) * (times < 80)
-
 # Convolve with FIR taps and plot
-response = np.convolve(bipolar_step, optimized_fir, mode='full')
+response = np.convolve(step, optimized_fir, mode='full')
 plt.figure()
 plt.plot(response, '.-', label='Simulated response')
-plt.plot(bipolar_step, '--', label='Input step')
+plt.plot(step[:len(response)], '--', label='Input step')
 plt.legend()
 plt.xlabel('Time [ns]')
 plt.ylabel('Amplitude [a.u.]')
@@ -612,4 +628,15 @@ plt.show()
 
 # %%
 optimized_fir
+# %%
+from qm import QuantumMachinesManager, SimulationConfig
+
+qm = qmm.open_qm(config)
+
+job = qm.simulate(cryoscope, SimulationConfig(5000))
+job.wait_until("Done", timeout=1000)
+
+job.plot_waveform_report_with_simulated_samples()
+# %%
+wfr = job.get_simulated_waveform_report()
 # %%

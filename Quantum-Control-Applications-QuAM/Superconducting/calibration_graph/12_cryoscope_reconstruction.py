@@ -31,16 +31,16 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = ['qubitC2']    
-    num_averages: int = 10000
+    num_averages: int = 40000
     amplitude_factor: float = 0.25
-    cryoscope_len: int = 320
+    cryoscope_len: int = 64
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
     timeout: int = 100
-    reset_filters: bool = True
-    analysis_mode: Literal['exponential', 'FIR', 'none'] = 'exponential'
-    load_data_id: Optional[int] = None
+    reset_filters: bool = False
+    analysis_mode: Literal['exponential', 'FIR', 'none'] = 'FIR'
+    load_data_id: Optional[int] = 325
     
 node = QualibrationNode(
     name="12_Cryoscope",
@@ -65,7 +65,7 @@ else:
     
 if node.parameters.reset_filters:
     for qubit in qubits:
-        # qubit.z.opx_output.feedforward_filter = [1.0, 0.0]
+        qubit.z.opx_output.feedforward_filter = [1.0, 0.0]
         qubit.z.opx_output.exponential_filter = [(0.0, 10.0)]
         # qubit.z.opx_output.feedback_filter = [0.0, 0.0]
                 
@@ -333,17 +333,17 @@ if not node.parameters.simulate:
         # extract the rising part of the data for analysis
     threshold = flux_cryoscope_q.max().values*0.6 # Set the threshold value
     rise_index = np.argmax(flux_cryoscope_q.values > threshold) + 0
-    drop_index =  len(flux_cryoscope_q) - 4
+    drop_index =  len(flux_cryoscope_q) - 1
     flux_cryoscope_tp = flux_cryoscope_q.sel(time=slice(rise_index,drop_index ))
     flux_cryoscope_tp = flux_cryoscope_tp.assign_coords(
         time=flux_cryoscope_tp.time - rise_index + 1)
 
 
     f,axs = plt.subplots(2)
-    flux_cryoscope_q.plot(ax = axs[0])
+    flux_cryoscope_q.plot(ax = axs[0], marker = '.')
     axs[0].axvline(rise_index, color='r', lw = 0.5, ls = '--')
     axs[0].axvline(drop_index, color='r', lw = 0.5, ls = '--')
-    flux_cryoscope_tp.plot(ax = axs[1])
+    flux_cryoscope_tp.plot(ax = axs[1], marker = '.')
     node.results['figure'] = f
     plt.show()
     
@@ -351,12 +351,103 @@ if not node.parameters.simulate:
 if not node.parameters.simulate:
     # Fit two exponents
     # Filtering the data might improve the fit at the first few nS, play with range to achieve this
-    filtered_flux_cryoscope_q = savgol(flux_cryoscope_tp, 'time', range = 3, order = 2)
-    da = flux_cryoscope_tp
+    filtered_flux_cryoscope_q = savgol(flux_cryoscope_tp, 'time', range = 11, order = 3)
+    da = filtered_flux_cryoscope_q
 
     first_vals = da.sel(time=slice(0, 1)).mean().values
     final_vals = da.sel(time=slice(40, None)).mean().values
 
+
+
+# %%
+# pad the response with zeros before the first values
+fluxes = filtered_flux_cryoscope_q.values
+times = filtered_flux_cryoscope_q.time.values
+negative_times = -times[::-1]
+fluxes_with_zeros = np.concatenate([np.zeros(len(negative_times)), fluxes])
+times_with_zeros = np.concatenate([negative_times, times])
+fluxes_with_zeros /= np.max(fluxes_with_zeros)
+fluxes_with_zeros -= np.mean(fluxes_with_zeros)
+flux_cryoscope_with_zeros = xr.DataArray(fluxes_with_zeros, dims = 'time', coords = {'time': times_with_zeros})
+flux_cryoscope_with_zeros.plot(marker = '.')
+
+# %%
+# sample the response at times insipe a power of 2
+max_time = times_with_zeros[-1]
+nearest_power_of_2 = int(2**(np.ceil(np.log2(max_time))))  
+
+new_times = np.linspace(-nearest_power_of_2, nearest_power_of_2-1, 2*nearest_power_of_2)
+flux_cryoscope_resampled = np.interp(new_times, flux_cryoscope_with_zeros.time, flux_cryoscope_with_zeros)
+flux_cryoscope_resampled = xr.DataArray(flux_cryoscope_resampled, dims = 'time', coords = {'time': new_times})
+flux_cryoscope_resampled.plot(marker = '.')
+
+# %%
+# Finde the impulse response
+impulse_response = np.gradient(flux_cryoscope_resampled, flux_cryoscope_resampled.time)
+impulse_response *= np.heaviside(new_times +1 , 0.5)
+impulse_response = xr.DataArray(impulse_response, dims = 'time', coords = {'time': new_times})
+impulse_response.plot(marker = '.')
+
+# %% Step response reconsculred from the impulse response
+import scipy.signal as signal
+
+heaviside = np.heaviside(impulse_response.time,0.5)-0.5
+# convolution = signal.fftconvolve(impulse_response,heaviside,'same')
+# plt.plot(impulse_response.time,heaviside)
+# plt.plot(impulse_response.time,convolution)
+
+impulse_response_tilde = np.fft.fftshift(np.fft.fft(impulse_response))
+heaviside_tilde = np.fft.fftshift(np.fft.fft(heaviside))
+convolution = np.fft.ifft(np.fft.ifftshift(impulse_response_tilde*np.conj(heaviside_tilde)))[0:len(impulse_response.time)]
+plt.plot(impulse_response.time,convolution)
+
+
+# %%
+heaviside = np.heaviside(impulse_response.time,0.5)-0.5
+impulse_response_tilde = (np.fft.fft(impulse_response))
+heaviside_tilde = (np.fft.fft(heaviside))
+# plt.plot(impulse_response.time,impulse_response)
+predistorted_tilde = heaviside_tilde/impulse_response_tilde
+# predistorted_tilde[0:1] = 0
+predistorted_tilde[40:84] = 0
+# plt.plot(impulse_response.time,predistorted_tilde)
+
+predistorted = -np.fft.ifft((predistorted_tilde))
+predistort_out = np.fft.ifft(predistorted_tilde*impulse_response_tilde)
+plt.plot(impulse_response.time,predistort_out,'.')
+plt.plot(impulse_response.time,predistorted)
+
+
+# %%
+heaviside = np.heaviside(impulse_response.time,0.5) * np.heaviside(-(impulse_response.time-10),0.5) -0*np.heaviside(impulse_response.time-20,0.5) * np.heaviside(-(impulse_response.time-30),0.5) 
+plt.plot(impulse_response.time,heaviside)
+impulse_response_tilde = (np.fft.fft(impulse_response))
+heaviside_tilde = (np.fft.fft(heaviside))
+predistorted_tilde = heaviside_tilde/impulse_response_tilde
+# predistorted_tilde[0:1] = 0
+predistorted_tilde[40:84] = 0
+# plt.plot(impulse_response.time,predistorted_tilde)
+
+predistorted = -np.fft.ifft((predistorted_tilde))
+predistort_out = np.fft.ifft(predistorted_tilde*impulse_response_tilde)
+plt.plot(impulse_response.time,predistort_out,'.')
+plt.plot(impulse_response.time,predistorted)
+
+
+
+
+
+
+
+
+
+
+
+
+
+# %%
+
+# %%
 if not node.parameters.simulate and node.parameters.analysis_mode == 'exponential':
     # Fit two exponents
     # Filtering the data might improve the fit at the first few nS, play with range to achieve this
@@ -454,7 +545,7 @@ if not node.parameters.simulate and node.parameters.analysis_mode == 'FIR':
         time=flux_q_tp.time - rise_index)
     final_vals = flux_q_tp.sel(time=slice(40, None)).mean().values
     step = np.ones(len(flux_q)+100)*final_vals
-    fir_est = estimate_fir_coefficients(step, flux_q_tp.values, 44)
+    fir_est = estimate_fir_coefficients(step, flux_q_tp.values, 28)
 
     # FIR_new = fir_est
 
@@ -591,25 +682,7 @@ node.results['initial_parameters'] = node.parameters.model_dump()
 node.machine = machine
 node.save()
 # %%
-# Create step function
-step_len = 100
-step = np.heaviside(np.arange(step_len) - step_len//4, 0.5)
 
-times= np.arange(step_len)
-bipolar_step = (times > 16 ) * (times < 46) + (-1)*(times > 40) * (times < 80)
+flux_cryoscope_tp.to_dataframe().to_csv('flux_cryoscope_tp.csv')
 
-# Convolve with FIR taps and plot
-response = np.convolve(bipolar_step, optimized_fir, mode='full')
-plt.figure()
-plt.plot(response, '.-', label='Simulated response')
-plt.plot(bipolar_step, '--', label='Input step')
-plt.legend()
-plt.xlabel('Time [ns]')
-plt.ylabel('Amplitude [a.u.]')
-plt.title('Step response with optimized FIR taps')
-plt.grid(True)
-plt.show()
-
-# %%
-optimized_fir
 # %%

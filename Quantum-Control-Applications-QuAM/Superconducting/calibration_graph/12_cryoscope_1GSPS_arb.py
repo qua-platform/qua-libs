@@ -31,15 +31,15 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = ['qubitC2']    
-    num_averages: int = 10000
-    amplitude_factor: float = 0.25
-    cryoscope_len: int = 320
+    num_averages: int = 40000
+    amplitude_factor: float = 0.3
+    cryoscope_len: int = 36
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
     timeout: int = 100
-    reset_filters: bool = True
-    analysis_mode: Literal['exponential', 'FIR', 'none'] = 'exponential'
+    analysis_mode: Literal[ 'FIR', 'none'] = 'none'
+    use_FIR: bool = True
     load_data_id: Optional[int] = None
     
 node = QualibrationNode(
@@ -56,22 +56,17 @@ plot_process = False
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 machine = QuAM.load()
+
 # machine = QuAM.load()
 # Get the relevant QuAM components
 if node.parameters.qubits is None:
     qubits = machine.active_qubits
 else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
-    
-if node.parameters.reset_filters:
-    for qubit in qubits:
-        # qubit.z.opx_output.feedforward_filter = [1.0, 0.0]
-        qubit.z.opx_output.exponential_filter = [(0.0, 10.0)]
-        # qubit.z.opx_output.feedback_filter = [0.0, 0.0]
-                
+        
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.get_octave_config()
+# octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
@@ -87,35 +82,40 @@ num_qubits = len(qubits)
 # Helper functions #
 ####################
 
-def baked_waveform(waveform_amp, qubit):
-    pulse_segments = []  # Stores the baking objects
-    # Create the different baked sequences, each one corresponding to a different truncated duration
-    waveform = [waveform_amp] * 16
+def Predistorion(waveform, FIR_coefficients):
+    return np.convolve(waveform, FIR_coefficients, mode='full')
 
-    for i in range(1, 17):  # from first item up to pulse_duration (16)
-        with baking(config, padding_method="left") as b:
-            wf = waveform[:i]
-            b.add_op("flux_pulse", qubit.z.name, wf)
-            b.play("flux_pulse", qubit.z.name)
+def generate_cryoscope_config(config, amplitude, FIR_coefficients = None):
+    
+    length = node.parameters.cryoscope_len
+    time_step = 1
+    times = np.arange(0, length, time_step)
+    full_waveform = (times > 4 ) 
 
-        # Append the baking object in the list to call it from the QUA program
-        pulse_segments.append(b)
+    for i in range(length):
+        waveform = [0] * length
 
-    return pulse_segments
-
+        for qubit in qubits:
+            if node.parameters.use_FIR:
+                full_waveform_q = Predistorion(full_waveform, qubit.z.extras['feedforward_filter'])
+            else:
+                full_waveform_q = full_waveform
+            for j in range(i+1):
+                waveform[j] = full_waveform_q[j] * qubit.z.operations['const'].amplitude * amplitude
+            config["pulses"][f"{qubit.name}.z_pulse_{i}"] = {"operation": "control", "length" : length, "waveforms" : {"single" : f"{qubit.name}.z_waveform_{i}"}}
+            config["waveforms"][f"{qubit.name}.z_waveform_{i}"] = {"type" : "arbitrary", "samples" : waveform}
+            config["elements"][f"{qubit.name}.z"]["operations"][f"z_pulse_{i}"] = f"{qubit.name}.z_pulse_{i}"
+    return config
+    
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
 
 cryoscope_len = node.parameters.cryoscope_len  # The length of the cryoscope in nanoseconds
 
-assert cryoscope_len % 16 == 0, 'cryoscope_len is not multiple of 16 nanoseconds'
+assert cryoscope_len % 4 == 0, 'cryoscope_len is not multiple of 16 nanoseconds'
 
-baked_signals = {}
-# Baked flux pulse segments with 1ns resolution
-
-baked_signals = baked_waveform(qubits[0].z.operations['const'].amplitude * amplitude_factor, qubits[0]) 
-
+config = generate_cryoscope_config(config, node.parameters.amplitude_factor)
 cryoscope_time = np.arange(1, cryoscope_len + 1, 1)  # x-axis for plotting - must be in ns
 
 # %%
@@ -140,49 +140,7 @@ with program() as cryoscope:
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
 
-        # The first 16 nanoseconds
-        with for_(idx, 0, idx<16, idx+1):
-            # Alternate between X/2 and Y/2 pulses
-            # for tomo in ['x90', 'y90']:
-            with for_each_(flag, [True, False]):
-                if reset_type == "active":
-                    for qubit in qubits:
-                        active_reset(qubit)
-                else:
-                    wait(qubit.thermalization_time * u.ns)
-                align()
-                # Play first X/2
-                for qubit in qubits:
-                    qubit.xy.play("x180", amplitude_scale = 0.5)
-                align()
-                # Delay between x90 and the flux pulse
-                # NOTE: it can be made larger than 16 nanoseconds it could be benefitial
-                wait(16 // 4)
-                align()
-                # with switch_(idx):
-                #     for j in range(16):
-                #         with case_(j):
-                #             baked_signals[j].run()
-                # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
-                # pulse arrives after the longest flux pulse
-                for qubit in qubits:
-                    qubit.xy.wait((cryoscope_len + 16) // 4)
-                    # Play second X/2 or Y/2
-                    # if tomo == 'x90':
-                    with if_(flag):
-                        qubit.xy.play("x90")
-                    # elif tomo == 'y90':
-                    with else_():
-                        qubit.xy.play("y90")
-                # Measure resonator state after the sequence
-                align()
-                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
-                save(state[i], state_st[i])
-
-
-        # The first 16-32 nanoseconds
-        with for_(idx, 0, idx<16, idx+1):
+        with for_(idx, 0, idx<cryoscope_len, idx+1):
             # Alternate between X/2 and Y/2 pulses
             # for tomo in ['x90', 'y90']:
             with for_each_(flag, [True, False]):
@@ -191,19 +149,20 @@ with program() as cryoscope:
                         active_reset(qubit)      
                 else:
                     wait(qubit.thermalization_time * u.ns)
+                    
                 align()
                 # Play first X/2
                 for qubit in qubits:
-                    qubit.xy.play("x180", amplitude_scale = 0.5)
+                    qubit.xy.play("x90")
                 align()
                 # Delay between x90 and the flux pulse
                 # NOTE: it can be made larger than 16 nanoseconds it could be benefitial
                 wait(16 // 4)
                 align()
                 with switch_(idx):
-                    for j in range(16):
+                    for j in range(cryoscope_len):
                         with case_(j):
-                            baked_signals[j].run()
+                            play(f"z_pulse_{j}", qubit.z.name)
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
                 # pulse arrives after the longest flux pulse
                 for qubit in qubits:
@@ -211,7 +170,7 @@ with program() as cryoscope:
                     # Play second X/2 or Y/2
                     # if tomo == 'x90':
                     with if_(flag):
-                        qubit.xy.play("x90")
+                        qubit.xy.play("x90")    
                     # elif tomo == 'y90':
                     with else_():
                         qubit.xy.play("y90")
@@ -220,50 +179,6 @@ with program() as cryoscope:
                 qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                 assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
                 save(state[i], state_st[i])
-
-        with for_(t, 8, t < cryoscope_len // 4, t + 4):
-
-            with for_(idx, 0, idx<16, idx+1):
-
-                # Alternate between X/2 and Y/2 pulses
-                # for tomo in ['x90', 'y90']:
-                with for_each_(flag, [True, False]):
-                    # Initialize the qubits
-                    if reset_type == "active":
-                        for qubit in qubits:
-                            active_reset(qubit)       
-                    else:
-                        wait(qubit.thermalization_time * u.ns)
-                    align()
-                    # Play first X/2
-                    for qubit in qubits:
-                        qubit.xy.play("x90")
-                    align()
-                    # Delay between x90 and the flux pulse
-                    wait(16 // 4)
-                    align()
-                    with switch_(idx):
-                        for j in range(16):
-                            with case_(j):
-                                baked_signals[j].run() 
-                                qubits[0].z.play('const', duration=t-4, amplitude_scale =amplitude_factor)
-
-                    # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
-                    # pulse arrives after the longest flux pulse
-                    for qubit in qubits:
-                        qubit.xy.wait((cryoscope_len + 16) // 4)
-                        # Play second X/2 or Y/2
-                        with if_(flag):
-                            qubit.xy.play("x90")
-                        # elif tomo == 'y90':
-                        with else_():
-                            qubit.xy.play("y90")
-
-                    # Measure resonator state after the sequence
-                    align()
-                    qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
-                    save(state[i], state_st[i])
 
     with stream_processing():
         # for the progress counter
@@ -310,6 +225,7 @@ if not node.parameters.simulate:
     else:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
+        
 # %%
 if not node.parameters.simulate:
     if plot_process:
@@ -323,7 +239,7 @@ if not node.parameters.simulate:
 
     flux_cryoscope_q = cryoscope_frequency(da, 
                                            quad_term=qubit.freq_vs_flux_01_quad_term,
-                                           stable_time_indices=(20, cryoscope_len-20),  
+                                           stable_time_indices=(20, cryoscope_len),  
                                            sg_order=sg_order,
                                            sg_range=sg_range, plot=plot_process)
     plt.show()
@@ -355,91 +271,7 @@ if not node.parameters.simulate:
     da = flux_cryoscope_tp
 
     first_vals = da.sel(time=slice(0, 1)).mean().values
-    final_vals = da.sel(time=slice(40, None)).mean().values
-
-if not node.parameters.simulate and node.parameters.analysis_mode == 'exponential':
-    # Fit two exponents
-    # Filtering the data might improve the fit at the first few nS, play with range to achieve this
-    filtered_flux_cryoscope_q = savgol(flux_cryoscope_tp, 'time', range = 3, order = 2)
-    da = flux_cryoscope_tp
-
-    first_vals = da.sel(time=slice(0, 1)).mean().values
-    final_vals = da.sel(time=slice(50, None)).mean().values
-
-    try:
-        p0 = [final_vals, -1+first_vals/final_vals, 4]
-        fit, _  = curve_fit(expdecay, da.time[5:], da[5:],
-                p0=p0,
-                bounds=([0, -np.inf, 0], [np.inf, np.inf, 100]))
-    except:
-        fit = p0
-        print('single exp fit failed')
-    try:
-        p0 = [fit[0], fit[1], 5, fit[1], fit[2]]
-        fit2, _ = curve_fit(two_expdecay, filtered_flux_cryoscope_q.time[4:], filtered_flux_cryoscope_q[4:],
-                p0 = p0)
-    except:
-        fit2 = p0
-        print('two exp fit failed')
-        
-    if plot_process:
-        da.plot(marker = '.')
-        # plt.plot(filtered_flux_cryoscope_q.time, filtered_flux_cryoscope_q, label = 'filtered')
-        plt.plot(da.time, expdecay(da.time, *fit), label = 'fit single exp')
-        if fit2 is not None:
-            plt.plot(da.time, two_expdecay(da.time, *fit2), label = 'fit two exp')
-        plt.legend()
-        plt.show()
-
-    # Print fit2 parameters nicely (two_expdecay function)
-    if fit2 is not None:
-        print("Fit2 parameters (two_expdecay function):")
-        print(f"s: {fit2[0]:.6f}")
-        print(f"a: {fit2[1]:.6f}")
-        print(f"t: {fit2[2]:.6f}")
-        print(f"a2: {fit2[3]:.6f}")
-        print(f"t2: {fit2[4]:.6f}")
-
-    # Print fit parameters nicely (expdecay function)
-    print("\nFit parameters (expdecay function):")
-    print(f"s: {fit[0]:.6f}")
-    print(f"a: {fit[1]:.6f}")
-    print(f"t: {fit[2]:.6f}")
-
-# %%
-if not node.parameters.simulate and node.parameters.analysis_mode == 'exponential':
-
-    from qualang_tools.digital_filters import exponential_decay, single_exponential_correction, bounce_and_delay_correction, calc_filter_taps
-
-    feedforward_taps_1exp, feedback_tap_1exp = calc_filter_taps(exponential=list(zip([fit[1]*1.0],[fit[2]])))
-    feedforward_taps_2exp, feedback_tap_2exp = calc_filter_taps(exponential=list(zip([fit2[1],fit2[3]],[fit2[2],fit2[4]])))
-
-    FIR_1exp = feedforward_taps_1exp
-    FIR_2exp = feedforward_taps_2exp
-    IIR_1exp = [1,-feedback_tap_1exp[0]]
-    IIR_2exp = convolve([1,-feedback_tap_2exp[0]],[1,-feedback_tap_2exp[1]], mode='full')
-    
-    filtered_response_long_1exp = lfilter(FIR_1exp,IIR_1exp, flux_cryoscope_q)
-    filtered_response_long_2exp = lfilter(FIR_2exp,IIR_2exp, flux_cryoscope_q)
-
-    if plot_process:
-        f,ax = plt.subplots()
-        ax.plot(flux_cryoscope_q.time,flux_cryoscope_q,label = 'data')
-        ax.plot(flux_cryoscope_q.time,filtered_response_long_1exp,label = 'filtered long time 1exp')
-        ax.plot(flux_cryoscope_q.time,filtered_response_long_2exp,label = 'filtered long time 2exp')
-        ax.set_ylim([final_vals*0.9,final_vals*1.05])
-        ax.legend()
-        plt.show()
-
-    fitting_approach = '1exp'
-    if fitting_approach == '1exp':
-        filtered_response_long = filtered_response_long_1exp
-        long_FIR = FIR_1exp
-        long_IIR = IIR_1exp
-    elif fitting_approach == '2exp':
-        filtered_response_long = filtered_response_long_2exp
-        long_FIR = FIR_2exp
-        long_IIR = IIR_2exp
+    final_vals = da.sel(time=slice(-2, None)).mean().values
 
 
 # %%
@@ -452,9 +284,9 @@ if not node.parameters.simulate and node.parameters.analysis_mode == 'FIR':
     flux_q_tp = flux_q.sel(time=slice(rise_index, None)) # calculate the FIR only based on the first 200 nS
     flux_q_tp = flux_q_tp.assign_coords(
         time=flux_q_tp.time - rise_index)
-    final_vals = flux_q_tp.sel(time=slice(40, None)).mean().values
+    final_vals = flux_q_tp.sel(time=slice(-2, None)).mean().values
     step = np.ones(len(flux_q)+100)*final_vals
-    fir_est = estimate_fir_coefficients(step, flux_q_tp.values, 44)
+    fir_est = estimate_fir_coefficients(step, flux_q_tp.values, 60)
 
     # FIR_new = fir_est
 
@@ -470,7 +302,6 @@ if not node.parameters.simulate and node.parameters.analysis_mode == 'FIR':
         plt.ylim([final_vals*0.95,final_vals*1.05])
         plt.legend()
         plt.show()
-
 
 # %%
 if not node.parameters.simulate and node.parameters.analysis_mode == 'FIR':
@@ -499,18 +330,7 @@ if not node.parameters.simulate and node.parameters.analysis_mode == 'FIR':
         plt.show()
 
 # %%
-if not node.parameters.simulate and node.parameters.analysis_mode == 'exponential':
-    # plotting the results
-    fig,ax = plt.subplots()
-    ax.plot(flux_cryoscope_q.time,flux_cryoscope_q/np.mean(flux_cryoscope_q[-50:]),label = 'data')
-    ax.plot(flux_cryoscope_q.time,filtered_response_long/np.mean(filtered_response_long[-50:]),'--', label = 'slow rise correction')
-    ax.axhline(1.001, color = 'k')
-    ax.axhline(0.999, color = 'k')
-    ax.set_ylim([0.95,1.05])
-    ax.legend()
-    ax.set_xlabel('time (ns)')
-    ax.set_ylabel('normalized amplitude')
-    node.results['figure'] = fig
+
 if not node.parameters.simulate and node.parameters.analysis_mode == 'FIR':
     # plotting the results
     fig,ax = plt.subplots()
@@ -523,6 +343,7 @@ if not node.parameters.simulate and node.parameters.analysis_mode == 'FIR':
     ax.set_xlabel('time (ns)')
     ax.set_ylabel('flux amplitude (mV)')
     node.results['figure'] = fig    
+    
 elif not node.parameters.simulate:
     fig,ax = plt.subplots()
     ax.plot(flux_cryoscope_q.time,1e3*flux_cryoscope_q,label = 'data')
@@ -534,15 +355,6 @@ elif not node.parameters.simulate:
     ax.legend()
     node.results['figure'] = fig
 # %%
-# if not node.parameters.simulate and node.parameters.reset_filters:
-#     node.results['fit_results'] = {}
-#     for q in qubits:
-#         node.results['fit_results'][q.name] = {}
-#         node.results['fit_results'][q.name]['fir'] = convolved_fir.tolist()
-#         if fitting_approach == '1exp':
-#             node.results['fit_results'][q.name]['iir'] = feedback_tap_1exp
-#         elif fitting_approach == '2exp':
-#             node.results['fit_results'][q.name]['iir']  = feedback_tap_2exp  
 
 
 # opx1K  QOP 3.3
@@ -552,39 +364,13 @@ if not node.parameters.simulate and node.parameters.analysis_mode == 'FIR':
         node.results['fit_results'][q.name] = {}
         node.results['fit_results'][q.name]['fir'] = optimized_fir.tolist()
 
-if not node.parameters.simulate and node.parameters.analysis_mode == 'exponential':
-    node.results['fit_results'] = {}
-    for q in qubits:
-        node.results['fit_results'][q.name] = {}
-        if fitting_approach == '1exp':
-            node.results['fit_results'][q.name]['exponential_filter'] = [[fit[1],fit[2]]]
-        elif fitting_approach == '2exp':
-            node.results['fit_results'][q.name]['exponential_filter']  = [[fit2[1],fit2[2]],[fit2[3],fit2[4]]]  
-
-
-
 # %%
 
-# if not node.parameters.simulate and node.parameters.reset_filters:
-#     with node.record_state_updates():
-#         for qubit in qubits:
-#             qubit.z.opx_output.feedforward_filter = convolved_fir.tolist()
-#             if fitting_approach == '1exp':
-#                 qubit.z.opx_output.feedback_filter = feedback_tap_1exp
-#             elif fitting_approach == '2exp':
-#                 qubit.z.opx_output.feedback_filter = feedback_tap_2exp
-
-# opx1K  QOP 3.3
 
 if not node.parameters.simulate and node.parameters.analysis_mode == 'FIR':
     with node.record_state_updates():
         for qubit in qubits:
-            qubit.z.opx_output.feedforward_filter = node.results['fit_results'][qubit.name]['fir']
-
-if not node.parameters.simulate and node.parameters.analysis_mode == 'exponential':
-    with node.record_state_updates():
-        for qubit in qubits:
-            qubit.z.opx_output.exponential_filter = node.results['fit_results'][qubit.name]['exponential_filter']
+            qubit.z.extras['feedforward_filter'] = node.results['fit_results'][qubit.name]['fir']
 
 # %%
 node.results['initial_parameters'] = node.parameters.model_dump()
@@ -592,17 +378,14 @@ node.machine = machine
 node.save()
 # %%
 # Create step function
-step_len = 100
+step_len = len(optimized_fir) * 2
 step = np.heaviside(np.arange(step_len) - step_len//4, 0.5)
 
-times= np.arange(step_len)
-bipolar_step = (times > 16 ) * (times < 46) + (-1)*(times > 40) * (times < 80)
-
 # Convolve with FIR taps and plot
-response = np.convolve(bipolar_step, optimized_fir, mode='full')
+response = np.convolve(step, optimized_fir, mode='full')
 plt.figure()
 plt.plot(response, '.-', label='Simulated response')
-plt.plot(bipolar_step, '--', label='Input step')
+plt.plot(step[:len(response)], '--', label='Input step')
 plt.legend()
 plt.xlabel('Time [ns]')
 plt.ylabel('Amplitude [a.u.]')
@@ -610,6 +393,239 @@ plt.title('Step response with optimized FIR taps')
 plt.grid(True)
 plt.show()
 
+# # %%
+# optimized_fir
+# # %%
+# from qm import QuantumMachinesManager, SimulationConfig
+
+# qm = qmm.open_qm(config)
+
+# job = qm.simulate(cryoscope, SimulationConfig(5000))
+# job.wait_until("Done", timeout=1000)
+
+# job.plot_waveform_report_with_simulated_samples()
+# # %%
+# wfr = job.get_simulated_waveform_report()
+# # %%
 # %%
-optimized_fir
+
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.fft as fft
+from qualang_tools.units import unit
+from scipy import signal, optimize
+from scipy.optimize import curve_fit
+
+measuredData = flux_cryoscope_q.values
+measuredData = measuredData[1:,]  # exclude first point
+# I = measuredData[:,[0]]
+sso = measuredData/0.03
+
+
+# %%
+readout_len = 2000  # ns
+const_flux_len = len(sso)  # ns
+
+times = np.arange(-const_flux_len, const_flux_len, 1)
+
+step_response_volt = np.append(np.zeros(const_flux_len), sso)
+step_response_volt_offset = np.mean(step_response_volt)
+step_response_volt -= step_response_volt_offset 
+# %%
+linewidth = 4
+measured_color = 'blue'
+plt.subplot(111)
+
+ax = plt.gca()
+ax.tick_params(direction='in', length=6, width=2, colors='black',
+              grid_color='black', grid_alpha=1,bottom=True, top=True, left=True, right=True)
+t = ax.yaxis.get_offset_text()
+t.set_size(14)
+
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+
+for axis in ['top', 'bottom', 'left', 'right']:
+  ax.spines[axis].set_linewidth(2)  # change width
+
+
+plt.plot(times, step_response_volt,color=measured_color,linewidth=linewidth, label=r"Measured Response")
+plt.xlabel("Time [ns]",fontsize=17)
+plt.ylabel("Step response [V]",fontsize=17)
+plt.legend(fontsize=15, loc = 'lower right')
+# plt.xlim((-200,64))
+
+plt.tight_layout()
+
+plt.show()
+# %%
+n=9
+dt_fine = 1
+times_fine = np.linspace(-256,255,2**n)
+print(times_fine)
+step_response_fine = np.interp(times_fine,times,step_response_volt)
+step_response_volt = step_response_fine #should go through and eliminate this
+
+impulse_response_fine = np.gradient(step_response_fine,times_fine)
+impulse_response_fine *= np.heaviside(times_fine+dt_fine,0.5)
+# %%
+linewidth = 4
+measured_color = 'red'
+plt.subplot(111)
+
+ax = plt.gca()
+ax.tick_params(direction='in', length=6, width=2, colors='black',
+              grid_color='black', grid_alpha=1,bottom=True, top=True, left=True, right=True)
+t = ax.yaxis.get_offset_text()
+t.set_size(14)
+
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+
+for axis in ['top', 'bottom', 'left', 'right']:
+  ax.spines[axis].set_linewidth(2)  # change width
+
+
+plt.plot(times_fine, impulse_response_fine,color=measured_color,linewidth=linewidth, label=r"Impulse Response")
+plt.xlabel("Pulse duration [ns]",fontsize=17)
+plt.ylabel("Step response",fontsize=17)
+plt.legend(fontsize=15, loc = 'upper right')
+plt.xlim((-200,200))
+
+plt.tight_layout()
+
+plt.show()
+# %%
+heaviside = np.heaviside(times_fine,0.5)-0.5
+
+convolution = signal.fftconvolve(impulse_response_fine,heaviside,'same')
+
+scale = (np.mean(step_response_fine[-len(step_response_fine)//32:]))/(np.mean(convolution[-len(convolution)//32:]))
+
+step_from_impulse_offset = 0.5
+step_from_impulse = scale*convolution
+# %%
+linewidth = 4
+measured_color = 'blue'
+reconstructed_color = 'orange'
+plt.subplot(111)
+
+ax = plt.gca()
+ax.tick_params(direction='in', length=6, width=2, colors='black',
+              grid_color='black', grid_alpha=1,bottom=True, top=True, left=True, right=True)
+t = ax.yaxis.get_offset_text()
+t.set_size(14)
+
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+
+for axis in ['top', 'bottom', 'left', 'right']:
+  ax.spines[axis].set_linewidth(2)  # change width
+
+
+plt.plot(times_fine, step_response_volt+step_response_volt_offset,color=measured_color,linewidth=linewidth, label=r"Measured Response")
+plt.plot(times_fine,step_from_impulse+step_from_impulse_offset,color=reconstructed_color,linewidth=linewidth,label="Reconstructed Response")
+
+plt.xlabel("Time [ns]",fontsize=17)
+plt.ylabel("Step response [V]",fontsize=17)
+plt.legend(fontsize=15, loc = 'lower right')
+
+plt.tight_layout()
+plt.xlim((-200,200))
+
+plt.show()
+
+# %%
+impulse_response_fine_tilde = np.fft.fftshift(np.fft.fft(impulse_response_fine))
+heaviside_tilde = np.fft.fftshift(np.fft.fft(heaviside))
+convolution = np.fft.ifft(np.fft.ifftshift(impulse_response_fine_tilde*np.conj(heaviside_tilde)))[0:len(times_fine)]
+# %%
+linewidth = 4
+measured_color = 'blue'
+reconstructed_color = 'orange'
+reconstructed_fft = 'darkorange'
+plt.subplot(111)
+
+ax = plt.gca()
+ax.tick_params(direction='in', length=6, width=2, colors='black',
+              grid_color='black', grid_alpha=1,bottom=True, top=True, left=True, right=True)
+t = ax.yaxis.get_offset_text()
+t.set_size(14)
+
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+
+for axis in ['top', 'bottom', 'left', 'right']:
+  ax.spines[axis].set_linewidth(2)  # change width
+
+
+plt.plot(times_fine,step_from_impulse+step_from_impulse_offset,color=reconstructed_color,linewidth=linewidth,label="Reconstructed Response (Convolve)")
+plt.plot(times_fine,scale*convolution+step_from_impulse_offset,'o',color=reconstructed_fft,label="Reconstructed Response (FFT)")
+
+
+plt.xlabel("Time [ns]",fontsize=17)
+plt.ylabel("Step response [V]",fontsize=17)
+plt.legend(fontsize=15, loc = 'lower right')
+plt.xlim((-200,200))
+
+plt.tight_layout()
+
+plt.show()
+
+# %%
+#don't mess around with any fftshifts...
+# heaviside = np.append(np.zeros(len(times_fine)//2),np.ones(len(times_fine)//2+1))
+heaviside = np.heaviside(times_fine,0.5)-0.5
+impulse_response_fine_tilde = (np.fft.fft(impulse_response_fine))
+heaviside_tilde = (np.fft.fft(heaviside))
+predistorted_tilde = heaviside_tilde/impulse_response_fine_tilde/scale
+predistorted = -np.fft.ifft((predistorted_tilde))
+predistort_out = np.fft.ifft(predistorted_tilde*impulse_response_fine_tilde*scale)
+# %%
+linewidth = 4
+measured_color = 'blue'
+reconstructed_color = 'orange'
+reconstructed_fft = 'darkorange'
+predistorted_color = 'green'
+predistorted_response_color = 'darkgreen'
+plt.subplot(111)
+
+ax = plt.gca()
+ax.tick_params(direction='in', length=6, width=2, colors='black',
+              grid_color='black', grid_alpha=1,bottom=True, top=True, left=True, right=True)
+t = ax.yaxis.get_offset_text()
+t.set_size(14)
+
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+
+for axis in ['top', 'bottom', 'left', 'right']:
+  ax.spines[axis].set_linewidth(2)  # change width
+
+plt.plot(times_fine,predistorted,color=predistorted_color,linewidth=linewidth,label="Predistorted Pulse")
+plt.plot(times_fine,predistort_out,'o',color=predistorted_response_color,label="Predistorted Response")
+
+plt.xlabel("Time [ns]",fontsize=17)
+plt.ylabel("Step response [V]",fontsize=17)
+plt.legend(fontsize=15, loc = 'lower right')
+plt.xlim((-200,200))
+plt.tight_layout()
+
+plt.show()
+
+#To input to OPX
+print([float('{:.3f}'.format(pt)) if pt > 0.1 else 0.0 for pt in (predistorted.real-np.mean((predistorted.real)[0:len(predistorted)//2-1]))][len(predistorted)//2:])
+# %%
+
+
+if not node.parameters.simulate and node.parameters.analysis_mode == 'FIR':
+    with node.record_state_updates():
+        for qubit in qubits:
+            qubit.z.extras['feedforward_filter'] = np.real(predistorted).tolist()
+
+# %%
+node.results['initial_parameters'] = node.parameters.model_dump()
+node.machine = machine
+# node.save()
+
 # %%
