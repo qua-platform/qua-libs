@@ -174,7 +174,7 @@ def add_octaves(machine: Union[AnyQuAM], calibration_db_path: Optional[Union[Pat
                         octave_name = references.get_unreferenced_value(reference).split("/")[2]
                         octave = Octave(
                             name=octave_name,
-                            calibration_db_path=calibration_db_path,
+                            calibration_db_path=str(calibration_db_path),
                         )
                         machine.octaves[octave_name] = octave
                         octave.initialize_frequency_converters()
