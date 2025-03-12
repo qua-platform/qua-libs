@@ -1,7 +1,7 @@
 from typing import Optional
 
 from quam.core import quam_dataclass
-from quam.components.channels import InOutIQChannel, InOutMWChannel
+from quam.components.channels import IQChannel, MWChannel
 from quam_libs.power_tools import (
     calculate_voltage_scaling_factor,
     set_output_power_mw_channel,
@@ -11,38 +11,17 @@ from quam_libs.power_tools import (
 )
 
 
-__all__ = ["ReadoutResonatorIQ", "ReadoutResonatorMW"]
+__all__ = ["XYDriveIQ", "XYDriveMW"]
 
 
 @quam_dataclass
-class ReadoutResonatorBase:
+class XYDriveBase:
     """
-    QuAM component for a readout resonator.
-
-    Attributes:
-        depletion_time (int): The resonator depletion time in ns. Default is 16ns.
-        frequency_bare (float): The bare resonator frequency in Hz.
-        f_01 (float): The frequency of the 0-1 transition in Hz.
-        f_12 (float): The frequency of the 1-2 transition in Hz.
-        confusion_matrix (list): The confusion matrix for the resonator.
-        gef_centers (list): The centers of the GEF states.
-        gef_confusion_matrix (list): The confusion matrix for the GEF states.
-        GEF_frequency_shift (float): The frequency shift for the GEF states.
+    QuAM component for a XY drive line.
 
     Methods:
         calculate_voltage_scaling_factor(fixed_power_dBm, target_power_dBm): Calculate the voltage scaling factor required to scale fixed power to target power.
     """
-
-    depletion_time: int = 16
-    frequency_bare: float = None
-
-    f_01: float = None
-    f_12: float = None
-    confusion_matrix: list = None
-
-    gef_centers: list = None
-    gef_confusion_matrix: list = None
-    GEF_frequency_shift: float = None
 
     @staticmethod
     def calculate_voltage_scaling_factor(fixed_power_dBm: float, target_power_dBm: float):
@@ -60,7 +39,7 @@ class ReadoutResonatorBase:
 
 
 @quam_dataclass
-class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
+class XYDriveIQ(IQChannel, XYDriveBase):
     intermediate_frequency: float = "#./inferred_intermediate_frequency"
 
     @property
@@ -113,9 +92,8 @@ class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
 
 
 @quam_dataclass
-class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
+class XYDriveMW(MWChannel, XYDriveBase):
     intermediate_frequency: float = "#./inferred_intermediate_frequency"
-
     @property
     def upconverter_frequency(self):
         """Returns the up-converter/LO frequency in Hz."""

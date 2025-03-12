@@ -30,9 +30,8 @@ def add_transmon_resonator_component(transmon: AnyTransmon, wiring_path: str, po
     """
     digital_outputs = get_digital_outputs(wiring_path, ports)
 
-    intermediate_frequency = -250 * u.MHz
     depletion_time = 1 * u.us
-    time_of_flight = 28  # 4ns above default so that it appears in state.json
+    time_of_flight = 32  # 4ns above default so that it appears in state.json
 
     if all(key in ports for key in iq_in_out_channel_ports):
         transmon.resonator = ReadoutResonatorIQ(
@@ -45,7 +44,7 @@ def add_transmon_resonator_component(transmon: AnyTransmon, wiring_path: str, po
             frequency_converter_up=f"{wiring_path}/frequency_converter_up",
             frequency_converter_down=f"{wiring_path}/frequency_converter_down",
             digital_outputs=digital_outputs,
-            intermediate_frequency=intermediate_frequency,
+            RF_frequency=None,
             depletion_time=depletion_time,
             time_of_flight=time_of_flight,
         )
@@ -53,11 +52,10 @@ def add_transmon_resonator_component(transmon: AnyTransmon, wiring_path: str, po
         RF_output_resonator = transmon.resonator.frequency_converter_up
         RF_output_resonator.channel = transmon.resonator.get_reference()
         RF_output_resonator.output_mode = "always_on"
-        RF_output_resonator.LO_frequency = 6.2 * u.GHz
 
         RF_input_resonator = transmon.resonator.frequency_converter_down
         RF_input_resonator.channel = transmon.resonator.get_reference()
-        RF_input_resonator.LO_frequency = 6.2 * u.GHz
+        RF_input_resonator.LO_frequency = f"{RF_output_resonator.get_reference()}/LO_frequency"
 
     elif all(key in ports for key in mw_in_out_channel_ports):
         transmon.resonator = ReadoutResonatorMW(
@@ -65,7 +63,7 @@ def add_transmon_resonator_component(transmon: AnyTransmon, wiring_path: str, po
             opx_input=f"{wiring_path}/opx_input",
             digital_outputs=digital_outputs,
             depletion_time=depletion_time,
-            intermediate_frequency=intermediate_frequency,
+            RF_frequency=None,
             time_of_flight=time_of_flight,
         )
 

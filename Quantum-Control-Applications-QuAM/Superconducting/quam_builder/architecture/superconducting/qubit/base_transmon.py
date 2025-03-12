@@ -9,6 +9,10 @@ from quam_builder.architecture.superconducting.components.readout_resonator impo
     ReadoutResonatorIQ,
     ReadoutResonatorMW,
 )
+from quam_builder.architecture.superconducting.components.xy_drive import (
+    XYDriveIQ,
+    XYDriveMW,
+)
 
 from qualang_tools.octave_tools import octave_calibration_tool
 from qm import QuantumMachine, logger
@@ -72,7 +76,7 @@ class BaseTransmon(QuamComponent):
 
     id: Union[int, str]
 
-    xy: Union[MWChannel, IQChannel] = None
+    xy: Union[XYDriveIQ, XYDriveMW] = None
     resonator: Union[ReadoutResonatorIQ, ReadoutResonatorMW] = None
 
     f_01: float = None
