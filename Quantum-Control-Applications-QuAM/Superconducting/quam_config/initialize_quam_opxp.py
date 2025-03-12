@@ -5,7 +5,7 @@ import json
 from qualang_tools.units import unit
 from quam_config import QuAM
 from quam_builder.builder.superconducting.build_quam import save_machine
-from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses, add_Square_pulses
+from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
 from quam.components.pulses import GaussianPulse
 import numpy as np
 
