@@ -94,6 +94,7 @@ class XYDriveIQ(IQChannel, XYDriveBase):
 @quam_dataclass
 class XYDriveMW(MWChannel, XYDriveBase):
     intermediate_frequency: float = "#./inferred_intermediate_frequency"
+
     @property
     def upconverter_frequency(self):
         """Returns the up-converter/LO frequency in Hz."""
