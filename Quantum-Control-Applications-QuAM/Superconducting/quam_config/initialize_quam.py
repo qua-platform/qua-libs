@@ -36,49 +36,51 @@ rr_if = rr_freq - rr_LO
 rr_max_power_dBm = 4
 
 xy_freq = np.array([6.012, 6.421, 6.785, 7.001, 7.083, 7.121, 7.184, 7.254]) * u.GHz
-xy_LO = np.array([6.0, 6.5, 6.5, 7.0, 7.04, 7.1, 7.1, 7.1]) * u.GHz
+xy_LO = np.array([6.0, 6.1, 6.2, 6.3, 7.1, 7.1, 7.1, 7.1]) * u.GHz
 xy_if = xy_freq - xy_LO
 xy_max_power_dBm = 1
 
 # NOTE: be aware of coupled ports for bands
 for i, q in enumerate(machine.qubits):
     ## Update qubit rr freq and power
+    machine.qubits[q].resonator.f_01 = rr_freq[i]
+    machine.qubits[q].resonator.RF_frequency = machine.qubits[q].resonator.f_01
     machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
     machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
-    machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
+    # machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
     machine.qubits[q].resonator.opx_input.band = get_band(rr_LO)
     machine.qubits[q].resonator.opx_output.band = get_band(rr_LO)
-    machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
 
     ## Update qubit xy freq and power
+    machine.qubits[q].f_01 = xy_freq[i]
+    machine.qubits[q].xy.RF_frequency = machine.qubits[q].f_01
     machine.qubits[q].xy.opx_output.full_scale_power_dbm = xy_max_power_dBm
     machine.qubits[q].xy.opx_output.upconverter_frequency = xy_LO[i]
     machine.qubits[q].xy.opx_output.band = get_band(xy_LO[i])
-    machine.qubits[q].xy.intermediate_frequency = xy_if[i]
 
     # Update flux channels
-    machine.qubits[q].z.opx_output.output_mode = "amplified"
+    machine.qubits[q].z.opx_output.output_mode = "direct"
     machine.qubits[q].z.opx_output.upsampling_mode = "pulse"
 
-    ## Update pulses
-    # readout
-    machine.qubits[q].resonator.operations["readout"].length = 2.5 * u.us
-    machine.qubits[q].resonator.operations["readout"].amplitude = 1e-3
-    # Qubit saturation
-    machine.qubits[q].xy.operations["saturation"].length = 20 * u.us
-    machine.qubits[q].xy.operations["saturation"].amplitude = 0.25
-    # Single qubit gates - DragCosine
-    machine.qubits[q].xy.operations["x180_DragCosine"].length = 48
-    machine.qubits[q].xy.operations["x180_DragCosine"].amplitude = 0.2
-    machine.qubits[q].xy.operations["x90_DragCosine"].amplitude = (
-        machine.qubits[q].xy.operations["x180_DragCosine"].amplitude / 2
-    )
-    # Single qubit gates - Square
-    machine.qubits[q].xy.operations["x180_Square"].length = 40
-    machine.qubits[q].xy.operations["x180_Square"].amplitude = 0.1
-    machine.qubits[q].xy.operations["x90_Square"].amplitude = (
-        machine.qubits[q].xy.operations["x180_Square"].amplitude / 2
-    )
+    # ## Update pulses
+    # # readout
+    # machine.qubits[q].resonator.operations["readout"].length = 2.5 * u.us
+    # machine.qubits[q].resonator.operations["readout"].amplitude = 1e-3
+    # # Qubit saturation
+    # machine.qubits[q].xy.operations["saturation"].length = 20 * u.us
+    # machine.qubits[q].xy.operations["saturation"].amplitude = 0.25
+    # # Single qubit gates - DragCosine
+    # machine.qubits[q].xy.operations["x180_DragCosine"].length = 48
+    # machine.qubits[q].xy.operations["x180_DragCosine"].amplitude = 0.2
+    # machine.qubits[q].xy.operations["x90_DragCosine"].amplitude = (
+    #     machine.qubits[q].xy.operations["x180_DragCosine"].amplitude / 2
+    # )
+    # # Single qubit gates - Square
+    # machine.qubits[q].xy.operations["x180_Square"].length = 40
+    # machine.qubits[q].xy.operations["x180_Square"].amplitude = 0.1
+    # machine.qubits[q].xy.operations["x90_Square"].amplitude = (
+    #     machine.qubits[q].xy.operations["x180_Square"].amplitude / 2
+    # )
 
     # Add new pulses
     from quam.components.pulses import (
