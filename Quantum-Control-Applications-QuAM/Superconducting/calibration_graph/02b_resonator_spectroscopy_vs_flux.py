@@ -22,6 +22,7 @@ Before proceeding to the next node:
 from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
+from quam_libs.lib.fit_utils import fit_resonator
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
@@ -43,9 +44,9 @@ import warnings
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
-    num_averages: int = 10
-    min_flux_offset_in_v: float = -0.5
-    max_flux_offset_in_v: float = 0.5
+    num_averages: int = 20
+    min_flux_offset_in_v: float = -0.3
+    max_flux_offset_in_v: float = 0.2
     num_flux_points: int = 201
     frequency_span_in_mhz: float = 10
     frequency_step_in_mhz: float = 0.1
@@ -204,6 +205,20 @@ if not node.parameters.simulate:
     # %% {Data_analysis}
     # Find the minimum of each frequency line to follow the resonance vs flux
     peak_freq = ds.IQ_abs.idxmin(dim="freq")
+    peak_freq_full = {q.name : peak_freq.loc[q.name].values + q.resonator.RF_frequency for q in qubits}
+    
+    # Apply Sobel filters to detect edges
+    from scipy import ndimage
+    def edge_detect(data):
+        # sobel_x = ndimage.laplace(data, axis=0)  # Vertical edges
+        # sobel_y = ndimage.laplace(data, axis=1)  # Horizontal edges
+        # edges = np.hypot(sobel_x, sobel_y)  # Combine both directions
+        return data
+    ds["IQ_abs_edge_filtered"] = ds["IQ_abs"].groupby("qubit").map(edge_detect)
+    # Find the minimum of each frequency line to follow the resonance vs flux
+    peak_freq = ds.IQ_abs_edge_filtered.idxmin(dim="freq")
+    peak_freq_full = {q.name : peak_freq.loc[q.name].values + q.resonator.RF_frequency for q in qubits}
+
     # Fit to a cosine using the qiskit function: a * np.cos(2 * np.pi * f * t + phi) + offset
     fit_osc = fit_oscillation(peak_freq.dropna(dim="flux"), "flux")
     # Ensure that the phase is between -pi and pi
@@ -263,6 +278,7 @@ if not node.parameters.simulate:
         ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].IQ_abs.plot(
             ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
         )
+        ax.plot(ds.flux, peak_freq_full[qubit["qubit"]]/1e9, linewidth=2, color = "purple")
         ax.axvline(
             idle_offset.loc[qubit],
             linestyle="dashed",
@@ -288,7 +304,7 @@ if not node.parameters.simulate:
         ax.set_title(qubit["qubit"])
         ax.set_xlabel("Flux (V)")
 
-    grid.fig.suptitle(f"Resonator spectroscopy vs flux \n {date_time} #{node_id} \n multplexed = {node.parameters.multplexed}")
+    grid.fig.suptitle(f"Resonator spectroscopy vs flux \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

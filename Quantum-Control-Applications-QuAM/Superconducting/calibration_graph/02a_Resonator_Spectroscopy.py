@@ -201,7 +201,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Resonator detuning [MHz]")
         ax.set_ylabel("Trans. amp. [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Resonator spectroscopy (raw data) \n {date_time} #{node_id} \n multplexed = {node.parameters.multplexed}")
+    grid.fig.suptitle(f"Resonator spectroscopy (raw data) \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     node.results["raw_amplitude"] = grid.fig
 
@@ -211,7 +211,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Resonator detuning [MHz]")
         ax.set_ylabel("Trans. phase [mrad]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Resonator spectroscopy (raw data) \n {date_time} #{node_id} \n multplexed = {node.parameters.multplexed}")
+    grid.fig.suptitle(f"Resonator spectroscopy (raw data) \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     node.results["raw_phase"] = grid.fig
 
@@ -225,7 +225,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Resonator freq [GHz]")
         ax.set_ylabel("Trans. amp. [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Resonator spectroscopy (fit) \n {date_time} #{node_id} \n multplexed = {node.parameters.multplexed}")
+    grid.fig.suptitle(f"Resonator spectroscopy (fit) \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     node.results["fitted_amp"] = grid.fig
 
     plt.tight_layout()
