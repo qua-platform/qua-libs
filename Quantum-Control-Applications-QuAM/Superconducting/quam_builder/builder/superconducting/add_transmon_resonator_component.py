@@ -66,6 +66,7 @@ def add_transmon_resonator_component(transmon: AnyTransmon, wiring_path: str, po
             RF_frequency=None,
             time_of_flight=time_of_flight,
         )
+        transmon.resonator.opx_input.downconverter_frequency = f"{transmon.resonator.opx_output.get_reference()}/upconverter_frequency"
 
     else:
         raise ValueError(f"Unimplemented mapping of port keys to channel for ports: {ports}")
