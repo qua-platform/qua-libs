@@ -44,8 +44,8 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 10
-    min_flux_offset_in_v: float = -0.5
-    max_flux_offset_in_v: float = 0.5
+    min_flux_offset_in_v: float = -0.4
+    max_flux_offset_in_v: float = 0.4
     num_flux_points: int = 201
     frequency_span_in_mhz: float = 10
     frequency_step_in_mhz: float = 0.1
