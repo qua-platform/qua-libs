@@ -9,7 +9,7 @@ from quam_experiments.analysis.fit import fit_decay_exp
 
 @dataclass
 class T1Fit:
-    """Stores the relevant Ramsey experiment fit parameters for a single qubit"""
+    """Stores the relevant T1 experiment fit parameters for a single qubit"""
 
     t1: float
     t1_error: float
@@ -17,18 +17,18 @@ class T1Fit:
     qubit_name: Optional[str] = ""
 
 
-def log_t1(ds: xr.Dataset, logger=None):
+def log_fitted_results(ds: xr.Dataset, logger=None):
     """
-    Logs T1 relaxation times for qubits from an xarray Dataset.
+    Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
 
     Parameters:
     -----------
     ds : xr.Dataset
-        Dataset containing T1 times and related data for qubits.
+        Dataset containing the fitted results for all qubits.
         Expected variables: 'tau', 'tau_error', 'success'.
         Expected coordinate: 'qubit'.
     logger : logging.Logger, optional
-        Logger for logging the T1 times. If None, a default logger is used.
+        Logger for logging the fitted results. If None, a default logger is used.
 
     Returns:
     --------
@@ -36,7 +36,7 @@ def log_t1(ds: xr.Dataset, logger=None):
 
     Example:
     --------
-        >>> log_t1(ds)
+        >>> log_fitted_results(ds)
     """
     if logger is None:
         logger = logging.getLogger(__name__)

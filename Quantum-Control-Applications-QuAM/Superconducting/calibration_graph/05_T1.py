@@ -12,8 +12,8 @@ from quam_config import QuAM
 from quam_libs.xarray_data_fetcher import XarrayDataFetcher
 from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
 from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot, fetch_dataset, print_progress_bar
-from quam_experiments.experiments.T1 import Parameters, fit_t1_decay, log_t1, plot_t1s_data_with_fit
+from quam_experiments.workflow import simulate_and_plot
+from quam_experiments.experiments.T1 import Parameters, fit_t1_decay, log_fitted_results, plot_t1s_data_with_fit
 
 
 # %% {Node_parameters}
@@ -158,6 +158,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
+
 # %% {Data_loading_and_dataset_creation}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, QuAM]):
@@ -181,7 +182,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     from qualibrate.utils.logger_m import logger
 
     # Log the relevant information extracted from the data analysis
-    log_t1(node.results["ds_fit"], logger)
+    log_fitted_results(node.results["ds_fit"], logger)
 
 
 # %% {Plotting}
