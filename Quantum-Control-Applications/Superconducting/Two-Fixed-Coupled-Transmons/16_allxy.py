@@ -1,5 +1,5 @@
 """
-        ALL-XY MEASUREMENT
+ALL-XY MEASUREMENT
 """
 
 from qm.qua import *
@@ -111,9 +111,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, PROGRAM, simulation_config)
-    job.get_simulated_samples().con1.plot()
-    plt.show(block=False)
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 else:
     try:
         # Open the quantum machine
@@ -149,14 +158,14 @@ else:
             plt.subplot(211)
             plt.cla()
             plt.plot(I, "bx", label="Experimental data")
-            plt.plot([np.max(I)] * 5 + [(np.mean(I))] * 12 + [np.min(I)] * 4, "r-", label="Expected value")
+            plt.plot([np.max(I)] * 5 + [np.mean(I)] * 12 + [np.min(I)] * 4, "r-", label="Expected value")
             plt.ylabel("I quadrature [a.u.]")
             plt.xticks(ticks=range(len(sequence)), labels=["" for _ in sequence], rotation=45)
             plt.legend()
             plt.subplot(212)
             plt.cla()
             plt.plot(Q, "bx", label="Experimental data")
-            plt.plot([np.max(Q)] * 5 + [(np.mean(Q))] * 12 + [np.min(Q)] * 4, "r-", label="Expected value")
+            plt.plot([np.max(Q)] * 5 + [np.mean(Q)] * 12 + [np.min(Q)] * 4, "r-", label="Expected value")
             plt.ylabel("Q quadrature [a.u.]")
             plt.xticks(ticks=range(len(sequence)), labels=[str(el) for el in sequence], rotation=45)
             plt.legend()

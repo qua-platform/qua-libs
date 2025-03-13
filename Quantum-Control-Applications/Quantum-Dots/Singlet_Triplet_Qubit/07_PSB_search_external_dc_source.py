@@ -29,7 +29,6 @@ from qm import SimulationConfig
 from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.addons.variables import assign_variables_to_element
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 import matplotlib.pyplot as plt
 
@@ -65,10 +64,6 @@ with program() as PSB_search_prog:
     I = declare(fixed)
     Q = declare(fixed)
     dc_signal = declare(fixed)
-
-    # Ensure that the result variables are assign to the pulse processor used for readout
-    assign_variables_to_element("tank_circuit", I, Q)
-    assign_variables_to_element("TIA", dc_signal)
 
     with for_(i, 0, i < n_points_slow + 1, i + 1):
         with for_(j, 0, j < n_points_fast, j + 1):
@@ -124,10 +119,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=100_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, PSB_search_prog, simulation_config)
-    plt.figure()
-    job.get_simulated_samples().con1.plot()
-
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)

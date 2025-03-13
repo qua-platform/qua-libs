@@ -5,7 +5,9 @@ QUA-Config supporting OPX1000 w/ LF-FEM
 import numpy as np
 from qualang_tools.units import unit
 from qualang_tools.voltage_gates import VoltageGateSequence
+import plotly.io as pio
 
+pio.renderers.default = "browser"
 
 ######################
 # Network parameters #

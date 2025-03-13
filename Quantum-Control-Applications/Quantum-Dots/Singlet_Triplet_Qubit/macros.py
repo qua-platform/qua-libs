@@ -1,5 +1,5 @@
 """
-        CHARGE STABILITY DIAGRAM
+CHARGE STABILITY DIAGRAM
 """
 
 from qm.qua import *

@@ -1,6 +1,7 @@
 """
 This file is used to configure the Octave's clock and do the automatic calibration.
 """
+
 import os
 
 from qm import QuantumMachinesManager

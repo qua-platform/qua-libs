@@ -4,7 +4,9 @@ import os
 from qm.octave import QmOctaveConfig
 from qualang_tools.units import unit
 from qualang_tools.voltage_gates import VoltageGateSequence
+import plotly.io as pio
 
+pio.renderers.default = "browser"
 
 #######################
 # AUXILIARY FUNCTIONS #

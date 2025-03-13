@@ -10,7 +10,7 @@ X/Y/Z bases, minus the probability of measuring it in that eigenstate's compleme
 These values are scaled into the usual Stokes parameters and used to infer the state of the qubit; see
 https://research.physics.illinois.edu/QI/Photonics/tomography-files/tomo_chapter_2004.pdf for further details
 
-Note that this program is similar to 
+Note that this program is similar to
 qua-libs/Quantum-Control-Applications/Superconducting/Single-Fixed-Transmon
 /19_state_tomography.py, which the author became aware of after having
 written the current script
