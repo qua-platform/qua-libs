@@ -24,8 +24,8 @@ def extract_dict(ds: xr.Dataset, data_var) -> dict:
 
 
 def convert_IQ_to_V(
-    da: xr.DataArray, qubits: list[AnyTransmon], IQ_list: list[str] = ("I", "Q"), single_demod: bool = False
-) -> xr.DataArray:
+    da: xr.Dataset, qubits: list[AnyTransmon], IQ_list: list[str] = ("I", "Q"), single_demod: bool = False
+) -> xr.Dataset:
     # TODO: this is Transmon specific so it should probably not belong here
     """
     return data array with the 'I' and 'Q' quadratures converted to Volts.
@@ -48,6 +48,28 @@ def convert_IQ_to_V(
     )
     demod_factor = 2 if single_demod else 1
     return da.assign({key: da[key] * demod_factor * 2**12 / readout_lengths for key in IQ_list})
+
+def add_amplitude_and_phase(
+    da: xr.Dataset, subtract_slope_flag: bool = False) -> xr.Dataset:
+    # TODO: this is Transmon specific so it should probably not belong here
+    """
+    return data array with the 'I' and 'Q' quadratures converted to Volts.
+
+    :param da: the array on which to calculate angle. Assumed to have complex data
+    :type da: xr.DataArray
+    :param qubits: the list of qubits components.
+    :type qubits: list[AnyTransmon]
+    :return: a data array with the same dimensions and coordinates, with a 'I' and 'Q' in Volts
+    :type: xr.DataArray
+
+    """
+    # Create a xarray with a coordinate 'qubit' and the value is q.resonator.operations["readout"].length
+    s = da["I"] + 1j * da["Q"]
+    da["R"] = (['qubit', 'detuning'], np.abs(s).data)
+    da["phase"] = (['qubit', 'detuning'], np.unwrap(np.angle(s)).data)
+    if subtract_slope_flag:
+        da = subtract_slope(da, "detuning")
+    return da
 
 
 def apply_angle(da: xr.DataArray, dim: str, unwrap=True) -> xr.DataArray:
