@@ -1,6 +1,7 @@
 """
 QUA-Config supporting OPX1000 w/ LF-FEM & Octave
 """
+
 import os
 from pathlib import Path
 import numpy as np
