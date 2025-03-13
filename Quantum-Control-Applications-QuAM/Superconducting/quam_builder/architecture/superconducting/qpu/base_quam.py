@@ -174,5 +174,6 @@ class BaseQuAM(QuamRoot):
         Q_st = [declare_stream() for _ in range(len(self.qubits))]
         return I, I_st, Q, Q_st, n, n_st
 
-    def initialize_qpu(self):
+    def initialize_qpu(self, **kwargs):
+        target = kwargs.get("target", None)
         pass
