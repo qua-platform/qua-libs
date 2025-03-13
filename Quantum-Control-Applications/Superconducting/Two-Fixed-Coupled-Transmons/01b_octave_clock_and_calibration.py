@@ -8,7 +8,7 @@ from configuration import *
 
 
 # Configure the Octave according to the elements settings and calibrate
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config, log_level="ERROR")
+qmm = QuantumMachinesManager(**qmm_settings, log_level="ERROR")
 qm = qmm.open_qm(config)
 
 ##################

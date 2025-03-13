@@ -92,7 +92,7 @@ Before running the experiment, we have to specify the utilized OPX-cluster by cr
 
 
 ```python
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name) #initialize qmm
+qmm = QuantumMachinesManager(**qmm_settings) #initialize qmm
 res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=50, num_shots_per_circuit=1000)
 ```
 

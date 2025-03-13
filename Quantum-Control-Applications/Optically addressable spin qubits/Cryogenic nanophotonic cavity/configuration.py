@@ -34,7 +34,9 @@ u = unit()
 qop_ip = "172.16.2.103"
 cluster_name = None
 qop_port = None
-octave_config = None
+
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 # Frequencies
 Yb_IF_freq = 40e6  # in units of Hz

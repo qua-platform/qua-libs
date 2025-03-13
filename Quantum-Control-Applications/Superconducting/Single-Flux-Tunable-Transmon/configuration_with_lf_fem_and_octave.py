@@ -4,7 +4,8 @@ QUA-Config supporting OPX1000 w/ LF-FEM & Octave
 
 from pathlib import Path
 import numpy as np
-from set_octave import OctaveUnit, octave_declaration
+import os
+from qm.octave import QmOctaveConfig
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 import plotly.io as pio
@@ -17,34 +18,25 @@ pio.renderers.default = "browser"
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+# In QOP versions > 2.2.2, the Octave is automatically deteced by the QOP.
+# For QOP versions <= 2.2.2, see Tutorials/intro-to-octave/qop 222 and below.
+# Below you can specify the path for the Octave mixer calibration's database file.
+octave_calibration_db_path = os.getcwd()
+
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(
+    host=qop_ip, port=qop_port, cluster_name=cluster_name, octave_calibration_db_path=octave_calibration_db_path
+)
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
+
 
 #####################
 # OPX configuration #
 #####################
 con = "con1"
 fem = 1  # Should be the LF-FEM index, e.g., 1
-
-
-############################
-# Set octave configuration #
-############################
-# The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
-# the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
-octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con=con)
-# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con=con)
-
-# If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
-# or directly to the Octave (without QM the router), use the local octave IP and port 80.
-# octave_ip = "192.168.88.X"
-# octave_1 = OctaveUnit("octave1", octave_ip, port=80, con=con)
-
-# Add the octaves
-octaves = [octave_1]
-# Configure the Octaves
-octave_config = octave_declaration(octaves)
 
 #############################################
 #                  Qubits                   #
@@ -280,7 +272,7 @@ config = {
     },
     "elements": {
         "qubit": {
-            "RF_inputs": {"port": ("octave1", 2)},
+            "RF_inputs": {"port": ("oct1", 2)},
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "const_pulse",
@@ -296,8 +288,8 @@ config = {
             },
         },
         "resonator": {
-            "RF_inputs": {"port": ("octave1", 1)},
-            "RF_outputs": {"port": ("octave1", 1)},
+            "RF_inputs": {"port": ("oct1", 1)},
+            "RF_outputs": {"port": ("oct1", 1)},
             "intermediate_frequency": resonator_IF,
             "operations": {
                 "cw": "const_pulse",
@@ -325,7 +317,7 @@ config = {
         },
     },
     "octaves": {
-        "octave1": {
+        "oct1": {
             "RF_outputs": {
                 1: {
                     "LO_frequency": resonator_LO,

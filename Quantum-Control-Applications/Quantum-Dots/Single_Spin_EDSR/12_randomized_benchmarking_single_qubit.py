@@ -51,7 +51,7 @@ B_field = 0  # Predetermined magnetic field value if not set externally
 
 
 # seq = VoltageGateSequence(config, ["P1_sticky", "P2_sticky"])
-seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])
+seq = VoltageGateSequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
 # Idle is when RB sequence takes place, duration is overridden with calculated sequence timing
 seq.add_points("idle", level_manip, duration_manip)
@@ -390,7 +390,7 @@ with program() as rb:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(**qmm_settings)
 
 ###########################
 # Run or Simulate Program #

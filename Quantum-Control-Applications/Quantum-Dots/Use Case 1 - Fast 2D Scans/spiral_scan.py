@@ -231,7 +231,7 @@ with program() as spiral_scan:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(**qmm_settings)
 
 simulation = True
 

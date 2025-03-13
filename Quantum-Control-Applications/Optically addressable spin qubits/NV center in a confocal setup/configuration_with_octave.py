@@ -20,17 +20,15 @@ u = unit(coerce_to_integer=True)
 qop_ip = "127.0.0.1"  # Write the OPX IP address
 cluster_name = "Cluster_1"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
-octave_ip = qop_ip  # Write the Octave IP address
-octave_port = 11050  # 11xxx, where xxx are the last three digits of the Octave IP address
+# In QOP versions > 2.2.2, the Octave is automatically deteced by the QOP.
+# For QOP versions <= 2.2.2, see Tutorials/intro-to-octave/qop 222 and below.
+# Below you can specify the path for the Octave mixer calibration's database file.
+octave_calibration_db_path = os.getcwd()  # Write the path to the Octave's mixer calibration database
 
-
-############################
-# Set octave configuration #
-############################
-octave_config = QmOctaveConfig()
-octave_config.set_calibration_db(os.getcwd())
-octave_config.add_device_info("octave1", octave_ip, octave_port)
-
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(
+    host=qop_ip, port=qop_port, cluster_name=cluster_name, octave_calibration_db_path=octave_calibration_db_path
+)
 
 #############
 # VARIABLES #
@@ -113,7 +111,7 @@ config = {
     },
     "elements": {
         "NV": {
-            "RF_inputs": {"port": ("octave1", 1)},
+            "RF_inputs": {"port": ("oct1", 1)},
             "intermediate_frequency": NV_IF_freq,
             "operations": {
                 "cw": "const_pulse",
@@ -211,7 +209,7 @@ config = {
         },
     },
     "octaves": {
-        "octave1": {
+        "oct1": {
             "RF_outputs": {
                 1: {
                     "LO_frequency": NV_LO_freq,

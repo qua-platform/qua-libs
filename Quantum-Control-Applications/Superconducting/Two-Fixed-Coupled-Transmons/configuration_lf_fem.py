@@ -1,5 +1,5 @@
 """
-Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
+QUA-Config supporting OPX1000 w/ LF-FEM & external mixers
 """
 
 from pathlib import Path
@@ -37,17 +37,15 @@ def IQ_imbalance(g, phi):
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
-octave_config = None
+
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 #####################
 # OPX configuration #
 #####################
 con = "con1"
 fem = 5  # Should be the LF-FEM index, e.g., 1
-
-# Set octave_config to None if no octave are present
-octave_config = None
-
 
 sampling_rate = int(1e9)  # or, int(2e9)
 

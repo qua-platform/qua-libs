@@ -35,8 +35,6 @@ cluster_name = "my_cluster_1"
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
-# Set octave_config to None if no octave are present
-octave_config = None
 
 #############################################
 #                  Qubits                   #

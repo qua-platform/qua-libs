@@ -72,6 +72,10 @@ def drag_cosine_pulse_waveforms(amplitude, length, alpha, anharmonicity, detunin
 #############
 
 qop_ip = "127.0.0.1"
+qop_port = None
+
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port)
 
 ###########################################
 # Qubits parameters

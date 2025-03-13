@@ -1,7 +1,8 @@
 import numpy as np
 from scipy.signal.windows import gaussian
+import os
+from qm.octave import QmOctaveConfig
 from qualang_tools.units import unit
-from set_octave import OctaveUnit, octave_declaration
 from qualang_tools.voltage_gates import VoltageGateSequence
 import plotly.io as pio
 
@@ -19,26 +20,15 @@ u = unit(coerce_to_integer=True)
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = "my_cluster"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+# In QOP versions > 2.2.2, the Octave is automatically deteced by the QOP.
+# For QOP versions <= 2.2.2, see Tutorials/intro-to-octave/qop 222 and below.
+# Below you can specify the path for the Octave mixer calibration's database file.
+octave_calibration_db_path = os.getcwd()
 
-############################
-# Set octave configuration #
-############################
-
-# The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
-# the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
-octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")
-# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1")
-
-# If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
-# or directly to the Octave (without QM the router), use the local octave IP and port 80.
-# octave_ip = "192.168.88.X"
-# octave_1 = OctaveUnit("octave1", octave_ip, port=80, con="con1")
-
-# Add the octaves
-octaves = [octave_1]
-# Configure the Octaves
-octave_config = octave_declaration(octaves)
-
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(
+    host=qop_ip, port=qop_port, cluster_name=cluster_name, octave_calibration_db_path=octave_calibration_db_path
+)
 
 #############################################
 #              OPX PARAMETERS               #
@@ -210,7 +200,7 @@ config = {
             },
         },
         "qubit": {
-            "RF_inputs": {"port": ("octave1", 2)},
+            "RF_inputs": {"port": ("oct1", 2)},
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "cw_pulse",
@@ -250,7 +240,7 @@ config = {
         },
     },
     "octaves": {
-        "octave1": {
+        "oct1": {
             "RF_outputs": {
                 2: {
                     "LO_frequency": qubit_LO,
