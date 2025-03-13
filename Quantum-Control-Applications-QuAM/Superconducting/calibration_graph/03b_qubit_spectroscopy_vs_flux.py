@@ -39,8 +39,8 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ["qA2", "qA2"]
-    flux_tuned_qubits: Optional[List[str]] = ["qA1", "qA3"]
+    qubits: Optional[List[str]] = None
+    flux_tuned_qubits: Optional[List[str]] = None
     num_averages: int = 50
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.1
@@ -77,24 +77,31 @@ if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
 else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
+
+# Get list of qubit names and count
+qubit_names = [q.name for q in qubits]
 num_qubits = len(qubits)
 
+# Handle flux tuned qubits parameter
 if node.parameters.flux_tuned_qubits is None:
-    node.parameters.flux_tuned_qubits = node.parameters.qubits
+    # Default to using same qubits for flux tuning
+    node.parameters.flux_tuned_qubits = qubit_names
 elif len(node.parameters.flux_tuned_qubits) != len(node.parameters.qubits):
-    raise ValueError("drive_to_flux_map must be the same length as qubits")
+    raise ValueError("Number of flux tuned qubits must match number of drive qubits")
 
-drive_flux_qubits_equal = node.parameters.flux_tuned_qubits == node.parameters.qubits
+# Check if drive and flux qubits are the same
+drive_flux_qubits_equal = (node.parameters.flux_tuned_qubits == qubit_names)
 
-if (not drive_flux_qubits_equal) and node.parameters.multiplexed:
-    raise ValueError("flux_tuned_qubits != qubits is supported only if multiplexed is set to False")
-    
+# Multiplexed mode requires drive and flux qubits to be the same
+if not drive_flux_qubits_equal and node.parameters.multiplexed:
+    raise ValueError("Multiplexed mode requires flux tuned qubits to match drive qubits")
+
+# Get flux tuned qubit objects
 flux_tuned_qubits = [machine.qubits[q] for q in node.parameters.flux_tuned_qubits]
 
-if len(node.parameters.qubits) == len(set(node.parameters.qubits)) and drive_flux_qubits_equal:
-    is_single_qubit_cal = True
-else:
-    is_single_qubit_cal = False
+# Determine if this is a standard single qubit calibration
+# where each qubit is unique and drive/flux qubits match
+is_single_qubit_cal = (len(qubit_names) == len(set(qubit_names)) and drive_flux_qubits_equal)
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages

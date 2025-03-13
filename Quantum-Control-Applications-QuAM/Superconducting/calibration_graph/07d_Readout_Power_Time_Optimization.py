@@ -29,19 +29,19 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_runs: int = 2000
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     start_amp: float = 0.5
     end_amp: float = 1.99
-    num_amps: int = 50
+    num_amps: int = 10
     max_readout_length: int = 1500 # in ns
-    duration_chunks: int = 60 # in ns
+    duration_chunks: int = 100 # in ns
     outliers_threshold: float = 0.98
     plot_raw: bool = False
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    load_data_id: Optional[int] = 1279
+    load_data_id: Optional[int] = None
     multiplexed: bool = False
 
 
