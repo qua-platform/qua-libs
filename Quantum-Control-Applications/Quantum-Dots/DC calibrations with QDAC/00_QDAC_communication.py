@@ -15,10 +15,10 @@ rm.list_resources()
 
 # 3. Insert the correct serial port from the listed resources
 qdac_serial_addr = (
-    "ASRL/dev/cu.usbserial-14210::INSTR"  # This is typical for a mac, for windows it will look like 'ASRL5::INSTR'
+    "ASRL/dev/cu.usbserial-14210::INSTR"  # this is typical for a mac, for windows it will look like 'ASRL5::INSTR'
 )
 qdac = QDAC2.QDac2("QDAC", visalib="@py", address=qdac_serial_addr)
-# 4. Check the communication with the QDAC
+# 4. check the communication with the QDAC
 print(qdac.IDN())  # query the QDAC's identity
 print(qdac.errors())  # read and clear all errors from the QDAC's error queue
 
@@ -34,7 +34,7 @@ qdac.close()
 # Ethernet communication #
 ##########################
 # 7. Insert IP
-qdac_ipaddr = "169.254.55.17"
+qdac_ipaddr = "127.0.0.1"  # Write the QDAC IP address
 # 8. Open communication through Ethernet port
 qdac = QDAC2.QDac2("QDAC", visalib="@py", address=f"TCPIP::{qdac_ipaddr}::5025::SOCKET")
 # 9. Check the communication with the QDAC

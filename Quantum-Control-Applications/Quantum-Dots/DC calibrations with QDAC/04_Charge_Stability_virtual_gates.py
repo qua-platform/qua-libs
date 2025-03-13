@@ -9,11 +9,11 @@ from qcodes_contrib_drivers.drivers.QDevil import QDAC2
 ##########################
 # Ethernet communication #
 ##########################
-# insert IP
-qdac_ipaddr = "169.254.55.17"
-# open communication
+# Insert IP
+qdac_ipaddr = "127.0.0.1"  # Write the QDAC IP address
+# Open communication
 qdac = QDAC2.QDac2("QDAC", visalib="@py", address=f"TCPIP::{qdac_ipaddr}::5025::SOCKET")
-# check the communication with the QDAC
+# Check the communication with the QDAC
 print(qdac.IDN())  # query the QDAC's identity
 print(qdac.errors())  # read and clear all errors from the QDAC's error queue
 
@@ -27,10 +27,10 @@ outer_steps = 21  # define the voltage steps
 outer_V = np.linspace(-0.2, 0.5, outer_steps)
 inner_step_time = 20e-3
 
-# define the plunger gates
+# Define the plunger gates
 arrangement = qdac.arrange(
-    # QDAC channels 2 & 3 connected to the ends of two back-to-back Ge diodes
-    contacts={"p1": 2, "p2": 4},
+    # QDAC channels 2 and 3 connected to p1 and p2 respectively
+    contacts={"p1": 2, "p2": 3},
     # Internal trigger for measuring current
     internal_triggers={"inner"},
 )
@@ -49,7 +49,7 @@ sweep = arrangement.virtual_sweep2d(
     inner_step_trigger="inner",
 )
 
-# define the sensor parameters
+# Define the sensor parameters
 sensor_channel = 5  # define sensing channel
 sensor_integration_time = (
     15e-3  # define time [s] to integrate current over #NOTE: sensor integration time should be <= step_time
@@ -81,7 +81,7 @@ arrangement.set_virtual_voltage("p2", 0)
 raw = measurement.available_A()
 available = list(map(lambda x: float(x), raw[-(outer_steps * inner_steps) :]))
 
-# plot
+# Plot
 currents = np.reshape(available, (-1, inner_steps)) * 1000
 fig, ax = plt.subplots()
 plt.title("diodes (Ge) back-to-back")
@@ -92,7 +92,7 @@ ax.set_ylabel("Volt")
 colorbar = fig.colorbar(img)
 colorbar.set_label("mA")
 
-# free all internal triggers, 12 internal triggers are available
+# Free all internal triggers, 12 internal triggers are available
 qdac.free_all_triggers()
-# close to qdac instance so you can create it again.
+# Close to qdac instance so you can create it again.
 qdac.close()
