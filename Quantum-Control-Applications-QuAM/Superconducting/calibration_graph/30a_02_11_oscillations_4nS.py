@@ -53,14 +53,14 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = None
-    num_averages: int = 100
-    max_time_in_ns: int = 160
+    qubit_pairs: Optional[List[str]] = ["qC2-qC4"]
+    num_averages: int = 10
+    max_time_in_ns: int = 120
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "active"
+    reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
-    amp_range : float = 0.1
+    amp_range : float = 0.15
     amp_step : float = 0.003
     load_data_id: Optional[int] = None  
 
@@ -140,7 +140,7 @@ for qp in qubit_pairs:
 
 # Loop parameters
 amplitudes = np.arange(1-node.parameters.amp_range, 1+node.parameters.amp_range, node.parameters.amp_step)
-times_cycles = np.arange(0, node.parameters.max_time_in_ns // 4)
+times_cycles = np.arange(4, node.parameters.max_time_in_ns // 4)
 
 with program() as CPhase_Oscillations:
     t = declare(int)  # QUA variable for the flux pulse segment index
@@ -172,7 +172,7 @@ with program() as CPhase_Oscillations:
                 with for_(*from_array(t, times_cycles)):
                     # reset                    
                     if node.parameters.reset_type == "active":
-                        active_reset_gef(qp.qubit_control)
+                        active_reset(qp.qubit_control)
                         qp.align()
                         active_reset(qp.qubit_target)
                         qp.align()

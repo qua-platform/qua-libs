@@ -54,20 +54,20 @@ from quam_libs.lib.pulses import FluxPulse, SNZPulse_main, SNZPulse_pixel
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = None
-    num_averages: int = 150
+    qubit_pairs: Optional[List[str]] = ["qC1-qC2"]
+    num_averages: int = 250
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal["active", "thermal"] = "active"
     simulate: bool = False
     timeout: int = 100
     method: Literal["coarse", "fine"] = "fine"
     amp_range: float = 0.01
-    amp_step: float = 0.001
-    rel_start: float = 0.1
-    rel_stop: float = 0.3
-    rel_num: int = 5
-    spacing: int = 2
-    extra_flux_pulse_length: int = 4
+    amp_step: float = 0.0005
+    rel_start: float = -0.4
+    rel_stop: float = 1.2
+    rel_num: int = 50
+    spacing: int = 4
+    extra_flux_pulse_length: int = 2
     num_frames: int = 10
     load_data_id: Optional[int] = None
 
@@ -191,7 +191,7 @@ with program() as CPhase_Oscillations:
                         with for_(*from_array(control_initial, [0, 1])):
                             # reset
                             if node.parameters.reset_type == "active":
-                                active_reset_gef(qp.qubit_control)
+                                active_reset(qp.qubit_control)
                                 active_reset(qp.qubit_target)
                             else:
                                 wait(qp.qubit_control.thermalization_time * u.ns)

@@ -53,17 +53,17 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = None
+    qubit_pairs: Optional[List[str]] = ["qC2-qC4"]
     num_averages: int = 40
     max_time_in_ns: int = 128
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "active"
+    reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
     method: Literal['coarse', 'fine'] = "fine"
     amp_range_coarse : float = 0.15
     amp_step_coarse : float = 0.005
-    amp_range_fine : float = 0.1
+    amp_range_fine : float = 0.07
     amp_step_fine : float = 0.002
     load_data_id: Optional[int] = None  
 
@@ -196,7 +196,7 @@ with program() as CPhase_Oscillations:
         else:
             machine.apply_all_flux_to_zero()
         wait(1000)
-        if qp.gates['Cz'].compensations:
+        if hasattr(qp.gates['Cz'], 'compensations') and qp.gates['Cz'].compensations:
             compensation_qubits = [compensation["qubit"] for compensation in qp.gates['Cz'].compensations]
         else:
             compensation_qubits = []
@@ -209,7 +209,7 @@ with program() as CPhase_Oscillations:
                 with for_(idx, 0, idx<node.parameters.max_time_in_ns, idx+1):
                     # reset                    
                     if node.parameters.reset_type == "active":
-                        active_reset_gef(qp.qubit_control)
+                        active_reset(qp.qubit_control)
                         active_reset(qp.qubit_target)               
                     else:
                         wait(qp.qubit_control.thermalization_time * u.ns)
