@@ -10,7 +10,7 @@ library = QualibrationLibrary.get_active_library()
 
 
 class Parameters(GraphParameters):
-    qubits: List[str] = ["qubitC4", "qubitC5"]
+    qubits: List[str] = ["qubitC1", "qubitC2", "qubitC3"]
 
 
 multiplexed = True
@@ -60,8 +60,8 @@ g = QualibrationGraph(
             flux_point_joint_or_independent=flux_point,
             multiplexed=False,
             delta_clifford=25,
-            max_circuit_depth=400,
-            num_random_sequences=500,
+            max_circuit_depth=1000,
+            num_random_sequences=1000,
             name="single_qubit_randomized_benchmarking",
         ),
     },

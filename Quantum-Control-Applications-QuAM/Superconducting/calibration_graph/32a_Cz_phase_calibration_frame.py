@@ -148,7 +148,7 @@ with program() as CPhase_Oscillations:
                     with for_(*from_array(control_initial, [0, 1])):
                         # reset
                         if node.parameters.reset_type == "active":
-                            active_reset_gef(qp.qubit_control)
+                            active_reset(qp.qubit_control)
                             active_reset(qp.qubit_target)
                         else:
                             wait(qp.qubit_control.thermalization_time * u.ns)
