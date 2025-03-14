@@ -1,0 +1,9 @@
+plotly
+xarray
+qm-qua>=1.2.1
+lmfit
+quam_config
+quam_builder
+scipy
+qiskit-experiments
+tqdm

@@ -86,7 +86,7 @@ class CZGate(TwoQubitGate):
 
         return f"{self.gate_label}{str_ref.DELIMITER}{pulse_label}"
 
-    def execute(self, amplitude_scale=None):        
+    def execute(self, amplitude_scale=None, phase_shift_control=0, phase_shift_target=0):
         self.transmon_pair.align()
         
         # self.qubit_control.xy.wait(self.pre_wait)
@@ -105,8 +105,8 @@ class CZGate(TwoQubitGate):
             )
         
         self.transmon_pair.align()
-        frame_rotation_2pi(self.phase_shift_control, self.qubit_control.xy.name)
-        frame_rotation_2pi(self.phase_shift_target, self.qubit_target.xy.name)
+        frame_rotation_2pi(self.phase_shift_control + phase_shift_control, self.qubit_control.xy.name)
+        frame_rotation_2pi(self.phase_shift_target + phase_shift_target, self.qubit_target.xy.name)
         self.qubit_control.xy.play("x180", amplitude_scale=0.0, duration=4)
         self.qubit_target.xy.play("x180", amplitude_scale=0.0, duration=4)
         self.transmon_pair.align()

@@ -1,0 +1,5 @@
+{
+    "data": "./data.h5",
+    "figure_fidelity": "./figure_fidelity.png",
+    "figure_states": "./figure_states.png"
+}

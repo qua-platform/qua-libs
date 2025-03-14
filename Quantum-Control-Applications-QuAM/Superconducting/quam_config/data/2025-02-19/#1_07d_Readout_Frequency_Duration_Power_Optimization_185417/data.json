@@ -1,0 +1,33 @@
+{
+    "ds": "./ds.h5",
+    "fig_q1": "./fig_q1.png",
+    "fig_q2": "./fig_q2.png",
+    "fig_q3": "./fig_q3.png",
+    "fig_q4": "./fig_q4.png",
+    "initial_parameters": {
+        "qubits": [
+            "q1",
+            "q2",
+            "q3",
+            "q4"
+        ],
+        "multiplexed": true,
+        "flux_point_joint_or_independent": "joint",
+        "num_runs": 10,
+        "frequency_span_in_mhz": 5.0,
+        "frequency_step_in_mhz": 0.2,
+        "min_amplitude_factor": 0.5,
+        "max_amplitude_factor": 1.99,
+        "num_amplitudes": 15,
+        "max_duration_in_ns": 1040,
+        "num_durations": 4,
+        "plotting_dimension": "2D",
+        "fidelity_smoothing_intensity": 0.5,
+        "max_readout_amplitude": 0.125,
+        "timeout": 100,
+        "load_data_id": null,
+        "simulate": false,
+        "simulation_duration_ns": 2500,
+        "use_waveform_report": false
+    }
+}

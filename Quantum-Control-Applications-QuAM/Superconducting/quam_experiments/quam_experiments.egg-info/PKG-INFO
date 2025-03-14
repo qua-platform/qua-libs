@@ -1,0 +1,13 @@
+Metadata-Version: 2.2
+Name: quam_experiments
+Version: 0.1.0
+Requires-Python: <3.13,>=3.9
+Requires-Dist: plotly
+Requires-Dist: xarray
+Requires-Dist: qm-qua>=1.2.1
+Requires-Dist: lmfit
+Requires-Dist: quam_config
+Requires-Dist: quam_builder
+Requires-Dist: scipy
+Requires-Dist: qiskit-experiments
+Requires-Dist: tqdm
