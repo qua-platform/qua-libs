@@ -21,11 +21,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from dataclasses import asdict
+
 from qm.qua import *
+
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
+
 from qualibrate import QualibrationNode
 from qualibrate.utils.logger_m import logger
 from quam_config import QuAM
@@ -33,13 +36,12 @@ from quam_experiments.experiments.resonator_spectroscopy import (
     Parameters,
     fit_resonators,
     log_fitted_results,
-    plot_res_data_with_fit,
-    plot_raw_amplitude,
+    plot_raw_amplitude_with_fit,
     plot_raw_phase,
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
-from quam_libs.qua_datasets import add_amplitude_and_phase
+from quam_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
 from quam_libs.xarray_data_fetcher import XarrayDataFetcher
 
 # %% {Node_parameters}
@@ -73,6 +75,7 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.load_data_id = 31
     pass
 
 
@@ -187,7 +190,8 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    node.results["ds_raw"] = add_amplitude_and_phase(node.results["ds_raw"], subtract_slope_flag=True)
+    node.results["ds_raw"] = convert_IQ_to_V(node.results["ds_raw"], node.namespace["qubits"])
+    node.results["ds_raw"] = add_amplitude_and_phase(node.results["ds_raw"], "detuning", subtract_slope_flag=True)
     node.results["ds_fit"], fit_results = fit_resonators(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
@@ -199,16 +203,14 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["qubits"])
     fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["qubits"])
-    fig_fit_amplitude = plot_res_data_with_fit(
-        node.results["ds_raw"], node.namespace["qubits"], node.parameters, node.results["ds_fit"]
+    fig_fit_amplitude = plot_raw_amplitude_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
     )
     plt.show()
     # Store the generated figures
-    node.results["figure_raw_amplitude"] = fig_raw_amplitude
-    node.results["figure_raw_phase"] = fig_raw_phase
-    node.results["figure_fit_amplitude"] = fig_fit_amplitude
+    node.results["figure_phase"] = fig_raw_phase
+    node.results["figure_amplitude"] = fig_fit_amplitude
 
 
 # %% {Update_state}

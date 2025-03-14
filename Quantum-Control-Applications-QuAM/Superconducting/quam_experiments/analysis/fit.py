@@ -9,6 +9,151 @@ import scipy.sparse as sparse
 from scipy.sparse.linalg import spsolve
 from scipy.fft import fft
 
+def lorentzian(x, amplitude, center, width, offset):
+    """
+    Computes the Lorentzian function.
+
+    Parameters
+    ----------
+    x : array-like
+        The input values at which to evaluate the Lorentzian function.
+    amplitude : float
+        The amplitude of the Lorentzian peak.
+    center : float
+        The center position of the Lorentzian peak.
+    width : float
+        The full width at half maximum (FWHM) of the Lorentzian peak.
+    offset : float
+        The offset value added to the Lorentzian function.
+
+    Returns
+    -------
+    array-like
+        The evaluated Lorentzian function at the input values `x`.
+
+    Notes
+    -----
+    - The Lorentzian function is defined as:
+      L(x) = offset - (amplitude * width^2) / (width^2 + (x - center)^2)
+    - This function is commonly used to model resonance peaks in spectroscopy and other fields.
+    """
+    return offset - amplitude * width**2 / (width**2 + (x - center) ** 2)
+
+def peaks_dips(da, dim, prominence_factor=5, number=1, remove_baseline=True) -> xr.Dataset:
+    """
+    Searches in a data array along the specified dimension for the most prominent peak or dip, and returns a xarray dataset with its location, width, and amplitude, along with a smooth baseline from which the peak emerges.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        The input xarray DataArray.
+    dim : str
+        The dimension along which to perform the fit.
+    prominence_factor : float
+        How prominent the peak must be compared with noise, as defined by the standard deviation.
+    number : int
+        Determines which peak the function returns. 1 is the most prominent peak, 2 is the second most prominent, etc.
+    remove_baseline : bool, optional
+        If True, the function will remove the baseline from the data before finding the peak (default is False).
+
+    Returns
+    -------
+    xr.Dataset
+        A dataset with the following values:
+        - 'amp': Peak amplitude above the base.
+        - 'position': Peak location along 'dim'.
+        - 'width': Peak full width at half maximum (FWHM).
+        - 'baseline': A vector whose dimension is the same as 'dim'. It is the baseline from which the peak is found. This is important for fitting resonator spectroscopy measurements.
+
+    Notes
+    -----
+    - The function identifies the most prominent peak or dip in the data array along the specified dimension.
+    - The baseline is smoothed and subtracted if `remove_baseline` is True.
+    """
+
+    def _baseline_als(y, lam, p, niter=10):
+        L = len(y)
+        D = sparse.csc_matrix(np.diff(np.eye(L), 2))
+        w = np.ones(L)
+        for i in range(niter):
+            W = sparse.spdiags(w, 0, L, L)
+            Z = W + lam * D.dot(D.transpose())
+            z = spsolve(Z, w * y)
+            w = p * (y > z) + (1 - p) * (y < z)
+        return z
+
+    def _index_of_largest_peak(arr, prominence):
+        peaks = find_peaks(arr.copy(), prominence=prominence)
+        if len(peaks[0]) > 0:
+            # finding the largest peak and it's width
+            prom_peak_index = 1.0 * peaks[0][np.argsort(peaks[1]["prominences"])][-number]
+        else:
+            prom_peak_index = np.nan
+        return prom_peak_index
+
+    def _position_from_index(x_axis_vals, position):
+        res = []
+        if not (np.isnan(position)):
+            res.append(x_axis_vals[int(position)])
+        else:
+            res.append(np.nan)
+        return np.array(res)
+
+    def _width_from_index(da, position):
+        res = []
+        if not (np.isnan(position)):
+            res.append(peak_widths(da.copy(), peaks=[int(position)])[0][0])
+        else:
+            res.append(np.nan)
+        return np.array(res)
+
+    peaks_inversion = 2.0 * (da.mean(dim=dim) - da.min(dim=dim) < da.max(dim=dim) - da.mean(dim=dim)) - 1
+    da = da * peaks_inversion
+
+    base_line = xr.apply_ufunc(
+        _baseline_als, da, 1e8, 0.001, input_core_dims=[[dim], [], []], output_core_dims=[[dim]], vectorize=True
+    )
+
+    if remove_baseline:
+        da = da - base_line
+
+    base_line = base_line * peaks_inversion
+
+    dim_step = da.coords[dim].diff(dim=dim).values[0]
+
+    # Taking a rolling mean and subtracting it to estimate the noise of the signal
+    rolling = da.rolling({dim: 10}, center=True).mean(dim=dim)
+    std = float((da - rolling).std())
+
+    prom_peak_index = xr.apply_ufunc(
+        _index_of_largest_peak, da, prominence_factor * std, input_core_dims=[[dim], []], vectorize=True
+    )
+    peak_position = xr.apply_ufunc(
+        _position_from_index,
+        1.0 * da.coords[dim],
+        prom_peak_index,
+        input_core_dims=[[dim], []],
+        output_core_dims=[[]],
+        vectorize=True,
+    )
+    peak_width = (
+        xr.apply_ufunc(
+            _width_from_index, da, prom_peak_index, input_core_dims=[[dim], []], output_core_dims=[[]], vectorize=True
+        )
+        * dim_step
+    )
+    peak_amp = da.max(dim=dim) - da.min(dim=dim) - std
+
+    return xr.merge(
+        [
+            peak_position.rename("position"),
+            peak_width.rename("width"),
+            peak_amp.rename("amplitude"),
+            base_line.rename("base_line"),
+        ]
+    )
+
+
 
 def fix_initial_value(x, da):
     if len(da.dims) == 1:
@@ -287,119 +432,6 @@ def fit_oscillation(da, dim):
     return fit_res.assign_coords(fit_vals=("fit_vals", ["a", "f", "phi", "offset"]))
 
 
-def fix_oscillation_phi_2pi(fit_data):
-    """
-    A specific helper function for a dataset that is returned by `fit_oscillation`.
-
-    This function is used to fix sign problems in amp and f fit results (not relevant anymore)
-    and also to "wrap" problematic points around 2pi. (Should be solved differently by not using phase in fit directly)
-    TODO: remove this function. We keep in temporarily for backwards compatiblity.
-    """
-    phase = fit_data.sel(fit_vals="phi") * np.sign(fit_data.sel(fit_vals="f"))
-    phase = phase.where(np.sign(fit_data.sel(fit_vals="a")) == 1, phase - np.pi)
-    phase = ((phase + 1) % (2 * np.pi) - 1) / (2 * np.pi)
-    return phase
-
-
-def peaks_dips(da, dim, prominence_factor=5, number=1, remove_baseline=True) -> xr.Dataset:
-    """searches in a data array da along the dimension dim for the
-    most prominent peak or dip, and returns a dict with its location,
-    width and amplitude, along with a smooth base line from which the
-    peak emerges.
-
-    Args:
-     da: xarray.DataArray.
-     dim: the dimension on which the perform the fit
-     prominence_factor : how prominent must be the peak compared with noise as defined by the std.
-     number : Determines which peak the function returns. 1 is the most prominent peak, 2 is the second most prominent, etc.
-     remove_baseline : if True, the function will remove the baseline from the data before finding the peak.
-
-    Returns: DataSet with the following values:
-    'amp' : peak amplitude above the base
-    'position' : peak location along 'dim'
-    'width' : peak FWHM
-    'baseline'  : a vector whose dimension is the same as 'dim'. It is the base line from which the peak is found is also returned. This is important to fit resonator spectroscopy measurements.
-
-    """
-
-    def _baseline_als(y, lam, p, niter=10):
-        L = len(y)
-        D = sparse.csc_matrix(np.diff(np.eye(L), 2))
-        w = np.ones(L)
-        for i in range(niter):
-            W = sparse.spdiags(w, 0, L, L)
-            Z = W + lam * D.dot(D.transpose())
-            z = spsolve(Z, w * y)
-            w = p * (y > z) + (1 - p) * (y < z)
-        return z
-
-    def _index_of_largest_peak(arr, prominence):
-        peaks = find_peaks(arr.copy(), prominence=prominence)
-        if len(peaks[0]) > 0:
-            # finding the largest peak and it's width
-            prom_peak_index = 1.0 * peaks[0][np.argsort(peaks[1]["prominences"])][-number]
-        else:
-            prom_peak_index = np.nan
-        return prom_peak_index
-
-    def _position_from_index(x_axis_vals, position):
-        res = []
-        if not (np.isnan(position)):
-            res.append(x_axis_vals[int(position)])
-        else:
-            res.append(np.nan)
-        return np.array(res)
-
-    def _width_from_index(da, position):
-        res = []
-        if not (np.isnan(position)):
-            res.append(peak_widths(da.copy(), peaks=[int(position)])[0][0])
-        else:
-            res.append(np.nan)
-        return np.array(res)
-
-    peaks_inversion = 2.0 * (da.mean(dim=dim) - da.min(dim=dim) < da.max(dim=dim) - da.mean(dim=dim)) - 1
-    da = da * peaks_inversion
-
-    base_line = xr.apply_ufunc(
-        _baseline_als, da, 1e8, 0.001, input_core_dims=[[dim], [], []], output_core_dims=[[dim]], vectorize=True
-    )
-    if remove_baseline:
-        da = da - base_line
-
-    dim_step = da.coords[dim].diff(dim=dim).values[0]
-
-    # Taking a rolling mean and substracting to estimate the noise of the signal
-    rolling = da.rolling({dim: 10}, center=True).mean(dim=dim)
-    std = float((da - rolling).std())
-
-    prom_peak_index = xr.apply_ufunc(
-        _index_of_largest_peak, da, prominence_factor * std, input_core_dims=[[dim], []], vectorize=True
-    )
-    peak_position = xr.apply_ufunc(
-        _position_from_index,
-        1.0 * da.coords[dim],
-        prom_peak_index,
-        input_core_dims=[[dim], []],
-        output_core_dims=[[]],
-        vectorize=True,
-    )
-    peak_width = (
-        xr.apply_ufunc(
-            _width_from_index, da, prom_peak_index, input_core_dims=[[dim], []], output_core_dims=[[]], vectorize=True
-        )
-        * dim_step
-    )
-    peak_amp = da.max(dim=dim) - da.min(dim=dim) - std
-
-    return xr.merge(
-        [
-            peak_position.rename("position"),
-            peak_width.rename("width"),
-            peak_amp.rename("amplitude"),
-            base_line.rename("base_line"),
-        ]
-    )
 
 
 def extract_dominant_frequencies(da, dim="idle_time"):

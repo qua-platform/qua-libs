@@ -316,7 +316,7 @@ class QubitGrid:
     def _clean_up(input_string):
         return re.sub("[^0-9]", "", input_string)
 
-    def __init__(self, ds: xr.DataArray, grid_names: Union[list[str], str] = None, size: int = 3):
+    def __init__(self, ds: xr.Dataset, grid_names: Union[list[str], str] = None, size: int = 3):
         if grid_names:
             if type(grid_names) == str:
                 grid_names = [grid_names]

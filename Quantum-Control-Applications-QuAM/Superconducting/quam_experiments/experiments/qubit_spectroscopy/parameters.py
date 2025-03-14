@@ -6,6 +6,7 @@ from quam_experiments.parameters import (
     CommonNodeParameters,
 )
 
+
 class QubitSpectroscopyParameters(RunnableParameters):
     num_averages: int = 500
     operation: str = "saturation"
@@ -14,6 +15,7 @@ class QubitSpectroscopyParameters(RunnableParameters):
     frequency_span_in_mhz: float = 100
     frequency_step_in_mhz: float = 0.25
     target_peak_width: Optional[float] = 3e6
+
 
 class Parameters(
     NodeParameters,
