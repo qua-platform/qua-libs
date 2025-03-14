@@ -1,0 +1,176 @@
+{
+    "created_at": "2025-02-19T18:54:17+11:00",
+    "metadata": {
+        "name": "07d_Readout_Frequency_Duration_Power_Optimization",
+        "data_path": "2025-02-19/#1_07d_Readout_Frequency_Duration_Power_Optimization_185417"
+    },
+    "data": {
+        "quam": "./quam_state.json",
+        "parameters": {
+            "model": {
+                "qubits": [
+                    "q1",
+                    "q2",
+                    "q3",
+                    "q4"
+                ],
+                "multiplexed": true,
+                "flux_point_joint_or_independent": "joint",
+                "num_runs": 10,
+                "frequency_span_in_mhz": 5.0,
+                "frequency_step_in_mhz": 0.2,
+                "min_amplitude_factor": 0.5,
+                "max_amplitude_factor": 1.99,
+                "num_amplitudes": 15,
+                "max_duration_in_ns": 1040,
+                "num_durations": 4,
+                "plotting_dimension": "2D",
+                "fidelity_smoothing_intensity": 0.5,
+                "max_readout_amplitude": 0.125,
+                "timeout": 100,
+                "load_data_id": null,
+                "simulate": false,
+                "simulation_duration_ns": 2500,
+                "use_waveform_report": false
+            },
+            "schema": {
+                "properties": {
+                    "qubits": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": [
+                            "q1",
+                            "q2",
+                            "q3",
+                            "q4"
+                        ],
+                        "title": "Qubits"
+                    },
+                    "multiplexed": {
+                        "default": true,
+                        "description": "Play control, readout and reset aligned and in parallel for all qubits",
+                        "title": "Multiplexed",
+                        "type": "boolean"
+                    },
+                    "flux_point_joint_or_independent": {
+                        "default": "joint",
+                        "enum": [
+                            "joint",
+                            "independent"
+                        ],
+                        "title": "Flux Point Joint Or Independent",
+                        "type": "string"
+                    },
+                    "num_runs": {
+                        "default": 10,
+                        "title": "Num Runs",
+                        "type": "integer"
+                    },
+                    "frequency_span_in_mhz": {
+                        "default": 5.0,
+                        "title": "Frequency Span In Mhz",
+                        "type": "number"
+                    },
+                    "frequency_step_in_mhz": {
+                        "default": 0.2,
+                        "title": "Frequency Step In Mhz",
+                        "type": "number"
+                    },
+                    "min_amplitude_factor": {
+                        "default": 0.5,
+                        "title": "Min Amplitude Factor",
+                        "type": "number"
+                    },
+                    "max_amplitude_factor": {
+                        "default": 1.99,
+                        "title": "Max Amplitude Factor",
+                        "type": "number"
+                    },
+                    "num_amplitudes": {
+                        "default": 15,
+                        "title": "Num Amplitudes",
+                        "type": "integer"
+                    },
+                    "max_duration_in_ns": {
+                        "default": 1040,
+                        "title": "Max Duration In Ns",
+                        "type": "integer"
+                    },
+                    "num_durations": {
+                        "default": 4,
+                        "title": "Num Durations",
+                        "type": "integer"
+                    },
+                    "plotting_dimension": {
+                        "default": "2D",
+                        "enum": [
+                            "2D",
+                            "3D"
+                        ],
+                        "title": "Plotting Dimension",
+                        "type": "string"
+                    },
+                    "fidelity_smoothing_intensity": {
+                        "default": 0.5,
+                        "title": "Fidelity Smoothing Intensity",
+                        "type": "number"
+                    },
+                    "max_readout_amplitude": {
+                        "default": 0.125,
+                        "description": "upper limit for readout pulse amplitude to avoid saturation when doing multiplexed readout",
+                        "title": "Max Readout Amplitude",
+                        "type": "number"
+                    },
+                    "timeout": {
+                        "default": 100,
+                        "title": "Timeout",
+                        "type": "integer"
+                    },
+                    "load_data_id": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "title": "Load Data Id"
+                    },
+                    "simulate": {
+                        "default": false,
+                        "description": "Simulate the waveforms on the OPX instead of executing the program",
+                        "title": "Simulate",
+                        "type": "boolean"
+                    },
+                    "simulation_duration_ns": {
+                        "default": 2500,
+                        "description": "Duration over which the simulation will collect samples",
+                        "title": "Simulation Duration Ns",
+                        "type": "integer"
+                    },
+                    "use_waveform_report": {
+                        "default": false,
+                        "description": "Whether to use the interactive waveform report in simulation",
+                        "title": "Use Waveform Report",
+                        "type": "boolean"
+                    }
+                },
+                "title": "Parameters",
+                "type": "object"
+            }
+        }
+    },
+    "id": 1,
+    "parents": []
+}

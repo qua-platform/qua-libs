@@ -1,0 +1,56 @@
+{
+    "network": {
+        "host": "10.1.1.4",
+        "cloud": false,
+        "quantum_computer_backend": "qc_galilee",
+        "port": null,
+        "data_folder": "./",
+        "cluster_name": "Cluster_1",
+        "octave_ips": [
+            "10.1.1.4"
+        ],
+        "octave_ports": [
+            11239
+        ]
+    },
+    "wiring": {
+        "qubits": {
+            "qubitC4": {
+                "rr": {
+                    "opx_input_I": "#/ports/analog_inputs/con1/1",
+                    "opx_input_Q": "#/ports/analog_inputs/con1/2",
+                    "opx_output_I": "#/ports/analog_outputs/con1/1",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/2",
+                    "frequency_converter_down": "#/octaves/octave/RF_inputs/1",
+                    "frequency_converter_up": "#/octaves/octave/RF_outputs/1"
+                },
+                "xy": {
+                    "opx_output_I": "#/ports/analog_outputs/con1/7",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/8",
+                    "frequency_converter_up": "#/octaves/octave/RF_outputs/4"
+                },
+                "z": {
+                    "opx_output": "#/ports/analog_outputs/con1/9"
+                }
+            },
+            "qubitC5": {
+                "rr": {
+                    "opx_input_I": "#/ports/analog_inputs/con1/1",
+                    "opx_input_Q": "#/ports/analog_inputs/con1/2",
+                    "opx_output_I": "#/ports/analog_outputs/con1/1",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/2",
+                    "frequency_converter_down": "#/octaves/octave/RF_inputs/1",
+                    "frequency_converter_up": "#/octaves/octave/RF_outputs/1"
+                },
+                "xy": {
+                    "opx_output_I": "#/ports/analog_outputs/con1/5",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/6",
+                    "frequency_converter_up": "#/octaves/octave/RF_outputs/3"
+                },
+                "z": {
+                    "opx_output": "#/ports/analog_outputs/con1/10"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "created_at": "2025-02-21T17:51:47+11:00",
+    "metadata": {
+        "name": "two_qubit_randomized_benchmarking",
+        "data_path": "2025-02-21/#1_two_qubit_randomized_benchmarking_175147"
+    },
+    "data": {
+        "quam": "./state.json"
+    },
+    "id": 1,
+    "parents": []
+}

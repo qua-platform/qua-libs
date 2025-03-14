@@ -1,0 +1,7 @@
+Metadata-Version: 2.2
+Name: quam-libs
+Version: 0.1.0
+Requires-Python: <3.13,>=3.9
+Requires-Dist: quam
+Requires-Dist: plotly
+Requires-Dist: xarray
