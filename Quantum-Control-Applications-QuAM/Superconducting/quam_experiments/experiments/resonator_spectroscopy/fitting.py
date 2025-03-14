@@ -5,6 +5,7 @@ import numpy as np
 import xarray as xr
 
 from qualibrate import QualibrationNode
+from quam_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
 from quam_experiments.analysis.fit import peaks_dips
 
 
@@ -54,6 +55,15 @@ def log_fitted_results(fit_results: Dict, logger=None):
             logger.error(s_fwhm + "FAIL!")
 
 
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
+    ds = convert_IQ_to_V(ds, node.namespace["qubits"])
+    ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
+    full_freq = np.array([ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]])
+    ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
+    ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
+    return ds
+
+
 def fit_resonators(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, ResonatorFit]]:
     """
     Fit the T1 relaxation time for each qubit according to ``a * np.exp(t * decay) + offset``.
@@ -70,7 +80,7 @@ def fit_resonators(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, 
     xr.Dataset
         Dataset containing the fit results.
     """
-
+    # Add the RF frequency
     # Fit the resonator line
     fit_results = peaks_dips(ds.R, "detuning")
     # Extract the relevant fitted parameters
@@ -83,7 +93,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     # Add metadata to fit results
     fit.attrs = {"long_name": "frequency", "units": "Hz"}
     # Get the fitted resonator frequency
-    full_freq = np.array([node.machine.qubits[q].resonator.RF_frequency for q in node.machine.qubits])
+    full_freq = np.array([q.resonator.RF_frequency for q in node.namespace["qubits"]])
     res_freq = fit.position + full_freq
     fit = fit.assign_coords(res_freq=("qubit", res_freq.data))
     fit.res_freq.attrs = {"long_name": "resonator frequency", "units": "Hz"}
