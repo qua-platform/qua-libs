@@ -17,6 +17,10 @@ Next steps before going to the next node:
 """
 
 # %% {Imports}
+from typing import Literal, Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
@@ -31,14 +35,10 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
-from typing import Literal, Optional, List
-import matplotlib.pyplot as plt
-import numpy as np
 
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
     qubits: Optional[List[str]] = None
     num_averages: int = 50
     operation_x180_or_any_90: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x180"
@@ -82,12 +82,11 @@ reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "therma
 state_discrimination = node.parameters.state_discrimination
 operation = node.parameters.operation_x180_or_any_90  # The qubit operation to play
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
-amps = np.arange(
+amplitude_scales = np.arange(
     node.parameters.min_amp_factor,
     node.parameters.max_amp_factor,
     node.parameters.amp_factor_step,
 )
-
 # Define number of Rabi pulses sweep
 if N_pi > 1:
     if operation == "x180":
@@ -98,6 +97,13 @@ if N_pi > 1:
         raise ValueError(f"Unrecognized operation {operation}.")
 else:
     N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
+
+sweep_axes = {
+    "qubits": node.parameters.qubits,
+    "N_pi": xr.DataArray(N_pi_vec),
+    "amplitude": xr.DataArray(amplitude_scales),
+}
+
 
 with program() as power_rabi:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
@@ -114,7 +120,7 @@ with program() as power_rabi:
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(npi, N_pi_vec)):
-                with for_(*from_array(a, amps)):
+                with for_(*from_array(a, amplitude_scales)):
                     if reset_type == "active":
                         active_reset(qubit, "readout")
                     else:
@@ -137,16 +143,20 @@ with program() as power_rabi:
         for i, qubit in enumerate(qubits):
             if operation == "x180":
                 if state_discrimination:
-                    state_stream[i].boolean_to_int().buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"state{i + 1}")
+                    state_stream[i].boolean_to_int().buffer(len(amplitude_scales)).buffer(
+                        np.ceil(N_pi / 2)
+                    ).average().save(f"state{i + 1}")
                 else:
-                    I_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"I{i + 1}")
-                    Q_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"Q{i + 1}")
+                    I_st[i].buffer(len(amplitude_scales)).buffer(np.ceil(N_pi / 2)).average().save(f"I{i + 1}")
+                    Q_st[i].buffer(len(amplitude_scales)).buffer(np.ceil(N_pi / 2)).average().save(f"Q{i + 1}")
             elif operation in ["x90", "-x90", "y90", "-y90"]:
                 if state_discrimination:
-                    state_stream[i].boolean_to_int().buffer(len(amps)).buffer(np.ceil(N_pi / 4)).average().save(f"state{i + 1}")
+                    state_stream[i].boolean_to_int().buffer(len(amplitude_scales)).buffer(
+                        np.ceil(N_pi / 4)
+                    ).average().save(f"state{i + 1}")
                 else:
-                    I_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 4)).average().save(f"I{i + 1}")
-                    Q_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 4)).average().save(f"Q{i + 1}")
+                    I_st[i].buffer(len(amplitude_scales)).buffer(np.ceil(N_pi / 4)).average().save(f"I{i + 1}")
+                    Q_st[i].buffer(len(amplitude_scales)).buffer(np.ceil(N_pi / 4)).average().save(f"Q{i + 1}")
             else:
                 raise ValueError(f"Unrecognized operation {operation}.")
 
@@ -175,13 +185,17 @@ elif node.parameters.load_data_id is None:
 
 # %% {Data_fetching_and_dataset_creation}
 if node.parameters.load_data_id is None:
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
+    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amplitude_scales, "N": N_pi_vec})
     if not state_discrimination:
         ds = convert_IQ_to_V(ds, qubits)
-    ds = ds.assign_coords({
-        "abs_amp": (["qubit", "amp"],
-                     np.array([q.xy.operations[operation].amplitude * amps for q in qubits]))
-    })
+    ds = ds.assign_coords(
+        {
+            "abs_amp": (
+                ["qubit", "amp"],
+                np.array([q.xy.operations[operation].amplitude * amplitude_scales for q in qubits]),
+            )
+        }
+    )
 else:
     node = node.load_from_id(node.parameters.load_data_id)
     ds = node.results["ds"]

@@ -22,6 +22,7 @@ from typing import Literal, Optional, List
 
 import matplotlib.pyplot as plt
 import numpy as np
+import xarray as xr
 
 from qm import SimulationConfig
 from qm.qua import *
@@ -93,6 +94,12 @@ fluxes = np.arange(
     step=node.parameters.flux_step,
 )
 
+sweep_axes = {
+    "qubits": node.parameters.qubits,
+    "flux": xr.DataArray(fluxes),
+    "idle_time": xr.DataArray(idle_times),
+}
+
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     init_state = [declare(int) for _ in range(num_qubits)]
@@ -123,11 +130,7 @@ with program() as ramsey:
                         qubit.z.wait(duration=qubit.xy.operations["x180"].length)
 
                         qubit.xy.wait(t + 1)
-                        qubit.z.play(
-                            "const",
-                            amplitude_scale=flux / qubit.z.operations["const"].amplitude,
-                            duration=t
-                        )
+                        qubit.z.play("const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t)
 
                         qubit.xy.play("x180", amplitude_scale=0.5)
 
@@ -219,12 +222,16 @@ flux_offset = {}
 freq_offset = {}
 for q in qubits:
     a[q.name] = float(-1e6 * fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values)
-    flux_offset[q.name] = float((
-        -0.5 * fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients
-        / fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients
-    ).values)
+    flux_offset[q.name] = float(
+        (
+            -0.5
+            * fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients
+            / fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients
+        ).values
+    )
     freq_offset[q.name] = (
-        1e6 * (
+        1e6
+        * (
             flux_offset[q.name] ** 2 * float(fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values)
             + flux_offset[q.name] * float(fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients.values)
             + float(fitvals.sel(qubit=q.name, degree=0).polyfit_coefficients.values)
