@@ -10,7 +10,7 @@ library = QualibrationLibrary.get_active_library()
 
 
 class Parameters(GraphParameters):
-    qubits: List[str] = ["qubitC4", "qubitC5"]
+    qubits: List[str] = ["qubitC1", "qubitC2", "qubitC3"]
 
 
 multiplexed = True
@@ -19,19 +19,19 @@ reset_type_thermal_or_active = "active"
 
 
 g = QualibrationGraph(
-    name="retune_fine_1Q_2Q_graph",
+    name="retune_fine_graph",
     parameters=Parameters(),
     nodes={
-        "IQ_blobs": library.nodes["IQCC_07b_IQ_Blobs"].copy(
+        "IQ_blobs": library.nodes["MM_07b_IQ_Blobs"].copy(
             flux_point_joint_or_independent=flux_point,
             multiplexed=multiplexed,
             name="IQ_blobs",
             reset_type_thermal_or_active="thermal",
         ),
-        "ramsey_flux_calibration": library.nodes["IQCC_08_Ramsey_vs_Flux_Calibration"].copy(
+        "ramsey_flux_calibration": library.nodes["MM_08_Ramsey_vs_Flux_Calibration"].copy(
             flux_point_joint_or_independent=flux_point, multiplexed=multiplexed, name="ramsey_flux_calibration"
         ),
-        "power_rabi_x180": library.nodes["IQCC_04_Power_Rabi"].copy(
+        "power_rabi_x180": library.nodes["MM_04_Power_Rabi"].copy(
             flux_point_joint_or_independent=flux_point,
             multiplexed=multiplexed,
             operation_x180_or_any_90="x180",
@@ -44,7 +44,7 @@ g = QualibrationGraph(
             update_x90=False,
             state_discrimination=True,
         ),
-        "power_rabi_x90": library.nodes["IQCC_04_Power_Rabi"].copy(
+        "power_rabi_x90": library.nodes["MM_04_Power_Rabi"].copy(
             flux_point_joint_or_independent=flux_point,
             multiplexed=multiplexed,
             operation_x180_or_any_90="x90",
@@ -56,33 +56,13 @@ g = QualibrationGraph(
             max_number_rabi_pulses_per_sweep=200,
             state_discrimination=True,
         ),
-        "single_qubit_randomized_benchmarking": library.nodes["IQCC_10a_Single_Qubit_Randomized_Benchmarking"].copy(
+        "single_qubit_randomized_benchmarking": library.nodes["MM_10a_Single_Qubit_Randomized_Benchmarking"].copy(
             flux_point_joint_or_independent=flux_point,
             multiplexed=False,
             delta_clifford=25,
-            max_circuit_depth=400,
-            num_random_sequences=500,
+            max_circuit_depth=1000,
+            num_random_sequences=1000,
             name="single_qubit_randomized_benchmarking",
-        ),
-        "Cz_phase_calibration_frame": library.nodes["IQCC_32a_Cz_phase_calibration_frame"].copy(
-            flux_point_joint_or_independent=flux_point,
-            name="Cz_phase_calibration_frame",
-            reset_type=reset_type_thermal_or_active,
-        ),
-        "Cz_1Q_phase_calibration_frame": library.nodes["IQCC_33a_Cz_1Qphase_calibration_frame"].copy(
-            flux_point_joint_or_independent=flux_point,
-            name="Cz_1Q_phase_calibration_frame",
-            reset_type=reset_type_thermal_or_active,
-        ),
-        "2Q_confusion_matrix": library.nodes["IQCC_34_2Q_confusion_matrix"].copy(
-            flux_point_joint_or_independent=flux_point,
-            name="2Q_confusion_matrix",
-            reset_type=reset_type_thermal_or_active,
-        ),
-        "Bell_state_tomography": library.nodes["IQCC_40b_Bell_state_tomography"].copy(
-            flux_point_joint_or_independent=flux_point,
-            name="Bell_state_tomography",
-            reset_type=reset_type_thermal_or_active,
         ),
     },
     connectivity=[
@@ -90,10 +70,6 @@ g = QualibrationGraph(
         ("ramsey_flux_calibration", "power_rabi_x180"),
         ("power_rabi_x180", "power_rabi_x90"),
         ("power_rabi_x90", "single_qubit_randomized_benchmarking"),
-        ("single_qubit_randomized_benchmarking", "Cz_phase_calibration_frame"),
-        ("Cz_phase_calibration_frame", "Cz_1Q_phase_calibration_frame"),
-        ("Cz_1Q_phase_calibration_frame", "2Q_confusion_matrix"),
-        ("2Q_confusion_matrix", "Bell_state_tomography"),
     ],
     orchestrator=BasicOrchestrator(skip_failed=True),
 )

@@ -57,7 +57,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = True
 
 
-node = QualibrationNode(name="IQCC_04_Power_Rabi", parameters=Parameters())
+node = QualibrationNode(name="MM_04_Power_Rabi", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}

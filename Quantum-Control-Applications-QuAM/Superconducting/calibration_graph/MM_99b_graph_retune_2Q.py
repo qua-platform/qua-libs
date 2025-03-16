@@ -23,22 +23,22 @@ g = QualibrationGraph(
     name="retune_2Q_graph",
     parameters=Parameters(),
     nodes={
-        "Cz_phase_calibration_frame": library.nodes["IQCC_32a_Cz_phase_calibration_frame"].copy(
+        "Cz_phase_calibration_frame": library.nodes["MM_32a_Cz_phase_calibration_frame"].copy(
             flux_point_joint_or_independent=flux_point,
             name="Cz_phase_calibration_frame",
             reset_type=reset_type_thermal_or_active,
         ),
-        "Cz_1Q_phase_calibration_frame": library.nodes["IQCC_33a_Cz_1Qphase_calibration_frame"].copy(
+        "Cz_1Q_phase_calibration_frame": library.nodes["MM_33a_Cz_1Qphase_calibration_frame"].copy(
             flux_point_joint_or_independent=flux_point,
             name="Cz_1Q_phase_calibration_frame",
             reset_type=reset_type_thermal_or_active,
         ),
-        "2Q_confusion_matrix": library.nodes["IQCC_34_2Q_confusion_matrix"].copy(
+        "2Q_confusion_matrix": library.nodes["MM_34_2Q_confusion_matrix"].copy(
             flux_point_joint_or_independent=flux_point,
             name="2Q_confusion_matrix",
             reset_type=reset_type_thermal_or_active,
         ),
-        "Bell_state_tomography": library.nodes["IQCC_40b_Bell_state_tomography"].copy(
+        "Bell_state_tomography": library.nodes["MM_40b_Bell_state_tomography"].copy(
             flux_point_joint_or_independent=flux_point,
             name="Bell_state_tomography",
             reset_type=reset_type_thermal_or_active,

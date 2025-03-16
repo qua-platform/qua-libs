@@ -29,7 +29,7 @@ class Parameters(NodeParameters):
     config_type: Literal["calibrated", "scrambled"] = "calibrated"
 
 
-node = QualibrationNode(name="IQCC_99_reset_config", parameters=Parameters())
+node = QualibrationNode(name="MM_99_reset_config", parameters=Parameters())
 
 
 # %%

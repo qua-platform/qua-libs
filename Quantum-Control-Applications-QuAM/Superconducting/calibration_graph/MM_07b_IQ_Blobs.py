@@ -54,7 +54,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = True
 
 
-node = QualibrationNode(name="IQCC_07b_IQ_Blobs", parameters=Parameters())
+node = QualibrationNode(name="MM_07b_IQ_Blobs", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}

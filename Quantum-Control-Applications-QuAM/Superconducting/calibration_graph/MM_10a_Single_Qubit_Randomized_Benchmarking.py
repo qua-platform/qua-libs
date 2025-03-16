@@ -58,7 +58,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(name="IQCC_10a_Single_Qubit_Randomized_Benchmarking", parameters=Parameters())
+node = QualibrationNode(name="MM_10a_Single_Qubit_Randomized_Benchmarking", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}

@@ -72,7 +72,7 @@ class Parameters(NodeParameters):
     measure_leak: bool = True
 
 
-node = QualibrationNode(name="IQCC_32a_Cz_phase_calibration_frame", parameters=Parameters())
+node = QualibrationNode(name="MM_32a_Cz_phase_calibration_frame", parameters=Parameters())
 assert not (
     node.parameters.simulate and node.parameters.load_data_id is not None
 ), "If simulate is True, load_data_id must be None, and vice versa."

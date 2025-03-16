@@ -19,6 +19,7 @@ Next steps before going to the next node:
 from line_profiler import profile
 from qm.qua import *
 
+
 @profile
 def main():
     # %% {Imports}
@@ -59,7 +60,7 @@ def main():
         load_data_id: Optional[int] = None
         multiplexed: bool = True
 
-    node = QualibrationNode(name="IQCC_04_Power_Rabi_timing", parameters=Parameters())
+    node = QualibrationNode(name="MM_04_Power_Rabi_timing", parameters=Parameters())
 
     # %% {Initialize_QuAM_and_QOP}
     # Class containing tools to help handling units and conversions.

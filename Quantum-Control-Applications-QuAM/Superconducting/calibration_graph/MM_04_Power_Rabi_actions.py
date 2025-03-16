@@ -57,7 +57,7 @@ class Parameters(NodeParameters):
 
 
 # Create the calibration node instance.
-node = QualibrationNode[Parameters, QuAM](name="IQCC_04_Power_Rabi_actions")
+node = QualibrationNode[Parameters, QuAM](name="MM_04_Power_Rabi_actions")
 
 
 # %% Helper Functions
