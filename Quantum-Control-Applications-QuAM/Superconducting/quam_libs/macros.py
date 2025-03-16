@@ -1,13 +1,19 @@
 import inspect
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Any
 import warnings
 
 from qm.qua import *
-from qm.qua._dsl import Scalar
 from quam_libs.components import QuAM
 from quam_libs.components import Transmon
-from qm.qua._dsl import Scalar
+
+try:
+    from qm.qua._dsl import Scalar
+
+    ScalarInt = Scalar[int]
+except ImportError:
+    ScalarInt = Any
+
 
 __all__ = [
     "qua_declaration",
@@ -105,9 +111,10 @@ def readout_state(qubit, state, pulse_name: str = "readout", threshold: float = 
 
 
 def readout_state_gef(
-    qubit: Transmon, 
-    state: Scalar[int], # : QuaVariableType, # TODO: Fix this type hinting error. for qua 1.2.2rc there is an import error
-    pulse_name: str = "readout", save_qua_var: StreamType = None
+    qubit: Transmon,
+    state: ScalarInt,
+    pulse_name: str = "readout",
+    save_qua_var: StreamType = None,
 ):
     I = declare(fixed)
     Q = declare(fixed)
@@ -147,7 +154,7 @@ def active_reset_gef(
             assign(success, success + 1)  # we need to measure 'g' two times in a row to increase our confidence
         with if_(res_ar == 1):
             update_frequency(qubit.xy.name, int(qubit.xy.intermediate_frequency))
-            wait(4,qubit.xy.name)
+            wait(4, qubit.xy.name)
             qubit.xy.play(pi_01_pulse_name)
             assign(success, 0)
         with if_(res_ar == 2):
@@ -155,20 +162,22 @@ def active_reset_gef(
                 qubit.xy.name,
                 int(qubit.xy.intermediate_frequency - qubit.anharmonicity),
             )
-            wait(4,qubit.xy.name)
+            wait(4, qubit.xy.name)
             qubit.xy.play(pi_12_pulse_name)
             update_frequency(qubit.xy.name, int(qubit.xy.intermediate_frequency))
-            wait(4,qubit.xy.name)
+            wait(4, qubit.xy.name)
             qubit.xy.play(pi_01_pulse_name)
             assign(success, 0)
         qubit.align()
         assign(attempts, attempts + 1)
 
+
 def active_reset_simple(
-        qubit: Transmon,
-        save_qua_var: Optional[StreamType] = None,
-        pi_pulse_name: str = "x180",
-        readout_pulse_name: str = "readout"):
+    qubit: Transmon,
+    save_qua_var: Optional[StreamType] = None,
+    pi_pulse_name: str = "x180",
+    readout_pulse_name: str = "readout",
+):
     """
     Simple active reset for a qubit
     """
@@ -187,11 +196,12 @@ def active_reset_simple(
 
 
 def active_reset(
-        qubit: Transmon,
-        save_qua_var: Optional[StreamType] = None,
-        pi_pulse_name: str = "x180",
-        readout_pulse_name: str = "readout",
-        max_attempts: int = 15):
+    qubit: Transmon,
+    save_qua_var: Optional[StreamType] = None,
+    pi_pulse_name: str = "x180",
+    readout_pulse_name: str = "readout",
+    max_attempts: int = 15,
+):
     pulse = qubit.resonator.operations[readout_pulse_name]
 
     I = declare(fixed)
@@ -206,7 +216,7 @@ def active_reset(
     align(qubit.resonator.name, qubit.xy.name)
     qubit.xy.play(pi_pulse_name, condition=state)
     align(qubit.resonator.name, qubit.xy.name)
-    with while_(broadcast.and_((I > pulse.rus_exit_threshold) , (attempts < max_attempts))):
+    with while_(broadcast.and_((I > pulse.rus_exit_threshold), (attempts < max_attempts))):
         # qubit.align()
         align(qubit.resonator.name, qubit.xy.name)
         qubit.resonator.measure("readout", qua_vars=(I, Q))
