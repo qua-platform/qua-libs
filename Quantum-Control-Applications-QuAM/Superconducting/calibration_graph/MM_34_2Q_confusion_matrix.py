@@ -183,6 +183,7 @@ if node.parameters.simulate:
     node.results = {"figure": plt.gcf()}
     node.machine = machine
     node.save()
+    exit()
 elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(CPhase_Oscillations)
@@ -195,70 +196,63 @@ elif node.parameters.load_data_id is None:
             progress_counter(n, n_shots, start_time=results.start_time)
 
 # %% {Data_fetching_and_dataset_creation}
-if not node.parameters.simulate:
-    if node.parameters.load_data_id is None:
-        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(
-            job.result_handles,
-            qubit_pairs,
-            {"init_state_target": [0, 1], "init_state_control": [0, 1], "N": np.linspace(1, n_shots, n_shots)},
-        )
-    else:
-        ds, machine = load_dataset(node.parameters.load_data_id)
+if node.parameters.load_data_id is None:
+    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+    ds = fetch_results_as_xarray(
+        job.result_handles,
+        qubit_pairs,
+        {"init_state_target": [0, 1], "init_state_control": [0, 1], "N": np.linspace(1, n_shots, n_shots)},
+    )
+else:
+    ds, machine = load_dataset(node.parameters.load_data_id)
 
-    node.results = {"ds": ds}
-
-# %%
-if not node.parameters.simulate:
-    states = [0, 1, 2, 3]
-
-    confusions = {}
-    for qp in qubit_pairs:
-        conf = []
-        for state in states:
-            row = []
-            for q1 in [0, 1]:
-                for q0 in [0, 1]:
-                    row.append(
-                        (ds.sel(qubit=qp.name).state.sel(init_state_target=q0, init_state_control=q1) == state)
-                        .sum()
-                        .values
-                    )
-            conf.append(row)
-        confusions[qp.name] = np.array(conf) / node.parameters.num_shots
+node.results = {"ds": ds}
 
 # %%
-if not node.parameters.simulate:
-    grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
-    grid = QubitPairGrid(grid_names, qubit_pair_names)
-    for ax, qubit_pair in grid_iter(grid):
-        print(qubit_pair["qubit"])
-        conf = confusions[qubit_pair["qubit"]]
-        ax.pcolormesh(["00", "01", "10", "11"], ["00", "01", "10", "11"], conf)
-        for i in range(4):
-            for j in range(4):
-                if i == j:
-                    ax.text(i, j, f"{100 * conf[i][j]:.1f}%", ha="center", va="center", color="k")
-                else:
-                    ax.text(i, j, f"{100 * conf[i][j]:.1f}%", ha="center", va="center", color="w")
-        ax.set_ylabel("prepared")
-        ax.set_xlabel("measured")
-        ax.set_title(qubit_pair["qubit"])
-    plt.show()
-    node.results["figure_confusion"] = grid.fig
+states = [0, 1, 2, 3]
+
+confusions = {}
+for qp in qubit_pairs:
+    conf = []
+    for state in states:
+        row = []
+        for q1 in [0, 1]:
+            for q0 in [0, 1]:
+                row.append(
+                    (ds.sel(qubit=qp.name).state.sel(init_state_target=q0, init_state_control=q1) == state).sum().values
+                )
+        conf.append(row)
+    confusions[qp.name] = np.array(conf) / node.parameters.num_shots
+
+# %%
+grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
+grid = QubitPairGrid(grid_names, qubit_pair_names)
+for ax, qubit_pair in grid_iter(grid):
+    print(qubit_pair["qubit"])
+    conf = confusions[qubit_pair["qubit"]]
+    ax.pcolormesh(["00", "01", "10", "11"], ["00", "01", "10", "11"], conf)
+    for i in range(4):
+        for j in range(4):
+            if i == j:
+                ax.text(i, j, f"{100 * conf[i][j]:.1f}%", ha="center", va="center", color="k")
+            else:
+                ax.text(i, j, f"{100 * conf[i][j]:.1f}%", ha="center", va="center", color="w")
+    ax.set_ylabel("prepared")
+    ax.set_xlabel("measured")
+    ax.set_title(qubit_pair["qubit"])
+plt.show()
+node.results["figure_confusion"] = grid.fig
 # %%
 
 # %% {Update_state}
-if not node.parameters.simulate:
-    if node.parameters.load_data_id is None:
-        with node.record_state_updates():
-            for qp in qubit_pairs:
-                qp.confusion = confusions[qp.name].tolist()
+if node.parameters.load_data_id is None:
+    with node.record_state_updates():
+        for qp in qubit_pairs:
+            qp.confusion = confusions[qp.name].tolist()
 # %% {Save_results}
-if not node.parameters.simulate:
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+node.outcomes = {q.name: "successful" for q in qubits}
+node.results["initial_parameters"] = node.parameters.model_dump()
+node.machine = machine
+node.save()
 
 # %%

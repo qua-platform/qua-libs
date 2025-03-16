@@ -71,9 +71,6 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(name="MM_33a_Cz_1Qphase_calibration_frame", parameters=Parameters())
-assert not (
-    node.parameters.simulate and node.parameters.load_data_id is not None
-), "If simulate is True, load_data_id must be None, and vice versa."
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -103,12 +100,6 @@ octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
-# %%
-
-####################
-# Helper functions #
-####################
-
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
@@ -191,6 +182,7 @@ if node.parameters.simulate:
     node.results = {"figure": plt.gcf()}
     node.machine = machine
     node.save()
+    exit()
 elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(CPhase_Oscillations)
@@ -203,40 +195,37 @@ elif node.parameters.load_data_id is None:
             progress_counter(n, n_avg, start_time=results.start_time)
 
 # %% {Data_fetching_and_dataset_creation}
-if not node.parameters.simulate:
-    if node.parameters.load_data_id is None:
-        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubit_pairs, {"frame": frames})
-    else:
-        ds, machine = load_dataset(node.parameters.load_data_id)
+if node.parameters.load_data_id is None:
+    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+    ds = fetch_results_as_xarray(job.result_handles, qubit_pairs, {"frame": frames})
+else:
+    ds, machine = load_dataset(node.parameters.load_data_id)
 
-    node.results = {"ds": ds}
+node.results = {"ds": ds}
 
 
 # %% Analysis
-if not node.parameters.simulate:
+fit_data_target = fit_oscillation(ds.state_target, "frame")
+fit_data_control = fit_oscillation(ds.state_control, "frame")
 
-    fit_data_target = fit_oscillation(ds.state_target, "frame")
-    fit_data_control = fit_oscillation(ds.state_control, "frame")
-
-    ds = ds.assign(
-        {
-            "fitted_target": oscillation(
-                ds.frame,
-                fit_data_target.sel(fit_vals="a"),
-                fit_data_target.sel(fit_vals="f"),
-                fit_data_target.sel(fit_vals="phi"),
-                fit_data_target.sel(fit_vals="offset"),
-            ),
-            "fitted_control": oscillation(
-                ds.frame,
-                fit_data_control.sel(fit_vals="a"),
-                fit_data_control.sel(fit_vals="f"),
-                fit_data_control.sel(fit_vals="phi"),
-                fit_data_control.sel(fit_vals="offset"),
-            ),
-        }
-    )
+ds = ds.assign(
+    {
+        "fitted_target": oscillation(
+            ds.frame,
+            fit_data_target.sel(fit_vals="a"),
+            fit_data_target.sel(fit_vals="f"),
+            fit_data_target.sel(fit_vals="phi"),
+            fit_data_target.sel(fit_vals="offset"),
+        ),
+        "fitted_control": oscillation(
+            ds.frame,
+            fit_data_control.sel(fit_vals="a"),
+            fit_data_control.sel(fit_vals="f"),
+            fit_data_control.sel(fit_vals="phi"),
+            fit_data_control.sel(fit_vals="offset"),
+        ),
+    }
+)
 
 phases_target = {}
 phases_control = {}
@@ -289,20 +278,18 @@ for qp in qubit_pairs:
     offset_target[qp.name] = float(fit_data_target.sel(qubit=qp.name, fit_vals="offset"))
 
 # %% {Update_state}
-if not node.parameters.simulate:
-    if node.parameters.load_data_id is None:
-        with node.record_state_updates():
-            for qp in qubit_pairs:
-                qp.gates["Cz"].phase_shift_control -= phase_control[qp.name] / 1.0
-                qp.gates["Cz"].phase_shift_control = qp.gates["Cz"].phase_shift_control % (1.0)
-                qp.gates["Cz"].phase_shift_target -= phase_target[qp.name] / 1.0
-                qp.gates["Cz"].phase_shift_target = qp.gates["Cz"].phase_shift_target % (1.0)
+if node.parameters.load_data_id is None:
+    with node.record_state_updates():
+        for qp in qubit_pairs:
+            qp.gates["Cz"].phase_shift_control -= phase_control[qp.name] / 1.0
+            qp.gates["Cz"].phase_shift_control = qp.gates["Cz"].phase_shift_control % (1.0)
+            qp.gates["Cz"].phase_shift_target -= phase_target[qp.name] / 1.0
+            qp.gates["Cz"].phase_shift_target = qp.gates["Cz"].phase_shift_target % (1.0)
 
 # %% {Save_results}
-if not node.parameters.simulate:
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+node.outcomes = {q.name: "successful" for q in qubits}
+node.results["initial_parameters"] = node.parameters.model_dump()
+node.machine = machine
+node.save()
 
 # %%

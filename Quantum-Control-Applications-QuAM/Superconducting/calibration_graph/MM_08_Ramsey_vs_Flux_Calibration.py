@@ -164,6 +164,7 @@ if node.parameters.simulate:
     node.results = {"figure": plt.gcf()}
     node.machine = machine
     node.save()
+    exit()
 
 elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
@@ -176,125 +177,125 @@ elif node.parameters.load_data_id is None:
             progress_counter(n, n_avg, start_time=results.start_time)
 
 # %% {Data_fetching_and_dataset_creation}
-if not node.parameters.simulate:
-    if node.parameters.load_data_id is None:
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times, "flux": fluxes})
-        # Add the absolute time in µs to the dataset
-        ds = ds.assign_coords(idle_time=4 * ds.idle_time / 1e3)
-        ds.flux.attrs = {"long_name": "flux", "units": "V"}
-        ds.idle_time.attrs = {"long_name": "idle time", "units": "µs"}
-    else:
-        node = node.load_from_id(node.parameters.load_data_id)
-        ds = node.results["ds"]
-    # Add the dataset to the node
-    node.results = {"ds": ds}
+if node.parameters.load_data_id is None:
+    ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times, "flux": fluxes})
+    # Add the absolute time in µs to the dataset
+    ds = ds.assign_coords(idle_time=4 * ds.idle_time / 1e3)
+    ds.flux.attrs = {"long_name": "flux", "units": "V"}
+    ds.idle_time.attrs = {"long_name": "idle time", "units": "µs"}
+else:
+    node = node.load_from_id(node.parameters.load_data_id)
+    ds = node.results["ds"]
+# Add the dataset to the node
+node.results = {"ds": ds}
 
-    # %% {Data_analysis}
-    # TODO: explain the data analysis
-    fit_data = fit_oscillation_decay_exp(ds.state, "idle_time")
-    fit_data.attrs = {"long_name": "time", "units": "µs"}
-    fitted = oscillation_decay_exp(
-        ds.state.idle_time,
-        fit_data.sel(fit_vals="a"),
-        fit_data.sel(fit_vals="f"),
-        fit_data.sel(fit_vals="phi"),
-        fit_data.sel(fit_vals="offset"),
-        fit_data.sel(fit_vals="decay"),
+# %% {Data_analysis}
+# TODO: explain the data analysis
+fit_data = fit_oscillation_decay_exp(ds.state, "idle_time")
+fit_data.attrs = {"long_name": "time", "units": "µs"}
+fitted = oscillation_decay_exp(
+    ds.state.idle_time,
+    fit_data.sel(fit_vals="a"),
+    fit_data.sel(fit_vals="f"),
+    fit_data.sel(fit_vals="phi"),
+    fit_data.sel(fit_vals="offset"),
+    fit_data.sel(fit_vals="decay"),
+)
+
+frequency = fit_data.sel(fit_vals="f")
+frequency.attrs = {"long_name": "frequency", "units": "MHz"}
+
+decay = fit_data.sel(fit_vals="decay")
+decay.attrs = {"long_name": "decay", "units": "nSec"}
+
+tau = 1 / fit_data.sel(fit_vals="decay")
+tau.attrs = {"long_name": "T2*", "units": "uSec"}
+
+frequency = frequency.where(frequency > 0, drop=True)
+
+fitvals = frequency.polyfit(dim="flux", deg=2)
+flux = frequency.flux
+a = {}
+flux_offset = {}
+freq_offset = {}
+for q in qubits:
+    a[q.name] = float(-1e6 * fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values)
+    flux_offset[q.name] = float(
+        (
+            -0.5
+            * fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients
+            / fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients
+        ).values
+    )
+    freq_offset[q.name] = (
+        1e6
+        * (
+            flux_offset[q.name] ** 2 * float(fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values)
+            + flux_offset[q.name] * float(fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients.values)
+            + float(fitvals.sel(qubit=q.name, degree=0).polyfit_coefficients.values)
+        )
+        - detuning
     )
 
-    frequency = fit_data.sel(fit_vals="f")
-    frequency.attrs = {"long_name": "frequency", "units": "MHz"}
+# Save fitting results
+node.results["fit_results"] = {}
+for q in qubits:
+    node.results["fit_results"][q.name] = {}
+    node.results["fit_results"][q.name]["flux_offset"] = flux_offset[q.name]
+    node.results["fit_results"][q.name]["freq_offset"] = freq_offset[q.name]
+    node.results["fit_results"][q.name]["quad_term"] = a[q.name]
 
-    decay = fit_data.sel(fit_vals="decay")
-    decay.attrs = {"long_name": "decay", "units": "nSec"}
+# %% {Plotting}
+grid_names = [q.grid_location for q in qubits]
+grid = QubitGrid(ds, grid_names)
+for ax, qubit in grid_iter(grid):
+    ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
+    ax.set_title(qubit["qubit"])
+    ax.set_xlabel("Idle_time (uS)")
+    ax.set_ylabel(" Flux (V)")
+grid.fig.suptitle("Ramsey freq. Vs. flux")
+plt.tight_layout()
+plt.show()
+node.results["figure_raw"] = grid.fig
 
-    tau = 1 / fit_data.sel(fit_vals="decay")
-    tau.attrs = {"long_name": "T2*", "units": "uSec"}
+grid = QubitGrid(ds, grid_names)
+for ax, qubit in grid_iter(grid):
+    fitted_freq = (
+        fitvals.sel(qubit=qubit["qubit"], degree=2).polyfit_coefficients * flux**2
+        + fitvals.sel(qubit=qubit["qubit"], degree=1).polyfit_coefficients * flux
+        + fitvals.sel(qubit=qubit["qubit"], degree=0).polyfit_coefficients
+    )
+    frequency.sel(qubit=qubit["qubit"]).plot(marker=".", linewidth=0, ax=ax)
+    ax.plot(flux, fitted_freq)
+    ax.set_title(qubit["qubit"])
+    ax.set_xlabel(" Flux (V)")
+    print(f"The quad term for {qubit['qubit']} is {a[qubit['qubit']]/1e9:.3f} GHz/V^2")
+    print(f"Flux offset for {qubit['qubit']} is {flux_offset[qubit['qubit']]*1e3:.1f} mV")
+    print(f"Freq offset for {qubit['qubit']} is {freq_offset[qubit['qubit']]/1e6:.3f} MHz")
+    print()
+grid.fig.suptitle("Ramsey freq. Vs. flux")
+plt.tight_layout()
+plt.show()
+node.results["figure"] = grid.fig
 
-    frequency = frequency.where(frequency > 0, drop=True)
+# %% {Update_state}
+if node.parameters.load_data_id is None:
+    with node.record_state_updates():
+        for qubit in qubits:
+            qubit.xy.intermediate_frequency -= freq_offset[qubit.name]
+            if flux_point == "independent":
+                qubit.z.independent_offset += flux_offset[qubit.name]
+            elif flux_point == "joint":
+                qubit.z.joint_offset += flux_offset[qubit.name]
+            else:
+                raise RuntimeError(f"unknown flux_point")
+            qubit.freq_vs_flux_01_quad_term = float(a[qubit.name])
 
-    fitvals = frequency.polyfit(dim="flux", deg=2)
-    flux = frequency.flux
-    a = {}
-    flux_offset = {}
-    freq_offset = {}
-    for q in qubits:
-        a[q.name] = float(-1e6 * fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values)
-        flux_offset[q.name] = float(
-            (
-                -0.5
-                * fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients
-                / fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients
-            ).values
-        )
-        freq_offset[q.name] = (
-            1e6
-            * (
-                flux_offset[q.name] ** 2 * float(fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values)
-                + flux_offset[q.name] * float(fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients.values)
-                + float(fitvals.sel(qubit=q.name, degree=0).polyfit_coefficients.values)
-            )
-            - detuning
-        )
-
-    # Save fitting results
-    node.results["fit_results"] = {}
-    for q in qubits:
-        node.results["fit_results"][q.name] = {}
-        node.results["fit_results"][q.name]["flux_offset"] = flux_offset[q.name]
-        node.results["fit_results"][q.name]["freq_offset"] = freq_offset[q.name]
-        node.results["fit_results"][q.name]["quad_term"] = a[q.name]
-
-    # %% {Plotting}
-    grid_names = [q.grid_location for q in qubits]
-    grid = QubitGrid(ds, grid_names)
-    for ax, qubit in grid_iter(grid):
-        ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
-        ax.set_title(qubit["qubit"])
-        ax.set_xlabel("Idle_time (uS)")
-        ax.set_ylabel(" Flux (V)")
-    grid.fig.suptitle("Ramsey freq. Vs. flux")
-    plt.tight_layout()
-    plt.show()
-    node.results["figure_raw"] = grid.fig
-
-    grid = QubitGrid(ds, grid_names)
-    for ax, qubit in grid_iter(grid):
-        fitted_freq = (
-            fitvals.sel(qubit=qubit["qubit"], degree=2).polyfit_coefficients * flux**2
-            + fitvals.sel(qubit=qubit["qubit"], degree=1).polyfit_coefficients * flux
-            + fitvals.sel(qubit=qubit["qubit"], degree=0).polyfit_coefficients
-        )
-        frequency.sel(qubit=qubit["qubit"]).plot(marker=".", linewidth=0, ax=ax)
-        ax.plot(flux, fitted_freq)
-        ax.set_title(qubit["qubit"])
-        ax.set_xlabel(" Flux (V)")
-        print(f"The quad term for {qubit['qubit']} is {a[qubit['qubit']]/1e9:.3f} GHz/V^2")
-        print(f"Flux offset for {qubit['qubit']} is {flux_offset[qubit['qubit']]*1e3:.1f} mV")
-        print(f"Freq offset for {qubit['qubit']} is {freq_offset[qubit['qubit']]/1e6:.3f} MHz")
-        print()
-    grid.fig.suptitle("Ramsey freq. Vs. flux")
-    plt.tight_layout()
-    plt.show()
-    node.results["figure"] = grid.fig
-
-    # %% {Update_state}
-    if node.parameters.load_data_id is None:
-        with node.record_state_updates():
-            for qubit in qubits:
-                qubit.xy.intermediate_frequency -= freq_offset[qubit.name]
-                if flux_point == "independent":
-                    qubit.z.independent_offset += flux_offset[qubit.name]
-                elif flux_point == "joint":
-                    qubit.z.joint_offset += flux_offset[qubit.name]
-                else:
-                    raise RuntimeError(f"unknown flux_point")
-                qubit.freq_vs_flux_01_quad_term = float(a[qubit.name])
-
-        # %% {Save_results}
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
-        node.machine = machine
-        node.save()
+# %% {Save_results}
+if node.parameters.load_data_id is None:
+    node.outcomes = {q.name: "successful" for q in qubits}
+    node.results["initial_parameters"] = node.parameters.model_dump()
+    node.machine = machine
+    node.save()
 
 # %%

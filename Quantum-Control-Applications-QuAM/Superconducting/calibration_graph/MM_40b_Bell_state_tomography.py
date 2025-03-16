@@ -58,17 +58,17 @@ from quam_libs.lib.pulses import FluxPulse
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None
+    targets_name: ClassVar[Optional[str]] = "qubit_pairs"
     qubit_pairs: Optional[List[str]] = None
-    num_shots: int = 2000
+    num_shots: int = 200
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal["active", "thermal"] = "active"
+    reset_type: Literal["active", "thermal"] = "thermal"
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
 
 
-node = QualibrationNode(name="MM_40b_Bell_state_tomography", parameters=Parameters())
+node = QualibrationNode(name="40b_Bell_state_tomography", parameters=Parameters())
 assert not (
     node.parameters.simulate and node.parameters.load_data_id is not None
 ), "If simulate is True, load_data_id must be None, and vice versa."
@@ -80,16 +80,10 @@ u = unit(coerce_to_integer=True)
 machine = QuAM.load()
 
 # Get the relevant QuAM components
-if node.parameters.qubits is not None:
-    qubit_pairs = []
-    for qp in machine.active_qubit_pairs:
-        if qp.qubit_control.name in node.parameters.qubits and qp.qubit_target.name in node.parameters.qubits:
-            qubit_pairs.append(qp)
-elif node.parameters.qubit_pairs is None or node.parameters.qubit_pairs == "":
+if node.parameters.qubit_pairs is None or node.parameters.qubit_pairs == "":
     qubit_pairs = machine.active_qubit_pairs
 else:
     qubit_pairs = [machine.qubit_pairs[qp] for qp in node.parameters.qubit_pairs]
-qubits = list(set([qp.qubit_control for qp in qubit_pairs] + [qp.qubit_target for qp in qubit_pairs]))
 
 num_qubit_pairs = len(qubit_pairs)
 
@@ -361,6 +355,7 @@ if node.parameters.simulate:
     node.results = {"figure": plt.gcf()}
     node.machine = machine
     node.save()
+    exit()
 elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(CPhase_Oscillations)
@@ -373,28 +368,26 @@ elif node.parameters.load_data_id is None:
             progress_counter(n, n_shots, start_time=results.start_time)
 
 # %% {Data_fetching_and_dataset_creation}
-if not node.parameters.simulate:
-    if node.parameters.load_data_id is None:
-        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(
-            job.result_handles,
-            qubit_pairs,
-            {"tomo_axis_target": [0, 1, 2], "tomo_axis_control": [0, 1, 2], "N": np.linspace(1, n_shots, n_shots)},
-        )
-    else:
-        ds, machine = load_dataset(node.parameters.load_data_id)
+if node.parameters.load_data_id is None:
+    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+    ds = fetch_results_as_xarray(
+        job.result_handles,
+        qubit_pairs,
+        {"tomo_axis_target": [0, 1, 2], "tomo_axis_control": [0, 1, 2], "N": np.linspace(1, n_shots, n_shots)},
+    )
+else:
+    ds, machine = load_dataset(node.parameters.load_data_id)
 
-    node.results = {"ds": ds}
+node.results = {"ds": ds}
 
 # %%
 import xarray as xr
 
-if not node.parameters.simulate:
-    states = [0, 1, 2, 3]
+states = [0, 1, 2, 3]
 
-    results = []
-    for state in states:
-        results.append((ds.state == state).sum(dim="N") / node.parameters.num_shots)
+results = []
+for state in states:
+    results.append((ds.state == state).sum(dim="N") / node.parameters.num_shots)
 
 results_xr = xr.concat(results, dim=xr.DataArray(states, name="state"))
 results_xr = results_xr.rename({"dim_0": "state"})
@@ -418,132 +411,129 @@ for qp in qubit_pairs:
         corrected_results_qp.append(corrected_results_control)
     corrected_results.append(corrected_results_qp)
 
-    # %%
+# %%
 
-    # Convert corrected_results to an xarray DataArray
-    corrected_results_xr = xr.DataArray(
-        corrected_results,
-        dims=["qubit", "tomo_axis_control", "tomo_axis_target", "state"],
-        coords={
-            "qubit": [qp.name for qp in qubit_pairs],
-            "tomo_axis_control": [0, 1, 2],
-            "tomo_axis_target": [0, 1, 2],
-            "state": ["00", "01", "10", "11"],
-        },
-    )
-    corrected_results_xr = corrected_results_xr.stack(tomo_axis=["tomo_axis_target", "tomo_axis_control"])
+# Convert corrected_results to an xarray DataArray
+corrected_results_xr = xr.DataArray(
+    corrected_results,
+    dims=["qubit", "tomo_axis_control", "tomo_axis_target", "state"],
+    coords={
+        "qubit": [qp.name for qp in qubit_pairs],
+        "tomo_axis_control": [0, 1, 2],
+        "tomo_axis_target": [0, 1, 2],
+        "state": ["00", "01", "10", "11"],
+    },
+)
+corrected_results_xr = corrected_results_xr.stack(tomo_axis=["tomo_axis_target", "tomo_axis_control"])
 
-    # Store the xarray in the node results
+# Store the xarray in the node results
 
-    # %%
+# %%
 
-    paulis_data = {}
-    rhos = {}
-    for qp in qubit_pairs:
-        paulis_data[qp.name] = get_pauli_data(corrected_results_xr.sel(qubit=qp.name))
-        rhos[qp.name] = get_density_matrix(paulis_data[qp.name])
+paulis_data = {}
+rhos = {}
+for qp in qubit_pairs:
+    paulis_data[qp.name] = get_pauli_data(corrected_results_xr.sel(qubit=qp.name))
+    rhos[qp.name] = get_density_matrix(paulis_data[qp.name])
 
-    # %%
-    from scipy.linalg import sqrtm
+# %%
+from scipy.linalg import sqrtm
 
-    ideal_dat = np.array([[1, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 1]]) / 2
-    s_ideal = sqrtm(ideal_dat)
-    for qp in qubit_pairs:
-        fidelity = np.abs(np.trace(sqrtm(s_ideal @ rhos[qp.name] @ s_ideal))) ** 2
-        print(f"Fidelity of {qp.name}: {fidelity:.3f}")
-        purity = np.abs(np.trace(rhos[qp.name] @ rhos[qp.name]))
-        print(f"Purity of {qp.name}: {purity:.3f}")
-        print()
-        node.results[f"{qp.name}_fidelity"] = fidelity
-        node.results[f"{qp.name}_purity"] = purity
+ideal_dat = np.array([[1, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 1]]) / 2
+s_ideal = sqrtm(ideal_dat)
+for qp in qubit_pairs:
+    fidelity = np.abs(np.trace(sqrtm(s_ideal @ rhos[qp.name] @ s_ideal))) ** 2
+    print(f"Fidelity of {qp.name}: {fidelity:.3f}")
+    purity = np.abs(np.trace(rhos[qp.name] @ rhos[qp.name]))
+    print(f"Purity of {qp.name}: {purity:.3f}")
+    print()
+    node.results[f"{qp.name}_fidelity"] = fidelity
+    node.results[f"{qp.name}_purity"] = purity
 
 
 # %%
-if not node.parameters.simulate:
+for qp in qubit_pairs:
+    ideal_dat = np.array([[1, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 1]]) / 2
+    fig = plot_3d_hist_with_frame(rhos[qp.name], ideal_dat, title=qp.name)
+    node.results[f"{qp.name}_figure_city"] = fig
 
-    for qp in qubit_pairs:
-        ideal_dat = np.array([[1, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 1]]) / 2
-        fig = plot_3d_hist_with_frame(rhos[qp.name], ideal_dat, title=qp.name)
-        node.results[f"{qp.name}_figure_city"] = fig
+grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
+grid = QubitPairGrid(grid_names, qubit_pair_names)
+for ax, qubit_pair in grid_iter(grid):
+    rho = np.real(rhos[qubit_pair["qubit"]])
+    ax.pcolormesh(rho, vmin=-0.5, vmax=0.5, cmap="RdBu")
+    # plt.colorbar(ax.pcolormesh(rho), ax=ax)
+    for i in range(4):
+        for j in range(4):
+            if np.abs(rho[i][j]) < 0.1:
+                ax.text(i + 0.5, j + 0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="k")
+            else:
+                ax.text(i + 0.5, j + 0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="w")
+    ax.set_title(qubit_pair["qubit"])
+    ax.set_xlabel("Pauli Operators")
+    ax.set_ylabel("Pauli Operators")
+    ax.set_xticks(range(4), ["00", "01", "10", "11"])
+    ax.set_yticks(range(4), ["00", "01", "10", "11"])
+    ax.set_xticklabels(["00", "01", "10", "11"], rotation=45, ha="right")
+    ax.set_yticklabels(["00", "01", "10", "11"])
+grid.fig.suptitle(f"Bell state tomography (real part)")
+node.results["figure_rho_real"] = grid.fig
 
-    grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
-    grid = QubitPairGrid(grid_names, qubit_pair_names)
-    for ax, qubit_pair in grid_iter(grid):
-        rho = np.real(rhos[qubit_pair["qubit"]])
-        ax.pcolormesh(rho, vmin=-0.5, vmax=0.5, cmap="RdBu")
-        # plt.colorbar(ax.pcolormesh(rho), ax=ax)
-        for i in range(4):
-            for j in range(4):
-                if np.abs(rho[i][j]) < 0.1:
-                    ax.text(i + 0.5, j + 0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="k")
-                else:
-                    ax.text(i + 0.5, j + 0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="w")
-        ax.set_title(qubit_pair["qubit"])
-        ax.set_xlabel("Pauli Operators")
-        ax.set_ylabel("Pauli Operators")
-        ax.set_xticks(range(4), ["00", "01", "10", "11"])
-        ax.set_yticks(range(4), ["00", "01", "10", "11"])
-        ax.set_xticklabels(["00", "01", "10", "11"], rotation=45, ha="right")
-        ax.set_yticklabels(["00", "01", "10", "11"])
-    grid.fig.suptitle(f"Bell state tomography (real part)")
-    node.results["figure_rho_real"] = grid.fig
+grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
+grid = QubitPairGrid(grid_names, qubit_pair_names)
+for ax, qubit_pair in grid_iter(grid):
+    rho = np.imag(rhos[qubit_pair["qubit"]])
+    ax.pcolormesh(rho, vmin=-0.1, vmax=0.1, cmap="RdBu")
+    # plt.colorbar(ax.pcolormesh(rho), ax=ax)
+    for i in range(4):
+        for j in range(4):
+            if np.abs(rho[i][j]) < 0.1:
+                ax.text(i + 0.5, j + 0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="k")
+            else:
+                ax.text(i + 0.5, j + 0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="w")
+    ax.set_title(qubit_pair["qubit"])
+    ax.set_xlabel("Pauli Operators")
+    ax.set_ylabel("Pauli Operators")
+    ax.set_xticks(range(4), ["00", "01", "10", "11"])
+    ax.set_yticks(range(4), ["00", "01", "10", "11"])
+    ax.set_xticklabels(["00", "01", "10", "11"], rotation=45, ha="right")
+    ax.set_yticklabels(["00", "01", "10", "11"])
+grid.fig.suptitle(f"Bell state tomography (imaginary part)")
+node.results["figure_rho_imag"] = grid.fig
 
-    grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
-    grid = QubitPairGrid(grid_names, qubit_pair_names)
-    for ax, qubit_pair in grid_iter(grid):
-        rho = np.imag(rhos[qubit_pair["qubit"]])
-        ax.pcolormesh(rho, vmin=-0.1, vmax=0.1, cmap="RdBu")
-        # plt.colorbar(ax.pcolormesh(rho), ax=ax)
-        for i in range(4):
-            for j in range(4):
-                if np.abs(rho[i][j]) < 0.1:
-                    ax.text(i + 0.5, j + 0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="k")
-                else:
-                    ax.text(i + 0.5, j + 0.5, f"{ rho[i][j]:.2f}", ha="center", va="center", color="w")
-        ax.set_title(qubit_pair["qubit"])
-        ax.set_xlabel("Pauli Operators")
-        ax.set_ylabel("Pauli Operators")
-        ax.set_xticks(range(4), ["00", "01", "10", "11"])
-        ax.set_yticks(range(4), ["00", "01", "10", "11"])
-        ax.set_xticklabels(["00", "01", "10", "11"], rotation=45, ha="right")
-        ax.set_yticklabels(["00", "01", "10", "11"])
-    grid.fig.suptitle(f"Bell state tomography (imaginary part)")
-    node.results["figure_rho_imag"] = grid.fig
+grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
+grid = QubitPairGrid(grid_names, qubit_pair_names)
+for ax, qubit_pair in grid_iter(grid):
+    # Extract the values and labels for plotting
+    values = paulis_data[qubit_pair["qubit"]].values
+    labels = paulis_data[qubit_pair["qubit"]].coords["pauli_op"].values
 
-    grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
-    grid = QubitPairGrid(grid_names, qubit_pair_names)
-    for ax, qubit_pair in grid_iter(grid):
-        # Extract the values and labels for plotting
-        values = paulis_data[qubit_pair["qubit"]].values
-        labels = paulis_data[qubit_pair["qubit"]].coords["pauli_op"].values
+    # Create a bar plot
+    bars = ax.bar(range(len(values)), values)
 
-        # Create a bar plot
-        bars = ax.bar(range(len(values)), values)
+    # Customize the plot
+    ax.set_xlabel("Pauli Operators")
+    ax.set_ylabel("Value")
+    ax.set_title(qubit_pair["qubit"])
+    ax.set_xticks(range(len(labels)), labels, rotation=45, ha="right")
 
-        # Customize the plot
-        ax.set_xlabel("Pauli Operators")
-        ax.set_ylabel("Value")
-        ax.set_title(qubit_pair["qubit"])
-        ax.set_xticks(range(len(labels)), labels, rotation=45, ha="right")
+    # Add value labels on top of each bar
+    for bar in bars:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2.0, height, f"{height:.2f}", ha="center", va="bottom")
 
-        # Add value labels on top of each bar
-        for bar in bars:
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2.0, height, f"{height:.2f}", ha="center", va="bottom")
-
-    # Adjust layout and display the plot
-    plt.tight_layout()
-    plt.show()
-    node.results["figure_paulis"] = grid.fig
+# Adjust layout and display the plot
+plt.tight_layout()
+plt.show()
+node.results["figure_paulis"] = grid.fig
 # %%
 
 # %% {Update_state}
 
 # %% {Save_results}
-if not node.parameters.simulate:
-    node.outcomes = {qp.name: "successful" for qp in qubit_pairs}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+node.outcomes = {qp.name: "successful" for qp in qubit_pairs}
+node.results["initial_parameters"] = node.parameters.model_dump()
+node.machine = machine
+node.save()
 
 # %%
