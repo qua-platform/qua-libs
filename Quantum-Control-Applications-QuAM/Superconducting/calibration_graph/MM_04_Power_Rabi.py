@@ -98,7 +98,7 @@ if N_pi > 1:
 else:
     N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
 
-sweep_axes = {
+axes = {
     "qubits": node.parameters.qubits,
     "N_pi": xr.DataArray(N_pi_vec),
     "amplitude": xr.DataArray(amplitude_scales),

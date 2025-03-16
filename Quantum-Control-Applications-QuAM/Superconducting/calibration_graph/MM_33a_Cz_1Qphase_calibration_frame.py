@@ -32,9 +32,13 @@ Outcomes:
 """
 
 # %% {Imports}
+from typing import Literal, Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
-from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
+from quam_libs.macros import active_reset, readout_state
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from qualang_tools.results import progress_counter, fetching_tool
@@ -43,16 +47,8 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
-from typing import Literal, Optional, List, ClassVar
-import matplotlib.pyplot as plt
-import numpy as np
-import warnings
-from qualang_tools.bakery import baking
 from quam_libs.lib.fit import fit_oscillation, oscillation, fix_oscillation_phi_2pi
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from scipy.optimize import curve_fit
-from quam_libs.components.gates.two_qubit_gates import CZGate
-from quam_libs.lib.pulses import FluxPulse
 
 
 # %% {Node_parameters}
@@ -89,8 +85,6 @@ elif node.parameters.qubit_pairs is None or node.parameters.qubit_pairs == "":
 else:
     qubit_pairs = [machine.qubit_pairs[qp] for qp in node.parameters.qubit_pairs]
 qubits = list(set([qp.qubit_control for qp in qubit_pairs] + [qp.qubit_target for qp in qubit_pairs]))
-# if any([qp.q1.z is None or qp.q2.z is None for qp in qubit_pairs]):
-#     warnings.warn("Found qubit pairs without a flux line. Skipping")
 
 num_qubit_pairs = len(qubit_pairs)
 
@@ -108,6 +102,11 @@ flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or
 
 # Loop parameters
 frames = np.arange(0, 1, 1 / node.parameters.num_frames + 0.01)
+
+axes = {
+    "qubit_pairs": [qp.name for qp in qubit_pairs],
+    "frames": xr.DataArray(frames),
+}
 
 with program() as CPhase_Oscillations:
     amp = declare(fixed)

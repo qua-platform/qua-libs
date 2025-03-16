@@ -32,6 +32,11 @@ Outcomes:
 """
 
 # %% {Imports}
+from typing import Literal, Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
+from scipy.optimize import curve_fit
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
@@ -43,14 +48,9 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
-from typing import Literal, Optional, List, ClassVar
-import matplotlib.pyplot as plt
-import numpy as np
-import warnings
 from qualang_tools.bakery import baking
 from quam_libs.lib.fit import fit_oscillation, oscillation, fix_oscillation_phi_2pi
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from scipy.optimize import curve_fit
 from quam_libs.components.gates.two_qubit_gates import CZGate
 from quam_libs.lib.pulses import FluxPulse
 
@@ -105,11 +105,7 @@ octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
-# %%
-
-####################
-# Helper functions #
-####################
+# %% {Helper functions}
 
 
 def tanh_fit(x, a, b, c, d):
@@ -124,6 +120,12 @@ flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or
 # Loop parameters
 amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
 frames = np.arange(0, 1, 1 / node.parameters.num_frames)
+
+axes = {
+    "qubit": xr.DataArray(node.parameters.qubits),
+    "amplitudes": xr.DataArray(amplitudes),
+    "frame": xr.DataArray(frames),
+}
 
 with program() as CPhase_Oscillations:
     amp = declare(fixed)

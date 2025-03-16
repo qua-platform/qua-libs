@@ -33,6 +33,11 @@ Outcomes:
 """
 
 # %% {Imports}
+from typing import Literal, Optional, List, ClassVar
+import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
+from matplotlib.colors import LinearSegmentedColormap
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
@@ -44,10 +49,6 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
-from typing import Literal, Optional, List, ClassVar
-import matplotlib.pyplot as plt
-import numpy as np
-import warnings
 from qualang_tools.bakery import baking
 from quam_libs.lib.fit import fit_oscillation, oscillation, fix_oscillation_phi_2pi
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
@@ -93,14 +94,9 @@ octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
-# %%
-
-####################
-# Helper functions #
-####################
-from matplotlib.colors import LinearSegmentedColormap
 
 
+# %% {helper_functions}
 def plot_3d_hist_with_frame(data, ideal, title=""):
     fig, axs = plt.subplots(1, 2, figsize=(8, 4), subplot_kw={"projection": "3d"})
     # Create a grid of positions for the bars
@@ -285,6 +281,12 @@ def get_density_matrix(paulis_data):
 n_shots = node.parameters.num_shots  # The number of averages
 
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
+
+axes = {
+    "qubit_pairs": [qp.name for qp in qubit_pairs],
+    "tomo_axis_control": [0, 1, 2],
+    "tomo_axis_target": [0, 1, 2],
+}
 
 with program() as CPhase_Oscillations:
     n = declare(int)

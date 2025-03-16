@@ -94,7 +94,7 @@ fluxes = np.arange(
     step=node.parameters.flux_step,
 )
 
-sweep_axes = {
+axes = {
     "qubits": node.parameters.qubits,
     "flux": xr.DataArray(fluxes),
     "idle_time": xr.DataArray(idle_times),
