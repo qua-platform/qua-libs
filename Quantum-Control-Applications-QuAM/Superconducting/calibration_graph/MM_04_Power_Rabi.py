@@ -27,7 +27,7 @@ from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.instrument_limits import instrument_limits
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.lib.fit import fit_oscillation, oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -197,7 +197,7 @@ if node.parameters.load_data_id is None:
         }
     )
 else:
-    node = node.load_from_id(node.parameters.load_data_id)
+    node.load_from_id(node.parameters.load_data_id)
     ds = node.results["ds"]
 node.results = {"ds": ds}
 

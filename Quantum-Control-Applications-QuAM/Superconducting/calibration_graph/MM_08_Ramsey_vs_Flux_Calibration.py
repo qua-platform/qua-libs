@@ -19,7 +19,6 @@ Next steps before going to the next node:
 
 # %% {Imports}
 from typing import Literal, Optional, List
-
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
@@ -36,8 +35,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.qua_datasets import convert_IQ_to_V
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.macros import qua_declaration, readout_state
 
 
@@ -185,7 +183,7 @@ if node.parameters.load_data_id is None:
     ds.flux.attrs = {"long_name": "flux", "units": "V"}
     ds.idle_time.attrs = {"long_name": "idle time", "units": "µs"}
 else:
-    node = node.load_from_id(node.parameters.load_data_id)
+    node.load_from_id(node.parameters.load_data_id)
     ds = node.results["ds"]
 node.results = {"ds": ds}
 

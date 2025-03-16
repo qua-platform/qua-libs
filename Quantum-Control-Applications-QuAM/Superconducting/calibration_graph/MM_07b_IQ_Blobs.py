@@ -26,7 +26,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray
 from qualang_tools.analysis.discriminator import two_state_discriminator
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.multi_user import qm_session
@@ -41,7 +41,6 @@ import xarray as xr
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
     qubits: Optional[List[str]] = None
     num_runs: int = 2000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
@@ -58,17 +57,12 @@ node = QualibrationNode(name="MM_07b_IQ_Blobs", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
-# Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Instantiate the QuAM class from the state file
 machine = QuAM.load()
-# Generate the OPX and Octave configurations
 config = machine.generate_config()
-# Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = machine.connect(return_existing=True)
 
-# Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
 else:
@@ -186,7 +180,7 @@ if node.parameters.load_data_id is None:
     # Convert IQ data into volts
     ds = convert_IQ_to_V(ds, qubits, ["I_g", "Q_g", "I_e", "Q_e"])
 else:
-    node = node.load_from_id(node.parameters.load_data_id)
+    node.load_from_id(node.parameters.load_data_id)
     ds = node.results["ds"]
 
 # %% {Data_analysis}

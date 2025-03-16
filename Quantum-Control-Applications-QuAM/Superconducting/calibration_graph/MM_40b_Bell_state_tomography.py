@@ -40,21 +40,14 @@ import xarray as xr
 from matplotlib.colors import LinearSegmentedColormap
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
-from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
+from quam_libs.macros import active_reset, readout_state
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
-from qualang_tools.bakery import baking
-from quam_libs.lib.fit import fit_oscillation, oscillation, fix_oscillation_phi_2pi
-from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from scipy.optimize import curve_fit
-from quam_libs.components.gates.two_qubit_gates import CZGate
-from quam_libs.lib.pulses import FluxPulse
 
 
 # %% {Node_parameters}
@@ -378,7 +371,8 @@ if node.parameters.load_data_id is None:
         {"tomo_axis_target": [0, 1, 2], "tomo_axis_control": [0, 1, 2], "N": np.linspace(1, n_shots, n_shots)},
     )
 else:
-    ds, machine = load_dataset(node.parameters.load_data_id)
+    node.load_from_id(node.parameters.load_data_id)
+    ds = node.results["ds"]
 
 node.results = {"ds": ds}
 
