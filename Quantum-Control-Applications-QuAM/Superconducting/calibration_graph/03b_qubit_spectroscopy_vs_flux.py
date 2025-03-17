@@ -40,15 +40,15 @@ import numpy as np
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
-    num_averages: int = 50
+    num_averages: int = 150
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.1
     operation_len_in_ns: Optional[int] = None
     frequency_span_in_mhz: float = 40
-    frequency_step_in_mhz: float = 0.25
-    min_flux_offset_in_v: float = -0.01
-    max_flux_offset_in_v: float = 0.01
-    num_flux_points: int = 51
+    frequency_step_in_mhz: float = 1.0
+    min_flux_offset_in_v: float = -0.007
+    max_flux_offset_in_v: float = 0.007
+    num_flux_points: int = 21
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500
@@ -288,3 +288,5 @@ if not node.parameters.simulate:
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
+
+# %%

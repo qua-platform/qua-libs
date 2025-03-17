@@ -43,14 +43,14 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 50
-    operation_x180_or_any_90: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x180"
-    min_amp_factor: float = 0.
-    max_amp_factor: float = 1.5
-    amp_factor_step: float = 0.05
-    max_number_rabi_pulses_per_sweep: int = 1
+    operation_x180_or_any_90: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x90"
+    min_amp_factor: float = 0.96
+    max_amp_factor: float = 1.04
+    amp_factor_step: float = 0.001
+    max_number_rabi_pulses_per_sweep: int = 200
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
-    state_discrimination: bool = False
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    state_discrimination: bool = True
     update_x90: bool = True
     simulate: bool = False
     simulation_duration_ns: int = 2500
