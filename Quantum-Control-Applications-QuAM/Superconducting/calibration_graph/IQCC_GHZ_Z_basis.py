@@ -57,7 +57,7 @@ from quam_libs.lib.pulses import FluxPulse
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
+    qubits: Optional[List[str]] = None
     qubit_triplets: List[List[str]] = [["qubitC2","qubitC1","qubitC3"]]# list of lists of thwe qubits making up the GHZ state
     num_shots: int = 100000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -68,7 +68,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(
-    name="41a_GHZ_Zbasis", parameters=Parameters()
+    name="IQCC_41a_GHZ_Zbasis", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
@@ -139,8 +139,11 @@ with program() as CPhase_Oscillations:
             # reset
             if node.parameters.reset_type == "active":
                 active_reset(qubit_triplet.qubit_A)
+                align()
                 active_reset(qubit_triplet.qubit_B)
+                align()
                 active_reset(qubit_triplet.qubit_C)
+                align()
 
             else:
                 wait(5*qubit_triplet.qubit_A.thermalization_time * u.ns)

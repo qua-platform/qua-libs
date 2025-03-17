@@ -103,7 +103,7 @@ with program() as cross_talk_sequential:
                 with for_(amp, 0.0, amp < node.parameters.max_amplitude, amp + node.parameters.amplitude_step):
 
                     if node.parameters.reset_type_thermal_or_active == "active":
-                        active_reset(qubit, "readout")
+                        active_reset(qubit)
                     else:
                         qubit.wait(qubit.thermalization_time * u.ns)
 

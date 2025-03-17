@@ -94,7 +94,7 @@ with program() as iq_blobs:
             # ground iq blobs for all qubits
             save(n, n_st)
             if reset_type == "active":
-                active_reset(qubit, "readout")
+                active_reset(qubit)
             elif reset_type == "thermal":
                 qubit.wait(4 * qubit.thermalization_time * u.ns)
             else:
@@ -110,7 +110,7 @@ with program() as iq_blobs:
             qubit.align()
             # excited iq blobs for all qubits
             if reset_type == "active":
-                active_reset(qubit, "readout")
+                active_reset(qubit)
             elif reset_type == "thermal":
                 qubit.wait(qubit.thermalization_time * u.ns)
             else:

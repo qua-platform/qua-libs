@@ -45,6 +45,8 @@ class QuAM(QuamRoot):
     active_qubit_names: List[str] = field(default_factory=list)
     active_qubit_pair_names: List[str] = field(default_factory=list)
 
+    qC1_qC2_qC3_confusion_matrix: List[List[float]] = field(default_factory=list)
+
     _data_handler: ClassVar[DataHandler] = None
     qmm: ClassVar[Optional[QuantumMachinesManager]] = None
 

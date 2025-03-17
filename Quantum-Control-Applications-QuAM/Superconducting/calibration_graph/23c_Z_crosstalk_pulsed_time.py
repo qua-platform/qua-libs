@@ -106,7 +106,7 @@ with program() as cross_talk_sequential:
                 with for_(*from_array(t, idle_times)): 
                     with for_(play_main_qubit, 0, play_main_qubit < 2, play_main_qubit + 1):
                         if node.parameters.reset_type_thermal_or_active == "active":
-                            active_reset(qubit, "readout")
+                            active_reset(qubit)
                         else:
                             qubit.wait(qubit.thermalization_time * u.ns)
                         assign(phi, Cast.mul_fixed_by_int(detunings[qubit.name] * 1e-9 , 4 * t))                        

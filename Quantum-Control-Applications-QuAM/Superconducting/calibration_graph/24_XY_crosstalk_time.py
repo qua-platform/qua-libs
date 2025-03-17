@@ -109,7 +109,7 @@ with program() as cross_talk_sequential:
                 with for_(*from_array(t, idle_times)): 
                     with for_(*from_array(phi, phis)):
                         if node.parameters.reset_type_thermal_or_active == "active":
-                            active_reset(qubit, "readout")
+                            active_reset(qubit)
                         else:
                             qubit.wait(qubit.thermalization_time * u.ns)
                         qubit.align()

@@ -57,7 +57,7 @@ from quam_libs.lib.pulses import FluxPulse
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ['qubitC1', 'qubitC3']
     qubit_pairs: Optional[List[str]] = None
     num_averages: int = 1000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"

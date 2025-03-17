@@ -95,7 +95,7 @@ with program() as cross_talk_sequential:
                 save(n, n_st)            
                 with for_(*from_array(num, num_of_pulses)):   
                     if node.parameters.reset_type_thermal_or_active == "active":
-                        active_reset(qubit, "readout")
+                        active_reset(qubit)
                     else:
                         qubit.wait(qubit.thermalization_time * u.ns)
                     qubit.align()
@@ -138,7 +138,7 @@ with program() as cross_talk_sequential:
 #             with for_(*from_array(num, num_of_pulses)):  
 #                  for i, qubit in enumerate(qubits):
 #                     if node.parameters.reset_type_thermal_or_active == "active":
-#                         active_reset(qubit, "readout")
+#                         active_reset(qubit)
 #                     else:
 #                         qubit.wait(qubit.thermalization_time * u.ns)
 #                     qubit.align()

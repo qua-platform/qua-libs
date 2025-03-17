@@ -61,7 +61,7 @@ class Parameters(NodeParameters):
     qubit_pairs: Optional[List[str]] = None
     num_shots: int = 2000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "active"
+    reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
@@ -144,6 +144,7 @@ with program() as CPhase_Oscillations:
                     # reset
                     if node.parameters.reset_type == "active":
                             active_reset(qp.qubit_control)
+                            qp.align()
                             active_reset(qp.qubit_target)
                             qp.align()
                     else:
@@ -151,10 +152,8 @@ with program() as CPhase_Oscillations:
                     qp.align()
                     
                     # setting both qubits ot the initial state
-                    with if_(control_initial==1):
-                        qp.qubit_control.xy.play("x180")
-                    with if_(target_initial==1):
-                        qp.qubit_target.xy.play("x180")
+                    qp.qubit_control.xy.play("x180", condition=control_initial==1)
+                    qp.qubit_target.xy.play("x180", condition=target_initial==1)
                     
                     qp.align()
                     # readout
