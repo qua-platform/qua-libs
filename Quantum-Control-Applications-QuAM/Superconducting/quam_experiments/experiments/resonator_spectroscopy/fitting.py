@@ -82,7 +82,7 @@ def fit_resonators(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, 
     """
     # Add the RF frequency
     # Fit the resonator line
-    fit_results = peaks_dips(ds.R, "detuning")
+    fit_results = peaks_dips(ds.IQ_abs, "detuning")
     # Extract the relevant fitted parameters
     fit_data, fit_results = _extract_relevant_fit_parameters(fit_results, node)
     return fit_data, fit_results

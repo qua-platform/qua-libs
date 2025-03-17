@@ -37,7 +37,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     for ax, qubit in grid_iter(grid):
         plot_individual_raw_data_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
 
-    grid.fig.suptitle("Resonator spectroscopy (amplitude + fit)")
+    grid.fig.suptitle("Resonator spectroscopy vs flux")
     grid.fig.set_size_inches(15, 9)
     grid.fig.tight_layout()
     return grid.fig
@@ -62,26 +62,48 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    if fit:
-        fitted_data = lorentzian(
-            ds.detuning,
-            float(fit.amplitude.values),
-            float(fit.position.values),
-            float(fit.width.values) / 2,
-            float(fit.base_line.mean().values),
-        )
-    else:
-        fitted_data = None
 
-    # Create a first x-axis for full_freq_GHz
-    (ds.assign_coords(full_freq_GHz=ds.full_freq / u.GHz).loc[qubit].IQ_abs / u.mV).plot(ax=ax, x="full_freq_GHz")
-    ax.set_xlabel("RF frequency [GHz]")
-    ax.set_ylabel(r"$R=\sqrt{I^2 + Q^2}$ [mV]")
-    # Create a second x-axis for detuning_MHz
     ax2 = ax.twiny()
-    (ds.assign_coords(detuning_MHz=ds.detuning / u.MHz).loc[qubit].IQ_abs / u.mV).plot(ax=ax2, x="detuning_MHz")
-    ax2.set_xlabel("Detuning [MHz]")
-    # Plot the fitted data
-    if fitted_data is not None:
-        ax2.plot(ds.detuning / u.MHz, fitted_data / u.mV, "r--")
-    ax.set_ylabel("Trans. amp. I [mV]")
+    # Plot using the attenuated current x-axis
+    ds.assign_coords(freq_GHz=ds.full_freq / 1e9).loc[qubit].IQ_abs.plot(
+        ax=ax2,
+        add_colorbar=False,
+        x="attenuated_current",
+        y="freq_GHz",
+        robust=True,
+    )
+    ax2.set_xlabel("Current (A)")
+    ax2.set_ylabel("Freq (GHz)")
+    ax2.set_title("")
+    # Move ax2 behind ax
+    ax2.set_zorder(ax.get_zorder() - 1)
+    ax.patch.set_visible(False)
+    # Plot using the flux x-axis
+    ds.assign_coords(freq_GHz=ds.full_freq / 1e9).loc[qubit].IQ_abs.plot(
+        ax=ax, add_colorbar=False, x="flux_bias", y="freq_GHz", robust=True
+    )
+    if fit.fit_results.success.values:
+        ax.axvline(
+            fit.fit_results.idle_offset,
+            linestyle="dashed",
+            linewidth=2,
+            color="r",
+            label="idle offset",
+        )
+        ax.axvline(
+            fit.fit_results.flux_min,
+            linestyle="dashed",
+            linewidth=2,
+            color="orange",
+            label="min offset",
+        )
+        # Location of the current resonator frequency
+        ax.plot(
+            fit.fit_results.idle_offset.values,
+            fit.fit_results.sweet_spot_frequency.values * 1e-9,
+            "r*",
+            markersize=10,
+        )
+    ax.set_title(qubit["qubit"])
+    ax.set_xlabel("Flux (V)")
+

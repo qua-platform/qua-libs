@@ -54,7 +54,7 @@ def convert_IQ_to_V(
 def add_amplitude_and_phase(
     ds: xr.Dataset, dim: str, unwrap_flag: bool=True, subtract_slope_flag: bool = False) -> xr.Dataset:
     """
-    Adds the amplitude 'R' and phase 'phase' data to the specified xarray dataset containing the quadratures 'I' and 'Q'.
+    Adds the amplitude 'IQ_abs' and phase 'phase' data to the specified xarray dataset containing the quadratures 'I' and 'Q'.
 
     Parameters
     ----------
@@ -70,16 +70,16 @@ def add_amplitude_and_phase(
     Returns
     -------
     xr.Dataset
-        The modified xarray dataset with added 'R' and 'phase' variables.
+        The modified xarray dataset with added 'IQ_abs' and 'phase' variables.
 
     Notes
     -----
-    - The amplitude 'R' is calculated as the absolute value of the complex signal formed by 'I' and 'Q'.
+    - The amplitude 'IQ_abs' is calculated as the absolute value of the complex signal formed by 'I' and 'Q'.
     - The phase 'phase' is calculated as the unwrapped angle of the complex signal formed by 'I' and 'Q'.
     - If `subtract_slope_flag` is True, the slope is subtracted from the 'detuning' coordinate using the `subtract_slope` function.
     """
     s = ds["I"] + 1j * ds["Q"]
-    ds["R"] = apply_modulus(s)
+    ds["IQ_abs"] = apply_modulus(s)
     ds["phase"] = apply_angle(s, dim, unwrap_flag)
     if subtract_slope_flag:
         ds["phase"] = subtract_slope(ds.phase, dim)

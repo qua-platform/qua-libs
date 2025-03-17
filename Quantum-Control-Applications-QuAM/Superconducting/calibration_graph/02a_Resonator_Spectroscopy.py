@@ -120,12 +120,13 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 save(n, n_st)
                 with for_(*from_array(df, dfs)):
                     for i, qubit in multiplexed_qubits.items():
+                        rr = qubit.resonator
                         # Update the resonator frequencies for all resonators
-                        qubit.resonator.update_frequency(df + qubit.resonator.intermediate_frequency)
+                        rr.update_frequency(df + rr.intermediate_frequency)
                         # Measure the resonator
-                        qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                        rr.measure("readout", qua_vars=(I[i], Q[i]))
                         # wait for the resonator to relax
-                        qubit.resonator.wait(100*qubit.resonator.depletion_time * u.ns)
+                        rr.wait(rr.depletion_time * u.ns)
                         # save data
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
