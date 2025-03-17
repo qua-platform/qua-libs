@@ -65,14 +65,14 @@ g = QualibrationGraph(
             num_random_sequences=500,
             name="single_qubit_randomized_benchmarking",
         ),
-        # "Cz_phase_calibration_frame": library.nodes["IQCC_32a_Cz_phase_calibration_frame"].copy(
-        #     flux_point_joint_or_independent=flux_point,
-        #     name="Cz_phase_calibration_frame",
-        # ),
-        "Cz_1Q_phase_calibration_frame": library.nodes["IQCC_33a_Cz_1Qphase_calibration_frame"].copy(
+        "Cz_phase_calibration_frame": library.nodes["IQCC_32a_Cz_phase_calibration_frame"].copy(
+            reset_type="thermal",
+            flux_point_joint_or_independent=flux_point,
+            name="Cz_phase_calibration_frame",
+        ),
+        "IQCC_Cz_1Q_phase_calibration_frame": library.nodes["IQCC_33a_Cz_1Qphase_calibration_frame"].copy(
             reset_type=reset_type_thermal_or_active,
             flux_point_joint_or_independent=flux_point,
-            name="Cz_1Q_phase_calibration_frame",
         ),
         "2Q_confusion_matrix": library.nodes["IQCC_34_2Q_confusion_matrix"].copy(
             reset_type=reset_type_thermal_or_active,
@@ -92,10 +92,9 @@ g = QualibrationGraph(
         ("ramsey_flux_calibration", "power_rabi_x180"),
         ("power_rabi_x180", "power_rabi_x90"),
         ("power_rabi_x90", "single_qubit_randomized_benchmarking"),
-        # ("single_qubit_randomized_benchmarking", "Cz_phase_calibration_frame"),
-        # ("Cz_phase_calibration_frame", "Cz_1Q_phase_calibration_frame"),
-        ("single_qubit_randomized_benchmarking", "Cz_1Q_phase_calibration_frame"),
-        ("Cz_1Q_phase_calibration_frame", "2Q_confusion_matrix"),
+        ("single_qubit_randomized_benchmarking", "Cz_phase_calibration_frame"),
+        ("Cz_phase_calibration_frame", "IQCC_Cz_1Q_phase_calibration_frame"),
+        ("IQCC_Cz_1Q_phase_calibration_frame", "2Q_confusion_matrix"),
         ("2Q_confusion_matrix", "3Q_confusion_matrix"),
         ("3Q_confusion_matrix", "GHZ_Z_basis"),
     ],
