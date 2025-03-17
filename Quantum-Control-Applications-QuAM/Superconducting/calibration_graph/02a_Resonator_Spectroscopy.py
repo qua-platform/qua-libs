@@ -34,6 +34,7 @@ from qualibrate.utils.logger_m import logger
 from quam_config import QuAM
 from quam_experiments.experiments.resonator_spectroscopy import (
     Parameters,
+    process_raw_dataset,
     fit_resonators,
     log_fitted_results,
     plot_raw_amplitude_with_fit,
@@ -41,7 +42,6 @@ from quam_experiments.experiments.resonator_spectroscopy import (
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
-from quam_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
 from quam_libs.xarray_data_fetcher import XarrayDataFetcher
 
 # %% {Node_parameters}
@@ -75,7 +75,6 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.load_data_id = 31
     pass
 
 
@@ -91,7 +90,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
-    num_qubits = len(node.namespace["qubits"])
+    num_qubits = len(qubits)
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_averages
     # The frequency sweep around the resonator resonance frequency
@@ -100,7 +99,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     dfs = np.arange(-span / 2, +span / 2, step)
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
-        "qubit": xr.DataArray(node.machine.active_qubit_names),
+        "qubit": xr.DataArray(qubits.get_names()),
         "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
     }
 
@@ -116,7 +115,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
-
+            align()
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(df, dfs)):
@@ -126,10 +125,11 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                         # Measure the resonator
                         qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                         # wait for the resonator to relax
-                        qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
+                        qubit.resonator.wait(100*qubit.resonator.depletion_time * u.ns)
                         # save data
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
+                    align()
 
         with stream_processing():
             n_st.save("n")
@@ -190,8 +190,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    node.results["ds_raw"] = convert_IQ_to_V(node.results["ds_raw"], node.namespace["qubits"])
-    node.results["ds_raw"] = add_amplitude_and_phase(node.results["ds_raw"], "detuning", subtract_slope_flag=True)
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_resonators(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 

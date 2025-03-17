@@ -75,3 +75,9 @@ class BatchableList(MutableSequence[T]):
             batch = {idx: self._items[idx] for idx in group}
             batched_items.append(batch)
         return batched_items
+
+    def get_names(self):
+        names = []
+        for q in self._items:
+            names.append(q.name)
+        return names
