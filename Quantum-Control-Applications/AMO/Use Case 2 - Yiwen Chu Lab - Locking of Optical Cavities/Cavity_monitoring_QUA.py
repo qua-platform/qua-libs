@@ -1,8 +1,7 @@
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration_cavity_locking_ETHZ_OPX1 import *
-from qualang_tools.addons.variables import assign_variables_to_element
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
@@ -91,9 +90,6 @@ def PID_monitor_prog(
         gain_I_st = declare_stream()
         gain_D_st = declare_stream()
         target_st = declare_stream()
-        # Ensure that the results variables are assigned to the measurement elements
-        assign_variables_to_element("detector_DC", single_shot_DC)
-        assign_variables_to_element("detector_AC", I, Q, single_shot_AC)
 
         # Repeat the experiment N_outer_repeat times
         with for_(n_outer_repeat, 0, n_outer_repeat < N_outer_repeat, n_outer_repeat + 1):

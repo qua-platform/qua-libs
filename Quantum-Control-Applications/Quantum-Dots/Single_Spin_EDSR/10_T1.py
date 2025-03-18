@@ -30,10 +30,9 @@ from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
-from qualang_tools.addons.variables import assign_variables_to_element
 import matplotlib.pyplot as plt
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
-
+import matplotlib.pyplot as plt
 
 ###################
 # The QUA program #
@@ -58,9 +57,6 @@ with program() as T1_prog:
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
     dc_signal = declare(fixed)  # QUA variable for the measured dc signal
 
-    # Ensure that the result variables are assigned to the measurement elements
-    assign_variables_to_element("tank_circuit", I, Q)
-    assign_variables_to_element("TIA", dc_signal)
     # seq.add_step(voltage_point_name="readout", duration=16)
     with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
         save(n, n_st)
@@ -108,10 +104,12 @@ if simulate:
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, T1_prog, simulation_config)
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
     # Plot the simulated samples
     plt.figure()
     plt.subplot(211)
-    job.get_simulated_samples().con1.plot()
+    samples.con1.plot()
     plt.axhline(level_init[0], color="k", linestyle="--")
     plt.axhline(level_manip[0], color="k", linestyle="--")
     plt.axhline(level_readout[0], color="k", linestyle="--")
@@ -135,7 +133,13 @@ if simulate:
 
     plt.subplot(212)
     get_filtered_voltage(job.get_simulated_samples().con1.analog["1"], 1e-9, bias_tee_cut_off_frequency, True)
-
+    plt.show()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)

@@ -26,7 +26,6 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.voltage_gates import VoltageGateSequence
-from qualang_tools.addons.variables import assign_variables_to_element
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
@@ -287,9 +286,6 @@ with program() as rb:
     state = declare(bool)  # QUA variable for state discrimination
     sequence_time = declare(int)  # QUA variable for RB sequence duration for a given depth
     dc_signal = declare(fixed)  # QUA variable for the measured dc signal
-    # Ensure that the result variables are assigned to the measurement elements
-    assign_variables_to_element("tank_circuit", I, Q)
-    assign_variables_to_element("TIA", dc_signal)
 
     # The relevant streams
     m_st = declare_stream()
@@ -404,16 +400,16 @@ simulate = True
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=40_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, rb, simulation_config)
-
-    plt.figure()
-    job.get_simulated_samples().con1.plot()
-    # Get the waveform report
+    # Get the simulated samples
     samples = job.get_simulated_samples()
+    # Get the waveform report object
     waveform_report = job.get_simulated_waveform_report()
-    waveform_report.create_plot(samples, plot=True, save_path=None)
-    plt.legend("")
-    plt.show()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 
 else:
     # Open the quantum machine

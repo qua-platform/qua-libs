@@ -6,7 +6,9 @@ from pathlib import Path
 import numpy as np
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
+import plotly.io as pio
 
+pio.renderers.default = "browser"
 #######################
 # AUXILIARY FUNCTIONS #
 #######################

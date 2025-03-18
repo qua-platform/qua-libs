@@ -393,8 +393,6 @@ def fullock(
     Q = declare(fixed)
     single_shot_DC = declare(fixed)
     single_shot_AC = declare(fixed)
-    assign_variables_to_element("detector_DC", single_shot_DC)
-    assign_variables_to_element("detector_AC", I, Q, single_shot_AC)
 
     # Cavity 1
     fastLock(
@@ -484,8 +482,6 @@ def prelock(
     Q = declare(fixed)
     single_shot_DC = declare(fixed)
     single_shot_AC = declare(fixed)
-    assign_variables_to_element("detector_DC", single_shot_DC)
-    assign_variables_to_element("detector_AC", I, Q, single_shot_AC)
 
     correction_cav1 = declare(fixed)
     error_cav1 = declare(fixed)

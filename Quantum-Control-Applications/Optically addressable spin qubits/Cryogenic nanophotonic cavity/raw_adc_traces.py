@@ -4,7 +4,7 @@ this allows checking that the ADC is not saturated, correct for DC offsets and d
 threshold for time-tagging.
 """
 
-from qm import QuantumMachinesManager
+from qm import QuantumMachinesManager, SimulationConfig
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *

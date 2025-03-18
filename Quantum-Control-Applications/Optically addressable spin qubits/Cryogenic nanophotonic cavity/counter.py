@@ -42,10 +42,20 @@ qmm = QuantumMachinesManager(**qmm_settings)
 simulate = True
 
 if simulate:
-    simulation_config = SimulationConfig(duration=4000)  # in clock cycles
-    job_sim = qmm.simulate(config, counter, simulation_config)
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=5_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job_sim.get_simulated_samples().con1.plot()
+    job = qmm.simulate(config, counter, simulation_config)
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 else:
     qm = qmm.open_qm(config)
 

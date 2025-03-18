@@ -2,6 +2,9 @@ import numpy as np
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
+import plotly.io as pio
+
+pio.renderers.default = "browser"
 
 #######################
 # AUXILIARY FUNCTIONS #
