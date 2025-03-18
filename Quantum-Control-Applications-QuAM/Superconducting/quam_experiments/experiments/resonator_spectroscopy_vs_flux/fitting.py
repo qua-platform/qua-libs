@@ -1,13 +1,12 @@
 import logging
 from dataclasses import dataclass
-from typing import Optional, Tuple, Dict
+from typing import Tuple, Dict
 import numpy as np
 import xarray as xr
 
 from qualibrate import QualibrationNode
 from quam_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
 from quam_experiments.analysis.fit import fit_oscillation
-
 
 
 @dataclass
@@ -20,7 +19,9 @@ class FitParameters:
     min_offset: float
     idle_offset: float
     dv_phi0: float
+    phi0_current: float
     m_pH: float
+
 
 def log_fitted_results(fit_results: Dict, logger=None):
     """
@@ -131,7 +132,13 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     fit.sweet_spot_frequency.attrs = {"long_name": "sweet spot frequency", "units": "Hz"}
     # m_pH
     attenuation_factor = 10 ** (-node.parameters.line_attenuation_in_db / 20)
-    m_pH = (1e12 * 2.068e-15 / (1 / fit.sel(fit_vals="f")) / node.parameters.input_line_impedance_in_ohm * attenuation_factor)
+    m_pH = (
+        1e12
+        * 2.068e-15
+        / (1 / fit.sel(fit_vals="f"))
+        / node.parameters.input_line_impedance_in_ohm
+        * attenuation_factor
+    )
     # Assess whether the fit was successful or not
     freq_success = np.abs(freq_shift.data) < node.parameters.frequency_span_in_mhz * 1e6
     nan_success = np.isnan(freq_shift.data) | np.isnan(flux_min.fit_results.data) | np.isnan(flux_idle.fit_results.data)
@@ -141,12 +148,16 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     fit_results = {
         q: FitParameters(
             success=fit.sel(qubit=q).success.values.__bool__(),
-            resonator_frequency = float(fit.sweet_spot_frequency.sel(qubit=q).values),
-            frequency_shift = float(freq_shift.sel(qubit=q).values),
-            min_offset = float(flux_min.sel(qubit=q).fit_results.data),
-            idle_offset = float(flux_idle.sel(qubit=q).fit_results.data),
-            dv_phi0 = 1 / fit.sel(fit_vals="f", qubit=q).fit_results.data,
-            m_pH = m_pH.sel(qubit=q).fit_results.data
+            resonator_frequency=float(fit.sweet_spot_frequency.sel(qubit=q).values),
+            frequency_shift=float(freq_shift.sel(qubit=q).values),
+            min_offset=float(flux_min.sel(qubit=q).fit_results.data),
+            idle_offset=float(flux_idle.sel(qubit=q).fit_results.data),
+            dv_phi0=1 / fit.sel(fit_vals="f", qubit=q).fit_results.data,
+            phi0_current=1
+            / fit.sel(fit_vals="f", qubit=q).fit_results.data
+            * node.parameters.input_line_impedance_in_ohm
+            * attenuation_factor,
+            m_pH=m_pH.sel(qubit=q).fit_results.data,
         )
         for q in fit.qubit.values
     }

@@ -5,10 +5,10 @@ from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
 from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_experiments.analysis.fit import lorentzian
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
+
 
 def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     """
@@ -106,4 +106,3 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
         )
     ax.set_title(qubit["qubit"])
     ax.set_xlabel("Flux (V)")
-

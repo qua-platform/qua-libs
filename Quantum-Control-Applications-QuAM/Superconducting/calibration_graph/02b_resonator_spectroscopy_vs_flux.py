@@ -34,17 +34,18 @@ extract the 'I' and 'Q' quadratures. This is done across various readout interme
 The resonator frequency as a function of flux bias is then extracted and fitted so that the parameters can be stored in the state.
 
 This information can then be used to adjust the readout frequency for the maximum and minimum frequency points.
+The flux point parameter (qubit.z.flux_point) is used in order to decide to update the independent or joint offset.
 
 Prerequisites:
-    - Calibration of the time of flight, offsets, and gains (referenced as "time_of_flight").
-    - Calibration of the IQ mixer connected to the readout line (be it an external mixer or an Octave port).
-    - Identification of the resonator's resonance frequency (referred to as "resonator_spectroscopy").
-    - Configuration of the readout pulse amplitude and duration.
-    - Specification of the expected resonator depletion time in the state.
+    - Having calibrated the resonator frequency (node 02a_resonator_spectroscopy.py).
+    - Having specified the desired flux point (qubit.z.flux_point).
 
-Before proceeding to the next node:
-    - Update the relevant flux biases in the state.
-    - Save the current state
+
+State update:
+    - The joint or independent offset depending on the chosen flux point.
+    - The min offset.
+    - The readout frequency for the chosen flux point. 
+    - phi0 in voltage (phi0_voltage) and current (phi0_current).
 """
 
 
@@ -200,40 +201,40 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], logger)
 
-    # %% {Plotting}
-    @node.run_action(skip_if=node.parameters.simulate)
-    def data_plotting(node: QualibrationNode[Parameters, QuAM]):
-        """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-        fig_raw_fit = plot_raw_data_with_fit(
-            node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
-        )
-        plt.show()
-        # Store the generated figures
-        node.results["figure_amplitude"] = fig_raw_fit
 
-    # %% {Update_state}
-    if not node.parameters.load_data_id:
-        with node.record_state_updates():
-            for q in qubits:
-                if not (np.isnan(float(idle_offset.sel(qubit=q.name).data))):
-                    if flux_point == "independent":
-                        q.z.independent_offset = float(idle_offset.sel(qubit=q.name).data)
-                    else:
-                        q.z.joint_offset = float(idle_offset.sel(qubit=q.name).data)
-
-                    if node.parameters.update_flux_min:
-                        q.z.min_offset = float(flux_min.sel(qubit=q.name).data)
-                q.resonator.intermediate_frequency += float(rel_freq_shift.sel(qubit=q.name).data)
-                q.phi0_voltage = fit_results[q.name]["dv_phi0"]
-                q.phi0_current = (
-                    fit_results[q.name]["dv_phi0"] * node.parameters.input_line_impedance_in_ohm * attenuation_factor
-                )
-
-        # %% {Save_results}
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
-        node.machine = machine
-        node.save()
+# %% {Plotting}
+@node.run_action(skip_if=node.parameters.simulate)
+def data_plotting(node: QualibrationNode[Parameters, QuAM]):
+    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
+    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    plt.show()
+    # Store the generated figures
+    node.results["figure_amplitude"] = fig_raw_fit
 
 
-# %%
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def state_update(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters for each qubit only if the data analysis was a success."""
+    with node.record_state_updates():
+        for index, q in enumerate(node.namespace["qubits"]):
+            if node.results["fit_results"][q.name]["success"]:
+                # Update the idle offset
+                if q.z.flux_point == "independent":
+                    q.z.independent_offset = node.results["fit_results"][q.name]["idle_offset"]
+                else:
+                    q.z.joint_offset = node.results["fit_results"][q.name]["idle_offset"]
+                # Update the min offset
+                if node.parameters.update_flux_min:
+                    q.z.min_offset = node.results["fit_results"][q.name]["min_offset"]
+                # Update the readout frequency for the given flux point
+                q.resonator.f_01 += node.results["fit_results"][q.name]["frequency_shift"]
+                q.resonator.RF_frequency = q.resonator.f_01
+                q.phi0_voltage = node.results["fit_results"][q.name]["dv_phi0"]
+                q.phi0_current = node.results["fit_results"][q.name]["phi0_current"]
+
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
+    node.save()
