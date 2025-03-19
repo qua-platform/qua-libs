@@ -111,7 +111,7 @@ def readout_state_gef(
     Q = declare(fixed)
     diff = declare(fixed, size=3)
 
-    qubit.resonator.update_frequency(qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift)
+    qubit.resonator.update_frequency(qubit.resonator.intermediate_frequency + qubit.GEF_frequency_shift)
     qubit.resonator.measure(pulse_name, qua_vars=(I, Q))
     qubit.resonator.update_frequency(qubit.resonator.intermediate_frequency)
 
@@ -212,5 +212,5 @@ def active_reset(
         assign(attempts, attempts + 1)
     wait(500, qubit.xy.name)
     qubit.align()
-    if save_qua_var is not None:
-        save(attempts, save_qua_var)
+    # if save_qua_var is not None:
+    #     save(attempts, save_qua_var)
