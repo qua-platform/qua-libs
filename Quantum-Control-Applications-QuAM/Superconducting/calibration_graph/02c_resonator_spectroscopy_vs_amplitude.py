@@ -41,9 +41,8 @@ Prerequisites:
     - Having calibrated the resonator frequency (node 02a_resonator_spectroscopy.py).
 
 State update:
-    - Update the readout frequency, in the state.
-    - Adjust the readout amplitude, in the state.
-    - Save the current state
+    - The readout power.
+    - The readout frequency for the optimal readout power. 
 """
 
 
@@ -61,7 +60,6 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.load_data_id = 1478
     pass
 
 
@@ -189,9 +187,6 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
     # Load the specified dataset
     node = node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # todo: remove
-    node.results["ds_raw"] = node.results["ds"]
-    # todo
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
 
