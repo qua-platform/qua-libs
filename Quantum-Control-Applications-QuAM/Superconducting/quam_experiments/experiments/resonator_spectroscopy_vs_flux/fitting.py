@@ -102,10 +102,10 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     peak_freq = ds.IQ_abs.idxmin(dim="detuning")
     # Fit to a cosine using the qiskit function: a * np.cos(2 * np.pi * f * t + phi) + offset
     fit_results_da = fit_oscillation(peak_freq.dropna(dim="flux_bias"), "flux_bias")
-    fit_results = xr.merge([fit_results_da.rename("fit_results"), peak_freq.rename("peak_freq")])
+    fit_results_ds = xr.merge([fit_results_da.rename("fit_results"), peak_freq.rename("peak_freq")])
     # Extract the relevant fitted parameters
-    fit_data, fit_results = _extract_relevant_fit_parameters(fit_results, node)
-    return fit_data, fit_results
+    fit_dataset, fit_results = _extract_relevant_fit_parameters(fit_results_ds, node)
+    return fit_dataset, fit_results
 
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
