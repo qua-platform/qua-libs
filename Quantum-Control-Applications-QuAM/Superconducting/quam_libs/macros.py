@@ -1,13 +1,16 @@
 import inspect
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Any
 import warnings
 
 from qm.qua import *
-from qm.qua._dsl import Scalar
 from quam_libs.components import QuAM
 from quam_libs.components import Transmon
-from qm.qua._dsl import Scalar
+try:
+    from qm.qua._dsl import Scalar
+    ScalarInt = Scalar[int]
+except ImportError:
+    ScalarInt = Any
 
 __all__ = [
     "qua_declaration",
@@ -106,7 +109,7 @@ def readout_state(qubit, state, pulse_name: str = "readout", threshold: float = 
 
 def readout_state_gef(
     qubit: Transmon, 
-    state: Scalar[int], # : QuaVariableType, # TODO: Fix this type hinting error. for qua 1.2.2rc there is an import error
+    state: ScalarInt, # : QuaVariableType, # TODO: Fix this type hinting error. for qua 1.2.2rc there is an import error
     pulse_name: str = "readout", save_qua_var: StreamType = None
 ):
     I = declare(fixed)
