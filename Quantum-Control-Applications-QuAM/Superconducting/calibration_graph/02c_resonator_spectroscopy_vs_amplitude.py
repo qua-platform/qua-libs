@@ -101,8 +101,8 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "power": xr.DataArray(power_dbm, attrs={"long_name": "readout power", "units": "dBm"}),
         "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
+        "power": xr.DataArray(power_dbm, attrs={"long_name": "readout power", "units": "dBm"}),
     }
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
@@ -127,7 +127,8 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                         # Update the resonator frequencies for all resonators
                         update_frequency(rr.name, df + rr.intermediate_frequency)
                         # QUA for_ loop for sweeping the readout amplitude
-                        with for_(*from_array(a, amps)):
+                        # with for_(*from_array(a, amps)):
+                        with for_each_(a, amps):
                             # readout the resonator
                             rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=a)
                             # wait for the resonator to deplete

@@ -22,7 +22,6 @@ Before proceeding to the next node:
 """
 
 # %% {Imports}
-# %% {Imports}
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
@@ -246,37 +245,11 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
                 # Update the saturation amplitude
                 q.xy.operations["saturation"].amplitude = node.results["fit_results"][q.name]["saturation_amp"]
                 # Update the x180 and x90 amplitudes
-                q.xy.operations["x180"].amplitude = node.results["fit_results"][q.name]["x180_amp"]
-                q.xy.operations["x900"].amplitude = node.results["fit_results"][q.name]["x180_amp"] / 2
+                # q.xy.operations["x180"].amplitude = node.results["fit_results"][q.name]["x180_amp"]
+                # q.xy.operations["x90"].amplitude = node.results["fit_results"][q.name]["x180_amp"] / 2
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, QuAM]):
     node.save()
-
-
-# %% {Plotting}
-grid = QubitGrid(ds, [q.grid_location for q in qubits])
-approx_peak = result.base_line + result.amplitude * (1 / (1 + ((ds.freq - result.position) / result.width) ** 2))
-for ax, qubit in grid_iter(grid):
-    # Plot the line
-    (ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].I_rot * 1e3).plot(ax=ax, x="freq_GHz")
-    # Identify the resonance peak
-    if not np.isnan(result.sel(qubit=qubit["qubit"]).position.values):
-        ax.plot(
-            abs_freqs[qubit["qubit"]] / 1e9,
-            ds.loc[qubit].sel(freq=result.loc[qubit].position.values, method="nearest").I_rot * 1e3,
-            ".r",
-        )
-        # # Identify the width
-        (approx_peak.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit] * 1e3).plot(
-            ax=ax, x="freq_GHz", linewidth=0.5, linestyle="--"
-        )
-    ax.set_xlabel("Qubit freq [GHz]")
-    ax.set_ylabel("Trans. amp. [mV]")
-    ax.set_title(qubit["qubit"])
-grid.fig.suptitle("Qubit spectroscopy (amplitude)")
-plt.tight_layout()
-plt.show()
-node.results["figure"] = grid.fig
