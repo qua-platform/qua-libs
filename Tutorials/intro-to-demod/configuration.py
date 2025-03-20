@@ -29,14 +29,14 @@ config = {
     },
     "pulses": {
         "readout_pulse": {
-            "operation": "measure",
+            "operation": "measurement",
             "length": readout_len,
             "waveforms": {"single": "ramp_wf"},
             "digital_marker": "ON",
             "integration_weights": {"cos": "cosine_weights", "sin": "sine_weights"},
         },
         "long_readout_pulse": {
-            "operation": "measure",
+            "operation": "measurement",
             "length": 2 * readout_len,
             "waveforms": {"single": "ramp_wf2"},
             "digital_marker": "ON",
