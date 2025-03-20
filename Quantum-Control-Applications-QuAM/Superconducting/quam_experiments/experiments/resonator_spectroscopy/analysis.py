@@ -40,7 +40,7 @@ def log_fitted_results(fit_results: Dict, logger=None):
             s_qubit += " SUCCESS!\n"
         else:
             s_qubit += " FAIL!\n"
-        logger.info(s_qubit + s_freq + s_fwhm + s_freq)
+        logger.info(s_qubit + s_freq + s_fwhm)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
