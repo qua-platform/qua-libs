@@ -9,7 +9,39 @@ import scipy.sparse as sparse
 from scipy.sparse.linalg import spsolve
 from scipy.fft import fft
 
-def lorentzian(x, amplitude, center, width, offset):
+
+def lorentzian_peak(x, amplitude, center, width, offset):
+    """
+    Computes the Lorentzian peak function.
+
+    Parameters
+    ----------
+    x : array-like
+        The input values at which to evaluate the Lorentzian function.
+    amplitude : float
+        The amplitude of the Lorentzian peak.
+    center : float
+        The center position of the Lorentzian peak.
+    width : float
+        The full width at half maximum (FWHM) of the Lorentzian peak.
+    offset : float
+        The offset value added to the Lorentzian function.
+
+    Returns
+    -------
+    array-like
+        The evaluated Lorentzian function at the input values `x`.
+
+    Notes
+    -----
+    - The Lorentzian function is defined as:
+      L(x) = offset + amplitude * (1 / (1 + ((x - center) / width)^2))
+    - This function is commonly used to model resonance peaks in qubit spectroscopy.
+    """
+    return offset + amplitude * (1 / (1 + ((x - center) / width) ** 2))
+
+
+def lorentzian_deep(x, amplitude, center, width, offset):
     """
     Computes the Lorentzian function.
 

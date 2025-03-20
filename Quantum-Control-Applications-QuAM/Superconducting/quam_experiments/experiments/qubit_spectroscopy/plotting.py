@@ -1,42 +1,88 @@
-from matplotlib import pyplot as plt
+from typing import List
+import xarray as xr
+from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-import numpy as np
+
+from qualang_tools.units import unit
 from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_experiments.analysis.fit import lorentzian_peak
+from quam_builder.architecture.superconducting.qubit import AnyTransmon
+
+u = unit(coerce_to_integer=True)
 
 
-def plot_qubit_response(ds, qubits, result) -> Figure:
+def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+    """
+    Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
 
-    # The resonant RF frequency of the qubits
-    abs_freqs = dict(
-        [
-            (
-                q.name,
-                ds.freq_full.sel(freq=result.position.sel(qubit=q.name).values).sel(qubit=q.name).values,
-            )
-            for q in qubits
-            if not np.isnan(result.sel(qubit=q.name).position.values)
-        ]
-    )
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The dataset containing the quadrature data.
+    qubits : list of AnyTransmon
+        A list of qubits to plot.
+    fits : xr.Dataset
+        The dataset containing the fit parameters.
+
+    Returns
+    -------
+    Figure
+        The matplotlib figure object containing the plots.
+
+    Notes
+    -----
+    - The function creates a grid of subplots, one for each qubit.
+    - Each subplot contains the raw data and the fitted curve.
+    """
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    approx_peak = result.base_line + result.amplitude * (1 / (1 + ((ds.freq - result.position) / result.width) ** 2))
     for ax, qubit in grid_iter(grid):
-        # Plot the line
-        (ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].I_rot * 1e3).plot(ax=ax, x="freq_GHz")
-        # Identify the resonance peak
-        if not np.isnan(result.sel(qubit=qubit["qubit"]).position.values):
-            ax.plot(
-                abs_freqs[qubit["qubit"]] / 1e9,
-                ds.loc[qubit].sel(freq=result.loc[qubit].position.values, method="nearest").I_rot * 1e3,
-                ".r",
-            )
-            # # Identify the width
-            (approx_peak.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit] * 1e3).plot(
-                ax=ax, x="freq_GHz", linewidth=0.5, linestyle="--"
-            )
-        ax.set_xlabel("Qubit frequency [GHz]")
-        ax.set_ylabel(r"$R=\sqrt{I^2 + Q^2}$ [mV]")
-        ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("Qubit spectroscopy")
-    plt.tight_layout()
-    plt.show()
+        plot_individual_data_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+
+    grid.fig.suptitle("Qubit spectroscopy (rotated 'I' quadrature + fit)")
+    grid.fig.set_size_inches(15, 9)
+    grid.fig.tight_layout()
     return grid.fig
+
+
+def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+    """
+    Plots individual qubit data on a given axis with optional fit.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axis on which to plot the data.
+    ds : xr.Dataset
+        The dataset containing the quadrature data.
+    qubit : dict[str, str]
+        mapping to the qubit to plot.
+    fit : xr.Dataset, optional
+        The dataset containing the fit parameters (default is None).
+
+    Notes
+    -----
+    - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
+    """
+    if fit:
+        fitted_data = lorentzian_peak(
+            ds.detuning,
+            float(fit.amplitude.values),
+            float(fit.position.values),
+            float(fit.width.values) / 2,
+            float(fit.base_line.mean().values),
+        )
+    else:
+        fitted_data = None
+
+    # Create a first x-axis for full_freq_GHz
+    (ds.assign_coords(full_freq_GHz=ds.full_freq / u.GHz).loc[qubit].I_rot / u.mV).plot(ax=ax, x="full_freq_GHz")
+    ax.set_xlabel("RF frequency [GHz]")
+    ax.set_ylabel(r"$R=\sqrt{I^2 + Q^2}$ [mV]")
+    # Create a second x-axis for detuning_MHz
+    ax2 = ax.twiny()
+    (ds.assign_coords(detuning_MHz=ds.detuning / u.MHz).loc[qubit].I_rot / u.mV).plot(ax=ax2, x="detuning_MHz")
+    ax2.set_xlabel("Detuning [MHz]")
+    # Plot the fitted data
+    if fitted_data is not None:
+        ax2.plot(ds.detuning / u.MHz, fitted_data / u.mV, "r--")
+    ax.set_ylabel("Rotated I [mV]")

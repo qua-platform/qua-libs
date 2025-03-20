@@ -20,7 +20,7 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
 
-from quam_libs.instrument_limits import instrument_limits
+from quam_config.instrument_limits import instrument_limits
 from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray

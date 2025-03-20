@@ -1,115 +1,153 @@
-from typing import List, Union
+import logging
+from dataclasses import dataclass
+from typing import Optional, Tuple, Dict
 import numpy as np
 import xarray as xr
-from qm import QmJob
-from quam_libs.qua_datasets import convert_IQ_to_V
-from quam_builder.architecture.superconducting.qubit import AnyTransmon
-from quam_libs.save_utils import fetch_results_as_xarray
+
+from qualibrate import QualibrationNode
+from quam_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
 from quam_experiments.analysis.fit import peaks_dips
+from quam_config.instrument_limits import instrument_limits
 
 
-def fetch_dataset(job: QmJob, qubits: List[AnyTransmon], frequencies: List[float]):
+@dataclass
+class FitParameters:
+    """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
+
+    frequency: float
+    fwhm: float
+    iw_angle: float
+    saturation_amp: float
+    x180_amp: float
+    success: bool
+    qubit_name: Optional[str] = ""
+
+
+def log_fitted_results(fit_results: Dict, logger=None):
     """
-    Fetches IQ measurement results from the OPX as a function of resonator frequency detuning and processes them into an xarray dataset.
+    Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
 
-    Args:
-        job: QmJob object containing the measurement results
-        qubits: List of Transmon qubits being measured
-        frequencies: List of frequency detuning to sweep through relative to each resonator's RF frequency
-        detuning:
-
-    Returns:
-        xarray.Dataset containing the following variables:
-            - I: In-phase component in volts
-            - Q: Quadrature component in volts
-            - IQ_abs: Magnitude of the IQ signal in volts
-            - phase: Phase of the IQ signal in radians, with linear frequency dependence subtracted
-
-        The dataset has coordinates:
-            - qubit: Names of the measured qubits
-            - freq: Frequency detuning from the resonator frequencies
-            - freq_full: Absolute frequencies (detuning + resonator RF frequency)
+    Parameters:
+    -----------
+    ds : xr.Dataset
+        Dataset containing the fitted results for all qubits.
+    logger : logging.Logger, optional
+        Logger for logging the fitted results. If None, a default logger is used.
     """
-    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": frequencies})
-    # Convert raw ADC traces into volts
-    ds = convert_IQ_to_V(ds, qubits)
-    ds = ds.assign({"IQ_abs": np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
-    # Derive the phase IQ_abs = angle(I + j*Q)
-    ds = ds.assign({"phase": np.arctan2(ds.Q, ds.I)})
-    # Add the qubit RF frequency axis of each qubit to the dataset coordinates for plotting
-    ds = ds.assign_coords(
-        {
-            "freq_full": (
-                ["qubit", "freq"],
-                np.array([frequencies + q.xy.RF_frequency for q in qubits]),
-            )
-        }
-    )
-    ds.freq_full.attrs["long_name"] = "Frequency"
-    ds.freq_full.attrs["units"] = "GHz"
+    if logger is None:
+        logger = logging.getLogger(__name__)
+    for q in fit_results.keys():
+        s_qubit = f"Results for qubit {q}: "
+        s_freq = f"\tQubit frequency: {1e-9 * fit_results[q]['frequency']:.3f} GHz | "
+        s_fwhm = f"FWHM: {1e-3 * fit_results[q]['fwhm']:.1f} kHz | "
+        s_angle = f"The integration weight angle: {fit_results[q]['iw_angle']:.3f} rad\n "
+        s_saturation = f"To get the desired FWHM, the saturation amplitude is updated to: {1e3 * fit_results[q]['saturation_amp']:.1f} mV | "
+        s_x180 = f"To get the desired x180 gate, the x180 amplitude is updated to: {1e3 * fit_results[q]['x180_amp']:.1f} mV\n "
+        if fit_results[q]["success"]:
+            s_qubit += " SUCCESS!\n"
+        else:
+            s_qubit += " FAIL!\n"
+        logger.info(s_qubit + s_freq + s_fwhm + s_freq + s_angle + s_saturation + s_x180)
+
+
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
+    ds = convert_IQ_to_V(ds, node.namespace["qubits"])
+    ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
+    full_freq = np.array([ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]])
+    ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
+    ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     return ds
 
 
-def fit_qubits(ds: xr.Dataset, qubits: List[AnyTransmon], node_parameters):
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
-    Fits the qubit frequency and quality factors for each qubit in the dataset.
+    Fit the qubit frequency and FWHM for each qubit in the dataset.
+
+    Parameters:
+    -----------
+    ds : xr.Dataset
+        Dataset containing the raw data.
+    node_parameters : Parameters
+        Parameters related to the node, including whether state discrimination is used.
+
+    Returns:
+    --------
+    xr.Dataset
+        Dataset containing the fit results.
     """
-    fit_results = {}
+    ds_fit = ds
     # search for frequency for which the amplitude the farthest from the mean to indicate the approximate location of the peak
-    shifts = np.abs((ds.IQ_abs - ds.IQ_abs.mean(dim="freq"))).idxmax(dim="freq")
+    shifts = np.abs((ds_fit.IQ_abs - ds_fit.IQ_abs.mean(dim="detuning"))).idxmax(dim="detuning")
     # Find the rotation angle to align the separation along the 'I' axis
     angle = np.arctan2(
-        ds.sel(freq=shifts).Q - ds.Q.mean(dim="freq"),
-        ds.sel(freq=shifts).I - ds.I.mean(dim="freq"),
+        ds_fit.sel(detuning=shifts).Q - ds_fit.Q.mean(dim="detuning"),
+        ds_fit.sel(detuning=shifts).I - ds_fit.I.mean(dim="detuning"),
     )
+    ds_fit = ds_fit.assign_coords({"iw_angle": (["qubit"], angle)})
     # rotate the data to the new I axis
-    ds = ds.assign({"I_rot": ds.I * np.cos(angle) + ds.Q * np.sin(angle)})
+    ds_fit = ds_fit.assign({"I_rot": ds_fit.I * np.cos(angle) + ds_fit.Q * np.sin(angle)})
     # Find the peak with minimal prominence as defined, if no such peak found, returns nan
-    result = peaks_dips(ds.I_rot, dim="freq", prominence_factor=5)
-    fit_results["fit_ds"] = result
+    fit_vals = peaks_dips(ds_fit.I_rot, dim="detuning", prominence_factor=5)
+    ds_fit = ds_fit.assign_coords({"fit_vals": (["qubit"], fit_vals)})
+    # Extract the relevant fitted parameters
+    fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
+    return fit_data, fit_results
 
-    # Save fitting results
-    for q in qubits:
-        fit_results[q.name] = {}
-        if not np.isnan(result.sel(qubit=q.name).position.values):
-            fit_results[q.name]["fit_successful"] = True
-            print(
-                f"Drive frequency for {q.name} is "
-                f"{(result.sel(qubit=q.name).position.values + q.xy.RF_frequency) / 1e9:.6f} GHz"
-            )
-            fit_results[q.name]["drive_freq"] = result.sel(qubit=q.name).position.values + q.xy.RF_frequency
-            # Get optimum iw angle
-            prev_angle = q.resonator.operations["readout"].integration_weights_angle
-            if not prev_angle:
-                prev_angle = 0.0
-            fit_results[q.name]["angle"] = (prev_angle + angle.sel(qubit=q.name).values) % (2 * np.pi)
 
-            # Get saturation amplitude
-            Pi_length = q.xy.operations["x180"].length
-            used_amp = q.xy.operations["saturation"].amplitude * node_parameters.operation_amplitude_factor
-            factor_cw = float(node_parameters.target_peak_width / result.sel(qubit=q.name).width.values)
-            fit_results[q.name]["saturation_amplitude"] = (
-                factor_cw * used_amp / node_parameters.operation_amplitude_factor
-            )
+def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
+    """Add metadata to the dataset and fit results."""
+    limits = [instrument_limits(q.xy) for q in node.namespace["qubits"]]
+    # Add metadata to fit results
+    fit.attrs = {"long_name": "frequency", "units": "Hz"}
+    # Get the fitted resonator frequency
+    full_freq = np.array([q.resonator.RF_frequency for q in node.namespace["qubits"]])
+    res_freq = fit.fit_vals.position + full_freq
+    fit = fit.assign_coords(res_freq=("qubit", res_freq.data))
+    fit.res_freq.attrs = {"long_name": "resonator frequency", "units": "Hz"}
+    # Get the fitted FWHM
+    fwhm = np.abs(fit.width)
+    fit = fit.assign_coords(fwhm=("qubit", fwhm.data))
+    fit.fwhm.attrs = {"long_name": "resonator frequency", "units": "Hz"}
+    # Get optimum iw angle
+    prev_angles = np.array(
+        [q.resonator.operations["readout"].integration_weights_angle for q in node.namespace["qubits"]]
+    )
+    fit = fit.assign_coords(iw_angle=("qubit", (prev_angles + fit.angle.data) % (2 * np.pi)))
+    fit.iw_angle.attrs = {"long_name": "integration weight angle", "units": "rad"}
+    # Get saturation amplitude
+    x180_length = np.array([q.xy.operations["x180"].length * 1e-9 for q in node.namespace["qubits"]])
+    used_amp = np.array(
+        [
+            q.xy.operations["saturation"].amplitude * node.parameters.operation_amplitude_factor
+            for q in node.namespace["qubits"]
+        ]
+    )
+    factor_cw = node.parameters.target_peak_width / fit.fit_vals.width
+    fit = fit.assign_coords(
+        saturation_amplitude=("qubit", factor_cw * used_amp / node.parameters.operation_amplitude_factor)
+    )
+    # get expected x180 amplitude
+    factor_x180 = np.pi / (fit.fit_vals.width * x180_length)
+    fit = fit.assign_coords(x180_amplitude=("qubit", factor_x180 * used_amp))
 
-            # get expected x180 amplitude
-            factor_pi = np.pi / (result.sel(qubit=q.name).width.values * Pi_length * 1e-9)
-            fit_results[q.name]["x180_amplitude"] = factor_pi * used_amp
+    # Assess whether the fit was successful or not
+    freq_success = np.abs(res_freq.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
+    fwhm_success = np.abs(fwhm.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
+    saturation_amp_success = np.abs(fit.saturation_amplitude.data) < limits[0].max_wf_amplitude
+    x180amp_success = np.abs(fit.x180_amplitude.data) < limits[0].max_x180_wf_amplitude
+    success_criteria = freq_success & fwhm_success & x180amp_success & saturation_amp_success
+    fit = fit.assign_coords(success=("qubit", success_criteria))
 
-            print(f"(shift of {result.sel(qubit=q.name).position.values / 1e6:.3f} MHz)")
-            print(f"Found a peak width of {result.sel(qubit=q.name).width.values / 1e6:.2f} MHz")
-            print(
-                f"To obtain a peak width of {node_parameters.target_peak_width / 1e6:.1f} MHz the cw amplitude is modified "
-                f"by {factor_cw:.2f} to {factor_cw * used_amp / node_parameters.operation_amplitude_factor * 1e3:.0f} mV"
-            )
-            print(
-                f"To obtain a Pi pulse at {Pi_length} ns the Rabi amplitude is modified by {factor_pi:.2f} "
-                f"to {factor_pi * used_amp * 1e3:.0f} mV"
-            )
-            print(f"readout angle for qubit {q.name}: {angle.sel(qubit=q.name).values:.4}\n")
-
-        else:
-            fit_results[q.name]["fit_successful"] = False
-            print(f"Failed to find a peak for {q.name}\n")
-    return ds, fit_results
+    fit_results = {
+        q: FitParameters(
+            qubit_name=q,
+            frequency=fit.sel(qubit=q).res_freq.values.__float__(),
+            fwhm=fit.sel(qubit=q).fwhm.values.__float__(),
+            iw_angle=fit.sel(qubit=q).iw_angle.values.__float__(),
+            saturation_amp=fit.sel(qubit=q).saturation_amplitude.values.__float__(),
+            x180_amp=fit.sel(qubit=q).x180_amplitude.values.__float__(),
+            success=fit.sel(qubit=q).success.values.__bool__(),
+        )
+        for q in fit.qubit.values
+    }
+    return fit, fit_results

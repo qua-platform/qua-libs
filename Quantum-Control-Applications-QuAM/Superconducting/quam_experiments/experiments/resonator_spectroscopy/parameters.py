@@ -6,12 +6,14 @@ from quam_experiments.parameters import (
 )
 
 
-class T1Parameters(RunnableParameters):
+class NodeSpecificParameters(RunnableParameters):
     """
-    Parameters for configuring a T1 relaxation time experiment.
+    Parameters for configuring a resonator spectroscopy experiment.
 
     Attributes:
         num_averages (int): Number of averages to perform. Default is 100.
+        frequency_span_in_mhz (float): Span of frequencies to sweep in MHz. Default is 30 MHz.
+        frequency_step_in_mhz (float): Step size for frequency sweep in MHz. Default is 0.1 MHz.
     """
 
     num_averages: int = 100
@@ -22,7 +24,7 @@ class T1Parameters(RunnableParameters):
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
-    T1Parameters,
+    NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
     pass

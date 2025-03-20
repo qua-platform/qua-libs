@@ -128,7 +128,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                             rr.update_frequency(df + rr.intermediate_frequency)
                             # readout the resonator
                             rr.measure("readout", qua_vars=(I[i], Q[i]))
-                            # wait for the resonator to relax
+                            # wait for the resonator to deplete
                             rr.wait(rr.depletion_time * u.ns)
                             # save data
                             save(I[i], I_st[i])

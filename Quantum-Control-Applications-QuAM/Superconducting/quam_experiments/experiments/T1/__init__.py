@@ -1,5 +1,5 @@
 from .parameters import Parameters
-from .fitting import fit_t1_decay, log_fitted_results
+from .analysis import fit_t1_decay, log_fitted_results
 from .plotting import plot_t1s_data_with_fit
 
 __all__ = [

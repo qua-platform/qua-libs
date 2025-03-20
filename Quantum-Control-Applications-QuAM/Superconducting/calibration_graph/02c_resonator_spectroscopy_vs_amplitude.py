@@ -130,7 +130,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                         with for_(*from_array(a, amps)):
                             # readout the resonator
                             rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=a)
-                            # wait for the resonator to relax
+                            # wait for the resonator to deplete
                             rr.wait(rr.depletion_time * u.ns)
                             # save data
                             save(I[i], I_st[i])
@@ -190,46 +190,49 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
 
-    # %% {Data_analysis}
-    @node.run_action(skip_if=node.parameters.simulate)
-    def data_analysis(node: QualibrationNode[Parameters, QuAM]):
-        """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-        node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-        node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-        node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-        # Log the relevant information extracted from the data analysis
-        log_fitted_results(node.results["fit_results"], logger)
+# %% {Data_analysis}
+@node.run_action(skip_if=node.parameters.simulate)
+def data_analysis(node: QualibrationNode[Parameters, QuAM]):
+    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-    # %% {Plotting}
-    @node.run_action(skip_if=node.parameters.simulate)
-    def data_plotting(node: QualibrationNode[Parameters, QuAM]):
-        """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-        fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
-        plt.show()
-        # Store the generated figures
-        node.results["figure_amplitude"] = fig_raw_fit
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(node.results["fit_results"], logger)
 
-    # %% {Update_state}
-    @node.run_action(skip_if=node.parameters.simulate)
-    def state_update(node: QualibrationNode[Parameters, QuAM]):
-        """Update the relevant parameters for each qubit only if the data analysis was a success."""
 
-        # Revert the change done at the beginning of the node
-        for tracked_resonator in node.namespace["tracked_resonators"]:
-            tracked_resonator.revert_changes()
-        # Update the state
-        with node.record_state_updates():
-            for index, q in enumerate(node.namespace["qubits"]):
-                if node.results["fit_results"][q.name]["success"]:
-                    # Update the readout power
-                    q.resonator.set_output_power(
-                        power_in_dbm=node.results["fit_results"][q.name]["optimal_power"],
-                        max_amplitude=node.parameters.max_amp,
-                    )
-                    # Update the readout frequency for the given flux point
-                    q.resonator.f_01 += node.results["fit_results"][q.name]["frequency_shift"]
-                    q.resonator.RF_frequency = q.resonator.f_01
+# %% {Plotting}
+@node.run_action(skip_if=node.parameters.simulate)
+def data_plotting(node: QualibrationNode[Parameters, QuAM]):
+    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
+    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    plt.show()
+    # Store the generated figures
+    node.results["figure_amplitude"] = fig_raw_fit
+
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def state_update(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters for each qubit only if the data analysis was a success."""
+
+    # Revert the change done at the beginning of the node
+    for tracked_resonator in node.namespace["tracked_resonators"]:
+        tracked_resonator.revert_changes()
+    # Update the state
+    with node.record_state_updates():
+        for index, q in enumerate(node.namespace["qubits"]):
+            if node.results["fit_results"][q.name]["success"]:
+                # Update the readout power
+                q.resonator.set_output_power(
+                    power_in_dbm=node.results["fit_results"][q.name]["optimal_power"],
+                    max_amplitude=node.parameters.max_amp,
+                )
+                # Update the readout frequency for the given flux point
+                q.resonator.f_01 += node.results["fit_results"][q.name]["frequency_shift"]
+                q.resonator.RF_frequency = q.resonator.f_01
 
 
 # %% {Save_results}

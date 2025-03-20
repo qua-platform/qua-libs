@@ -35,7 +35,7 @@ from quam_config import QuAM
 from quam_experiments.experiments.resonator_spectroscopy import (
     Parameters,
     process_raw_dataset,
-    fit_resonators,
+    fit_raw_data,
     log_fitted_results,
     plot_raw_amplitude_with_fit,
     plot_raw_phase,
@@ -125,7 +125,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                         rr.update_frequency(df + rr.intermediate_frequency)
                         # Measure the resonator
                         rr.measure("readout", qua_vars=(I[i], Q[i]))
-                        # wait for the resonator to relax
+                        # wait for the resonator to deplete
                         rr.wait(rr.depletion_time * u.ns)
                         # save data
                         save(I[i], I_st[i])
@@ -192,7 +192,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_resonators(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
