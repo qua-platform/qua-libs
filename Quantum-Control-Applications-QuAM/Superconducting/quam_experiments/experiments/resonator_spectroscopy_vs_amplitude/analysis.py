@@ -42,15 +42,14 @@ def log_fitted_results(fit_results: Dict, logger=None):
         logger = logging.getLogger(__name__)
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
-        s_idle_offset = f"\tidle offset: {fit_results[q]['idle_offset'] * 1e3:.0f} mV | "
-        s_min_offset = f"min offset: {fit_results[q]['min_offset'] * 1e3:.0f} mV | "
-        s_freq = f"Resonator frequency: {1e-9 * fit_results[q]['resonator_frequency']:.3f} GHz --> "
+        s_power = f"Optimal readout power: {fit_results[q]['optimal_power']:.2f} dBm | "
+        s_freq = f"Resonator frequency: {1e-9 * fit_results[q]['resonator_frequency']:.3f} GHz | "
         s_shift = f"(shift of {1e-6 * fit_results[q]['frequency_shift']:.0f} MHz)\n"
         if fit_results[q]["success"]:
             s_qubit += " SUCCESS!\n"
         else:
             s_qubit += " FAIL!\n"
-        logger.info(s_qubit + s_idle_offset + s_min_offset + s_freq + s_shift)
+        logger.info(s_qubit + s_power + s_freq + s_shift)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
@@ -89,19 +88,19 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit = ds
     # Generate 1D dataset tracking the minimum IQ value, as a proxy for resonator frequency
     ds_fit["rr_min_response"] = ds.IQ_abs_norm.idxmin(dim="detuning")
-    # Calculate the derivative along the power_dbm axis
-    ds_fit["rr_min_response_diff"] = ds_fit.rr_min_response.differentiate(coord="power_dbm").dropna("power_dbm")
+    # Calculate the derivative along the power axis
+    ds_fit["rr_min_response_diff"] = ds_fit.rr_min_response.differentiate(coord="power").dropna("power")
     # Calculate the moving average of the derivative
     ds_fit["rr_min_response_diff_avg"] = (
         ds.rr_min_response_diff.rolling(
-            power_dbm=node.parameters.derivative_smoothing_window_num_points, center=True  # window size in points
+            power=node.parameters.derivative_smoothing_window_num_points, center=True  # window size in points
         )
         .mean()
-        .dropna("power_dbm")
+        .dropna("power")
     )
     # Apply a filter to scale down the initial noisy values in the moving average if needed
     for j in range(node.parameters.moving_average_filter_window_num_points):
-        ds_fit.rr_min_response_diff_avg.isel(power_dbm=j).data /= (
+        ds_fit.rr_min_response_diff_avg.isel(power=j).data /= (
             node.parameters.moving_average_filter_window_num_points - j
         )
     # Find the first position where the moving average crosses below the threshold
@@ -109,21 +108,21 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         ds_fit.rr_min_response_diff_avg < node.parameters.derivative_crossing_threshold_in_hz_per_dbm
     )
     # Get the first occurrence below the derivative threshold
-    optimal_power = ds_fit.below_threshold.idxmax(dim="power_dbm")
+    optimal_power = ds_fit.below_threshold.idxmax(dim="power")
     optimal_power -= node.parameters.buffer_from_crossing_threshold_in_dbm
     ds_fit = ds_fit.assign_coords({"optimal_power": (["qubit"], optimal_power.data)})
 
     # Define a function to fit the resonator line at the optimal power for each qubit
     def _select_optimal_power(ds, qubit):
         return peaks_dips(
-            ds.sel(power_dbm=ds["optimal_power"].sel(qubit=qubit).data, method="nearest").sel(qubit=qubit).IQ_abs,
-            "freq",
+            ds.sel(power=ds["optimal_power"].sel(qubit=qubit).data, method="nearest").sel(qubit=qubit).IQ_abs,
+            "detuning",
         )
 
     # Get the resonance frequency shift at the optimal power
     freq_shift = []
     for q in node.namespace["qubits"]:
-        freq_shift.append(float(_select_optimal_power(ds, q.name).position.data))
+        freq_shift.append(float(_select_optimal_power(ds_fit, q.name).position.data))
     ds_fit = ds_fit.assign_coords({"freq_shift": (["qubit"], freq_shift)})
 
     # Extract the relevant fitted parameters

@@ -48,7 +48,7 @@ def log_fitted_results(fit_results: Dict, logger=None):
         s_qubit = f"Results for qubit {q}: "
         s_idle_offset = f"\tidle offset: {fit_results[q]['idle_offset'] * 1e3:.0f} mV | "
         s_min_offset = f"min offset: {fit_results[q]['min_offset'] * 1e3:.0f} mV | "
-        s_freq = f"Resonator frequency: {1e-9 * fit_results[q]['resonator_frequency']:.3f} GHz --> "
+        s_freq = f"Resonator frequency: {1e-9 * fit_results[q]['resonator_frequency']:.3f} GHz | "
         s_shift = f"(shift of {1e-6 * fit_results[q]['frequency_shift']:.0f} MHz)\n"
         if fit_results[q]["success"]:
             s_qubit += " SUCCESS!\n"

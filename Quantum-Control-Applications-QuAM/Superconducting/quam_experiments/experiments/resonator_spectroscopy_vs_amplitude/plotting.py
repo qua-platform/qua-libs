@@ -62,37 +62,35 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    # Plot the data using the secondary y-axis
-    ds.loc[qubit].IQ_abs_norm.plot(
-        ax=ax,
-        add_colorbar=False,
-        x="freq_full",
-        y="power_dbm",
-        robust=True,
+    ds.assign_coords(freq_GHz=ds.full_freq / 1e9).loc[qubit].IQ_abs.plot(
+        ax=ax, add_colorbar=False,
+        x="freq_GHz",
+        y="power",
+        linewidth=0.5,
     )
     ax.set_ylabel("Power (dBm)")
     ax2 = ax.twiny()
     ds.assign_coords(detuning_MHz=ds.detuning / u.MHz).loc[qubit].IQ_abs_norm.plot(
-        ax=ax2, add_colorbar=False, x="detuning_MHz", y="power_dbm", robust=True
+        ax=ax2, add_colorbar=False, x="detuning_MHz", y="power", robust=True
     )
     ax2.set_xlabel("Detuning [MHz]")
     # Plot the resonance frequency for each amplitude
-    ax.plot(
-        ds.rr_min_response.loc[qubit],
-        ds.power_dbm,
+    ax2.plot(
+        (fit.rr_min_response)*1e-6,
+        fit.power,
         color="orange",
         linewidth=0.5,
     )
     # Plot where the optimum readout power was found
     if fit.success:
-        ax.axhline(
-            y=fit.optimal_power.loc[qubit],
+        ax2.axhline(
+            y=fit.optimal_power,
             color="g",
             linestyle="-",
         )
-        ax.axvline(
-            x=fit.res_freq.loc[qubit],
+        ax2.axvline(
+            x=fit.freq_shift * 1e-6,
             color="blue",
             linestyle="--",
         )
-    ax.set_title(qubit["qubit"])
+    # ax.set_title(qubit["qubit"])

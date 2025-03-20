@@ -87,7 +87,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     # Get the fitted FWHM
     fwhm = np.abs(fit.width)
     fit = fit.assign_coords(fwhm=("qubit", fwhm.data))
-    fit.fwhm.attrs = {"long_name": "resonator frequency", "units": "Hz"}
+    fit.fwhm.attrs = {"long_name": "resonator fwhm", "units": "Hz"}
     # Assess whether the fit was successful or not
     freq_success = np.abs(res_freq.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
     fwhm_success = np.abs(fwhm.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
