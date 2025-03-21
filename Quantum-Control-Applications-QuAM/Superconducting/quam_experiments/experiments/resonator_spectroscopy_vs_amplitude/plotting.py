@@ -63,7 +63,8 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
     ds.assign_coords(freq_GHz=ds.full_freq / 1e9).loc[qubit].IQ_abs.plot(
-        ax=ax, add_colorbar=False,
+        ax=ax,
+        add_colorbar=False,
         x="freq_GHz",
         y="power",
         linewidth=0.5,
@@ -76,7 +77,7 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
     ax2.set_xlabel("Detuning [MHz]")
     # Plot the resonance frequency for each amplitude
     ax2.plot(
-        (fit.rr_min_response)*1e-6,
+        (fit.rr_min_response) * 1e-6,
         fit.power,
         color="orange",
         linewidth=0.5,

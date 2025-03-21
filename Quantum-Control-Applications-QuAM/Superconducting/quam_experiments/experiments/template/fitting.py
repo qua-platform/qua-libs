@@ -88,10 +88,10 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     # Add metadata to the fit dataset
     fit.attrs = {"long_name": "frequency", "units": "Hz"}
     # Get the fitted resonator frequency
-    fit = fit.assign_coords(param1=("qubit", None))# todo: fit.assign_coords(res_freq=("qubit", res_freq.data))
+    fit = fit.assign_coords(param1=("qubit", None))  # todo: fit.assign_coords(res_freq=("qubit", res_freq.data))
     # fit.param1.attrs = {"long_name": "resonator frequency", "units": "Hz"}
     # Assess whether the fit was successful or not
-    success_criteria = False # todo
+    success_criteria = False  # todo
     fit = fit.assign_coords(success=("qubit", success_criteria))
 
     fit_results = {

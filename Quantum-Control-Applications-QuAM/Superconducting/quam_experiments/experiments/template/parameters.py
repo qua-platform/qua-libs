@@ -14,6 +14,7 @@ class NodeSpecificParameters(RunnableParameters):
         # todo: param (type): description. Default
         num_averages (int): Number of averages to perform. Default is 100.
     """
+
     #  todo:
     #  param: type = default_value
     num_averages: int = 100

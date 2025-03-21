@@ -83,7 +83,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         ds_fit.sel(detuning=shifts).Q - ds_fit.Q.mean(dim="detuning"),
         ds_fit.sel(detuning=shifts).I - ds_fit.I.mean(dim="detuning"),
     )
-    ds_fit = ds_fit.assign_coords({"iw_angle": (["qubit"], angle.data)})
+    ds_fit = ds_fit.assign({"iw_angle": angle})
     # rotate the data to the new I axis
     ds_fit = ds_fit.assign({"I_rot": ds_fit.I * np.cos(ds_fit.iw_angle) + ds_fit.Q * np.sin(ds_fit.iw_angle)})
     # Find the peak with minimal prominence as defined, if no such peak found, returns nan
@@ -102,17 +102,17 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     # Get the fitted resonator frequency
     full_freq = np.array([q.xy.RF_frequency for q in node.namespace["qubits"]])
     res_freq = fit.position + full_freq
-    fit = fit.assign_coords(res_freq=("qubit", res_freq.data))
+    fit = fit.assign({"res_freq": ("qubit", res_freq.data)})
     fit.res_freq.attrs = {"long_name": "qubit xy frequency", "units": "Hz"}
     # Get the fitted FWHM
     fwhm = np.abs(fit.width)
-    fit = fit.assign_coords(fwhm=("qubit", fwhm.data))
+    fit = fit.assign({"fwhm": fwhm})
     fit.fwhm.attrs = {"long_name": "qubit fwhm", "units": "Hz"}
     # Get optimum iw angle
     prev_angles = np.array(
         [q.resonator.operations["readout"].integration_weights_angle for q in node.namespace["qubits"]]
     )
-    fit = fit.assign_coords(iw_angle=("qubit", (prev_angles + fit.iw_angle.data) % (2 * np.pi)))
+    fit = fit.assign({"iw_angle": (prev_angles + fit.iw_angle) % (2 * np.pi)})
     fit.iw_angle.attrs = {"long_name": "integration weight angle", "units": "rad"}
     # Get saturation amplitude
     x180_length = np.array([q.xy.operations["x180"].length * 1e-9 for q in node.namespace["qubits"]])
@@ -123,20 +123,18 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
         ]
     )
     factor_cw = node.parameters.target_peak_width / fit.width
-    fit = fit.assign_coords(
-        saturation_amplitude=("qubit", factor_cw.data * used_amp / node.parameters.operation_amplitude_prefactor)
-    )
+    fit = fit.assign({"saturation_amplitude": factor_cw * used_amp / node.parameters.operation_amplitude_prefactor})
     # get expected x180 amplitude
-    factor_x180 = np.pi / (fit.width * x180_length) / 2
-    fit = fit.assign_coords(x180_amplitude=("qubit", factor_x180.data * used_amp))
+    factor_x180 = np.pi / (fit.width * x180_length)
+    fit = fit.assign({"x180_amplitude": factor_x180 * used_amp})
 
     # Assess whether the fit was successful or not
-    freq_success = np.abs(res_freq.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
-    fwhm_success = np.abs(fwhm.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
-    saturation_amp_success = np.abs(fit.saturation_amplitude.data) < limits[0].max_wf_amplitude
+    freq_success = np.abs(res_freq) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
+    fwhm_success = np.abs(fwhm) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
+    saturation_amp_success = np.abs(fit.saturation_amplitude) < limits[0].max_wf_amplitude
     # x180amp_success = np.abs(fit.x180_amplitude.data) < limits[0].max_x180_wf_amplitude
     success_criteria = freq_success & fwhm_success & saturation_amp_success
-    fit = fit.assign_coords(success=("qubit", success_criteria))
+    fit = fit.assign({"success": success_criteria})
 
     fit_results = {
         q: FitParameters(
