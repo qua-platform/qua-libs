@@ -39,6 +39,7 @@ import qswitch_driver
 qswitch = qswitch_driver.QSwitch( qswitch.VISAconfig(visaAddress="TCPIP::192.168.8.100::5025::SOCKET"))
 """
 
+
 @dataclass
 class UDPConfig:
     ip: str
@@ -46,6 +47,7 @@ class UDPConfig:
     delay_s: float = 0.01
     query_attempts: int = 5
     write_attempts: int = 5
+
 
 @dataclass
 class VISAConfig:
@@ -78,19 +80,21 @@ class QSwitch:
         elif isinstance(config, VISAConfig):
             # Setup VISA configuration for USB or TCP/IP
             self._udp_mode = False
-            self._switch = visa.ResourceManager('@py').open_resource(self._config.visaAddress)
-            self._switch.write_termination = '\n'
-            self._switch.read_termination = '\n'
+            self._switch = visa.ResourceManager("@py").open_resource(self._config.visaAddress)
+            self._switch.write_termination = "\n"
+            self._switch.read_termination = "\n"
             self._switch.timeout = self._config.timeout_ms
             self._switch.query_delay = self._config.delay_s
             self._switch.baud_rate = 9600
             if self.verbose:
-                self.log(f"{datetime.now()} Connected VISA: timeout: {self._switch.timeout} ms, query_delay: {self._switch.query_delay} s")
+                self.log(
+                    f"{datetime.now()} Connected VISA: timeout: {self._switch.timeout} ms, query_delay: {self._switch.query_delay} s"
+                )
 
         self._set_default_names()
         self._set_up_debug_settings()
 
-        self._state = self.query('stat?')
+        self._state = self.query("stat?")
 
         self._check_for_wrong_model()
         self._check_for_incompatible_firmware()
@@ -110,18 +114,18 @@ class QSwitch:
         Args:
             val: 1,'1','on' or 0,'0','off'
         """
-        if val in [0,1]:
-            self.write(f'aut {str(val)}')
-        elif val.lower() in  ['0','1','on','off']:
-            self.write(f'aut {val}')
+        if val in [0, 1]:
+            self.write(f"aut {str(val)}")
+        elif val.lower() in ["0", "1", "on", "off"]:
+            self.write(f"aut {val}")
         else:
-            raise ValueError(f'Unknown autosave setting {val}')
+            raise ValueError(f"Unknown autosave setting {val}")
 
     def get_auto_save(self) -> str:
         """
         Get the autosave status.
         """
-        return(self.query('aut?'))
+        return self.query("aut?")
 
     def errors(self) -> str:
         """
@@ -130,7 +134,7 @@ class QSwitch:
         Returns:
             str: Comma separated list of errors or '0, "No error"'
         """
-        return self.query('all?')
+        return self.query("all?")
 
     def error(self) -> str:
         """
@@ -139,7 +143,7 @@ class QSwitch:
         Returns:
             str: The next error or '0, "No error"'
         """
-        return self.query('next?')
+        return self.query("next?")
 
     def error_indicator(self, val: int | str) -> None:
         """
@@ -148,26 +152,26 @@ class QSwitch:
         Args:
             val: 1,'1','on' or 0,'0','off'
         """
-        if val in [0,1]:
-            self.write(f'beep:stat {str(val)}')
-        elif val.lower() in  ['0','1','on','off']:
-            self.write(f'beep:stat {val}')
+        if val in [0, 1]:
+            self.write(f"beep:stat {str(val)}")
+        elif val.lower() in ["0", "1", "on", "off"]:
+            self.write(f"beep:stat {val}")
         else:
-            raise ValueError(f'Unknown autosave setting {val}')
+            raise ValueError(f"Unknown autosave setting {val}")
 
     def reset(self) -> None:
-        """"
+        """ "
         Reset the QSwitch to power-on conditions and then update the known state
         """
-        self._write('*rst')
+        self._write("*rst")
         sleep_s(0.6)
         self._state_force_update()
 
     def restart(self) -> None:
-        """"
+        """ "
         Restart the QSwitch firmware, including the LAN interface, resets to power-on conditions, and then update the known state
         """
-        self._write('rest')
+        self._write("rest")
         sleep_s(5)
         self._state_force_update()
 
@@ -217,7 +221,7 @@ class QSwitch:
         """
         self.open_relays([(line, tap)])
 
-    #-----------------------------------------------------------------------
+    # -----------------------------------------------------------------------
     # Manipulation functions - close/open relays in a fixed order
     # ----------------------------------------------------------------------
 
@@ -240,18 +244,17 @@ class QSwitch:
             grounds = list(itertools.zip_longest(numbers, [], fillvalue=0))
             self.close_relays(grounds)
             for tap in range(1, 10):
-                connections += itertools.zip_longest(
-                                    map(self._to_line, lines), [], fillvalue=tap)
+                connections += itertools.zip_longest(map(self._to_line, lines), [], fillvalue=tap)
             self.open_relays(connections)
 
     def ground_and_release_all(self) -> None:
         """
         Soft ground all channels and then disconnect them from the input and breakout connectors.
         """
-        grounds = list(itertools.zip_longest(range(1,25), [], fillvalue=0))
+        grounds = list(itertools.zip_longest(range(1, 25), [], fillvalue=0))
         self.close_relays(grounds)
         for tap in range(1, 10):
-            connections = itertools.zip_longest(range(1,25), [], fillvalue=tap)
+            connections = itertools.zip_longest(range(1, 25), [], fillvalue=tap)
             self.open_relays(connections)
 
     def connect_and_unground(self, lines: OneOrMore) -> None:
@@ -276,9 +279,9 @@ class QSwitch:
         """
         Connect all channels to the input Fischer connector and then disconnect them from the soft ground.
         """
-        connects = list(itertools.zip_longest(range(1,25), [], fillvalue=9))
+        connects = list(itertools.zip_longest(range(1, 25), [], fillvalue=9))
         self.close_relays(connects)
-        ungrounds = list(itertools.zip_longest(range(1,25), [], fillvalue=0))
+        ungrounds = list(itertools.zip_longest(range(1, 25), [], fillvalue=0))
         self.open_relays(ungrounds)
 
     def breakout(self, line: str, tap: str) -> None:
@@ -292,12 +295,11 @@ class QSwitch:
         self.close_relay(self._to_line(line), self._to_tap(tap))
         self.open_relay(self._to_line(line), 0)
 
-    #-----------------------------------------------------------------------
+    # -----------------------------------------------------------------------
     # Naming
     # ----------------------------------------------------------------------
 
-    def arrange(self, breakouts: Optional[Dict[str, int]] = None,
-                lines: Optional[Dict[str, int]] = None) -> None:
+    def arrange(self, breakouts: Optional[Dict[str, int]] = None, lines: Optional[Dict[str, int]] = None) -> None:
         """
         An arrangement of names for lines and breakouts
 
@@ -321,7 +323,7 @@ class QSwitch:
         self._line_names = dict(zip(map(str, lines), lines))
         self._tap_names = dict(zip(map(str, taps), taps))
 
-    #-----------------------------------------------------------------------
+    # -----------------------------------------------------------------------
     # Overview functions
     # ----------------------------------------------------------------------
 
@@ -379,41 +381,51 @@ class QSwitch:
         Send a SCPI command to the QSwitch, and check when ready for a new command by sending a query
         UDP connection: For relay open/close and *rst commands, only, it is checked if the command was well received
         """
-        if self._udp_mode: # UDP (ethernet) commands
+        if self._udp_mode:  # UDP (ethernet) commands
             cmd_lower = cmd.lower()
-            is_open_close_cmd = cmd_lower.find("clos ",0,12) != -1 or (cmd_lower.find("close ",0,12) != -1) or (cmd_lower.find("open ",0,12)  != -1)
-            is_rst_cmd = (cmd_lower == "*rst")
+            is_open_close_cmd = (
+                cmd_lower.find("clos ", 0, 12) != -1
+                or (cmd_lower.find("close ", 0, 12) != -1)
+                or (cmd_lower.find("open ", 0, 12) != -1)
+            )
+            is_rst_cmd = cmd_lower == "*rst"
             counter = 0
             while True:
                 self._write(cmd)
                 # Check that relay command was well received
-                if (is_open_close_cmd or is_rst_cmd):
+                if is_open_close_cmd or is_rst_cmd:
                     if (counter > 0) and self.verbose:
-                        self.log(f'{datetime.now()} UDP write repeat {counter} [{cmd}]')  # log repetition if verbose=True
+                        self.log(
+                            f"{datetime.now()} UDP write repeat {counter} [{cmd}]"
+                        )  # log repetition if verbose=True
                     if is_open_close_cmd:
-                        splitcmd = cmd.split(" ") # split command name and channel representation
-                        reply = self.query(splitcmd[0]+"? "+splitcmd[1] if len(splitcmd)==2 else "") # use the written command as a query to verify state
+                        splitcmd = cmd.split(" ")  # split command name and channel representation
+                        reply = self.query(
+                            splitcmd[0] + "? " + splitcmd[1] if len(splitcmd) == 2 else ""
+                        )  # use the written command as a query to verify state
                         if (len(reply) > 0) and (reply.find("0") == -1):  # verify that the relays have switched
                             return
                     elif is_rst_cmd:
                         reply = self.query("clos:stat?")
-                        if (reply == "(@1!0:24!0)"):  # verify that the relays are in the default state
+                        if reply == "(@1!0:24!0)":  # verify that the relays are in the default state
                             return
                     counter += 1
                     if self.verbose:
                         self.log(f"{datetime.now()} UDP: {counter} failed check of [{cmd_lower}], result: {reply}")
-                    if (counter >= self._config.write_attempts):  # throw error when max attempts is reached
-                        raise ValueError(f'QSwitch {self._config.ip} (UDP): Command check failure [{cmd_lower}] after {self._config.write_attempts} attempts')
+                    if counter >= self._config.write_attempts:  # throw error when max attempts is reached
+                        raise ValueError(
+                            f"QSwitch {self._config.ip} (UDP): Command check failure [{cmd_lower}] after {self._config.write_attempts} attempts"
+                        )
                 else:
-                    self.query('*opc?')
+                    self.query("*opc?")
                     return
-        else: # VISA (USB) commands
+        else:  # VISA (USB) commands
             try:
                 self._write(cmd)
-                self._query('*opc?')
+                self._query("*opc?")
             except Exception as e:
                 if self.verbose:
-                    self.log(f'{datetime.now()} VISA error: {repr(e)}')
+                    self.log(f"{datetime.now()} VISA error: {repr(e)}")
                 raise ValueError(f"QSwitch VISA error: {repr(e)}")
             return
 
@@ -426,7 +438,7 @@ class QSwitch:
 
         UDP: Repeat query until a reply is received
         """
-        if self._udp_mode: # UDP (ethernet) queries
+        if self._udp_mode:  # UDP (ethernet) queries
             if self._record_commands:
                 self._scpi_sent.append(cmd)
             counter = 0
@@ -441,17 +453,23 @@ class QSwitch:
                     data, _ = self._sock.recvfrom(1024)
                     answer = data.decode().strip()
                     if (counter > 0) and self.verbose:
-                        self.log(f'{datetime.now()} UDP query repeat {counter} [{cmd}]')
+                        self.log(f"{datetime.now()} UDP query repeat {counter} [{cmd}]")
                     return answer
                 except Exception as error:
                     counter += 1
                     if self.verbose:
-                        self.log(f'{time_before} - {datetime.now().time()} UDP query error {counter} [{cmd}]: {repr(error)}')
-                    if (counter >= self._config.query_attempts):
-                        raise ValueError(f'QSwitch {self._config.ip} (UDP): Query timeout [{cmd}] after {self._config.query_attempts} attempts')
+                        self.log(
+                            f"{time_before} - {datetime.now().time()} UDP query error {counter} [{cmd}]: {repr(error)}"
+                        )
+                    if counter >= self._config.query_attempts:
+                        raise ValueError(
+                            f"QSwitch {self._config.ip} (UDP): Query timeout [{cmd}] after {self._config.query_attempts} attempts"
+                        )
                     sleep_s(time_before_next)
-                    time_before_next += 0.5   # Next time we wait even longer so that we do not quickly run out of retries
-        else: # VISA (USB) queries
+                    time_before_next += (
+                        0.5  # Next time we wait even longer so that we do not quickly run out of retries
+                    )
+        else:  # VISA (USB) queries
             answer = self._query(cmd)
         return answer
 
@@ -461,16 +479,16 @@ class QSwitch:
         or flush the input buffer for a UDP connection (FW >= 1.9).
         In USB-serial mode, do nothing.
         """
-        if self._udp_mode: # UDP (ethernet) clear
-            self._sock.settimeout( 0.0001 )
+        if self._udp_mode:  # UDP (ethernet) clear
+            self._sock.settimeout(0.0001)
             while True:
                 try:
-                    data,_ = self._sock.recvfrom(1024)
+                    data, _ = self._sock.recvfrom(1024)
                 except:
                     break
-            self._sock.settimeout( self._config.timeout_ms / 1000)
+            self._sock.settimeout(self._config.timeout_ms / 1000)
         else:  # VISA (USB) clear
-            if (self._switch.resource_class == "SOCKET"):
+            if self._switch.resource_class == "SOCKET":
                 self._switch.clear()
 
     def close(self):
@@ -517,20 +535,18 @@ class QSwitch:
         """
         Check if the instrument is a QSwitch
         """
-        model = self.query('*IDN?').split(',')[1]
-        if model != 'QSwitch':
-            raise ValueError(f'Unknown model {model}. Are you using the right'
-                             ' driver for your instrument?')
+        model = self.query("*IDN?").split(",")[1]
+        if model != "QSwitch":
+            raise ValueError(f"Unknown model {model}. Are you using the right" " driver for your instrument?")
 
     def _check_for_incompatible_firmware(self) -> None:
         """
         Check if the firmware is 0.178 or above
         """
-        firmware = self.query('*IDN?').split(',')[3]
-        least_compatible_fw = '0.178'
+        firmware = self.query("*IDN?").split(",")[3]
+        least_compatible_fw = "0.178"
         if parse(firmware) < parse(least_compatible_fw):
-            raise ValueError(f'Incompatible firmware {firmware}. You need at '
-                             f'least {least_compatible_fw}')
+            raise ValueError(f"Incompatible firmware {firmware}. You need at " f"least {least_compatible_fw}")
 
     # ----------------------------------------------------------------------
     # Supporting functions
@@ -546,16 +562,16 @@ class QSwitch:
         if self._record_commands:
             self._scpi_sent.append(cmd)
 
-        if self._udp_mode: # UDP (ethernet) write
+        if self._udp_mode:  # UDP (ethernet) write
             try:
                 self._sock.sendto(f"{cmd}\n".encode(), (self._config.ip, 5025))
             except Exception as e:
-                self.log(f'{datetime.now()} UDP write Error: {repr(e)}')  # raise?
-                raise ValueError(f'QSwitch {self._config.ip} (UDP): Write Error [{cmd}]: {repr(e)}')
-        else: # VISA (USB) write
+                self.log(f"{datetime.now()} UDP write Error: {repr(e)}")  # raise?
+                raise ValueError(f"QSwitch {self._config.ip} (UDP): Write Error [{cmd}]: {repr(e)}")
+        else:  # VISA (USB) write
             self._switch.write(cmd)
 
-    def _query(self, cmd:str) -> str:
+    def _query(self, cmd: str) -> str:
         """
         Send SCPI query to QSwitch and receive answer
 
@@ -565,7 +581,7 @@ class QSwitch:
         if self._record_commands:
             self._scpi_sent.append(cmd)
 
-        if self._udp_mode: # UDP (ethernet) query
+        if self._udp_mode:  # UDP (ethernet) query
             try:
                 self.clear()
                 self._sock.sendto(f"{cmd}\n".encode(), (self._config.ip, 5025))
@@ -575,15 +591,15 @@ class QSwitch:
                 answer = data.decode().strip()
             except Exception as error:
                 if self.verbose:
-                    self.log(f'{datetime.now()} QSwitch failed UDP query [{cmd}] (1st try): {repr(error)}')
-                raise ValueError(f'QSwitch failed UDP query [{cmd}] (1st try): {repr(error)}')
-        else: # VISA (USB) query
+                    self.log(f"{datetime.now()} QSwitch failed UDP query [{cmd}] (1st try): {repr(error)}")
+                raise ValueError(f"QSwitch failed UDP query [{cmd}] (1st try): {repr(error)}")
+        else:  # VISA (USB) query
             try:
                 answer = self._switch.query(cmd)
             except visa.errors.VisaIOError as error:
                 if self.verbose:
-                    self.log(f'{datetime.now()} QSwitch failed VISA query [{cmd}] (1st try): {repr(error)}')
-                raise ValueError(f'QSwitch failed VISA query [{cmd}] (1st try): {repr(error)}')
+                    self.log(f"{datetime.now()} QSwitch failed VISA query [{cmd}] (1st try): {repr(error)}")
+                raise ValueError(f"QSwitch failed VISA query [{cmd}] (1st try): {repr(error)}")
         return answer
 
     def _channel_list_to_overview(self, channel_list: str) -> dict[str, List[str]]:
@@ -600,17 +616,17 @@ class QSwitch:
         for name, tap in self._tap_names.items():
             tap_names[tap] = name
         result: dict[str, List[str]] = dict()
-        for _ , line in self._line_names.items():
+        for _, line in self._line_names.items():
             line_name = line_names[line]
             result[line_name] = list()
         for line, tap in state:
             line_name = line_names[line]
             if tap == 0:
-                result[line_name].append('grounded')
+                result[line_name].append("grounded")
             elif tap == 9:
-                result[line_name].append('connected')
+                result[line_name].append("connected")
             else:
-                tap_name = f'breakout {tap_names[tap]}'
+                tap_name = f"breakout {tap_names[tap]}"
                 result[line_name].append(tap_name)
         return result
 
@@ -655,7 +671,7 @@ class QSwitch:
         """
         Set the current known state (self._state) to the current state from the QSwitch
         """
-        self._set_state_raw(self.query('stat?'))
+        self._set_state_raw(self.query("stat?"))
 
     def _set_state_raw(self, channel_list: str) -> None:
         """
@@ -674,9 +690,9 @@ class QSwitch:
         currently = self._channel_list_to_state(self._state)
         positive, negative, total = self._state_diff(currently, state)
         if positive:
-            self.write(f'clos {self._state_to_compressed_list(positive)}')
+            self.write(f"clos {self._state_to_compressed_list(positive)}")
         if negative:
-            self.write(f'open {self._state_to_compressed_list(negative)}')
+            self.write(f"open {self._state_to_compressed_list(negative)}")
         self._set_state_raw(self._state_to_compressed_list(total))
 
     def _line_tap_split(self, input: str) -> Tuple[int, int]:
@@ -685,15 +701,14 @@ class QSwitch:
         Args:
             input (str): line and tap numbers separated by !
         """
-        pair = input.split('!')
+        pair = input.split("!")
         if len(pair) != 2:
-            raise ValueError(f'Expected channel pair, got {input}')
+            raise ValueError(f"Expected channel pair, got {input}")
         if not pair[0].isdecimal():
-            raise ValueError(f'Expected channel, got {pair[0]}')
+            raise ValueError(f"Expected channel, got {pair[0]}")
         if not pair[1].isdecimal():
-            raise ValueError(f'Expected channel, got {pair[1]}')
+            raise ValueError(f"Expected channel, got {pair[1]}")
         return int(pair[0]), int(pair[1])
-
 
     def _channel_list_to_state(self, channel_list: str) -> State:
         """
@@ -701,26 +716,26 @@ class QSwitch:
         Args:
             channel_list (str): channel list notation of closed relays
         """
-        outer = re.match(r'\(@([0-9,:! ]*)\)', channel_list)
+        outer = re.match(r"\(@([0-9,:! ]*)\)", channel_list)
         result: List[Tuple[int, int]] = []
-        if len(channel_list)==0:
+        if len(channel_list) == 0:
             return result
         elif not outer:
-            raise ValueError(f'Expected channel list, got {channel_list}')
-        sequences = outer[1].split(',')
+            raise ValueError(f"Expected channel list, got {channel_list}")
+        sequences = outer[1].split(",")
         for sequence in sequences:
-            limits = sequence.split(':')
-            if limits == ['']:
-                raise ValueError(f'Expected channel sequence, got {limits}')
+            limits = sequence.split(":")
+            if limits == [""]:
+                raise ValueError(f"Expected channel sequence, got {limits}")
             line_start, tap_start = self._line_tap_split(limits[0])
             line_stop, tap_stop = line_start, tap_start
             if len(limits) == 2:
                 line_stop, tap_stop = self._line_tap_split(limits[1])
             if len(limits) > 2:
-                raise ValueError(f'Expected channel sequence, got {limits}')
+                raise ValueError(f"Expected channel sequence, got {limits}")
             if tap_start != tap_stop:
-                raise ValueError(f'Expected same breakout in sequence, got {limits}')
-            for line in range(line_start, line_stop+1):
+                raise ValueError(f"Expected same breakout in sequence, got {limits}")
+            for line in range(line_start, line_stop + 1):
                 result.append((line, tap_start))
         return result
 
@@ -730,10 +745,7 @@ class QSwitch:
         Args:
             state (State): state of the relays
         """
-        return \
-            '(@' + \
-            ','.join([f'{line}!{tap}' for (line, tap) in state]) + \
-            ')'
+        return "(@" + ",".join([f"{line}!{tap}" for (line, tap) in state]) + ")"
 
     def _state_to_compressed_list(self, state: State) -> str:
         """
@@ -761,16 +773,16 @@ class QSwitch:
                     end_line = line
                     continue
                 if start_line == end_line:
-                    intervals.append(f'{start_line}!{tap}')
+                    intervals.append(f"{start_line}!{tap}")
                 else:
-                    intervals.append(f'{start_line}!{tap}:{end_line}!{tap}')
+                    intervals.append(f"{start_line}!{tap}:{end_line}!{tap}")
                 start_line = line
                 end_line = line
             if start_line == end_line:
-                intervals.append(f'{start_line}!{tap}')
+                intervals.append(f"{start_line}!{tap}")
             else:
-                intervals.append(f'{start_line}!{tap}:{end_line}!{tap}')
-        return '(@' + ','.join(intervals) + ')'
+                intervals.append(f"{start_line}!{tap}:{end_line}!{tap}")
+        return "(@" + ",".join(intervals) + ")"
 
     def _state_diff(self, before: State, after: State) -> Tuple[State, State, State]:
         """
@@ -783,20 +795,22 @@ class QSwitch:
         target = frozenset(after)
         return list(target - initial), list(initial - target), list(target)
 
+
 # ----------------------------------------------------------------------
 # USB detection
 # ----------------------------------------------------------------------
 
+
 def find_qswitch_on_usb() -> str:
-    signature = '04D8:00DD'
+    signature = "04D8:00DD"
     candidates = list(list_ports.grep(signature))
     if len(candidates) == 1:
         handle = candidates[0].device
-    elif (len(candidates) > 1):
-        raise ValueError(f'More than one device with signature {signature} found')
+    elif len(candidates) > 1:
+        raise ValueError(f"More than one device with signature {signature} found")
     else:
-        raise ValueError(f'No device with signature {signature} found')
-    if platform_system() == 'Windows':
-        if handle[:3].lower() == 'com':
+        raise ValueError(f"No device with signature {signature} found")
+    if platform_system() == "Windows":
+        if handle[:3].lower() == "com":
             handle = handle[3:]
-    return f'ASRL{handle}::INSTR'
+    return f"ASRL{handle}::INSTR"
