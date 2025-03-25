@@ -79,7 +79,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
     # %% {QUA_program}
     n_runs = node.parameters.num_runs  # Number of runs
-    operation_name = node.parameters.operation_name
+    operation = node.parameters.operation
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
@@ -106,7 +106,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 align()
                 # Qubit readout
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.resonator.measure(operation_name, qua_vars=(I_g[i], Q_g[i]))
+                    qubit.resonator.measure(operation, qua_vars=(I_g[i], Q_g[i]))
                     qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
                     # save data
                     save(I_g[i], I_g_st[i])
@@ -122,7 +122,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 # Qubit readout
                 for i, qubit in multiplexed_qubits.items():
                     qubit.xy.play("x180")
-                    qubit.resonator.measure(operation_name, qua_vars=(I_e[i], Q_e[i]))
+                    qubit.resonator.measure(operation, qua_vars=(I_e[i], Q_e[i]))
                     qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
                     # save data
                     save(I_e[i], I_e_st[i])
@@ -218,23 +218,23 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
     with node.record_state_updates():
         for index, q in enumerate(node.namespace["qubits"]):
             if node.results["fit_results"][q.name]["success"]:
-                q.resonator.operations[node.parameters.operation_name].integration_weights_angle -= float(
+                q.resonator.operations[node.parameters.operation].integration_weights_angle -= float(
                     node.results["fit_results"][q.name]["iw_angle"]
                 )
                 # Convert the thresholds back in demod units
                 # todo: what about when calibrating qnd_readout, would state discrimination be wrong?
-                q.resonator.operations[node.parameters.operation_name].threshold = (
+                q.resonator.operations[node.parameters.operation].threshold = (
                     float(node.results["fit_results"][q.name]["ge_threshold"])
-                    * q.resonator.operations[node.parameters.operation_name].length
+                    * q.resonator.operations[node.parameters.operation].length
                     / 2**12
                 )
-                q.resonator.operations[node.parameters.operation_name].rus_exit_threshold = (
+                q.resonator.operations[node.parameters.operation].rus_exit_threshold = (
                     float(node.results["fit_results"][q.name]["rus_threshold"])
-                    * q.resonator.operations[node.parameters.operation_name].length
+                    * q.resonator.operations[node.parameters.operation].length
                     / 2**12
                 )
                 # todo: add conf matrix to the readout operation rather than the resonator
-                if node.parameters.operation_name == "readout":
+                if node.parameters.operation == "readout":
                     q.resonator.confusion_matrix = node.results["fit_results"][q.name]["confusion_matrix"]
 
 

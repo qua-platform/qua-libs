@@ -7,7 +7,6 @@ import xarray as xr
 from qualibrate import QualibrationNode
 from quam_libs.qua_datasets import convert_IQ_to_V
 from scipy.optimize import minimize
-from qualang_tools.analysis import two_state_discriminator
 
 
 @dataclass
