@@ -282,18 +282,19 @@ if not node.parameters.simulate:
     grid_locations = make_unique_coordinates(grid_locations)
     grid = QubitGrid(ds, grid_locations)
 
-    for (i , (ax, qubit)) in enumerate(grid_iter(grid)):
-        freq_ref = (ds.freq_full-ds.freq).isel(qubit = i).values[0]
+    for ax, qubit in grid_iter(grid):
+        print(qubit)
+        freq_ref = (ds.freq_full-ds.freq).sel(qubit = qubit["qubit"]).values[0]
         ds = ds.assign_coords(freq_GHz=ds.freq_full / 1e9)
-        ds.isel(qubit = i).I.plot(
+        ds.sel(qubit = qubit["qubit"]).I.plot(
             ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
         )
         
         if is_single_qubit_cal:
-            ((fitted + freq_ref) / 1e9).isel(qubit = i).plot(ax=ax, linewidth=0.5, ls="--", color="r")
-            ax.plot(flux_shift.isel(qubit = i), ((freq_shift.isel(qubit = i) + freq_ref) / 1e9), "r*")
+            ((fitted + freq_ref) / 1e9).sel(qubit = qubit["qubit"]).plot(ax=ax, linewidth=0.5, ls="--", color="r")
+            ax.plot(flux_shift.sel(qubit = qubit["qubit"]), ((freq_shift.sel(qubit = qubit["qubit"]) + freq_ref) / 1e9), "r*")
         
-        ((peaks.position.isel(qubit = i) + freq_ref) / 1e9).plot(ax=ax, ls="", marker=".", color="g", ms=0.5)
+        ((peaks.position.sel(qubit = qubit["qubit"]) + freq_ref) / 1e9).plot(ax=ax, ls="", marker=".", color="g", ms=0.5)
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Flux (V)")
         if drive_flux_qubits_equal:
