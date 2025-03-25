@@ -75,7 +75,6 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
     # %% {QUA_program}
     n_avg = node.parameters.num_averages  # The number of averages
-    N_pi = node.parameters.max_number_rabi_pulses_per_sweep  # Number of applied Rabi pulses sweep
     state_discrimination = node.parameters.use_state_discrimination
     operation = node.parameters.operation  # The qubit operation to play
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
@@ -84,10 +83,8 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
         node.parameters.max_amp_factor,
         node.parameters.amp_factor_step,
     )
-
     # Number of applied Rabi pulses sweep
     N_pi_vec = get_number_of_pulses(node.parameters)
-    print(N_pi_vec)
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
@@ -119,6 +116,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
                             qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+                        align()
                         # Qubit manipulation
                         for i, qubit in multiplexed_qubits.items():
                             # Loop for error amplification (perform many qubit pulses)
