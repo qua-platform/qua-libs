@@ -300,6 +300,8 @@ else:
                     ].resonator.opx_input_Q.offset
                 )
 
-    # %% {Save_results}
-    node.results["ds"] = ds
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
     node.save()

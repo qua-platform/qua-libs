@@ -453,9 +453,8 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure"] = grid.fig
 
-    # %% {Save_results}
-    if not node.parameters.simulate:
-        node.save()
 
-
-# %%
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
+    node.save()

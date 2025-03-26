@@ -375,5 +375,8 @@ if not node.parameters.simulate:
                         "full_scale_power_dbm"
                     ]
 
-    # %% {Save_results}
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
     node.save()

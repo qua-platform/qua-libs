@@ -331,5 +331,8 @@ if not node.parameters.simulate:
                     raise RuntimeError(f"unknown flux_point")
                 qubit.freq_vs_flux_01_quad_term = float(a[qubit.name])
 
-        # %% {Save_results}
-        node.save()
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
+    node.save()

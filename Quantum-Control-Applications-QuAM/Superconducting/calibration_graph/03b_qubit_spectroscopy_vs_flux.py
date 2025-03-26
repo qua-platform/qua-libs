@@ -325,7 +325,8 @@ if not node.parameters.simulate:
                     q.xy.intermediate_frequency += fit_results[q.name]["drive_freq"]
                     q.freq_vs_flux_01_quad_term = fit_results[q.name]["quad_term"]
 
-    # %% {Save_results}
-    node.results["ds"] = ds
-    node.outcomes = {q.name: "successful" for q in qubits}
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
     node.save()

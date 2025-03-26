@@ -259,6 +259,8 @@ else:
     for resonator in tracked_resonators:
         resonator.revert_changes()
 
-    # %% {Save_results}
-    node.results["ds"] = ds
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
     node.save()

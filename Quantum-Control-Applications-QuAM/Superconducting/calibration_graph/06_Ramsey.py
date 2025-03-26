@@ -207,5 +207,8 @@ if not node.parameters.simulate:
                 q.xy.intermediate_frequency -= float(fits[q.name].freq_offset)
                 q.T2ramsey = float(fits[q.name].decay)
 
-        # %% {Save_results}
-        node.save()
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
+    node.save()

@@ -265,5 +265,8 @@ if not node.parameters.simulate:
                 if node.parameters.DRAG_setpoint is not None:
                     qubit.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
 
-        # %% {Save_results}
-        node.save()
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
+    node.save()

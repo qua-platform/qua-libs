@@ -463,5 +463,8 @@ if not node.parameters.simulate:
                     "confusion_matrix"
                 ].tolist()
 
-        # %% {Save_results}
-        node.save()
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
+    node.save()

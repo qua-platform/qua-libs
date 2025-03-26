@@ -257,5 +257,8 @@ if not node.parameters.simulate:
             for q in qubits:
                 q.xy.operations[operation].alpha = fit_results[q.name]["alpha"]
 
-        # %% {Save_results}
-        node.save()
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
+    node.save()

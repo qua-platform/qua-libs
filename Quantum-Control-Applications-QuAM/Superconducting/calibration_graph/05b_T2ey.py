@@ -278,9 +278,8 @@ if not node.parameters.simulate:
 
     # %% {Update_state}
 
-    # %% {Save_results}
-    if node.parameters.load_data_id is None:
-        node.save()
 
-
-# %%
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
+    node.save()

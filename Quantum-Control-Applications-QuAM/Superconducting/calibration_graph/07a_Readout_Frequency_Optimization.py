@@ -278,5 +278,8 @@ if not node.parameters.simulate:
                 )
                 q.chi = float(fit_results[q.name]["chi"])
 
-        # %% {Save_results}
-        node.save()
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
+    node.save()
