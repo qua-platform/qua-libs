@@ -267,7 +267,9 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
             if node.outcomes[q.name] == "failed":
                 continue
 
-            q.xy.operations[operation].detuning = float(fit_results[q.name]["detuning"])
+            fit_result = node.results["fit_results"][q.name]
+
+            q.xy.operations[operation].detuning = float(fit_result["detuning"])
             if node.parameters.DRAG_setpoint is not None:
                 q.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
 

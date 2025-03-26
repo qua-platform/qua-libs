@@ -248,18 +248,21 @@ if not node.parameters.simulate:
     for q in qubits:
         fit_results[q.name] = {}
         if not np.isnan(result.sel(qubit=q.name).position.values):
-            fit_results[q.name]["fit_successful"] = True
+            fit_results[q.name]["success"] = True
             print(
                 f"Anharmonicity for {q.name} is {anharmonicities[q.name]/1e6:.3f} MHz"
             )
             fit_results[q.name]["anharmonicity"] = anharmonicities[q.name].values
         else:
-            fit_results[q.name]["fit_successful"] = False
+            fit_results[q.name]["success"] = False
             print(f"Failed to find a peak for {q.name}")
             print()
 
     node.results["fit_results"] = fit_results
-    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
 # %% {Plotting}
 if not node.parameters.simulate:
@@ -299,9 +302,9 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            fit_results[q.name] = {}
-            if not np.isnan(result.sel(qubit=q.name).position.values):
-                q.anharmonicity = int(anharmonicities[q.name])
+
+            fit_result = node.results["fit_results"][q.name]
+            q.anharmonicity = int(fit_result["anharmonicity"])
 
 
 # %% {Save_results}

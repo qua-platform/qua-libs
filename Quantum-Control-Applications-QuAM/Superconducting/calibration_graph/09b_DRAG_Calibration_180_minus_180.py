@@ -274,8 +274,8 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
             if node.outcomes[q.name] == "failed":
                 continue
 
-            for q in qubits:
-                q.xy.operations[operation].alpha = fit_results[q.name]["alpha"]
+            fit_result = node.results["fit_results"][q.name]
+            q.xy.operations[operation].alpha = fit_result["alpha"]
 
 
 # %% {Save_results}
