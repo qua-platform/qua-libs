@@ -287,6 +287,7 @@ if not node.parameters.simulate:
                 fit_results[q.name]["drive_freq"] = np.nan
                 fit_results[q.name]["quad_term"] = np.nan
         node.results["fit_results"] = fit_results
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
@@ -327,5 +328,4 @@ if not node.parameters.simulate:
     # %% {Save_results}
     node.results["ds"] = ds
     node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
     node.save()

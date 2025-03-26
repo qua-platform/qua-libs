@@ -336,6 +336,7 @@ if not node.parameters.simulate:
             [[gg, ge], [eg, ee]]
         )
         node.results["results"][q.name]["rus_threshold"] = float(RUS_threshold)
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
@@ -463,6 +464,4 @@ if not node.parameters.simulate:
                 ].tolist()
 
         # %% {Save_results}
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
         node.save()

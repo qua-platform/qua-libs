@@ -277,6 +277,7 @@ if not node.parameters.simulate:
         node.results["fit_results"][q.name]["flux_offset"] = flux_offset[q.name]
         node.results["fit_results"][q.name]["freq_offset"] = freq_offset[q.name]
         node.results["fit_results"][q.name]["quad_term"] = a[q.name]
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
     # %% {Plotting}
     grid_names = [q.grid_location for q in qubits]
@@ -331,6 +332,4 @@ if not node.parameters.simulate:
                 qubit.freq_vs_flux_01_quad_term = float(a[qubit.name])
 
         # %% {Save_results}
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
         node.save()

@@ -259,6 +259,7 @@ if not node.parameters.simulate:
             print()
 
     node.results["fit_results"] = fit_results
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
 # %% {Plotting}
 if not node.parameters.simulate:
@@ -295,8 +296,6 @@ if not node.parameters.load_data_id:
 
     # %% {Save_results}
     if not node.parameters.simulate:
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
         node.save()
 
 # %%

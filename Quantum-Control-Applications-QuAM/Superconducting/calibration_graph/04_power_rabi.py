@@ -244,6 +244,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], logger)
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
 
 # %% {Plotting}

@@ -235,6 +235,7 @@ if not node.parameters.simulate:
     for q in qubits:
         print(f"Detuning for {q.name} is {fit_results[q.name]['detuning']} Hz")
     node.results["fit_results"] = fit_results
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
@@ -265,6 +266,4 @@ if not node.parameters.simulate:
                     qubit.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
 
         # %% {Save_results}
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
         node.save()

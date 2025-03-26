@@ -244,6 +244,7 @@ if not node.parameters.simulate:
     for q in qubits:
         print(f"DRAG coefficient for {q.name} is {fit_results[q.name]['alpha']}")
     node.results["fit_results"] = fit_results
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
@@ -269,6 +270,4 @@ if not node.parameters.simulate:
                 q.xy.operations[operation].alpha = fit_results[q.name]["alpha"]
 
         # %% {Save_results}
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
         node.save()

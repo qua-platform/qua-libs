@@ -227,6 +227,7 @@ if not node.parameters.simulate:
             f"{q.name}: Shifting readout frequency by {fit_results[q.name]['detuning']/1e3:.0f} kHz"
         )
         print(f"{q.name}: Chi = {fit_results[q.name]['chi']:.2f} \n")
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
@@ -278,6 +279,4 @@ if not node.parameters.simulate:
                 q.chi = float(fit_results[q.name]["chi"])
 
         # %% {Save_results}
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
         node.save()

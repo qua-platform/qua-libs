@@ -331,6 +331,7 @@ if not node.parameters.simulate:
     # undo temporary readout length
     for tracked_resonator in tracked_resonators:
         tracked_resonator.revert_changes()
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
     # %% {Update_state}
     if node.parameters.load_data_id is None:
@@ -375,6 +376,4 @@ if not node.parameters.simulate:
                     ]
 
     # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
     node.save()

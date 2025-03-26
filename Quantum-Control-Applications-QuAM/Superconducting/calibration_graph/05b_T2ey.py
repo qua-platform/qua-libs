@@ -248,6 +248,7 @@ if not node.parameters.simulate:
     tau.attrs = {"long_name": "T1", "units": "µs"}
     tau_error = -tau * (np.sqrt(decay_res) / decay)
     tau_error.attrs = {"long_name": "T1 error", "units": "µs"}
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
@@ -279,7 +280,6 @@ if not node.parameters.simulate:
 
     # %% {Save_results}
     if node.parameters.load_data_id is None:
-        node.results["initial_parameters"] = node.parameters.model_dump()
         node.save()
 
 

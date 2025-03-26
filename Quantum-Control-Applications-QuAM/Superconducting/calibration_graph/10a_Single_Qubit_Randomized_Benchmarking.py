@@ -442,6 +442,7 @@ elif node.parameters.load_data_id is None:
         node.results["fit_results"][q.name]["EPG"] = EPG.sel(qubit=q.name).values
         print(f"{q.name}: EPC={EPC.sel(qubit=q.name).values}")
         print(f"{q.name}: EPG={EPG.sel(qubit=q.name).values}")
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
 
 # %% {Plotting}
@@ -482,8 +483,6 @@ if not node.parameters.simulate:
 
     # %% {Save_results}
     if not node.parameters.simulate:
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
         node.save()
 
 

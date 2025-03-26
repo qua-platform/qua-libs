@@ -191,6 +191,7 @@ if not node.parameters.simulate:
     for fit in fits.values():
         fit.log_frequency_offset()
         fit.log_t2()
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
     # %% {Plotting}
     fig = plot_ramseys_data_with_fit(ds, qubits, node.parameters, fits)
@@ -207,6 +208,4 @@ if not node.parameters.simulate:
                 q.T2ramsey = float(fits[q.name].decay)
 
         # %% {Save_results}
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
         node.save()

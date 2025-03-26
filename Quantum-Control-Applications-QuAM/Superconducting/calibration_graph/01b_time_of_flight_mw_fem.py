@@ -204,6 +204,7 @@ else:
             )
         }
     )
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
     # %% {Plotting}
     # Single run
@@ -259,7 +260,5 @@ else:
         resonator.revert_changes()
 
     # %% {Save_results}
-    node.outcomes = {rr.name: "successful" for rr in resonators}
     node.results["ds"] = ds
-    node.results["initial_parameters"] = node.parameters.model_dump()
     node.save()
