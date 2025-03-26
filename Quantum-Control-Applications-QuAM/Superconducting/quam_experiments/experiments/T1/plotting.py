@@ -39,9 +39,7 @@ def plot_t1s_data_with_fit(
     grid = QubitGrid(ds.to_dataarray(), [q.grid_location for q in qubits])
 
     for ax, qubit in grid_iter(grid):
-        _plot_t1_data_with_fit(
-            ax, ds, qubit, node_parameters, fits.sel(qubit=qubit["qubit"])
-        )
+        _plot_t1_data_with_fit(ax, ds, qubit, node_parameters, fits.sel(qubit=qubit["qubit"]))
 
     grid.fig.suptitle("T1 vs. idle time")
     grid.fig.set_size_inches(15, 9)

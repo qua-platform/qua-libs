@@ -43,13 +43,9 @@ class Parameters(
 def get_number_of_pulses(node_parameter: Parameters):
     if node_parameter.max_number_rabi_pulses_per_sweep > 1:
         if node_parameter.operation == "x180":
-            N_pulses = np.arange(
-                1, node_parameter.max_number_rabi_pulses_per_sweep, 2
-            ).astype("int")
+            N_pulses = np.arange(1, node_parameter.max_number_rabi_pulses_per_sweep, 2).astype("int")
         elif node_parameter.operation in ["x90", "-x90", "y90", "-y90"]:
-            N_pulses = np.arange(
-                2, node_parameter.max_number_rabi_pulses_per_sweep, 4
-            ).astype("int")
+            N_pulses = np.arange(2, node_parameter.max_number_rabi_pulses_per_sweep, 4).astype("int")
         else:
             raise ValueError(f"Unrecognized operation {node_parameter.operation}.")
     else:

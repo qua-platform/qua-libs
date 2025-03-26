@@ -43,9 +43,8 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     grid.fig.tight_layout()
     return grid.fig
 
-def plot_individual_data_with_fit(
-    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
-):
+
+def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -90,14 +89,11 @@ def plot_individual_data_with_fit(
     #     add_fit_text(ax, fit)
     # ax.legend()
 
+
 def plot_state(ax, ds, qubit, fitted=None):
     """Plot state data for a qubit."""
-    ds.sel(sign=1).loc[qubit].state.plot(
-        ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +"
-    )
-    ds.sel(sign=-1).loc[qubit].state.plot(
-        ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
-    )
+    ds.sel(sign=1).loc[qubit].state.plot(ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +")
+    ds.sel(sign=-1).loc[qubit].state.plot(ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -")
     if fitted is not None:
         ax.plot(ds.time, fitted.fit.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
         ax.plot(ds.time, fitted.fit.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)
@@ -105,12 +101,8 @@ def plot_state(ax, ds, qubit, fitted=None):
 
 def plot_transmission_amplitude(ax, ds, qubit, fitted=None):
     """Plot transmission amplitude for a qubit."""
-    (ds.sel(sign=1).loc[qubit].I * 1e3).plot(
-        ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +"
-    )
-    (ds.sel(sign=-1).loc[qubit].I * 1e3).plot(
-        ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
-    )
+    (ds.sel(sign=1).loc[qubit].I * 1e3).plot(ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +")
+    (ds.sel(sign=-1).loc[qubit].I * 1e3).plot(ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -")
     if fitted is not None:
         ax.plot(ds.time, 1e3 * fitted.fit.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
         ax.plot(ds.time, 1e3 * fitted.fit.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)

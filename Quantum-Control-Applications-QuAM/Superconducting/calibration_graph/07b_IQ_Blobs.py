@@ -90,9 +90,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "n_runs": xr.DataArray(
-            np.linspace(1, n_runs, n_runs), attrs={"long_name": "number of shots"}
-        ),
+        "n_runs": xr.DataArray(np.linspace(1, n_runs, n_runs), attrs={"long_name": "number of shots"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -111,9 +109,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 # Ground state iq blobs for all qubits
                 # Qubit initialization
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.reset_qubit(
-                        node.parameters.reset_type, node.parameters.simulate
-                    )
+                    qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
                 align()
                 # Qubit readout
                 for i, qubit in multiplexed_qubits.items():
@@ -127,9 +123,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 # Excited state iq blobs for all qubits
                 # Qubit initialization
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.reset_qubit(
-                        node.parameters.reset_type, node.parameters.simulate
-                    )
+                    qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
                 align()
 
                 # Qubit readout
@@ -151,9 +145,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
 
 # %% {Simulate_or_execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -161,16 +153,12 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """
     Connect to the QOP, execute the QUA program and fetch the raw data and store it in
@@ -239,12 +227,8 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     Plot the raw and fitted data in specific figures whose shape is given by
     qubit.grid_location.
     """
-    fig_iq = plot_iq_blobs(
-        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
-    )
-    fig_confusion = plot_confusion_matrices(
-        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
-    )
+    fig_iq = plot_iq_blobs(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_confusion = plot_confusion_matrices(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figure_iq_blobs"] = fig_iq
@@ -265,12 +249,8 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
             operation.integration_weights_angle -= float(fit_result["iw_angle"])
             # Convert the thresholds back in demod units
             # todo: what about when calibrating qnd_readout, would state discrimination be wrong?
-            operation.threshold = (
-                float(fit_result["ge_threshold"]) * operation.length / 2**12
-            )
-            operation.rus_exit_threshold = (
-                float(fit_result["rus_threshold"]) * operation.length / 2**12
-            )
+            operation.threshold = float(fit_result["ge_threshold"]) * operation.length / 2**12
+            operation.rus_exit_threshold = float(fit_result["rus_threshold"]) * operation.length / 2**12
             # todo: add conf matrix to the readout operation rather than the resonator
             if node.parameters.operation == "readout":
                 q.resonator.confusion_matrix = fit_result["confusion_matrix"]

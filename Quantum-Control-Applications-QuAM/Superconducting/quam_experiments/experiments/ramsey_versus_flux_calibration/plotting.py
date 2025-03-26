@@ -43,9 +43,8 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     grid.fig.tight_layout()
     return grid.fig
 
-def plot_individual_data_with_fit(
-    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
-):
+
+def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots individual qubit data on a given axis with optional fit.
 

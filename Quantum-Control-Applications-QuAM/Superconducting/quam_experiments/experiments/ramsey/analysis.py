@@ -61,6 +61,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     pass
     return ds
 
+
 # @dataclass
 # class RamseyFit:
 #     """Stores the relevant Ramsey experiment fit parameters for a single qubit"""
@@ -118,9 +119,8 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 #
 #     return fits
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the qubit frequency and FWHM for each qubit in the dataset.
 
@@ -175,6 +175,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     #
     # tau_error = tau * (np.sqrt(decay_res) / decay)
     # tau_error.attrs = {"long_name": "T2* error", "units": "uSec"}
+
 
 # def calculate_fit_results(frequency, tau, tau_error, fit, detuning):
 #     """

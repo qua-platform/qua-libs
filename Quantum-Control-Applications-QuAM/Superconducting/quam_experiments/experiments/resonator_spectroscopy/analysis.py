@@ -34,9 +34,7 @@ def log_fitted_results(fit_results: Dict, logger=None):
         logger = logging.getLogger(__name__)
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
-        s_freq = (
-            f"\tResonator frequency: {1e-9 * fit_results[q]['frequency']:.3f} GHz | "
-        )
+        s_freq = f"\tResonator frequency: {1e-9 * fit_results[q]['frequency']:.3f} GHz | "
         s_fwhm = f"FWHM: {1e-3 * fit_results[q]['fwhm']:.1f} kHz | "
         if fit_results[q]["success"]:
             s_qubit += " SUCCESS!\n"
@@ -48,17 +46,13 @@ def log_fitted_results(fit_results: Dict, logger=None):
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     ds = convert_IQ_to_V(ds, node.namespace["qubits"])
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
-    full_freq = np.array(
-        [ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]]
-    )
+    full_freq = np.array([ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]])
     ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     return ds
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the T1 relaxation time for each qubit according to ``a * np.exp(t * decay) + offset``.
 
@@ -95,12 +89,8 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     fit = fit.assign_coords(fwhm=("qubit", fwhm.data))
     fit.fwhm.attrs = {"long_name": "resonator fwhm", "units": "Hz"}
     # Assess whether the fit was successful or not
-    freq_success = (
-        np.abs(res_freq.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
-    )
-    fwhm_success = (
-        np.abs(fwhm.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
-    )
+    freq_success = np.abs(res_freq.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
+    fwhm_success = np.abs(fwhm.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
     success_criteria = freq_success & fwhm_success
     fit = fit.assign_coords(success=("qubit", success_criteria))
 

@@ -53,9 +53,7 @@ class Parameters(NodeParameters):
     use_state_discrimination: bool = True
     use_strict_timing: bool = False
     # interleaved_gate_index: int = 2
-    interleaved_gate_operation: Literal[
-        "I", "x180", "y180", "x90", "-x90", "y90", "-y90"
-    ] = "x180"
+    interleaved_gate_operation: Literal["I", "x180", "y180", "x90", "-x90", "y90", "-y90"] = "x180"
     num_random_sequences: int = 100  # Number of random sequences
     num_averages: int = 20
     max_circuit_depth: int = 500  # Maximum circuit depth
@@ -119,9 +117,7 @@ def get_interleaved_gate(gate_index):
     elif gate_index == 15:
         return "-y90"
     else:
-        raise ValueError(
-            f"Interleaved gate index {gate_index} doesn't correspond to a single operation"
-        )
+        raise ValueError(f"Interleaved gate index {gate_index} doesn't correspond to a single operation")
 
 
 def get_interleaved_gate_index(gate_operation):
@@ -154,9 +150,7 @@ if node.parameters.delta_clifford < 1:
 delta_clifford = node.parameters.delta_clifford
 flux_point = node.parameters.flux_point_joint_or_independent
 reset_type = node.parameters.reset_type_thermal_or_active
-assert (
-    max_circuit_depth / delta_clifford
-).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 num_depths = max_circuit_depth // delta_clifford + 1
 seed = node.parameters.seed  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
@@ -164,9 +158,7 @@ state_discrimination = node.parameters.use_state_discrimination
 strict_timing = node.parameters.use_strict_timing
 # List of recovery gates from the lookup table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
-interleaved_gate_index = get_interleaved_gate_index(
-    node.parameters.interleaved_gate_operation
-)
+interleaved_gate_index = get_interleaved_gate_index(node.parameters.interleaved_gate_operation)
 
 
 # %% {Utility functions}
@@ -299,9 +291,7 @@ with program() as randomized_benchmarking:
         # QUA for_ loop over the random sequences
         with for_(m, 0, m < num_of_sequences, m + 1):
             # Generate the random sequence of length max_circuit_depth
-            sequence_list, inv_gate_list = generate_sequence(
-                interleaved_gate_index=interleaved_gate_index
-            )
+            sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
             assign(depth_target, 0)  # Initialize the current depth to 0
 
             with for_(depth, 1, depth <= 2 * max_circuit_depth, depth + 1):
@@ -343,9 +333,9 @@ with program() as randomized_benchmarking:
     with stream_processing():
         m_st.save("iteration")
         for i in range(num_qubits):
-            state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                num_depths
-            ).buffer(num_of_sequences).save(f"state{i + 1}")
+            state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save(
+                f"state{i + 1}"
+            )
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
@@ -422,9 +412,7 @@ if not node.parameters.simulate:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         da_state_qubit = da_state.sel(qubit=qubit["qubit"])
-        da_state_std = ds["state"].std(dim="sequence").sel(
-            qubit=qubit["qubit"]
-        ) / np.sqrt(ds.sequence.size)
+        da_state_std = ds["state"].std(dim="sequence").sel(qubit=qubit["qubit"]) / np.sqrt(ds.sequence.size)
         ax.errorbar(
             da_state_qubit.m,
             da_state_qubit,
@@ -437,10 +425,7 @@ if not node.parameters.simulate:
         m = da_state.m.values
         ax.set_title(qubit["qubit"], pad=22)
         ax.set_xlabel("Circuit depth")
-        fit_dict = {
-            k: da_fit.sel(**qubit).sel(fit_vals=k).values
-            for k in da_fit.fit_vals.values
-        }
+        fit_dict = {k: da_fit.sel(**qubit).sel(fit_vals=k).values for k in da_fit.fit_vals.values}
         ax.plot(m, decay_exp(m, **fit_dict), "r--", label="fit")
         ax.text(
             0.0,
