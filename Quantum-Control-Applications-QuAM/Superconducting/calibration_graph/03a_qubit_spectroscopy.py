@@ -214,7 +214,10 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], logger)
-    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plotting}
@@ -232,30 +235,26 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def state_update(node: QualibrationNode[Parameters, QuAM]):
-    """Update the relevant parameters for each qubit only if the data analysis was a success."""
-
-    # Update the state
+    """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
-        for index, q in enumerate(node.namespace["qubits"]):
-            if node.results["fit_results"][q.name]["success"]:
-                # Update the readout frequency for the given flux point
-                q.f_01 = node.results["fit_results"][q.name]["frequency"]
-                q.xy.RF_frequency = q.f_01
-                # Update the integration weight angle
-                q.resonator.operations["readout"].integration_weights_angle = (
-                    node.results["fit_results"][q.name]["iw_angle"]
-                )
-                # Update the saturation amplitude
-                q.xy.operations["saturation"].amplitude = node.results["fit_results"][
-                    q.name
-                ]["saturation_amp"]
-                # Update the x180 and x90 amplitudes
-                q.xy.operations["x180"].amplitude = node.results["fit_results"][q.name][
-                    "x180_amp"
-                ]
-                q.xy.operations["x90"].amplitude = (
-                    node.results["fit_results"][q.name]["x180_amp"] / 2
-                )
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            # Update the readout frequency for the given flux point
+            q.f_01 = node.results["fit_results"][q.name]["frequency"]
+            q.xy.RF_frequency = q.f_01
+
+            fit_result = node.results["fit_results"][q.name]
+            # Update the integration weight angle
+            q.resonator.operations["readout"].integration_weights_angle = fit_result[
+                "iw_angle"
+            ]
+            # Update the saturation amplitude
+            q.xy.operations["saturation"].amplitude = fit_result["saturation_amp"]
+            # Update the x180 and x90 amplitudes
+            q.xy.operations["x180"].amplitude = fit_result["x180_amp"]
+            q.xy.operations["x90"].amplitude = fit_result["x180_amp"] / 2
 
 
 # %% {Save_results}

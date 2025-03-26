@@ -211,7 +211,10 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], logger)
-    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plotting}
@@ -229,29 +232,27 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def state_update(node: QualibrationNode[Parameters, QuAM]):
-    """Update the relevant parameters for each qubit only if the data analysis was a success."""
+    """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
-        for index, q in enumerate(node.namespace["qubits"]):
-            if node.results["fit_results"][q.name]["success"]:
-                # Update the idle offset
-                if q.z.flux_point == "independent":
-                    q.z.independent_offset = node.results["fit_results"][q.name][
-                        "idle_offset"
-                    ]
-                else:
-                    q.z.joint_offset = node.results["fit_results"][q.name][
-                        "idle_offset"
-                    ]
-                # Update the min offset
-                if node.parameters.update_flux_min:
-                    q.z.min_offset = node.results["fit_results"][q.name]["min_offset"]
-                # Update the readout frequency for the given flux point
-                q.resonator.f_01 += node.results["fit_results"][q.name][
-                    "frequency_shift"
-                ]
-                q.resonator.RF_frequency = q.resonator.f_01
-                q.phi0_voltage = node.results["fit_results"][q.name]["dv_phi0"]
-                q.phi0_current = node.results["fit_results"][q.name]["phi0_current"]
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            fit_results = node.results["fit_results"][q.name]
+
+            # Update the idle offset
+            if q.z.flux_point == "independent":
+                q.z.independent_offset = fit_results["idle_offset"]
+            else:
+                q.z.joint_offset = fit_results["idle_offset"]
+            # Update the min offset
+            if node.parameters.update_flux_min:
+                q.z.min_offset = fit_results["min_offset"]
+            # Update the readout frequency for the given flux point
+            q.resonator.f_01 += fit_results["frequency_shift"]
+            q.resonator.RF_frequency = q.resonator.f_01
+            q.phi0_voltage = fit_results["dv_phi0"]
+            q.phi0_current = fit_results["phi0_current"]
 
 
 # %% {Save_results}

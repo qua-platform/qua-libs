@@ -226,7 +226,10 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], logger)
-    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plotting}
@@ -248,35 +251,29 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     node.results["figure_confusion_matrix"] = fig_confusion
 
 
-# # %% {Update_state}
+# %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def state_update(node: QualibrationNode[Parameters, QuAM]):
-    """Update the relevant parameters for each qubit only if the data analysis was a success."""
+    """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
-        for index, q in enumerate(node.namespace["qubits"]):
-            if node.results["fit_results"][q.name]["success"]:
-                q.resonator.operations[
-                    node.parameters.operation
-                ].integration_weights_angle -= float(
-                    node.results["fit_results"][q.name]["iw_angle"]
-                )
-                # Convert the thresholds back in demod units
-                # todo: what about when calibrating qnd_readout, would state discrimination be wrong?
-                q.resonator.operations[node.parameters.operation].threshold = (
-                    float(node.results["fit_results"][q.name]["ge_threshold"])
-                    * q.resonator.operations[node.parameters.operation].length
-                    / 2**12
-                )
-                q.resonator.operations[node.parameters.operation].rus_exit_threshold = (
-                    float(node.results["fit_results"][q.name]["rus_threshold"])
-                    * q.resonator.operations[node.parameters.operation].length
-                    / 2**12
-                )
-                # todo: add conf matrix to the readout operation rather than the resonator
-                if node.parameters.operation == "readout":
-                    q.resonator.confusion_matrix = node.results["fit_results"][q.name][
-                        "confusion_matrix"
-                    ]
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            fit_result = node.results["fit_results"][q.name]
+            operation = q.resonator.operations[node.parameters.operation]
+            operation.integration_weights_angle -= float(fit_result["iw_angle"])
+            # Convert the thresholds back in demod units
+            # todo: what about when calibrating qnd_readout, would state discrimination be wrong?
+            operation.threshold = (
+                float(fit_result["ge_threshold"]) * operation.length / 2**12
+            )
+            operation.rus_exit_threshold = (
+                float(fit_result["rus_threshold"]) * operation.length / 2**12
+            )
+            # todo: add conf matrix to the readout operation rather than the resonator
+            if node.parameters.operation == "readout":
+                q.resonator.confusion_matrix = fit_result["confusion_matrix"]
 
 
 # %% {Save_results}

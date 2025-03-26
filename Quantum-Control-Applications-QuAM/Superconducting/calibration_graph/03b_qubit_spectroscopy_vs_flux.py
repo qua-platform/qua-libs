@@ -286,8 +286,12 @@ if not node.parameters.simulate:
                 fit_results[q.name]["flux_shift"] = np.nan
                 fit_results[q.name]["drive_freq"] = np.nan
                 fit_results[q.name]["quad_term"] = np.nan
+                fit_results[q.name]["success"] = False
         node.results["fit_results"] = fit_results
-    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
@@ -313,17 +317,24 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure"] = grid.fig
 
-    # %% {Update_state}
-    if node.parameters.load_data_id is None:
-        with node.record_state_updates():
-            for q in qubits:
-                if not np.isnan(flux_shift.sel(qubit=q.name).values):
-                    if flux_point == "independent":
-                        q.z.independent_offset += fit_results[q.name]["flux_shift"]
-                    elif flux_point == "joint":
-                        q.z.joint_offset += fit_results[q.name]["flux_shift"]
-                    q.xy.intermediate_frequency += fit_results[q.name]["drive_freq"]
-                    q.freq_vs_flux_01_quad_term = fit_results[q.name]["quad_term"]
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def state_update(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+    with node.record_state_updates():
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            fit_results = node.results["fit_results"][q.name]
+
+            if node.parameters.flux_point_joint_or_independent == "independent":
+                q.z.independent_offset += fit_results["flux_shift"]
+            elif node.parameters.flux_point_joint_or_independent == "joint":
+                q.z.joint_offset += fit_results["flux_shift"]
+            q.xy.intermediate_frequency += fit_results["drive_freq"]
+            q.freq_vs_flux_01_quad_term = fit_results["quad_term"]
 
 
 # %% {Save_results}

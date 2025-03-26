@@ -318,18 +318,24 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure"] = grid.fig
 
-    # %% {Update_state}
-    if node.parameters.load_data_id is None:
-        with node.record_state_updates():
-            for qubit in qubits:
-                qubit.xy.intermediate_frequency -= freq_offset[qubit.name]
-                if flux_point == "independent":
-                    qubit.z.independent_offset += flux_offset[qubit.name]
-                elif flux_point == "joint":
-                    qubit.z.joint_offset += flux_offset[qubit.name]
-                else:
-                    raise RuntimeError(f"unknown flux_point")
-                qubit.freq_vs_flux_01_quad_term = float(a[qubit.name])
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def state_update(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+    with node.record_state_updates():
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            q.xy.intermediate_frequency -= freq_offset[q.name]
+            if flux_point == "independent":
+                q.z.independent_offset += flux_offset[q.name]
+            elif flux_point == "joint":
+                q.z.joint_offset += flux_offset[q.name]
+            else:
+                raise RuntimeError(f"unknown flux_point")
+            q.freq_vs_flux_01_quad_term = float(a[q.name])
 
 
 # %% {Save_results}

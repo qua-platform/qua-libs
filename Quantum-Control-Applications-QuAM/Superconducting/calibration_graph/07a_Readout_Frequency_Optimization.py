@@ -269,14 +269,18 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure2"] = grid.fig
 
-    # %% {Update_state}
-    if node.parameters.load_data_id is None:
-        for q in qubits:
-            with node.record_state_updates():
-                q.resonator.intermediate_frequency += int(
-                    fit_results[q.name]["detuning"]
-                )
-                q.chi = float(fit_results[q.name]["chi"])
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def state_update(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+    with node.record_state_updates():
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            q.resonator.intermediate_frequency += int(fit_results[q.name]["detuning"])
+            q.chi = float(fit_results[q.name]["chi"])
 
 
 # %% {Save_results}

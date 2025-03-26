@@ -246,8 +246,18 @@ else:
     # %% {Update_state}
     print(f"Time Of Flight to add: {delays} ns")
 
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def state_update(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+    ds = node.results["ds"]
+
     with node.record_state_updates():
-        for q in qubits:
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
             if node.parameters.time_of_flight_in_ns is not None:
                 q.resonator.time_of_flight = node.parameters.time_of_flight_in_ns + int(
                     ds.sel(qubit=q.name).delays

@@ -441,27 +441,23 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure_fidelities"] = grid.fig
 
-    # %% {Update_state}
-    if node.parameters.load_data_id is None:
-        with node.record_state_updates():
-            for qubit in qubits:
-                qubit.resonator.operations[
-                    "readout"
-                ].integration_weights_angle -= float(
-                    node.results["results"][qubit.name]["angle"]
-                )
-                qubit.resonator.operations["readout"].threshold = float(
-                    node.results["results"][qubit.name]["threshold"]
-                )
-                qubit.resonator.operations["readout"].rus_exit_threshold = float(
-                    node.results["results"][qubit.name]["rus_threshold"]
-                )
-                qubit.resonator.operations["readout"].amplitude = float(
-                    node.results["results"][qubit.name]["best_amp"]
-                )
-                qubit.resonator.confusion_matrix = node.results["results"][qubit.name][
-                    "confusion_matrix"
-                ].tolist()
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def state_update(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+    with node.record_state_updates():
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            fit_results = node.results["results"][q.name]
+            operation = q.resonator.operations["readout"]
+            operation.integration_weights_angle -= float(fit_results["angle"])
+            operation.threshold = float(fit_results["threshold"])
+            operation.rus_exit_threshold = float(fit_results["rus_threshold"])
+            operation.amplitude = float(fit_results["best_amp"])
+            q.resonator.confusion_matrix = fit_results["confusion_matrix"].tolist()
 
 
 # %% {Save_results}

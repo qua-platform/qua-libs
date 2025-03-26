@@ -256,14 +256,20 @@ if not node.parameters.simulate:
     # Revert the change done at the beginning of the node
     for qubit in tracked_qubits:
         qubit.revert_changes()
-    if node.parameters.load_data_id is None:
-        with node.record_state_updates():
-            for qubit in qubits:
-                qubit.xy.operations[operation].detuning = float(
-                    fit_results[qubit.name]["detuning"]
-                )
-                if node.parameters.DRAG_setpoint is not None:
-                    qubit.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
+
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def state_update(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+    with node.record_state_updates():
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            q.xy.operations[operation].detuning = float(fit_results[q.name]["detuning"])
+            if node.parameters.DRAG_setpoint is not None:
+                q.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
 
 
 # %% {Save_results}

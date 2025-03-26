@@ -247,15 +247,21 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure"] = grid.fig
 
-    # %% {Update_state}
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def state_update(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+
     # Revert the change done at the beginning of the node
     for qubit in tracked_qubits:
         qubit.revert_changes()
-    # Update the state
-    if node.parameters.load_data_id is None:
-        with node.record_state_updates():
-            for q in qubits:
-                q.xy.operations[operation].alpha = fit_results[q.name]["alpha"]
+
+    with node.record_state_updates():
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+            q.xy.operations[operation].alpha = fit_results[q.name]["alpha"]
 
 
 # %% {Save_results}

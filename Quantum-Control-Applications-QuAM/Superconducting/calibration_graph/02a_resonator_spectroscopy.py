@@ -19,7 +19,6 @@ Before proceeding to the next node:
     - Save the current state
 """
 
-
 # %% {Imports}
 import matplotlib.pyplot as plt
 import numpy as np
@@ -212,7 +211,10 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], logger)
-    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plotting}
@@ -232,14 +234,14 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def state_update(node: QualibrationNode[Parameters, QuAM]):
-    """Update the relevant parameters for each qubit only if the data analysis was a success."""
+    """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
-        for index, q in enumerate(node.namespace["qubits"]):
-            if node.results["fit_results"][q.name]["success"]:
-                q.resonator.f_01 = float(
-                    node.results["fit_results"][q.name]["frequency"]
-                )
-                q.resonator.RF_frequency = q.resonator.f_01
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            q.resonator.f_01 = float(node.results["fit_results"][q.name]["frequency"])
+            q.resonator.RF_frequency = q.resonator.f_01
 
 
 # %% {Save_results}

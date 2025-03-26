@@ -212,7 +212,10 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["ds_fit"], logger)
-    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plotting}
@@ -233,12 +236,13 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def state_update(node: QualibrationNode[Parameters, QuAM]):
-    """Update the relevant parameters for each qubit only if the data analysis was a success."""
-    # todo: explain what this context manager does
+    """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
-        for index, q in enumerate(node.namespace["qubits"]):
-            if node.results["ds_fit"].sel(qubit=q.name).success:
-                q.T1 = float(node.results["ds_fit"].sel(qubit=q.name).tau.values) * 1e-9
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            q.T1 = float(node.results["ds_fit"].sel(qubit=q.name).tau.values) * 1e-9
 
 
 # %% {Save_results}

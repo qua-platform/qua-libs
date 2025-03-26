@@ -253,8 +253,18 @@ else:
     print(f"Offsets to add for I: {ds.offsets_I.values * 1000} mV")
     print(f"Offsets to add for Q: {ds.offsets_Q.values * 1000} mV")
 
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def state_update(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+    ds = node.results["ds"]
+
     with node.record_state_updates():
-        for q in qubits:
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
             if node.parameters.time_of_flight_in_ns is not None:
                 q.resonator.time_of_flight = node.parameters.time_of_flight_in_ns + int(
                     ds.sel(qubit=q.name).delays
@@ -269,36 +279,33 @@ else:
     # Update the offsets per controller for each qubit
     for con in np.unique(ds.con.values):
         for i, q in enumerate(ds.where(ds.con == con).qubit.values):
+            resonator = node.machine.qubits[q].resonator
             # Only add the offsets once,
             if i == 0:
-                if node.machine.qubits[q].resonator.opx_input_I.offset is not None:
-                    node.machine.qubits[q].resonator.opx_input_I.offset += float(
+                if resonator.opx_input_I.offset is not None:
+                    resonator.opx_input_I.offset += float(
                         ds.where(ds.con == con).offsets_I.mean(dim="qubit").values
                     )
                 else:
-                    node.machine.qubits[q].resonator.opx_input_I.offset = float(
+                    resonator.opx_input_I.offset = float(
                         ds.where(ds.con == con).offsets_I.mean(dim="qubit").values
                     )
-                if node.machine.qubits[q].resonator.opx_input_Q.offset is not None:
-                    node.machine.qubits[q].resonator.opx_input_Q.offset += float(
+                if resonator.opx_input_Q.offset is not None:
+                    resonator.opx_input_Q.offset += float(
                         ds.where(ds.con == con).offsets_Q.mean(dim="qubit").values
                     )
                 else:
-                    node.machine.qubits[q].resonator.opx_input_Q.offset = float(
+                    resonator.opx_input_Q.offset = float(
                         ds.where(ds.con == con).offsets_Q.mean(dim="qubit").values
                     )
             # else copy the values from the updated qubit
             else:
-                node.machine.qubits[q].resonator.opx_input_I.offset = (
-                    node.machine.qubits[
-                        ds.where(ds.con == con).qubit.values[0]
-                    ].resonator.opx_input_I.offset
-                )
-                node.machine.qubits[q].resonator.opx_input_Q.offset = (
-                    node.machine.qubits[
-                        ds.where(ds.con == con).qubit.values[0]
-                    ].resonator.opx_input_Q.offset
-                )
+                resonator.opx_input_I.offset = node.machine.qubits[
+                    ds.where(ds.con == con).qubit.values[0]
+                ].resonator.opx_input_I.offset
+                resonator.opx_input_Q.offset = node.machine.qubits[
+                    ds.where(ds.con == con).qubit.values[0]
+                ].resonator.opx_input_Q.offset
 
 
 # %% {Save_results}

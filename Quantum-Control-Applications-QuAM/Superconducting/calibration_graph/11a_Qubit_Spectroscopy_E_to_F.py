@@ -285,14 +285,23 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure"] = grid.fig
 
+
 # %% {Update_state}
-if not node.parameters.load_data_id:
-    if not node.parameters.simulate:
-        with node.record_state_updates():
-            for q in qubits:
-                fit_results[q.name] = {}
-                if not np.isnan(result.sel(qubit=q.name).position.values):
-                    q.anharmonicity = int(anharmonicities[q.name])
+@node.run_action(skip_if=node.parameters.simulate)
+def state_update(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+
+    # Revert the change done at the beginning of the node
+    for qubit in tracked_qubits:
+        qubit.revert_changes()
+
+    with node.record_state_updates():
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+            fit_results[q.name] = {}
+            if not np.isnan(result.sel(qubit=q.name).position.values):
+                q.anharmonicity = int(anharmonicities[q.name])
 
 
 # %% {Save_results}

@@ -200,12 +200,19 @@ if not node.parameters.simulate:
     plt.tight_layout()
     plt.show()
 
-    # %% {Update_state}
-    if node.parameters.load_data_id is None:
-        with node.record_state_updates():
-            for q in qubits:
-                q.xy.intermediate_frequency -= float(fits[q.name].freq_offset)
-                q.T2ramsey = float(fits[q.name].decay)
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def state_update(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+    with node.record_state_updates():
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            fit_results = node.results["fit_results"][q.name]
+            q.xy.intermediate_frequency -= float(fit_results["freq_offset"])
+            q.T2ramsey = float(fit_results["decay"])
 
 
 # %% {Save_results}

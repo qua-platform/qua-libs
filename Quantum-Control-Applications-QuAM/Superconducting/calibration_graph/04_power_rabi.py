@@ -244,7 +244,10 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], logger)
-    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plotting}
@@ -262,17 +265,16 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def state_update(node: QualibrationNode[Parameters, QuAM]):
-    """Update the relevant parameters for each qubit only if the data analysis was a success."""
+    """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
-        for index, q in enumerate(node.namespace["qubits"]):
-            if node.results["fit_results"][q.name]["success"]:
-                q.xy.operations[node.parameters.operation].amplitude = node.results[
-                    "fit_results"
-                ][q.name]["opt_amp"]
-                if node.parameters.operation == "x180":
-                    q.xy.operations["x90"].amplitude = (
-                        q.xy.operations[node.parameters.operation].amplitude / 2
-                    )
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            operation = q.xy.operations[node.parameters.operation]
+            operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
+            if node.parameters.operation == "x180":
+                q.xy.operations["x90"].amplitude = operation.amplitude / 2
 
 
 # %% {Save_results}
