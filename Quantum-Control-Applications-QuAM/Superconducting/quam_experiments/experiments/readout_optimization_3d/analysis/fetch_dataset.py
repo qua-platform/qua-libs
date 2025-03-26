@@ -10,7 +10,9 @@ from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.save_utils import fetch_results_as_xarray
 
 
-def fetch_dataset(job, qubits, run_axis: np.ndarray, node_parameters: ReadoutOptimization3dParameters):
+def fetch_dataset(
+    job, qubits, run_axis: np.ndarray, node_parameters: ReadoutOptimization3dParameters
+):
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     dfs = get_frequency_detunings_in_hz(node_parameters)
     amps = get_amplitude_factors(node_parameters)
@@ -19,7 +21,12 @@ def fetch_dataset(job, qubits, run_axis: np.ndarray, node_parameters: ReadoutOpt
     ds = fetch_results_as_xarray(
         handles=job.result_handles,
         qubits=qubits,
-        measurement_axis={"duration": durations, "amp": amps, "freq": dfs, "run": run_axis},
+        measurement_axis={
+            "duration": durations,
+            "amp": amps,
+            "freq": dfs,
+            "run": run_axis,
+        },
     )
     ds = convert_IQ_to_V(ds, qubits, ["I_g", "Q_g", "I_e", "Q_e"])
 

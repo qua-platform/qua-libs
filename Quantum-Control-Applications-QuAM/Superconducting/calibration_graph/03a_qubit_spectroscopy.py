@@ -93,7 +93,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
+        "detuning": xr.DataArray(
+            dfs, attrs={"long_name": "readout frequency", "units": "Hz"}
+        ),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -112,11 +114,19 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 with for_(*from_array(df, dfs)):
                     for i, qubit in multiplexed_qubits.items():
                         # Get the duration of the operation from the node parameters or the state
-                        duration = operation_len if operation_len is not None else qubit.xy.operations[operation].length
+                        duration = (
+                            operation_len
+                            if operation_len is not None
+                            else qubit.xy.operations[operation].length
+                        )
                         # Update the qubit frequency
                         qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
                         # Play the saturation pulse
-                        qubit.xy.play(operation, amplitude_scale=operation_amp, duration=duration // 4)
+                        qubit.xy.play(
+                            operation,
+                            amplitude_scale=operation_amp,
+                            duration=duration // 4,
+                        )
                     align()
 
                     for i, qubit in multiplexed_qubits.items():
@@ -137,7 +147,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
 
 # %% {Simulate_or_execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -145,12 +157,16 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["qua_program"], node.parameters
+    )
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -165,7 +181,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
-            progress_counter(data_fetcher["n"], node.parameters.num_averages, start_time=data_fetcher.t_start)
+            progress_counter(
+                data_fetcher["n"],
+                node.parameters.num_averages,
+                start_time=data_fetcher.t_start,
+            )
         # Display the execution report to expose possible runtime errors
         print(job.execution_report())
     # Register the raw dataset
@@ -200,7 +220,9 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_raw_fit = plot_raw_data_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+    )
     plt.show()
     # Store the generated figures
     node.results["figure_amplitude"] = fig_raw_fit
@@ -219,14 +241,20 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
                 q.f_01 = node.results["fit_results"][q.name]["frequency"]
                 q.xy.RF_frequency = q.f_01
                 # Update the integration weight angle
-                q.resonator.operations["readout"].integration_weights_angle = node.results["fit_results"][q.name][
-                    "iw_angle"
-                ]
+                q.resonator.operations["readout"].integration_weights_angle = (
+                    node.results["fit_results"][q.name]["iw_angle"]
+                )
                 # Update the saturation amplitude
-                q.xy.operations["saturation"].amplitude = node.results["fit_results"][q.name]["saturation_amp"]
+                q.xy.operations["saturation"].amplitude = node.results["fit_results"][
+                    q.name
+                ]["saturation_amp"]
                 # Update the x180 and x90 amplitudes
-                q.xy.operations["x180"].amplitude = node.results["fit_results"][q.name]["x180_amp"]
-                q.xy.operations["x90"].amplitude = node.results["fit_results"][q.name]["x180_amp"] / 2
+                q.xy.operations["x180"].amplitude = node.results["fit_results"][q.name][
+                    "x180_amp"
+                ]
+                q.xy.operations["x90"].amplitude = (
+                    node.results["fit_results"][q.name]["x180_amp"] / 2
+                )
 
 
 # %% {Save_results}

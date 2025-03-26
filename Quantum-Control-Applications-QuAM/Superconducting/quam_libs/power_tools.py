@@ -31,7 +31,10 @@ def set_output_power_mw_channel(
     allowed_full_scale_power_in_dbm_values = np.arange(-41, 11, 3)
 
     if full_scale_power_dbm is not None:
-        if full_scale_power_dbm < -20 or full_scale_power_dbm not in allowed_full_scale_power_in_dbm_values:
+        if (
+            full_scale_power_dbm < -20
+            or full_scale_power_dbm not in allowed_full_scale_power_in_dbm_values
+        ):
             raise ValueError(
                 f"Expected full_scale_power_dbm to be > -20 in QOP3.2.0, or "
                 f"in range [-41, 10] in steps of 3 dB, got {full_scale_power_dbm}."
@@ -72,7 +75,10 @@ def set_output_power_mw_channel(
 
     channel.opx_output.full_scale_power_dbm = temp_full_scale_power_dbm
 
-    return {"full_scale_power_dbm": temp_full_scale_power_dbm, "amplitude": channel.operations[operation].amplitude}
+    return {
+        "full_scale_power_dbm": temp_full_scale_power_dbm,
+        "amplitude": channel.operations[operation].amplitude,
+    }
 
 
 def get_output_power_mw_channel(channel: MWChannel, operation, Z=50) -> float:

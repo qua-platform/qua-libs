@@ -11,7 +11,9 @@ from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from quam_libs.save_utils import fetch_results_as_xarray
 
 
-def fetch_dataset(job: QmJob, qubits: List[AnyTransmon], resonators: List[ReadoutResonator]):
+def fetch_dataset(
+    job: QmJob, qubits: List[AnyTransmon], resonators: List[ReadoutResonator]
+):
     """
     Fetches raw ADC data from the OPX and processes it into an xarray dataset with labeled coordinates and attributes.
 
@@ -28,17 +30,28 @@ def fetch_dataset(job: QmJob, qubits: List[AnyTransmon], resonators: List[Readou
 
     """
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    time_axis = np.linspace(0, resonators[0].operations["readout"].length, resonators[0].operations["readout"].length)
+    time_axis = np.linspace(
+        0,
+        resonators[0].operations["readout"].length,
+        resonators[0].operations["readout"].length,
+    )
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"time": time_axis})
 
     # Convert raw ADC traces into volts
-    ds = ds.assign({key: -ds[key] / 2**12 for key in ("adcI", "adcQ", "adc_single_runI", "adc_single_runQ")})
+    ds = ds.assign(
+        {
+            key: -ds[key] / 2**12
+            for key in ("adcI", "adcQ", "adc_single_runI", "adc_single_runQ")
+        }
+    )
     ds = ds.assign({"IQ_abs": np.sqrt(ds["adcI"] ** 2 + ds["adcQ"] ** 2)})
 
     return ds
 
 
-def analyze_pulse_arrival_times(ds: xr.Dataset, qubits: List[AnyTransmon]) -> Tuple[xr.Dataset, dict]:
+def analyze_pulse_arrival_times(
+    ds: xr.Dataset, qubits: List[AnyTransmon]
+) -> Tuple[xr.Dataset, dict]:
     """
     Processes the dataset by filtering signals, detecting pulse arrival times, and adding coordinates.
 
@@ -74,7 +87,9 @@ def detect_pulse_arrival(
     for q in qubits:
         fit_results[q.name] = {}
         # Filter the time trace for the qubit's IQ_abs
-        filtered_adc = savgol_filter(np.abs(ds.sel(qubit=q.name).IQ_abs), window_length, polyorder)
+        filtered_adc = savgol_filter(
+            np.abs(ds.sel(qubit=q.name).IQ_abs), window_length, polyorder
+        )
         # Calculate a threshold to detect the rising edge
         threshold = (np.mean(filtered_adc[:100]) + np.mean(filtered_adc[:-100])) / 2
         delay = np.where(filtered_adc > threshold)[0][0]
@@ -98,5 +113,12 @@ def add_coordinates_to_dataset(ds, delays, qubits):
     ds = ds.assign_coords({"delays": (["qubit"], delays)})
     ds = ds.assign_coords({"offsets_I": ds.adcI.mean(dim="time")})
     ds = ds.assign_coords({"offsets_Q": ds.adcQ.mean(dim="time")})
-    ds = ds.assign_coords({"con": (["qubit"], [qubit.resonator.opx_input_I.controller_id for qubit in qubits])})
+    ds = ds.assign_coords(
+        {
+            "con": (
+                ["qubit"],
+                [qubit.resonator.opx_input_I.controller_id for qubit in qubits],
+            )
+        }
+    )
     return ds

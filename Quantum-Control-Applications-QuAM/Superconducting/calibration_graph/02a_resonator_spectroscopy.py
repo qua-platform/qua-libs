@@ -1,13 +1,16 @@
 """
         RESONATOR SPECTROSCOPY MULTIPLEXED
-This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to extract the
-'I' and 'Q' quadratures across varying readout intermediate frequencies for all resonators simultaneously.
-The data is then post-processed to determine the resonator resonance frequency.
-This frequency can be used to update the readout frequency in the state.
+This sequence involves measuring the resonator by sending a readout pulse and
+demodulating the signals to extract the 'I' and 'Q' quadratures across varying
+readout intermediate frequencies for all resonators simultaneously. The data is
+then post-processed to determine the resonator resonance frequency. This frequency
+can be used to update the readout frequency in the state.
 
 Prerequisites:
-    - Ensure calibration of the time of flight, offsets, and gains (referenced as "time_of_flight").
-    - Calibrate the IQ mixer connected to the readout line (whether it's an external mixer or an Octave port).
+    - Ensure calibration of the time of flight, offsets, and gains (referenced as
+      "time_of_flight").
+    - Calibrate the IQ mixer connected to the readout line (whether it's an
+      external mixer or an Octave port).
     - Define the desired readout pulse amplitude and duration in the state.
     - Specify the expected resonator depletion time in the state.
 
@@ -15,6 +18,7 @@ Before proceeding to the next node:
     - Update the readout frequency, in the state for all resonators.
     - Save the current state
 """
+
 
 # %% {Imports}
 import matplotlib.pyplot as plt

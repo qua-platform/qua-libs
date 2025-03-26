@@ -32,10 +32,13 @@ connectivity = Connectivity()
 for i in range(8):
     connectivity.add_resonator_line(
         qubits=qubits[i],
-        constraints=mw_fem_spec(con=1, slot=rr_slots[i], in_port=rr_in_ports[i], out_port=rr_out_ports[i]),
+        constraints=mw_fem_spec(
+            con=1, slot=rr_slots[i], in_port=rr_in_ports[i], out_port=rr_out_ports[i]
+        ),
     )
     connectivity.add_qubit_drive_lines(
-        qubits=qubits[i], constraints=mw_fem_spec(con=1, slot=xy_slots[i], out_port=xy_ports[i])
+        qubits=qubits[i],
+        constraints=mw_fem_spec(con=1, slot=xy_slots[i], out_port=xy_ports[i]),
     )
 # Don't block the xy channels to connect the CR and ZZ drives to the same ports
 allocate_wiring(connectivity, instruments, block_used_channels=False)
@@ -43,12 +46,14 @@ allocate_wiring(connectivity, instruments, block_used_channels=False)
 for i in range(len(qubit_pairs)):
     # Add CR lines
     connectivity.add_qubit_pair_cross_resonance_lines(
-        qubit_pairs=qubit_pairs[i], constraints=mw_fem_spec(con=1, slot=xy_slots[i], out_port=xy_ports[i])
+        qubit_pairs=qubit_pairs[i],
+        constraints=mw_fem_spec(con=1, slot=xy_slots[i], out_port=xy_ports[i]),
     )
     allocate_wiring(connectivity, instruments, block_used_channels=False)
     # Add ZZ lines
     connectivity.add_qubit_pair_zz_drive_lines(
-        qubit_pairs=qubit_pairs[i], constraints=mw_fem_spec(con=1, slot=xy_slots[i], out_port=xy_ports[i])
+        qubit_pairs=qubit_pairs[i],
+        constraints=mw_fem_spec(con=1, slot=xy_slots[i], out_port=xy_ports[i]),
     )
     allocate_wiring(connectivity, instruments, block_used_channels=False)
 

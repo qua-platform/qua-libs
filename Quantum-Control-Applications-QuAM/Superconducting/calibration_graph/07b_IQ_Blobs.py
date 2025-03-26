@@ -28,11 +28,12 @@ from quam_libs.xarray_data_fetcher import XarrayDataFetcher
 
 description = """
         IQ BLOBS
-This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit
-in the |g> state) and then after applying a pi pulse to the qubit (bringing the qubit to the |e> state) successively.
-The resulting IQ blobs are displayed, and the data is processed to determine:
-    - The rotation angle required for the integration weights, ensuring that the separation between |g> and |e> states
-      aligns with the 'I' quadrature.
+This sequence involves measuring the state of the resonator 'N' times, first after
+thermalization (with the qubit in the |g> state) and then after applying a pi pulse
+to the qubit (bringing the qubit to the |e> state) successively. The resulting IQ blobs
+are displayed, and the data is processed to determine:
+    - The rotation angle required for the integration weights, ensuring that the 
+      separation between |g> and |e> states aligns with the 'I' quadrature.
     - The threshold along the 'I' quadrature for effective qubit state discrimination.
     - The readout fidelity matrix, which is also influenced by the pi pulse fidelity.
 
@@ -58,7 +59,10 @@ node = QualibrationNode[Parameters, QuAM](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
-    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
+    """
+    Allow the user to locally set the node parameters for debugging purposes, or
+    execution in the Python IDE.
+    """
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
@@ -70,7 +74,10 @@ node.machine = QuAM.load()
 # %% {QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """
+    Create the sweep axes and generate the QUA program from the pulse sequence and the
+    node parameters.
+    """
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
@@ -165,7 +172,10 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
 )
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    """
+    Connect to the QOP, execute the QUA program and fetch the raw data and store it in
+    an xarray dataset called "ds_raw".
+    """
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -207,7 +217,10 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 # %% {Data_analysis}
 @node.run_action(skip_if=node.parameters.simulate)
 def data_analysis(node: QualibrationNode[Parameters, QuAM]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """
+    Analyse the raw data and store the fitted data in another xarray dataset "ds_fit"
+    and the fitted results in the "fit_results" dictionary.
+    """
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
@@ -218,7 +231,10 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
-    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
+    """
+    Plot the raw and fitted data in specific figures whose shape is given by
+    qubit.grid_location.
+    """
     fig_iq = plot_iq_blobs(
         node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
     )

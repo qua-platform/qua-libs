@@ -62,10 +62,14 @@ def plot_fidelity_3d(ds: xr.Dataset, optimal_ds: xr.Dataset) -> Figure:
         # Update layout for better axis labeling
         fig.update_layout(
             scene=dict(
-                xaxis_title="Frequency (MHz)", yaxis_title="Duration (ns)", zaxis_title="Amplitude Factor (arb)"
+                xaxis_title="Frequency (MHz)",
+                yaxis_title="Duration (ns)",
+                zaxis_title="Amplitude Factor (arb)",
             ),
             scene2=dict(  # Apply the same labels to the second subplot
-                xaxis_title="Frequency (MHz)", yaxis_title="Duration (ns)", zaxis_title="Amplitude Factor (arb)"
+                xaxis_title="Frequency (MHz)",
+                yaxis_title="Duration (ns)",
+                zaxis_title="Amplitude Factor (arb)",
             ),
         )
 
@@ -108,7 +112,11 @@ def plot_fidelity_2d(ds: xr.Dataset, optimal_ds: xr.Dataset):
             if duration == optimal_ds_for_this_qubit.duration:
 
                 ax[i].scatter(
-                    optimal_ds_for_this_qubit.freq_mhz, optimal_ds_for_this_qubit.amp, color="yellow", s=50, marker="*"
+                    optimal_ds_for_this_qubit.freq_mhz,
+                    optimal_ds_for_this_qubit.amp,
+                    color="yellow",
+                    s=50,
+                    marker="*",
                 )
 
                 ax[i].annotate(
@@ -124,7 +132,9 @@ def plot_fidelity_2d(ds: xr.Dataset, optimal_ds: xr.Dataset):
                     bbox=dict(facecolor="black", alpha=0.5),
                 )
 
-            ax[i].set_title(f"Duration: {int(duration.values)}ns")  # Ensure titles for clarity
+            ax[i].set_title(
+                f"Duration: {int(duration.values)}ns"
+            )  # Ensure titles for clarity
             ax[i].set_xlabel(None)
             ax[i].set_ylabel(None)
             im_list.append(im)

@@ -11,7 +11,10 @@ from quam_experiments.experiments.time_of_flight.parameters import Parameters
 
 
 def simulate_and_plot(
-    qmm: QuantumMachinesManager, config: dict, program: Program, node_parameters: Parameters
+    qmm: QuantumMachinesManager,
+    config: dict,
+    program: Program,
+    node_parameters: Parameters,
 ) -> Tuple[SimulatorSamples, Figure, Union[WaveformReport, None]]:
     """
     Simulates a QUA program and plots the simulated samples.
@@ -29,7 +32,9 @@ def simulate_and_plot(
     """
 
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node_parameters.simulation_duration_ns // 4)
+    simulation_config = SimulationConfig(
+        duration=node_parameters.simulation_duration_ns // 4
+    )
 
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, program, simulation_config)

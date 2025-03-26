@@ -1,6 +1,9 @@
 from typing import Optional
 
-from quam_experiments.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
+from quam_experiments.parameters import (
+    CommonNodeParameters,
+    QubitsExperimentNodeParameters,
+)
 
 
 class Parameters(QubitsExperimentNodeParameters, CommonNodeParameters):

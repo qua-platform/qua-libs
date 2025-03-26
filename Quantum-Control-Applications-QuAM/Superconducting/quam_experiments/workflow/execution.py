@@ -2,7 +2,9 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qm import QmJob
 
 
-def print_progress_bar(job: QmJob, iteration_variable: str, total_number_of_iterations: int) -> None:
+def print_progress_bar(
+    job: QmJob, iteration_variable: str, total_number_of_iterations: int
+) -> None:
     """
     Displays a live progress bar for a quantum machine job.
 

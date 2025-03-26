@@ -6,7 +6,9 @@ from qm.qua._dsl import _ResultSource
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 
-def make_qua_streams_per_qubit(measurement_batch: Sequence[AnyTransmon]) -> Tuple[List[Union[_ResultSource, None]]]:
+def make_qua_streams_per_qubit(
+    measurement_batch: Sequence[AnyTransmon],
+) -> Tuple[List[Union[_ResultSource, None]]]:
     """
     Create lists of QUA output streams for measurement data for each qubit
     only if the qubit is in the measurement batch, otherwise, no variable

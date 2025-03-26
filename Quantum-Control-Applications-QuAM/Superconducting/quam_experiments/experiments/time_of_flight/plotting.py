@@ -12,7 +12,14 @@ def plot_adc_single_runs(ds, qubits) -> Figure:
         ax.axvline(ds.loc[qubit].delays, color="k", linestyle="--", label="TOF")
         ax.axhline(ds.loc[qubit].offsets_I, color="b", linestyle="--")
         ax.axhline(ds.loc[qubit].offsets_Q, color="r", linestyle="--")
-        ax.fill_between(range(ds.sizes["time"]), -0.5, 0.5, color="grey", alpha=0.2, label="ADC Range")
+        ax.fill_between(
+            range(ds.sizes["time"]),
+            -0.5,
+            0.5,
+            color="grey",
+            alpha=0.2,
+            label="ADC Range",
+        )
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("Readout amplitude [mV]")
         ax.set_title(qubit["qubit"])

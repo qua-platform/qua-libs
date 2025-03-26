@@ -37,9 +37,13 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         if len(ds.nb_of_pulses) == 1:
-            plot_individual_data_with_fit_1D(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+            plot_individual_data_with_fit_1D(
+                ax, ds, qubit, fits.sel(qubit=qubit["qubit"])
+            )
         else:
-            plot_individual_data_with_fit_2D(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+            plot_individual_data_with_fit_2D(
+                ax, ds, qubit, fits.sel(qubit=qubit["qubit"])
+            )
 
     grid.fig.suptitle("Power Rabi")
     grid.fig.set_size_inches(15, 9)
@@ -47,7 +51,9 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     return grid.fig
 
 
-def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_data_with_fit_1D(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -86,7 +92,9 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
             data = "state"
             label = "Qubit state"
         else:
-            raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
+            raise RuntimeError(
+                "The dataset must contain either 'I' or 'state' for the plotting function to work."
+            )
 
         # if state_discrimination: todo: te
         #     ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].state.plot(ax=ax, x="amp_mV")
@@ -94,16 +102,22 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
         #     ax.set_ylabel("Qubit state")
         # else:
 
-        (ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit] * 1e3)[data].plot(ax=ax, x="amp_mV")
+        (ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit] * 1e3)[data].plot(
+            ax=ax, x="amp_mV"
+        )
         ax.plot(fit.full_amp * 1e3, 1e3 * fitted_data)
         ax.set_ylabel(label)
         ax.set_xlabel("Pulse amplitude [mV]")
         ax2 = ax.twiny()
-        (ds.assign_coords(amp_mV=ds.amp_prefactor).loc[qubit] * 1e3)[data].plot(ax=ax2, x="amp_mV")
+        (ds.assign_coords(amp_mV=ds.amp_prefactor).loc[qubit] * 1e3)[data].plot(
+            ax=ax2, x="amp_mV"
+        )
         ax2.set_xlabel("amplitude prefactor")
 
 
-def plot_individual_data_with_fit_2D(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_data_with_fit_2D(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -128,7 +142,9 @@ def plot_individual_data_with_fit_2D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
     elif hasattr(ds, "state"):
         data = "state"
     else:
-        raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
+        raise RuntimeError(
+            "The dataset must contain either 'I' or 'state' for the plotting function to work."
+        )
     (ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit])[data].plot(
         ax=ax, add_colorbar=False, x="amp_mV", y="nb_of_pulses", robust=True
     )

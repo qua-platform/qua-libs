@@ -60,7 +60,9 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Add the amplitude and phase to the raw dataset
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     # Add the RF frequency as a coordinate of the raw dataset
-    full_freq = np.array([ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]])
+    full_freq = np.array(
+        [ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]]
+    )
     ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     # Normalize the IQ_abs with respect to the amplitude axis
@@ -68,7 +70,9 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the T1 relaxation time for each qubit according to ``a * np.exp(t * decay) + offset``.
 
@@ -89,11 +93,14 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     # Generate 1D dataset tracking the minimum IQ value, as a proxy for resonator frequency
     ds_fit["rr_min_response"] = ds.IQ_abs_norm.idxmin(dim="detuning")
     # Calculate the derivative along the power axis
-    ds_fit["rr_min_response_diff"] = ds_fit.rr_min_response.differentiate(coord="power").dropna("power")
+    ds_fit["rr_min_response_diff"] = ds_fit.rr_min_response.differentiate(
+        coord="power"
+    ).dropna("power")
     # Calculate the moving average of the derivative
     ds_fit["rr_min_response_diff_avg"] = (
         ds.rr_min_response_diff.rolling(
-            power=node.parameters.derivative_smoothing_window_num_points, center=True  # window size in points
+            power=node.parameters.derivative_smoothing_window_num_points,
+            center=True,  # window size in points
         )
         .mean()
         .dropna("power")
@@ -105,7 +112,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         )
     # Find the first position where the moving average crosses below the threshold
     ds_fit["below_threshold"] = (
-        ds_fit.rr_min_response_diff_avg < node.parameters.derivative_crossing_threshold_in_hz_per_dbm
+        ds_fit.rr_min_response_diff_avg
+        < node.parameters.derivative_crossing_threshold_in_hz_per_dbm
     )
     # Get the first occurrence below the derivative threshold
     optimal_power = ds_fit.below_threshold.idxmax(dim="power")
@@ -115,7 +123,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     # Define a function to fit the resonator line at the optimal power for each qubit
     def _select_optimal_power(ds, qubit):
         return peaks_dips(
-            ds.sel(power=ds["optimal_power"].sel(qubit=qubit).data, method="nearest").sel(qubit=qubit).IQ_abs,
+            ds.sel(power=ds["optimal_power"].sel(qubit=qubit).data, method="nearest")
+            .sel(qubit=qubit)
+            .IQ_abs,
             "detuning",
         )
 
@@ -139,7 +149,9 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     fit = fit.assign_coords(res_freq=("qubit", res_freq.data))
     fit.res_freq.attrs = {"long_name": "resonator frequency", "units": "Hz"}
     # Assess whether the fit was successful or not
-    freq_success = np.abs(fit.freq_shift.data) < node.parameters.frequency_span_in_mhz * 1e6
+    freq_success = (
+        np.abs(fit.freq_shift.data) < node.parameters.frequency_span_in_mhz * 1e6
+    )
     nan_success = np.isnan(fit.freq_shift.data) | np.isnan(fit.optimal_power.data)
     success_criteria = freq_success & ~nan_success
     fit = fit.assign_coords(success=("qubit", success_criteria))

@@ -71,7 +71,10 @@ def lorentzian_deep(x, amplitude, center, width, offset):
     """
     return offset - amplitude * width**2 / (width**2 + (x - center) ** 2)
 
-def peaks_dips(da, dim, prominence_factor=5, number=1, remove_baseline=True) -> xr.Dataset:
+
+def peaks_dips(
+    da, dim, prominence_factor=5, number=1, remove_baseline=True
+) -> xr.Dataset:
     """
     Searches in a data array along the specified dimension for the most prominent peak or dip, and returns a xarray dataset with its location, width, and amplitude, along with a smooth baseline from which the peak emerges.
 
@@ -118,7 +121,9 @@ def peaks_dips(da, dim, prominence_factor=5, number=1, remove_baseline=True) -> 
         peaks = find_peaks(arr.copy(), prominence=prominence)
         if len(peaks[0]) > 0:
             # finding the largest peak and it's width
-            prom_peak_index = 1.0 * peaks[0][np.argsort(peaks[1]["prominences"])][-number]
+            prom_peak_index = (
+                1.0 * peaks[0][np.argsort(peaks[1]["prominences"])][-number]
+            )
         else:
             prom_peak_index = np.nan
         return prom_peak_index
@@ -139,11 +144,20 @@ def peaks_dips(da, dim, prominence_factor=5, number=1, remove_baseline=True) -> 
             res.append(np.nan)
         return np.array(res)
 
-    peaks_inversion = 2.0 * (da.mean(dim=dim) - da.min(dim=dim) < da.max(dim=dim) - da.mean(dim=dim)) - 1
+    peaks_inversion = (
+        2.0 * (da.mean(dim=dim) - da.min(dim=dim) < da.max(dim=dim) - da.mean(dim=dim))
+        - 1
+    )
     da = da * peaks_inversion
 
     base_line = xr.apply_ufunc(
-        _baseline_als, da, 1e8, 0.001, input_core_dims=[[dim], [], []], output_core_dims=[[dim]], vectorize=True
+        _baseline_als,
+        da,
+        1e8,
+        0.001,
+        input_core_dims=[[dim], [], []],
+        output_core_dims=[[dim]],
+        vectorize=True,
     )
 
     if remove_baseline:
@@ -158,7 +172,11 @@ def peaks_dips(da, dim, prominence_factor=5, number=1, remove_baseline=True) -> 
     std = float((da - rolling).std())
 
     prom_peak_index = xr.apply_ufunc(
-        _index_of_largest_peak, da, prominence_factor * std, input_core_dims=[[dim], []], vectorize=True
+        _index_of_largest_peak,
+        da,
+        prominence_factor * std,
+        input_core_dims=[[dim], []],
+        vectorize=True,
     )
     peak_position = xr.apply_ufunc(
         _position_from_index,
@@ -170,7 +188,12 @@ def peaks_dips(da, dim, prominence_factor=5, number=1, remove_baseline=True) -> 
     )
     peak_width = (
         xr.apply_ufunc(
-            _width_from_index, da, prom_peak_index, input_core_dims=[[dim], []], output_core_dims=[[]], vectorize=True
+            _width_from_index,
+            da,
+            prom_peak_index,
+            input_core_dims=[[dim], []],
+            output_core_dims=[[]],
+            vectorize=True,
         )
         * dim_step
     )
@@ -184,7 +207,6 @@ def peaks_dips(da, dim, prominence_factor=5, number=1, remove_baseline=True) -> 
             base_line.rename("base_line"),
         ]
     )
-
 
 
 def fix_initial_value(x, da):
@@ -213,7 +235,9 @@ def fit_decay_exp(da, dim):
     def get_min(dat):
         return np.min(dat, axis=-1)
 
-    decay_guess = xr.apply_ufunc(get_decay, da, input_core_dims=[[dim]]).rename("decay guess")
+    decay_guess = xr.apply_ufunc(get_decay, da, input_core_dims=[[dim]]).rename(
+        "decay guess"
+    )
     amp_guess = xr.apply_ufunc(get_amp, da, input_core_dims=[[dim]]).rename("amp guess")
     min_guess = xr.apply_ufunc(get_min, da, input_core_dims=[[dim]]).rename("min guess")
 
@@ -285,13 +309,19 @@ def fit_oscillation_decay_exp(da, dim):
         min_ = np.min(dat, axis=-1)
         return (max_ - min_) / 2
 
-    decay_guess = xr.apply_ufunc(get_decay, da, input_core_dims=[[dim]]).rename("decay guess")
-    freq_guess = xr.apply_ufunc(get_freq, da, input_core_dims=[[dim]]).rename("freq guess")
+    decay_guess = xr.apply_ufunc(get_decay, da, input_core_dims=[[dim]]).rename(
+        "decay guess"
+    )
+    freq_guess = xr.apply_ufunc(get_freq, da, input_core_dims=[[dim]]).rename(
+        "freq guess"
+    )
     amp_guess = xr.apply_ufunc(get_amp, da, input_core_dims=[[dim]]).rename("amp guess")
 
     def apply_fit(x, y, a, f, phi, offset, decay):
         try:
-            fit, residuals = curve_fit(oscillation_decay_exp, x, y, p0=[a, f, phi, offset, decay])
+            fit, residuals = curve_fit(
+                oscillation_decay_exp, x, y, p0=[a, f, phi, offset, decay]
+            )
             return np.array(fit.tolist() + np.array(residuals).flatten().tolist())
         except RuntimeError as e:
             print(f"{a=}, {f=}, {phi=}, {offset=}, {decay=}")
@@ -369,7 +399,9 @@ def fit_echo_decay_exp(da, dim):
         min_ = np.min(dat, axis=-1)
         return (max_ - min_) / 2
 
-    decay_guess = xr.apply_ufunc(get_decay, da, input_core_dims=[[dim]]).rename("decay guess")
+    decay_guess = xr.apply_ufunc(get_decay, da, input_core_dims=[[dim]]).rename(
+        "decay guess"
+    )
     amp_guess = xr.apply_ufunc(get_amp, da, input_core_dims=[[dim]]).rename("amp guess")
 
     def apply_fit(x, y, a, offset, decay, decay_echo):
@@ -395,7 +427,9 @@ def fit_echo_decay_exp(da, dim):
         output_core_dims=[["fit_vals"]],
         vectorize=True,
     )
-    return fit_res.assign_coords(fit_vals=("fit_vals", ["a", "offset", "decay", "decay_echo"]))
+    return fit_res.assign_coords(
+        fit_vals=("fit_vals", ["a", "offset", "decay", "decay_echo"])
+    )
 
 
 def oscillation(t, a, f, phi, offset):
@@ -415,10 +449,17 @@ def fit_oscillation(da, dim):
         return (max_ - min_) / 2
 
     da_c = da - da.mean(dim=dim)
-    freq_guess = fix_initial_value(xr.apply_ufunc(get_freq, da_c, input_core_dims=[[dim]]).rename("freq guess"), da_c)
-    amp_guess = fix_initial_value(xr.apply_ufunc(get_amp, da, input_core_dims=[[dim]]).rename("amp guess"), da)
+    freq_guess = fix_initial_value(
+        xr.apply_ufunc(get_freq, da_c, input_core_dims=[[dim]]).rename("freq guess"),
+        da_c,
+    )
+    amp_guess = fix_initial_value(
+        xr.apply_ufunc(get_amp, da, input_core_dims=[[dim]]).rename("amp guess"), da
+    )
     # phase_guess = np.pi * (da.loc[{dim : da.coords[dim].values[0]}] < da.mean(dim=dim) )
-    phase_guess = np.pi * (da.loc[{dim: np.abs(da.coords[dim]).min()}] < da.mean(dim=dim))
+    phase_guess = np.pi * (
+        da.loc[{dim: np.abs(da.coords[dim]).min()}] < da.mean(dim=dim)
+    )
     offset_guess = da.mean(dim=dim)
 
     def apply_fit(x, y, a, f, phi, offset):
@@ -428,7 +469,9 @@ def fit_oscillation(da, dim):
                 y,
                 t=x,
                 a=Parameter("a", value=a, min=0),
-                f=Parameter("f", value=f, min=np.abs(0.5 * f), max=np.abs(f * 3 + 1e-3)),
+                f=Parameter(
+                    "f", value=f, min=np.abs(0.5 * f), max=np.abs(f * 3 + 1e-3)
+                ),
                 phi=Parameter("phi", value=phi),
                 offset=offset,
             )
@@ -437,7 +480,12 @@ def fit_oscillation(da, dim):
                     y,
                     t=x,
                     a=Parameter("a", value=a, min=0),
-                    f=Parameter("f", value=1.0 / (np.max(x) - np.min(x)), min=0, max=np.abs(f * 3 + 1e-3)),
+                    f=Parameter(
+                        "f",
+                        value=1.0 / (np.max(x) - np.min(x)),
+                        min=0,
+                        max=np.abs(f * 3 + 1e-3),
+                    ),
                     phi=Parameter("phi", value=phi),
                     offset=offset,
                 )
@@ -464,8 +512,6 @@ def fit_oscillation(da, dim):
     return fit_res.assign_coords(fit_vals=("fit_vals", ["a", "f", "phi", "offset"]))
 
 
-
-
 def extract_dominant_frequencies(da, dim="idle_time"):
     def extract_dominant_frequency(signal, sample_rate):
         fft_result = fft(signal)
@@ -475,11 +521,17 @@ def extract_dominant_frequencies(da, dim="idle_time"):
         return frequencies[positive_freq_idx][dominant_idx]
 
     def extract_dominant_frequency_wrapper(signal):
-        sample_rate = 1 / (da.coords[dim][1].values - da.coords[dim][0].values)  # Assuming uniform sampling
+        sample_rate = 1 / (
+            da.coords[dim][1].values - da.coords[dim][0].values
+        )  # Assuming uniform sampling
         return extract_dominant_frequency(signal, sample_rate)
 
     dominant_frequencies = xr.apply_ufunc(
-        extract_dominant_frequency_wrapper, da, input_core_dims=[[dim]], output_core_dims=[[]], vectorize=True
+        extract_dominant_frequency_wrapper,
+        da,
+        input_core_dims=[[dim]],
+        output_core_dims=[[]],
+        vectorize=True,
     )
 
     return dominant_frequencies

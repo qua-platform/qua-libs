@@ -55,7 +55,9 @@ class TrackableObject:
             elif isinstance(original_attr, (int, float)):
                 return original_attr
             else:
-                self._nested_trackables[attr] = TrackableObject(original_attr, self._dont_assign_to_none)
+                self._nested_trackables[attr] = TrackableObject(
+                    original_attr, self._dont_assign_to_none
+                )
         return self._nested_trackables[attr]
 
     def __setattr__(self, attr, value):
@@ -74,7 +76,9 @@ class TrackableObject:
         original_item = self._obj[key]
         if key not in self._nested_trackables:
             # Recursively wrap dicts and objects if not already wrapped
-            self._nested_trackables[key] = TrackableObject(original_item, self._dont_assign_to_none)
+            self._nested_trackables[key] = TrackableObject(
+                original_item, self._dont_assign_to_none
+            )
         return self._nested_trackables[key]
 
     def __setitem__(self, key, value):

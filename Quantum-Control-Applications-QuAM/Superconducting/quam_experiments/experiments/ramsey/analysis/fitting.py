@@ -23,7 +23,9 @@ class RamseyFit:
     def log_frequency_offset(self, logger=None):
         if logger is None:
             logger = logging.getLogger(__name__)
-        logger.info(f"Frequency offset for qubit {self.qubit_name} : {self.freq_offset / 1e6:.2f} MHz ")
+        logger.info(
+            f"Frequency offset for qubit {self.qubit_name} : {self.freq_offset / 1e6:.2f} MHz "
+        )
 
     def log_t2(self, logger=None):
         if logger is None:
@@ -31,20 +33,26 @@ class RamseyFit:
         logger.info(f"T2* for qubit {self.qubit_name} : {1e6 * self.decay:.2f} us")
 
 
-def fit_frequency_detuning_and_t2_decay(ds: xr.Dataset, node_parameters: Parameters) -> dict[str, RamseyFit]:
+def fit_frequency_detuning_and_t2_decay(
+    ds: xr.Dataset, node_parameters: Parameters
+) -> dict[str, RamseyFit]:
     """
     Fit the frequency detuning and T2 decay of the Ramsey oscillations for each qubit.
 
     Returns:
         dict: Dictionary containing fit results.
     """
-    fit = fit_ramsey_oscillations_with_exponential_decay(ds, node_parameters.use_state_discrimination)
+    fit = fit_ramsey_oscillations_with_exponential_decay(
+        ds, node_parameters.use_state_discrimination
+    )
 
     frequency, decay, tau, tau_error = extract_relevant_fit_parameters(fit)
 
     detuning = int(node_parameters.frequency_detuning_in_mhz * 1e6)
 
-    freq_offset, decay, decay_error = calculate_fit_results(frequency, tau, tau_error, fit, detuning)
+    freq_offset, decay, decay_error = calculate_fit_results(
+        frequency, tau, tau_error, fit, detuning
+    )
 
     fits = {
         q.name: RamseyFit(

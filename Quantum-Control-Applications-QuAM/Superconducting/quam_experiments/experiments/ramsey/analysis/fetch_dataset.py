@@ -1,6 +1,9 @@
 import xarray as xr
 
-from quam_experiments.experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
+from quam_experiments.experiments.ramsey.parameters import (
+    Parameters,
+    get_idle_times_in_clock_cycles,
+)
 from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.save_utils import fetch_results_as_xarray
 
@@ -24,7 +27,9 @@ def fetch_dataset(job, qubits, node_parameters: Parameters) -> xr.Dataset:
     """
     idle_times = get_idle_times_in_clock_cycles(node_parameters)
 
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"sign": [-1, 1], "time": idle_times})
+    ds = fetch_results_as_xarray(
+        job.result_handles, qubits, {"sign": [-1, 1], "time": idle_times}
+    )
     if not node_parameters.use_state_discrimination:
         ds = convert_IQ_to_V(ds, qubits)
 

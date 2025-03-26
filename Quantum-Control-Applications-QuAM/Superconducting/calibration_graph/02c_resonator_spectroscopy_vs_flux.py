@@ -99,7 +99,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "flux_bias": xr.DataArray(dcs, attrs={"long_name": "flux bias", "units": "V"}),
-        "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
+        "detuning": xr.DataArray(
+            dfs, attrs={"long_name": "readout frequency", "units": "Hz"}
+        ),
     }
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
@@ -142,7 +144,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
 
 # %% {Simulate_or_execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -150,12 +154,16 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["qua_program"], node.parameters
+    )
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -170,7 +178,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
-            progress_counter(data_fetcher["n"], node.parameters.num_averages, start_time=data_fetcher.t_start)
+            progress_counter(
+                data_fetcher["n"],
+                node.parameters.num_averages,
+                start_time=data_fetcher.t_start,
+            )
         # Display the execution report to expose possible runtime errors
         print(job.execution_report())
     # Register the raw dataset
@@ -205,7 +217,9 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_raw_fit = plot_raw_data_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+    )
     plt.show()
     # Store the generated figures
     node.results["figure_amplitude"] = fig_raw_fit
@@ -220,14 +234,20 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
             if node.results["fit_results"][q.name]["success"]:
                 # Update the idle offset
                 if q.z.flux_point == "independent":
-                    q.z.independent_offset = node.results["fit_results"][q.name]["idle_offset"]
+                    q.z.independent_offset = node.results["fit_results"][q.name][
+                        "idle_offset"
+                    ]
                 else:
-                    q.z.joint_offset = node.results["fit_results"][q.name]["idle_offset"]
+                    q.z.joint_offset = node.results["fit_results"][q.name][
+                        "idle_offset"
+                    ]
                 # Update the min offset
                 if node.parameters.update_flux_min:
                     q.z.min_offset = node.results["fit_results"][q.name]["min_offset"]
                 # Update the readout frequency for the given flux point
-                q.resonator.f_01 += node.results["fit_results"][q.name]["frequency_shift"]
+                q.resonator.f_01 += node.results["fit_results"][q.name][
+                    "frequency_shift"
+                ]
                 q.resonator.RF_frequency = q.resonator.f_01
                 q.phi0_voltage = node.results["fit_results"][q.name]["dv_phi0"]
                 q.phi0_current = node.results["fit_results"][q.name]["phi0_current"]

@@ -4,7 +4,9 @@ from quam_experiments.experiments.ramsey.parameters import RamseyParameters
 from quam_experiments.experiments.T1.parameters import T1Parameters
 
 
-def get_idle_times_in_clock_cycles(node_parameters: Union[RamseyParameters, T1Parameters]) -> np.ndarray:
+def get_idle_times_in_clock_cycles(
+    node_parameters: Union[RamseyParameters, T1Parameters],
+) -> np.ndarray:
     """
     Get the idle-times sweep axis according to the sweep type given by ``node.parameters.log_or_linear_sweep``.
 
@@ -16,7 +18,9 @@ def get_idle_times_in_clock_cycles(node_parameters: Union[RamseyParameters, T1Pa
     elif node_parameters.log_or_linear_sweep == "log":
         idle_times = _get_idle_times_log_sweep_in_clock_cycles(node_parameters)
     else:
-        raise ValueError(f"Expected sweep type to be 'log' or 'linear', got {node_parameters.log_or_linear_sweep}")
+        raise ValueError(
+            f"Expected sweep type to be 'log' or 'linear', got {node_parameters.log_or_linear_sweep}"
+        )
 
     return idle_times
 

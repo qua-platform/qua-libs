@@ -25,13 +25,16 @@ class ReadoutOptimization3dParameters(RunnableParameters):
     fidelity_smoothing_intensity: float = 0.5
     max_readout_amplitude: float = Field(
         0.125,
-        description="upper limit for readout pulse amplitude to " "avoid saturation when doing multiplexed readout",
+        description="upper limit for readout pulse amplitude to "
+        "avoid saturation when doing multiplexed readout",
     )
 
     @model_validator(mode="after")
     def check_plot_type_is_2d_or_3d(self):
         if self.plotting_dimension not in ["2D", "3D"]:
-            raise ValueError(f"Expected plot dimension to be '2D' or '3D', got {self.plotting_dimension}")
+            raise ValueError(
+                f"Expected plot dimension to be '2D' or '3D', got {self.plotting_dimension}"
+            )
 
         return self
 
@@ -77,6 +80,10 @@ def get_amplitude_factors(node_parameters: ReadoutOptimization3dParameters):
 
 
 def get_durations(node_parameters: ReadoutOptimization3dParameters):
-    durations = np.linspace(start=0, stop=node_parameters.max_duration_in_ns, num=node_parameters.num_durations + 1)[1:]
+    durations = np.linspace(
+        start=0,
+        stop=node_parameters.max_duration_in_ns,
+        num=node_parameters.num_durations + 1,
+    )[1:]
 
     return durations

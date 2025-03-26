@@ -27,7 +27,10 @@ def get_band(freq):
     elif 6.5e9 <= freq <= 10.5e9:
         return 3
     else:
-        raise ValueError(f"The specified frequency {freq} HZ is outside of the MW fem bandwidth [50 MHz, 10.5 GHz]")
+        raise ValueError(
+            f"The specified frequency {freq} HZ is outside of the MW fem bandwidth [50 MHz, 10.5 GHz]"
+        )
+
 
 ########################################################################################################################
 # %%                                    Gather the initial qubit parameters
@@ -86,9 +89,13 @@ for i, q in enumerate(machine.qubits):
     machine.qubits[q].xy.operations["saturation"].amplitude = 0.25
 
     # Single qubit gates - DragCosine & Square
-    add_DragCosine_pulses(machine.qubits[q], amplitude=0.25, length=48, alpha=0.0, detuning=0)
+    add_DragCosine_pulses(
+        machine.qubits[q], amplitude=0.25, length=48, alpha=0.0, detuning=0
+    )
     # Single Gaussian flux pulse
-    machine.qubits[q].z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
+    machine.qubits[q].z.operations["gauss"] = GaussianPulse(
+        amplitude=0.1, length=200, sigma=40
+    )
 
     # Add new pulses
     # from quam.components.pulses import (
