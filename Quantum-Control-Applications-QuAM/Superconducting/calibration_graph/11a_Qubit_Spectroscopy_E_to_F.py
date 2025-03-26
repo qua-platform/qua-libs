@@ -89,7 +89,7 @@ u = unit(coerce_to_integer=True)
 node.machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = node.machine.generate_config()
-octave_config = node.machine.get_octave_config()
+
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = node.machine.connect()
