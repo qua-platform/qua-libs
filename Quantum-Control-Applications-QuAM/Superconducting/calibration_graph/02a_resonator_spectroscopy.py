@@ -75,11 +75,6 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.load_data_id = 1343
-    import os
-
-    config_path = "/Users/serwan/Repositories/qua-libs/tests/assets/config.toml"
-    os.environ["QUALIBRATE_CONFIG_FILE"] = config_path
 
 
 # Instantiate the QuAM class from the state file
