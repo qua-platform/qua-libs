@@ -22,25 +22,9 @@ from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
 
 
+# TODO: Write description
 description = """
-        IQ BLOBS
-This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit
-in the |g> state) and then after applying a pi pulse to the qubit (bringing the qubit to the |e> state) successively.
-The resulting IQ blobs are displayed, and the data is processed to determine:
-    - The rotation angle required for the integration weights, ensuring that the separation between |g> and |e> states
-      aligns with the 'I' quadrature.
-    - The threshold along the 'I' quadrature for effective qubit state discrimination.
-    - The readout fidelity matrix, which is also influenced by the pi pulse fidelity.
-
-Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the state.
-    - Set the desired flux bias
-
-Next steps before going to the next node:
-    - Update the rotation angle (rotation_angle) in the state.
-    - Update the g -> e threshold (ge_threshold) in the state.
-    - Save the current state by calling machine.save("quam")
+        READOUT POWER OPTIMIZATION
 """
 
 

@@ -20,17 +20,22 @@ from quam_libs.trackable_object import tracked_updates
 
 description = """
         DRAG PULSE CALIBRATION (YALE METHOD)
-The sequence consists in applying successively x180-y90 and y180-x90 to the qubit while varying the DRAG
-coefficient alpha. The qubit is reset to the ground state between each sequence and its state is measured and stored.
-Each sequence will bring the qubit to the same state only when the DRAG coefficient is set to its correct value.
+The sequence consists in applying successively x180-y90 and y180-x90 to the qubit while
+varying the DRAG coefficient alpha. The qubit is reset to the ground state between each
+sequence and its state is measured and stored. Each sequence will bring the qubit to the
+same state only when the DRAG coefficient is set to its correct value.
 
-This protocol is described in Reed's thesis (Fig. 5.8) https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf
+This protocol is described in Reed's thesis (Fig. 5.8) 
+https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf
 This protocol was also cited in: https://doi.org/10.1103/PRXQuantum.2.040202
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, power_rabi, ramsey and updated the state.
-    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR and state discrimination.
+    - Having found the resonance frequency of the resonator coupled to the qubit under
+      study (resonator_spectroscopy).
+    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, power_rabi,
+      ramsey and updated the state.
+    - (optional) Having calibrated the readout (readout_frequency, amplitude,
+      duration_optimization IQ_blobs) for better SNR and state discrimination.
     - Set the DRAG coefficient to a non-zero value in the config: such as drag_coef = 1
     - Set the desired flux bias.
 

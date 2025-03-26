@@ -20,16 +20,22 @@ from quam_libs.trackable_object import tracked_updates
 
 description = """
         DRAG PULSE CALIBRATION (GOOGLE METHOD)
-The sequence consists in applying an increasing number of x180 and -x180 pulses successively while varying the DRAG
-coefficient alpha. After such a sequence, the qubit is expected to always be in the ground state if the DRAG
-coefficient has the correct value. Note that the idea is very similar to what is done in power_rabi_error_amplification.
+The sequence consists in applying an increasing number of x180 and -x180 pulses
+successively while varying the DRAG coefficient alpha. After such a sequence, the
+qubit is expected to always be in the ground state if the DRAG coefficient has the
+correct value. Note that the idea is very similar to what is done in
+power_rabi_error_amplification.
 
-This protocol is described in more details in https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
+This protocol is described in more details in
+https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, rabi_chevron, power_rabi and updated the state.
-    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR and state discrimination.
+    - Having found the resonance frequency of the resonator coupled to the qubit under
+      study (resonator_spectroscopy).
+    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy,
+      rabi_chevron, power_rabi and updated the state.
+    - (optional) Having calibrated the readout (readout_frequency, amplitude,
+      duration_optimization IQ_blobs) for better SNR and state discrimination.
     - Set the DRAG coefficient to a non-zero value in the config: such as drag_coef = -1
     - Set the desired flux bias.
 

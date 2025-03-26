@@ -20,25 +20,30 @@ from quam_experiments.analysis.fit import peaks_dips
 
 description = """
         EF QUBIT SPECTROSCOPY
-This sequence involves sending a saturation pulse to the qubit, placing it in a mixed state,
-and then measuring the state of the resonator across various qubit drive intermediate dfs.
-In order to facilitate the qubit search, the qubit pulse duration and amplitude can be changed manually in the QUA
-program directly without having to modify the configuration.
+This sequence involves sending a saturation pulse to the qubit, placing it in a mixed
+state, and then measuring the state of the resonator across various qubit drive
+intermediate dfs. In order to facilitate the qubit search, the qubit pulse duration and
+amplitude can be changed manually in the QUA program directly without having to
+modify the configuration.
 
-The data is post-processed to determine the qubit resonance frequency, which can then be used to adjust
-the qubit intermediate frequency in the configuration under "center".
+The data is post-processed to determine the qubit resonance frequency, which can then be
+used to adjust the qubit intermediate frequency in the configuration under "center".
 
-Note that it can happen that the qubit is excited by the image sideband or LO leakage instead of the desired sideband.
-This is why calibrating the qubit mixer is highly recommended.
+Note that it can happen that the qubit is excited by the image sideband or LO leakage
+instead of the desired sideband. This is why calibrating the qubit mixer is highly
+recommended.
 
-This step can be repeated using the "x180" operation instead of "saturation" to adjust the pulse parameters (amplitude,
-duration, frequency) before performing the next calibration steps.
+This step can be repeated using the "x180" operation instead of "saturation" to adjust
+the pulse parameters (amplitude,duration, frequency) before performing the next
+calibration steps.
 
 Prerequisites:
-    - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
-    - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
-    - Set the flux bias to the minimum frequency point, labeled as "max_frequency_point", in the state.
-    - Configuration of the saturation pulse amplitude and duration to transition the qubit into a mixed state.
+    - Identification of the resonator's resonance frequency when coupled to the qubit in
+      question (referred to as "resonator_spectroscopy").
+    - Calibration of the IQ mixer connected to the qubit drive line (whether it's an
+      external mixer or an Octave port).
+    - Set the flux bias to the minimum frequency point, labeled as
+      "max_frequency_point", in the state.
     - Specification of the expected qubit T1 in the state.
 
 Before proceeding to the next node:

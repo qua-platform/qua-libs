@@ -21,22 +21,29 @@ from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
 
 description = """
         SINGLE QUBIT RANDOMIZED BENCHMARKING
-The program consists in playing random sequences of Clifford gates and measuring the state of the resonator afterward.
-Each random sequence is derived on the FPGA for the maximum depth (specified as an input) and played for each depth
-asked by the user (the sequence is truncated to the desired depth). Each truncated sequence ends with the recovery gate,
-found at each step thanks to a preloaded lookup table (Cayley table), that will bring the qubit back to its ground state.
+The program consists in playing random sequences of Clifford gates and measuring the
+state of the resonator afterward. Each random sequence is derived on the FPGA for the
+maximum depth (specified as an input) and played for each depth asked by the user
+(the sequence is truncated to the desired depth). Each truncated sequence ends with the
+recovery gate, found at each step thanks to a preloaded lookup table (Cayley table),
+that will bring the qubit back to its ground state.
 
-If the readout has been calibrated and is good enough, then state discrimination can be applied to only return the state
-of the qubit. Otherwise, the 'I' and 'Q' quadratures are returned.
-Each sequence is played n_avg times for averaging. A second averaging is performed by playing different random sequences.
+If the readout has been calibrated and is good enough, then state discrimination can be
+applied to only return the state of the qubit. Otherwise, the 'I' and 'Q' quadratures
+are returned. Each sequence is played n_avg times for averaging. A second averaging is
+performed by playing different random sequences.
 
-The data is then post-processed to extract the single-qubit gate fidelity and error per gate
-.
+The data is then post-processed to extract the single-qubit gate fidelity and error per
+gate.
+
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, rabi_chevron, power_rabi and updated the state.
+    - Having found the resonance frequency of the resonator coupled to the qubit under
+      study (resonator_spectroscopy).
+    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy,
+      rabi_chevron, power_rabi and updated the state.
     - Having the qubit frequency perfectly calibrated (ramsey).
-    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR and state discrimination.
+    - (optional) Having calibrated the readout (readout_frequency, amplitude,
+      duration_optimization IQ_blobs) for better SNR and state discrimination.
     - Set the desired flux bias.
 """
 

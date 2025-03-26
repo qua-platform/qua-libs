@@ -20,19 +20,23 @@ from quam_libs.trackable_object import tracked_updates
 
 description = """
         AC STARK-SHIFT CALIBRATION WITH DRAG PULSES (GOOGLE METHOD)
-The sequence consists in applying an increasing number of x180 and -x180 pulses successively for different DRAG
-detunings.
-After such a sequence, the qubit is expected to always be in the ground state if the AC Stark shift is
-properly compensated by the DRAG detuning.
-One can then take a line cut for a given number of pulse and fit the 1D trace with a parabola to get the optimum
-detuning and update its value in the configuration.
+The sequence consists in applying an increasing number of x180 and -x180 pulses
+successively for different DRAG detunings.
+After such a sequence, the qubit is expected to always be in the ground state if the AC
+Stark shift is properly compensated by the DRAG detuning.
+One can then take a line cut for a given number of pulse and fit the 1D trace with a
+parabola to get the optimum detuning and update its value in the configuration.
 
-This protocol is described in more details in https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
+This protocol is described in more details in
+https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, rabi_chevron, power_rabi and updated the state.
-    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR and state discrimination.
+    - Having found the resonance frequency of the resonator coupled to the qubit under
+      study (resonator_spectroscopy).
+    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy,
+      rabi_chevron, power_rabi and updated the state.
+    - (optional) Having calibrated the readout (readout_frequency, amplitude,
+      duration_optimization IQ_blobs) for better SNR and state discrimination.
     - Set the desired flux bias.
 
 Next steps before going to the next node:

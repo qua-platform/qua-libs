@@ -56,17 +56,20 @@ from quam_experiments.workflow.simulation import simulate_and_plot
 
 description = """
         READOUT OPTIMISATION: FREQUENCY, POWER, DURATION
-This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
-(with the qubit in the |g> state) and then after applying a pi pulse to the qubit (transitioning the qubit to the
-|e> state). This is done while varying the readout pulse frequency, power and duration.
+This sequence involves measuring the state of the resonator in two scenarios: first,
+after thermalization (with the qubit in the |g> state) and then after applying a pi
+pulse (with the qubit in the |e> state). This is done while varying the readout pulse
+frequency, power and duration.
 
-The average I & Q quadratures for the qubit states |g> and |e>, along with their variances, are extracted to
-determine the Signal-to-Noise Ratio (SNR). The readout parameters that yield the highest fidelity is selected
-as the optimal choice.
+The average I & Q quadratures for the qubit states |g> and |e>, along with their
+variances, are extracted to determine the Signal-to-Noise Ratio (SNR). The readout
+parameters that yield the highest SNR is selected as the optimal choice.
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, power_rabi and updated the state.
+    - Having found the resonance frequency of the resonator coupled to the qubit under
+      study (resonator_spectroscopy).
+    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, power_rabi
+      and updated the state.
     - Set the desired flux bias
 
 Next steps before going to the next node:
