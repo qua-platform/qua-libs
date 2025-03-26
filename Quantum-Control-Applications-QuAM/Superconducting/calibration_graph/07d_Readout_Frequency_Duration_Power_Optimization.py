@@ -116,7 +116,7 @@ node.machine = QuAM.load()
 if node.parameters.load_data_id is None:
     qmm = node.machine.connect()
 
-qubits = get_qubits(node.machine, node.parameters)
+qubits = get_qubits(node)
 num_qubits = len(qubits)
 
 readout_pulse_name = "readout"

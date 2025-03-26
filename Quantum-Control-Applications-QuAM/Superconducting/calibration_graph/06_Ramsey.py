@@ -74,7 +74,7 @@ u = unit(coerce_to_integer=True)
 
 node.machine = QuAM.load()
 
-qubits = get_qubits(node.machine, node.parameters)
+qubits = get_qubits(node)
 num_qubits = len(qubits)
 
 config = node.machine.generate_config()
