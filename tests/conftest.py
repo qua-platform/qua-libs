@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 import pytest
 import json
+from qualibrate import QualibrationLibrary
 
 
 def get_package_root(package_name="quam_config") -> Path:
@@ -58,9 +59,14 @@ def setup_qualibrate_config():
     os.environ["QUALIBRATE_CONFIG_FILE"] = str(config_path)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="session", autouse=True)
 def qualibrate_test_config():
     setup_qualibrate_config()
+
+
+@pytest.fixture(scope="session")
+def library():
+    return QualibrationLibrary.get_active_library()
 
 
 if __name__ == "__main__":
