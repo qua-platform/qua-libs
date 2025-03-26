@@ -58,7 +58,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="08_Ramsey_vs_Flux_Calibration",
     description=description,
     parameters=Parameters(),

@@ -54,7 +54,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="05b_T2e", description=description, parameters=Parameters()
 )
 

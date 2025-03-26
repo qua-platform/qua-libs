@@ -52,7 +52,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="07a_Readout_Frequency_Optimization",
     description=description,
     parameters=Parameters(),

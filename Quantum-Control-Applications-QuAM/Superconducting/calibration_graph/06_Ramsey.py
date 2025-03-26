@@ -43,7 +43,7 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="06_Ramsey",
     description=description,
     parameters=Parameters(

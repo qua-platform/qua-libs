@@ -63,7 +63,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="10b_Single_Qubit_Randomized_Benchmarking_Interleaved",
     description=description,
     parameters=Parameters(),

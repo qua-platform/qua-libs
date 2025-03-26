@@ -6,6 +6,7 @@ from qm import SimulationConfig
 
 from qualang_tools.units import unit
 
+from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
 
 
@@ -13,7 +14,10 @@ description = """
         RUN BASIC QUA PROGRAM TO TEST QOP CONNECTION
 """
 
-node = QualibrationNode(name="00_hello_qua", description=description)
+
+node = QualibrationNode[NodeParameters, QuAM](
+    name="00_hello_qua", description=description, parameters=NodeParameters()
+)
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #

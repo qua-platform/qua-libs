@@ -74,7 +74,7 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="07d_Readout_Frequency_Duration_Power_Optimization",
     description=description,
     parameters=Parameters(

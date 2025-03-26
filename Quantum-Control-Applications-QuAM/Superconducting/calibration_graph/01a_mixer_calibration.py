@@ -20,7 +20,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="01a_Mixer_Calibration", description=description, parameters=Parameters()
 )
 

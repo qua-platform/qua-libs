@@ -57,7 +57,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="09a_Stark_Detuning",
     description=description,
     parameters=Parameters(),

@@ -54,7 +54,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="03b_Qubit_Spectroscopy_vs_Flux",
     description=description,
     parameters=Parameters(),

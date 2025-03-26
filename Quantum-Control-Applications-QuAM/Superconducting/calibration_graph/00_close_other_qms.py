@@ -1,6 +1,4 @@
 # %% {Imports}
-from typing import Optional, List
-
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
 
@@ -10,12 +8,8 @@ description = """
 """
 
 
-class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None
-
-
-node = QualibrationNode(
-    name="00_Close_other_QMs", description=description, parameters=Parameters()
+node = QualibrationNode[NodeParameters, QuAM](
+    name="00_Close_other_QMs", description=description, parameters=NodeParameters()
 )
 
 # Instantiate the QuAM class from the state file

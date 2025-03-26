@@ -56,7 +56,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="09b_DRAG_Calibration_180_minus_180",
     description=description,
     parameters=Parameters(),

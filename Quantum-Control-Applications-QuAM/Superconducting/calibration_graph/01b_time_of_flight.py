@@ -45,7 +45,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="01b_Time_of_Flight", description=description, parameters=Parameters()
 )
 

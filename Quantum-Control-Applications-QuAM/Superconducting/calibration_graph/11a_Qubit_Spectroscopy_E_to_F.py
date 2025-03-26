@@ -62,7 +62,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
 
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="11a_Qubit_Spectroscopy_E_to_F",
     description=description,
     parameters=Parameters(),

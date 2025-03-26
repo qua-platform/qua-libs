@@ -62,7 +62,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(
+node = QualibrationNode[Parameters, QuAM](
     name="07c_Readout_Power_Optimization",
     description=description,
     parameters=Parameters(),
