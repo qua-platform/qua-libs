@@ -19,9 +19,12 @@ qualibrate = ">=0.1.6"
 qm-qua = ">=1.2.1"
 tomli = { version = "^2.0.1", python = "<3.11" }
 quam_builder = { git = "https://github.com/qua-platform/quam-builder.git" }
-quam_libs = { path = "quam_libs", develop=true }
-quam_config = { path = "quam_config", develop=true }
-quam_experiments = { path = "quam_experiments", develop=true }
+quam_libs = { path = "quam_libs", develop = true }
+quam_config = { path = "quam_config", develop = true }
+quam_experiments = { path = "quam_experiments", develop = true }
+
+[tool.poetry.dev-dependencies]
+pytest = "^8.3"
 
 [tool.poetry-monoranger-plugin]
 enabled = true

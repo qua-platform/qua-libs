@@ -75,7 +75,11 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    pass
+    node.parameters.load_data_id = 1343
+    import os
+
+    config_path = "/Users/serwan/Repositories/qua-libs/tests/assets/config.toml"
+    os.environ["QUALIBRATE_CONFIG_FILE"] = config_path
 
 
 # Instantiate the QuAM class from the state file
@@ -100,7 +104,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
+        "detuning": xr.DataArray(
+            dfs, attrs={"long_name": "readout frequency", "units": "Hz"}
+        ),
     }
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
@@ -140,7 +146,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
 
 # %% {Simulate_or_execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -148,12 +156,16 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["qua_program"], node.parameters
+    )
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -168,7 +180,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
-            progress_counter(data_fetcher["n"], node.parameters.num_averages, start_time=data_fetcher.t_start)
+            progress_counter(
+                data_fetcher["n"],
+                node.parameters.num_averages,
+                start_time=data_fetcher.t_start,
+            )
         # Display the execution report to expose possible runtime errors
         print(job.execution_report())
     # Register the raw dataset
@@ -181,7 +197,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
     """Load a previously acquired dataset."""
     load_data_id = node.parameters.load_data_id
     # Load the specified dataset
-    node = node.load_from_id(node.parameters.load_data_id)
+    node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
@@ -220,7 +236,9 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
     with node.record_state_updates():
         for index, q in enumerate(node.namespace["qubits"]):
             if node.results["fit_results"][q.name]["success"]:
-                q.resonator.f_01 = float(node.results["fit_results"][q.name]["frequency"])
+                q.resonator.f_01 = float(
+                    node.results["fit_results"][q.name]["frequency"]
+                )
                 q.resonator.RF_frequency = q.resonator.f_01
 
 
