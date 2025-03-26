@@ -76,7 +76,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     idle_times = get_idle_times_in_clock_cycles(node.parameters)
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
-        "qubit": xr.DataArray(["q1", "q2"]),
+        "qubit": xr.DataArray(qubits.get_names()),
         "idle_time": xr.DataArray(
             4 * idle_times, attrs={"long_name": "idle time", "units": "ns"}
         ),

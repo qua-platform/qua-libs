@@ -103,7 +103,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
         ),
     }
 
-    with program() as multi_qubit_spec_vs_flux:
+    with program() as node.namespace["qua_program"]:
         # Macro to declare I, Q, n and their respective streams for a given number of qubit
         I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
         df = declare(int)  # QUA variable for the qubit frequency
