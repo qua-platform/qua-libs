@@ -10,7 +10,7 @@ from quam_experiments.parameters import (
 )
 
 
-class RamseyParameters(RunnableParameters):
+class NodeSpecificParameters(RunnableParameters):
     num_averages: int = 100
     frequency_detuning_in_mhz: float = 1.0
     min_wait_time_in_ns: int = 16
@@ -22,13 +22,13 @@ class RamseyParameters(RunnableParameters):
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
-    RamseyParameters,
+    NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
     pass
 
 
-def get_idle_times_in_clock_cycles(node_parameters: RamseyParameters) -> np.ndarray:
+def get_idle_times_in_clock_cycles(node_parameters: NodeSpecificParameters) -> np.ndarray:
     """
     Get the idle-times sweep axis according to the sweep type.
 
@@ -47,23 +47,23 @@ def get_idle_times_in_clock_cycles(node_parameters: RamseyParameters) -> np.ndar
     return idle_times
 
 
-def _get_idle_times_linear_sweep_in_clock_cycles(node_parameters: RamseyParameters):
+def _get_idle_times_linear_sweep_in_clock_cycles(node_parameters: NodeSpecificParameters):
     return (
         np.linspace(
             node_parameters.min_wait_time_in_ns,
             node_parameters.max_wait_time_in_ns,
-            node_parameters.num_time_points,
+            node_parameters.wait_time_num_points,
         )
         // 4
     ).astype(int)
 
 
-def _get_idle_times_log_sweep_in_clock_cycles(node_parameters: RamseyParameters):
+def _get_idle_times_log_sweep_in_clock_cycles(node_parameters: NodeSpecificParameters):
     return np.unique(
         np.geomspace(
             node_parameters.min_wait_time_in_ns,
             node_parameters.max_wait_time_in_ns,
-            node_parameters.num_time_points,
+            node_parameters.wait_time_num_points,
         )
         // 4
     ).astype(int)

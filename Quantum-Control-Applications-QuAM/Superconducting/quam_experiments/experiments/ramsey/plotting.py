@@ -1,65 +1,94 @@
-from typing import List, Dict
-
+from typing import List
 import xarray as xr
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
-from quam_experiments.analysis.fit import oscillation_decay_exp
-from quam_builder.architecture.superconducting.qubit import AnyTransmon
-from quam_experiments.experiments.ramsey.analysis.fitting import RamseyFit
-from quam_experiments.experiments.ramsey.parameters import Parameters
+from qualang_tools.units import unit
 from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_experiments.analysis.fit import lorentzian_peak
+from quam_builder.architecture.superconducting.qubit import AnyTransmon
+
+u = unit(coerce_to_integer=True)
 
 
-def plot_ramseys_data_with_fit(
-    ds: xr.Dataset,
-    qubits: List[AnyTransmon],
-    node_parameters: Parameters,
-    fits: Dict[str, RamseyFit],
-):
+def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     """
-    Plot qubit data for Ramsey experiments.
+    Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The dataset containing the quadrature data.
+    qubits : list of AnyTransmon
+        A list of qubits to plot.
+    fits : xr.Dataset
+        The dataset containing the fit parameters.
+
+    Returns
+    -------
+    Figure
+        The matplotlib figure object containing the plots.
+
+    Notes
+    -----
+    - The function creates a grid of subplots, one for each qubit.
+    - Each subplot contains the raw data and the fitted curve.
     """
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
-
     for ax, qubit in grid_iter(grid):
-        plot_ramsey_data_with_fit(
-            ax, ds, qubit, node_parameters, fits.get(qubit["qubit"], None)
-        )
+        plot_individual_data_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
 
-    grid.fig.suptitle("Ramsey vs. idle time")
-
+    grid.fig.suptitle("Qubit spectroscopy (rotated 'I' quadrature + fit)")
+    grid.fig.set_size_inches(15, 9)
+    grid.fig.tight_layout()
     return grid.fig
 
-
-def plot_ramsey_data_with_fit(ax, ds, qubit, node_parameters, fit=None):
+def plot_individual_data_with_fit(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
-    Plot individual qubit data on a given axis.
+    Plots individual qubit data on a given axis with optional fit.
 
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axis on which to plot the data.
+    ds : xr.Dataset
+        The dataset containing the quadrature data.
+    qubit : dict[str, str]
+        mapping to the qubit to plot.
+    fit : xr.Dataset, optional
+        The dataset containing the fit parameters (default is None).
+
+    Notes
+    -----
+    - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    if fit:
-        fitted_ramsey_data = oscillation_decay_exp(
-            ds.time,
-            fit.raw_fit_results.sel(fit_vals="a"),
-            fit.raw_fit_results.sel(fit_vals="f"),
-            fit.raw_fit_results.sel(fit_vals="phi"),
-            fit.raw_fit_results.sel(fit_vals="offset"),
-            fit.raw_fit_results.sel(fit_vals="decay"),
-        )
-    else:
-        fitted_ramsey_data = None
-
-    if node_parameters.use_state_discrimination:
-        plot_state(ax, ds, qubit, fitted_ramsey_data)
-        ax.set_ylabel("State Population")
-    else:
-        plot_transmission_amplitude(ax, ds, qubit, fitted_ramsey_data)
-        ax.set_ylabel("Trans. amp. I [mV]")
-
-    ax.set_xlabel("Idle time [ns]")
-    ax.set_title(qubit["qubit"])
-    if fit is not None:
-        add_fit_text(ax, fit)
-    ax.legend()
-
+    pass
+    # if fit:
+    #     fitted_ramsey_data = oscillation_decay_exp(
+    #         ds.time,
+    #         fit.raw_fit_results.sel(fit_vals="a"),
+    #         fit.raw_fit_results.sel(fit_vals="f"),
+    #         fit.raw_fit_results.sel(fit_vals="phi"),
+    #         fit.raw_fit_results.sel(fit_vals="offset"),
+    #         fit.raw_fit_results.sel(fit_vals="decay"),
+    #     )
+    # else:
+    #     fitted_ramsey_data = None
+    #
+    # if node_parameters.use_state_discrimination:
+    #     plot_state(ax, ds, qubit, fitted_ramsey_data)
+    #     ax.set_ylabel("State Population")
+    # else:
+    #     plot_transmission_amplitude(ax, ds, qubit, fitted_ramsey_data)
+    #     ax.set_ylabel("Trans. amp. I [mV]")
+    #
+    # ax.set_xlabel("Idle time [ns]")
+    # ax.set_title(qubit["qubit"])
+    # if fit is not None:
+    #     add_fit_text(ax, fit)
+    # ax.legend()
 
 def plot_state(ax, ds, qubit, fitted=None):
     """Plot state data for a qubit."""
