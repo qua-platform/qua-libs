@@ -13,6 +13,8 @@ description = """
         RUN BASIC QUA PROGRAM TO TEST QOP CONNECTION
 """
 
+node = QualibrationNode(name="00_hello_qua", description=description)
+
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
