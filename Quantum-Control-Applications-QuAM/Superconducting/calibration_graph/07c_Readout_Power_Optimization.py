@@ -1,49 +1,36 @@
 # TODO: this script isn't working great, the readout amp found at the end isn't always correct maybe because of SNR...
 
 # %% {Imports}
-from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from sklearn.mixture import GaussianMixture
+from dataclasses import asdict
 
-from qm import SimulationConfig
 from qm.qua import *
 
-from qualang_tools.analysis import two_state_discriminator
-from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
+from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
-from qualibrate import QualibrationNode, NodeParameters
+from qualibrate import QualibrationNode
+from qualibrate.utils.logger_m import logger
 from quam_config import QuAM
-from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_libs.save_utils import fetch_results_as_xarray
+from quam_experiments.experiments.readout_power_optimization import (
+    Parameters,
+    process_raw_dataset,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+)
 from quam_experiments.parameters.qubits_experiment import get_qubits
+from quam_experiments.workflow import simulate_and_plot
+from quam_libs.xarray_data_fetcher import XarrayDataFetcher
 
 # TODO: Write description
 description = """
         READOUT POWER OPTIMIZATION
 """
-
-
-class Parameters(NodeParameters):
-
-    qubits: Optional[List[str]] = None
-    num_runs: int = 2000
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
-    start_amp: float = 0.5
-    end_amp: float = 1.99
-    num_amps: int = 10
-    outliers_threshold: float = 0.98
-    plot_raw: bool = False
-    simulate: bool = False
-    simulation_duration_ns: int = 2500
-    timeout: int = 100
-    load_data_id: Optional[int] = None
-    multiplexed: bool = False
 
 
 node = QualibrationNode[Parameters, QuAM](
@@ -58,388 +45,179 @@ node = QualibrationNode[Parameters, QuAM](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.qubits = ["q1", "q3"]
     pass
 
 
-# %% {Initialize_QuAM_and_QOP}
-# Class containing tools to help handling units and conversions.
-u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
-# Generate the OPX and Octave configurations
-config = node.machine.generate_config()
-# Open Communication with the QOP
-if node.parameters.load_data_id is None:
-    qmm = node.machine.connect()
-
-# Get the active qubits from the node and organize them by batches
-node.namespace["qubits"] = qubits = get_qubits(node)
-num_qubits = len(qubits)
 
 
 # %% {QUA_program}
-n_runs = node.parameters.num_runs  # Number of runs
-flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
-reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
-amps = np.linspace(
-    node.parameters.start_amp, node.parameters.end_amp, node.parameters.num_amps
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None)
+def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
+    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    # Class containing tools to help handle units and conversions.
+    u = unit(coerce_to_integer=True)
+    # Get the active qubits from the node and organize them by batches
+    node.namespace["qubits"] = qubits = get_qubits(node)
+    num_qubits = len(qubits)
 
-with program() as iq_blobs:
-    I_g, I_g_st, Q_g, Q_g_st, n, n_st = node.machine.qua_declaration()
-    I_e, I_e_st, Q_e, Q_e_st, _, _ = node.machine.qua_declaration()
-    a = declare(fixed)
+    n_runs = node.parameters.num_runs  # Number of runs
+    amps = np.linspace(
+        node.parameters.start_amp, node.parameters.end_amp, node.parameters.num_amps
+    )
+    # Register the sweep axes to be added to the dataset when fetching data
+    node.namespace["sweep_axes"] = {
+        "qubit": xr.DataArray(qubits.get_names()),
+        "n_runs": xr.DataArray(
+            np.linspace(1, n_runs, n_runs), attrs={"long_name": "number of shots"}
+        ),
+        "readout_amplitude": xr.DataArray(
+            amps, attrs={"long_name": "readout amplitude", "units": ""}
+        ),
+    }
+    with program() as node.namespace["qua_program"]:
+        I_g, I_g_st, Q_g, Q_g_st, n, n_st = node.machine.qua_declaration()
+        I_e, I_e_st, Q_e, Q_e_st, _, _ = node.machine.qua_declaration()
+        a = declare(fixed)
 
-    for i, qubit in enumerate(qubits):
-
-        # Bring the active qubits to the desired frequency point
-        node.machine.set_all_fluxes(flux_point=flux_point, target=qubit)
-
-        with for_(n, 0, n < n_runs, n + 1):
-            # ground iq blobs for all qubits
-            save(n, n_st)
-            with for_(*from_array(a, amps)):
-                if reset_type == "active":
-                    qubit.reset_qubit_active()
-                elif reset_type == "thermal":
-                    wait(qubit.thermalization_time * u.ns)
-                else:
-                    raise ValueError(f"Unrecognized reset type {reset_type}.")
-
-                qubit.align()
-                qubit.resonator.measure(
-                    "readout", qua_vars=(I_g[i], Q_g[i]), amplitude_scale=a
-                )
-                qubit.align()
-                # save data
-                save(I_g[i], I_g_st[i])
-                save(Q_g[i], Q_g_st[i])
-
-                if reset_type == "active":
-                    qubit.reset_qubit_active()
-                elif reset_type == "thermal":
-                    wait(qubit.thermalization_time * u.ns)
-                else:
-                    raise ValueError(f"Unrecognized reset type {reset_type}.")
-                qubit.align()
-                qubit.xy.play("x180")
-                qubit.align()
-                qubit.resonator.measure(
-                    "readout", qua_vars=(I_e[i], Q_e[i]), amplitude_scale=a
-                )
-                save(I_e[i], I_e_st[i])
-                save(Q_e[i], Q_e_st[i])
-
-        # Measure sequentially
-        if not node.parameters.multiplexed:
+        for multiplexed_qubits in qubits.batch():
+            # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
+            for qubit in multiplexed_qubits.values():
+                node.machine.initialize_qpu(target=qubit)
             align()
 
-    with stream_processing():
-        n_st.save("n")
-        for i in range(num_qubits):
-            I_g_st[i].buffer(len(amps)).buffer(n_runs).save(f"I_g{i + 1}")
-            Q_g_st[i].buffer(len(amps)).buffer(n_runs).save(f"Q_g{i + 1}")
-            I_e_st[i].buffer(len(amps)).buffer(n_runs).save(f"I_e{i + 1}")
-            Q_e_st[i].buffer(len(amps)).buffer(n_runs).save(f"Q_e{i + 1}")
+            with for_(n, 0, n < n_runs, n + 1):
+                # ground iq blobs for all qubits
+                save(n, n_st)
+                with for_(*from_array(a, amps)):
+                    # Qubit initialization
+                    for i, qubit in multiplexed_qubits.items():
+                        qubit.reset_qubit(
+                            node.parameters.reset_type, node.parameters.simulate
+                        )
+                    align()
+                    # Qubit manipulation
+                    for i, qubit in multiplexed_qubits.items():
+                        qubit.resonator.measure(
+                            "readout", qua_vars=(I_g[i], Q_g[i]), amplitude_scale=a
+                        )
+                        qubit.align()
+                        # save data
+                        save(I_g[i], I_g_st[i])
+                        save(Q_g[i], Q_g_st[i])
+
+                    # Qubit initialization
+                    for i, qubit in multiplexed_qubits.items():
+                        qubit.reset_qubit(
+                            node.parameters.reset_type, node.parameters.simulate
+                        )
+                    align()
+                    # Qubit manipulation
+                    for i, qubit in multiplexed_qubits.items():
+                        qubit.xy.play("x180")
+                        qubit.align()
+                        qubit.resonator.measure(
+                            "readout", qua_vars=(I_e[i], Q_e[i]), amplitude_scale=a
+                        )
+                        save(I_e[i], I_e_st[i])
+                        save(Q_e[i], Q_e_st[i])
+
+        with stream_processing():
+            n_st.save("n")
+            for i in range(num_qubits):
+                I_g_st[i].buffer(len(amps)).buffer(n_runs).save(f"I_g{i + 1}")
+                Q_g_st[i].buffer(len(amps)).buffer(n_runs).save(f"Q_g{i + 1}")
+                I_e_st[i].buffer(len(amps)).buffer(n_runs).save(f"I_e{i + 1}")
+                Q_e_st[i].buffer(len(amps)).buffer(n_runs).save(f"Q_e{i + 1}")
 
 
-if node.parameters.simulate:
-    # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(
-        duration=node.parameters.simulation_duration_ns * 4
-    )  # In clock cycles = 4ns
-    job = qmm.simulate(config, iq_blobs, simulation_config)
-    # Get the simulated samples and plot them for all controllers
-    samples = job.get_simulated_samples()
-    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
-    for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()), 1, i + 1)
-        samples[con].plot()
-        plt.title(con)
-    plt.tight_layout()
-    # Save the figure
-    node.results = {"figure": plt.gcf()}
+# %% {Simulate_or_execute}
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
+def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
+    """Connect to the QOP and simulate the QUA program"""
+    # Connect to the QOP
+    qmm = node.machine.connect()
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Simulate the QUA program, generate the waveform report and plot the simulated samples
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["qua_program"], node.parameters
+    )
+    # Store the figure, waveform report and simulated samples
+    node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
+
+
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+)
+def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    # Connect to the QOP
+    qmm = node.machine.connect()
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        # The job is stored in the node namespace to be reused in the fetching_data run_action
+        node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        # Display the progress bar
+        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+        for dataset in data_fetcher:
+            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
+            progress_counter(
+                data_fetcher["n"],
+                node.parameters.num_runs,
+                start_time=data_fetcher.t_start,
+            )
+        # Display the execution report to expose possible runtime errors
+        print(job.execution_report())
+    # Register the raw dataset
+    node.results["ds_raw"] = dataset
     node.save()
 
-elif node.parameters.load_data_id is None:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        job = qm.execute(iq_blobs)
-        results = fetching_tool(job, ["n"], mode="live")
-        while results.is_processing():
-            # Fetch results
-            n = results.fetch_all()[0]
-            # Progress bar
-            progress_counter(n, n_runs, start_time=results.start_time)
+
+# %% {Data_loading_and_dataset_creation}
+@node.run_action(skip_if=node.parameters.load_data_id is None)
+def load_data(node: QualibrationNode[Parameters, QuAM]):
+    """Load a previously acquired dataset."""
+    load_data_id = node.parameters.load_data_id
+    # Load the specified dataset
+    node = node.load_from_id(node.parameters.load_data_id)
+    node.parameters.load_data_id = load_data_id
+    # Get the active qubits from the loaded node parameters
+    node.namespace["qubits"] = get_qubits(node)
 
 
-# %% {Data_fetching_and_dataset_creation}
-if not node.parameters.simulate:
-    if node.parameters.load_data_id is None:
-        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(
-            job.result_handles,
-            qubits,
-            {"amplitude": amps, "N": np.linspace(1, n_runs, n_runs)},
-        )
-        # Add the absolute readout power to the dataset
-        ds = ds.assign_coords(
-            {
-                "readout_amp": (
-                    ["qubit", "amplitude"],
-                    np.array(
-                        [
-                            amps * q.resonator.operations["readout"].amplitude
-                            for q in qubits
-                        ]
-                    ),
-                )
-            }
-        )
-        # Rearrange the data to combine I_g and I_e into I, and Q_g and Q_e into Q
-        ds_rearranged = xr.Dataset()
-        # Combine I_g and I_e into I
-        ds_rearranged["I"] = xr.concat([ds.I_g, ds.I_e], dim="state")
-        ds_rearranged["I"] = ds_rearranged["I"].assign_coords(state=[0, 1])
-        # Combine Q_g and Q_e into Q
-        ds_rearranged["Q"] = xr.concat([ds.Q_g, ds.Q_e], dim="state")
-        ds_rearranged["Q"] = ds_rearranged["Q"].assign_coords(state=[0, 1])
-        # Copy other coordinates and data variables
-        for var in ds.coords:
-            if var not in ds_rearranged.coords:
-                ds_rearranged[var] = ds[var]
+# %% {Data_analysis}
+@node.run_action(skip_if=node.parameters.simulate)
+def data_analysis(node: QualibrationNode[Parameters, QuAM]):
+    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-        for var in ds.data_vars:
-            if var not in ["I_g", "I_e", "Q_g", "Q_e"]:
-                ds_rearranged[var] = ds[var]
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(node.results["fit_results"], logger)
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
-        # Replace the original dataset with the rearranged one
-        ds = ds_rearranged
-    else:
-        node = node.load_from_id(node.parameters.load_data_id)
-        ds = node.results["ds"]
 
-    node.results = {"ds": ds, "results": {}, "figs": {}}
-
-    if node.parameters.plot_raw:
-        fig, axes = plt.subplots(
-            ncols=num_qubits,
-            nrows=len(ds.amplitude),
-            sharex=False,
-            sharey=False,
-            squeeze=False,
-            figsize=(5 * num_qubits, 5 * len(ds.amplitude)),
-        )
-        for amplitude, ax1 in zip(ds.amplitude, axes):
-            for q, ax2 in zip(list(qubits), ax1):
-                ds_q = ds.sel(qubit=q.name, amplitude=amplitude)
-                ax2.plot(
-                    ds_q.I.sel(state=0),
-                    ds_q.Q.sel(state=0),
-                    ".",
-                    alpha=0.2,
-                    label="Ground",
-                    markersize=2,
-                )
-                ax2.plot(
-                    ds_q.I.sel(state=1),
-                    ds_q.Q.sel(state=1),
-                    ".",
-                    alpha=0.2,
-                    label="Excited",
-                    markersize=2,
-                )
-                ax2.set_xlabel("I")
-                ax2.set_ylabel("Q")
-                ax2.set_title(f"{q.name}, {float(amplitude)}")
-                ax2.axis("equal")
-        plt.show()
-        node.results["figure_raw_data"] = fig
-
-    # %% {Data_analysis}
-    def apply_fit_gmm(I, Q):
-        I_mean = np.mean(I, axis=1)
-        Q_mean = np.mean(Q, axis=1)
-        means_init = [[I_mean[0], Q_mean[0]], [I_mean[1], Q_mean[1]]]
-        precisions_init = [
-            1 / ((np.mean(np.var(I, axis=1)) + np.mean(np.var(Q, axis=1))) / 2)
-        ] * 2
-        clf = GaussianMixture(
-            n_components=2,
-            covariance_type="spherical",
-            means_init=means_init,
-            precisions_init=precisions_init,
-            tol=1e-5,
-            reg_covar=1e-12,
-        )
-        X = np.array([np.array(I).flatten(), np.array(Q).flatten()]).T
-        clf.fit(X)
-        meas_fidelity = (
-            np.sum(clf.predict(np.array([I[0], Q[0]]).T) == 0) / len(I[0])
-            + np.sum(clf.predict(np.array([I[1], Q[1]]).T) == 1) / len(I[1])
-        ) / 2
-        loglikelihood = clf.score_samples(X)
-        max_ll = np.max(loglikelihood)
-        outliers = np.sum(loglikelihood > np.log(0.01) + max_ll) / len(X)
-        return np.array([meas_fidelity, outliers])
-
-    fit_res = xr.apply_ufunc(
-        apply_fit_gmm,
-        ds.I,
-        ds.Q,
-        input_core_dims=[["state", "N"], ["state", "N"]],
-        output_core_dims=[["result"]],
-        vectorize=True,
+# %% {Plotting}
+@node.run_action(skip_if=node.parameters.simulate)
+def data_plotting(node: QualibrationNode[Parameters, QuAM]):
+    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
+    fig_raw_fit = plot_raw_data_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
     )
-
-    fit_res = fit_res.assign_coords(result=["meas_fidelity", "outliers"])
-
-    plot_individual = False
-    best_data = {}
-
-    best_amp = {}
-    for q in qubits:
-        fit_res_q = fit_res.sel(qubit=q.name)
-        valid_amps = fit_res_q.amplitude[
-            (fit_res_q.sel(result="outliers") >= node.parameters.outliers_threshold)
-        ]
-        amps_fidelity = fit_res_q.sel(
-            amplitude=valid_amps.values, result="meas_fidelity"
-        )
-        best_amp[q.name] = float(amps_fidelity.readout_amp[amps_fidelity.argmax()])
-        print(f"amp for {q.name} is {best_amp[q.name]}")
-        node.results["results"][q.name] = {}
-        node.results["results"][q.name]["best_amp"] = best_amp[q.name]
-
-        # Select data for the best amplitude
-        best_amp_data = ds.sel(qubit=q.name, amplitude=float(amps_fidelity.idxmax()))
-        best_data[q.name] = best_amp_data
-
-        # Extract I and Q data for ground and excited states
-        I_g = best_amp_data.I.sel(state=0)
-        Q_g = best_amp_data.Q.sel(state=0)
-        I_e = best_amp_data.I.sel(state=1)
-        Q_e = best_amp_data.Q.sel(state=1)
-        angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
-            I_g, Q_g, I_e, Q_e, True, b_plot=plot_individual
-        )
-        I_rot = I_g * np.cos(angle) - Q_g * np.sin(angle)
-        hist = np.histogram(I_rot, bins=100)
-        RUS_threshold = hist[1][1:][np.argmax(hist[0])]
-        if plot_individual:
-            fig = plt.gcf()
-            plt.show()
-            node.results["figs"][q.name] = fig
-        node.results["results"][q.name]["angle"] = float(angle)
-        node.results["results"][q.name]["threshold"] = float(threshold)
-        node.results["results"][q.name]["fidelity"] = float(fidelity)
-        node.results["results"][q.name]["confusion_matrix"] = np.array(
-            [[gg, ge], [eg, ee]]
-        )
-        node.results["results"][q.name]["rus_threshold"] = float(RUS_threshold)
-    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
-
-    # %% {Plotting}
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        fit_res.loc[qubit].plot(ax=ax, x="readout_amp", hue="result", add_legend=False)
-        ax.axvline(best_amp[qubit["qubit"]], color="k", linestyle="dashed")
-        ax.set_xlabel("Relative power")
-        ax.set_ylabel("Fidelity / outliers")
-        ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("Assignment fidelity and non-outlier probability")
-
-    plt.tight_layout()
     plt.show()
-    node.results["figure_assignment_fid"] = grid.fig
-
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        ds_q = best_data[qubit["qubit"]]
-        qn = qubit["qubit"]
-        ax.plot(
-            1e3
-            * (
-                ds_q.I.sel(state=0) * np.cos(node.results["results"][qn]["angle"])
-                - ds_q.Q.sel(state=0) * np.sin(node.results["results"][qn]["angle"])
-            ),
-            1e3
-            * (
-                ds_q.I.sel(state=0) * np.sin(node.results["results"][qn]["angle"])
-                + ds_q.Q.sel(state=0) * np.cos(node.results["results"][qn]["angle"])
-            ),
-            ".",
-            alpha=0.1,
-            label="Ground",
-            markersize=1,
-        )
-        ax.plot(
-            1e3
-            * (
-                ds_q.I.sel(state=1) * np.cos(node.results["results"][qn]["angle"])
-                - ds_q.Q.sel(state=1) * np.sin(node.results["results"][qn]["angle"])
-            ),
-            1e3
-            * (
-                ds_q.I.sel(state=1) * np.sin(node.results["results"][qn]["angle"])
-                + ds_q.Q.sel(state=1) * np.cos(node.results["results"][qn]["angle"])
-            ),
-            ".",
-            alpha=0.1,
-            label="Excited",
-            markersize=1,
-        )
-        ax.axvline(
-            1e3 * node.results["results"][qn]["rus_threshold"],
-            color="k",
-            linestyle="--",
-            lw=0.5,
-            label="RUS Threshold",
-        )
-        ax.axvline(
-            1e3 * node.results["results"][qn]["threshold"],
-            color="r",
-            linestyle="--",
-            lw=0.5,
-            label="Threshold",
-        )
-        ax.axis("equal")
-        ax.set_xlabel("I [mV]")
-        ax.set_ylabel("Q [mV]")
-        ax.set_title(qubit["qubit"])
-
-    ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
-    grid.fig.suptitle("g.s. and e.s. discriminators (rotated)")
-    plt.tight_layout()
-    node.results["figure_IQ_blobs"] = grid.fig
-
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        confusion = node.results["results"][qubit["qubit"]]["confusion_matrix"]
-        ax.imshow(confusion)
-        ax.set_xticks([0, 1])
-        ax.set_yticks([0, 1])
-        ax.set_xticklabels(labels=["|g>", "|e>"])
-        ax.set_yticklabels(labels=["|g>", "|e>"])
-        ax.set_ylabel("Prepared")
-        ax.set_xlabel("Measured")
-        ax.text(
-            0, 0, f"{100 * confusion[0][0]:.1f}%", ha="center", va="center", color="k"
-        )
-        ax.text(
-            1, 0, f"{100 * confusion[0][1]:.1f}%", ha="center", va="center", color="w"
-        )
-        ax.text(
-            0, 1, f"{100 * confusion[1][0]:.1f}%", ha="center", va="center", color="w"
-        )
-        ax.text(
-            1, 1, f"{100 * confusion[1][1]:.1f}%", ha="center", va="center", color="k"
-        )
-        ax.set_title(qubit["qubit"])
-
-    grid.fig.suptitle("g.s. and e.s. fidelity")
-    plt.tight_layout()
-    plt.show()
-    node.results["figure_fidelities"] = grid.fig
+    # Store the generated figures
+    node.results["figure_amplitude"] = fig_raw_fit
 
 
 # %% {Update_state}
@@ -451,13 +229,13 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
             if node.outcomes[q.name] == "failed":
                 continue
 
-            fit_results = node.results["results"][q.name]
-            operation = q.resonator.operations["readout"]
-            operation.integration_weights_angle -= float(fit_results["angle"])
-            operation.threshold = float(fit_results["threshold"])
-            operation.rus_exit_threshold = float(fit_results["rus_threshold"])
-            operation.amplitude = float(fit_results["best_amp"])
-            q.resonator.confusion_matrix = fit_results["confusion_matrix"].tolist()
+            # fit_results = node.results["results"][q.name]
+            # operation = q.resonator.operations["readout"]
+            # operation.integration_weights_angle -= float(fit_results["angle"])
+            # operation.threshold = float(fit_results["threshold"])
+            # operation.rus_exit_threshold = float(fit_results["rus_threshold"])
+            # operation.amplitude = float(fit_results["best_amp"])
+            # q.resonator.confusion_matrix = fit_results["confusion_matrix"].tolist()
 
 
 # %% {Save_results}
