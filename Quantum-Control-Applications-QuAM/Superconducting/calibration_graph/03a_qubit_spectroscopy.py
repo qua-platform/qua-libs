@@ -78,7 +78,6 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    # %% {QUA_program}
     operation = node.parameters.operation  # The qubit operation to play
     n_avg = node.parameters.num_averages  # The number of averages
     # Adjust the pulse duration and amplitude to drive the qubit into a mixed state - can be None
