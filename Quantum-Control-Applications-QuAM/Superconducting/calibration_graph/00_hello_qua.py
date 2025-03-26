@@ -1,3 +1,4 @@
+# %% {Imports}
 import matplotlib.pyplot as plt
 
 from qm.qua import *

@@ -74,7 +74,6 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-# %% {Node_parameters}
 node = QualibrationNode(
     name="07d_Readout_Frequency_Duration_Power_Optimization",
     description=description,

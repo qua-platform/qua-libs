@@ -41,7 +41,6 @@ Next steps before going to the next node:
 """
 
 
-# %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
     num_averages: int = 100

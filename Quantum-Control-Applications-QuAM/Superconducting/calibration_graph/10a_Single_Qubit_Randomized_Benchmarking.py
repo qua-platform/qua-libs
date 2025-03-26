@@ -41,7 +41,6 @@ Prerequisites:
 """
 
 
-# %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = ["q4", "q5"]
     use_state_discrimination: bool = True

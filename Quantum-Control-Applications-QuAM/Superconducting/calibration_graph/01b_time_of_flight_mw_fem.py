@@ -32,7 +32,6 @@ The data undergoes post-processing to calibrate three distinct parameters:
 """
 
 
-# %% {Node_parameters}
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None

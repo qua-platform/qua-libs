@@ -1,4 +1,4 @@
-# %%
+# %% {Imports}
 from typing import Optional, List
 
 from qualang_tools.multi_user import qm_session
@@ -13,7 +13,6 @@ description = """
 """
 
 
-# %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
     calibrate_resonator: bool = True
