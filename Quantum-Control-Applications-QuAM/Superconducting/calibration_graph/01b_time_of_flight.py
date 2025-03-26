@@ -80,14 +80,12 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             resonator.time_of_flight = node.parameters.time_of_flight_in_ns
             resonator.operations["readout"].length = node.parameters.readout_length_in_ns
             resonator.operations["readout"].amplitude = node.parameters.readout_amplitude_in_v
-            if node.parameters.intermediate_frequency_in_mhz is not None:
-                resonator.intermediate_frequency = node.parameters.intermediate_frequency_in_mhz * u.MHz
             node.namespace["tracked_resonators"].append(resonator)
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "readout_time": xr.DataArray(np.arange(1, node.parameters.readout_length_in_ns, 1), attrs={"long_name": "readout time", "units": "ns"}),
+        "readout_time": xr.DataArray(np.arange(0, node.parameters.readout_length_in_ns, 1), attrs={"long_name": "readout time", "units": "ns"}),
     }
 
     with program() as node.namespace["qua_program"]:
