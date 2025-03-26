@@ -1,13 +1,12 @@
 # %%
-
-"""
-A simple program to close all other open QMs.
-"""
-
 from typing import Optional, List
 from qualibrate import QualibrationNode, NodeParameters
 
 from quam_config import QuAM
+
+description = """
+    Close all other open QMs.
+"""
 
 
 # %% {Node_parameters}
@@ -15,7 +14,9 @@ class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
 
 
-node = QualibrationNode(name="00_Close_other_QMs", parameters=Parameters())
+node = QualibrationNode(
+    name="00_Close_other_QMs", parameters=Parameters(), description=description
+)
 
 # Instantiate the QuAM class from the state file
 machine = QuAM.load()

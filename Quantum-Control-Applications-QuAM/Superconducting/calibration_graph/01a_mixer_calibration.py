@@ -1,7 +1,7 @@
 # %%
 
-"""
-A simple program to calibrate Octave mixers for all qubits and resonators
+description = """
+    A simple program to calibrate Octave mixers for all qubits and resonators
 """
 
 from qualibrate import QualibrationNode, NodeParameters
@@ -19,7 +19,9 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode(name="01a_Mixer_Calibration", parameters=Parameters())
+node = QualibrationNode(
+    name="01a_Mixer_Calibration", parameters=Parameters(), description=description
+)
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -43,5 +45,7 @@ qmm = machine.connect()
 with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
     for qubit in qubits:
         qubit.calibrate_octave(
-            qm, calibrate_drive=node.parameters.calibrate_drive, calibrate_resonator=node.parameters.calibrate_resonator
+            qm,
+            calibrate_drive=node.parameters.calibrate_drive,
+            calibrate_resonator=node.parameters.calibrate_resonator,
         )
