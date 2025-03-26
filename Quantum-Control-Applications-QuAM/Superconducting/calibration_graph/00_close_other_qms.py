@@ -12,6 +12,15 @@ node = QualibrationNode[NodeParameters, QuAM](
     name="00_Close_other_QMs", description=description, parameters=NodeParameters()
 )
 
+
+# Any parameters that should change for debugging purposes only should go in here
+# These parameters are ignored when run through the GUI or as part of a graph
+@node.run_action(skip_if=node.modes.external)
+def custom_param(node: QualibrationNode[Parameters, QuAM]):
+    # You can get type hinting in your IDE by typing node.parameters.
+    pass
+
+
 # Instantiate the QuAM class from the state file
 machine = QuAM.load()
 

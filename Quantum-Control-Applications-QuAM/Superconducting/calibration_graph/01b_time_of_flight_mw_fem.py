@@ -50,6 +50,14 @@ node = QualibrationNode[Parameters, QuAM](
 )
 
 
+# Any parameters that should change for debugging purposes only should go in here
+# These parameters are ignored when run through the GUI or as part of a graph
+@node.run_action(skip_if=node.modes.external)
+def custom_param(node: QualibrationNode[Parameters, QuAM]):
+    # You can get type hinting in your IDE by typing node.parameters.
+    pass
+
+
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
