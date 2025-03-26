@@ -22,10 +22,10 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 
 
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()
+node.machine = QuAM.load()
 
 # Generate the OPX and Octave configurations
-config = machine.generate_config()
+config = node.machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+qmm = node.machine.connect()
 qmm.close_all_qms()

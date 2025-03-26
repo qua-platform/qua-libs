@@ -34,13 +34,13 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()
+node.machine = QuAM.load()
 # Generate the OPX and Octave configurations
-config = machine.generate_config()
+config = node.machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+qmm = node.machine.connect()
 
-qubits = machine.active_qubits
+qubits = node.machine.active_qubits
 
 simulate = False
 
@@ -63,12 +63,12 @@ with program() as prog:
         qubits[0].resonator.play("const")
         # align()
         wait(1_000)
-        # for qubit in machine.active_qubits:
+        # for qubit in node.machine.active_qubits:
         #     qubit.z.play('const')
         #     qubit.z.wait(4)
 
         # with for_(a, 0, a < 2.0, a+0.2):
-        # # for qubit in machine.active_qubits:
+        # # for qubit in node.machine.active_qubits:
         #     qubits[2].xy.play('x180', amplitude_scale=a)
         #     qubits[2].xy.wait(4)
 
