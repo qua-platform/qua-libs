@@ -19,7 +19,7 @@ from quam_experiments.analysis.fit import (
     fit_oscillation_decay_exp,
     oscillation_decay_exp,
 )
-
+from quam_experiments.parameters.qubits_experiment import get_qubits
 
 description = """
         RAMSEY WITH VIRTUAL Z ROTATIONS
@@ -88,13 +88,9 @@ config = node.machine.generate_config()
 if node.parameters.load_data_id is None:
     qmm = node.machine.connect()
 
-# Get the relevant QuAM components
-if node.parameters.qubits is None or node.parameters.qubits == "":
-    qubits = node.machine.active_qubits
-else:
-    qubits = [node.machine.qubits[q] for q in node.parameters.qubits]
+# Get the active qubits from the node and organize them by batches
+node.namespace["qubits"] = qubits = get_qubits(node)
 num_qubits = len(qubits)
-
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages

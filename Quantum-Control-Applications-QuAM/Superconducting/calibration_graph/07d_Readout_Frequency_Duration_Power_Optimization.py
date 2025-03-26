@@ -52,6 +52,7 @@ from quam_experiments.experiments.readout_optimization_3d.parameters import (
     get_amplitude_factors,
 )
 from quam_experiments.workflow.simulation import simulate_and_plot
+from quam_experiments.parameters.qubits_experiment import get_qubits
 
 
 description = """
@@ -119,7 +120,8 @@ node.machine = QuAM.load()
 if node.parameters.load_data_id is None:
     qmm = node.machine.connect()
 
-qubits = get_qubits(node)
+# Get the active qubits from the node and organize them by batches
+node.namespace["qubits"] = qubits = get_qubits(node)
 num_qubits = len(qubits)
 
 readout_pulse_name = "readout"

@@ -17,6 +17,7 @@ from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
 from quam_libs.trackable_object import tracked_updates
+from quam_experiments.parameters.qubits_experiment import get_qubits
 
 description = """
         AC STARK-SHIFT CALIBRATION WITH DRAG PULSES (GOOGLE METHOD)
@@ -82,11 +83,8 @@ u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
 
-# Get the relevant QuAM components
-if node.parameters.qubits is None or node.parameters.qubits == "":
-    qubits = node.machine.active_qubits
-else:
-    qubits = [node.machine.qubits[q] for q in node.parameters.qubits]
+# Get the active qubits from the node and organize them by batches
+node.namespace["qubits"] = qubits = get_qubits(node)
 num_qubits = len(qubits)
 operation = node.parameters.operation  # The qubit operation to play
 

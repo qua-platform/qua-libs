@@ -6,7 +6,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
-
+from quam_experiments.parameters.qubits_experiment import get_qubits
 
 description = """
     A simple program to calibrate Octave mixers for all qubits and resonators
@@ -39,11 +39,8 @@ u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
 
-# Get the relevant QuAM components
-if node.parameters.qubits is None or node.parameters.qubits == "":
-    qubits = node.machine.active_qubits
-else:
-    qubits = [node.machine.qubits[q] for q in node.parameters.qubits]
+# Get the active qubits from the node and organize them by batches
+node.namespace["qubits"] = qubits = get_qubits(node)
 
 # Generate the OPX and Octave configurations
 config = node.machine.generate_config()

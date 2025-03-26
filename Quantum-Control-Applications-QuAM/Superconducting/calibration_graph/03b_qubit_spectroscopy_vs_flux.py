@@ -1,20 +1,23 @@
 # %% {Imports}
+from typing import Literal, Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+
+from qm import SimulationConfig
+from qm.qua import *
+
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.loops import from_array
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
 from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
 from quam_experiments.analysis.fit import peaks_dips
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.loops import from_array
-from qualang_tools.multi_user import qm_session
-from qualang_tools.units import unit
-from qm import SimulationConfig
-from qm.qua import *
-from typing import Literal, Optional, List
-import matplotlib.pyplot as plt
-import numpy as np
-
+from quam_experiments.parameters.qubits_experiment import get_qubits
 
 description = """
         QUBIT SPECTROSCOPY VERSUS FLUX
@@ -80,11 +83,8 @@ config = node.machine.generate_config()
 if node.parameters.load_data_id is None:
     qmm = node.machine.connect()
 
-# Get the relevant QuAM components
-if node.parameters.qubits is None or node.parameters.qubits == "":
-    qubits = node.machine.active_qubits
-else:
-    qubits = [node.machine.qubits[q] for q in node.parameters.qubits]
+# Get the active qubits from the node and organize them by batches
+node.namespace["qubits"] = qubits = get_qubits(node)
 num_qubits = len(qubits)
 
 

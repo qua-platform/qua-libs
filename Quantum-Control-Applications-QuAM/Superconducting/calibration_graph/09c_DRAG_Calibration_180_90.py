@@ -17,6 +17,7 @@ from quam_config import QuAM
 from quam_libs.plot_utils import QubitGrid, grid_iter
 from quam_libs.save_utils import fetch_results_as_xarray
 from quam_libs.trackable_object import tracked_updates
+from quam_experiments.parameters.qubits_experiment import get_qubits
 
 description = """
         DRAG PULSE CALIBRATION (YALE METHOD)
@@ -78,11 +79,9 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
-# Generate the OPX and Octave configurations
-if node.parameters.qubits is None or node.parameters.qubits == "":
-    qubits = node.machine.active_qubits
-else:
-    qubits = [node.machine.qubits[q] for q in node.parameters.qubits]
+
+# Get the active qubits from the node and organize them by batches
+node.namespace["qubits"] = qubits = get_qubits(node)
 num_qubits = len(qubits)
 
 # Update the readout power to match the desired range, this change will be reverted at the end of the node.
