@@ -37,18 +37,18 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()
+node.machine = QuAM.load()
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
-    qubits = machine.active_qubits
+    qubits = node.machine.active_qubits
 else:
-    qubits = [machine.qubits[q] for q in node.parameters.qubits]
+    qubits = [node.machine.qubits[q] for q in node.parameters.qubits]
 
 # Generate the OPX and Octave configurations
-config = machine.generate_config()
+config = node.machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+qmm = node.machine.connect()
 
 
 # %% {Execute calibration}

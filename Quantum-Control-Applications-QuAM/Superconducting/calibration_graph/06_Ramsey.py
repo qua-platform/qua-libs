@@ -72,14 +72,14 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 # %% {Initialize_QuAM_and_QOP}
 u = unit(coerce_to_integer=True)
 
-machine = QuAM.load()
+node.machine = QuAM.load()
 
-qubits = get_qubits(machine, node.parameters)
+qubits = get_qubits(node.machine, node.parameters)
 num_qubits = len(qubits)
 
-config = machine.generate_config()
+config = node.machine.generate_config()
 if node.parameters.load_data_id is None:
-    qmm = machine.connect()
+    qmm = node.machine.connect()
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages
@@ -102,7 +102,7 @@ with program() as ramsey:
     for multiplexed_qubits in qubits.batch():
         # todo: is this the right behaviour?
         for qubit in multiplexed_qubits.values():
-            machine.set_all_fluxes(flux_point, target=qubit)
+            node.machine.set_all_fluxes(flux_point, target=qubit)
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -164,7 +164,6 @@ with program() as ramsey:
 if node.parameters.simulate:
     samples, fig = simulate_and_plot(qmm, config, ramsey, node.parameters)
     node.results = {"figure": fig}
-    node.machine = machine
     node.save()
 
 elif node.parameters.load_data_id is None:
@@ -210,5 +209,4 @@ if not node.parameters.simulate:
         # %% {Save_results}
         node.outcomes = {q.name: "successful" for q in qubits}
         node.results["initial_parameters"] = node.parameters.model_dump()
-        node.machine = machine
         node.save()

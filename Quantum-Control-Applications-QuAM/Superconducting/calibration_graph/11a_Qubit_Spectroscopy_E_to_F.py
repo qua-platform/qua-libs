@@ -43,7 +43,7 @@ Prerequisites:
 
 Before proceeding to the next node:
     - Update the qubit frequency, labeled as f_01, in the state.
-    - Save the current state by calling machine.save("quam")
+    - Save the current state by calling node.machine.save("quam")
 """
 
 
@@ -81,19 +81,19 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()
+node.machine = QuAM.load()
 # Generate the OPX and Octave configurations
-config = machine.generate_config()
-octave_config = machine.get_octave_config()
+config = node.machine.generate_config()
+octave_config = node.machine.get_octave_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
-    qmm = machine.connect()
+    qmm = node.machine.connect()
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
-    qubits = machine.active_qubits
+    qubits = node.machine.active_qubits
 else:
-    qubits = [machine.qubits[q] for q in node.parameters.qubits]
+    qubits = [node.machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
 
 
@@ -120,7 +120,7 @@ with program() as qubit_spec:
 
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        node.machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -167,7 +167,6 @@ if node.parameters.simulate:
     job = qmm.simulate(config, qubit_spec, simulation_config)
     job.get_simulated_samples().con1.plot()
     node.results = {"figure": plt.gcf()}
-    node.machine = machine
     node.save()
 
 elif node.parameters.load_data_id is None:
@@ -296,7 +295,6 @@ if not node.parameters.load_data_id:
     if not node.parameters.simulate:
         node.outcomes = {q.name: "successful" for q in qubits}
         node.results["initial_parameters"] = node.parameters.model_dump()
-        node.machine = machine
         node.save()
 
 # %%

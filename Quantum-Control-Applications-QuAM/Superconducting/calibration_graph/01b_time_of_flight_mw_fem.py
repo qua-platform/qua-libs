@@ -62,13 +62,13 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()
+node.machine = QuAM.load()
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
-    qubits = machine.active_qubits
+    qubits = node.machine.active_qubits
 else:
-    qubits = [machine.qubits[q] for q in node.parameters.qubits]
+    qubits = [node.machine.qubits[q] for q in node.parameters.qubits]
 resonators = [qubit.resonator for qubit in qubits]
 num_qubits = len(qubits)
 
@@ -91,9 +91,9 @@ for q in qubits:
         tracked_resonators.append(resonator)
 
 # Generate the OPX and Octave configurations
-config = machine.generate_config()
+config = node.machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+qmm = node.machine.connect()
 
 
 # %% {QUA_program}
@@ -110,7 +110,7 @@ with program() as raw_trace_prog:
             # Measure the resonator (send a readout pulse and record the raw ADC trace)
             rr.measure("readout", stream=adc_st[i])
             # Wait for the resonator to deplete
-            rr.wait(machine.depletion_time * u.ns)
+            rr.wait(node.machine.depletion_time * u.ns)
         # Measure sequentially
         align(*[rr.name for rr in resonators])
 
@@ -196,7 +196,7 @@ else:
             "con": (
                 ["qubit"],
                 [
-                    machine.qubits[q.name].resonator.opx_input.controller_id
+                    node.machine.qubits[q.name].resonator.opx_input.controller_id
                     for q in qubits
                 ],
             )
@@ -260,5 +260,4 @@ else:
     node.outcomes = {rr.name: "successful" for rr in resonators}
     node.results["ds"] = ds
     node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
     node.save()

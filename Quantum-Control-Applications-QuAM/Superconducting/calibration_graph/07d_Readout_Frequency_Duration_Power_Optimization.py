@@ -111,12 +111,12 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 # %% {Initialize_QuAM_and_QOP}
 u = unit(coerce_to_integer=True)
 
-machine = QuAM.load()
+node.machine = QuAM.load()
 
 if node.parameters.load_data_id is None:
-    qmm = machine.connect()
+    qmm = node.machine.connect()
 
-qubits = get_qubits(machine, node.parameters)
+qubits = get_qubits(node.machine, node.parameters)
 num_qubits = len(qubits)
 
 readout_pulse_name = "readout"
@@ -132,7 +132,7 @@ for resonator in [qubit.resonator for qubit in qubits]:
         )
         tracked_resonators.append(tracked_resonator)
 
-config = machine.generate_config()
+config = node.machine.generate_config()
 
 # %% {QUA_program}
 n_avg = node.parameters.num_runs
@@ -165,7 +165,7 @@ def readout_optimization_3d_measured_in_batches(
         n_st = declare_stream()
 
         for multiplexed_qubits in qubits.batch():
-            machine.set_all_fluxes(
+            node.machine.set_all_fluxes(
                 flux_point=flux_point, target=list(multiplexed_qubits.values())[0]
             )
 
@@ -181,7 +181,7 @@ def readout_optimization_3d_measured_in_batches(
                             )
 
                         if not node.parameters.simulate:
-                            wait(machine.thermalization_time * u.ns)
+                            wait(node.machine.thermalization_time * u.ns)
 
                         align()
                         for qubit in multiplexed_qubits.values():
@@ -201,7 +201,7 @@ def readout_optimization_3d_measured_in_batches(
 
                         align()
                         if not node.parameters.simulate:
-                            wait(machine.thermalization_time * u.ns)
+                            wait(node.machine.thermalization_time * u.ns)
 
                         for qubit in multiplexed_qubits.values():
                             qubit.xy.play("x180")
@@ -279,7 +279,6 @@ with open("debug.py", "w+") as f:
 if node.parameters.simulate:
     samples, fig = simulate_and_plot(qmm, config, programs[0], node.parameters)
     node.results = {"figure": fig}
-    node.machine = machine
     node.save()
 
 elif node.parameters.load_data_id is None:
@@ -373,5 +372,4 @@ if not node.parameters.simulate:
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
     node.save()
