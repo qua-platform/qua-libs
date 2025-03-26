@@ -1,4 +1,25 @@
-"""
+# %% {Imports}
+from typing import Literal, Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+
+from qm import SimulationConfig
+from qm.qua import *
+
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.loops import from_array
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+
+from qualibrate import QualibrationNode, NodeParameters
+from quam_config import QuAM
+from quam_libs.qua_datasets import convert_IQ_to_V
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
+from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
+
+
+description = """
         T1 MEASUREMENT
 The sequence consists in putting the qubit in the excited stated by playing the x180 pulse and measuring the resonator
 after a varying time. The qubit T1 is extracted by fitting the exponential decay of the measured quadratures.
@@ -13,23 +34,6 @@ Next steps before going to the next node:
     - Update the qubit T1 in the state.
 """
 
-# %% {Imports}
-from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM
-from quam_libs.qua_datasets import convert_IQ_to_V
-from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_libs.save_utils import fetch_results_as_xarray
-from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.loops import from_array
-from qualang_tools.multi_user import qm_session
-from qualang_tools.units import unit
-from qm import SimulationConfig
-from qm.qua import *
-from typing import Literal, Optional, List
-import matplotlib.pyplot as plt
-import numpy as np
-
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
@@ -38,7 +42,9 @@ class Parameters(NodeParameters):
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 70000
     wait_time_step_in_ns: int = 300
-    flux_point_joint_or_independent_or_arbitrary: Literal["joint", "independent", "arbitrary"] = "independent"
+    flux_point_joint_or_independent_or_arbitrary: Literal[
+        "joint", "independent", "arbitrary"
+    ] = "independent"
     reset_type: Literal["active", "thermal"] = "thermal"
     use_state_discrimination: bool = True
     simulate: bool = False
@@ -48,7 +54,9 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(name="05b_T2e", parameters=Parameters())
+node = QualibrationNode(
+    name="05b_T2e", description=description, parameters=Parameters()
+)
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -79,7 +87,9 @@ idle_times = np.arange(
     node.parameters.wait_time_step_in_ns // 4,
 )
 
-flux_point = node.parameters.flux_point_joint_or_independent_or_arbitrary  # 'independent' or 'joint'
+flux_point = (
+    node.parameters.flux_point_joint_or_independent_or_arbitrary
+)  # 'independent' or 'joint'
 if flux_point == "arbitrary":
     detunings = {q.name: q.arbitrary_intermediate_frequency for q in qubits}
     arb_flux_bias_offset = {q.name: q.z.arbitrary_offset for q in qubits}
@@ -120,7 +130,8 @@ with program() as t1:
                 qubit.align()
                 qubit.z.play(
                     "const",
-                    amplitude_scale=arb_flux_bias_offset[qubit.name] / qubit.z.operations["const"].amplitude,
+                    amplitude_scale=arb_flux_bias_offset[qubit.name]
+                    / qubit.z.operations["const"].amplitude,
                     duration=t[i],
                 )
                 qubit.align()
@@ -128,7 +139,8 @@ with program() as t1:
                 qubit.align()
                 qubit.z.play(
                     "const",
-                    amplitude_scale=arb_flux_bias_offset[qubit.name] / qubit.z.operations["const"].amplitude,
+                    amplitude_scale=arb_flux_bias_offset[qubit.name]
+                    / qubit.z.operations["const"].amplitude,
                     duration=t[i],
                 )
                 qubit.align()
@@ -162,7 +174,9 @@ with program() as t1:
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(
+        duration=node.parameters.simulation_duration_ns * 4
+    )  # In clock cycles = 4ns
     job = qmm.simulate(config, t1, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
@@ -191,7 +205,9 @@ elif node.parameters.load_data_id is None:
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times})
+        ds = fetch_results_as_xarray(
+            job.result_handles, qubits, {"idle_time": idle_times}
+        )
         # Convert IQ data into volts
         if not node.parameters.use_state_discrimination:
             ds = convert_IQ_to_V(ds, qubits)

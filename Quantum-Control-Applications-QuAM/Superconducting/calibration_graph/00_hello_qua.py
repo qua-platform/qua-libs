@@ -1,10 +1,16 @@
+import matplotlib.pyplot as plt
+
 from qm.qua import *
 from qm import SimulationConfig
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.signal import savgol_filter
+
 from qualang_tools.units import unit
+
 from quam_config import QuAM
+
+
+description = """
+        RUN BASIC QUA PROGRAM TO TEST QOP CONNECTION
+"""
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -12,7 +18,7 @@ from quam_config import QuAM
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("C:\git\qua-libs\Quantum-Control-Applications-QuAM\Superconducting\configuration\quam_state")
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP

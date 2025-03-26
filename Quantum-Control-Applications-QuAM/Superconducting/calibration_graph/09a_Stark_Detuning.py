@@ -1,4 +1,24 @@
-"""
+# %% {Imports}
+from qualibrate import QualibrationNode, NodeParameters
+from typing import Literal, Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+
+from qm import SimulationConfig
+from qm.qua import *
+
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.loops import from_array
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+
+from quam_config import QuAM
+from quam_libs.qua_datasets import convert_IQ_to_V
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
+from quam_libs.trackable_object import tracked_updates
+
+description = """
         AC STARK-SHIFT CALIBRATION WITH DRAG PULSES (GOOGLE METHOD)
 The sequence consists in applying an increasing number of x180 and -x180 pulses successively for different DRAG
 detunings.
@@ -19,23 +39,6 @@ Next steps before going to the next node:
     - Update the DRAG detuning and set-point (alpha) in the state.
 """
 
-# %% {Imports}
-from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM
-from quam_libs.qua_datasets import convert_IQ_to_V
-from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_libs.save_utils import fetch_results_as_xarray
-from quam_libs.trackable_object import tracked_updates
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.loops import from_array
-from qualang_tools.multi_user import qm_session
-from qualang_tools.units import unit
-from qm import SimulationConfig
-from qm.qua import *
-from typing import Literal, Optional, List
-import matplotlib.pyplot as plt
-import numpy as np
-
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
@@ -55,7 +58,11 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(name="09a_Stark_Detuning", parameters=Parameters())
+node = QualibrationNode(
+    name="09a_Stark_Detuning",
+    description=description,
+    parameters=Parameters(),
+)
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -123,7 +130,9 @@ with program() as stark_detuning:
                         qubit.wait(qubit.thermalization_time * u.ns)
 
                     # Update the qubit frequency after initialization for active reset
-                    update_frequency(qubit.xy.name, df + qubit.xy.intermediate_frequency)
+                    update_frequency(
+                        qubit.xy.name, df + qubit.xy.intermediate_frequency
+                    )
                     with for_(count, 0, count < npi, count + 1):
                         if operation == "x180":
                             qubit.xy.play(operation)
@@ -139,7 +148,9 @@ with program() as stark_detuning:
                     qubit.align()
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                     # State discrimination
-                    assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
+                    assign(
+                        state[i], I[i] > qubit.resonator.operations["readout"].threshold
+                    )
                     save(state[i], state_stream[i])
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
@@ -150,7 +161,9 @@ with program() as stark_detuning:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            state_stream[i].boolean_to_int().buffer(len(dfs)).buffer(N_pi).average().save(f"state{i + 1}")
+            state_stream[i].boolean_to_int().buffer(len(dfs)).buffer(
+                N_pi
+            ).average().save(f"state{i + 1}")
             I_stream = I_st[i].buffer(len(dfs)).buffer(N_pi).average().save(f"I{i + 1}")
             Q_stream = Q_st[i].buffer(len(dfs)).buffer(N_pi).average().save(f"Q{i + 1}")
 
@@ -158,7 +171,9 @@ with program() as stark_detuning:
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(
+        duration=node.parameters.simulation_duration_ns * 4
+    )  # In clock cycles = 4ns
     job = qmm.simulate(config, stark_detuning, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
@@ -187,7 +202,9 @@ elif node.parameters.load_data_id is None:
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs, "N": N_pi_vec})
+        ds = fetch_results_as_xarray(
+            job.result_handles, qubits, {"freq": dfs, "N": N_pi_vec}
+        )
         # Convert IQ data into volts
         ds = convert_IQ_to_V(ds, qubits)
     else:
@@ -203,7 +220,10 @@ if not node.parameters.simulate:
     detuning = ds.freq[data_max_idx]
 
     # Save fitting results
-    fit_results = {qubit.name: {"detuning": float(detuning.sel(qubit=qubit.name).values)} for qubit in qubits}
+    fit_results = {
+        qubit.name: {"detuning": float(detuning.sel(qubit=qubit.name).values)}
+        for qubit in qubits
+    }
     for q in qubits:
         print(f"Detuning for {q.name} is {fit_results[q.name]['detuning']} Hz")
     node.results["fit_results"] = fit_results
@@ -211,7 +231,9 @@ if not node.parameters.simulate:
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        ds.assign_coords(freq_MHz=ds.freq * 1e-6).loc[qubit].state.plot(ax=ax, x="freq_MHz", y="N")
+        ds.assign_coords(freq_MHz=ds.freq * 1e-6).loc[qubit].state.plot(
+            ax=ax, x="freq_MHz", y="N"
+        )
         ax.axvline(1e-6 * fit_results[qubit["qubit"]]["detuning"], color="r")
         ax.set_ylabel("num. of pulses")
         ax.set_xlabel("detuning [MHz]")
@@ -228,7 +250,9 @@ if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         with node.record_state_updates():
             for qubit in qubits:
-                qubit.xy.operations[operation].detuning = float(fit_results[qubit.name]["detuning"])
+                qubit.xy.operations[operation].detuning = float(
+                    fit_results[qubit.name]["detuning"]
+                )
                 if node.parameters.DRAG_setpoint is not None:
                     qubit.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
 

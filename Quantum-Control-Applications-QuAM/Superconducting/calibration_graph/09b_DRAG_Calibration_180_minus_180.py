@@ -1,4 +1,24 @@
-"""
+# %% {Imports}
+from typing import Literal, Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+
+from qm import SimulationConfig
+from qm.qua import *
+
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.loops import from_array
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+
+from qualibrate import QualibrationNode, NodeParameters
+from quam_config import QuAM
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
+from quam_libs.trackable_object import tracked_updates
+
+
+description = """
         DRAG PULSE CALIBRATION (GOOGLE METHOD)
 The sequence consists in applying an increasing number of x180 and -x180 pulses successively while varying the DRAG
 coefficient alpha. After such a sequence, the qubit is expected to always be in the ground state if the DRAG
@@ -16,23 +36,6 @@ Prerequisites:
 Next steps before going to the next node:
     - Update the DRAG coefficient (alpha) in the state.
 """
-
-# %% {Imports}
-from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM
-
-from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_libs.save_utils import fetch_results_as_xarray
-from quam_libs.trackable_object import tracked_updates
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.loops import from_array
-from qualang_tools.multi_user import qm_session
-from qualang_tools.units import unit
-from qm import SimulationConfig
-from qm.qua import *
-from typing import Literal, Optional, List
-import matplotlib.pyplot as plt
-import numpy as np
 
 
 # %% {Node_parameters}
@@ -54,7 +57,11 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(name="09b_DRAG_Calibration_180_minus_180", parameters=Parameters())
+node = QualibrationNode(
+    name="09b_DRAG_Calibration_180_minus_180",
+    description=description,
+    parameters=Parameters(),
+)
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -140,7 +147,9 @@ with program() as drag_calibration:
 
                     qubit.align()
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
+                    assign(
+                        state[i], I[i] > qubit.resonator.operations["readout"].threshold
+                    )
                     save(state[i], state_stream[i])
         # Measure sequentially
         if not node.parameters.multiplexed:
@@ -149,13 +158,17 @@ with program() as drag_calibration:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            state_stream[i].boolean_to_int().buffer(len(amps)).buffer(N_pi).average().save(f"state{i + 1}")
+            state_stream[i].boolean_to_int().buffer(len(amps)).buffer(
+                N_pi
+            ).average().save(f"state{i + 1}")
 
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(
+        duration=node.parameters.simulation_duration_ns * 4
+    )  # In clock cycles = 4ns
     job = qmm.simulate(config, drag_calibration, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
@@ -184,7 +197,9 @@ elif node.parameters.load_data_id is None:
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
+        ds = fetch_results_as_xarray(
+            job.result_handles, qubits, {"amp": amps, "N": N_pi_vec}
+        )
         # Add the qubit pulse absolute alpha coefficient to the dataset
         ds = ds.assign_coords(
             {
@@ -207,7 +222,12 @@ if not node.parameters.simulate:
     alphas = ds.amp[data_max_idx]
     # Save fitting results
     fit_results = {
-        qubit.name: {"alpha": float(alphas.sel(qubit=qubit.name).values * qubit.xy.operations[operation].alpha)}
+        qubit.name: {
+            "alpha": float(
+                alphas.sel(qubit=qubit.name).values
+                * qubit.xy.operations[operation].alpha
+            )
+        }
         for qubit in qubits
     }
     for q in qubits:

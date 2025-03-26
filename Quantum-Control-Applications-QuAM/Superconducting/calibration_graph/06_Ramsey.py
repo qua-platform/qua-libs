@@ -1,4 +1,30 @@
-"""
+# %% {Imports}
+from dataclasses import asdict
+import matplotlib.pyplot as plt
+
+from qm.qua import *
+
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.loops import from_array
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+
+from qualibrate import QualibrationNode
+from quam_config import QuAM
+from quam_experiments.experiments.ramsey.analysis.fetch_dataset import fetch_dataset
+from quam_experiments.experiments.ramsey.analysis.fitting import (
+    fit_frequency_detuning_and_t2_decay,
+)
+from quam_experiments.experiments.ramsey.parameters import (
+    Parameters,
+    get_idle_times_in_clock_cycles,
+)
+from quam_experiments.experiments.ramsey.plotting import plot_ramseys_data_with_fit
+from quam_experiments.parameters.qubits_experiment import get_qubits
+from quam_experiments.workflow.simulation import simulate_and_plot
+
+
+description = """
         RAMSEY WITH VIRTUAL Z ROTATIONS
 The program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement) for different idle times.
 Instead of detuning the qubit gates, the frame of the second x90 pulse is rotated (de-phased) to mimic an accumulated
@@ -17,28 +43,9 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-from dataclasses import asdict
-
-# %% {Imports}
-from qualibrate import QualibrationNode
-from quam_config import QuAM
-from quam_experiments.experiments.ramsey.analysis.fetch_dataset import fetch_dataset
-from quam_experiments.experiments.ramsey.analysis.fitting import fit_frequency_detuning_and_t2_decay
-from quam_experiments.experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
-from quam_experiments.experiments.ramsey.plotting import plot_ramseys_data_with_fit
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow.simulation import simulate_and_plot
-
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.loops import from_array
-from qualang_tools.multi_user import qm_session
-from qualang_tools.units import unit
-from qm.qua import *
-import matplotlib.pyplot as plt
-
-
 node = QualibrationNode(
     name="06_Ramsey",
+    description=description,
     parameters=Parameters(
         qubits=None,
         num_averages=100,
@@ -95,9 +102,15 @@ with program() as ramsey:
                 with for_(*from_array(detuning_sign, detuning_signs)):
                     for i, qubit in multiplexed_qubits.items():
                         with if_(detuning_sign == 1):
-                            assign(virtual_detuning_phases[i], Cast.mul_fixed_by_int(detuning * 1e-9, 4 * idle_time))
+                            assign(
+                                virtual_detuning_phases[i],
+                                Cast.mul_fixed_by_int(detuning * 1e-9, 4 * idle_time),
+                            )
                         with else_():
-                            assign(virtual_detuning_phases[i], Cast.mul_fixed_by_int(-detuning * 1e-9, 4 * idle_time))
+                            assign(
+                                virtual_detuning_phases[i],
+                                Cast.mul_fixed_by_int(-detuning * 1e-9, 4 * idle_time),
+                            )
 
                     align()
                     # with strict_timing_():
@@ -126,10 +139,16 @@ with program() as ramsey:
         n_st.save("n")
         for i in range(num_qubits):
             if node.parameters.use_state_discrimination:
-                state_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"state{i + 1}")
+                state_st[i].buffer(len(detuning_signs)).buffer(
+                    len(idle_times)
+                ).average().save(f"state{i + 1}")
             else:
-                I_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"I{i + 1}")
-                Q_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"Q{i + 1}")
+                I_st[i].buffer(len(detuning_signs)).buffer(
+                    len(idle_times)
+                ).average().save(f"I{i + 1}")
+                Q_st[i].buffer(len(detuning_signs)).buffer(
+                    len(idle_times)
+                ).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate_or_execute}

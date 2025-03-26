@@ -1,4 +1,22 @@
-"""
+from typing import Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.signal import savgol_filter
+
+from qm import SimulationConfig
+from qm.qua import *
+
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+
+from qualibrate import QualibrationNode, NodeParameters
+from quam_config import QuAM
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
+from quam_libs.trackable_object import tracked_updates
+
+
+description = """
         TIME OF FLIGHT
 This sequence involves sending a readout pulse and capturing the raw ADC traces.
 The data undergoes post-processing to calibrate three distinct parameters:
@@ -11,20 +29,6 @@ The data undergoes post-processing to calibrate three distinct parameters:
     - Analog Inputs Gain: If a signal is constrained by digitization or if it saturates the ADC,
     the variable gain of the OPX analog input, ranging from -12 dB to 20 dB, can be modified to fit the signal within the ADC range of +/-0.5V.
 """
-
-from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM
-from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_libs.save_utils import fetch_results_as_xarray
-from quam_libs.trackable_object import tracked_updates
-from qualang_tools.multi_user import qm_session
-from qualang_tools.units import unit
-from qm import SimulationConfig
-from qm.qua import *
-from typing import Optional, List
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.signal import savgol_filter
 
 
 # %% {Node_parameters}
@@ -41,7 +45,9 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode(name="01b_Time_of_Flight", parameters=Parameters())
+node = QualibrationNode(
+    name="01b_Time_of_Flight", description=description, parameters=Parameters()
+)
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -62,12 +68,18 @@ tracked_resonators = []
 for q in qubits:
     resonator = q.resonator
     # make temporary updates before running the program and revert at the end.
-    with tracked_updates(resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
+    with tracked_updates(
+        resonator, auto_revert=False, dont_assign_to_none=True
+    ) as resonator:
         resonator.time_of_flight = node.parameters.time_of_flight_in_ns
         resonator.operations["readout"].length = node.parameters.readout_length_in_ns
-        resonator.operations["readout"].amplitude = node.parameters.readout_amplitude_in_v
+        resonator.operations["readout"].amplitude = (
+            node.parameters.readout_amplitude_in_v
+        )
         if node.parameters.intermediate_frequency_in_mhz is not None:
-            resonator.intermediate_frequency = node.parameters.intermediate_frequency_in_mhz * u.MHz
+            resonator.intermediate_frequency = (
+                node.parameters.intermediate_frequency_in_mhz * u.MHz
+            )
         tracked_resonators.append(resonator)
 
 # Generate the OPX and Octave configurations
@@ -79,7 +91,9 @@ qmm = machine.connect()
 # %% {QUA_program}
 with program() as raw_trace_prog:
     n = declare(int)  # QUA variable for the averaging loop
-    adc_st = [declare_stream(adc_trace=True) for _ in range(len(resonators))]  # The stream to store the raw ADC trace
+    adc_st = [
+        declare_stream(adc_trace=True) for _ in range(len(resonators))
+    ]  # The stream to store the raw ADC trace
 
     for i, rr in enumerate(resonators):
         with for_(n, 0, n < node.parameters.num_averages, n + 1):
@@ -105,7 +119,9 @@ with program() as raw_trace_prog:
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(
+        duration=node.parameters.simulation_duration_ns * 4
+    )  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, raw_trace_prog, simulation_config)
     # Plot the simulated samples
@@ -129,10 +145,19 @@ else:
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    time_axis = np.linspace(0, resonators[0].operations["readout"].length, resonators[0].operations["readout"].length)
+    time_axis = np.linspace(
+        0,
+        resonators[0].operations["readout"].length,
+        resonators[0].operations["readout"].length,
+    )
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"time": time_axis})
     # Convert raw ADC traces into volts
-    ds = ds.assign({key: -ds[key] / 2**12 for key in ("adcI", "adcQ", "adc_single_runI", "adc_single_runQ")})
+    ds = ds.assign(
+        {
+            key: -ds[key] / 2**12
+            for key in ("adcI", "adcQ", "adc_single_runI", "adc_single_runQ")
+        }
+    )
     ds = ds.assign({"IQ_abs": np.sqrt(ds["adcI"] ** 2 + ds["adcQ"] ** 2)})
     # Add the dataset to the node
     node.results = {"ds": ds}
@@ -161,7 +186,15 @@ else:
     ds = ds.assign_coords({"offsets_I": ds.adcI.mean(dim="time")})
     ds = ds.assign_coords({"offsets_Q": ds.adcQ.mean(dim="time")})
     ds = ds.assign_coords(
-        {"con": (["qubit"], [machine.qubits[q.name].resonator.opx_input_I.controller_id for q in qubits])}
+        {
+            "con": (
+                ["qubit"],
+                [
+                    machine.qubits[q.name].resonator.opx_input_I.controller_id
+                    for q in qubits
+                ],
+            )
+        }
     )
 
     # %% {Plotting}
@@ -173,7 +206,14 @@ else:
         ax.axvline(ds.loc[qubit].delays, color="k", linestyle="--", label="TOF")
         ax.axhline(ds.loc[qubit].offsets_I, color="b", linestyle="--")
         ax.axhline(ds.loc[qubit].offsets_Q, color="r", linestyle="--")
-        ax.fill_between(range(ds.sizes["time"]), -0.5, 0.5, color="grey", alpha=0.2, label="ADC Range")
+        ax.fill_between(
+            range(ds.sizes["time"]),
+            -0.5,
+            0.5,
+            color="grey",
+            alpha=0.2,
+            label="ADC Range",
+        )
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("Readout amplitude [mV]")
         ax.set_title(qubit["qubit"])
@@ -206,7 +246,9 @@ else:
     with node.record_state_updates():
         for q in qubits:
             if node.parameters.time_of_flight_in_ns is not None:
-                q.resonator.time_of_flight = node.parameters.time_of_flight_in_ns + int(ds.sel(qubit=q.name).delays)
+                q.resonator.time_of_flight = node.parameters.time_of_flight_in_ns + int(
+                    ds.sel(qubit=q.name).delays
+                )
             else:
                 q.resonator.time_of_flight += int(ds.sel(qubit=q.name).delays)
 

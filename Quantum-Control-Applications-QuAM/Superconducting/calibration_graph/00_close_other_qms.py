@@ -1,21 +1,21 @@
 # %%
 from typing import Optional, List
-from qualibrate import QualibrationNode, NodeParameters
 
+from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
 
+
 description = """
-    Close all other open QMs.
+        CLOSE ALL OTHER QMs.
 """
 
 
-# %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
 
 
 node = QualibrationNode(
-    name="00_Close_other_QMs", parameters=Parameters(), description=description
+    name="00_Close_other_QMs", description=description, parameters=Parameters()
 )
 
 # Instantiate the QuAM class from the state file

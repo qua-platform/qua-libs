@@ -1,4 +1,24 @@
-"""
+# %% {Imports}
+from typing import Literal, Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+
+from qm import SimulationConfig
+from qm.qua import *
+
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.loops import from_array
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+
+from qualibrate import QualibrationNode, NodeParameters
+from quam_config import QuAM
+from quam_libs.qua_datasets import convert_IQ_to_V
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
+
+
+description = """
         READOUT OPTIMISATION: FREQUENCY
 This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
 (with the qubit in the |g> state) and then after applying a pi pulse to the qubit (transitioning the qubit to the
@@ -17,22 +37,6 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-# %% {Imports}
-from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM
-from quam_libs.qua_datasets import convert_IQ_to_V
-from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_libs.save_utils import fetch_results_as_xarray
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.loops import from_array
-from qualang_tools.multi_user import qm_session
-from qualang_tools.units import unit
-from qm import SimulationConfig
-from qm.qua import *
-from typing import Literal, Optional, List
-import matplotlib.pyplot as plt
-import numpy as np
-
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
@@ -49,7 +53,11 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(name="07a_Readout_Frequency_Optimization", parameters=Parameters())
+node = QualibrationNode(
+    name="07a_Readout_Frequency_Optimization",
+    description=description,
+    parameters=Parameters(),
+)
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -101,7 +109,9 @@ with program() as ro_freq_opt:
             save(n, n_st)
             with for_(*from_array(df, dfs)):
                 # Update the resonator frequencies
-                update_frequency(qubit.resonator.name, df + qubit.resonator.intermediate_frequency)
+                update_frequency(
+                    qubit.resonator.name, df + qubit.resonator.intermediate_frequency
+                )
                 # Wait for the qubits to decay to the ground state
                 wait(qubit.thermalization_time * u.ns)
                 align()
@@ -139,7 +149,9 @@ with program() as ro_freq_opt:
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(
+        duration=node.parameters.simulation_duration_ns * 4
+    )  # In clock cycles = 4ns
     job = qmm.simulate(config, ro_freq_opt, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
@@ -201,17 +213,24 @@ if not node.parameters.simulate:
     chi = (ds.IQ_abs_e.idxmin(dim="freq") - ds.IQ_abs_g.idxmin(dim="freq")) / 2
 
     # Save fitting results
-    fit_results = {q.name: {"detuning": detuning.loc[q.name].values, "chi": chi.loc[q.name].values} for q in qubits}
+    fit_results = {
+        q.name: {"detuning": detuning.loc[q.name].values, "chi": chi.loc[q.name].values}
+        for q in qubits
+    }
     node.results["fit_results"] = fit_results
 
     for q in qubits:
-        print(f"{q.name}: Shifting readout frequency by {fit_results[q.name]['detuning']/1e3:.0f} kHz")
+        print(
+            f"{q.name}: Shifting readout frequency by {fit_results[q.name]['detuning']/1e3:.0f} kHz"
+        )
         print(f"{q.name}: Chi = {fit_results[q.name]['chi']:.2f} \n")
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).D.loc[qubit]).plot(ax=ax, x="freq_MHz", label=None)
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).D.loc[qubit]).plot(
+            ax=ax, x="freq_MHz", label=None
+        )
         ax.axvline(
             fit_results[qubit["qubit"]]["detuning"] / 1e6,
             color="red",
@@ -227,8 +246,12 @@ if not node.parameters.simulate:
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_g.loc[qubit]).plot(ax=ax, x="freq_MHz", label="g.s")
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_e.loc[qubit]).plot(ax=ax, x="freq_MHz", label="e.s")
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_g.loc[qubit]).plot(
+            ax=ax, x="freq_MHz", label="g.s"
+        )
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_e.loc[qubit]).plot(
+            ax=ax, x="freq_MHz", label="e.s"
+        )
         ax.axvline(
             fit_results[qubit["qubit"]]["detuning"] / 1e6,
             color="red",
@@ -246,7 +269,9 @@ if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         for q in qubits:
             with node.record_state_updates():
-                q.resonator.intermediate_frequency += int(fit_results[q.name]["detuning"])
+                q.resonator.intermediate_frequency += int(
+                    fit_results[q.name]["detuning"]
+                )
                 q.chi = float(fit_results[q.name]["chi"])
 
         # %% {Save_results}

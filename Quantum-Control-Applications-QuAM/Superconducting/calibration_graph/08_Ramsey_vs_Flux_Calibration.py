@@ -1,4 +1,27 @@
-"""
+# %% {Imports}
+from typing import Literal, Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+
+from qm import SimulationConfig
+from qm.qua import *
+
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.loops import from_array
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+
+from qualibrate import QualibrationNode, NodeParameters
+from quam_config import QuAM
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
+from quam_experiments.analysis.fit import (
+    fit_oscillation_decay_exp,
+    oscillation_decay_exp,
+)
+
+
+description = """
 RAMSEY WITH VIRTUAL Z ROTATIONS
 The program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement) for different idle times.
 Instead of detuning the qubit gates, the frame of the second x90 pulse is rotated (de-phased) to mimic an accumulated
@@ -16,23 +39,6 @@ Next steps before going to the next node:
     - Update the qubits frequency (f_01) in the state.
     - Save the current state by calling machine.save("quam")
 """
-
-# %% {Imports}
-from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM
-
-from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_libs.save_utils import fetch_results_as_xarray
-from quam_experiments.analysis.fit import fit_oscillation_decay_exp, oscillation_decay_exp
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.loops import from_array
-from qualang_tools.multi_user import qm_session
-from qualang_tools.units import unit
-from qm import SimulationConfig
-from qm.qua import *
-from typing import Literal, Optional, List
-import matplotlib.pyplot as plt
-import numpy as np
 
 
 # %% {Node_parameters}
@@ -53,7 +59,11 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(name="08_Ramsey_vs_Flux_Calibration", parameters=Parameters())
+node = QualibrationNode(
+    name="08_Ramsey_vs_Flux_Calibration",
+    description=description,
+    parameters=Parameters(),
+)
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -89,7 +99,9 @@ idle_times = np.arange(
 detuning = int(1e6 * node.parameters.frequency_detuning_in_mhz)
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 fluxes = np.arange(
-    -node.parameters.flux_span / 2, node.parameters.flux_span / 2 + 0.001, step=node.parameters.flux_step
+    -node.parameters.flux_span / 2,
+    node.parameters.flux_span / 2 + 0.001,
+    step=node.parameters.flux_step,
 )
 
 with program() as ramsey:
@@ -98,7 +110,9 @@ with program() as ramsey:
     state = [declare(int) for _ in range(num_qubits)]
     state_st = [declare_stream() for _ in range(num_qubits)]
     t = declare(int)  # QUA variable for the idle time
-    phi = declare(fixed)  # QUA variable for dephasing the second pi/2 pulse (virtual Z-rotation)
+    phi = declare(
+        fixed
+    )  # QUA variable for dephasing the second pi/2 pulse (virtual Z-rotation)
     flux = declare(fixed)  # QUA variable for the flux dc level
 
     for i, qubit in enumerate(qubits):
@@ -120,7 +134,11 @@ with program() as ramsey:
                     qubit.xy.play("x180", amplitude_scale=0.5)
                     qubit.align()
                     wait(20, qubit.z.name)
-                    qubit.z.play("const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t)
+                    qubit.z.play(
+                        "const",
+                        amplitude_scale=flux / qubit.z.operations["const"].amplitude,
+                        duration=t,
+                    )
                     wait(20, qubit.z.name)
                     qubit.xy.frame_rotation_2pi(phi)
                     qubit.align()
@@ -143,13 +161,17 @@ with program() as ramsey:
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubits):
-            state_st[i].buffer(len(idle_times)).buffer(len(fluxes)).average().save(f"state{i + 1}")
+            state_st[i].buffer(len(idle_times)).buffer(len(fluxes)).average().save(
+                f"state{i + 1}"
+            )
 
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(
+        duration=node.parameters.simulation_duration_ns * 4
+    )  # In clock cycles = 4ns
     job = qmm.simulate(config, ramsey, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
@@ -177,7 +199,9 @@ elif node.parameters.load_data_id is None:
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times, "flux": fluxes})
+        ds = fetch_results_as_xarray(
+            job.result_handles, qubits, {"idle_time": idle_times, "flux": fluxes}
+        )
         # Add the absolute time in µs to the dataset
         ds = ds.assign_coords(idle_time=4 * ds.idle_time / 1e3)
         ds.flux.attrs = {"long_name": "flux", "units": "V"}
@@ -218,7 +242,9 @@ if not node.parameters.simulate:
     flux_offset = {}
     freq_offset = {}
     for q in qubits:
-        a[q.name] = float(-1e6 * fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values)
+        a[q.name] = float(
+            -1e6 * fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values
+        )
         flux_offset[q.name] = float(
             (
                 -0.5
@@ -229,8 +255,10 @@ if not node.parameters.simulate:
         freq_offset[q.name] = (
             1e6
             * (
-                flux_offset[q.name] ** 2 * float(fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values)
-                + flux_offset[q.name] * float(fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients.values)
+                flux_offset[q.name] ** 2
+                * float(fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values)
+                + flux_offset[q.name]
+                * float(fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients.values)
                 + float(fitvals.sel(qubit=q.name, degree=0).polyfit_coefficients.values)
             )
             - detuning
@@ -268,9 +296,15 @@ if not node.parameters.simulate:
         ax.plot(flux, fitted_freq)
         ax.set_title(qubit["qubit"])
         ax.set_xlabel(" Flux (V)")
-        print(f"The quad term for {qubit['qubit']} is {a[qubit['qubit']]/1e9:.3f} GHz/V^2")
-        print(f"Flux offset for {qubit['qubit']} is {flux_offset[qubit['qubit']]*1e3:.1f} mV")
-        print(f"Freq offset for {qubit['qubit']} is {freq_offset[qubit['qubit']]/1e6:.3f} MHz")
+        print(
+            f"The quad term for {qubit['qubit']} is {a[qubit['qubit']]/1e9:.3f} GHz/V^2"
+        )
+        print(
+            f"Flux offset for {qubit['qubit']} is {flux_offset[qubit['qubit']]*1e3:.1f} mV"
+        )
+        print(
+            f"Freq offset for {qubit['qubit']} is {freq_offset[qubit['qubit']]/1e6:.3f} MHz"
+        )
         print()
     grid.fig.suptitle("Ramsey freq. Vs. flux")
     plt.tight_layout()

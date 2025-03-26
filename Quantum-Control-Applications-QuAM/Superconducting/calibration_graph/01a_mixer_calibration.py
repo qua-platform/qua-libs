@@ -1,14 +1,16 @@
 # %%
+from typing import Optional, List
+
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+
+from qualibrate import QualibrationNode, NodeParameters
+from quam_config import QuAM
+
 
 description = """
     A simple program to calibrate Octave mixers for all qubits and resonators
 """
-
-from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM
-from qualang_tools.multi_user import qm_session
-from qualang_tools.units import unit
-from typing import Optional, List
 
 
 # %% {Node_parameters}
@@ -20,7 +22,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(
-    name="01a_Mixer_Calibration", parameters=Parameters(), description=description
+    name="01a_Mixer_Calibration", description=description, parameters=Parameters()
 )
 
 # %% {Initialize_QuAM_and_QOP}

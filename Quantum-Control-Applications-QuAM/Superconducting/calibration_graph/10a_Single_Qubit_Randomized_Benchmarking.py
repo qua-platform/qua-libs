@@ -1,4 +1,25 @@
-"""
+# %% {Imports}
+from typing import Literal, Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
+
+from qm import SimulationConfig
+from qm.qua import *
+
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+
+from qualibrate import QualibrationNode, NodeParameters
+from quam_config import QuAM
+from quam_libs.plot_utils import QubitGrid, grid_iter
+from quam_libs.save_utils import fetch_results_as_xarray
+from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
+
+
+description = """
         SINGLE QUBIT RANDOMIZED BENCHMARKING
 The program consists in playing random sequences of Clifford gates and measuring the state of the resonator afterward.
 Each random sequence is derived on the FPGA for the maximum depth (specified as an input) and played for each depth
@@ -19,27 +40,9 @@ Prerequisites:
     - Set the desired flux bias.
 """
 
-# %% {Imports}
-from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM
-from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_libs.save_utils import fetch_results_as_xarray
-from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
-from qualang_tools.multi_user import qm_session
-from qualang_tools.units import unit
-from qm import SimulationConfig
-from qm.qua import *
-from typing import Literal, Optional, List
-import matplotlib.pyplot as plt
-import numpy as np
-import xarray as xr
-
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
     qubits: Optional[List[str]] = ["q4", "q5"]
     use_state_discrimination: bool = True
     use_strict_timing: bool = False
@@ -57,7 +60,11 @@ class Parameters(NodeParameters):
     multiplexed: bool = True
 
 
-node = QualibrationNode(name="10a_Single_Qubit_Randomized_Benchmarking", parameters=Parameters())
+node = QualibrationNode(
+    name="10a_Single_Qubit_Randomized_Benchmarking",
+    description=description,
+    parameters=Parameters(),
+)
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -90,7 +97,9 @@ if node.parameters.delta_clifford < 1:
 delta_clifford = node.parameters.delta_clifford
 flux_point = node.parameters.flux_point_joint_or_independent
 reset_type = node.parameters.reset_type_thermal_or_active
-assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+assert (
+    max_circuit_depth / delta_clifford
+).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 num_depths = max_circuit_depth // delta_clifford + 1
 seed = node.parameters.seed  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
@@ -267,9 +276,9 @@ with program() as randomized_benchmarking_individual:
     with stream_processing():
         m_st.save("iteration")
         for i in range(num_qubits):
-            state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save(
-                f"state{i + 1}"
-            )
+            state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                num_depths
+            ).buffer(num_of_sequences).save(f"state{i + 1}")
 
 
 with program() as randomized_benchmarking_multiplexed:
@@ -348,9 +357,9 @@ with program() as randomized_benchmarking_multiplexed:
     with stream_processing():
         m_st.save("iteration")
         for i in range(num_qubits):
-            state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save(
-                f"state{i + 1}"
-            )
+            state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                num_depths
+            ).buffer(num_of_sequences).save(f"state{i + 1}")
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
@@ -430,7 +439,9 @@ if not node.parameters.simulate:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         da_state_qubit = da_state.sel(qubit=qubit["qubit"])
-        da_state_std = ds["state"].std(dim="sequence").sel(qubit=qubit["qubit"]) / np.sqrt(ds.sequence.size)
+        da_state_std = ds["state"].std(dim="sequence").sel(
+            qubit=qubit["qubit"]
+        ) / np.sqrt(ds.sequence.size)
         ax.errorbar(
             da_state_qubit.m,
             da_state_qubit,
@@ -443,7 +454,10 @@ if not node.parameters.simulate:
         m = da_state.m.values
         ax.set_title(qubit["qubit"], pad=22)
         ax.set_xlabel("Circuit depth")
-        fit_dict = {k: da_fit.sel(**qubit).sel(fit_vals=k).values for k in da_fit.fit_vals.values}
+        fit_dict = {
+            k: da_fit.sel(**qubit).sel(fit_vals=k).values
+            for k in da_fit.fit_vals.values
+        }
         ax.plot(m, decay_exp(m, **fit_dict), "r--", label="fit")
         ax.text(
             0.0,

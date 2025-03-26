@@ -1,20 +1,3 @@
-"""
-        QUBIT SPECTROSCOPY VERSUS FLUX
-This sequence involves doing a qubit spectroscopy for several flux biases in order to exhibit the qubit frequency
-versus flux response.
-
-Prerequisites:
-    - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
-    - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
-    - Identification of the approximate qubit frequency ("qubit_spectroscopy").
-
-Before proceeding to the next node:
-    - Update the qubit frequency, in the state.
-    - Update the relevant flux points in the state.
-    - Update the frequency vs flux quadratic term in the state.
-    - Save the current state
-"""
-
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
@@ -33,7 +16,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-# %% {Node_parameters}
+description = """
+        QUBIT SPECTROSCOPY VERSUS FLUX
+This sequence involves doing a qubit spectroscopy for several flux biases in order to exhibit the qubit frequency
+versus flux response.
+
+Prerequisites:
+    - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
+    - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
+    - Identification of the approximate qubit frequency ("qubit_spectroscopy").
+
+Before proceeding to the next node:
+    - Update the qubit frequency, in the state.
+    - Update the relevant flux points in the state.
+    - Update the frequency vs flux quadratic term in the state.
+    - Save the current state
+"""
+
+
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
@@ -54,7 +54,11 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(name="03b_Qubit_Spectroscopy_vs_Flux", parameters=Parameters())
+node = QualibrationNode(
+    name="03b_Qubit_Spectroscopy_vs_Flux",
+    description=description,
+    parameters=Parameters(),
+)
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -122,7 +126,11 @@ with program() as multi_qubit_spec_vs_flux:
                         else qubit.xy.operations[operation].length * u.ns
                     )
                     # Bring the qubit to the desired point during the saturation pulse
-                    qubit.z.play("const", amplitude_scale=dc / qubit.z.operations["const"].amplitude, duration=duration)
+                    qubit.z.play(
+                        "const",
+                        amplitude_scale=dc / qubit.z.operations["const"].amplitude,
+                        duration=duration,
+                    )
                     # Apply saturation pulse to all qubits
                     qubit.xy.play(
                         operation,
@@ -152,7 +160,9 @@ with program() as multi_qubit_spec_vs_flux:
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(
+        duration=node.parameters.simulation_duration_ns * 4
+    )  # In clock cycles = 4ns
     job = qmm.simulate(config, multi_qubit_spec_vs_flux, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
@@ -184,7 +194,9 @@ if not node.parameters.simulate:
         ds = node.results["ds"]
     else:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"flux": dcs, "freq": dfs})
+        ds = fetch_results_as_xarray(
+            job.result_handles, qubits, {"flux": dcs, "freq": dfs}
+        )
         # Convert IQ data into volts
         ds = convert_IQ_to_V(ds, qubits)
         # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2)
@@ -209,16 +221,26 @@ if not node.parameters.simulate:
     # Fit the result with a parabola
     parabolic_fit_results = peaks.position.polyfit("flux", 2)
     # Try to fit again with a smaller prominence factor (may need some adjustment)
-    if np.any(np.isnan(np.concatenate(parabolic_fit_results.polyfit_coefficients.values))):
+    if np.any(
+        np.isnan(np.concatenate(parabolic_fit_results.polyfit_coefficients.values))
+    ):
         # Find the resonance dips for each flux point
         peaks = peaks_dips(ds.I, dim="freq", prominence_factor=4)
         # Fit the result with a parabola
         parabolic_fit_results = peaks.position.polyfit("flux", 2)
     # Extract relevant fitted parameters
     coeff = parabolic_fit_results.polyfit_coefficients
-    fitted = coeff.sel(degree=2) * ds.flux**2 + coeff.sel(degree=1) * ds.flux + coeff.sel(degree=0)
+    fitted = (
+        coeff.sel(degree=2) * ds.flux**2
+        + coeff.sel(degree=1) * ds.flux
+        + coeff.sel(degree=0)
+    )
     flux_shift = -coeff[1] / (2 * coeff[0])
-    freq_shift = coeff.sel(degree=2) * flux_shift**2 + coeff.sel(degree=1) * flux_shift + coeff.sel(degree=0)
+    freq_shift = (
+        coeff.sel(degree=2) * flux_shift**2
+        + coeff.sel(degree=1) * flux_shift
+        + coeff.sel(degree=0)
+    )
 
     # Save fitting results
     if node.parameters.load_data_id is None:
@@ -243,9 +265,15 @@ if not node.parameters.simulate:
                 print(
                     f"quad term for qubit {q.name} is {float(coeff.sel(degree = 2, qubit = q.name)/1e9):.3e} GHz/V^2 \n"
                 )
-                fit_results[q.name]["flux_shift"] = float(flux_shift.sel(qubit=q.name).values)
-                fit_results[q.name]["drive_freq"] = float(freq_shift.sel(qubit=q.name).values)
-                fit_results[q.name]["quad_term"] = float(coeff.sel(degree=2, qubit=q.name))
+                fit_results[q.name]["flux_shift"] = float(
+                    flux_shift.sel(qubit=q.name).values
+                )
+                fit_results[q.name]["drive_freq"] = float(
+                    freq_shift.sel(qubit=q.name).values
+                )
+                fit_results[q.name]["quad_term"] = float(
+                    coeff.sel(degree=2, qubit=q.name)
+                )
             else:
                 print(f"No fit for qubit {q.name}")
                 fit_results[q.name]["flux_shift"] = np.nan
@@ -261,9 +289,13 @@ if not node.parameters.simulate:
         ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].I.plot(
             ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
         )
-        ((fitted + freq_ref) / 1e9).loc[qubit].plot(ax=ax, linewidth=0.5, ls="--", color="r")
+        ((fitted + freq_ref) / 1e9).loc[qubit].plot(
+            ax=ax, linewidth=0.5, ls="--", color="r"
+        )
         ax.plot(flux_shift.loc[qubit], ((freq_shift.loc[qubit] + freq_ref) / 1e9), "r*")
-        ((peaks.position.loc[qubit] + freq_ref) / 1e9).plot(ax=ax, ls="", marker=".", color="g", ms=0.5)
+        ((peaks.position.loc[qubit] + freq_ref) / 1e9).plot(
+            ax=ax, ls="", marker=".", color="g", ms=0.5
+        )
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Flux (V)")
         ax.set_title(qubit["qubit"])

@@ -1,4 +1,60 @@
-"""
+# %% {Imports}
+import logging
+from typing import Optional, List
+import numpy as np
+from tqdm import tqdm
+
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.loops import from_array
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+
+from qm import Program, generate_qua_script
+from qm.qua import *
+
+from qualibrate import QualibrationNode
+from quam_experiments.experiments.readout_optimization_3d.analysis.calculate_readout_fidelity import (
+    calculate_readout_fidelity,
+    get_maximum_fidelity_per_qubit,
+)
+from quam_experiments.experiments.readout_optimization_3d.analysis.combine_batches import (
+    combine_batches,
+)
+from quam_experiments.experiments.readout_optimization_3d.analysis.fetch_dataset import (
+    fetch_dataset,
+)
+from quam_experiments.experiments.readout_optimization_3d.analysis.filtering import (
+    filter_readout_fidelity,
+)
+from quam_experiments.experiments.readout_optimization_3d.analysis.plotting import (
+    plot_fidelity_3d,
+    plot_fidelity_2d,
+)
+from quam_experiments.experiments.readout_optimization_3d.make_qua_streams_per_qubit import (
+    make_qua_streams_per_qubit,
+)
+from quam_experiments.experiments.readout_optimization_3d.make_qua_variables_per_qubit import (
+    make_qua_variables_per_qubit,
+)
+from quam_experiments.experiments.readout_optimization_3d.measurement_batching import (
+    generate_measurement_batches,
+    get_max_accumulated_readouts,
+)
+from quam_experiments.parameters.qubits_experiment import get_qubits
+from quam_libs.trackable_object import tracked_updates
+from quam_config import QuAM
+from quam_experiments.experiments.readout_optimization_3d.parameters import (
+    Parameters,
+    get_durations,
+)
+from quam_experiments.experiments.readout_optimization_3d.parameters import (
+    get_frequency_detunings_in_hz,
+    get_amplitude_factors,
+)
+from quam_experiments.workflow.simulation import simulate_and_plot
+
+
+description = """
         READOUT OPTIMISATION: FREQUENCY, POWER, DURATION
 This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
 (with the qubit in the |g> state) and then after applying a pi pulse to the qubit (transitioning the qubit to the
@@ -18,54 +74,10 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-# %% {Imports}
-import logging
-
-from typing import Optional, List
-
-import numpy as np
-from tqdm import tqdm
-
-from qm import Program, generate_qua_script
-from qualibrate import QualibrationNode
-
-from quam_experiments.experiments.readout_optimization_3d.analysis.calculate_readout_fidelity import (
-    calculate_readout_fidelity,
-    get_maximum_fidelity_per_qubit,
-)
-from quam_experiments.experiments.readout_optimization_3d.analysis.combine_batches import combine_batches
-from quam_experiments.experiments.readout_optimization_3d.analysis.fetch_dataset import fetch_dataset
-from quam_experiments.experiments.readout_optimization_3d.analysis.filtering import filter_readout_fidelity
-from quam_experiments.experiments.readout_optimization_3d.analysis.plotting import plot_fidelity_3d, plot_fidelity_2d
-from quam_experiments.experiments.readout_optimization_3d.make_qua_streams_per_qubit import make_qua_streams_per_qubit
-from quam_experiments.experiments.readout_optimization_3d.make_qua_variables_per_qubit import (
-    make_qua_variables_per_qubit,
-)
-from quam_experiments.experiments.readout_optimization_3d.measurement_batching import (
-    generate_measurement_batches,
-    get_max_accumulated_readouts,
-)
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_libs.trackable_object import tracked_updates
-from quam_config import QuAM
-from quam_experiments.experiments.readout_optimization_3d.parameters import Parameters, get_durations
-from quam_experiments.experiments.readout_optimization_3d.parameters import (
-    get_frequency_detunings_in_hz,
-    get_amplitude_factors,
-)
-from quam_experiments.workflow.simulation import simulate_and_plot
-
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.loops import from_array
-from qualang_tools.multi_user import qm_session
-from qualang_tools.units import unit
-
-from qm.qua import *
-
-
 # %% {Node_parameters}
 node = QualibrationNode(
     name="07d_Readout_Frequency_Duration_Power_Optimization",
+    description=description,
     parameters=Parameters(
         qubits=None,
         multiplexed=True,
@@ -104,8 +116,12 @@ readout_pulse_name = "readout"
 # temporarily set readout length to be maximum duration in sweep
 tracked_resonators = []
 for resonator in [qubit.resonator for qubit in qubits]:
-    with tracked_updates(resonator, auto_revert=False, dont_assign_to_none=True) as tracked_resonator:
-        tracked_resonator.operations[readout_pulse_name].length = node.parameters.max_duration_in_ns
+    with tracked_updates(
+        resonator, auto_revert=False, dont_assign_to_none=True
+    ) as tracked_resonator:
+        tracked_resonator.operations[readout_pulse_name].length = (
+            node.parameters.max_duration_in_ns
+        )
         tracked_resonators.append(tracked_resonator)
 
 config = machine.generate_config()
@@ -120,7 +136,9 @@ durations = get_durations(node.parameters)
 flux_point = node.parameters.flux_point_joint_or_independent
 
 
-def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: Optional[List[str]] = None) -> Program:
+def readout_optimization_3d_measured_in_batches(
+    n_avg: int, measurement_batch: Optional[List[str]] = None
+) -> Program:
     """
     Returns the 3D readout optimization program, but only measures those
     qubits which appears in the `measurement_batch` list to avoid exceeding
@@ -132,14 +150,16 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
         a = declare(fixed)
 
         # Create QUA variables and streams only if the qubit is in the measurement batch
-        II_g, IQ_g, QI_g, QQ_g, I_g, Q_g, II_e, IQ_e, QI_e, QQ_e, I_e, Q_e = make_qua_variables_per_qubit(
-            measurement_batch, node.parameters
+        II_g, IQ_g, QI_g, QQ_g, I_g, Q_g, II_e, IQ_e, QI_e, QQ_e, I_e, Q_e = (
+            make_qua_variables_per_qubit(measurement_batch, node.parameters)
         )
         I_g_st, Q_g_st, I_e_st, Q_e_st = make_qua_streams_per_qubit(measurement_batch)
         n_st = declare_stream()
 
         for multiplexed_qubits in qubits.batch():
-            machine.set_all_fluxes(flux_point=flux_point, target=list(multiplexed_qubits.values())[0])
+            machine.set_all_fluxes(
+                flux_point=flux_point, target=list(multiplexed_qubits.values())[0]
+            )
 
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
@@ -147,7 +167,10 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
                 with for_(*from_array(df, dfs)):
                     with for_(*from_array(a, amps)):
                         for qubit in multiplexed_qubits.values():
-                            update_frequency(qubit.resonator.name, qubit.resonator.intermediate_frequency + df)
+                            update_frequency(
+                                qubit.resonator.name,
+                                qubit.resonator.intermediate_frequency + df,
+                            )
 
                         if not node.parameters.simulate:
                             wait(machine.thermalization_time * u.ns)
@@ -164,7 +187,9 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
                                 )
                             else:
                                 # play, but don't demodulate
-                                qubit.resonator.play(pulse_name=readout_pulse_name, amplitude_scale=a)
+                                qubit.resonator.play(
+                                    pulse_name=readout_pulse_name, amplitude_scale=a
+                                )
 
                         align()
                         if not node.parameters.simulate:
@@ -185,7 +210,9 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
                                 )
                             else:
                                 # play, but don't demodulate
-                                qubit.resonator.play(pulse_name=readout_pulse_name, amplitude_scale=a)
+                                qubit.resonator.play(
+                                    pulse_name=readout_pulse_name, amplitude_scale=a
+                                )
 
                         for i, qubit in enumerate(measurement_batch):
                             j = declare(int)
@@ -204,9 +231,9 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
             for i in range(len(measurement_batch)):
                 streams = {"I_g": I_g_st, "Q_g": Q_g_st, "I_e": I_e_st, "Q_e": Q_e_st}
                 for name, stream in streams.items():
-                    stream[i].buffer(node.parameters.num_durations).buffer(len(amps)).buffer(len(dfs)).buffer(
-                        n_avg
-                    ).save(f"{name}{i + 1}")
+                    stream[i].buffer(node.parameters.num_durations).buffer(
+                        len(amps)
+                    ).buffer(len(dfs)).buffer(n_avg).save(f"{name}{i + 1}")
 
         return readout_optimization_3d
 
@@ -233,7 +260,9 @@ n_avg = n_avg // qubit_representation
 
 programs = []
 for measurement_batch in measurement_batches:
-    programs.append(readout_optimization_3d_measured_in_batches(n_avg, measurement_batch))
+    programs.append(
+        readout_optimization_3d_measured_in_batches(n_avg, measurement_batch)
+    )
 
 with open("debug.py", "w+") as f:
     f.write(generate_qua_script(programs[0], config))
@@ -256,7 +285,9 @@ elif node.parameters.load_data_id is None:
                 progress_counter(n, n_avg, start_time=results.start_time)
 
         run_axis = np.arange(i * n_avg, (i + 1) * n_avg)
-        datasets.append(fetch_dataset(job, measurement_batches[i], run_axis, node.parameters))
+        datasets.append(
+            fetch_dataset(job, measurement_batches[i], run_axis, node.parameters)
+        )
 
     ds = combine_batches(datasets)
 
@@ -295,10 +326,18 @@ if not node.parameters.simulate:
             optimal_output_powers = {}
             for q in qubits:
                 optimal_ds_for_this_qubit = optimal_ds.sel(qubit=q.name)
-                q.resonator.intermediate_frequency += int(optimal_ds_for_this_qubit.freq.data)
-                q.resonator.operations[readout_pulse_name].length = int(optimal_ds_for_this_qubit.duration.data)
-                q.resonator.operations[readout_pulse_name].amplitude *= float(optimal_ds_for_this_qubit.amp.data)
-                optimal_output_powers[q] = q.resonator.get_output_power(operation=readout_pulse_name)
+                q.resonator.intermediate_frequency += int(
+                    optimal_ds_for_this_qubit.freq.data
+                )
+                q.resonator.operations[readout_pulse_name].length = int(
+                    optimal_ds_for_this_qubit.duration.data
+                )
+                q.resonator.operations[readout_pulse_name].amplitude *= float(
+                    optimal_ds_for_this_qubit.amp.data
+                )
+                optimal_output_powers[q] = q.resonator.get_output_power(
+                    operation=readout_pulse_name
+                )
 
             # If the amplitude increased above the maximum readout amplitude, increase the power
             # and reduce the amplitude below its limit to protect against saturating the output channel.
@@ -306,7 +345,9 @@ if not node.parameters.simulate:
             # take the safe approach and define a *lower* bound for the power of the port by
             # sorting in descending order of power requirements.
             lowest_possible_full_scale_power_dbm = None
-            for qubit, power in sorted(optimal_output_powers.items(), key=lambda item: item[1], reverse=True):
+            for qubit, power in sorted(
+                optimal_output_powers.items(), key=lambda item: item[1], reverse=True
+            ):
                 optimal_ds_for_this_qubit = optimal_ds.sel(qubit=qubit.name)
 
                 power_settings = qubit.resonator.set_output_power(
@@ -317,7 +358,9 @@ if not node.parameters.simulate:
                 )
 
                 if lowest_possible_full_scale_power_dbm is None:
-                    lowest_possible_full_scale_power_dbm = power_settings["full_scale_power_dbm"]
+                    lowest_possible_full_scale_power_dbm = power_settings[
+                        "full_scale_power_dbm"
+                    ]
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}
