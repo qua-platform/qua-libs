@@ -294,8 +294,8 @@ if not node.parameters.load_data_id:
                 if not np.isnan(result.sel(qubit=q.name).position.values):
                     q.anharmonicity = int(anharmonicities[q.name])
 
-    # %% {Save_results}
-    if not node.parameters.simulate:
-        node.save()
 
-# %%
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, QuAM]):
+    node.save()
