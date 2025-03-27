@@ -19,11 +19,11 @@ class NodeSpecificParameters(RunnableParameters):
         log_or_linear_sweep (Literal["log", "linear"]): Type of sweep, either logarithmic or linear. Default is "linear".
     """
 
-    num_averages: int = 100
+    num_averages: int = 1000
     min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 100000
+    max_wait_time_in_ns: int = 200000
     wait_time_num_points: int = 51
-    log_or_linear_sweep: Literal["log", "linear"] = "linear"
+    log_or_linear_sweep: Literal["log", "linear"] = "log"
 
 
 class Parameters(
