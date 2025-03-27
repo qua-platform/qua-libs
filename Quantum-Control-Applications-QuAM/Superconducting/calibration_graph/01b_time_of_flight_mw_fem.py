@@ -233,16 +233,16 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
 
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
-            if node.results["fit_results"][q.name]["success"]:
-                if node.parameters.time_of_flight_in_ns is not None:
-                    q.resonator.time_of_flight = (
-                        node.parameters.time_of_flight_in_ns
-                        + node.results["fit_results"][q.name]["tof_to_add"]
-                    )
-                else:
-                    q.resonator.time_of_flight += node.results["fit_results"][q.name][
-                        "tof_to_add"
-                    ]
+            if not node.results["fit_results"][q.name]["success"]:
+                continue
+
+            fit_result = node.results["fit_results"][q.name]
+            if node.parameters.time_of_flight_in_ns is not None:
+                q.resonator.time_of_flight = (
+                    node.parameters.time_of_flight_in_ns + fit_result["tof_to_add"]
+                )
+            else:
+                q.resonator.time_of_flight += fit_result["tof_to_add"]
 
 
 # %% {Save_results}
