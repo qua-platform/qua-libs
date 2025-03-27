@@ -19,7 +19,8 @@ from quam_experiments.experiments.readout_frequency_optimization import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
-    plot_raw_data_with_fit,
+    plot_distances_with_fit,
+    plot_IQ_abs_with_fit,
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
@@ -224,12 +225,16 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(
+    fig_distances = plot_distances_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+    )
+    fig_iq_abs = plot_IQ_abs_with_fit(
         node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
     )
     plt.show()
     # Store the generated figures
-    node.results["figure_amplitude"] = fig_raw_fit
+    node.results["figure_distances"] = fig_distances
+    node.results["figure_iq_abs"] = fig_iq_abs
 
 
 # %% {Update_state}
@@ -238,11 +243,10 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
-            if node.outcomes[q.name] == "failed":
-                continue
-
-            # q.resonator.intermediate_frequency += int(fit_results[q.name]["detuning"])
-            # q.chi = float(fit_results[q.name]["chi"])
+            if node.results["fit_results"][q.name]["success"]:
+                q.resonator.f_01 += node.results["fit_results"][q.name]["optimal_frequency"]
+                q.resonator.RF_frequency = q.resonator.f_01
+                q.chi = node.results["fit_results"][q.name]["chi"]
 
 
 # %% {Save_results}
