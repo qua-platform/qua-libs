@@ -232,7 +232,7 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
 def state_update(node: QualibrationNode[Parameters, QuAM]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     # Revert the change done at the beginning of the node
-    for tracked_resonator in node.namespace["tracked_resonators"]:
+    for tracked_resonator in node.namespace.get("tracked_resonators", []):
         tracked_resonator.revert_changes()
 
     # Update the state
