@@ -113,9 +113,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(npi, N_pi_vec)):
-                    # with for_(*from_array(a, amps)):
-                    # todo: remove for_each
-                    with for_each_(a, amps):
+                    with for_(*from_array(a, amps)):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
                             qubit.reset_qubit(
