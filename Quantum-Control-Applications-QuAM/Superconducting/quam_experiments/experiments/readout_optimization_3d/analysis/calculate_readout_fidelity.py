@@ -6,7 +6,9 @@ from qualang_tools.analysis import two_state_discriminator
 
 def _apply_discriminator(I_g, Q_g, I_e, Q_e) -> float:
     """Wrapper function to apply two_state_discriminator and return only fidelity."""
-    angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, False, b_plot=False)
+    angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
+        I_g, Q_g, I_e, Q_e, False, b_plot=False
+    )
 
     return fidelity
 
@@ -36,7 +38,9 @@ def get_maximum_fidelity_per_qubit(ds: xr.Dataset):
 
         # Get index of maximum fidelity
         max_idx = np.unravel_index(da_q.argmax(), da_q.shape)
-        max_coords = {dim: da_q.coords[dim][idx] for dim, idx in zip(da_q.dims, max_idx)}
+        max_coords = {
+            dim: da_q.coords[dim][idx] for dim, idx in zip(da_q.dims, max_idx)
+        }
 
         # Select the maximum fidelity point while keeping coordinates
         da_max = da_q.sel(**max_coords)

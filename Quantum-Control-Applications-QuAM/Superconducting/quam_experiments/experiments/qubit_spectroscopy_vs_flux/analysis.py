@@ -46,7 +46,9 @@ def log_fitted_results(fit_results: Dict, logger=None):
         logger = logging.getLogger(__name__)
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
-        s_idle_offset = f"\tidle offset: {fit_results[q]['idle_offset'] * 1e3:.0f} mV | "
+        s_idle_offset = (
+            f"\tidle offset: {fit_results[q]['idle_offset'] * 1e3:.0f} mV | "
+        )
         s_min_offset = f"min offset: {fit_results[q]['min_offset'] * 1e3:.0f} mV | "
         s_freq = f"Resonator frequency: {1e-9 * fit_results[q]['resonator_frequency']:.3f} GHz | "
         s_shift = f"(shift of {1e-6 * fit_results[q]['frequency_shift']:.0f} MHz)\n"
@@ -65,7 +67,9 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Add the amplitude and phase to the raw dataset
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     # Add the RF frequency as a coordinate of the raw dataset
-    full_freq = np.array([ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]])
+    full_freq = np.array(
+        [ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]]
+    )
     ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     # Add the current axis of each qubit to the dataset coordinates for plotting
@@ -76,13 +80,17 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Add attenuated current to dataset
     attenuation_factor = 10 ** (-node.parameters.line_attenuation_in_db / 20)
     attenuated_current = ds.current * attenuation_factor
-    ds = ds.assign_coords({"attenuated_current": (["flux_bias"], attenuated_current.values)})
+    ds = ds.assign_coords(
+        {"attenuated_current": (["flux_bias"], attenuated_current.values)}
+    )
     ds.attenuated_current.attrs["long_name"] = "Attenuated Current"
     ds.attenuated_current.attrs["units"] = "A"
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the T1 relaxation time for each qubit according to ``a * np.exp(t * decay) + offset``.
 

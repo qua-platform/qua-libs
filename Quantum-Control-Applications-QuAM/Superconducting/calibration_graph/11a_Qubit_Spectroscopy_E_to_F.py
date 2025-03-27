@@ -187,14 +187,25 @@ if not node.parameters.simulate:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs})
         # Add the qubit pulse absolute amplitude and phase to the dataset
-        ds = ds.assign({"IQ_abs": (np.sqrt((ds.I - ds.I.mean(dim="freq")) ** 2 + (ds.Q - ds.Q.mean(dim="freq")) ** 2))})
+        ds = ds.assign(
+            {
+                "IQ_abs": (
+                    np.sqrt(
+                        (ds.I - ds.I.mean(dim="freq")) ** 2
+                        + (ds.Q - ds.Q.mean(dim="freq")) ** 2
+                    )
+                )
+            }
+        )
         ds = ds.assign({"phase": np.arctan2(ds.Q, ds.I)})
         # Add the resonator RF frequency axis of each qubit to the dataset coordinates for plotting
         ds = ds.assign_coords(
             {
                 "freq_full": (
                     ["qubit", "freq"],
-                    np.array([dfs + q.xy.RF_frequency - q.anharmonicity for q in qubits]),
+                    np.array(
+                        [dfs + q.xy.RF_frequency - q.anharmonicity for q in qubits]
+                    ),
                 ),
                 "detuning": (
                     ["qubit", "freq"],
@@ -223,7 +234,9 @@ if not node.parameters.simulate:
         [
             (
                 q.name,
-                ds.detuning.sel(qubit=q.name, freq=result.sel(qubit=q.name).position.values),
+                ds.detuning.sel(
+                    qubit=q.name, freq=result.sel(qubit=q.name).position.values
+                ),
             )
             for q in qubits
             if not np.isnan(result.sel(qubit=q.name).position.values)
@@ -236,7 +249,9 @@ if not node.parameters.simulate:
         fit_results[q.name] = {}
         if not np.isnan(result.sel(qubit=q.name).position.values):
             fit_results[q.name]["success"] = True
-            print(f"Anharmonicity for {q.name} is {anharmonicities[q.name]/1e6:.3f} MHz")
+            print(
+                f"Anharmonicity for {q.name} is {anharmonicities[q.name]/1e6:.3f} MHz"
+            )
             fit_results[q.name]["anharmonicity"] = anharmonicities[q.name].values
         else:
             fit_results[q.name]["success"] = False
@@ -256,7 +271,9 @@ if not node.parameters.simulate:
 
     for ax, qubit in grid_iter(grid):
         # Plot the IQ_abs as a function of the full frequency
-        (ds.assign_coords(freq_MHz=ds.detuning / 1e6).loc[qubit].I * 1e3).plot(ax=ax, x="freq_MHz")
+        (ds.assign_coords(freq_MHz=ds.detuning / 1e6).loc[qubit].I * 1e3).plot(
+            ax=ax, x="freq_MHz"
+        )
         # Add a lin where the e->f is supposed to be
         ax.axvline(
             anharmonicities[qubit["qubit"]] / 1e6,

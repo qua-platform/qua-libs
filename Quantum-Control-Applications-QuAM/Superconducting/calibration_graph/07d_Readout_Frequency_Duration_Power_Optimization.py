@@ -129,8 +129,12 @@ readout_pulse_name = "readout"
 # temporarily set readout length to be maximum duration in sweep
 tracked_resonators = []
 for resonator in [qubit.resonator for qubit in qubits]:
-    with tracked_updates(resonator, auto_revert=False, dont_assign_to_none=True) as tracked_resonator:
-        tracked_resonator.operations[readout_pulse_name].length = node.parameters.max_duration_in_ns
+    with tracked_updates(
+        resonator, auto_revert=False, dont_assign_to_none=True
+    ) as tracked_resonator:
+        tracked_resonator.operations[readout_pulse_name].length = (
+            node.parameters.max_duration_in_ns
+        )
         tracked_resonators.append(tracked_resonator)
 
 config = node.machine.generate_config()
@@ -145,7 +149,9 @@ durations = get_durations(node.parameters)
 flux_point = node.parameters.flux_point_joint_or_independent
 
 
-def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: Optional[List[str]] = None) -> Program:
+def readout_optimization_3d_measured_in_batches(
+    n_avg: int, measurement_batch: Optional[List[str]] = None
+) -> Program:
     """
     Returns the 3D readout optimization program, but only measures those
     qubits which appears in the `measurement_batch` list to avoid exceeding
@@ -157,14 +163,16 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
         a = declare(fixed)
 
         # Create QUA variables and streams only if the qubit is in the measurement batch
-        II_g, IQ_g, QI_g, QQ_g, I_g, Q_g, II_e, IQ_e, QI_e, QQ_e, I_e, Q_e = make_qua_variables_per_qubit(
-            measurement_batch, node.parameters
+        II_g, IQ_g, QI_g, QQ_g, I_g, Q_g, II_e, IQ_e, QI_e, QQ_e, I_e, Q_e = (
+            make_qua_variables_per_qubit(measurement_batch, node.parameters)
         )
         I_g_st, Q_g_st, I_e_st, Q_e_st = make_qua_streams_per_qubit(measurement_batch)
         n_st = declare_stream()
 
         for multiplexed_qubits in qubits.batch():
-            node.machine.set_all_fluxes(flux_point=flux_point, target=list(multiplexed_qubits.values())[0])
+            node.machine.set_all_fluxes(
+                flux_point=flux_point, target=list(multiplexed_qubits.values())[0]
+            )
 
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
@@ -192,7 +200,9 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
                                 )
                             else:
                                 # play, but don't demodulate
-                                qubit.resonator.play(pulse_name=readout_pulse_name, amplitude_scale=a)
+                                qubit.resonator.play(
+                                    pulse_name=readout_pulse_name, amplitude_scale=a
+                                )
 
                         align()
                         if not node.parameters.simulate:
@@ -213,7 +223,9 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
                                 )
                             else:
                                 # play, but don't demodulate
-                                qubit.resonator.play(pulse_name=readout_pulse_name, amplitude_scale=a)
+                                qubit.resonator.play(
+                                    pulse_name=readout_pulse_name, amplitude_scale=a
+                                )
 
                         for i, qubit in enumerate(measurement_batch):
                             j = declare(int)
@@ -232,9 +244,9 @@ def readout_optimization_3d_measured_in_batches(n_avg: int, measurement_batch: O
             for i in range(len(measurement_batch)):
                 streams = {"I_g": I_g_st, "Q_g": Q_g_st, "I_e": I_e_st, "Q_e": Q_e_st}
                 for name, stream in streams.items():
-                    stream[i].buffer(node.parameters.num_durations).buffer(len(amps)).buffer(len(dfs)).buffer(
-                        n_avg
-                    ).save(f"{name}{i + 1}")
+                    stream[i].buffer(node.parameters.num_durations).buffer(
+                        len(amps)
+                    ).buffer(len(dfs)).buffer(n_avg).save(f"{name}{i + 1}")
 
         return readout_optimization_3d
 
@@ -261,7 +273,9 @@ n_avg = n_avg // qubit_representation
 
 programs = []
 for measurement_batch in measurement_batches:
-    programs.append(readout_optimization_3d_measured_in_batches(n_avg, measurement_batch))
+    programs.append(
+        readout_optimization_3d_measured_in_batches(n_avg, measurement_batch)
+    )
 
 with open("debug.py", "w+") as f:
     f.write(generate_qua_script(programs[0], config))
@@ -283,7 +297,9 @@ elif node.parameters.load_data_id is None:
                 progress_counter(n, n_avg, start_time=results.start_time)
 
         run_axis = np.arange(i * n_avg, (i + 1) * n_avg)
-        datasets.append(fetch_dataset(job, measurement_batches[i], run_axis, node.parameters))
+        datasets.append(
+            fetch_dataset(job, measurement_batches[i], run_axis, node.parameters)
+        )
 
     ds = combine_batches(datasets)
 
@@ -329,10 +345,18 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
                 continue
 
             optimal_ds_for_this_qubit = optimal_ds.sel(qubit=q.name)
-            q.resonator.intermediate_frequency += int(optimal_ds_for_this_qubit.freq.data)
-            q.resonator.operations[readout_pulse_name].length = int(optimal_ds_for_this_qubit.duration.data)
-            q.resonator.operations[readout_pulse_name].amplitude *= float(optimal_ds_for_this_qubit.amp.data)
-            optimal_output_powers[q] = q.resonator.get_output_power(operation=readout_pulse_name)
+            q.resonator.intermediate_frequency += int(
+                optimal_ds_for_this_qubit.freq.data
+            )
+            q.resonator.operations[readout_pulse_name].length = int(
+                optimal_ds_for_this_qubit.duration.data
+            )
+            q.resonator.operations[readout_pulse_name].amplitude *= float(
+                optimal_ds_for_this_qubit.amp.data
+            )
+            optimal_output_powers[q] = q.resonator.get_output_power(
+                operation=readout_pulse_name
+            )
 
         # If the amplitude increased above the maximum readout amplitude, increase the power
         # and reduce the amplitude below its limit to protect against saturating the output channel.
@@ -340,7 +364,9 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
         # take the safe approach and define a *lower* bound for the power of the port by
         # sorting in descending order of power requirements.
         lowest_possible_full_scale_power_dbm = None
-        for qubit, power in sorted(optimal_output_powers.items(), key=lambda item: item[1], reverse=True):
+        for qubit, power in sorted(
+            optimal_output_powers.items(), key=lambda item: item[1], reverse=True
+        ):
             optimal_ds_for_this_qubit = optimal_ds.sel(qubit=qubit.name)
 
             power_settings = qubit.resonator.set_output_power(
@@ -351,7 +377,9 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
             )
 
             if lowest_possible_full_scale_power_dbm is None:
-                lowest_possible_full_scale_power_dbm = power_settings["full_scale_power_dbm"]
+                lowest_possible_full_scale_power_dbm = power_settings[
+                    "full_scale_power_dbm"
+                ]
 
 
 # %% {Save_results}

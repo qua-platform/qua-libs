@@ -48,14 +48,19 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     if ~node.parameters.use_state_discrimination:
         ds = convert_IQ_to_V(ds, node.namespace["qubits"])
     full_amp = np.array(
-        [ds.amp_prefactor * q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]]
+        [
+            ds.amp_prefactor * q.xy.operations[node.parameters.operation].amplitude
+            for q in node.namespace["qubits"]
+        ]
     )
     ds = ds.assign_coords(full_amp=(["qubit", "amp_prefactor"], full_amp))
     ds.full_amp.attrs = {"long_name": "pulse amplitude", "units": "V"}
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the qubit frequency and FWHM for each qubit in the dataset.
 
@@ -87,12 +92,16 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
             ds_fit["data_mean"] = ds.state.mean(dim="nb_of_pulses")
         else:
             ds_fit["data_mean"] = ds.I.mean(dim="nb_of_pulses")
-        if (ds.nb_of_pulses.data[0] % 2 == 0 and node.parameters.operation == "x180") or (
-            ds.nb_of_pulses.data[0] % 2 != 0 and node.parameters.operation != "x180"
-        ):
-            ds_fit["opt_amp_prefactor"] = ds_fit["data_mean"].idxmin(dim="amp_prefactor")
+        if (
+            ds.nb_of_pulses.data[0] % 2 == 0 and node.parameters.operation == "x180"
+        ) or (ds.nb_of_pulses.data[0] % 2 != 0 and node.parameters.operation != "x180"):
+            ds_fit["opt_amp_prefactor"] = ds_fit["data_mean"].idxmin(
+                dim="amp_prefactor"
+            )
         else:
-            ds_fit["opt_amp_prefactor"] = ds_fit["data_mean"].idxmax(dim="amp_prefactor")
+            ds_fit["opt_amp_prefactor"] = ds_fit["data_mean"].idxmax(
+                dim="amp_prefactor"
+            )
 
     # Extract the relevant fitted parameters
     fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
@@ -104,7 +113,9 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     limits = [instrument_limits(q.xy) for q in node.namespace["qubits"]]
     if node.parameters.max_number_rabi_pulses_per_sweep == 1:
         # Process the fit parameters to get the right amplitude
-        phase = fit.fit.sel(fit_vals="phi") - np.pi * (fit.fit.sel(fit_vals="phi") > np.pi / 2)
+        phase = fit.fit.sel(fit_vals="phi") - np.pi * (
+            fit.fit.sel(fit_vals="phi") > np.pi / 2
+        )
         factor = (np.pi - phase) / (2 * np.pi * fit.fit.sel(fit_vals="f"))
         fit = fit.assign({"opt_amp_prefactor": factor})
         fit.opt_amp_prefactor.attrs = {
@@ -112,7 +123,10 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             "units": "Hz",
         }
         current_amps = xr.DataArray(
-            [q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]],
+            [
+                q.xy.operations[node.parameters.operation].amplitude
+                for q in node.namespace["qubits"]
+            ],
             coords=dict(qubit=fit.qubit.data),
         )
         opt_amp = factor * current_amps
@@ -121,7 +135,10 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
     else:
         current_amps = xr.DataArray(
-            [q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]],
+            [
+                q.xy.operations[node.parameters.operation].amplitude
+                for q in node.namespace["qubits"]
+            ],
             coords=dict(qubit=fit.qubit.data),
         )
         fit = fit.assign({"opt_amp": fit.opt_amp_prefactor * current_amps})

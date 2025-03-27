@@ -28,7 +28,9 @@ class Parameters(
     pass
 
 
-def get_idle_times_in_clock_cycles(node_parameters: NodeSpecificParameters) -> np.ndarray:
+def get_idle_times_in_clock_cycles(
+    node_parameters: NodeSpecificParameters,
+) -> np.ndarray:
     """
     Get the idle-times sweep axis according to the sweep type.
 
@@ -40,12 +42,16 @@ def get_idle_times_in_clock_cycles(node_parameters: NodeSpecificParameters) -> n
     elif node_parameters.log_or_linear_sweep == "log":
         idle_times = _get_idle_times_log_sweep_in_clock_cycles(node_parameters)
     else:
-        raise ValueError(f"Expected sweep type to be 'log' or 'linear', got {node_parameters.log_or_linear_sweep}")
+        raise ValueError(
+            f"Expected sweep type to be 'log' or 'linear', got {node_parameters.log_or_linear_sweep}"
+        )
 
     return idle_times
 
 
-def _get_idle_times_linear_sweep_in_clock_cycles(node_parameters: NodeSpecificParameters):
+def _get_idle_times_linear_sweep_in_clock_cycles(
+    node_parameters: NodeSpecificParameters,
+):
     return (
         np.linspace(
             node_parameters.min_wait_time_in_ns,

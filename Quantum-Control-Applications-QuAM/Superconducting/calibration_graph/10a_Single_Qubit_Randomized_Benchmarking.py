@@ -84,7 +84,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
-    num_of_sequences = node.parameters.num_random_sequences  # Number of random sequences
+    num_of_sequences = (
+        node.parameters.num_random_sequences
+    )  # Number of random sequences
     # Number of averaging loops for each random sequence
     n_avg = node.parameters.num_averages
     max_circuit_depth = node.parameters.max_circuit_depth  # Maximum circuit depth
@@ -92,7 +94,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
         raise NotImplementedError("Delta clifford < 2 is not supported.")
     #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
     delta_clifford = node.parameters.delta_clifford
-    assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+    assert (
+        max_circuit_depth / delta_clifford
+    ).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
     num_depths = max_circuit_depth // delta_clifford + 1
     seed = node.parameters.seed  # Pseudo-random number generator seed
     # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
@@ -205,7 +209,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     depths[0] = 1
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "nb_of_sequences": xr.DataArray(np.arange(num_of_sequences), attrs={"long_name": "number of sequences"}),
+        "nb_of_sequences": xr.DataArray(
+            np.arange(num_of_sequences), attrs={"long_name": "number of sequences"}
+        ),
         "depths": xr.DataArray(depths, attrs={"long_name": "depths", "units": "Hz"}),
     }
     with program() as node.namespace["qua_program"]:
@@ -244,7 +250,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                         with if_((depth == 1) | (depth == depth_target)):
                             with for_(n, 0, n < n_avg, n + 1):
                                 # Initialize the qubits
-                                qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+                                qubit.reset_qubit(
+                                    node.parameters.reset_type, node.parameters.simulate
+                                )
                                 # Align the two elements to play the sequence after qubit initialization
                                 qubit.align()
                                 # The strict_timing ensures that the sequence will be played without gaps
@@ -271,9 +279,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
         with stream_processing():
             m_st.save("n")
             for i in range(num_qubits):
-                state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save(
-                    f"state{i + 1}"
-                )
+                state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    num_depths
+                ).buffer(num_of_sequences).save(f"state{i + 1}")
 
     # with program() as randomized_benchmarking_multiplexed:
     #     depth = declare(int)  # QUA variable for the varying depth
@@ -357,7 +365,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
 
 # %% {Simulate_or_execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -365,12 +375,16 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["qua_program"], node.parameters
+    )
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -434,7 +448,9 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_raw_fit = plot_raw_data_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+    )
     plt.show()
     # Store the generated figures
     node.results["figure_amplitude"] = fig_raw_fit

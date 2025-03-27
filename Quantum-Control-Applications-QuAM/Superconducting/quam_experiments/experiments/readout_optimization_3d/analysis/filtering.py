@@ -8,7 +8,9 @@ from quam_experiments.experiments.readout_optimization_3d.parameters import (
 )
 
 
-def filter_readout_fidelity(ds: xr.Dataset, node_parameters: ReadoutOptimization3dParameters):
+def filter_readout_fidelity(
+    ds: xr.Dataset, node_parameters: ReadoutOptimization3dParameters
+):
     """
     Apply Gaussian filter to smooth the data across the frequency and amplitude dimensions.
     Doesn't apply any smoothing across the duration dimension because it is usually sparse.

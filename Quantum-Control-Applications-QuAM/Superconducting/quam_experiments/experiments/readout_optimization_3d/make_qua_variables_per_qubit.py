@@ -17,7 +17,9 @@ def make_qua_variables_per_qubit(
     qubit only if the qubit is in the measurement batch, otherwise, no variable
     is created and the corresponding list element is None.
     """
-    II_g, IQ_g, QI_g, QQ_g, I_g, Q_g, II_e, IQ_e, QI_e, QQ_e, I_e, Q_e = [[] for _ in range(12)]
+    II_g, IQ_g, QI_g, QQ_g, I_g, Q_g, II_e, IQ_e, QI_e, QQ_e, I_e, Q_e = [
+        [] for _ in range(12)
+    ]
 
     qua_variables_per_qubit = [
         II_g,
@@ -36,6 +38,8 @@ def make_qua_variables_per_qubit(
 
     for i in range(len(measurement_batch)):
         for j in range(len(qua_variables_per_qubit)):
-            qua_variables_per_qubit[j].append(declare(fixed, size=node_parameters.num_durations))
+            qua_variables_per_qubit[j].append(
+                declare(fixed, size=node_parameters.num_durations)
+            )
 
     return II_g, IQ_g, QI_g, QQ_g, I_g, Q_g, II_e, IQ_e, QI_e, QQ_e, I_e, Q_e

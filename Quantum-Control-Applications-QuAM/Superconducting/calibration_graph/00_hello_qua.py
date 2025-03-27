@@ -15,7 +15,9 @@ description = """
 """
 
 
-node = QualibrationNode[NodeParameters, QuAM](name="00_hello_qua", description=description, parameters=NodeParameters())
+node = QualibrationNode[NodeParameters, QuAM](
+    name="00_hello_qua", description=description, parameters=NodeParameters()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here
