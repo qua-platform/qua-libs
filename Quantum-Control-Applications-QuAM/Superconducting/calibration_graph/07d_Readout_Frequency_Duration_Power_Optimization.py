@@ -316,7 +316,7 @@ if not node.parameters.simulate:
 
     ds["raw_fidelity"] = calculate_readout_fidelity(ds)
     ds["fidelity"] = filter_readout_fidelity(ds, node.parameters)
-    optimal_ds = get_maximum_fidelity_per_qubit(ds)
+    node.results["optimal_ds"] = optimal_ds = get_maximum_fidelity_per_qubit(ds)
 
     if node.parameters.plotting_dimension == "3D":
         # doesn't save the figure
@@ -344,19 +344,13 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
             if node.outcomes[q.name] == "failed":
                 continue
 
-            optimal_ds_for_this_qubit = optimal_ds.sel(qubit=q.name)
-            q.resonator.intermediate_frequency += int(
-                optimal_ds_for_this_qubit.freq.data
-            )
-            q.resonator.operations[readout_pulse_name].length = int(
-                optimal_ds_for_this_qubit.duration.data
-            )
-            q.resonator.operations[readout_pulse_name].amplitude *= float(
-                optimal_ds_for_this_qubit.amp.data
-            )
-            optimal_output_powers[q] = q.resonator.get_output_power(
-                operation=readout_pulse_name
-            )
+            # TODO Remove `readout_pulse_name` from the arguments
+            optimal_qubit_ds = node.results["optimal_ds"].sel(qubit=q.name)
+            q.resonator.intermediate_frequency += int(optimal_qubit_ds.freq.data)
+            operation = q.resonator.operations[readout_pulse_name]
+            operation.length = int(optimal_qubit_ds.duration.data)
+            operation.amplitude *= float(optimal_qubit_ds.amp.data)
+            optimal_output_powers[q] = q.resonator.get_output_power(readout_pulse_name)
 
         # If the amplitude increased above the maximum readout amplitude, increase the power
         # and reduce the amplitude below its limit to protect against saturating the output channel.
@@ -367,8 +361,6 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
         for qubit, power in sorted(
             optimal_output_powers.items(), key=lambda item: item[1], reverse=True
         ):
-            optimal_ds_for_this_qubit = optimal_ds.sel(qubit=qubit.name)
-
             power_settings = qubit.resonator.set_output_power(
                 power_in_dbm=power,
                 full_scale_power_dbm=lowest_possible_full_scale_power_dbm,
