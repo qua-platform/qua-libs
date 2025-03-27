@@ -19,6 +19,7 @@ from qm import SimulationConfig
 from qm.qua import *
 from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import numpy as np
 import xarray as xr
 from sklearn.mixture import GaussianMixture
@@ -34,7 +35,7 @@ class Parameters(NodeParameters):
     start_amp: float = 0.5
     end_amp: float = 1.99
     num_amps: int = 10
-    max_readout_length: int = 1500 # in ns
+    max_readout_length: int = 2000 # in ns
     duration_chunks: int = 100 # in ns
     outliers_threshold: float = 0.98
     plot_raw: bool = False
@@ -338,14 +339,14 @@ if not node.parameters.simulate:
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        fit_res.loc[qubit].sel(result="meas_fidelity").plot(ax=ax, x="readout_amp", y="readout_length", robust=True, add_colorbar=True)
+        fit_res.loc[qubit].sel(result="meas_fidelity").plot(ax=ax, x="readout_amp", y="readout_length", 
+                                                            robust=True, add_colorbar=True, norm=mcolors.PowerNorm(gamma=3))
         ax.axvline(best_amp[qubit["qubit"]], color="k", linestyle="dashed")
         ax.axhline(best_readout_length[qubit["qubit"]], color="k", linestyle="dashed")
-        ax.plot(best_amp[qubit["qubit"]], best_readout_length[qubit["qubit"]], "ro", label="max fidelity")
+        ax.plot(best_amp[qubit["qubit"]], best_readout_length[qubit["qubit"]], "ro") # , label="max fidelity")
         ax.set_xlabel("Relative power")
         ax.set_ylabel("Readout length (ns)")
         ax.set_title(f"{qubit['qubit']}")
-        ax.legend()
     grid.fig.suptitle(f"Assignment fidelity and non-outlier probability \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed} reset Type = {node.parameters.reset_type_thermal_or_active}")
 
     plt.tight_layout()
