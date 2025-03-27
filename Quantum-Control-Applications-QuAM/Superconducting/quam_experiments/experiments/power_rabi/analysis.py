@@ -135,7 +135,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     amp_success = fit.opt_amp < limits[0].max_x180_wf_amplitude
     success_criteria = ~nan_success & amp_success
     fit = fit.assign({"success": success_criteria})
-
+    # Populate the FitParameters class with fitted values
     fit_results = {
         q: FitParameters(
             qubit_name=q,
