@@ -105,8 +105,20 @@ def plot_state(ax, ds, qubit, fitted=None):
         ax=ax, x="idle_time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
     )
     if fitted is not None:
-        ax.plot(ds.idle_time, fitted.fit.loc[qubit].sel(detuning_signs=1), c="C0", ls="-", lw=1)
-        ax.plot(ds.idle_time, fitted.fit.loc[qubit].sel(detuning_signs=-1), c="C1", ls="-", lw=1)
+        ax.plot(
+            ds.idle_time,
+            fitted.fit.loc[qubit].sel(detuning_signs=1),
+            c="C0",
+            ls="-",
+            lw=1,
+        )
+        ax.plot(
+            ds.idle_time,
+            fitted.fit.loc[qubit].sel(detuning_signs=-1),
+            c="C1",
+            ls="-",
+            lw=1,
+        )
 
 
 def plot_transmission_amplitude(ax, ds, qubit, fitted=None):
@@ -118,8 +130,12 @@ def plot_transmission_amplitude(ax, ds, qubit, fitted=None):
         ax=ax, x="idle_time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
     )
     if fitted is not None:
-        ax.plot(ds.idle_time, 1e3 * fitted.fit.sel(detuning_signs=1), c="C0", ls="-", lw=1)
-        ax.plot(ds.idle_time, 1e3 * fitted.fit.sel(detuning_signs=-1), c="C1", ls="-", lw=1)
+        ax.plot(
+            ds.idle_time, 1e3 * fitted.fit.sel(detuning_signs=1), c="C0", ls="-", lw=1
+        )
+        ax.plot(
+            ds.idle_time, 1e3 * fitted.fit.sel(detuning_signs=-1), c="C1", ls="-", lw=1
+        )
 
 
 def add_fit_text(ax, fit):

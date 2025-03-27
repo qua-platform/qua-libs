@@ -72,29 +72,38 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-
     node.namespace["tracked_resonators"] = [] = []
     for q in qubits:
         resonator = q.resonator
         # make temporary updates before running the program and revert at the end.
-        with tracked_updates(resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
+        with tracked_updates(
+            resonator, auto_revert=False, dont_assign_to_none=True
+        ) as resonator:
             if node.parameters.time_of_flight_in_ns is not None:
                 resonator.time_of_flight = node.parameters.time_of_flight_in_ns
-            resonator.operations["readout"].length = node.parameters.readout_length_in_ns
-            resonator.set_output_power(node.parameters.readout_amplitude_in_dBm, operation="readout")
+            resonator.operations["readout"].length = (
+                node.parameters.readout_length_in_ns
+            )
+            resonator.set_output_power(
+                node.parameters.readout_amplitude_in_dBm, operation="readout"
+            )
             node.namespace["tracked_resonators"].append(resonator)
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "readout_time": xr.DataArray(np.arange(0, node.parameters.readout_length_in_ns, 1),
-                                     attrs={"long_name": "readout time", "units": "ns"}),
+        "readout_time": xr.DataArray(
+            np.arange(0, node.parameters.readout_length_in_ns, 1),
+            attrs={"long_name": "readout time", "units": "ns"},
+        ),
     }
 
     with program() as node.namespace["qua_program"]:
         n = declare(int)  # QUA variable for the averaging loop
         n_st = declare_stream()
-        adc_st = [declare_stream(adc_trace=True) for _ in range(num_qubits)]  # The stream to store the raw ADC trace
+        adc_st = [
+            declare_stream(adc_trace=True) for _ in range(num_qubits)
+        ]  # The stream to store the raw ADC trace
 
         for multiplexed_qubits in qubits.batch():
             with for_(n, 0, n < node.parameters.num_averages, n + 1):
@@ -123,7 +132,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
 
 # %% {Simulate_or_execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -131,12 +142,16 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["qua_program"], node.parameters
+    )
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -195,12 +210,17 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_single_run_fit = plot_single_run_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
-    fig_averaged_run_fit = plot_averaged_run_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_single_run_fit = plot_single_run_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+    )
+    fig_averaged_run_fit = plot_averaged_run_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+    )
     plt.show()
     # Store the generated figures
     node.results["figure_single_run"] = fig_single_run_fit
     node.results["figure_averaged_run"] = fig_averaged_run_fit
+
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
@@ -215,9 +235,14 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
         for q in node.namespace["qubits"]:
             if node.results["fit_results"][q.name]["success"]:
                 if node.parameters.time_of_flight_in_ns is not None:
-                    q.resonator.time_of_flight = node.parameters.time_of_flight_in_ns + node.results["fit_results"][q.name]["tof_to_add"]
+                    q.resonator.time_of_flight = (
+                        node.parameters.time_of_flight_in_ns
+                        + node.results["fit_results"][q.name]["tof_to_add"]
+                    )
                 else:
-                    q.resonator.time_of_flight += node.results["fit_results"][q.name]["tof_to_add"]
+                    q.resonator.time_of_flight += node.results["fit_results"][q.name][
+                        "tof_to_add"
+                    ]
 
 
 # %% {Save_results}

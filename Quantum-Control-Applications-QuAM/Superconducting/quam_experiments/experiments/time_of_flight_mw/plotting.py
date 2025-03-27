@@ -15,7 +15,9 @@ from quam_builder.architecture.superconducting.qubit import AnyTransmon
 u = unit(coerce_to_integer=True)
 
 
-def plot_single_run_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+def plot_single_run_with_fit(
+    ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset
+):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
 
@@ -40,7 +42,9 @@ def plot_single_run_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr
     """
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        plot_individual_single_run_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+        plot_individual_single_run_with_fit(
+            ax, ds, qubit, fits.sel(qubit=qubit["qubit"])
+        )
 
     grid.fig.suptitle("Single run")
     grid.fig.set_size_inches(15, 9)
@@ -48,7 +52,10 @@ def plot_single_run_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr
     grid.fig.tight_layout()
     return grid.fig
 
-def plot_averaged_run_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+
+def plot_averaged_run_with_fit(
+    ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset
+):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
 
@@ -73,7 +80,9 @@ def plot_averaged_run_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: 
     """
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        plot_individual_averaged_run_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+        plot_individual_averaged_run_with_fit(
+            ax, ds, qubit, fits.sel(qubit=qubit["qubit"])
+        )
 
     grid.fig.suptitle("Averaged run")
     grid.fig.set_size_inches(15, 9)
@@ -81,7 +90,10 @@ def plot_averaged_run_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: 
     grid.fig.tight_layout()
     return grid.fig
 
-def plot_individual_single_run_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+
+def plot_individual_single_run_with_fit(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -118,7 +130,9 @@ def plot_individual_single_run_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[st
     ax.set_title(qubit["qubit"])
 
 
-def plot_individual_averaged_run_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_averaged_run_with_fit(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots individual qubit data on a given axis with optional fit.
 

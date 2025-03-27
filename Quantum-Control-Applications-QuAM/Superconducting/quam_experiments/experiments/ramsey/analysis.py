@@ -34,15 +34,15 @@ def log_fitted_results(fit_results: Dict, logger=None):
         logger = logging.getLogger(__name__)
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
-        s_detuning = f"\tDetuning to correct: {1e-6 * fit_results[q]['freq_offset']:.3f} MHz | "
+        s_detuning = (
+            f"\tDetuning to correct: {1e-6 * fit_results[q]['freq_offset']:.3f} MHz | "
+        )
         s_T2 = f"T2*: {1e6 * fit_results[q]['decay']:.1f} µs\n"
         if fit_results[q]["success"]:
             s_qubit += " SUCCESS!\n"
         else:
             s_qubit += " FAIL!\n"
-        logger.info(
-            s_qubit + s_detuning + s_T2
-        )
+        logger.info(s_qubit + s_detuning + s_T2)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):

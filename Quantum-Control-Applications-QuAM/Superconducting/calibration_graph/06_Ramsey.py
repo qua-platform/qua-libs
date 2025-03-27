@@ -44,7 +44,9 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-node = QualibrationNode[Parameters, QuAM](name="06_Ramsey", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, QuAM](
+    name="06_Ramsey", description=description, parameters=Parameters()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -82,8 +84,12 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "idle_time": xr.DataArray(4 * idle_times, attrs={"long_name": "idle times", "units": "ns"}),
-        "detuning_signs": xr.DataArray(detuning_signs, attrs={"long_name": "detuning signs"}),
+        "idle_time": xr.DataArray(
+            4 * idle_times, attrs={"long_name": "idle times", "units": "ns"}
+        ),
+        "detuning_signs": xr.DataArray(
+            detuning_signs, attrs={"long_name": "detuning signs"}
+        ),
     }
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
@@ -109,19 +115,25 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
                             reset_frame(qubit.xy.name)
-                            qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+                            qubit.reset_qubit(
+                                node.parameters.reset_type, node.parameters.simulate
+                            )
                         align()
                         # Qubit manipulation
                         for i, qubit in multiplexed_qubits.items():
                             with if_(detuning_sign == 1):
                                 assign(
                                     virtual_detuning_phases[i],
-                                    Cast.mul_fixed_by_int(detuning * 1e-9, 4 * idle_time),
+                                    Cast.mul_fixed_by_int(
+                                        detuning * 1e-9, 4 * idle_time
+                                    ),
                                 )
                             with else_():
                                 assign(
                                     virtual_detuning_phases[i],
-                                    Cast.mul_fixed_by_int(-detuning * 1e-9, 4 * idle_time),
+                                    Cast.mul_fixed_by_int(
+                                        -detuning * 1e-9, 4 * idle_time
+                                    ),
                                 )
 
                             # with strict_timing_():
@@ -136,7 +148,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                                 qubit.readout_state(state[i])
                                 save(state[i], state_st[i])
                             else:
-                                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                                qubit.resonator.measure(
+                                    "readout", qua_vars=(I[i], Q[i])
+                                )
                                 save(I[i], I_st[i])
                                 save(Q[i], Q_st[i])
                         align()
@@ -145,14 +159,22 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             n_st.save("n")
             for i in range(num_qubits):
                 if node.parameters.use_state_discrimination:
-                    state_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"state{i + 1}")
+                    state_st[i].buffer(len(detuning_signs)).buffer(
+                        len(idle_times)
+                    ).average().save(f"state{i + 1}")
                 else:
-                    I_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"I{i + 1}")
-                    Q_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"Q{i + 1}")
+                    I_st[i].buffer(len(detuning_signs)).buffer(
+                        len(idle_times)
+                    ).average().save(f"I{i + 1}")
+                    Q_st[i].buffer(len(detuning_signs)).buffer(
+                        len(idle_times)
+                    ).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate_or_execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -160,12 +182,16 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["qua_program"], node.parameters
+    )
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -224,7 +250,9 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_raw_fit = plot_raw_data_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+    )
     plt.show()
     # Store the generated figures
     node.results["figure_amplitude"] = fig_raw_fit

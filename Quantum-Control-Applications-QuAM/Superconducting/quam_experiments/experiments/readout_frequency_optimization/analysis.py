@@ -52,8 +52,8 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     ds = ds.assign(
         {
             "D": np.sqrt((ds.I_g - ds.I_e) ** 2 + (ds.Q_g - ds.Q_e) ** 2),
-            "IQ_abs_g": np.sqrt(ds.I_g ** 2 + ds.Q_g ** 2),
-            "IQ_abs_e": np.sqrt(ds.I_e ** 2 + ds.Q_e ** 2),
+            "IQ_abs_g": np.sqrt(ds.I_g**2 + ds.Q_g**2),
+            "IQ_abs_e": np.sqrt(ds.I_e**2 + ds.Q_e**2),
         }
     )
     # Add the absolute frequency to the dataset
@@ -86,11 +86,17 @@ def fit_raw_data(
     ds_fit = ds
 
     # Get the readout detuning as the index of the maximum of the cumulative average of D
-    ds_fit["optimal_index"] = ds_fit.D.rolling({"detuning": 5}).mean("detuning").argmax("detuning")
+    ds_fit["optimal_index"] = (
+        ds_fit.D.rolling({"detuning": 5}).mean("detuning").argmax("detuning")
+    )
     ds_fit["optimal_detuning"] = ds_fit.detuning.isel(detuning=ds_fit["optimal_index"])
-    ds_fit["optimal_frequency"] = ds_fit.full_freq.isel(detuning=ds_fit["optimal_index"])
+    ds_fit["optimal_frequency"] = ds_fit.full_freq.isel(
+        detuning=ds_fit["optimal_index"]
+    )
     # Get the dispersive shift as the distance between the resonator frequency when the qubit is in |g> and |e>
-    ds_fit["chi"] = (ds_fit.IQ_abs_e.idxmin(dim="detuning") - ds_fit.IQ_abs_g.idxmin(dim="detuning")) / 2
+    ds_fit["chi"] = (
+        ds_fit.IQ_abs_e.idxmin(dim="detuning") - ds_fit.IQ_abs_g.idxmin(dim="detuning")
+    ) / 2
 
     ds_fit, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
     return ds_fit, fit_results

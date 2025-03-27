@@ -244,7 +244,9 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.results["fit_results"][q.name]["success"]:
-                q.resonator.f_01 += node.results["fit_results"][q.name]["optimal_frequency"]
+                q.resonator.f_01 += node.results["fit_results"][q.name][
+                    "optimal_frequency"
+                ]
                 q.resonator.RF_frequency = q.resonator.f_01
                 q.chi = node.results["fit_results"][q.name]["chi"]
 
