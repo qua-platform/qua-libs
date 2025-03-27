@@ -8,7 +8,9 @@ from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from quam_experiments.experiments.readout_optimization_3d.parameters import Parameters
 
 
-def get_max_accumulated_readouts(qubits: Sequence[AnyTransmon], node_parameters: Parameters) -> int:
+def get_max_accumulated_readouts(
+    qubits: Sequence[AnyTransmon], node_parameters: Parameters
+) -> int:
     """
     In order to perform simultaneous, I/Q based accumulated demodulation during
     qubit readout, each qubit requires four `demod.accumulated` processing blocks.
@@ -25,7 +27,9 @@ def get_max_accumulated_readouts(qubits: Sequence[AnyTransmon], node_parameters:
         elif isinstance(qubits[0].resonator, IQChannel):
             resource_limit = 20
         else:
-            raise TypeError("Unrecognized resonator type {type(qubits[0].resonator)}, couldn't")
+            raise TypeError(
+                "Unrecognized resonator type {type(qubits[0].resonator)}, couldn't"
+            )
     else:
         return len(qubits)
 
@@ -34,21 +38,27 @@ def get_max_accumulated_readouts(qubits: Sequence[AnyTransmon], node_parameters:
     # `max_accumulated_readouts` * 4 + `leftover_qubits` < limit
     max_reads = 0
     while max_reads < len(qubits):
-        if ((max_reads + 1) * res_per_demod + len(qubits) - (max_reads + 1)) > resource_limit:
+        if (
+            (max_reads + 1) * res_per_demod + len(qubits) - (max_reads + 1)
+        ) > resource_limit:
             break
         max_reads += 1
 
     return max_reads
 
 
-def generate_measurement_batches(qubits: Sequence[AnyTransmon], max_accumulated_readouts: int):
+def generate_measurement_batches(
+    qubits: Sequence[AnyTransmon], max_accumulated_readouts: int
+):
     """
     Generate fair measurement groups ensuring all qubits are measured equally.
 
     Returns:
         list of lists: Sequence of measurement groups.
     """
-    subsets_indices = _generate_balanced_subsets_indices(len(qubits), max_accumulated_readouts)
+    subsets_indices = _generate_balanced_subsets_indices(
+        len(qubits), max_accumulated_readouts
+    )
 
     measurement_batches = []
     for subset_indices in subsets_indices:

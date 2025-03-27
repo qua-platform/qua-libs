@@ -81,7 +81,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Update the readout power to match the desired range, this change will be reverted at the end of the node.
     node.namespace["tracked_resonators"] = []
     for i, qubit in enumerate(qubits):
-        with tracked_updates(qubit.resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
+        with tracked_updates(
+            qubit.resonator, auto_revert=False, dont_assign_to_none=True
+        ) as resonator:
             resonator.set_output_power(
                 power_in_dbm=node.parameters.max_power_dbm,
                 max_amplitude=node.parameters.max_amp,
@@ -91,7 +93,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_averages
     # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
-    amp_min = calculate_voltage_scaling_factor(node.parameters.max_power_dbm, node.parameters.min_power_dbm)
+    amp_min = calculate_voltage_scaling_factor(
+        node.parameters.max_power_dbm, node.parameters.min_power_dbm
+    )
     amps = np.geomspace(amp_min, 1, node.parameters.num_power_points)
     power_dbm = np.linspace(
         node.parameters.min_power_dbm,
@@ -106,8 +110,12 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
-        "power": xr.DataArray(power_dbm, attrs={"long_name": "readout power", "units": "dBm"}),
+        "detuning": xr.DataArray(
+            dfs, attrs={"long_name": "readout frequency", "units": "Hz"}
+        ),
+        "power": xr.DataArray(
+            power_dbm, attrs={"long_name": "readout power", "units": "dBm"}
+        ),
     }
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
@@ -126,7 +134,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
             with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
                 save(n, n_st)
-                with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
+                with for_(
+                    *from_array(df, dfs)
+                ):  # QUA for_ loop for sweeping the frequency
                     for i, qubit in multiplexed_qubits.items():
                         rr = qubit.resonator
                         # Update the resonator frequencies for all resonators
@@ -135,7 +145,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                         # with for_(*from_array(a, amps)):
                         with for_each_(a, amps):
                             # readout the resonator
-                            rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=a)
+                            rr.measure(
+                                "readout", qua_vars=(I[i], Q[i]), amplitude_scale=a
+                            )
                             # wait for the resonator to deplete
                             rr.wait(rr.depletion_time * u.ns)
                             # save data
@@ -150,7 +162,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
 
 # %% {Simulate_or_execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -158,12 +172,16 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["qua_program"], node.parameters
+    )
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -221,7 +239,9 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_raw_fit = plot_raw_data_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+    )
     plt.show()
     # Store the generated figures
     node.results["figure_amplitude"] = fig_raw_fit

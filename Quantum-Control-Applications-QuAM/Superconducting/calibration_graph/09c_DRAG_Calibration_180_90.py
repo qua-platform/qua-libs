@@ -140,7 +140,9 @@ with program() as drag_calibration:
 
                     qubit.align()
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
+                    assign(
+                        state[i], I[i] > qubit.resonator.operations["readout"].threshold
+                    )
                     save(state[i], state_stream[i])
         # Measure sequentially
         if not node.parameters.multiplexed:
@@ -149,13 +151,17 @@ with program() as drag_calibration:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            state_stream[i].boolean_to_int().buffer(len(amps)).buffer(2).average().save(f"state{i + 1}")
+            state_stream[i].boolean_to_int().buffer(len(amps)).buffer(2).average().save(
+                f"state{i + 1}"
+            )
 
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(
+        duration=node.parameters.simulation_duration_ns * 4
+    )  # In clock cycles = 4ns
     job = qmm.simulate(config, drag_calibration, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
@@ -183,7 +189,9 @@ elif node.parameters.load_data_id is None:
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "sequence": [0, 1]})
+        ds = fetch_results_as_xarray(
+            job.result_handles, qubits, {"amp": amps, "sequence": [0, 1]}
+        )
         # Add the qubit pulse absolute alpha coefficient to the dataset
         ds = ds.assign_coords(
             {
@@ -204,7 +212,11 @@ if not node.parameters.simulate:
     state = ds.state
     fitted = xr.polyval(state.amp, state.polyfit(dim="amp", deg=1).polyfit_coefficients)
     # TODO: what does it do? Explain the analysis
-    diffs = state.polyfit(dim="amp", deg=1).polyfit_coefficients.diff(dim="sequence").drop("sequence")
+    diffs = (
+        state.polyfit(dim="amp", deg=1)
+        .polyfit_coefficients.diff(dim="sequence")
+        .drop("sequence")
+    )
     intersection = -diffs.sel(degree=0) / diffs.sel(degree=1)
     intersection_alpha = intersection * xr.DataArray(
         [q.xy.operations[operation].alpha for q in qubits],
@@ -213,7 +225,10 @@ if not node.parameters.simulate:
     )
 
     # Save fitting results
-    fit_results = {qubit.name: {"alpha": float(intersection_alpha.sel(qubit=qubit.name).values)} for qubit in qubits}
+    fit_results = {
+        qubit.name: {"alpha": float(intersection_alpha.sel(qubit=qubit.name).values)}
+        for qubit in qubits
+    }
     for q in qubits:
         print(f"DRAG coefficient for {q.name} is {fit_results[q.name]['alpha']}")
     node.results["fit_results"] = fit_results

@@ -48,7 +48,9 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     return grid.fig
 
 
-def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_data_with_fit(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -106,8 +108,6 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     #
     # # %% {Update_state}
     # print(f"Time Of Flight to add: {delays} ns")
-
-
 
 
 def plot_adc_single_runs(ds, qubits) -> Figure:

@@ -45,7 +45,9 @@ def plot_iq_blobs(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     return grid.fig
 
 
-def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_iq_blobs(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -65,7 +67,9 @@ def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fi
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    ax.plot(1e3 * fit.Ig_rot, 1e3 * fit.Qg_rot, ".", alpha=0.2, label="Ground", markersize=1)
+    ax.plot(
+        1e3 * fit.Ig_rot, 1e3 * fit.Qg_rot, ".", alpha=0.2, label="Ground", markersize=1
+    )
     ax.plot(
         1e3 * fit.Ie_rot,
         1e3 * fit.Qe_rot,
@@ -81,14 +85,18 @@ def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fi
         lw=0.5,
         label="RUS Threshold",
     )
-    ax.axvline(1e3 * fit.ge_threshold, color="r", linestyle="--", lw=0.5, label="Threshold")
+    ax.axvline(
+        1e3 * fit.ge_threshold, color="r", linestyle="--", lw=0.5, label="Threshold"
+    )
     ax.axis("equal")
     ax.set_xlabel("I [mV]")
     ax.set_ylabel("Q [mV]")
     ax.set_title(qubit["qubit"])
 
 
-def plot_confusion_matrices(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+def plot_confusion_matrices(
+    ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset
+):
     """
     Plots the confusion matrix for the given qubits.
 
@@ -121,7 +129,9 @@ def plot_confusion_matrices(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.
     return grid.fig
 
 
-def plot_individual_confusion_matrix(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_confusion_matrix(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -141,7 +151,9 @@ def plot_individual_confusion_matrix(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    confusion = np.array([[float(fit.gg), float(fit.ge)], [float(fit.eg), float(fit.ee)]])
+    confusion = np.array(
+        [[float(fit.gg), float(fit.ge)], [float(fit.eg), float(fit.ee)]]
+    )
     ax.imshow(confusion)
     ax.set_xticks([0, 1])
     ax.set_yticks([0, 1])

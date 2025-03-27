@@ -132,7 +132,9 @@ def plot_fidelity_2d(ds: xr.Dataset, optimal_ds: xr.Dataset):
                     bbox=dict(facecolor="black", alpha=0.5),
                 )
 
-            ax[i].set_title(f"Duration: {int(duration.values)}ns")  # Ensure titles for clarity
+            ax[i].set_title(
+                f"Duration: {int(duration.values)}ns"
+            )  # Ensure titles for clarity
             ax[i].set_xlabel(None)
             ax[i].set_ylabel(None)
             im_list.append(im)

@@ -80,7 +80,9 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the qubit frequency and FWHM for each qubit in the dataset.
 
@@ -144,7 +146,9 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     # return fit, fit_results
 
 
-def analyze_pulse_arrival_times(ds: xr.Dataset, qubits: List[AnyTransmon]) -> Tuple[xr.Dataset, dict]:
+def analyze_pulse_arrival_times(
+    ds: xr.Dataset, qubits: List[AnyTransmon]
+) -> Tuple[xr.Dataset, dict]:
     """
     Processes the dataset by filtering signals, detecting pulse arrival times, and adding coordinates.
 
@@ -180,7 +184,9 @@ def detect_pulse_arrival(
     for q in qubits:
         fit_results[q.name] = {}
         # Filter the time trace for the qubit's IQ_abs
-        filtered_adc = savgol_filter(np.abs(ds.sel(qubit=q.name).IQ_abs), window_length, polyorder)
+        filtered_adc = savgol_filter(
+            np.abs(ds.sel(qubit=q.name).IQ_abs), window_length, polyorder
+        )
         # Calculate a threshold to detect the rising edge
         threshold = (np.mean(filtered_adc[:100]) + np.mean(filtered_adc[:-100])) / 2
         delay = np.where(filtered_adc > threshold)[0][0]

@@ -86,7 +86,9 @@ def plot_raw_data():
     #     node.results["figure_raw_data"] = fig
 
 
-def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_data_with_fit(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -144,8 +146,6 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     #     plt.tight_layout()
     #     plt.legend(loc="upper right", ncols=4, bbox_to_anchor=(0.5, 1.35))
     #     node.results["adc_averaged"] = grid.fig
-
-
 
 
 def plot_adc_single_runs(ds, qubits) -> Figure:

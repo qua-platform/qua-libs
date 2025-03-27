@@ -66,7 +66,9 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the qubit frequency and FWHM for each qubit in the dataset.
 
@@ -88,7 +90,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         ds_fit.Qe.mean(dim="n_runs") - ds_fit.Qg.mean(dim="n_runs"),
         ds_fit.Ig.mean(dim="n_runs") - ds_fit.Ie.mean(dim="n_runs"),
     )
-    ds_fit = ds_fit.assign({"iw_angle": xr.DataArray(angle, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign(
+        {"iw_angle": xr.DataArray(angle, coords=dict(qubit=ds_fit.qubit.data))}
+    )
 
     C = np.cos(angle)
     S = np.sin(angle)
@@ -107,32 +111,70 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     hist = np.histogram(ds_fit.Ig_rot, bins=100)
     # Get the discriminating threshold along the rotated axis
     rus_threshold = [
-        hist[1][1:][np.argmax(np.histogram(ds_fit.Ig_rot.sel(qubit=q.name), bins=100)[0])]
+        hist[1][1:][
+            np.argmax(np.histogram(ds_fit.Ig_rot.sel(qubit=q.name), bins=100)[0])
+        ]
         for q in node.namespace["qubits"]
     ]
-    ds_fit = ds_fit.assign({"rus_threshold": xr.DataArray(rus_threshold, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign(
+        {
+            "rus_threshold": xr.DataArray(
+                rus_threshold, coords=dict(qubit=ds_fit.qubit.data)
+            )
+        }
+    )
 
     threshold = []
     gg, ge, eg, ee = [], [], [], []
     for q in node.namespace["qubits"]:
         fit = minimize(
             _false_detections,
-            0.5 * (np.mean(ds_fit.Ig_rot.sel(qubit=q.name)) + np.mean(ds_fit.Ie_rot.sel(qubit=q.name))),
+            0.5
+            * (
+                np.mean(ds_fit.Ig_rot.sel(qubit=q.name))
+                + np.mean(ds_fit.Ie_rot.sel(qubit=q.name))
+            ),
             (ds_fit.Ig_rot.sel(qubit=q.name), ds_fit.Ie_rot.sel(qubit=q.name)),
             method="Nelder-Mead",
         )
         threshold.append(fit.x[0])
-        gg.append(np.sum(ds_fit.Ig_rot.sel(qubit=q.name) < fit.x[0]) / len(ds_fit.Ig_rot.sel(qubit=q.name)))
-        ge.append(np.sum(ds_fit.Ig_rot.sel(qubit=q.name) > fit.x[0]) / len(ds_fit.Ig_rot.sel(qubit=q.name)))
-        eg.append(np.sum(ds_fit.Ie_rot.sel(qubit=q.name) < fit.x[0]) / len(ds_fit.Ie_rot.sel(qubit=q.name)))
-        ee.append(np.sum(ds_fit.Ie_rot.sel(qubit=q.name) > fit.x[0]) / len(ds_fit.Ie_rot.sel(qubit=q.name)))
-    ds_fit = ds_fit.assign({"ge_threshold": xr.DataArray(threshold, coords=dict(qubit=ds_fit.qubit.data))})
-    ds_fit = ds_fit.assign({"gg": xr.DataArray(gg, coords=dict(qubit=ds_fit.qubit.data))})
-    ds_fit = ds_fit.assign({"ge": xr.DataArray(ge, coords=dict(qubit=ds_fit.qubit.data))})
-    ds_fit = ds_fit.assign({"eg": xr.DataArray(eg, coords=dict(qubit=ds_fit.qubit.data))})
-    ds_fit = ds_fit.assign({"ee": xr.DataArray(ee, coords=dict(qubit=ds_fit.qubit.data))})
+        gg.append(
+            np.sum(ds_fit.Ig_rot.sel(qubit=q.name) < fit.x[0])
+            / len(ds_fit.Ig_rot.sel(qubit=q.name))
+        )
+        ge.append(
+            np.sum(ds_fit.Ig_rot.sel(qubit=q.name) > fit.x[0])
+            / len(ds_fit.Ig_rot.sel(qubit=q.name))
+        )
+        eg.append(
+            np.sum(ds_fit.Ie_rot.sel(qubit=q.name) < fit.x[0])
+            / len(ds_fit.Ie_rot.sel(qubit=q.name))
+        )
+        ee.append(
+            np.sum(ds_fit.Ie_rot.sel(qubit=q.name) > fit.x[0])
+            / len(ds_fit.Ie_rot.sel(qubit=q.name))
+        )
     ds_fit = ds_fit.assign(
-        {"readout_fidelity": xr.DataArray(100 * (ds_fit.gg + ds_fit.ee) / 2, coords=dict(qubit=ds_fit.qubit.data))}
+        {"ge_threshold": xr.DataArray(threshold, coords=dict(qubit=ds_fit.qubit.data))}
+    )
+    ds_fit = ds_fit.assign(
+        {"gg": xr.DataArray(gg, coords=dict(qubit=ds_fit.qubit.data))}
+    )
+    ds_fit = ds_fit.assign(
+        {"ge": xr.DataArray(ge, coords=dict(qubit=ds_fit.qubit.data))}
+    )
+    ds_fit = ds_fit.assign(
+        {"eg": xr.DataArray(eg, coords=dict(qubit=ds_fit.qubit.data))}
+    )
+    ds_fit = ds_fit.assign(
+        {"ee": xr.DataArray(ee, coords=dict(qubit=ds_fit.qubit.data))}
+    )
+    ds_fit = ds_fit.assign(
+        {
+            "readout_fidelity": xr.DataArray(
+                100 * (ds_fit.gg + ds_fit.ee) / 2, coords=dict(qubit=ds_fit.qubit.data)
+            )
+        }
     )
 
     # Extract the relevant fitted parameters
