@@ -88,7 +88,7 @@ class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
             raise RuntimeError("Either or gain or amplitude must be specified.")
         elif max_amplitude is not None:
             gain = round((power_in_dbm - u.volts2dBm(max_amplitude, Z=Z)) * 2) / 2
-            gain = min(max(gain, 20), -20)
+            gain = max(min(gain, 20), -20)
             amplitude = u.dBm2volts(power_in_dbm - gain)
         elif gain is not None:
             amplitude = u.dBm2volts(power_in_dbm - self.frequency_converter_up.gain)
