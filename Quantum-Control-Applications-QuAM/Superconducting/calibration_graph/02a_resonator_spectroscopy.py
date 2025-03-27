@@ -114,9 +114,6 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
         I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
         df = declare(int)  # QUA variable for the readout frequency
 
-        # Bring the active qubits to the minimum frequency point
-        node.machine.initialize_qpu()
-
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             for qubit in multiplexed_qubits.values():
