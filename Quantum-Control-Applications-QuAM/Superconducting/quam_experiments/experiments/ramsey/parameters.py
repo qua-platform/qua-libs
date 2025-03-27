@@ -14,7 +14,7 @@ class NodeSpecificParameters(RunnableParameters):
     num_averages: int = 100
     frequency_detuning_in_mhz: float = 1.0
     min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 3000
+    max_wait_time_in_ns: int = 30000
     wait_time_num_points: int = 500
     log_or_linear_sweep: Literal["log", "linear"] = "log"
 

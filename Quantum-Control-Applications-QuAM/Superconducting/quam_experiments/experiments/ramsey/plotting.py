@@ -5,7 +5,7 @@ from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
 from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_experiments.analysis.fit import lorentzian_peak
+from quam_experiments.analysis.fit import oscillation_decay_exp
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
@@ -66,56 +66,60 @@ def plot_individual_data_with_fit(
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
     pass
-    # if fit:
-    #     fitted_ramsey_data = oscillation_decay_exp(
-    #         ds.time,
-    #         fit.raw_fit_results.sel(fit_vals="a"),
-    #         fit.raw_fit_results.sel(fit_vals="f"),
-    #         fit.raw_fit_results.sel(fit_vals="phi"),
-    #         fit.raw_fit_results.sel(fit_vals="offset"),
-    #         fit.raw_fit_results.sel(fit_vals="decay"),
-    #     )
-    # else:
-    #     fitted_ramsey_data = None
-    #
-    # if node_parameters.use_state_discrimination:
-    #     plot_state(ax, ds, qubit, fitted_ramsey_data)
-    #     ax.set_ylabel("State Population")
-    # else:
-    #     plot_transmission_amplitude(ax, ds, qubit, fitted_ramsey_data)
-    #     ax.set_ylabel("Trans. amp. I [mV]")
-    #
-    # ax.set_xlabel("Idle time [ns]")
-    # ax.set_title(qubit["qubit"])
+    if fit:
+        fitted_ramsey_data = oscillation_decay_exp(
+            ds.idle_time,
+            fit.sel(fit_vals="a"),
+            fit.sel(fit_vals="f"),
+            fit.sel(fit_vals="phi"),
+            fit.sel(fit_vals="offset"),
+            fit.sel(fit_vals="decay"),
+        )
+    else:
+        fitted_ramsey_data = None
+
+    if hasattr(fit, "state"):
+        plot_state(ax, fit, qubit, fitted_ramsey_data)
+        ax.set_ylabel("State Population")
+    elif hasattr(fit, "I"):
+        plot_transmission_amplitude(ax, fit, qubit, fitted_ramsey_data)
+        ax.set_ylabel("Trans. amp. I [mV]")
+    else:
+        raise RuntimeError(
+            "The dataset must contain either 'I' or 'state' for the plotting function to work."
+        )
+
+    ax.set_xlabel("Idle time [ns]")
+    ax.set_title(qubit["qubit"])
     # if fit is not None:
     #     add_fit_text(ax, fit)
-    # ax.legend()
+    ax.legend()
 
 
 def plot_state(ax, ds, qubit, fitted=None):
     """Plot state data for a qubit."""
-    ds.sel(sign=1).loc[qubit].state.plot(
-        ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +"
+    ds.sel(detuning_signs=1).loc[qubit].state.plot(
+        ax=ax, x="idle_time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +"
     )
-    ds.sel(sign=-1).loc[qubit].state.plot(
-        ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
+    ds.sel(detuning_signs=-1).loc[qubit].state.plot(
+        ax=ax, x="idle_time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
     )
     if fitted is not None:
-        ax.plot(ds.time, fitted.fit.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
-        ax.plot(ds.time, fitted.fit.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)
+        ax.plot(ds.idle_time, fitted.fit.loc[qubit].sel(detuning_signs=1), c="C0", ls="-", lw=1)
+        ax.plot(ds.idle_time, fitted.fit.loc[qubit].sel(detuning_signs=-1), c="C1", ls="-", lw=1)
 
 
 def plot_transmission_amplitude(ax, ds, qubit, fitted=None):
     """Plot transmission amplitude for a qubit."""
-    (ds.sel(sign=1).loc[qubit].I * 1e3).plot(
-        ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +"
+    (ds.sel(detuning_signs=1).I * 1e3).plot(
+        ax=ax, x="idle_time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +"
     )
-    (ds.sel(sign=-1).loc[qubit].I * 1e3).plot(
-        ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
+    (ds.sel(detuning_signs=-1).I * 1e3).plot(
+        ax=ax, x="idle_time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
     )
     if fitted is not None:
-        ax.plot(ds.time, 1e3 * fitted.fit.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
-        ax.plot(ds.time, 1e3 * fitted.fit.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)
+        ax.plot(ds.idle_time, 1e3 * fitted.fit.sel(detuning_signs=1), c="C0", ls="-", lw=1)
+        ax.plot(ds.idle_time, 1e3 * fitted.fit.sel(detuning_signs=-1), c="C1", ls="-", lw=1)
 
 
 def add_fit_text(ax, fit):
