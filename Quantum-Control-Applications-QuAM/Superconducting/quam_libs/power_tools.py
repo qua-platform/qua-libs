@@ -28,7 +28,7 @@ def set_output_power_mw_channel(
         max_amplitude (Optional[float]):
 
     """
-    allowed_full_scale_power_in_dbm_values = np.arange(-41, 11, 3)
+    allowed_full_scale_power_in_dbm_values = np.arange(-11, 17, 3)
 
     if full_scale_power_dbm is not None:
         if (
@@ -135,7 +135,7 @@ def set_output_power_iq_channel(
         raise RuntimeError("Either or gain or amplitude must be specified.")
     elif max_amplitude is not None:
         gain = round((power_in_dbm - u.volts2dBm(max_amplitude, Z=Z)) * 2) / 2
-        gain = min(max(gain, 20), -20)
+        gain = max(min(gain, 20), -20)
         amplitude = u.dBm2volts(power_in_dbm - gain)
     elif gain is not None:
         amplitude = u.dBm2volts(power_in_dbm - channel.frequency_converter_up.gain)
