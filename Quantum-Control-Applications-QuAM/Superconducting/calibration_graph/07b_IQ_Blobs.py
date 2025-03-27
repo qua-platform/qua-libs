@@ -85,7 +85,6 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    # %% {QUA_program}
     n_runs = node.parameters.num_runs  # Number of runs
     operation = node.parameters.operation
     # Register the sweep axes to be added to the dataset when fetching data
@@ -199,8 +198,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Register the raw dataset
     node.results["ds_raw"] = dataset
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    # %% {Save_results}
-    node.save()
 
 
 # %% {Data_loading_and_dataset_creation}

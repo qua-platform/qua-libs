@@ -74,7 +74,6 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    # %% {QUA_program}
     n_avg = node.parameters.num_averages  # The number of averages
     state_discrimination = node.parameters.use_state_discrimination
     operation = node.parameters.operation  # The qubit operation to play

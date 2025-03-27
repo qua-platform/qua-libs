@@ -456,7 +456,7 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     node.results["figure_amplitude"] = fig_raw_fit
 
 
-# todo: no state update?
+# TODO: no state update?
 
 
 # %% {Save_results}
