@@ -72,7 +72,6 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-
     node.namespace["tracked_resonators"] = [] = []
     for q in qubits:
         resonator = q.resonator
@@ -86,8 +85,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "readout_time": xr.DataArray(np.arange(0, node.parameters.readout_length_in_ns, 1),
-                                     attrs={"long_name": "readout time", "units": "ns"}),
+        "readout_time": xr.DataArray(
+            np.arange(0, node.parameters.readout_length_in_ns, 1), attrs={"long_name": "readout time", "units": "ns"}
+        ),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -199,6 +199,7 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     # Store the generated figures
     node.results["figure_amplitude"] = fig_raw_fit
 
+
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def state_update(node: QualibrationNode[Parameters, QuAM]):
@@ -214,7 +215,7 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
             #     q.resonator.time_of_flight += int(ds.sel(qubit=q.name).delays)
 
     # Revert the change done at the beginning of the node
-    for resonator in node.namespace["tracked_resonators"]:
+    for resonator in node.namespace.get("tracked_resonators", []):
         resonator.revert_changes()
 
 

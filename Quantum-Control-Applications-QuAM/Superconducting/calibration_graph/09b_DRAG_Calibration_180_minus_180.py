@@ -238,7 +238,7 @@ def state_update(node: QualibrationNode[Parameters, QuAM]):
     """Update the relevant parameters if the qubit data analysis was successful."""
 
     # Revert the change done at the beginning of the node
-    for qubit in node.namespace["tracked_qubits"]:
+    for qubit in node.namespace.get("tracked_qubits", []):
         qubit.revert_changes()
 
     with node.record_state_updates():
