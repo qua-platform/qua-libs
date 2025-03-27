@@ -1,7 +1,7 @@
 from typing import Union
 import numpy as np
-from quam_experiments.experiments.ramsey.parameters import RamseyParameters
-from quam_experiments.experiments.T1.parameters import T1Parameters
+from quam_experiments.experiments.ramsey.parameters import NodeSpecificParameters as RamseyParameters
+from quam_experiments.experiments.T1.parameters import NodeSpecificParameters as T1Parameters
 
 
 def get_idle_times_in_clock_cycles(

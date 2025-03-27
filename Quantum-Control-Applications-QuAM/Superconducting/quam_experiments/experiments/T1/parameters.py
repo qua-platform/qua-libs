@@ -7,7 +7,7 @@ from quam_experiments.parameters import (
 )
 
 
-class T1Parameters(RunnableParameters):
+class NodeSpecificParameters(RunnableParameters):
     """
     Parameters for configuring a T1 relaxation time experiment.
 
@@ -29,7 +29,7 @@ class T1Parameters(RunnableParameters):
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
-    T1Parameters,
+    NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
     pass
