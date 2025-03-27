@@ -378,21 +378,3 @@ def grid_iter(grid: xr.plot.FacetGrid) -> Tuple[matplotlib.axes.Axes, dict]:
     for axr, ndr in zip(grid.axes, grid.name_dicts):
         for ax, nd in zip(axr, ndr):
             yield ax, nd
-
-def make_unique_coordinates(coord_list: list[str]) -> list[str]:
-    """
-    Make the coordinates unique by shifting the coordinates row until they are unique.
-    """
-    seen = {}
-    unique_coords = []
-
-    for coord in coord_list:
-        x, y = map(int, coord.split(','))
-
-        while (x, y) in seen:  # Shift until unique
-            x += 1  # Shift right by 1 unit
-        
-        seen[(x, y)] = True
-        unique_coords.append(f"{x},{y}")
-
-    return unique_coords
