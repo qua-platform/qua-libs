@@ -150,7 +150,14 @@ class XarrayDataFetcher:
             if not isinstance(data_component, (np.ndarray, type(None))):
                 self.data[data_label] = data_component
 
-        raw_data_arrays = {k: v for k, v in self._raw_data.items() if isinstance(v, (np.ndarray, type(None)))}
+        raw_data_arrays = {}
+        for label, array in self._raw_data.items():
+            if isinstance(array, (np.ndarray, type(None))):
+                raw_data_arrays[label] = array
+            elif isinstance(array, list):
+                raw_data_arrays[label] = np.array(array)
+            else:
+                continue
 
         if not raw_data_arrays:
             logger.debug("No raw data entries to update; returning current dataset.")

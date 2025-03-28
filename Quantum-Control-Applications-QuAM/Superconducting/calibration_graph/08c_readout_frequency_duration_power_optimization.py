@@ -55,7 +55,7 @@ from quam_experiments.workflow.simulation import simulate_and_plot
 from quam_experiments.parameters.qubits_experiment import get_qubits
 
 
-# %% {Description}
+# %% {Initialisation}
 description = """
         READOUT OPTIMISATION: FREQUENCY, POWER, DURATION
 This sequence involves measuring the state of the resonator in two scenarios: first,
@@ -113,7 +113,7 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
     pass
 
 
-# %% {Initialize_QuAM_and_QOP}
+# %% {Execute_QUA_program}
 u = unit(coerce_to_integer=True)
 
 node.machine = QuAM.load()
@@ -136,7 +136,6 @@ for resonator in [qubit.resonator for qubit in qubits]:
 
 config = node.machine.generate_config()
 
-# %% {QUA_program}
 n_avg = node.parameters.num_runs
 
 dfs = get_frequency_detunings_in_hz(node.parameters)
@@ -267,12 +266,13 @@ for measurement_batch in measurement_batches:
 with open("debug.py", "w+") as f:
     f.write(generate_qua_script(programs[0], config))
 
-# %% {Simulate_or_execute}
+# %% {Simulate}
 if node.parameters.simulate:
     samples, fig = simulate_and_plot(qmm, config, programs[0], node.parameters)
     node.results = {"figure": fig}
     node.save()
 
+# %% {Execute}
 elif node.parameters.load_data_id is None:
     datasets = []
     for i, program in enumerate(tqdm(programs, unit="measurement batch")):
@@ -289,7 +289,7 @@ elif node.parameters.load_data_id is None:
     ds = combine_batches(datasets)
 
 
-# %% {Data_fetching_and_dataset_creation}
+# %% {Analyse_data}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is not None:
         load_data_id = node.parameters.load_data_id
