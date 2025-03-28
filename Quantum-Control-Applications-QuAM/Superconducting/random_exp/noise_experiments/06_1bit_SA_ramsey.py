@@ -264,7 +264,8 @@ with program() as Ramsey_noise_spec:
             save(final_state[i], state_st[i])
             assign(init_state[i], state[i])
             reset_frame(qubit.xy.name)
-            wait(1000)
+            with if_(n-n /10 ==0):
+                wait(10000)
 
     with stream_processing():
         n_st.save("n")
@@ -370,7 +371,7 @@ if not simulate:
         time_stamp_q = ds.time_stamp.sel(qubit = qubit.name).values
         
         f, Pxx_den = signal.welch(data_q-data_q.mean(),  1e9/np.mean(np.diff(time_stamp_q)), 
-                          nperseg=2**14)
+                          nperseg=2**12)
         dat_fft[qubit.name] = xr.Dataset({'Pxx_den': (['freq'], Pxx_den)}, coords={'freq': f}).Pxx_den
 
         # dat_fft[qubit.name] = xrft.power_spectrum(data_q, real_dim='n')
