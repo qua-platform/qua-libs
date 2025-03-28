@@ -19,11 +19,12 @@ from typing import Optional, Literal, List
 
 
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ["qubitC1"]
     num_averages: int = 1000
-    dc_offset: float = 0.015
+    dc_offset: float = 0.0
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
+    timeout: int = 100
 
 node = QualibrationNode(
     name="99_1bit_SA_ramsey",
@@ -31,26 +32,44 @@ node = QualibrationNode(
 )
 
 node.parameters = Parameters()
+simulate = node.parameters.simulate
 
-
-from qm.qua import *
-from qm import SimulationConfig
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.plot import interrupt_on_close
-from qualang_tools.loops import from_array
-from qualang_tools.units import unit
-from quam_libs.components import QuAM
-from quam_libs.macros import qua_declaration, active_reset
+# from qm.qua import *
+# from qm import SimulationConfig
+# from qualang_tools.results import progress_counter, fetching_tool
+# from qualang_tools.plot import interrupt_on_close
+# from qualang_tools.loops import from_array
+# from qualang_tools.units import unit
+# from quam_libs.components import QuAM
+# from quam_libs.macros import qua_declaration, active_reset
 import xarray as xr
 import xrft
-import matplotlib.pyplot as plt
-import numpy as np
+# import matplotlib.pyplot as plt
+# import numpy as np
 from scipy import signal
 
-import matplotlib
+# import matplotlib
+# from quam_libs.lib.plot_utils import QubitGrid, grid_iter
+# from quam_libs.lib.save_utils import fetch_results_as_xarray
+# from quam_libs.lib.fit import peaks_dips
+
+from qualibrate import QualibrationNode, NodeParameters
+from quam_libs.components import QuAM
+from quam_libs.macros import qua_declaration, readout_state, active_reset
+from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
-from quam_libs.lib.fit import peaks_dips
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.loops import from_array
+from qualang_tools.multi_user import qm_session
+from qualang_tools.units import unit
+from qm import SimulationConfig
+from qm.qua import *
+from typing import Literal, Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+
 
 # matplotlib.use("TKAgg")
 
@@ -72,11 +91,13 @@ qmm = machine.connect()
 if node.parameters.qubits is None:
     qubits = machine.active_qubits
 else:
-    qubits = [machine.qubits[q] for q in node.parameters.qubits.replace(' ', '').split(',')]
+    qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
 
-freqs = np.arange(-5000000, -2000000, 25000, dtype=np.int32)  # Integer values from -5e6 to 0 with step 50000
-idle_times = np.arange(420, 601, 100, dtype=np.int32)  # Integer values from 20 to 1000 with step 100
+freqs = np.arange(-2000000, 2000000, 25000, dtype=np.int32)  # Integer values from -5e6 to 0 with step 50000
+freqs_MHZ = np.arange(-5, -1, 25e-3)  # Integer values from -5e6 to 0 with step 50000
+
+idle_time = 520  # Integer values from 20 to 1000 with step 100
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 dc = node.parameters.dc_offset
 n_avg = node.parameters.num_averages
@@ -90,43 +111,52 @@ with program() as find_optimal_freq_offset_and_idle_time:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     state = [declare(int) for _ in range(num_qubits)]
     state_st = [declare_stream() for _ in range(num_qubits)]
-    freq = declare(int)  # QUA variable for the flux dc level
-    idle_time = declare(int)
+    init_state = [declare(int) for _ in range(num_qubits)]
+    final_state = [declare(int) for _ in range(num_qubits)]    
+    # freq = declare(int)  # QUA variable for the flux dc level
+    phi = declare(fixed)
+    t = declare(int)
+    assign(t, idle_time >> 2)
+    # dt = declare(fixed, 1e-9)
+    freq_MHZ = declare(fixed)
 
     for i, qubit in enumerate(qubits):
-
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.set_dc_offset(dc + qubit.z.independent_offset)
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-            qubit.z.set_dc_offset(dc + qubit.z.joint_offset)
-        else:
-            machine.apply_all_flux_to_zero()
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)            
         wait(1000)
         
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             
-            with for_(*from_array(freq, freqs)):
-                with for_(*from_array(idle_time, idle_times)):
-                    update_frequency(qubit.xy.name, freq + qubit.xy.intermediate_frequency)
-                    active_reset(machine, qubit.name)
-                    qubit.xy.play("x90")
-                    wait(idle_time / 4, qubit.xy.name)
-                    qubit.xy.play("x90")
-                    align()
-                    # Measure the state of the resonators
-                    qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
-                    save(state[i], state_st[i])
-                    reset_frame(qubit.xy.name)
+            with for_(*from_array(freq_MHZ, freqs_MHZ)):        
+                    
+                assign(phi, Cast.mul_fixed_by_int(freq_MHZ * 1e-3, idle_time))
+                
+                qubit.align()
+
+                qubit.xy.play("x90")
+                qubit.xy.frame_rotation_2pi(phi)
+                qubit.z.wait(duration=qubit.xy.operations["x180"].length)
+                
+                qubit.xy.wait(t + 1)
+                qubit.z.play("const", amplitude_scale=dc / qubit.z.operations["const"].amplitude, duration=t)
+                
+                qubit.xy.play("x90")
+                
+                qubit.align()
+                
+                # Measure the state of the resonators
+                readout_state(qubit, state[i])
+                assign(final_state[i], init_state[i] ^ state[i])
+                save(final_state[i], state_st[i])
+                # save(freq_GHZ, state_st[i])
+                
+                assign(init_state[i], state[i])
+                reset_frame(qubit.xy.name)
 
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubits):
-            state_st[i].buffer(len(idle_times)).buffer(len(freqs)).average().save(f"state{i + 1}")
+            state_st[i].buffer(len(freqs)).average().save(f"state{i + 1}")
 
 
 
@@ -135,60 +165,52 @@ with program() as find_optimal_freq_offset_and_idle_time:
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = node.parameters.simulate
-
-if simulate:
+if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, find_optimal_freq_offset_and_idle_time, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    job = qmm.simulate(config, iq_blobs, simulation_config)
+    # Get the simulated samples and plot them for all controllers
+    samples = job.get_simulated_samples()
+    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
+    for i, con in enumerate(samples.keys()):
+        plt.subplot(len(samples.keys()),1,i+1)
+        samples[con].plot()
+        plt.title(con)
+    plt.tight_layout()
+    # Save the figure
     node.results = {"figure": plt.gcf()}
+    node.machine = machine
+    node.save()
+    
 else:
-    # Open the quantum machine
-    qm = qmm.open_qm(config,keep_dc_offsets_when_closing=False)
-    # Calibrate the active qubits
-    # machine.calibrate_octave_ports(qm)
-    # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(find_optimal_freq_offset_and_idle_time)
-    # Get results from QUA program
-    for i in range(num_qubits):
-        print(f"Fetching results for qubit {qubits[i].name}")
-        data_list = ["n"] + sum([[f"state{i + 1}"] ], [])
-        results = fetching_tool(job, data_list, mode="live")
-    # Live plotting
-    # fig, axes = plt.subplots(2, num_qubits, figsize=(4 * num_qubits, 8))
-    # interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-        while results.is_processing():
-        # Fetch results
-            fetched_data = results.fetch_all()
-            n = fetched_data[0]
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        job = qm.execute(find_optimal_freq_offset_and_idle_time)
+        for i in range(num_qubits):
+            results = fetching_tool(job, ["n"], mode="live")
+            while results.is_processing():
+                n = results.fetch_all()[0]
+                progress_counter(n, n_avg)
 
-            progress_counter(n, n_avg, start_time=results.start_time)
-    qm.close()
 
-# %%
+
 # %%
 if not simulate:
     handles = job.result_handles
-    ds = fetch_results_as_xarray(handles, qubits, {"idle_time": idle_times, "freq": freqs})
+    ds = fetch_results_as_xarray(handles, qubits, {"freq": freqs_MHZ})
 
     node.results = {}
     node.results['ds'] = ds
 
 # %%
-
-# %%
    
-idle_time_to_run = 520 
 opt_freq = {}
 if not simulate:
-    grid_names = [f'{q.name}_0' for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        opt_freq[qubit['qubit']] = np.abs(ds.sel(qubit = qubit['qubit']).state.sel(idle_time=idle_time_to_run)-0.45).idxmin('freq')
-        ds.sel(qubit = qubit['qubit']).state.sel(idle_time=idle_time_to_run).plot(ax =ax)
-        ax.axhline(0.45, color='k')
-        ax.plot(opt_freq[qubit['qubit']], 0.45, 'o')
+        opt_freq[qubit['qubit']] = np.abs(ds.sel(qubit = qubit['qubit']).state-0.5).idxmin('freq')
+        ds.sel(qubit = qubit['qubit']).state.plot(ax =ax)
+        ax.axhline(0.5, color='k')
+        ax.plot(opt_freq[qubit['qubit']], 0.5, 'o')
         ax.set_title(qubit['qubit'])
         ax.set_xlabel('Frequency (Hz)')
         ax.set_ylabel('State')
@@ -197,42 +219,52 @@ if not simulate:
     plt.show()
     node.results['figure_raw'] = grid.fig
 # %%
-n_avg = 2_000_000
+n_avg = 2**18 + 1
 
-
+phis = {qubit.name: (opt_freq[qubit.name].values * 1e-3 * idle_time)/(2*np.pi) for qubit in qubits}
+phis
 # %% create program for T2 spectoscopy
 with program() as Ramsey_noise_spec:
 
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     state = [declare(int) for _ in range(num_qubits)]
     state_st = [declare_stream() for _ in range(num_qubits)]
+    init_state = [declare(int) for _ in range(num_qubits)]
+    final_state = [declare(int) for _ in range(num_qubits)]
+    t = declare(int)
+    assign(t, idle_time >> 2)
+    phi = declare(fixed)
 
     for i, qubit in enumerate(qubits):
-
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.set_dc_offset(dc + qubit.z.independent_offset)
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-            qubit.z.set_dc_offset(dc + qubit.z.joint_offset)
-        else:
-            machine.apply_all_flux_to_zero()
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)                  
         wait(1000)
-        update_frequency(qubit.xy.name, int(opt_freq[qubit.name]) + qubit.xy.intermediate_frequency)
+        # update_frequency(qubit.xy.name, int(opt_freq[qubit.name]) + qubit.xy.intermediate_frequency)
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
-            active_reset(machine, qubit.name)
-            qubit.xy.play("x90", timestamp_stream=f'time_stamp{i+1}')
-            wait(idle_time_to_run // 4, qubit.xy.name)
+
+            assign(phi, phis[qubit.name])
+            qubit.align()
+            # with strict_timing_():
+            # update_frequency(qubit.xy.name, int(opt_freq[qubit.name])  + qubit.xy.intermediate_frequency)
+            qubit.xy.play("x90",  timestamp_stream=f'time_stamp{i+1}')
+            qubit.xy.frame_rotation_2pi(phi)
+            qubit.z.wait(duration=qubit.xy.operations["x180"].length)
+            
+            qubit.xy.wait(t + 1)
+            qubit.z.play("const", amplitude_scale=dc / qubit.z.operations["const"].amplitude, duration=t)
+            
             qubit.xy.play("x90")
-            align()
+            # update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
+            qubit.align()            
+            
             # Measure the state of the resonators
-            qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-            assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
-            save(state[i], state_st[i])
+            readout_state(qubit, state[i])
+            assign(final_state[i], init_state[i] ^ state[i])
+            save(final_state[i], state_st[i])
+            assign(init_state[i], state[i])
             reset_frame(qubit.xy.name)
+            wait(1000)
 
     with stream_processing():
         n_st.save("n")
@@ -246,50 +278,79 @@ with program() as Ramsey_noise_spec:
 ###########################
 simulate = node.parameters.simulate
 
-if simulate:
+if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, Ramsey_noise_spec, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    job = qmm.simulate(config, iq_blobs, simulation_config)
+    # Get the simulated samples and plot them for all controllers
+    samples = job.get_simulated_samples()
+    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
+    for i, con in enumerate(samples.keys()):
+        plt.subplot(len(samples.keys()),1,i+1)
+        samples[con].plot()
+        plt.title(con)
+    plt.tight_layout()
+    # Save the figure
     node.results = {"figure": plt.gcf()}
+    node.machine = machine
+    node.save()
+    
 else:
-    # Open the quantum machine
-    qm = qmm.open_qm(config,keep_dc_offsets_when_closing=False)
-    # Calibrate the active qubits
-    # machine.calibrate_octave_ports(qm)
-    # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(Ramsey_noise_spec)
-    # Get results from QUA program
-    for i in range(num_qubits):
-        print(f"Fetching results for qubit {qubits[i].name}")
-        data_list = ["n"] + sum([[f"state{i + 1}"] ], [])
-        results = fetching_tool(job, data_list, mode="live")
-    # Live plotting
-    # fig, axes = plt.subplots(2, num_qubits, figsize=(4 * num_qubits, 8))
-    # interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-        while results.is_processing():
-        # Fetch results
-            fetched_data = results.fetch_all()
-            n = fetched_data[0]
-
-            progress_counter(n, n_avg, start_time=results.start_time)
-    qm.close()
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        job = qm.execute(Ramsey_noise_spec)
+        for i in range(num_qubits):
+            results = fetching_tool(job, ["n"], mode="live")
+            while results.is_processing():
+                n = results.fetch_all()[0]
+                progress_counter(n, n_avg)
 
 
 # %%
 if not simulate:
-    handles = job.result_handles
-    ds = fetch_results_as_xarray(handles, qubits, {"n": np.arange(0,n_avg,1)})
+    def extract_string(input_string):
+        # Find the index of the first occurrence of a digit in the input string
+        index = next((i for i, c in enumerate(input_string) if c.isdigit()), None)
 
-    extracted_values = np.array([v[0] for v in ds.time_stamp.values.flatten()]).reshape(ds.time_stamp.values.shape)
-    ds['time_stamp'] = xr.DataArray(extracted_values, dims=ds['time_stamp'].dims, coords=ds['time_stamp'].coords)
+        if index is not None:
+            # Extract the substring from the start of the input string to the index
+            extracted_string = input_string[:index]
+            return extracted_string
+        else:
+            return None
+        
+    stream_handles = job.result_handles.keys()
+    meas_vars = list(set([extract_string(handle) for handle in stream_handles if extract_string(handle) is not None]))
+
+    values = np.array(
+        [
+    np.array(np.array( [job.result_handles.get(f"time_stamp{i + 1}").fetch_all() for i, qubit in enumerate(qubits)]).tolist()).squeeze(-1),
+    np.array([job.result_handles.get(f"state{i + 1}").fetch_all() for i, qubit in enumerate(qubits)]),
+    ]
+        
+        )
+
+    if np.array(values).shape[-1] == 1:
+        values = np.array(values).squeeze(axis=-1)
+
+    measurement_axis = {"n": np.arange(0,n_avg)}
+        
+    measurement_axis["qubit"] = [qubit.name for qubit in qubits]
+    measurement_axis = {key: measurement_axis[key] for key in reversed(measurement_axis.keys())}
+
+
+    ds = xr.Dataset(
+        {f"{meas_var}": ([key for key in measurement_axis.keys()], values[i]) for i, meas_var in enumerate(meas_vars)},
+        coords=measurement_axis,
+    )
     ds['time_stamp'] = ds['time_stamp']*4
+
     node.results['ds_final'] = ds
+# %%
+
 
 # %%
 if not simulate:
-    grid_names = [f'{q.name}_0' for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         ds.sel(qubit = qubit['qubit']).state.plot.hist(bins=3,ax=ax)
         ax.set_title(qubit['qubit'])
@@ -309,7 +370,7 @@ if not simulate:
         time_stamp_q = ds.time_stamp.sel(qubit = qubit.name).values
         
         f, Pxx_den = signal.welch(data_q-data_q.mean(),  1e9/np.mean(np.diff(time_stamp_q)), 
-                          nperseg=8192*8)
+                          nperseg=2**14)
         dat_fft[qubit.name] = xr.Dataset({'Pxx_den': (['freq'], Pxx_den)}, coords={'freq': f}).Pxx_den
 
         # dat_fft[qubit.name] = xrft.power_spectrum(data_q, real_dim='n')
@@ -317,10 +378,9 @@ if not simulate:
     
 # %%    
 if not simulate:
-    grid_names = [f'{q.name}_0' for q in qubits]
-    grid = QubitGrid(ds, grid_names, size = 5)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        dat_fft[qubit['qubit']].plot(yscale='log', xscale='log', ax =ax)
+        dat_fft[qubit['qubit']].plot(yscale='log', xscale='log', ax =ax, marker='.')
         ax.grid(which='both')
         ax.set_xlabel('frequency [Hz]')
         ax.set_ylabel('power spectrum [arb.]')
@@ -335,3 +395,4 @@ node.results['initial_parameters'] = node.parameters.model_dump()
 node.machine = machine
 node.save()
 # %%
+

@@ -41,11 +41,11 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ["qubitC1"]
     num_averages: int = 100
-    frequency_detuning_in_mhz: float = 1.0
+    frequency_detuning_in_mhz: float = 0.5
     min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 3000
+    max_wait_time_in_ns: int = 15000
     num_time_points: int = 500
     log_or_linear_sweep: Literal["log", "linear"] = "linear"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
