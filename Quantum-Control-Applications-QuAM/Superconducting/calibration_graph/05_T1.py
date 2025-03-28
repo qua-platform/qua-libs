@@ -24,7 +24,7 @@ from quam_experiments.experiments.T1 import (
 )
 
 
-# %% {Node_parameters}
+# %% {Initialisation}
 # todo: improve the prerequisite section by highlighting the nodes to run for instance
 description = """
         T1 MEASUREMENT
@@ -62,7 +62,7 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 node.machine = QuAM.load()
 
 
-# %% {QUA_program}
+# %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
@@ -78,9 +78,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "idle_time": xr.DataArray(
-            4 * idle_times, attrs={"long_name": "idle time", "units": "ns"}
-        ),
+        "idle_time": xr.DataArray(4 * idle_times, attrs={"long_name": "idle time", "units": "ns"}),
     }
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
@@ -136,10 +134,8 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                     Q_st[i].buffer(len(idle_times)).average().save(f"Q{i + 1}")
 
 
-# %% {Simulate_or_execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+# %% {Simulate}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -147,17 +143,14 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     # todo: we can't serialize the simulated samples [Serwan]
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+# %% {Execute}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset."""
     # Connect to the QOP
@@ -170,11 +163,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
-        for (
-            dataset
-        ) in (
-            data_fetcher
-        ):  # todo: is there any use-case where we have several datasets?
+        for dataset in data_fetcher:  # todo: is there any use-case where we have several datasets?
             # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
             progress_counter(
                 data_fetcher["n"],
@@ -187,7 +176,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.results["ds_raw"] = dataset
 
 
-# %% {Data_loading_and_dataset_creation}
+# %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, QuAM]):
     """Load a previously acquired dataset."""
@@ -199,14 +188,12 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["qubits"] = get_qubits(node)
 
 
-# %% {Data_analysis}
+# %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate, continue_on_failure=True)
 def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analysis the raw data and store the fitted data in another xarray dataset and the fitted results in the fit_results class."""
     # todo check the units with real data
-    node.results["ds_fit"], fit_results = fit_t1_decay(
-        node.results["ds_raw"], node.parameters
-    )
+    node.results["ds_fit"], fit_results = fit_t1_decay(node.results["ds_raw"], node.parameters)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     # todo: Serwan to add node.log so that we can do node.log.add(log_t1(node.results["ds_fit"])) or similar
     from qualibrate.utils.logger_m import logger
@@ -219,7 +206,7 @@ def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     }
 
 
-# %% {Plotting}
+# %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit.grid_location."""

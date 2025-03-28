@@ -25,6 +25,7 @@ from quam_experiments.workflow import simulate_and_plot
 from quam_libs.xarray_data_fetcher import XarrayDataFetcher
 
 
+# %% {Description}
 description = """
         RAMSEY WITH VIRTUAL Z ROTATIONS
 The program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement) for different idle times.
@@ -60,7 +61,7 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 node.machine = QuAM.load()
 
 
-# %% {QUA_program}
+# %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
@@ -151,7 +152,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                     Q_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"Q{i + 1}")
 
 
-# %% {Simulate_or_execute}
+# %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
@@ -165,6 +166,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
+# %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -192,7 +194,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.save()
 
 
-# %% {Data_loading_and_dataset_creation}
+# %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, QuAM]):
     """Load a previously acquired dataset."""
@@ -204,7 +206,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["qubits"] = get_qubits(node)
 
 
-# %% {Data_analysis}
+# %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
@@ -220,7 +222,7 @@ def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     }
 
 
-# %% {Plotting}
+# %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""

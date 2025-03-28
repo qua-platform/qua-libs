@@ -55,6 +55,7 @@ from quam_experiments.workflow.simulation import simulate_and_plot
 from quam_experiments.parameters.qubits_experiment import get_qubits
 
 
+# %% {Description}
 description = """
         READOUT OPTIMISATION: FREQUENCY, POWER, DURATION
 This sequence involves measuring the state of the resonator in two scenarios: first,

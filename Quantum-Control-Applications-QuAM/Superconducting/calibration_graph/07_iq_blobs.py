@@ -26,6 +26,7 @@ from quam_experiments.workflow import simulate_and_plot
 from quam_libs.xarray_data_fetcher import XarrayDataFetcher
 
 
+# %% {Description}
 description = """
         IQ BLOBS
 This sequence involves measuring the state of the resonator 'N' times, first after
@@ -72,7 +73,7 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 node.machine = QuAM.load()
 
 
-# %% {QUA_program}
+# %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """
@@ -144,7 +145,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 Q_e_st[i].save_all(f"Qe{i + 1}")
 
 
-# %% {Simulate_or_execute}
+# %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
@@ -158,6 +159,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
+# %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """
@@ -188,7 +190,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
 
 
-# %% {Data_loading_and_dataset_creation}
+# %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, QuAM]):
     """Load a previously acquired dataset."""
@@ -200,7 +202,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["qubits"] = get_qubits(node)
 
 
-# %% {Data_analysis}
+# %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """
@@ -218,7 +220,7 @@ def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     }
 
 
-# %% {Plotting}
+# %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """
