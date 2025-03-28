@@ -18,6 +18,8 @@ from quam_libs.save_utils import fetch_results_as_xarray
 from quam_experiments.analysis.fit import peaks_dips
 from quam_experiments.parameters.qubits_experiment import get_qubits
 
+
+# %% {Description}
 description = """
         EF QUBIT SPECTROSCOPY
 This sequence involves sending a saturation pulse to the qubit, placing it in a mixed
@@ -82,7 +84,7 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
     pass
 
 
-# %% {Initialize_QuAM_and_QOP}
+# %% {Execute_QUA_program}
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
@@ -98,8 +100,6 @@ if node.parameters.load_data_id is None:
 node.namespace["qubits"] = qubits = get_qubits(node)
 num_qubits = len(qubits)
 
-
-# %% {QUA_program}
 operation = node.parameters.operation  # The qubit operation to play
 n_avg = node.parameters.num_averages  # The number of averages
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
