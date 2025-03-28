@@ -79,7 +79,7 @@ Next steps before going to the next node:
 """
 
 node = QualibrationNode[Parameters, QuAM](
-    name="07d_Readout_Frequency_Duration_Power_Optimization",
+    name="08c_readout_frequency_duration_power_optimization",
     description=description,
     parameters=Parameters(
         qubits=None,

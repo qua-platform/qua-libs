@@ -68,7 +68,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode[Parameters, QuAM](
-    name="11a_Qubit_Spectroscopy_E_to_F",
+    name="12a_qubit_spectroscopy_e_to_f.py",
     description=description,
     parameters=Parameters(),
 )

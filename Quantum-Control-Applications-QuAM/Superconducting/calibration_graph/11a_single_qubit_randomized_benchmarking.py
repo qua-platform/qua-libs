@@ -56,7 +56,7 @@ Prerequisites:
 
 
 node = QualibrationNode[Parameters, QuAM](
-    name="10a_Single_Qubit_Randomized_Benchmarking",
+    name="11a_single_qubit_randomized_benchmarking",
     description=description,
     parameters=Parameters(),
 )

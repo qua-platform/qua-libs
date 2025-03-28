@@ -46,7 +46,7 @@ Before proceeding to the next node:
 
 
 node = QualibrationNode[Parameters, QuAM](
-    name="03b_Qubit_Spectroscopy_vs_Flux",
+    name="03b_qubit_spectroscopy_vs_flux",
     description=description,
     parameters=Parameters(),
 )

@@ -45,7 +45,7 @@ The data undergoes post-processing to calibrate three distinct parameters:
 
 
 node = QualibrationNode[Parameters, QuAM](
-    name="01b_Time_of_Flight_MW_FEM", description=description, parameters=Parameters()
+    name="01b_time_of_flight_mw_fem", description=description, parameters=Parameters()
 )
 
 

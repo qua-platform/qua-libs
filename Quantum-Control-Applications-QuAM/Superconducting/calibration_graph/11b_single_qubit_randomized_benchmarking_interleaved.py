@@ -69,7 +69,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode[Parameters, QuAM](
-    name="10b_Single_Qubit_Randomized_Benchmarking_Interleaved",
+    name="11b_single_qubit_randomized_benchmarking_interleaved",
     description=description,
     parameters=Parameters(),
 )

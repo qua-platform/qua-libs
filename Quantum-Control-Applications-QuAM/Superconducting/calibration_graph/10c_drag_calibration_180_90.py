@@ -62,7 +62,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode[Parameters, QuAM](
-    name="09c_DRAG_Calibration_180_90", description=description, parameters=Parameters()
+    name="10c_drag_calibration_180_90", description=description, parameters=Parameters()
 )
 
 
