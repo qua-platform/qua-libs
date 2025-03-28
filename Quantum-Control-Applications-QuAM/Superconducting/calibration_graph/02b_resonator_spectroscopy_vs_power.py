@@ -28,6 +28,7 @@ from quam_libs.power_tools import calculate_voltage_scaling_factor
 from quam_libs.trackable_object import tracked_updates
 
 
+# %% {Initialisation}
 description = """
         RESONATOR SPECTROSCOPY VERSUS READOUT POWER
 This sequence involves measuring the resonator by sending a readout pulse and
@@ -61,6 +62,7 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.qubits = ["q1", "q3"]
     pass
 
 
@@ -68,7 +70,7 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 node.machine = QuAM.load()
 
 
-# %% {QUA_program}
+# %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
@@ -148,7 +150,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 Q_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 
-# %% {Simulate_or_execute}
+# %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
@@ -162,6 +164,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
+# %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -188,7 +191,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.results["ds_raw"] = dataset
 
 
-# %% {Data_loading_and_dataset_creation}
+# %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, QuAM]):
     """Load a previously acquired dataset."""
@@ -200,9 +203,9 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["qubits"] = get_qubits(node)
 
 
-# %% {Data_analysis}
+# %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def data_analysis(node: QualibrationNode[Parameters, QuAM]):
+def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
@@ -216,9 +219,9 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     }
 
 
-# %% {Plotting}
+# %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def data_plotting(node: QualibrationNode[Parameters, QuAM]):
+def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
@@ -228,10 +231,10 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def state_update(node: QualibrationNode[Parameters, QuAM]):
+def update_state(node: QualibrationNode[Parameters, QuAM]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     # Revert the change done at the beginning of the node
-    for tracked_resonator in node.namespace["tracked_resonators"]:
+    for tracked_resonator in node.namespace.get("tracked_resonators", []):
         tracked_resonator.revert_changes()
 
     # Update the state

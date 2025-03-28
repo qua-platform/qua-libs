@@ -23,7 +23,7 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_averages: int = 100
     time_of_flight_in_ns: Optional[int] = 28
-    readout_amplitude_in_dBm: Optional[float] = -3
+    readout_amplitude_in_dBm: Optional[float] = -12
     readout_length_in_ns: Optional[int] = 1000
 
 

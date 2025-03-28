@@ -14,7 +14,7 @@ class NodeSpecificParameters(RunnableParameters):
     num_averages: int = 100
     frequency_detuning_in_mhz: float = 1.0
     min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 3000
+    max_wait_time_in_ns: int = 30000
     wait_time_num_points: int = 500
     log_or_linear_sweep: Literal["log", "linear"] = "log"
 
@@ -28,7 +28,9 @@ class Parameters(
     pass
 
 
-def get_idle_times_in_clock_cycles(node_parameters: NodeSpecificParameters) -> np.ndarray:
+def get_idle_times_in_clock_cycles(
+    node_parameters: NodeSpecificParameters,
+) -> np.ndarray:
     """
     Get the idle-times sweep axis according to the sweep type.
 
@@ -45,7 +47,9 @@ def get_idle_times_in_clock_cycles(node_parameters: NodeSpecificParameters) -> n
     return idle_times
 
 
-def _get_idle_times_linear_sweep_in_clock_cycles(node_parameters: NodeSpecificParameters):
+def _get_idle_times_linear_sweep_in_clock_cycles(
+    node_parameters: NodeSpecificParameters,
+):
     return (
         np.linspace(
             node_parameters.min_wait_time_in_ns,

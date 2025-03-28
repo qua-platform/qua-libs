@@ -5,9 +5,7 @@ from quam_libs.qua_datasets import convert_IQ_to_V
 from quam_libs.save_utils import fetch_results_as_xarray
 
 
-def fetch_dataset(
-    job, qubits, node_parameters: Parameters, sweep_axes: dict
-) -> xr.Dataset:
+def fetch_dataset(job, qubits, node_parameters: Parameters, sweep_axes: dict) -> xr.Dataset:
     """
     Fetches and processes a dataset from a quantum job.
 

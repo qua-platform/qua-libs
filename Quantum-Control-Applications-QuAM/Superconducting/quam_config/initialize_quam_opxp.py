@@ -31,16 +31,12 @@ for i in range(len(machine.qubits.items())):
 rr_freq = np.array([4.395, 4.412, 4.521, 4.785]) * u.GHz
 rr_lo = 4.75 * u.GHz
 rr_if = rr_freq - rr_lo
-assert np.all(
-    np.abs(rr_if) < 400 * u.MHz
-), "The resonator intermediate frequency must be within [-400; 400] MHz."
+assert np.all(np.abs(rr_if) < 400 * u.MHz), "The resonator intermediate frequency must be within [-400; 400] MHz."
 # Qubit drive frequencies
 xy_freq = np.array([6.012, 6.20, 6.4, 6.79]) * u.GHz
 xy_lo = np.array([6.0, 6.0, 6.5, 6.5]) * u.GHz
 xy_if = xy_freq - xy_lo
-assert np.all(
-    np.abs(xy_if) < 400 * u.MHz
-), "The xy intermediate frequency must be within [-400; 400] MHz."
+assert np.all(np.abs(xy_if) < 400 * u.MHz), "The xy intermediate frequency must be within [-400; 400] MHz."
 
 ########################################################################################################################
 # %%                             Initialize the QuAM with the initial qubit parameters
@@ -50,23 +46,15 @@ for i, q in enumerate(machine.qubits):
     ## Update qubit rr freq and power
     machine.qubits[q].resonator.f_01 = rr_freq[i]
     machine.qubits[q].resonator.RF_frequency = machine.qubits[q].resonator.f_01
-    machine.qubits[q].resonator.frequency_converter_up.LO_frequency = (
-        rr_lo  # [2 : 0.250 : 18] GHz
-    )
+    machine.qubits[q].resonator.frequency_converter_up.LO_frequency = rr_lo  # [2 : 0.250 : 18] GHz
     machine.qubits[q].resonator.frequency_converter_up.gain = 0  # [-20 : 0.5 : 20] dB
-    machine.qubits[q].resonator.frequency_converter_up.output_mode = (
-        "always_on"  # "always_on" or "triggered"
-    )
+    machine.qubits[q].resonator.frequency_converter_up.output_mode = "always_on"  # "always_on" or "triggered"
     ## Update qubit xy freq and power
     machine.qubits[q].f_01 = xy_freq[i]
     machine.qubits[q].xy.RF_frequency = machine.qubits[q].f_01
-    machine.qubits[q].xy.frequency_converter_up.LO_frequency = xy_lo[
-        i
-    ]  # [2 : 0.250 : 18] GHz
+    machine.qubits[q].xy.frequency_converter_up.LO_frequency = xy_lo[i]  # [2 : 0.250 : 18] GHz
     machine.qubits[q].xy.frequency_converter_up.gain = 0  # [-20 : 0.5 : 20] dB
-    machine.qubits[q].xy.frequency_converter_up.output_mode = (
-        "always_on"  # "always_on" or "triggered"
-    )
+    machine.qubits[q].xy.frequency_converter_up.output_mode = "always_on"  # "always_on" or "triggered"
 
     ## Update pulses
     # readout
@@ -77,13 +65,9 @@ for i, q in enumerate(machine.qubits):
     machine.qubits[q].xy.operations["saturation"].amplitude = 0.25
 
     # Single qubit gates - DragCosine & Square
-    add_DragCosine_pulses(
-        machine.qubits[q], amplitude=0.25, length=48, alpha=0.0, detuning=0
-    )
+    add_DragCosine_pulses(machine.qubits[q], amplitude=0.25, length=48, alpha=0.0, detuning=0)
     # Single Gaussian flux pulse
-    machine.qubits[q].z.operations["gauss"] = GaussianPulse(
-        amplitude=0.1, length=200, sigma=40
-    )
+    machine.qubits[q].z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
 
 ########################################################################################################################
 # %%                                         Save the updated QuAM

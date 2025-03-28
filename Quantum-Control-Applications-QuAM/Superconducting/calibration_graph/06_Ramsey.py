@@ -1,6 +1,5 @@
 # %% {Imports}
 import matplotlib.pyplot as plt
-import numpy as np
 import xarray as xr
 from dataclasses import asdict
 
@@ -26,6 +25,7 @@ from quam_experiments.workflow import simulate_and_plot
 from quam_libs.xarray_data_fetcher import XarrayDataFetcher
 
 
+# %% {Description}
 description = """
         RAMSEY WITH VIRTUAL Z ROTATIONS
 The program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement) for different idle times.
@@ -45,7 +45,7 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-node = QualibrationNode[Parameters, QuAM](name="06_Ramsey", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, QuAM](name="06_ramsey", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -61,7 +61,7 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 node.machine = QuAM.load()
 
 
-# %% {QUA_program}
+# %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
@@ -72,7 +72,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     num_qubits = len(qubits)
 
     n_avg = node.parameters.num_averages
-    from quam_experiments.experiments.ramsey.parameters import get_idle_times_in_clock_cycles
+    from quam_experiments.experiments.ramsey.parameters import (
+        get_idle_times_in_clock_cycles,
+    )
 
     idle_times = get_idle_times_in_clock_cycles(node.parameters)
     detuning = node.parameters.frequency_detuning_in_mhz * u.MHz
@@ -124,11 +126,10 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                                 )
 
                             # with strict_timing_():
-                            for i, qubit in multiplexed_qubits.items():
-                                qubit.xy.play("x90")
-                                qubit.xy.frame_rotation_2pi(virtual_detuning_phases[i])
-                                qubit.xy.wait(idle_time)
-                                qubit.xy.play("x90")
+                            qubit.xy.play("x90")
+                            qubit.xy.frame_rotation_2pi(virtual_detuning_phases[i])
+                            qubit.xy.wait(idle_time)
+                            qubit.xy.play("x90")
 
                         align()
                         for i, qubit in multiplexed_qubits.items():
@@ -151,7 +152,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                     Q_st[i].buffer(len(detuning_signs)).buffer(len(idle_times)).average().save(f"Q{i + 1}")
 
 
-# %% {Simulate_or_execute}
+# %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
@@ -165,6 +166,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
+# %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -192,7 +194,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.save()
 
 
-# %% {Data_loading_and_dataset_creation}
+# %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, QuAM]):
     """Load a previously acquired dataset."""
@@ -204,9 +206,9 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["qubits"] = get_qubits(node)
 
 
-# %% {Data_analysis}
+# %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def data_analysis(node: QualibrationNode[Parameters, QuAM]):
+def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
@@ -220,9 +222,9 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
     }
 
 
-# %% {Plotting}
+# %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def data_plotting(node: QualibrationNode[Parameters, QuAM]):
+def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
@@ -232,16 +234,14 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def state_update(node: QualibrationNode[Parameters, QuAM]):
+def update_state(node: QualibrationNode[Parameters, QuAM]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
-            if node.outcomes[q.name] == "failed":
-                continue
-
-            # fit_results = node.results["fit_results"][q.name]
-            # q.xy.intermediate_frequency -= float(fit_results["freq_offset"])
-            # q.T2ramsey = float(fit_results["decay"])
+            if node.results["fit_results"][q.name]["success"]:
+                q.f_01 -= float(node.results["fit_results"][q.name]["freq_offset"])
+                q.xy.RF_frequency = q.f_01
+                q.T2ramsey = float(node.results["fit_results"][q.name]["decay"])
 
 
 # %% {Save_results}

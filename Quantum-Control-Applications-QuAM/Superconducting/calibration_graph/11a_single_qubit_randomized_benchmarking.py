@@ -56,7 +56,7 @@ Prerequisites:
 
 
 node = QualibrationNode[Parameters, QuAM](
-    name="10a_Single_Qubit_Randomized_Benchmarking",
+    name="11a_single_qubit_randomized_benchmarking",
     description=description,
     parameters=Parameters(),
 )
@@ -416,7 +416,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Data_analysis}
 @node.run_action(skip_if=node.parameters.simulate)
-def data_analysis(node: QualibrationNode[Parameters, QuAM]):
+def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
@@ -432,7 +432,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
-def data_plotting(node: QualibrationNode[Parameters, QuAM]):
+def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
@@ -440,7 +440,7 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     node.results["figure_amplitude"] = fig_raw_fit
 
 
-# todo: no state update?
+# TODO: no state update?
 
 
 # %% {Save_results}

@@ -54,9 +54,7 @@ def convert_IQ_to_V(
         coords=[("qubit", [q.name for q in qubits])],
     )
     demod_factor = 2 if single_demod else 1
-    return da.assign(
-        {key: da[key] * demod_factor * 2**12 / readout_lengths for key in IQ_list}
-    )
+    return da.assign({key: da[key] * demod_factor * 2**12 / readout_lengths for key in IQ_list})
 
 
 def add_amplitude_and_phase(
@@ -195,9 +193,7 @@ def subtract_slope(da: xr.DataArray, dim: str) -> xr.DataArray:
         evaluated = np.apply_along_axis(eval_func, -1, pf)
         return arr - evaluated
 
-    return xr.apply_ufunc(
-        sub_slope, da, input_core_dims=[[dim]], output_core_dims=[[dim]]
-    )
+    return xr.apply_ufunc(sub_slope, da, input_core_dims=[[dim]], output_core_dims=[[dim]])
 
 
 def unrotate_phase(da: xr.DataArray, dim: str) -> xr.DataArray:
@@ -228,14 +224,10 @@ def unrotate_phase(da: xr.DataArray, dim: str) -> xr.DataArray:
         evaluated_angle = np.apply_along_axis(eval_func, -1, pf)
         return arr * np.exp(-1j * evaluated_angle)
 
-    return xr.apply_ufunc(
-        unrotate, da, input_core_dims=[[dim]], output_core_dims=[[dim]]
-    )
+    return xr.apply_ufunc(unrotate, da, input_core_dims=[[dim]], output_core_dims=[[dim]])
 
 
-def integer_histogram(
-    da: xr.DataArray, dim: str, min_length: Optional[int] = None
-) -> xr.DataArray:
+def integer_histogram(da: xr.DataArray, dim: str, min_length: Optional[int] = None) -> xr.DataArray:
     """Calculate histogram of non-negative integer values of data array along
     a dimension.
 

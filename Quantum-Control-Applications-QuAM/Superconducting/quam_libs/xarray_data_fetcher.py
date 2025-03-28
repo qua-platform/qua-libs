@@ -37,7 +37,7 @@ class XarrayDataFetcher:
     Class to fetch data using a QmJob and update an xarray.Dataset with the acquired data.
     """
 
-    ignore_handles = ["readout", "readout_timestamps"]
+    ignore_handles = ["readout", "readout_timestamps", "__qpu_execution_time_seconds", "__total_python_runtime_seconds"]
     missing_data_value = 0  # np.nan
 
     def __init__(
@@ -120,11 +120,9 @@ class XarrayDataFetcher:
                 continue
 
             logger.debug(f"Fetching data for handle: {data_label}")
-            latest_data = self.job.result_handles[data_label].fetch_all()
+            latest_data = self.job.result_handles.get(data_label).fetch_all()
             self._raw_data[data_label] = latest_data
-            logger.debug(
-                f"Data fetched for {data_label}: shape {np.shape(latest_data)}"
-            )
+            logger.debug(f"Data fetched for {data_label}: shape {np.shape(latest_data)}")
 
     def initialize_dataset(self):
         """
@@ -152,11 +150,7 @@ class XarrayDataFetcher:
             if not isinstance(data_component, (np.ndarray, type(None))):
                 self.data[data_label] = data_component
 
-        raw_data_arrays = {
-            k: v
-            for k, v in self._raw_data.items()
-            if isinstance(v, (np.ndarray, type(None)))
-        }
+        raw_data_arrays = {k: v for k, v in self._raw_data.items() if isinstance(v, (np.ndarray, type(None)))}
 
         if not raw_data_arrays:
             logger.debug("No raw data entries to update; returning current dataset.")
@@ -178,11 +172,7 @@ class XarrayDataFetcher:
             ref_shape = data_arrays[0].shape
             for d in data_arrays:
                 if d.shape != ref_shape:
-                    logger.error(
-                        "Mismatch in shapes of raw data arrays: {}".format(
-                            [d.shape for d in data_arrays]
-                        )
-                    )
+                    logger.error("Mismatch in shapes of raw data arrays: {}".format([d.shape for d in data_arrays]))
                     raise ValueError("All arrays must have the same shape")
         else:
             # All entries are None; use axes shape as the reference.
@@ -192,14 +182,10 @@ class XarrayDataFetcher:
 
         # Delegate to the correct update method.
         if axes_shape == ref_shape:
-            logger.debug(
-                "Axes shape matches raw data shape. Updating regular data arrays."
-            )
+            logger.debug("Axes shape matches raw data shape. Updating regular data arrays.")
             self._update_regular_data_arrays(raw_data_arrays, dims_order, axes_shape)
         elif len(axes_shape) == len(ref_shape) + 1 and axes_shape[1:] == ref_shape:
-            logger.debug(
-                "Axes shape has an extra dimension (qubit axis). Updating qubit data arrays."
-            )
+            logger.debug("Axes shape has an extra dimension (qubit axis). Updating qubit data arrays.")
             self._update_qubit_data_arrays(raw_data_arrays, dims_order)
         else:
             logger.error(
@@ -210,9 +196,7 @@ class XarrayDataFetcher:
         logger.debug("Dataset update complete.")
         return self.dataset
 
-    def _fill_missing_data(
-        self, data: Optional[np.ndarray], shape: tuple
-    ) -> np.ndarray:
+    def _fill_missing_data(self, data: Optional[np.ndarray], shape: tuple) -> np.ndarray:
         """
         Helper function to fill missing data.
 
@@ -239,17 +223,13 @@ class XarrayDataFetcher:
         logger.debug("Updating dataset without axes.")
         for label, data in raw_data.items():
             if data is None:
-                logger.debug(
-                    f"Data for variable '{label}' is None; filling with scalar NaN."
-                )
+                logger.debug(f"Data for variable '{label}' is None; filling with scalar NaN.")
                 data = np.nan
             else:
                 logger.debug(f"Updating variable '{label}' with shape {data.shape}.")
             self.dataset[label] = xr.DataArray(data)
 
-    def _update_regular_data_arrays(
-        self, raw_data: Dict[str, Any], dims_order: List[str], fill_shape: tuple
-    ):
+    def _update_regular_data_arrays(self, raw_data: Dict[str, Any], dims_order: List[str], fill_shape: tuple):
         """
         Update the dataset by directly assigning each raw data entry as a new variable.
         If a raw data entry is None, it is replaced with an array of NaNs with the given fill_shape.
@@ -262,16 +242,10 @@ class XarrayDataFetcher:
         logger.debug("Updating regular data arrays with coordinates.")
         for label, data in raw_data.items():
             filled_data = self._fill_missing_data(data, fill_shape)
-            logger.debug(
-                f"Updating variable '{label}' with dims {dims_order} and shape {filled_data.shape}."
-            )
-            self.dataset[label] = xr.DataArray(
-                filled_data, dims=dims_order, coords=self.axes
-            )
+            logger.debug(f"Updating variable '{label}' with dims {dims_order} and shape {filled_data.shape}.")
+            self.dataset[label] = xr.DataArray(filled_data, dims=dims_order, coords=self.axes)
 
-    def _update_qubit_data_arrays(
-        self, raw_data: Dict[str, Any], dims_order: List[str]
-    ):
+    def _update_qubit_data_arrays(self, raw_data: Dict[str, Any], dims_order: List[str]):
         """
         Group raw data keys matching the pattern {label}{idx} and stack them along a new dimension.
         If a raw data entry is None, it is replaced with an array of NaNs.
@@ -298,9 +272,7 @@ class XarrayDataFetcher:
                 grouped.setdefault(base, []).append((idx, filled_data))
             else:
                 filled_data = self._fill_missing_data(data, non_qubit_shape)
-                logger.debug(
-                    f"Key '{key}' does not match pattern; updating without qubit axis."
-                )
+                logger.debug(f"Key '{key}' does not match pattern; updating without qubit axis.")
                 self.dataset[key] = xr.DataArray(
                     filled_data,
                     dims=dims_order[1:],
@@ -312,9 +284,7 @@ class XarrayDataFetcher:
             arrays = [item[1] for item in items]
             logger.debug(f"Stacking {len(arrays)} arrays for variable '{base}'.")
             stacked = np.stack(arrays, axis=0)
-            self.dataset[base] = xr.DataArray(
-                stacked, dims=[dims_order[0]] + dims_order[1:], coords=self.axes
-            )
+            self.dataset[base] = xr.DataArray(stacked, dims=[dims_order[0]] + dims_order[1:], coords=self.axes)
 
     @timer_decorator
     def is_processing(self):

@@ -21,7 +21,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode[Parameters, QuAM](
-    name="01a_Mixer_Calibration", description=description, parameters=Parameters()
+    name="01a_mixer_calibration", description=description, parameters=Parameters()
 )
 
 

@@ -9,7 +9,7 @@ description = """
 
 
 node = QualibrationNode[NodeParameters, QuAM](
-    name="00_Close_other_QMs", description=description, parameters=NodeParameters()
+    name="00_close_other_qms", description=description, parameters=NodeParameters()
 )
 
 

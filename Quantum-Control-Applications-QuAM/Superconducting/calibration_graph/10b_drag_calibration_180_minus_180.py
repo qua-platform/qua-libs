@@ -54,7 +54,7 @@ Next steps before going to the next node:
 
 
 node = QualibrationNode[Parameters, QuAM](
-    name="09b_DRAG_Calibration_180_minus_180",
+    name="10b_drag_calibration_180_minus_180",
     description=description,
     parameters=Parameters(),
 )
@@ -133,18 +133,39 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                             # Loop for error amplification (perform many qubit pulses)
                             with for_(count, 0, count < npi, count + 1):
                                 if node.parameters.operation == "x180":
-                                    play(node.parameters.operation * amp(1, 0, 0, a), qubit.xy.name)
-                                    play(node.parameters.operation * amp(-1, 0, 0, -a), qubit.xy.name)
+                                    play(
+                                        node.parameters.operation * amp(1, 0, 0, a),
+                                        qubit.xy.name,
+                                    )
+                                    play(
+                                        node.parameters.operation * amp(-1, 0, 0, -a),
+                                        qubit.xy.name,
+                                    )
                                 elif node.parameters.operation == "x90":
-                                    play(node.parameters.operation * amp(1, 0, 0, a), qubit.xy.name)
-                                    play(node.parameters.operation * amp(1, 0, 0, a), qubit.xy.name)
-                                    play(node.parameters.operation * amp(-1, 0, 0, -a), qubit.xy.name)
-                                    play(node.parameters.operation * amp(-1, 0, 0, -a), qubit.xy.name)
+                                    play(
+                                        node.parameters.operation * amp(1, 0, 0, a),
+                                        qubit.xy.name,
+                                    )
+                                    play(
+                                        node.parameters.operation * amp(1, 0, 0, a),
+                                        qubit.xy.name,
+                                    )
+                                    play(
+                                        node.parameters.operation * amp(-1, 0, 0, -a),
+                                        qubit.xy.name,
+                                    )
+                                    play(
+                                        node.parameters.operation * amp(-1, 0, 0, -a),
+                                        qubit.xy.name,
+                                    )
 
                         align()
                         for i, qubit in multiplexed_qubits.items():
                             qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                            assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
+                            assign(
+                                state[i],
+                                I[i] > qubit.resonator.operations["readout"].threshold,
+                            )
                             save(state[i], state_stream[i])
 
         with stream_processing():
@@ -208,7 +229,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Data_analysis}
 @node.run_action(skip_if=node.parameters.simulate)
-def data_analysis(node: QualibrationNode[Parameters, QuAM]):
+def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
@@ -224,7 +245,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
-def data_plotting(node: QualibrationNode[Parameters, QuAM]):
+def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
@@ -234,11 +255,11 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def state_update(node: QualibrationNode[Parameters, QuAM]):
+def update_state(node: QualibrationNode[Parameters, QuAM]):
     """Update the relevant parameters if the qubit data analysis was successful."""
 
     # Revert the change done at the beginning of the node
-    for qubit in node.namespace["tracked_qubits"]:
+    for qubit in node.namespace.get("tracked_qubits", []):
         qubit.revert_changes()
 
     with node.record_state_updates():

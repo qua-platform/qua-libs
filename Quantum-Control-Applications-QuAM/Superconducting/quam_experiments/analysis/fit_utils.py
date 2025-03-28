@@ -31,17 +31,13 @@ def _S21_single(w, A, k, omega_0, omega_r, Q, Qe_real, Qe_imag):
     # and a linear slope of the transmission far from resonance
 
     Qe = Qe_real + 1j * Qe_imag
-    return (A + k * w) * (
-        1 - ((Q / Qe) / (1 + 2 * 1j * Q * (w - omega_r) / (omega_0 + omega_r)))
-    )
+    return (A + k * w) * (1 - ((Q / Qe) / (1 + 2 * 1j * Q * (w - omega_r) / (omega_0 + omega_r))))
 
 
 def _truncate_data(transmission, window):
     ds_diff = np.abs(transmission.diff(dim="freq"))
     peak_freq = ds_diff.IQ_abs.idxmax(dim="freq")
-    truncated_transmission = transmission.sel(
-        freq=slice(peak_freq - window, peak_freq + window)
-    )
+    truncated_transmission = transmission.sel(freq=slice(peak_freq - window, peak_freq + window))
     return truncated_transmission
 
 
@@ -171,9 +167,7 @@ def fit_resonator_purcell(
 
 def _guess_single(transmission, frequency_LO_IF, rolling_window, window):
     def find_upper_envelope(transmission, rolling_window):
-        rolling_transmission = transmission.IQ_abs.rolling(
-            freq=rolling_window, center=True
-        ).mean()
+        rolling_transmission = transmission.IQ_abs.rolling(freq=rolling_window, center=True).mean()
         peak_indices, _ = find_peaks(rolling_transmission)
         # include the edges of the range in the envelope fit in case there aren't many inside peaks to use
         peak_indices = np.append([rolling_window, -1], peak_indices)
@@ -189,17 +183,10 @@ def _guess_single(transmission, frequency_LO_IF, rolling_window, window):
     # plt.show()
 
     omega_r = transmission.IQ_abs.idxmin(dim="freq")
-    Q = (
-        frequency_LO_IF
-        / np.abs(
-            (transmission.IQ_abs.diff(dim="freq").idxmin(dim="freq") - omega_r)
-        ).values
-    )
+    Q = frequency_LO_IF / np.abs((transmission.IQ_abs.diff(dim="freq").idxmin(dim="freq") - omega_r)).values
     Q = Q if Q < 1e4 else 1e4
     Q = 1e4
-    Qe = Q / (
-        1 - transmission.IQ_abs.min(dim="freq") / transmission.IQ_abs.max(dim="freq")
-    )
+    Qe = Q / (1 - transmission.IQ_abs.min(dim="freq") / transmission.IQ_abs.max(dim="freq"))
 
     Qe = Qe if Qe > Q else Q
 
@@ -241,9 +228,7 @@ class _single_resonator(Model):
                 window=self.window,
             )
 
-        data = (
-            transmission_trunc.IQ_abs * np.exp(1j * transmission_trunc.phase)
-        ).values
+        data = (transmission_trunc.IQ_abs * np.exp(1j * transmission_trunc.phase)).values
         f = transmission_trunc.freq.values
 
         result = self.fit(data, w=f, params=init_guess)
@@ -251,9 +236,7 @@ class _single_resonator(Model):
         return result
 
 
-def fit_resonator(
-    s21_data: xr.Dataset, frequency_LO_IF: float, print_report: bool = False
-):
+def fit_resonator(s21_data: xr.Dataset, frequency_LO_IF: float, print_report: bool = False):
     """Fits the measured complex transmission as a function of frequency
     and fits it to a model consisting of a single resonator, as described in
     arxiv:1108.3117.

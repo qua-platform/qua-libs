@@ -146,8 +146,6 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     #     node.results["adc_averaged"] = grid.fig
 
 
-
-
 def plot_adc_single_runs(ds, qubits) -> Figure:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):

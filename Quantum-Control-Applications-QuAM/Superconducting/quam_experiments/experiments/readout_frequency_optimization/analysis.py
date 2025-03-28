@@ -12,8 +12,11 @@ from quam_config.instrument_limits import instrument_limits
 
 @dataclass
 class FitParameters:
-    """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
+    """Stores the relevant readout frequency optimization experiment fit parameters for a single qubit"""
 
+    optimal_frequency: float
+    optimal_detuning: float
+    chi: float
     success: bool
     qubit_name: Optional[str] = ""
 
@@ -31,57 +34,32 @@ def log_fitted_results(fit_results: Dict, logger=None):
     """
     if logger is None:
         logger = logging.getLogger(__name__)
-    # for q in fit_results.keys():
-    #     s_qubit = f"Results for qubit {q}: "
-    #     s_freq = f"\tQubit frequency: {1e-9 * fit_results[q]['frequency']:.3f} GHz | "
-    #     s_fwhm = f"FWHM: {1e-3 * fit_results[q]['fwhm']:.1f} kHz | "
-    #     s_angle = (
-    #         f"The integration weight angle: {fit_results[q]['iw_angle']:.3f} rad\n "
-    #     )
-    #     s_saturation = f"To get the desired FWHM, the saturation amplitude is updated to: {1e3 * fit_results[q]['saturation_amp']:.1f} mV | "
-    #     s_x180 = f"To get the desired x180 gate, the x180 amplitude is updated to: {1e3 * fit_results[q]['x180_amp']:.1f} mV\n "
-    #     if fit_results[q]["success"]:
-    #         s_qubit += " SUCCESS!\n"
-    #     else:
-    #         s_qubit += " FAIL!\n"
-    #     logger.info(
-    #         s_qubit + s_freq + s_fwhm + s_freq + s_angle + s_saturation + s_x180
-    #     )
-    pass
+    for q in fit_results.keys():
+        s_qubit = f"Results for qubit {q}: "
+        s_freq = f"\tOptimal readout frequency: {1e-9 * fit_results[q]['optimal_frequency']:.3f} GHz (shifted by {1e-6 * fit_results[q]['optimal_detuning']:.2f} MHz) | "
+        s_chi = f"chi: {1e-6 * fit_results[q]['chi']:.2f} MHz\n"
+        if fit_results[q]["success"]:
+            s_qubit += " SUCCESS!\n"
+        else:
+            s_qubit += " FAIL!\n"
+        logger.info(s_qubit + s_freq + s_chi)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    # ds = convert_IQ_to_V(ds, node.namespace["qubits"])
-    # ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
-    # full_freq = np.array(
-    #     [ds.detuning + q.xy.RF_frequency for q in node.namespace["qubits"]]
-    # )
-    # ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
-    # ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
-    pass
-    # # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    # ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs})
-    # # Convert IQ data into volts
-    # ds = convert_IQ_to_V(ds, qubits, ["I_g", "Q_g", "I_e", "Q_e"])
-    # # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2) for |g> and |e> as well as the distance between the two blobs D
-    # ds = ds.assign(
-    #     {
-    #         "D": np.sqrt((ds.I_g - ds.I_e) ** 2 + (ds.Q_g - ds.Q_e) ** 2),
-    #         "IQ_abs_g": np.sqrt(ds.I_g ** 2 + ds.Q_g ** 2),
-    #         "IQ_abs_e": np.sqrt(ds.I_e ** 2 + ds.Q_e ** 2),
-    #     }
-    # )
-    # # Add the absolute frequency to the dataset
-    # ds = ds.assign_coords(
-    #     {
-    #         "freq_full": (
-    #             ["qubit", "freq"],
-    #             np.array([dfs + q.resonator.RF_frequency for q in qubits]),
-    #         )
-    #     }
-    # )
-    # ds.freq_full.attrs["long_name"] = "Frequency"
-    # ds.freq_full.attrs["units"] = "GHz"
+    # Convert IQ data into volts
+    ds = convert_IQ_to_V(ds, node.namespace["qubits"], ["I_g", "Q_g", "I_e", "Q_e"])
+    # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2) for |g> and |e> as well as the distance between the two blobs D
+    ds = ds.assign(
+        {
+            "D": np.sqrt((ds.I_g - ds.I_e) ** 2 + (ds.Q_g - ds.Q_e) ** 2),
+            "IQ_abs_g": np.sqrt(ds.I_g**2 + ds.Q_g**2),
+            "IQ_abs_e": np.sqrt(ds.I_e**2 + ds.Q_e**2),
+        }
+    )
+    # Add the absolute frequency to the dataset
+    full_freq = np.array([ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]])
+    ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
+    ds.full_freq.attrs = {"long_name": "Readout RF frequency", "units": "Hz"}
     return ds
 
 
@@ -101,35 +79,28 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     xr.Dataset
         Dataset containing the fit results.
     """
-    # # Get the readout detuning as the index of the maximum of the cumulative average of D
-    # detuning = ds.D.rolling({"freq": 5}).mean("freq").idxmax("freq")
-    # # Get the dispersive shift as the distance between the resonator frequency when the qubit is in |g> and |e>
-    # chi = (ds.IQ_abs_e.idxmin(dim="freq") - ds.IQ_abs_g.idxmin(dim="freq")) / 2
-    #
-    # # Save fitting results
-    # fit_results = {
-    #     q.name: {"detuning": detuning.loc[q.name].values, "chi": chi.loc[q.name].values}
-    #     for q in qubits
-    # }
-    # node.results["fit_results"] = fit_results
-    #
-    # for q in qubits:
-    #     print(
-    #         f"{q.name}: Shifting readout frequency by {fit_results[q.name]['detuning'] / 1e3:.0f} kHz"
-    #     )
-    #     print(f"{q.name}: Chi = {fit_results[q.name]['chi']:.2f} \n")
-
     ds_fit = ds
+
+    # Get the readout detuning as the index of the maximum of the cumulative average of D
+    ds_fit["optimal_index"] = ds_fit.D.rolling({"detuning": 5}).mean("detuning").argmax("detuning")
+    ds_fit["optimal_detuning"] = ds_fit.detuning.isel(detuning=ds_fit["optimal_index"])
+    ds_fit["optimal_frequency"] = ds_fit.full_freq.isel(detuning=ds_fit["optimal_index"])
+    # Get the dispersive shift as the distance between the resonator frequency when the qubit is in |g> and |e>
+    ds_fit["chi"] = (ds_fit.IQ_abs_e.idxmin(dim="detuning") - ds_fit.IQ_abs_g.idxmin(dim="detuning")) / 2
+
+    ds_fit, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
+    return ds_fit, fit_results
+
+
+def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode):
+    """Add metadata to the dataset and fit results."""
     fit_results = {
         q: FitParameters(
+            optimal_frequency=float(ds_fit["optimal_frequency"].sel(qubit=q).data),
+            optimal_detuning=float(ds_fit["optimal_detuning"].sel(qubit=q).data),
+            chi=float(ds_fit["chi"].sel(qubit=q).data),
             success=False,
         )
         for q in ds_fit.qubit.values
     }
     return ds_fit, fit_results
-
-
-def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
-    """Add metadata to the dataset and fit results."""
-    pass
-    # return fit, fit_results

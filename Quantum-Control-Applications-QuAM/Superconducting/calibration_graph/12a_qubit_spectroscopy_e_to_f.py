@@ -68,7 +68,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode[Parameters, QuAM](
-    name="11a_Qubit_Spectroscopy_E_to_F",
+    name="12a_qubit_spectroscopy_e_to_f.py",
     description=description,
     parameters=Parameters(),
 )
@@ -274,7 +274,7 @@ if not node.parameters.simulate:
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def state_update(node: QualibrationNode[Parameters, QuAM]):
+def update_state(node: QualibrationNode[Parameters, QuAM]):
     """Update the relevant parameters if the qubit data analysis was successful."""
 
     # Revert the change done at the beginning of the node

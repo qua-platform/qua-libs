@@ -5,15 +5,16 @@ import numpy as np
 import xarray as xr
 
 from qualibrate import QualibrationNode
-from quam_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
-from quam_experiments.analysis.fit import peaks_dips
-from quam_config.instrument_limits import instrument_limits
+from quam_libs.qua_datasets import convert_IQ_to_V
+from quam_experiments.analysis.fit import fit_decay_exp
 
 
 @dataclass
 class FitParameters:
     """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
 
+    T2_echo: float
+    T2_echo_error: float
     success: bool
     qubit_name: Optional[str] = ""
 
@@ -51,14 +52,7 @@ def log_fitted_results(fit_results: Dict, logger=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    # ds = convert_IQ_to_V(ds, node.namespace["qubits"])
-    # ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
-    # full_freq = np.array(
-    #     [ds.detuning + q.xy.RF_frequency for q in node.namespace["qubits"]]
-    # )
-    # ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
-    # ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
-    pass
+    ds = convert_IQ_to_V(ds, node.namespace["qubits"])
     return ds
 
 
@@ -80,39 +74,37 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     """
     ds_fit = ds
     # # Fit the exponential decay
-    # if node.parameters.use_state_discrimination:
-    #     fit_data = fit_decay_exp(ds.state, "idle_time")
-    # else:
-    #     fit_data = fit_decay_exp(ds.I, "idle_time")
-    # fit_data.attrs = {"long_name": "time", "units": "µs"}
-    # # Fitted decay
-    # fitted = decay_exp(
-    #     ds.idle_time,
-    #     fit_data.sel(fit_vals="a"),
-    #     fit_data.sel(fit_vals="offset"),
-    #     fit_data.sel(fit_vals="decay"),
-    # )
-    # # Decay rate and its uncertainty
-    # decay = fit_data.sel(fit_vals="decay")
-    # decay.attrs = {"long_name": "decay", "units": "ns"}
-    # decay_res = fit_data.sel(fit_vals="decay_decay")
-    # decay_res.attrs = {"long_name": "decay", "units": "ns"}
-    # # T1 and its uncertainty
-    # tau = -1 / fit_data.sel(fit_vals="decay")
-    # tau.attrs = {"long_name": "T1", "units": "µs"}
-    # tau_error = -tau * (np.sqrt(decay_res) / decay)
-    # tau_error.attrs = {"long_name": "T1 error", "units": "µs"}
-    # return fit_data, fit_results
+    if node.parameters.use_state_discrimination:
+        fit_data = fit_decay_exp(ds_fit.state, "idle_time")
+    else:
+        fit_data = fit_decay_exp(ds_fit.I, "idle_time")
+    ds_fit = xr.merge([ds, fit_data.rename("fit_data")])
+
+    ds_fit, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
+    return ds_fit, fit_results
+
+
+def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode):
+    """Add metadata to the dataset and fit results."""
+    # Decay rate and its uncertainty
+    decay = ds_fit.fit_data.sel(fit_vals="decay")
+    decay_res = ds_fit.fit_data.sel(fit_vals="decay_decay")
+    # T2 echo and its uncertainty
+    ds_fit["T2_echo"] = -1 / ds_fit.fit_data.sel(fit_vals="decay")
+    ds_fit["T2_echo"].attrs = {"long_name": "T2 echo", "units": "ns"}
+    ds_fit["T2_echo_error"] = -ds_fit["T2_echo"] * (np.sqrt(decay_res) / decay)
+    ds_fit["T2_echo_error"].attrs = {"long_name": "T2 echo error", "units": "ns"}
+    # Assess whether the fit was successful or not
+    nan_success = np.isnan(ds_fit["T2_echo"]) | np.isnan(ds_fit["T2_echo_error"])
+    success_criteria = ~nan_success
+    ds_fit = ds_fit.assign({"success": success_criteria})
+    # Populate the FitParameters class with fitted values
     fit_results = {
         q: FitParameters(
-            success=False,
+            T2_echo=1e-9 * float(ds_fit["T2_echo"].sel(qubit=q)),
+            T2_echo_error=1e-9 * float(ds_fit["T2_echo_error"].sel(qubit=q)),
+            success=bool(ds_fit["success"].sel(qubit=q)),
         )
         for q in ds_fit.qubit.values
     }
     return ds_fit, fit_results
-
-
-def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
-    """Add metadata to the dataset and fit results."""
-    pass
-    # return fit, fit_results
