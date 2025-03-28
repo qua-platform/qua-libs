@@ -71,11 +71,11 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "n_runs": xr.DataArray(np.linspace(1, n_runs, n_runs), attrs={"long_name": "number of shots"}),
-        "readout_amplitude": xr.DataArray(amps, attrs={"long_name": "readout amplitude", "units": ""}),
+        "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "readout amplitude", "units": ""}),
     }
     with program() as node.namespace["qua_program"]:
-        I_g, I_g_st, Q_g, Q_g_st, n, n_st = node.machine.qua_declaration()
-        I_e, I_e_st, Q_e, Q_e_st, _, _ = node.machine.qua_declaration()
+        Ig, Ig_st, Qg, Qg_st, n, n_st = node.machine.qua_declaration()
+        Ie, Ie_st, Qe, Qe_st, _, _ = node.machine.qua_declaration()
         a = declare(fixed)
 
         for multiplexed_qubits in qubits.batch():
@@ -92,33 +92,33 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                     for i, qubit in multiplexed_qubits.items():
                         qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
                     align()
-                    # Qubit manipulation
+                    # Qubit readout
                     for i, qubit in multiplexed_qubits.items():
-                        qubit.resonator.measure("readout", qua_vars=(I_g[i], Q_g[i]), amplitude_scale=a)
+                        qubit.resonator.measure("readout", qua_vars=(Ig[i], Qg[i]), amplitude_scale=a)
                         qubit.align()
                         # save data
-                        save(I_g[i], I_g_st[i])
-                        save(Q_g[i], Q_g_st[i])
+                        save(Ig[i], Ig_st[i])
+                        save(Qg[i], Qg_st[i])
 
                     # Qubit initialization
                     for i, qubit in multiplexed_qubits.items():
                         qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
                     align()
-                    # Qubit manipulation
+                    # Qubit readout
                     for i, qubit in multiplexed_qubits.items():
                         qubit.xy.play("x180")
                         qubit.align()
-                        qubit.resonator.measure("readout", qua_vars=(I_e[i], Q_e[i]), amplitude_scale=a)
-                        save(I_e[i], I_e_st[i])
-                        save(Q_e[i], Q_e_st[i])
+                        qubit.resonator.measure("readout", qua_vars=(Ie[i], Qe[i]), amplitude_scale=a)
+                        save(Ie[i], Ie_st[i])
+                        save(Qe[i], Qe_st[i])
 
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubits):
-                I_g_st[i].buffer(len(amps)).buffer(n_runs).save(f"I_g{i + 1}")
-                Q_g_st[i].buffer(len(amps)).buffer(n_runs).save(f"Q_g{i + 1}")
-                I_e_st[i].buffer(len(amps)).buffer(n_runs).save(f"I_e{i + 1}")
-                Q_e_st[i].buffer(len(amps)).buffer(n_runs).save(f"Q_e{i + 1}")
+                Ig_st[i].buffer(len(amps)).buffer(n_runs).save(f"Ig{i + 1}")
+                Qg_st[i].buffer(len(amps)).buffer(n_runs).save(f"Qg{i + 1}")
+                Ie_st[i].buffer(len(amps)).buffer(n_runs).save(f"Ie{i + 1}")
+                Qe_st[i].buffer(len(amps)).buffer(n_runs).save(f"Qe{i + 1}")
 
 
 # %% {Simulate}
