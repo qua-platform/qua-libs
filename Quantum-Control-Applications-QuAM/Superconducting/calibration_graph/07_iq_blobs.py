@@ -202,7 +202,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Data_analysis}
 @node.run_action(skip_if=node.parameters.simulate)
-def data_analysis(node: QualibrationNode[Parameters, QuAM]):
+def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """
     Analyse the raw data and store the fitted data in another xarray dataset "ds_fit"
     and the fitted results in the "fit_results" dictionary.
@@ -220,7 +220,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
-def data_plotting(node: QualibrationNode[Parameters, QuAM]):
+def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """
     Plot the raw and fitted data in specific figures whose shape is given by
     qubit.grid_location.
@@ -235,7 +235,7 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def state_update(node: QualibrationNode[Parameters, QuAM]):
+def update_state(node: QualibrationNode[Parameters, QuAM]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for q in node.namespace["qubits"]:

@@ -320,7 +320,7 @@ if not node.parameters.simulate:
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def state_update(node: QualibrationNode[Parameters, QuAM]):
+def update_state(node: QualibrationNode[Parameters, QuAM]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         optimal_output_powers = {}

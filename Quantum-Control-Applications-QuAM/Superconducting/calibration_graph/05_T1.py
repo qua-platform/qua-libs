@@ -201,7 +201,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Data_analysis}
 @node.run_action(skip_if=node.parameters.simulate, continue_on_failure=True)
-def data_analysis(node: QualibrationNode[Parameters, QuAM]):
+def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analysis the raw data and store the fitted data in another xarray dataset and the fitted results in the fit_results class."""
     # todo check the units with real data
     node.results["ds_fit"], fit_results = fit_t1_decay(
@@ -221,7 +221,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
-def data_plotting(node: QualibrationNode[Parameters, QuAM]):
+def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit.grid_location."""
     fig = plot_t1s_data_with_fit(
         node.results["ds_raw"],
@@ -236,7 +236,7 @@ def data_plotting(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def state_update(node: QualibrationNode[Parameters, QuAM]):
+def update_state(node: QualibrationNode[Parameters, QuAM]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
