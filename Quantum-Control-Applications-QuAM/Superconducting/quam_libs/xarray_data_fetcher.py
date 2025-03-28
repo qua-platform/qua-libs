@@ -37,7 +37,7 @@ class XarrayDataFetcher:
     Class to fetch data using a QmJob and update an xarray.Dataset with the acquired data.
     """
 
-    ignore_handles = ["readout", "readout_timestamps"]
+    ignore_handles = ["readout", "readout_timestamps", "__qpu_execution_time_seconds", "__total_python_runtime_seconds"]
     missing_data_value = 0  # np.nan
 
     def __init__(
