@@ -23,25 +23,21 @@ Before proceeding to the next node:
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
-
 from qm.qua import *
-
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-
 from qualibrate import QualibrationNode
 from qualibrate.utils.logger_m import logger
 from quam_config import QuAM
 from quam_experiments.experiments.resonator_spectroscopy import (
     Parameters,
-    process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
     plot_raw_amplitude_with_fit,
     plot_raw_phase,
+    process_raw_dataset,
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
@@ -114,8 +110,8 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
-            for qubit in multiplexed_qubits.values():
-                node.machine.initialize_qpu(target=qubit)
+            # for qubit in multiplexed_qubits.values():
+            #     node.machine.initialize_qpu(target=qubit, flux_point="joint")
             align()
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
@@ -176,9 +172,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())
+        # print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
+    node.results["res_handles"] = job.result_handles
 
 
 # %% {Load_data}

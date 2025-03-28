@@ -43,15 +43,15 @@ for i in range(len(machine.qubits.items())):
 # NOTE: be aware of coupled ports for bands
 
 # Resonator frequencies
-rr_freq = np.array([4.395, 4.412, 4.521, 4.728, 4.915, 5.147, 5.247, 5.347]) * u.GHz
-rr_LO = 4.75 * u.GHz
-rr_if = rr_freq - rr_LO
-rr_max_power_dBm = 4
+rr_LO = 7.3 * u.GHz
+rr_if = np.array([-195.259, 65.676, 173.263, -90.358, 314.717]) * u.MHz
+rr_freq = rr_LO + rr_if
+rr_max_power_dBm = -11
 # Qubit drive frequencies
-xy_freq = np.array([6.012, 6.421, 6.785, 7.001, 7.083, 7.121, 7.184, 7.254]) * u.GHz
-xy_LO = np.array([6.0, 6.1, 6.2, 6.3, 7.1, 7.1, 7.1, 7.1]) * u.GHz
-xy_if = xy_freq - xy_LO
-xy_max_power_dBm = 1
+xy_if = np.array([-61233912.75889075, -77535649.51958019, -83376227.86295825, -110908638.27407478, -4421577.538450614])
+xy_LO = np.array([5.0, 5.8, 5.7, 5.1, 5.8]) * u.GHz
+xy_freq = xy_if + xy_LO
+xy_max_power_dBm = 10
 
 
 ########################################################################################################################
@@ -61,7 +61,7 @@ for i, q in enumerate(machine.qubits):
     ## Update qubit rr freq and power
     machine.qubits[q].resonator.f_01 = rr_freq[i]
     machine.qubits[q].resonator.RF_frequency = machine.qubits[q].resonator.f_01
-    machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
+    # machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
     machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
     # machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
     machine.qubits[q].resonator.opx_input.band = get_band(rr_LO)
