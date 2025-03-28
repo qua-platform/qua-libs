@@ -19,6 +19,8 @@ from quam_libs.save_utils import fetch_results_as_xarray
 from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
 from quam_experiments.parameters.qubits_experiment import get_qubits
 
+
+# %% {Initialisation}
 description = """
         SINGLE QUBIT RANDOMIZED BENCHMARKING
 The program consists in playing random sequences of Clifford gates and measuring the
@@ -83,11 +85,12 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
     pass
 
 
-# %% {Initialize_QuAM_and_QOP}
-# Class containing tools to help handling units and conversions.
-u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
+
+# %% {Create_QUA_program}
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
 # Generate the OPX and Octave configurations
 
 config = node.machine.generate_config()
@@ -100,7 +103,6 @@ node.namespace["qubits"] = qubits = get_qubits(node)
 num_qubits = len(qubits)
 
 
-# %% {Utility functions}
 def get_interleaved_gate(gate_index):
     if gate_index == 0:
         return "I"
@@ -139,7 +141,6 @@ def get_interleaved_gate_index(gate_operation):
         raise ValueError(f"Gate operation {gate_operation} not recognized")
 
 
-# %% {QUA_program_parameters}
 num_of_sequences = node.parameters.num_random_sequences  # Number of random sequences
 # Number of averaging loops for each random sequence
 n_avg = node.parameters.num_averages
@@ -159,9 +160,6 @@ strict_timing = node.parameters.use_strict_timing
 # List of recovery gates from the lookup table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 interleaved_gate_index = get_interleaved_gate_index(node.parameters.interleaved_gate_operation)
-
-
-# %% {Utility functions}
 
 
 def power_law(power, a, b, p):
@@ -269,7 +267,6 @@ def play_sequence(sequence_list, depth, qubit):
                 qubit.xy.play("-x90")
 
 
-# %% {QUA_program}
 with program() as randomized_benchmarking:
     depth = declare(int)  # QUA variable for the varying depth
     # QUA variable for the current depth (changes in steps of delta_clifford)
@@ -337,7 +334,7 @@ with program() as randomized_benchmarking:
                 f"state{i + 1}"
             )
 
-# %% {Simulate_or_execute}
+# %% {Simulate}
 if node.parameters.simulate:
     simulation_config = SimulationConfig(duration=100_000)  # in clock cycles
     job = qmm.simulate(config, randomized_benchmarking, simulation_config)
@@ -351,7 +348,8 @@ if node.parameters.simulate:
     node.results["figure"] = plt.gcf()
     node.save()
 
-elif node.parameters.load_data_id is None:
+# %% {Execute}
+if not node.parameters.simulate and node.parameters.load_data_id is None:
     # Prepare data for saving
     node.results = {}
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
@@ -363,7 +361,8 @@ elif node.parameters.load_data_id is None:
             # Progress bar
             progress_counter(m, num_of_sequences, start_time=results.start_time)
 
-    # %% {Data_fetching_and_dataset_creation}
+# %% {Load_data}
+if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         depths = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
         depths[0] = 1
@@ -378,7 +377,9 @@ elif node.parameters.load_data_id is None:
         ds = node.results["ds"]
     # Add the dataset to the node
     node.results = {"ds": ds}
-    # %% {Data_analysis}
+
+# %% {Analyse_data}
+if not node.parameters.simulate:
     da_state = 1 - ds["state"].mean(dim="sequence")
     da_state: xr.DataArray
     da_state.attrs = {"long_name": "p(0)"}
@@ -406,7 +407,7 @@ elif node.parameters.load_data_id is None:
     node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
 
-# %% {Plotting}
+# %% {Plot_data}
 if not node.parameters.simulate:
     grid_names = [q.grid_location for q in qubits]
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
