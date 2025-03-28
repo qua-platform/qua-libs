@@ -51,6 +51,7 @@ node = QualibrationNode[Parameters, QuAM](name="05b_T2e", description=descriptio
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.qubits = ["q1", "q3"]
     pass
 
 
@@ -87,8 +88,8 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             state = [declare(int) for _ in range(num_qubits)]
             state_st = [declare_stream() for _ in range(num_qubits)]
 
-        shot = [declare(int) for _ in range(num_qubits)]
-        t = [declare(int) for _ in range(num_qubits)]
+        shot = declare(int)
+        t = declare(int)
 
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
@@ -97,33 +98,37 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             align()
 
             for i, qubit in multiplexed_qubits.items():
-                with for_(shot[i], 0, shot[i] < n_avg, shot[i] + 1):
-                    save(shot[i], n_st)
+                with for_(shot, 0, shot < n_avg, shot + 1):
+                    save(shot, n_st)
 
-                    with for_(*from_array(t[i], idle_times)):
-                        if node.parameters.reset_type == "active":
-                            qubit.reset_qubit_active()
-                        else:
-                            qubit.resonator.wait(qubit.thermalization_time * u.ns)
+                    with for_(*from_array(t, idle_times)):
+                        # Qubit initialization
+                        for i, qubit in multiplexed_qubits.items():
+                            reset_frame(qubit.xy.name)
+                            qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+                        align()
+
+                        # Qubit manipulation
+                        for i, qubit in multiplexed_qubits.items():
+                            qubit.xy.play("x90")
+                            qubit.xy.wait(t)
+                            qubit.xy.play("x180")
+                            qubit.xy.wait(t)
+                            qubit.xy.play("-x90")
                             qubit.align()
+                        align()
 
-                        qubit.xy.play("x90")
-                        qubit.xy.wait(t[i])
-                        qubit.xy.play("x180")
-                        qubit.xy.wait(t[i])
-                        qubit.xy.play("x90")
-                        qubit.xy.play("x180")
-                        qubit.align()
-
-                        # Measure the state of the resonators
-                        if node.parameters.use_state_discrimination:
-                            qubit.readout_state(state[i])
-                            save(state[i], state_st[i])
-                        else:
-                            qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                            # save data
-                            save(I[i], I_st[i])
-                            save(Q[i], Q_st[i])
+                        # Qubit readout
+                        for i, qubit in multiplexed_qubits.items():
+                            # Measure the state of the resonators
+                            if node.parameters.use_state_discrimination:
+                                qubit.readout_state(state[i])
+                                save(state[i], state_st[i])
+                            else:
+                                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                                # save data
+                                save(I[i], I_st[i])
+                                save(Q[i], Q_st[i])
 
         with stream_processing():
             n_st.save("n")
@@ -223,6 +228,7 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
+            q.T2echo = node.results["fit_results"][q.name]["T2_echo"]
 
 
 # %% {Save_results}

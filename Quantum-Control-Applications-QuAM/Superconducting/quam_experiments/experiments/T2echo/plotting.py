@@ -5,7 +5,7 @@ from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
 from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_experiments.analysis.fit import lorentzian_peak
+from quam_experiments.analysis.fit import decay_exp
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
@@ -38,7 +38,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     for ax, qubit in grid_iter(grid):
         plot_individual_data_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
 
-    grid.fig.suptitle("Qubit spectroscopy (rotated 'I' quadrature + fit)")
+    grid.fig.suptitle("T2 echo with fit")
     grid.fig.set_size_inches(15, 9)
     grid.fig.tight_layout()
     return grid.fig
@@ -63,28 +63,32 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    pass
-    # grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    # for ax, qubit in grid_iter(grid):
-    #     if node.parameters.use_state_discrimination:
-    #         ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
-    #         ax.set_ylabel("State")
-    #     else:
-    #         ds.sel(qubit=qubit["qubit"]).I.plot(ax=ax)
-    #         ax.set_ylabel("I (V)")
-    #     ax.plot(ds.idle_time, fitted.loc[qubit], "r--")
-    #     ax.set_title(qubit["qubit"])
-    #     ax.set_xlabel("Idle_time (uS)")
-    #     ax.text(
-    #         0.1,
-    #         0.9,
-    #         f'T2e = {tau.sel(qubit = qubit["qubit"]).values:.1f} ± {tau_error.sel(qubit = qubit["qubit"]).values:.1f} µs',
-    #         transform=ax.transAxes,
-    #         fontsize=10,
-    #         verticalalignment="top",
-    #         bbox=dict(facecolor="white", alpha=0.5),
-    #     )
-    # grid.fig.suptitle("T2 echo")
-    # plt.tight_layout()
-    # plt.show()
-    # node.results["figure_raw"] = grid.fig
+    # Fitted decay
+    fitted = decay_exp(
+        ds.idle_time,
+        fit.fit_data.sel(fit_vals="a"),
+        fit.fit_data.sel(fit_vals="offset"),
+        fit.fit_data.sel(fit_vals="decay"),
+    )
+
+    if hasattr(fit, "state"):
+        ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
+        ax.set_ylabel("State")
+    elif hasattr(fit, "I"):
+        (ds.sel(qubit=qubit["qubit"]).I * 1e3).plot(ax=ax)
+        ax.set_ylabel("Trans. amp. I [mV]")
+    else:
+        raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
+
+    ax.plot(ds.idle_time, fitted * 1e3, "r--")
+    ax.set_title(qubit["qubit"])
+    ax.set_xlabel("Idle_time (µs)")
+    ax.text(
+        0.1,
+        0.9,
+        f'T2e = {fit["T2_echo"].values*1e-3:.1f} ± {fit["T2_echo_error"].values*1e-3:.1f} µs',
+        transform=ax.transAxes,
+        fontsize=10,
+        verticalalignment="top",
+        bbox=dict(facecolor="white", alpha=0.5),
+    )
