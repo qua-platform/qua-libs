@@ -46,9 +46,7 @@ def log_fitted_results(fit_results: Dict, logger=None):
         logger = logging.getLogger(__name__)
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
-        s_idle_offset = (
-            f"\tidle offset: {fit_results[q]['idle_offset'] * 1e3:.0f} mV | "
-        )
+        s_idle_offset = f"\tidle offset: {fit_results[q]['idle_offset'] * 1e3:.0f} mV | "
         s_min_offset = f"min offset: {fit_results[q]['min_offset'] * 1e3:.0f} mV | "
         s_freq = f"Resonator frequency: {1e-9 * fit_results[q]['resonator_frequency']:.3f} GHz | "
         s_shift = f"(shift of {1e-6 * fit_results[q]['frequency_shift']:.0f} MHz)\n"
@@ -67,9 +65,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Add the amplitude and phase to the raw dataset
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     # Add the RF frequency as a coordinate of the raw dataset
-    full_freq = np.array(
-        [ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]]
-    )
+    full_freq = np.array([ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]])
     ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     # Add the current axis of each qubit to the dataset coordinates for plotting
@@ -80,17 +76,13 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Add attenuated current to dataset
     attenuation_factor = 10 ** (-node.parameters.line_attenuation_in_db / 20)
     attenuated_current = ds.current * attenuation_factor
-    ds = ds.assign_coords(
-        {"attenuated_current": (["flux_bias"], attenuated_current.values)}
-    )
+    ds = ds.assign_coords({"attenuated_current": (["flux_bias"], attenuated_current.values)})
     ds.attenuated_current.attrs["long_name"] = "Attenuated Current"
     ds.attenuated_current.attrs["units"] = "A"
     return ds
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the T1 relaxation time for each qubit according to ``a * np.exp(t * decay) + offset``.
 
@@ -110,9 +102,7 @@ def fit_raw_data(
     peak_freq = ds.IQ_abs.idxmin(dim="detuning")
     # Fit to a cosine using the qiskit function: a * np.cos(2 * np.pi * f * t + phi) + offset
     fit_results_da = fit_oscillation(peak_freq.dropna(dim="flux_bias"), "flux_bias")
-    fit_results_ds = xr.merge(
-        [fit_results_da.rename("fit_results"), peak_freq.rename("peak_freq")]
-    )
+    fit_results_ds = xr.merge([fit_results_da.rename("fit_results"), peak_freq.rename("peak_freq")])
     # Extract the relevant fitted parameters
     fit_dataset, fit_results = _extract_relevant_fit_parameters(fit_results_ds, node)
     return fit_dataset, fit_results
@@ -130,11 +120,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     fit.idle_offset.attrs = {"long_name": "idle flux bias", "units": "V"}
     # finding the location of the minimum frequency flux point
     flux_min = flux_idle + ((flux_idle < 0) - 0.5) / fit.sel(fit_vals="f")
-    flux_min = (
-        flux_min * (np.abs(flux_min) < 0.5)
-        + 0.5 * (flux_min > 0.5)
-        - 0.5 * (flux_min < -0.5)
-    )
+    flux_min = flux_min * (np.abs(flux_min) < 0.5) + 0.5 * (flux_min > 0.5) - 0.5 * (flux_min < -0.5)
     fit = fit.assign_coords(flux_min=("qubit", flux_min.fit_results.data))
     fit.flux_min.attrs = {"long_name": "minimum frequency flux bias", "units": "V"}
     # finding the frequency as the sweet spot flux
@@ -158,11 +144,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     )
     # Assess whether the fit was successful or not
     freq_success = np.abs(freq_shift.data) < node.parameters.frequency_span_in_mhz * 1e6
-    nan_success = (
-        np.isnan(freq_shift.data)
-        | np.isnan(flux_min.fit_results.data)
-        | np.isnan(flux_idle.fit_results.data)
-    )
+    nan_success = np.isnan(freq_shift.data) | np.isnan(flux_min.fit_results.data) | np.isnan(flux_idle.fit_results.data)
     success_criteria = freq_success & ~nan_success
     fit = fit.assign_coords(success=("qubit", success_criteria))
 

@@ -22,8 +22,6 @@ def _shift_left(da: xr.DataArray, dim: str):
     sorted_indices = np.argsort(~mask, axis=axis)  # Indices that push NaNs to the right
 
     # Reorder values along the given dimension
-    shifted = xr.apply_ufunc(
-        np.take_along_axis, da, sorted_indices, axis, dask="allowed"
-    )
+    shifted = xr.apply_ufunc(np.take_along_axis, da, sorted_indices, axis, dask="allowed")
 
     return shifted

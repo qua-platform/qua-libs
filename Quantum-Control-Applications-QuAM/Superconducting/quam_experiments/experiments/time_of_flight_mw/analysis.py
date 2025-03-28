@@ -55,21 +55,14 @@ def log_fitted_results(fit_results: Dict, logger=None):
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Convert raw ADC traces into volts
-    ds = ds.assign(
-        {
-            key: -ds[key] / 2**12
-            for key in ("adcI", "adcQ", "adc_single_runI", "adc_single_runQ")
-        }
-    )
+    ds = ds.assign({key: -ds[key] / 2**12 for key in ("adcI", "adcQ", "adc_single_runI", "adc_single_runQ")})
     # Add the IQ amplitude to the dataset
     ds = ds.assign({"IQ_abs": np.sqrt(ds["adcI"] ** 2 + ds["adcQ"] ** 2)})
     ds.IQ_abs.attrs = {"long_name": "IQ amplitude", "units": "V"}
     return ds
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the qubit frequency and FWHM for each qubit in the dataset.
 
@@ -90,24 +83,16 @@ def fit_raw_data(
     ds_fit["filtered_adc"] = xr.apply_ufunc(_filter_adc_signal, ds_fit.IQ_abs)
     # Detect the pulse arrival times
     ds_fit["threshold"] = (
-        ds_fit["filtered_adc"][:, 100:].mean("readout_time")
-        + ds_fit["filtered_adc"][:, :-100].mean("readout_time")
+        ds_fit["filtered_adc"][:, 100:].mean("readout_time") + ds_fit["filtered_adc"][:, :-100].mean("readout_time")
     ) / 2
-    ds_fit["delay"] = (
-        (ds_fit["filtered_adc"] > ds_fit["threshold"])
-        .where(True)
-        .idxmax("readout_time")
-    )
+    ds_fit["delay"] = (ds_fit["filtered_adc"] > ds_fit["threshold"]).where(True).idxmax("readout_time")
     ds_fit["delay"] = np.round(ds_fit["delay"] / 4) * 4
     ds_fit.delay.attrs = {"long_name": "TOF to add", "units": "ns"}
     ds_fit = ds_fit.assign_coords(
         {
             "con": (
                 ["qubit"],
-                [
-                    node.machine.qubits[q.name].resonator.opx_input.controller_id
-                    for q in node.namespace["qubits"]
-                ],
+                [node.machine.qubits[q.name].resonator.opx_input.controller_id for q in node.namespace["qubits"]],
             )
         }
     )
@@ -124,10 +109,7 @@ def fit_raw_data(
         )
         for q in ds_fit.qubit.values
     }
-    node.outcomes = {
-        q: "successful" if fit_results[q].success else "fail"
-        for q in ds_fit.qubit.values
-    }
+    node.outcomes = {q: "successful" if fit_results[q].success else "fail" for q in ds_fit.qubit.values}
 
     return ds_fit, fit_results
 

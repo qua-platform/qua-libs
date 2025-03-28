@@ -45,9 +45,7 @@ The data undergoes post-processing to calibrate three distinct parameters:
 """
 
 
-node = QualibrationNode[Parameters, QuAM](
-    name="01b_Time_of_Flight", description=description, parameters=Parameters()
-)
+node = QualibrationNode[Parameters, QuAM](name="01b_Time_of_Flight", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -77,16 +75,10 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     for q in qubits:
         resonator = q.resonator
         # make temporary updates before running the program and revert at the end.
-        with tracked_updates(
-            resonator, auto_revert=False, dont_assign_to_none=True
-        ) as resonator:
+        with tracked_updates(resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
             resonator.time_of_flight = node.parameters.time_of_flight_in_ns
-            resonator.operations["readout"].length = (
-                node.parameters.readout_length_in_ns
-            )
-            resonator.operations["readout"].amplitude = (
-                node.parameters.readout_amplitude_in_v
-            )
+            resonator.operations["readout"].length = node.parameters.readout_length_in_ns
+            resonator.operations["readout"].amplitude = node.parameters.readout_amplitude_in_v
             node.namespace["tracked_resonators"].append(resonator)
 
     # Register the sweep axes to be added to the dataset when fetching data
@@ -100,9 +92,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
     with program() as node.namespace["qua_program"]:
         n = declare(int)  # QUA variable for the averaging loop
-        adc_st = [
-            declare_stream(adc_trace=True) for _ in range(num_qubits)
-        ]  # The stream to store the raw ADC trace
+        adc_st = [declare_stream(adc_trace=True) for _ in range(num_qubits)]  # The stream to store the raw ADC trace
 
         for multiplexed_qubits in qubits.batch():
             with for_(n, 0, n < node.parameters.num_averages, n + 1):
@@ -125,9 +115,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
 
 # %% {Simulate_or_execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -135,16 +123,12 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -203,9 +187,7 @@ def data_analysis(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def data_plotting(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(
-        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
-    )
+    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figure_amplitude"] = fig_raw_fit

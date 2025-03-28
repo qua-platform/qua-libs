@@ -22,9 +22,7 @@ def get_idle_times_in_clock_cycles(
     elif node_parameters.log_or_linear_sweep == "log":
         idle_times = _get_idle_times_log_sweep_in_clock_cycles(node_parameters)
     else:
-        raise ValueError(
-            f"Expected sweep type to be 'log' or 'linear', got {node_parameters.log_or_linear_sweep}"
-        )
+        raise ValueError(f"Expected sweep type to be 'log' or 'linear', got {node_parameters.log_or_linear_sweep}")
 
     return idle_times
 

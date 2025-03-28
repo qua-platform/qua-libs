@@ -29,9 +29,7 @@ current_dir = Path(__file__).parent.absolute()
 parameters = {
     "project": "QPU_project",
     "storage_location": str(current_dir.parent.absolute() / "data"),
-    "calibration_library_folder": str(
-        current_dir.parent.absolute() / "calibration_graph"
-    ),
+    "calibration_library_folder": str(current_dir.parent.absolute() / "calibration_graph"),
     "quam_state_path": str(current_dir / "quam_state"),
 }
 
@@ -40,32 +38,20 @@ print(f"\n{Fore.MAGENTA}Default values:{Style.RESET_ALL}")
 for key, value in parameters.items():
     print(f"{Fore.BLUE}{key}{Style.RESET_ALL}: {Fore.GREEN}{value}{Style.RESET_ALL}")
 
-print(
-    f"\n{Fore.LIGHTBLACK_EX}Selecting 'n' will allow you to customize each entry.{Style.RESET_ALL}"
-)
+print(f"\n{Fore.LIGHTBLACK_EX}Selecting 'n' will allow you to customize each entry.{Style.RESET_ALL}")
 use_all_defaults = (
-    input(
-        f"{Fore.CYAN}Use all default values?{Style.RESET_ALL} {Fore.YELLOW}(y/n){Style.RESET_ALL} "
-    )
-    .strip()
-    .lower()
+    input(f"{Fore.CYAN}Use all default values?{Style.RESET_ALL} {Fore.YELLOW}(y/n){Style.RESET_ALL} ").strip().lower()
     == "y"
 )
 
 if not use_all_defaults:
-    parameters["project"] = get_input_with_default(
-        "Enter project name", parameters["project"]
-    )
-    parameters["storage_location"] = get_input_with_default(
-        "Enter storage location", parameters["storage_location"]
-    )
+    parameters["project"] = get_input_with_default("Enter project name", parameters["project"])
+    parameters["storage_location"] = get_input_with_default("Enter storage location", parameters["storage_location"])
     parameters["calibration_library_folder"] = get_input_with_default(
         "Enter calibration library folder", parameters["calibration_library_folder"]
     )
     if config_supports_quam_state:
-        parameters["quam_state_path"] = get_input_with_default(
-            "Enter QUAM state path", parameters["quam_state_path"]
-        )
+        parameters["quam_state_path"] = get_input_with_default("Enter QUAM state path", parameters["quam_state_path"])
 
 # Build args list
 config_args = [
@@ -88,6 +74,4 @@ result = subprocess.run(config_args)
 if result.returncode == 0:
     print(f"{Fore.GREEN}Configuration completed successfully!{Style.RESET_ALL}")
 else:
-    print(
-        f"{Fore.RED}Configuration failed with exit code {result.returncode}.{Style.RESET_ALL}"
-    )
+    print(f"{Fore.RED}Configuration failed with exit code {result.returncode}.{Style.RESET_ALL}")

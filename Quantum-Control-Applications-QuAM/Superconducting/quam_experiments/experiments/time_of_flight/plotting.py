@@ -86,9 +86,7 @@ def plot_raw_data():
     #     node.results["figure_raw_data"] = fig
 
 
-def plot_individual_data_with_fit(
-    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
-):
+def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots individual qubit data on a given axis with optional fit.
 

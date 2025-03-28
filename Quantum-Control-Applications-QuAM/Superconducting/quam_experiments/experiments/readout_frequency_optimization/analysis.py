@@ -57,17 +57,13 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
         }
     )
     # Add the absolute frequency to the dataset
-    full_freq = np.array(
-        [ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]]
-    )
+    full_freq = np.array([ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]])
     ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "Readout RF frequency", "units": "Hz"}
     return ds
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the qubit frequency and FWHM for each qubit in the dataset.
 
@@ -86,17 +82,11 @@ def fit_raw_data(
     ds_fit = ds
 
     # Get the readout detuning as the index of the maximum of the cumulative average of D
-    ds_fit["optimal_index"] = (
-        ds_fit.D.rolling({"detuning": 5}).mean("detuning").argmax("detuning")
-    )
+    ds_fit["optimal_index"] = ds_fit.D.rolling({"detuning": 5}).mean("detuning").argmax("detuning")
     ds_fit["optimal_detuning"] = ds_fit.detuning.isel(detuning=ds_fit["optimal_index"])
-    ds_fit["optimal_frequency"] = ds_fit.full_freq.isel(
-        detuning=ds_fit["optimal_index"]
-    )
+    ds_fit["optimal_frequency"] = ds_fit.full_freq.isel(detuning=ds_fit["optimal_index"])
     # Get the dispersive shift as the distance between the resonator frequency when the qubit is in |g> and |e>
-    ds_fit["chi"] = (
-        ds_fit.IQ_abs_e.idxmin(dim="detuning") - ds_fit.IQ_abs_g.idxmin(dim="detuning")
-    ) / 2
+    ds_fit["chi"] = (ds_fit.IQ_abs_e.idxmin(dim="detuning") - ds_fit.IQ_abs_g.idxmin(dim="detuning")) / 2
 
     ds_fit, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
     return ds_fit, fit_results

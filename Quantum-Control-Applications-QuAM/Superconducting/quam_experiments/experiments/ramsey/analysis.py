@@ -34,9 +34,7 @@ def log_fitted_results(fit_results: Dict, logger=None):
         logger = logging.getLogger(__name__)
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
-        s_detuning = (
-            f"\tDetuning to correct: {1e-6 * fit_results[q]['freq_offset']:.3f} MHz | "
-        )
+        s_detuning = f"\tDetuning to correct: {1e-6 * fit_results[q]['freq_offset']:.3f} MHz | "
         s_T2 = f"T2*: {1e6 * fit_results[q]['decay']:.1f} µs\n"
         if fit_results[q]["success"]:
             s_qubit += " SUCCESS!\n"
@@ -50,9 +48,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     return ds
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the frequency detuning and T2 decay of the Ramsey oscillations for each qubit.
 
@@ -100,9 +96,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
     detuning = int(node.parameters.frequency_detuning_in_mhz * 1e6)
 
-    freq_offset, decay, decay_error = calculate_fit_results(
-        frequency, tau, tau_error, fit, detuning
-    )
+    freq_offset, decay, decay_error = calculate_fit_results(frequency, tau, tau_error, fit, detuning)
     # Assess whether the fit was successful or not
     nan_success = np.isnan(freq_offset.fit) | np.isnan(decay.fit)
     success_criteria = ~nan_success

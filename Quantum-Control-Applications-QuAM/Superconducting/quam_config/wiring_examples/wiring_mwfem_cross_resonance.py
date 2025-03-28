@@ -32,9 +32,7 @@ connectivity = Connectivity()
 for i in range(8):
     connectivity.add_resonator_line(
         qubits=qubits[i],
-        constraints=mw_fem_spec(
-            con=1, slot=rr_slots[i], in_port=rr_in_ports[i], out_port=rr_out_ports[i]
-        ),
+        constraints=mw_fem_spec(con=1, slot=rr_slots[i], in_port=rr_in_ports[i], out_port=rr_out_ports[i]),
     )
     connectivity.add_qubit_drive_lines(
         qubits=qubits[i],

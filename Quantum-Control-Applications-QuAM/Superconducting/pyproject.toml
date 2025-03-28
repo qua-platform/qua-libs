@@ -32,7 +32,7 @@ monorepo-root = "."
 version-pinning-rule = '=='
 
 [tool.black]
-line-length = 88
+line-length = 120
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

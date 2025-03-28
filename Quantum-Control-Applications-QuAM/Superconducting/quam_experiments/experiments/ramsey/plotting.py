@@ -44,9 +44,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     return grid.fig
 
 
-def plot_individual_data_with_fit(
-    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
-):
+def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -85,9 +83,7 @@ def plot_individual_data_with_fit(
         plot_transmission_amplitude(ax, fit, qubit, fitted_ramsey_data)
         ax.set_ylabel("Trans. amp. I [mV]")
     else:
-        raise RuntimeError(
-            "The dataset must contain either 'I' or 'state' for the plotting function to work."
-        )
+        raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
 
     ax.set_xlabel("Idle time [ns]")
     ax.set_title(qubit["qubit"])
@@ -130,12 +126,8 @@ def plot_transmission_amplitude(ax, ds, qubit, fitted=None):
         ax=ax, x="idle_time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
     )
     if fitted is not None:
-        ax.plot(
-            ds.idle_time, 1e3 * fitted.fit.sel(detuning_signs=1), c="C0", ls="-", lw=1
-        )
-        ax.plot(
-            ds.idle_time, 1e3 * fitted.fit.sel(detuning_signs=-1), c="C1", ls="-", lw=1
-        )
+        ax.plot(ds.idle_time, 1e3 * fitted.fit.sel(detuning_signs=1), c="C0", ls="-", lw=1)
+        ax.plot(ds.idle_time, 1e3 * fitted.fit.sel(detuning_signs=-1), c="C1", ls="-", lw=1)
 
 
 def add_fit_text(ax, fit):
