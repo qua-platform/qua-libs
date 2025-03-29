@@ -112,11 +112,11 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
-
-# %% {Execute_QUA_program}
-u = unit(coerce_to_integer=True)
-
 node.machine = QuAM.load()
+
+
+# %% {Create_QUA_program}
+u = unit(coerce_to_integer=True)
 
 if node.parameters.load_data_id is None:
     qmm = node.machine.connect()

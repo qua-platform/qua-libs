@@ -19,6 +19,8 @@ from quam_libs.save_utils import fetch_results_as_xarray
 from quam_libs.trackable_object import tracked_updates
 from quam_experiments.parameters.qubits_experiment import get_qubits
 
+
+# %% {Initialisation}
 description = """
         DRAG PULSE CALIBRATION (YALE METHOD)
 The sequence consists in applying successively x180-y90 and y180-x90 to the qubit while
@@ -74,11 +76,12 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
     pass
 
 
-# %% {Initialize_QuAM_and_QOP}
-# Class containing tools to help handling units and conversions.
-u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
+
+# %% {Create_QUA_program}
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
 
 # Get the active qubits from the node and organize them by batches
 node.namespace["qubits"] = qubits = get_qubits(node)
@@ -96,8 +99,6 @@ config = node.machine.generate_config()
 if node.parameters.load_data_id is None:
     qmm = node.machine.connect()
 
-
-# %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
@@ -152,7 +153,7 @@ with program() as drag_calibration:
             state_stream[i].boolean_to_int().buffer(len(amps)).buffer(2).average().save(f"state{i + 1}")
 
 
-# %% {Simulate_or_execute}
+# %% {Simulate}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
@@ -169,6 +170,7 @@ if node.parameters.simulate:
     node.results = {"figure": plt.gcf()}
     node.save()
 
+# %% {Execute}
 elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(drag_calibration)
@@ -179,7 +181,7 @@ elif node.parameters.load_data_id is None:
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
-# %% {Data_fetching_and_dataset_creation}
+# %% {Load_data}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
@@ -199,7 +201,8 @@ if not node.parameters.simulate:
     # Add the dataset to the node
     node.results = {"ds": ds}
 
-    # %% {Data_analysis}
+# %% {Data_analysis}
+if not node.parameters.simulate:
     # Perform a linear fit of the qubit state vs DRAG coefficient scaling factor
     state = ds.state
     fitted = xr.polyval(state.amp, state.polyfit(dim="amp", deg=1).polyfit_coefficients)
@@ -219,7 +222,8 @@ if not node.parameters.simulate:
     node.results["fit_results"] = fit_results
     node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
-    # %% {Plotting}
+# %% {Plotting}
+if not node.parameters.simulate:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         ds.loc[qubit].state.plot(ax=ax, x="alpha", hue="sequence")

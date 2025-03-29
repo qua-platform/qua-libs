@@ -84,11 +84,12 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
     pass
 
 
-# %% {Execute_QUA_program}
-# Class containing tools to help handling units and conversions.
-u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
+
+# %% {Create_QUA_program}
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
 # Generate the OPX and Octave configurations
 config = node.machine.generate_config()
 
@@ -162,7 +163,7 @@ with program() as qubit_spec:
             Q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 
-# %% {Simulate_or_execute}
+# %% {Simulate}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
@@ -171,7 +172,8 @@ if node.parameters.simulate:
     node.results = {"figure": plt.gcf()}
     node.save()
 
-elif node.parameters.load_data_id is None:
+# %% {Execute}
+if not node.parameters.simulate and node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(qubit_spec)
         results = fetching_tool(job, ["n"], mode="live")
@@ -181,7 +183,7 @@ elif node.parameters.load_data_id is None:
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
-# %% {Data_fetching_and_dataset_creation}
+# %% {Load_data}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
@@ -210,7 +212,7 @@ if not node.parameters.simulate:
     # Add the dataset to the node
     node.results = {"ds": ds}
 
-# %% {Data_analysis}
+# %% {Analyse_data}
 # shifts = (np.sqrt((ds.I - ds.I.mean(dim = "freq"))**2 + (ds.Q - ds.Q.mean(dim = "freq"))**2) ).idxmax(dim="freq")
 
 if not node.parameters.simulate:
@@ -249,7 +251,7 @@ if not node.parameters.simulate:
         for qubit_name, fit_result in node.results["fit_results"].items()
     }
 
-# %% {Plotting}
+# %% {Plot_data}
 if not node.parameters.simulate:
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
