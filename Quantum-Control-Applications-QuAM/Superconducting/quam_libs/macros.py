@@ -113,7 +113,7 @@ def readout_state_gef(
     Q = declare(fixed)
     diff = declare(fixed, size=3)
 
-    qubit.resonator.update_frequency(qubit.resonator.intermediate_frequency + qubit.GEF_frequency_shift)
+    qubit.resonator.update_frequency(qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift)
     qubit.resonator.measure(pulse_name, qua_vars=(I, Q))
     qubit.resonator.update_frequency(qubit.resonator.intermediate_frequency)
 
