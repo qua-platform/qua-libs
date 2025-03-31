@@ -21,7 +21,7 @@ class CloudQuantumMachine:
         self._config = config
 
     def execute(self, program):
-        run_data = self._qc.execute(program, self._config,options = {"timeout":300})
+        run_data = self._qc.execute(program, self._config,options = {"timeout":120})
         self.job = CloudJob(run_data)
         return self.job
 
