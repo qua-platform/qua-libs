@@ -74,7 +74,7 @@ num_qubits = len(qubits)
 for q in qubits:
     # Check if an optimized GEF frequency exists
     if not hasattr(q, "GEF_frequency_shift"):
-        q.GEF_frequency_shift = 0
+        q.resonator.GEF_frequency_shift = 0
     # check if an EF_x180 operation exists
     if "EF_x180" in q.xy.operations:
         GEF_operation = "EF_x180"
