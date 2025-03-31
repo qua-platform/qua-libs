@@ -1,22 +1,5 @@
 """
-        IQ BLOBS
-This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit
-in the |g> state) and then after applying a pi pulse to the qubit (bringing the qubit to the |e> state) successively.
-The resulting IQ blobs are displayed, and the data is processed to determine:
-    - The rotation angle required for the integration weights, ensuring that the separation between |g> and |e> states
-      aligns with the 'I' quadrature.
-    - The threshold along the 'I' quadrature for effective qubit state discrimination.
-    - The readout fidelity matrix, which is also influenced by the pi pulse fidelity.
-
-Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the state.
-    - Set the desired flux bias
-
-Next steps before going to the next node:
-    - Update the rotation angle (rotation_angle) in the state.
-    - Update the g -> e threshold (ge_threshold) in the state.
-    - Save the current state by calling machine.save("quam")
+       
 """
 # TODO: this script isn't working great, the readout amp found at the end isn't always correct maybe because of SNR...
 
@@ -36,6 +19,7 @@ from qm import SimulationConfig
 from qm.qua import *
 from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import numpy as np
 import xarray as xr
 from sklearn.mixture import GaussianMixture
@@ -51,28 +35,29 @@ class Parameters(NodeParameters):
     start_amp: float = 0.5
     end_amp: float = 1.99
     num_amps: int = 10
+    max_readout_length: int = 2000 # in ns
+    duration_chunks: int = 100 # in ns
     outliers_threshold: float = 0.98
     plot_raw: bool = False
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True
+    multiplexed: bool = False
 
 
-node = QualibrationNode(name="07c_Readout_Power_Optimization", parameters=Parameters())
+node = QualibrationNode(name="07d_Readout_Power_Time_Optimization", parameters=Parameters())
 node_id = get_node_id()
+
+# check that duration_chunks is multiple of 4
+if node.parameters.duration_chunks % 4 != 0:
+    raise ValueError("duration_chunks should be a multiple of 4 so that it represents an integer number of clock cycles")
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 machine = QuAM.load()
-# Generate the OPX and Octave configurations
-config = machine.generate_config()
-# Open Communication with the QOP
-if node.parameters.load_data_id is None:
-    qmm = machine.connect()
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
@@ -82,15 +67,42 @@ else:
 num_qubits = len(qubits)
 
 
+initial_readout_lengths = [q.resonator.operations.readout.length for q in qubits]
+# set to max readout length
+for q in qubits:
+    q.resonator.operations.readout.length = node.parameters.max_readout_length
+# Generate the OPX and Octave configurations
+
+config = machine.generate_config()
+# Open Communication with the QOP
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
+
+
 # %% {QUA_program}
 n_runs = node.parameters.num_runs  # Number of runs
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
 amps = np.linspace(node.parameters.start_amp, node.parameters.end_amp, node.parameters.num_amps)
 
+
+n_of_chunks = node.parameters.max_readout_length // node.parameters.duration_chunks
+readout_lengths = [k * node.parameters.duration_chunks for k in range(1, n_of_chunks + 1)]
+
 with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(num_qubits=num_qubits)
+    
+    I_g = [declare(fixed, size=n_of_chunks) for _ in range(num_qubits)]
+    Q_g = [declare(fixed, size=n_of_chunks) for _ in range(num_qubits)]
+    I_e = [declare(fixed, size=n_of_chunks) for _ in range(num_qubits)]
+    Q_e = [declare(fixed, size=n_of_chunks) for _ in range(num_qubits)]
+    
+    I_g_st = [declare_stream() for _ in range(num_qubits)]
+    Q_g_st = [declare_stream() for _ in range(num_qubits)]
+    I_e_st = [declare_stream() for _ in range(num_qubits)]
+    Q_e_st = [declare_stream() for _ in range(num_qubits)]
+    
     a = declare(fixed)
 
     for i, qubit in enumerate(qubits):
@@ -111,11 +123,19 @@ with program() as iq_blobs:
                     raise ValueError(f"Unrecognized reset type {reset_type}.")
 
                 qubit.align()
-                qubit.resonator.measure("readout", qua_vars=(I_g[i], Q_g[i]), amplitude_scale=a)
+                # qubit.resonator.measure("readout", qua_vars=(I_g[i], Q_g[i]), amplitude_scale=a)
+                
+                integration_weight_labels = list(qubit.resonator.operations.readout.integration_weights_mapping)
+                
+                measure("readout" * amp(a), qubit.resonator.name, None, 
+                        demod.accumulated(integration_weight_labels[0],I_g[i],node.parameters.duration_chunks//4, "out1"),
+                        demod.accumulated(integration_weight_labels[1],Q_g[i],node.parameters.duration_chunks//4, "out2"),
+                        )
                 qubit.align()
                 # save data
-                save(I_g[i], I_g_st[i])
-                save(Q_g[i], Q_g_st[i])
+                for k in range(n_of_chunks):
+                    save(I_g[i][k], I_g_st[i])
+                    save(Q_g[i][k], Q_g_st[i])
 
                 if reset_type == "active":
                     active_reset(qubit, "readout")
@@ -126,9 +146,14 @@ with program() as iq_blobs:
                 qubit.align()
                 qubit.xy.play("x180")
                 qubit.align()
-                qubit.resonator.measure("readout", qua_vars=(I_e[i], Q_e[i]), amplitude_scale=a)
-                save(I_e[i], I_e_st[i])
-                save(Q_e[i], Q_e_st[i])
+                # qubit.resonator.measure("readout", qua_vars=(I_e[i], Q_e[i]), amplitude_scale=a)
+                measure("readout" * amp(a), qubit.resonator.name, None, 
+                        demod.accumulated(integration_weight_labels[0],I_e[i],node.parameters.duration_chunks//4, "out1"),
+                        demod.accumulated(integration_weight_labels[1],Q_e[i],node.parameters.duration_chunks//4, "out2"),
+                        )
+                for k in range(n_of_chunks):
+                    save(I_e[i][k], I_e_st[i])
+                    save(Q_e[i][k], Q_e_st[i])
 
         # Measure sequentially
         if not node.parameters.multiplexed:
@@ -137,10 +162,10 @@ with program() as iq_blobs:
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubits):
-            I_g_st[i].buffer(len(amps)).buffer(n_runs).save(f"I_g{i + 1}")
-            Q_g_st[i].buffer(len(amps)).buffer(n_runs).save(f"Q_g{i + 1}")
-            I_e_st[i].buffer(len(amps)).buffer(n_runs).save(f"I_e{i + 1}")
-            Q_e_st[i].buffer(len(amps)).buffer(n_runs).save(f"Q_e{i + 1}")
+            I_g_st[i].buffer(n_of_chunks).buffer(len(amps)).buffer(n_runs).save(f"I_g{i + 1}")
+            Q_g_st[i].buffer(n_of_chunks).buffer(len(amps)).buffer(n_runs).save(f"Q_g{i + 1}")
+            I_e_st[i].buffer(n_of_chunks).buffer(len(amps)).buffer(n_runs).save(f"I_e{i + 1}")
+            Q_e_st[i].buffer(n_of_chunks).buffer(len(amps)).buffer(n_runs).save(f"Q_e{i + 1}")
 
 
 if node.parameters.simulate:
@@ -171,12 +196,17 @@ elif node.parameters.load_data_id is None:
             # Progress bar
             progress_counter(n, n_runs, start_time=results.start_time)
 
+# set the readout length to the initial readout length
+for i, q in enumerate(qubits):
+    q.resonator.operations["readout"].length = initial_readout_lengths[i]
+
+config = machine.generate_config() # TODO: this is not needed ?
 
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"amplitude": amps, "N": np.linspace(1, n_runs, n_runs)})
+        ds = fetch_results_as_xarray(job.result_handles, qubits, {"readout_length": readout_lengths, "amplitude": amps, "N": np.linspace(1, n_runs, n_runs)})
         # Add the absolute readout power to the dataset
         ds = ds.assign_coords({"readout_amp": (["qubit", "amplitude"], np.array([amps * q.resonator.operations["readout"].amplitude for q in qubits]))})
         # Rearrange the data to combine I_g and I_e into I, and Q_g and Q_e into Q
@@ -267,17 +297,21 @@ if not node.parameters.simulate:
     best_data = {}
 
     best_amp = {}
+    best_readout_length = {}
     for q in qubits:
         fit_res_q = fit_res.sel(qubit=q.name)
-        valid_amps = fit_res_q.amplitude[(fit_res_q.sel(result="outliers") >= node.parameters.outliers_threshold)]
+        valid_amps = fit_res_q.amplitude[np.all((fit_res_q.sel(result="outliers") >= node.parameters.outliers_threshold), axis=1)]
         amps_fidelity = fit_res_q.sel(amplitude=valid_amps.values, result="meas_fidelity")
-        best_amp[q.name] = float(amps_fidelity.readout_amp[amps_fidelity.argmax()])
+        max_loc = amps_fidelity.where(amps_fidelity == amps_fidelity.max(), drop=True)
+        best_amp[q.name] = float(max_loc.readout_amp)
+        best_readout_length[q.name] = float(max_loc.readout_length)
         print(f"amp for {q.name} is {best_amp[q.name]}")
+        print(f"readout_length for {q.name} is {best_readout_length[q.name]}")
         node.results["results"][q.name] = {}
         node.results["results"][q.name]["best_amp"] = best_amp[q.name]
-
+        node.results["results"][q.name]["best_readout_length"] = best_readout_length[q.name]
         # Select data for the best amplitude
-        best_amp_data = ds.sel(qubit=q.name, amplitude=float(amps_fidelity.idxmax()))
+        best_amp_data = ds.sel(qubit=q.name, amplitude=max_loc.amplitude, readout_length=max_loc.readout_length).squeeze() 
         best_data[q.name] = best_amp_data
 
         # Extract I and Q data for ground and excited states
@@ -305,11 +339,14 @@ if not node.parameters.simulate:
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        fit_res.loc[qubit].plot(ax=ax, x="readout_amp", hue="result", add_legend=False)
+        fit_res.loc[qubit].sel(result="meas_fidelity").plot(ax=ax, x="readout_amp", y="readout_length", 
+                                                            robust=True, add_colorbar=True, norm=mcolors.PowerNorm(gamma=3))
         ax.axvline(best_amp[qubit["qubit"]], color="k", linestyle="dashed")
+        ax.axhline(best_readout_length[qubit["qubit"]], color="k", linestyle="dashed")
+        ax.plot(best_amp[qubit["qubit"]], best_readout_length[qubit["qubit"]], "ro") # , label="max fidelity")
         ax.set_xlabel("Relative power")
-        ax.set_ylabel("Fidelity / outliers")
-        ax.set_title(qubit["qubit"])
+        ax.set_ylabel("Readout length (ns)")
+        ax.set_title(f"{qubit['qubit']}")
     grid.fig.suptitle(f"Assignment fidelity and non-outlier probability \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed} reset Type = {node.parameters.reset_type_thermal_or_active}")
 
     plt.tight_layout()
@@ -401,6 +438,8 @@ if not node.parameters.simulate:
                 )
                 qubit.resonator.operations["readout"].amplitude = float(node.results["results"][qubit.name]["best_amp"])
                 qubit.resonator.confusion_matrix = node.results["results"][qubit.name]["confusion_matrix"].tolist()
+                
+                qubit.resonator.operations["readout"].length = float(node.results["results"][qubit.name]["best_readout_length"])
 
 
         # %% {Save_results}

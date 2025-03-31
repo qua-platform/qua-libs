@@ -309,7 +309,7 @@ if not node.parameters.simulate:
             bbox=dict(facecolor="white", alpha=0.5),
         )
         ax.legend()
-    grid.fig.suptitle(f"Ramsey : I vs. idle time \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"Ramsey : I vs. idle time \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

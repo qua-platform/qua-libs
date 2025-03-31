@@ -226,7 +226,7 @@ if not node.parameters.simulate:
         ax.set_ylabel("num. of pulses")
         ax.set_xlabel(r"DRAG coeff $\alpha$")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"DRAG calibration \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"DRAG calibration \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed} reset Type = {node.parameters.reset_type_thermal_or_active}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

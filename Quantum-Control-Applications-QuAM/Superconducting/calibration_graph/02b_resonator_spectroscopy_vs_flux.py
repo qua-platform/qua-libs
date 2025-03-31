@@ -204,6 +204,8 @@ if not node.parameters.simulate:
     # %% {Data_analysis}
     # Find the minimum of each frequency line to follow the resonance vs flux
     peak_freq = ds.IQ_abs.idxmin(dim="freq")
+    peak_freq_full = {q.name : peak_freq.loc[q.name].values + q.resonator.RF_frequency for q in qubits}
+
     # Fit to a cosine using the qiskit function: a * np.cos(2 * np.pi * f * t + phi) + offset
     fit_osc = fit_oscillation(peak_freq.dropna(dim="flux"), "flux")
     # Ensure that the phase is between -pi and pi
@@ -263,6 +265,7 @@ if not node.parameters.simulate:
         ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].IQ_abs.plot(
             ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
         )
+        ax.plot(ds.flux, peak_freq_full[qubit["qubit"]]/1e9, linewidth=2, color = "purple")
         ax.axvline(
             idle_offset.loc[qubit],
             linestyle="dashed",

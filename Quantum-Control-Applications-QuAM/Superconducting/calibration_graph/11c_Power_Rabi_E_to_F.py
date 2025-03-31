@@ -76,7 +76,7 @@ num_qubits = len(qubits)
 for q in qubits:
     # Check if an optimized GEF frequency exists
     if not hasattr(q, "GEF_frequency_shift"):
-        q.GEF_frequency_shift = 0
+        q.resonator.GEF_frequency_shift = 0
 
 
 # %% {QUA_program}
@@ -118,7 +118,7 @@ with program() as power_rabi:
             with for_(*from_array(a, amps)):
                 update_frequency(
                     qubit.resonator.name,
-                    qubit.resonator.intermediate_frequency + qubit.GEF_frequency_shift,
+                    qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift,
                 )
 
                 # Reset the qubit frequency

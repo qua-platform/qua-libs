@@ -19,12 +19,13 @@ Next steps before going to the next node:
 
 
 # %% {Imports}
+from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, readout_state
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id, load_dataset
 from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -55,7 +56,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 node = QualibrationNode(name="08_Ramsey_vs_Flux_Calibration", parameters=Parameters())
-
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handle units and conversions.
@@ -167,6 +168,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(ramsey)
         results = fetching_tool(job, ["n"], mode="live")
@@ -248,7 +250,7 @@ if not node.parameters.simulate:
         ax.set_title(qubit["qubit"])
         ax.set_xlabel("Idle_time (uS)")
         ax.set_ylabel(" Flux (V)")
-    grid.fig.suptitle("Ramsey freq. Vs. flux")
+    grid.fig.suptitle(f"{date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     plt.show()
     node.results["figure_raw"] = grid.fig
@@ -268,7 +270,7 @@ if not node.parameters.simulate:
         print(f"Flux offset for {qubit['qubit']} is {flux_offset[qubit['qubit']]*1e3:.1f} mV")
         print(f"Freq offset for {qubit['qubit']} is {freq_offset[qubit['qubit']]/1e6:.3f} MHz")
         print()
-    grid.fig.suptitle("Ramsey freq. Vs. flux")
+    grid.fig.suptitle(f"{date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

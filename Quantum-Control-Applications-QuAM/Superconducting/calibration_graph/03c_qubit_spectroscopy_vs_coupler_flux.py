@@ -40,7 +40,7 @@ from scipy.signal import find_peaks
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ["qB4"]
+    qubits: Optional[List[str]] = None
     qubit_pair: str = "coupler_qA5_qB4"
     num_averages: int = 25
     operation: str = "saturation"
@@ -76,14 +76,16 @@ config = machine.generate_config()
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
 
+qubit_pair = machine.qubit_pairs[node.parameters.qubit_pair]
+
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
-    qubits = machine.active_qubits
+    qubits = qubit_pair.qubit_control
 else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
 
-qubit_pair = machine.qubit_pairs[node.parameters.qubit_pair]
+
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages

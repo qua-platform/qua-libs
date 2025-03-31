@@ -304,7 +304,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Qubit freq [GHz]")
         ax.set_ylabel("Trans. amp. [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Qubit spectroscopy (amplitude) \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"Qubit spectroscopy (amplitude) \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

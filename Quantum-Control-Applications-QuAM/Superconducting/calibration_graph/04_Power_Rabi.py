@@ -300,7 +300,7 @@ if not node.parameters.simulate:
             ax.axvline(1e3 * ds.abs_amp.loc[qubit][data_max_idx.loc[qubit]], color="r")
         ax.set_xlabel("Amplitude [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Rabi : I vs. amplitude \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"Rabi : I vs. amplitude \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed} reset Type = {node.parameters.reset_type_thermal_or_active}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

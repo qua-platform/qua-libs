@@ -15,7 +15,7 @@ class TunableCoupler(SingleChannel):
         interaction_offset (float): the tunable coupler for which the .
     """
 
-    output_mode: str = "amplified"
+    output_mode: str = "direct" # "amplified"
     upsampling_mode: str = "pulse"
 
     decouple_offset: float = 0.0
