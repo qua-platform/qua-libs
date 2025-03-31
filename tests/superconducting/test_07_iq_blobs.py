@@ -2,8 +2,8 @@ import numpy as np
 from qualibrate import QualibrationLibrary
 
 
-def test_07b_IQ_Blobs(library: QualibrationLibrary):
-    node_template = library.nodes["07b_IQ_Blobs"]
+def test_07_iq_blobs(library: QualibrationLibrary):
+    node_template = library.nodes["07_iq_blobs"]
 
     executed_node, run_summary = node_template.run(load_data_id=1586)
 

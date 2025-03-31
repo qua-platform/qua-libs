@@ -1,9 +1,8 @@
-import numpy as np
 from qualibrate import QualibrationLibrary
 
 
-def test_09a_Stark_Detuning(library: QualibrationLibrary):
-    node_template = library.nodes["09a_Stark_Detuning"]
+def test_10a_stark_detuning(library: QualibrationLibrary):
+    node_template = library.nodes["10a_stark_detuning"]
 
     executed_node, run_summary = node_template.run(load_data_id=1568)
 

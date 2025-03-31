@@ -2,8 +2,8 @@ import numpy as np
 from qualibrate import QualibrationLibrary
 
 
-def test_10a_Single_Qubit_Randomized_Benchmarking(library: QualibrationLibrary):
-    node_template = library.nodes["10a_Single_Qubit_Randomized_Benchmarking"]
+def test_11a_single_qubit_randomized_benchmarking(library: QualibrationLibrary):
+    node_template = library.nodes["11a_single_qubit_randomized_benchmarking"]
 
     executed_node, run_summary = node_template.run(load_data_id=1573)
 
