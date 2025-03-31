@@ -296,7 +296,7 @@ if not node.parameters.simulate:
 if not node.parameters.simulate:
     for q in qubits:
         with node.record_state_updates():
-            q.GEF_frequency_shift = int(fit_results[q.name]["GEF_detuning"])
+            q.resonator.GEF_frequency_shift = int(fit_results[q.name]["GEF_detuning"])
 
 # %% {Save_results}
 if not node.parameters.simulate:
