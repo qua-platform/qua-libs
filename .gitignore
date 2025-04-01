@@ -5,3 +5,5 @@ __pycache__
 **/build
 **/data
 assets
+.venv*
+tempCodeRunnerFile.python
