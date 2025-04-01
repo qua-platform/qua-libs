@@ -24,7 +24,7 @@ from quam_experiments.experiments.readout_frequency_optimization import (
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
-from quam_libs.xarray_data_fetcher import XarrayDataFetcher
+from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 
 # %% {Initialisation}
 description = """

@@ -6,7 +6,7 @@ import xarray as xr
 from sklearn.mixture import GaussianMixture
 
 from qualibrate import QualibrationNode
-from quam_libs.qua_datasets import convert_IQ_to_V
+from qualibration_libs.qua_datasets import convert_IQ_to_V
 from quam_experiments.experiments.iq_blobs import fit_raw_data as fit_iq_blobs
 from quam_experiments.experiments.iq_blobs.analysis import FitParameters as FitParametersIQblobs
 
@@ -15,7 +15,7 @@ from quam_experiments.experiments.iq_blobs.analysis import FitParameters as FitP
 class FitParameters(FitParametersIQblobs):
     """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
 
-    optimal_amplitude: float=0
+    optimal_amplitude: float = 0
 
 
 def log_fitted_results(fit_results: Dict, logger=None):
@@ -97,13 +97,12 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         Dataset containing the fit results.
     """
     ds_fit = ds
+
     def apply_fit_gmm(I, Q):
         I_mean = np.mean(I, axis=1)
         Q_mean = np.mean(Q, axis=1)
         means_init = [[I_mean[0], Q_mean[0]], [I_mean[1], Q_mean[1]]]
-        precisions_init = [
-            1 / ((np.mean(np.var(I, axis=1)) + np.mean(np.var(Q, axis=1))) / 2)
-        ] * 2
+        precisions_init = [1 / ((np.mean(np.var(I, axis=1)) + np.mean(np.var(Q, axis=1))) / 2)] * 2
         clf = GaussianMixture(
             n_components=2,
             covariance_type="spherical",
@@ -143,9 +142,13 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
 
-    ds_fit["valid_amps"] = ds_fit.readout_amplitude.where(ds_fit.fit_data.sel(fit_vals="outliers") >= node.parameters.outliers_threshold, drop=True)
-    ds_fit["valid_fidelity"] = ds_fit.fit_data.sel(amp_prefactor=ds_fit["valid_amps"].amp_prefactor, fit_vals="meas_fidelity")
-    opt_amp = ds_fit["valid_fidelity"].readout_amplitude[:,ds_fit["valid_fidelity"].argmax(dim="amp_prefactor")]
+    ds_fit["valid_amps"] = ds_fit.readout_amplitude.where(
+        ds_fit.fit_data.sel(fit_vals="outliers") >= node.parameters.outliers_threshold, drop=True
+    )
+    ds_fit["valid_fidelity"] = ds_fit.fit_data.sel(
+        amp_prefactor=ds_fit["valid_amps"].amp_prefactor, fit_vals="meas_fidelity"
+    )
+    opt_amp = ds_fit["valid_fidelity"].readout_amplitude[:, ds_fit["valid_fidelity"].argmax(dim="amp_prefactor")]
     ds_fit["optimal_amp"] = opt_amp
     ds_fit["best_fidelity"] = ds_fit["valid_fidelity"].sel(amp_prefactor=opt_amp.amp_prefactor)
 
@@ -155,7 +158,9 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode)
     Qg = best_amp_data.Q.sel(state=0)
     Ie = best_amp_data.I.sel(state=1)
     Qe = best_amp_data.Q.sel(state=1)
-    ds_temp = xr.Dataset({"Ig": Ig.drop("state"), "Ie": Ie.drop("state"), "Qg": Qg.drop("state"), "Qe": Qe.drop("state")})
+    ds_temp = xr.Dataset(
+        {"Ig": Ig.drop("state"), "Ie": Ie.drop("state"), "Qg": Qg.drop("state"), "Qe": Qe.drop("state")}
+    )
     fit_data, _fit_results = fit_iq_blobs(ds_temp, node)
 
     fit_results = {}
@@ -163,7 +168,7 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode)
         # Create a dictionary of the existing attributes
         params_dict = _fit_results[q].__dict__
         # Add the new field to the dictionary
-        params_dict['optimal_amplitude'] = float(ds_fit["optimal_amp"].sel(qubit=q))
+        params_dict["optimal_amplitude"] = float(ds_fit["optimal_amp"].sel(qubit=q))
         # Instantiate FitParameters using the updated dictionary
         fit_results[q] = FitParameters(**params_dict)
     return ds_fit, fit_results

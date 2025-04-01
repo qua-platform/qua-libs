@@ -14,9 +14,9 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
-from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_libs.save_utils import fetch_results_as_xarray
-from quam_libs.trackable_object import tracked_updates
+from qualibration_libs.plot_utils import QubitGrid, grid_iter
+from qualibration_libs.save_utils import fetch_results_as_xarray
+from qualibration_libs.trackable_object import tracked_updates
 from quam_experiments.parameters.qubits_experiment import get_qubits
 
 

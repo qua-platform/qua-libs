@@ -2,7 +2,7 @@ from typing import List, Optional, Union, Literal
 from pydantic import Field
 from qualibrate import QualibrationNode
 from qualibrate.parameters import RunnableParameters
-from quam_libs.batchable_list import BatchableList
+from qualibration_libs.batchable_list import BatchableList
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from quam_config import QuAM
 

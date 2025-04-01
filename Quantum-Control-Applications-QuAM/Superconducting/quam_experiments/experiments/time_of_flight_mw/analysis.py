@@ -8,7 +8,7 @@ from qm import QmJob
 from qualang_tools.config import ReadoutResonator
 
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
-from quam_libs.save_utils import fetch_results_as_xarray
+from qualibration_libs.save_utils import fetch_results_as_xarray
 import logging
 from dataclasses import dataclass
 from typing import Optional, Tuple, Dict
@@ -16,7 +16,7 @@ import numpy as np
 import xarray as xr
 
 from qualibrate import QualibrationNode
-from quam_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
+from qualibration_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
 from quam_experiments.analysis.fit import peaks_dips
 from quam_config.instrument_limits import instrument_limits
 

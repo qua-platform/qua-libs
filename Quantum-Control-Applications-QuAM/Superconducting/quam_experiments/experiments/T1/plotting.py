@@ -3,7 +3,7 @@ import xarray as xr
 from quam_experiments.analysis.fit import decay_exp
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from quam_experiments.experiments.ramsey.parameters import Parameters
-from quam_libs.plot_utils import QubitGrid, grid_iter
+from qualibration_libs.plot_utils import QubitGrid, grid_iter
 
 
 def plot_t1s_data_with_fit(

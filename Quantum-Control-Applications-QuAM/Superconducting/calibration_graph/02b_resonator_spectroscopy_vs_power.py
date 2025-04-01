@@ -23,9 +23,9 @@ from quam_experiments.experiments.resonator_spectroscopy_vs_amplitude import (
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
-from quam_libs.xarray_data_fetcher import XarrayDataFetcher
-from quam_libs.power_tools import calculate_voltage_scaling_factor
-from quam_libs.trackable_object import tracked_updates
+from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
+from qualibration_libs.power_tools import calculate_voltage_scaling_factor
+from qualibration_libs.trackable_object import tracked_updates
 
 
 # %% {Initialisation}

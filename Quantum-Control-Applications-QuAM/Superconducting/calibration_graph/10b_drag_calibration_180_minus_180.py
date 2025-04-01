@@ -23,8 +23,8 @@ from quam_experiments.experiments.drag_calibration_180_minus180 import (
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
-from quam_libs.xarray_data_fetcher import XarrayDataFetcher
-from quam_libs.trackable_object import tracked_updates
+from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
+from qualibration_libs.trackable_object import tracked_updates
 
 
 # %% {Initialisation}

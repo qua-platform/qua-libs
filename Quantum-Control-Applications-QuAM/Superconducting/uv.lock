@@ -2534,7 +2534,7 @@ wheels = [
 [[package]]
 name = "qualibration-libs"
 version = "0.1.0"
-source = { git = "https://github.com/qua-platform/qualibration-libs.git#65ab7ca068d10abbf3b1dcfe641072ba017fcfdc" }
+source = { git = "https://github.com/qua-platform/qualibration-libs.git#2da46bcd63e75c33a401fea297b4d15170a9ff4d" }
 
 [[package]]
 name = "quam"

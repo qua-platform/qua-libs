@@ -6,8 +6,8 @@ from quam_experiments.experiments.readout_optimization_3d.parameters import (
     get_amplitude_factors,
     get_durations,
 )
-from quam_libs.qua_datasets import convert_IQ_to_V
-from quam_libs.save_utils import fetch_results_as_xarray
+from qualibration_libs.qua_datasets import convert_IQ_to_V
+from qualibration_libs.save_utils import fetch_results_as_xarray
 
 
 def fetch_dataset(job, qubits, run_axis: np.ndarray, node_parameters: ReadoutOptimization3dParameters):

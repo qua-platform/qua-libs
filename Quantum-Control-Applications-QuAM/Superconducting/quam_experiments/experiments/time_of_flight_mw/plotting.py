@@ -1,14 +1,14 @@
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
-from quam_libs.plot_utils import QubitGrid, grid_iter
+from qualibration_libs.plot_utils import QubitGrid, grid_iter
 from typing import List
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
-from quam_libs.plot_utils import QubitGrid, grid_iter
+from qualibration_libs.plot_utils import QubitGrid, grid_iter
 from quam_experiments.analysis.fit import lorentzian_peak
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 

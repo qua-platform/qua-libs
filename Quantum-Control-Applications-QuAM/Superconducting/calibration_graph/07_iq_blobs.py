@@ -23,7 +23,7 @@ from quam_experiments.experiments.iq_blobs import (
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
-from quam_libs.xarray_data_fetcher import XarrayDataFetcher
+from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 
 
 # %% {Description}

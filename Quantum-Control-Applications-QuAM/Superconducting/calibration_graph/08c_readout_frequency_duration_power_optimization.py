@@ -41,7 +41,7 @@ from quam_experiments.experiments.readout_optimization_3d.measurement_batching i
     get_max_accumulated_readouts,
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_libs.trackable_object import tracked_updates
+from qualibration_libs.trackable_object import tracked_updates
 from quam_config import QuAM
 from quam_experiments.experiments.readout_optimization_3d.parameters import (
     Parameters,
@@ -111,6 +111,7 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
     pass
+
 
 node.machine = QuAM.load()
 

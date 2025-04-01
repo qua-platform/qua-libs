@@ -12,7 +12,7 @@ from qualang_tools.results import progress_counter
 from qualibrate import QualibrationNode
 from qualibrate.utils.logger_m import logger
 from quam_config import QuAM
-from quam_libs.xarray_data_fetcher import XarrayDataFetcher
+from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot

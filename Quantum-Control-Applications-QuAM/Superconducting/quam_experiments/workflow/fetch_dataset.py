@@ -1,8 +1,8 @@
 import xarray as xr
 from typing import Tuple
 from quam_experiments.experiments.T1.parameters import Parameters
-from quam_libs.qua_datasets import convert_IQ_to_V
-from quam_libs.save_utils import fetch_results_as_xarray
+from qualibration_libs.qua_datasets import convert_IQ_to_V
+from qualibration_libs.save_utils import fetch_results_as_xarray
 
 
 def fetch_dataset(job, qubits, node_parameters: Parameters, sweep_axes: dict) -> xr.Dataset:
