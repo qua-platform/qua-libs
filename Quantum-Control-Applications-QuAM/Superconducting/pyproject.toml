@@ -16,8 +16,8 @@ dependencies = [
     "qualibrate>=0.1.6",
     "qm-qua>=1.2.1",
     "tomli>=2.0.1; python_version < '3.11'",
-    "quam-builder",
-    "qualibration-libs",
+    "quam-builder@git+https://github.com/qua-platform/quam-builder.git",
+    "qualibration-libs@git+https://github.com/qua-platform/qualibration-libs.git",
     "xarray>=2024.7.0",
     "plotly>=5.24.1",
     "lmfit>=1.3.3",
@@ -41,6 +41,8 @@ dev = ["ipykernel>=7.0.0a1", "pytest>=8.3.5"]
 [tool.hatch.build.targets.wheel]
 packages = ["calibration_graph", "quam_config", "quam_experiments"]
 
-[tool.uv.sources]
-quam-builder = { git = "https://github.com/qua-platform/quam-builder.git" }
-qualibration-libs = { git = "https://github.com/qua-platform/qualibration-libs.git" }
+[tool.hatch.metadata]
+allow-direct-references = true
+# [tool.uv.sources]
+# quam-builder = { git = "https://github.com/qua-platform/quam-builder.git" }
+# qualibration-libs = { git = "https://github.com/qua-platform/qualibration-libs.git" }
