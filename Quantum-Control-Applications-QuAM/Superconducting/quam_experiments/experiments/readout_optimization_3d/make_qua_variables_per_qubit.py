@@ -8,10 +8,18 @@ from quam_experiments.experiments.readout_optimization_3d.parameters import (
 )
 
 
+try:
+    from qm.qua.type_hints import QuaVariable
+
+    QuaVariableFloat = QuaVariable[float]
+except ImportError:
+    from qm.qua._dsl import QuaVariableType as QuaVariableFloat
+
+
 def make_qua_variables_per_qubit(
     measurement_batch: Sequence[AnyTransmon],
     node_parameters: ReadoutOptimization3dParameters,
-) -> Tuple[List[Union[QuaVariableType, None]]]:
+) -> Tuple[List[Union[QuaVariableFloat, None]]]:
     """
     Create lists of QUA readout variables for accumulated demodulation for each
     qubit only if the qubit is in the measurement batch, otherwise, no variable
