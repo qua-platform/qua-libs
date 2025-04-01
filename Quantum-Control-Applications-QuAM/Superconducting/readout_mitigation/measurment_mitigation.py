@@ -82,6 +82,14 @@ with program() as drag_calibration:
                 save(state[i][j], state_stream[i])
                 wait(qubit.resonator.depletion_time // 4)
             
+            #qubit.align()
+            #qubit.xy.play("x180") # X gate
+            # qubit.xy.play("x180") # Y gate
+            # qubit.xy.play("x90") # X90 gate
+            # qubit.z.play(...) # Z gate
+            # qubit.xy.frame_rotation_2pi(phi) # virtual Z gate
+            
+            
         # Measure sequentially
         if not node.parameters.multiplexed:
             align()
