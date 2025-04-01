@@ -53,15 +53,15 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ["qC2-qC4"]
-    num_averages: int = 10
+    qubit_pairs: Optional[List[str]] = None
+    num_averages: int = 50
     max_time_in_ns: int = 120
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
-    amp_range : float = 0.15
-    amp_step : float = 0.003
+    amp_range : float = 0.1
+    amp_step : float = 0.001
     load_data_id: Optional[int] = None  
 
 node = QualibrationNode(
@@ -270,6 +270,7 @@ if not node.parameters.simulate:
         amp_guess = ds_qp.state_target.max("time")-ds_qp.state_target.min("time")
         flux_amp_idx = int(amp_guess.argmax())
         flux_amp = float(ds_qp.amp_full[flux_amp_idx])
+        
         fit_data = fit_oscillation_decay_exp(
             ds_qp.state_target.isel(amp=flux_amp_idx), "time")
         flux_time = int(1/fit_data.sel(fit_vals='f'))

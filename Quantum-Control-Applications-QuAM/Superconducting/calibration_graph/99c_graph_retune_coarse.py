@@ -24,7 +24,7 @@ reset_type_thermal_or_active = 'active'
 
 
 g = QualibrationGraph(
-    name="cal_graph",
+    name="retune coarse",
     parameters=Parameters(),
     nodes={
         "IQ_blobs": library.nodes["07b_IQ_Blobs"].copy(flux_point_joint_or_independent=flux_point, multiplexed=multiplexed, name="IQ_blobs", reset_type_thermal_or_active="thermal"),

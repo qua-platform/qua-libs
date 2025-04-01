@@ -53,7 +53,7 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ["qC2-qC4"]
+    qubit_pairs: Optional[List[str]] = None
     num_averages: int = 40
     max_time_in_ns: int = 128
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -61,8 +61,8 @@ class Parameters(NodeParameters):
     simulate: bool = False
     timeout: int = 100
     method: Literal['coarse', 'fine'] = "fine"
-    amp_range_coarse : float = 0.15
-    amp_step_coarse : float = 0.005
+    amp_range_coarse : float = 0.1
+    amp_step_coarse : float = 0.001
     amp_range_fine : float = 0.07
     amp_step_fine : float = 0.002
     load_data_id: Optional[int] = None  

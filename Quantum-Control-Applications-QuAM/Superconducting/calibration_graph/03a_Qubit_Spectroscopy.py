@@ -331,7 +331,7 @@ if not node.parameters.simulate:
                         Pi_length = q.xy.operations["x180"].length
                         used_amp = q.xy.operations["saturation"].amplitude * operation_amp
                         factor_cw = float(target_peak_width / result.sel(qubit=q.name).width.values)
-                        factor_pi = np.pi / (result.sel(qubit=q.name).width.values * Pi_length * 1e-9)
+                        factor_pi = 1.5* np.pi / (result.sel(qubit=q.name).width.values * Pi_length * 1e-9)
                         limits = instrument_limits(q.xy)
                         if factor_cw * used_amp / operation_amp < limits.max_wf_amplitude:
                             q.xy.operations["saturation"].amplitude = factor_cw * used_amp / operation_amp
