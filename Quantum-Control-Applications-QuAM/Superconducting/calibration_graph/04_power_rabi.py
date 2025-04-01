@@ -1,31 +1,28 @@
 # %% {Imports}
+from dataclasses import asdict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
-
 from qm.qua import *
-
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-
 from qualibrate import QualibrationNode
 from qualibrate.utils.logger_m import logger
 from quam_config import QuAM
 from quam_experiments.experiments.power_rabi import (
     Parameters,
-    get_number_of_pulses,
-    process_raw_dataset,
     fit_raw_data,
+    get_number_of_pulses,
     log_fitted_results,
     plot_raw_data_with_fit,
+    process_raw_dataset,
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
 from quam_libs.xarray_data_fetcher import XarrayDataFetcher
-
 
 # %% {Description}
 description = """
@@ -58,6 +55,7 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
+    node.parameters.num_averages = 100
     pass
 
 
@@ -196,7 +194,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())
+        # print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 

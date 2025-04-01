@@ -8,7 +8,7 @@ from quam_config import QuAM
 
 
 class QubitsExperimentNodeParameters(RunnableParameters):
-    qubits: Optional[Union[List[str], str]] = Field(
+    qubits: Optional[List[str]] = Field(
         default=None,
         description="A list of qubit names, or comma-separated list of qubit names"
         " which should participate in the execution of the node.",

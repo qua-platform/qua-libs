@@ -87,32 +87,32 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     xr.Dataset
         Dataset containing the fit results.
     """
-    # # Get the average along the number of pulses axis to identify the best DRAG coefficient
-    # state_n = ds.state.mean(dim="N")
-    # data_max_idx = state_n.argmin(dim="amp")
-    # alphas = ds.amp[data_max_idx]
-    # # Save fitting results
-    # fit_results = {
-    #     qubit.name: {
-    #         "alpha": float(
-    #             alphas.sel(qubit=qubit.name).values
-    #             * qubit.xy.operations[operation].alpha
-    #         )
-    #     }
-    #     for qubit in qubits
-    # }
-    # for q in qubits:
-    #     print(f"DRAG coefficient for {q.name} is {fit_results[q.name]['alpha']}")
-    # node.results["fit_results"] = fit_results
-    # node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
-
-    ds_fit = ds
+    # Get the average along the number of pulses axis to identify the best DRAG coefficient
+    state_n = ds.state.mean(dim="nb_of_pulses")
+    data_max_idx = state_n.argmin(dim="pulse_amplitude")
+    alphas = ds.pulse_amplitude[data_max_idx]
+    # Save fitting results
     fit_results = {
-        q: FitParameters(
-            success=False,
-        )
-        for q in ds_fit.qubit.values
+        qubit.name: {
+            "alpha": float(
+                alphas.sel(qubit=qubit.name).values
+                * qubit.xy.operations[operation].alpha
+            )
+        }
+        for qubit in qubits
     }
+    for q in qubits:
+        print(f"DRAG coefficient for {q.name} is {fit_results[q.name]['alpha']}")
+    node.results["fit_results"] = fit_results
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
+
+    # ds_fit = ds
+    # fit_results = {
+    #     q: FitParameters(
+    #         success=False,
+    #     )
+    #     for q in ds_fit.qubit.values
+    # }
     return ds_fit, fit_results
 
 

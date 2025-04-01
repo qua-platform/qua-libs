@@ -85,23 +85,23 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit = ds
     # Condition to have the Q equal for both states:
     angle = np.arctan2(
-        ds_fit.Qe.mean(dim="n_runs") - ds_fit.Qg.mean(dim="n_runs"),
-        ds_fit.Ig.mean(dim="n_runs") - ds_fit.Ie.mean(dim="n_runs"),
+        ds_fit.Qe1.mean(dim="n_runs") - ds_fit.Qg1.mean(dim="n_runs"),
+        ds_fit.Ig1.mean(dim="n_runs") - ds_fit.Ie1.mean(dim="n_runs"),
     )
     ds_fit = ds_fit.assign({"iw_angle": xr.DataArray(angle, coords=dict(qubit=ds_fit.qubit.data))})
 
     C = np.cos(angle)
     S = np.sin(angle)
     # Condition for having e > Ig
-    if np.mean((ds_fit.Ig - ds_fit.Ie) * C - (ds_fit.Qg - ds_fit.Qe) * S) > 0:
+    if np.mean((ds_fit.Ig1 - ds_fit.Ie1) * C - (ds_fit.Qg1 - ds_fit.Qe1) * S) > 0:
         angle += np.pi
         C = np.cos(angle)
         S = np.sin(angle)
 
-    ds_fit = ds_fit.assign({"Ig_rot": ds_fit.Ig * C - ds_fit.Qg * S})
-    ds_fit = ds_fit.assign({"Qg_rot": ds_fit.Ig * S + ds_fit.Qg * C})
-    ds_fit = ds_fit.assign({"Ie_rot": ds_fit.Ie * C - ds_fit.Qe * S})
-    ds_fit = ds_fit.assign({"Qe_rot": ds_fit.Ie * S + ds_fit.Qe * C})
+    ds_fit = ds_fit.assign({"Ig_rot": ds_fit.Ig1 * C - ds_fit.Qg1 * S})
+    ds_fit = ds_fit.assign({"Qg_rot": ds_fit.Ig1 * S + ds_fit.Qg1 * C})
+    ds_fit = ds_fit.assign({"Ie_rot": ds_fit.Ie1 * C - ds_fit.Qe1 * S})
+    ds_fit = ds_fit.assign({"Qe_rot": ds_fit.Ie1 * S + ds_fit.Qe1 * C})
 
     # Get the blobs histogram along the rotated axis
     hist = np.histogram(ds_fit.Ig_rot, bins=100)

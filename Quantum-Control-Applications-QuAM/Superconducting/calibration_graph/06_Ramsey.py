@@ -53,7 +53,9 @@ node = QualibrationNode[Parameters, QuAM](name="06_ramsey", description=descript
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q3"]
+    node.parameters.qubits = ["q1"]
+    node.parameters.num_averages = 100
+    node.parameters.max_wait_time_in_ns = 10000
     pass
 
 
@@ -188,7 +190,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())
+        # print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
     node.save()

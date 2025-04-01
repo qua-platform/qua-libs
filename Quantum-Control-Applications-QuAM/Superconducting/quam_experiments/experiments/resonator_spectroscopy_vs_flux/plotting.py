@@ -106,3 +106,4 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
         )
     ax.set_title(qubit["qubit"])
     ax.set_xlabel("Flux (V)")
+    ax.legend()

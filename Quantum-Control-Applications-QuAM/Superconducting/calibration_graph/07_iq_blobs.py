@@ -33,7 +33,7 @@ This sequence involves measuring the state of the resonator 'N' times, first aft
 thermalization (with the qubit in the |g> state) and then after applying a pi pulse
 to the qubit (bringing the qubit to the |e> state) successively. The resulting IQ blobs
 are displayed, and the data is processed to determine:
-    - The rotation angle required for the integration weights, ensuring that the 
+    - The rotation angle required for the integration weights, ensuring that the
       separation between |g> and |e> states aligns with the 'I' quadrature.
     - The threshold along the 'I' quadrature for effective qubit state discrimination.
     - The readout fidelity matrix, which is also influenced by the pi pulse fidelity.
@@ -65,7 +65,8 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
     execution in the Python IDE.
     """
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q3"]
+    node.parameters.qubits = ["q1"]
+    node.parameters.num_runs = 10_000
     pass
 
 
@@ -90,8 +91,8 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     operation = node.parameters.operation
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
-        "qubit": xr.DataArray(qubits.get_names()),
         "n_runs": xr.DataArray(np.linspace(1, n_runs, n_runs), attrs={"long_name": "number of shots"}),
+        "qubit": xr.DataArray(qubits.get_names()),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -184,10 +185,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())
+        # print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+    # node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
 
 
 # %% {Load_data}
@@ -260,3 +261,5 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, QuAM]):
     node.save()
+
+# %%

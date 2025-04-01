@@ -11,7 +11,7 @@ from quam_builder.architecture.superconducting.qubit import AnyTransmon
 u = unit(coerce_to_integer=True)
 
 
-def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: dict[str, dict[str, float]]):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
 
@@ -36,7 +36,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     """
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        plot_individual_data_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+        plot_individual_data_with_fit(ax, ds, qubit, fits["qubit"])
 
     grid.fig.suptitle("Qubit spectroscopy (rotated 'I' quadrature + fit)")
     grid.fig.set_size_inches(15, 9)
@@ -44,7 +44,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     return grid.fig
 
 
-def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: dict[str, float]):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -63,16 +63,16 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    pass
-    # grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    # for ax, qubit in grid_iter(grid):
-    #     ds.assign_coords(freq_MHz=ds.freq * 1e-6).loc[qubit].state.plot(
-    #         ax=ax, x="freq_MHz", y="N"
-    #     )
-    #     ax.axvline(1e-6 * fit_results[qubit["qubit"]]["detuning"], color="r")
-    #     ax.set_ylabel("num. of pulses")
-    #     ax.set_xlabel("detuning [MHz]")
-    #     ax.set_title(qubit["qubit"])
+    # pass
+    # grid = QubitGrid(ds, ax)
+
+    ds.assign_coords(freq_MHz=ds.detuning * 1e-6).loc[qubit].state.plot(
+        ax=ax, x="freq_MHz", y="nb_of_pulses"
+    )
+    ax.axvline(1e-6 * fit["detuning"], color="r")
+    ax.set_ylabel("num. of pulses")
+    ax.set_xlabel("detuning [MHz]")
+    ax.set_title(qubit["qubit"])
     # grid.fig.suptitle("Stark detuning")
     # plt.tight_layout()
     # plt.show()

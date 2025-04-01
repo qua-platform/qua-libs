@@ -1,31 +1,28 @@
 # %% {Imports}
+from dataclasses import asdict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
-
 from qm.qua import *
-
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-
 from qualibrate import QualibrationNode
 from qualibrate.utils.logger_m import logger
 from quam_config import QuAM
 from quam_experiments.experiments.stark_detuning_calibration import (
     Parameters,
-    process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
+    process_raw_dataset,
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
-from quam_libs.xarray_data_fetcher import XarrayDataFetcher
 from quam_libs.trackable_object import tracked_updates
-
+from quam_libs.xarray_data_fetcher import XarrayDataFetcher
 
 # %% {Initialisation}
 description = """
@@ -66,7 +63,9 @@ node = QualibrationNode[Parameters, QuAM](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q3"]
+    node.parameters.qubits = ["q1"]
+    # node.parameters.max_number_pulses_per_sweep = 10
+    # node.parameters.num_averages = 10
     pass
 
 
@@ -201,10 +200,9 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())
+        # print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
-    node.save()
 
 
 # %% {Load_data}
@@ -225,21 +223,23 @@ def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+    node.results["fit_results"] = fit_results
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], logger)
-    node.outcomes = {
-        qubit_name: ("successful" if fit_result["success"] else "failed")
-        for qubit_name, fit_result in node.results["fit_results"].items()
-    }
+    # log_fitted_results(node.results["fit_results"], logger)
+    # node.outcomes = {
+    #     qubit_name: ("successful" if fit_result["success"] else "failed")
+    #     for qubit_name, fit_result in node.results["fit_results"].items()
+    # }
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_raw_fit = plot_raw_data_with_fit(
+        ds=node.results["ds_raw"], qubits=node.namespace["qubits"], fits=node.results["fit_results"]
+    )
     plt.show()
     # Store the generated figures
     node.results["figure_amplitude"] = fig_raw_fit
@@ -255,14 +255,12 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
 
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
-            if node.outcomes[q.name] == "failed":
-                continue
+            if node.outcomes[q.name] == "successful":
+                fit_result = node.results["fit_results"][q.name]
 
-            # fit_result = node.results["fit_results"][q.name]
-            #
-            # q.xy.operations[operation].detuning = float(fit_result["detuning"])
-            # if node.parameters.DRAG_setpoint is not None:
-            #     q.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
+                q.xy.operations[operation].detuning = float(fit_result["detuning"])
+                if node.parameters.DRAG_setpoint is not None:
+                    q.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
 
 
 # %% {Save_results}

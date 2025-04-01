@@ -44,7 +44,7 @@ Prerequisites:
 
 State update:
     - The readout power.
-    - The readout frequency for the optimal readout power. 
+    - The readout frequency for the optimal readout power.
 """
 
 
@@ -62,7 +62,13 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q3"]
+    node.parameters.qubits = ["q3"]
+    node.parameters.num_averages = 50
+    node.parameters.num_power_points = 101
+    node.parameters.frequency_span_in_mhz = 10
+    node.parameters.frequency_step_in_mhz = 0.1
+    # node.parameters.max_power_dbm = -20
+    # node.parameters.min_power_dbm = -50
     pass
 
 
@@ -172,6 +178,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
+
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
@@ -186,7 +193,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())
+        # print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
@@ -257,3 +264,5 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, QuAM]):
     node.save()
+
+# %%

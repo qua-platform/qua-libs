@@ -158,7 +158,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())
+        # print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
     node.save()
@@ -233,3 +233,5 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, QuAM]):
     node.save()
+
+# %%

@@ -1,12 +1,12 @@
 from typing import List
+
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-
 from qualang_tools.units import unit
-from quam_libs.plot_utils import QubitGrid, grid_iter
-from quam_experiments.analysis.fit import lorentzian_peak
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
+from quam_experiments.analysis.fit import lorentzian_peak
+from quam_libs.plot_utils import QubitGrid, grid_iter
 
 u = unit(coerce_to_integer=True)
 
@@ -63,15 +63,8 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    pass
-    # grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    # for ax, qubit in grid_iter(grid):
-    #     ds.loc[qubit].state.plot(ax=ax, x="alpha", y="N")
-    #     ax.axvline(fit_results[qubit["qubit"]]["alpha"], color="r")
-    #     ax.set_ylabel("num. of pulses")
-    #     ax.set_xlabel(r"DRAG coeff $\alpha$")
-    #     ax.set_title(qubit["qubit"])
-    # grid.fig.suptitle("DRAG calibration")
-    # plt.tight_layout()
-    # plt.show()
-    # node.results["figure"] = grid.fig
+
+    # pass
+    ds.assign_coords(pulse_amp=ds.pulse_amplitude).loc[qubit].state.plot(
+        ax=ax, add_colorbar=True, x="pulse_amplitude", y="nb_of_pulses", robust=True,
+    )

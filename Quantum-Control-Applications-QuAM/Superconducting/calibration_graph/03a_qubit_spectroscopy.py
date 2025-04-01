@@ -31,7 +31,7 @@ description = """
         QUBIT SPECTROSCOPY
 This sequence involves sending a saturation pulse to the qubit, placing it in a mixed state,
 and then measuring the state of the resonator across various qubit drive intermediate frequencies dfs.
-In order to facilitate the qubit search, the qubit pulse duration and amplitude can be changed manually 
+In order to facilitate the qubit search, the qubit pulse duration and amplitude can be changed manually
 from the node parameters.
 
 The data is post-processed to determine the qubit resonance frequency and the width of the peak.
@@ -44,7 +44,7 @@ Prerequisites:
 
 State update:
     - The qubit frequency.
-    - The saturation pulse amplitude to get the target fwhm. 
+    - The saturation pulse amplitude to get the target fwhm.
 """
 
 
@@ -62,7 +62,14 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q3"]
+    node.parameters.qubits = ["q1"]  # The qubits to be used in the experiment
+    # node.parameters.num_averages = 100
+    # node.parameters.target_peak_width = 1e6
+    # node.parameters.operation_len_in_ns = 10_000
+    # node.parameters.operation = "x180"
+    # node.parameters.operation_amplitude_prefactor = 0.01
+    # node.parameters.frequency_span_in_mhz = 100
+    # node.parameters.frequency_step_in_mhz = 0.1
     pass
 
 
@@ -177,7 +184,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())
+        # print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
@@ -241,7 +248,6 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
             # Update the x180 and x90 amplitudes
             q.xy.operations["x180"].amplitude = fit_result["x180_amp"]
             q.xy.operations["x90"].amplitude = fit_result["x180_amp"] / 2
-
 
 # %% {Save_results}
 @node.run_action()

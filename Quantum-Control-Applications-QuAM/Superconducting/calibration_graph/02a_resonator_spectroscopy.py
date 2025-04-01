@@ -1,3 +1,4 @@
+# %%
 """
         RESONATOR SPECTROSCOPY MULTIPLEXED
 This sequence involves measuring the resonator by sending a readout pulse and
@@ -19,7 +20,9 @@ Before proceeding to the next node:
     - Save the current state
 """
 
+
 # %% {Imports}
+from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
@@ -74,7 +77,7 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q3"]
+    node.parameters.qubits = ["q1"]  # List of qubit names to be used in the experiment
     pass
 
 
@@ -110,8 +113,8 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
-            # for qubit in multiplexed_qubits.values():
-            #     node.machine.initialize_qpu(target=qubit, flux_point="joint")
+            for qubit in multiplexed_qubits.values():
+                node.machine.initialize_qpu(target=qubit, flux_point="joint")
             align()
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
@@ -175,7 +178,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
         # print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
-    node.results["res_handles"] = job.result_handles
+    # node.results["res_handles"] = job.result_handles
 
 
 # %% {Load_data}
@@ -230,10 +233,12 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
                 continue
 
             q.resonator.f_01 = float(node.results["fit_results"][q.name]["frequency"])
-            q.resonator.RF_frequency = q.resonator.f_01
+            q.resonator.RF_frequency = float(node.results["fit_results"][q.name]["frequency"])
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, QuAM]):
     node.save()
+
+# %%

@@ -22,7 +22,7 @@ class NodeSpecificParameters(RunnableParameters):
     """
 
     num_averages: int = 100
-    frequency_span_in_mhz: float = 100
+    frequency_span_in_mhz: float = 100.0
     frequency_step_in_mhz: float = 0.25
     operation: str = "saturation"
     operation_amplitude_prefactor: float = 1.0

@@ -99,7 +99,7 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode)
             optimal_frequency=float(ds_fit["optimal_frequency"].sel(qubit=q).data),
             optimal_detuning=float(ds_fit["optimal_detuning"].sel(qubit=q).data),
             chi=float(ds_fit["chi"].sel(qubit=q).data),
-            success=False,
+            success=True,
         )
         for q in ds_fit.qubit.values
     }

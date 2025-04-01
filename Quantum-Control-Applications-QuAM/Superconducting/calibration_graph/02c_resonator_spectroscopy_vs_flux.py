@@ -1,31 +1,28 @@
 # %% {Imports}
+import warnings
+from dataclasses import asdict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
-import warnings
-
 from qm.qua import *
-
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-
 from qualibrate import QualibrationNode
 from qualibrate.utils.logger_m import logger
 from quam_config import QuAM
 from quam_experiments.experiments.resonator_spectroscopy_vs_flux import (
     Parameters,
-    process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
+    process_raw_dataset,
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
 from quam_libs.xarray_data_fetcher import XarrayDataFetcher
-
 
 # %% {Initialisation}
 description = """
@@ -45,7 +42,7 @@ Prerequisites:
 State update:
     - The joint or independent offset depending on the chosen flux point.
     - The min offset.
-    - The readout frequency for the chosen flux point. 
+    - The readout frequency for the chosen flux point.
     - phi0 in voltage (phi0_voltage) and current (phi0_current).
 """
 
@@ -64,7 +61,14 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q3"]
+    node.parameters.qubits = ["q2", "q3"]  # List of qubit names to be used in the experiment
+    node.parameters.num_averages = 50
+    node.parameters.num_flux_points = 51
+    node.parameters.frequency_span_in_mhz = 7
+    node.parameters.frequency_step_in_mhz = 0.1
+    node.parameters.min_flux_offset_in_v = -0.4
+    node.parameters.max_flux_offset_in_v = 0.4
+    node.parameters.num_flux_points = 101
     pass
 
 
@@ -179,7 +183,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())
+        # print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 

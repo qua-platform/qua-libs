@@ -31,34 +31,34 @@ def log_fitted_results(fit_results: Dict, logger=None):
     """
     if logger is None:
         logger = logging.getLogger(__name__)
-    # for q in fit_results.keys():
-    #     s_qubit = f"Results for qubit {q}: "
-    #     s_freq = f"\tQubit frequency: {1e-9 * fit_results[q]['frequency']:.3f} GHz | "
-    #     s_fwhm = f"FWHM: {1e-3 * fit_results[q]['fwhm']:.1f} kHz | "
-    #     s_angle = (
-    #         f"The integration weight angle: {fit_results[q]['iw_angle']:.3f} rad\n "
-    #     )
-    #     s_saturation = f"To get the desired FWHM, the saturation amplitude is updated to: {1e3 * fit_results[q]['saturation_amp']:.1f} mV | "
-    #     s_x180 = f"To get the desired x180 gate, the x180 amplitude is updated to: {1e3 * fit_results[q]['x180_amp']:.1f} mV\n "
-    #     if fit_results[q]["success"]:
-    #         s_qubit += " SUCCESS!\n"
-    #     else:
-    #         s_qubit += " FAIL!\n"
-    #     logger.info(
-    #         s_qubit + s_freq + s_fwhm + s_freq + s_angle + s_saturation + s_x180
-    #     )
+    for q in fit_results.keys():
+        s_qubit = f"Results for qubit {q}: "
+        s_freq = f"\tQubit frequency: {1e-9 * fit_results[q]['frequency']:.3f} GHz | "
+        s_fwhm = f"FWHM: {1e-3 * fit_results[q]['fwhm']:.1f} kHz | "
+        s_angle = (
+            f"The integration weight angle: {fit_results[q]['iw_angle']:.3f} rad\n "
+        )
+        s_saturation = f"To get the desired FWHM, the saturation amplitude is updated to: {1e3 * fit_results[q]['saturation_amp']:.1f} mV | "
+        s_x180 = f"To get the desired x180 gate, the x180 amplitude is updated to: {1e3 * fit_results[q]['x180_amp']:.1f} mV\n "
+        if fit_results[q]["success"]:
+            s_qubit += " SUCCESS!\n"
+        else:
+            s_qubit += " FAIL!\n"
+        logger.info(
+            s_qubit + s_freq + s_fwhm + s_freq + s_angle + s_saturation + s_x180
+        )
     pass
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    # ds = convert_IQ_to_V(ds, node.namespace["qubits"])
-    # ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
-    # full_freq = np.array(
-    #     [ds.detuning + q.xy.RF_frequency for q in node.namespace["qubits"]]
-    # )
-    # ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
-    # ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
-    pass
+    ds = convert_IQ_to_V(ds, node.namespace["qubits"])
+    ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
+    full_freq = np.array(
+        [ds.detuning + q.xy.RF_frequency for q in node.namespace["qubits"]]
+    )
+    ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
+    ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
+    # pass
     return ds
 
 
@@ -78,28 +78,29 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     xr.Dataset
         Dataset containing the fit results.
     """
-    # # Get the average along the number of pulses axis to identify the best pulse amplitude
-    # state_n = ds.state.mean(dim="N")
-    # data_max_idx = state_n.argmin(dim="freq")
-    # detuning = ds.freq[data_max_idx]
-    #
-    # # Save fitting results
-    # fit_results = {
-    #     qubit.name: {"detuning": float(detuning.sel(qubit=qubit.name).values)}
-    #     for qubit in qubits
-    # }
-    # for q in qubits:
-    #     print(f"Detuning for {q.name} is {fit_results[q.name]['detuning']} Hz")
-    # node.results["fit_results"] = fit_results
-    # node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
+    # Get the average along the number of pulses axis to identify the best pulse amplitude
+    state_n = ds.state.mean(dim="nb_of_pulses")
+    data_max_idx = state_n.argmin(dim="detuning")
+    detuning = ds.detuning[data_max_idx]
+
+    # Save fitting results
+    fit_results = {
+        qubit.name: {"detuning": float(detuning.sel(qubit=qubit).values)}
+        for qubit in ds["qubit"]
+    }
+    for q in ds["qubit"]:
+        print(f"Detuning for {q.name} is {fit_results[q.name]['detuning']} Hz")
+    node.results["fit_results"] = fit_results
+    node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
     ds_fit = ds
-    fit_results = {
-        q: FitParameters(
-            success=False,
-        )
-        for q in ds_fit.qubit.values
-    }
+    # fit_results = {
+    #     q: FitParameters(
+    #         success=False,
+    #         detuning=fit_results[q.name]['detuning'],
+    #     )
+    #     for q in ds_fit.qubit.values
+    # }
     return ds_fit, fit_results
 
 
