@@ -8,26 +8,20 @@ from quam_experiments.parameters import (
 
 
 class NodeSpecificParameters(RunnableParameters):
-    """
-    Parameters for configuring a qubit spectroscopy experiment.
-
-    Attributes:
-        num_averages (int): Number of averages to perform. Default is 100.
-        frequency_span_in_mhz (float): Span of frequencies to sweep in MHz. Default is 100 MHz.
-        frequency_step_in_mhz (float): Step size for frequency sweep in MHz. Default is 0.25 MHz.
-        operation (str): Type of operation to perform. Default is "saturation".
-        operation_amplitude_prefactor (Optional[float]): Amplitude pre-factor for the operation. Default is 1.0.
-        operation_len_in_ns (Optional[int]): Length of the operation in nanoseconds. Default is None.
-        target_peak_width (Optional[float]): Target peak width in Hz. Default is 3e6 Hz.
-    """
-
     num_averages: int = 100
+    """Number of averages to perform. Default is 100."""
     frequency_span_in_mhz: float = 100
+    """Span of frequencies to sweep in MHz. Default is 100 MHz."""
     frequency_step_in_mhz: float = 0.25
+    """Step size for frequency sweep in MHz. Default is 0.25 MHz."""
     operation: str = "saturation"
+    """Type of operation to perform. Default is "saturation"."""
     operation_amplitude_prefactor: float = 1.0
+    """Amplitude pre-factor for the operation. Default is 1.0."""
     operation_len_in_ns: Optional[int] = None
-    target_peak_width: Optional[float] = 3e6
+    """Length of the operation in nanoseconds. Default is the predefined pulse length."""
+    target_peak_width: float = 3e6
+    """Target peak width in Hz. Default is 3e6 Hz."""
 
 
 class Parameters(

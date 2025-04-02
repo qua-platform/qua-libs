@@ -1,4 +1,4 @@
-from typing import Optional, Literal
+from typing import Literal
 import numpy as np
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
@@ -9,26 +9,20 @@ from quam_experiments.parameters import (
 
 
 class NodeSpecificParameters(RunnableParameters):
-    """
-    Parameters for configuring a qubit spectroscopy experiment.
-
-    Attributes:
-        num_averages (int): Number of averages to perform. Default is 100.
-        frequency_span_in_mhz (float): Span of frequencies to sweep in MHz. Default is 100 MHz.
-        frequency_step_in_mhz (float): Step size for frequency sweep in MHz. Default is 0.25 MHz.
-        operation (str): Type of operation to perform. Default is "saturation".
-        operation_amplitude_prefactor (Optional[float]): Amplitude pre-factor for the operation. Default is 1.0.
-        operation_len_in_ns (Optional[int]): Length of the operation in nanoseconds. Default is None.
-        target_peak_width (Optional[float]): Target peak width in Hz. Default is 3e6 Hz.
-    """
-
     num_averages: int = 50
+    """Number of averages to perform. Default is 50."""
     operation: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x180"
+    """Type of operation to perform. Default is "x180"."""
     min_amp_factor: float = 0.001
+    """Minimum amplitude factor for the operation. Default is 0.001."""
     max_amp_factor: float = 1.99
+    """Maximum amplitude factor for the operation. Default is 1.99."""
     amp_factor_step: float = 0.005
+    """Step size for the amplitude factor. Default is 0.005."""
     max_number_rabi_pulses_per_sweep: int = 1
+    """Maximum number of Rabi pulses per sweep. Default is 1."""
     update_x90: bool = True
+    """Flag to update the x90 pulse amplitude. Default is True."""
 
 
 class Parameters(

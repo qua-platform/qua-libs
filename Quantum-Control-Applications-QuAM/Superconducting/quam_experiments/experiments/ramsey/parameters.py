@@ -12,11 +12,17 @@ from quam_experiments.parameters import (
 
 class NodeSpecificParameters(RunnableParameters):
     num_averages: int = 100
+    """Number of averages to perform. Default is 100."""
     frequency_detuning_in_mhz: float = 1.0
+    """Frequency detuning in MHz. Default is 1.0 MHz."""
     min_wait_time_in_ns: int = 16
+    """Minimum wait time in nanoseconds. Default is 16."""
     max_wait_time_in_ns: int = 30000
+    """Maximum wait time in nanoseconds. Default is 30000."""
     wait_time_num_points: int = 500
+    """Number of points for the wait time scan. Default is 500."""
     log_or_linear_sweep: Literal["log", "linear"] = "log"
+    """Type of sweep, either "log" (logarithmic) or "linear". Default is "log"."""
 
 
 class Parameters(

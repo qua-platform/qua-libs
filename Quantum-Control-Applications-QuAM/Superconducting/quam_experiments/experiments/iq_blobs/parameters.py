@@ -8,16 +8,10 @@ from quam_experiments.parameters import (
 
 
 class NodeSpecificParameters(RunnableParameters):
-    """
-    Parameters for configuring a qubit spectroscopy experiment.
-
-    Attributes:
-        num_runs (int): Number of runs to perform. Default is 2000.
-        operation (str): Type of operation to perform. Default is "readout".
-    """
-
     num_runs: int = 2000
+    """Number of runs to perform. Default is 2000."""
     operation: Literal["readout", "readout_QND"] = "readout"
+    """Type of operation to perform. Default is "readout"."""
 
 
 class Parameters(

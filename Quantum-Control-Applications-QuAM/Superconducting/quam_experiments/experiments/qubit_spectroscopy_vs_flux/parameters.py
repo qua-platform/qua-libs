@@ -6,31 +6,26 @@ from quam_experiments.parameters import (
     CommonNodeParameters,
 )
 
+
 class NodeSpecificParameters(RunnableParameters):
-    """
-    Parameters for configuring a resonator vs flux experiment.
-
-    Attributes:
-        num_averages (int): Number of averages to perform. Default is 100.
-        min_flux_offset_in_v (float): Minimum flux bias offset in volts. Default is -0.5 V.
-        max_flux_offset_in_v (float): Maximum flux bias offset in volts. Default is 0.5 V.
-        num_flux_points (int): Number of flux points. Default is 101.
-        frequency_span_in_mhz (float): Frequency span in MHz. Default is 15 MHz.
-        frequency_step_in_mhz (float): Frequency step in MHz. Default is 0.1 MHz.
-        input_line_impedance_in_ohm (float): Input line impedance in ohms. Default is 50 Ohm.
-        line_attenuation_in_db (float): Line attenuation in dB. Default is 0 dB.
-        update_flux_min (bool): Flag to update flux minimum frequency point. Default is False.
-    """
-
     num_averages: int = 50
+    """Number of averages to perform. Default is 50."""
     operation: str = "saturation"
+    """Operation to perform. Default is "saturation"."""
     operation_amplitude_factor: float = 0.1
+    """Amplitude factor for the operation. Default is 0.1."""
     operation_len_in_ns: Optional[int] = None
+    """Length of the operation in ns. Default is the predefined pulse length."""
     frequency_span_in_mhz: float = 100
+    """Frequency span in MHz. Default is 100 MHz."""
     frequency_step_in_mhz: float = 0.1
+    """Frequency step in MHz. Default is 0.1 MHz."""
     min_flux_offset_in_v: float = -0.02
+    """Minimum flux bias offset in volts. Default is -0.02 V."""
     max_flux_offset_in_v: float = 0.03
+    """Maximum flux bias offset in volts. Default is 0.03 V."""
     num_flux_points: int = 51
+    """Number of flux points. Default is 51."""
 
 
 class Parameters(
