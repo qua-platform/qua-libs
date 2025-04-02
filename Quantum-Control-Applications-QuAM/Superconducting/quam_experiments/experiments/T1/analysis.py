@@ -103,7 +103,6 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset):
 
     fit_results = {
         q: T1Fit(
-            qubit_name=q.item(),
             t1=fit.sel(qubit=q).tau.values.__float__(),
             t1_error=fit.sel(qubit=q).tau_error.values.__float__(),
             success=fit.sel(qubit=q).success.values.__bool__(),

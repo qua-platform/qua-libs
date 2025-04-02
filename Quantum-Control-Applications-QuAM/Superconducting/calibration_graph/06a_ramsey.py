@@ -45,7 +45,7 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-node = QualibrationNode[Parameters, QuAM](name="06_ramsey", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, QuAM](name="06a_ramsey", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here

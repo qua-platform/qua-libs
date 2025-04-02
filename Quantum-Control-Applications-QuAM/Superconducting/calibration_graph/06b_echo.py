@@ -43,7 +43,7 @@ Next steps before going to the next node:
 """
 
 
-node = QualibrationNode[Parameters, QuAM](name="05b_T2e", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, QuAM](name="06b_echo", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here

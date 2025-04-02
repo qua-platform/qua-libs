@@ -33,7 +33,7 @@ class NodeSpecificParameters(RunnableParameters):
     max_amp: float = 0.1
     derivative_crossing_threshold_in_hz_per_dbm: int = int(-50e3)
     derivative_smoothing_window_num_points: int = 10
-    moving_average_filter_window_num_points: int = 5
+    moving_average_filter_window_num_points: int = 10
     buffer_from_crossing_threshold_in_dbm: int = 1
 
 
