@@ -52,7 +52,7 @@ def log_fitted_results(fit_results: Dict, logger=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    if ~node.parameters.use_state_discrimination:
+    if not node.parameters.use_state_discrimination:
         ds = convert_IQ_to_V(ds, node.namespace["qubits"])
     # ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     # full_freq = np.array(
