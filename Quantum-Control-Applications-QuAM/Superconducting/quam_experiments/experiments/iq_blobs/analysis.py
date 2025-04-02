@@ -19,7 +19,7 @@ class FitParameters:
     readout_fidelity: float
     confusion_matrix: list
     success: bool
-    qubit_name: Optional[str] = ""
+
 
 
 def log_fitted_results(fit_results: Dict, logger=None):

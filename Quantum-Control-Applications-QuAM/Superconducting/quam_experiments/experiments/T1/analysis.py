@@ -14,7 +14,7 @@ class T1Fit:
     t1: float
     t1_error: float
     success: bool
-    qubit_name: Optional[str] = ""
+
 
 
 def log_fitted_results(ds: xr.Dataset, logger=None):

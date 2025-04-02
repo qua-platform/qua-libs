@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Optional, Tuple, Dict
+from typing import Tuple, Dict
 import numpy as np
 import xarray as xr
 
@@ -18,7 +18,7 @@ class FitParameters:
     opt_amp: float
     operation: str
     success: bool
-    qubit_name: Optional[str] = ""
+
 
 
 def log_fitted_results(fit_results: Dict, logger=None):
@@ -138,7 +138,6 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     # Populate the FitParameters class with fitted values
     fit_results = {
         q: FitParameters(
-            qubit_name=q,
             opt_amp_prefactor=fit.sel(qubit=q).opt_amp_prefactor.values.__float__(),
             opt_amp=fit.sel(qubit=q).opt_amp.values.__float__(),
             operation=node.parameters.operation,

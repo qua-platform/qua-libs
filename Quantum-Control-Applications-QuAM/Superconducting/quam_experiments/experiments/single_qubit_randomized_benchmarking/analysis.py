@@ -17,7 +17,7 @@ class FitParameters:
     error_per_clifford: float
     error_per_gate: float
     success: bool
-    qubit_name: Optional[str] = ""
+
 
 
 def log_fitted_results(fit_results: Dict, logger=None):

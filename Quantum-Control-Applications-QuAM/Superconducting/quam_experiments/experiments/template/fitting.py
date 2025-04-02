@@ -14,7 +14,7 @@ class FitParameters:
     """Stores the relevant node-specific fitted parameters used to update the state at the end of the node."""
 
     success: bool
-    qubit_name: Optional[str] = ""
+
 
 
 def log_fitted_results(fit_results: Dict, logger=None):
