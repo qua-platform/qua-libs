@@ -1,12 +1,12 @@
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Dict
+from typing import Dict, Tuple
+
 import numpy as np
 import xarray as xr
-
 from qualibrate import QualibrationNode
-from qualibration_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
-from quam_experiments.analysis.fit import fit_oscillation
+from quam_experiments.analysis.fit import fit_oscillation, peaks_dips
+from quam_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
 
 
 @dataclass
@@ -14,9 +14,8 @@ class FitParameters:
     """Stores the relevant node-specific fitted parameters used to update the state at the end of the node."""
 
     success: bool
-    resonator_frequency: float
+    qubit_frequency: float
     frequency_shift: float
-    min_offset: float
     idle_offset: float
     dv_phi0: float
     phi0_current: float
@@ -47,14 +46,13 @@ def log_fitted_results(fit_results: Dict, logger=None):
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
         s_idle_offset = f"\tidle offset: {fit_results[q]['idle_offset'] * 1e3:.0f} mV | "
-        s_min_offset = f"min offset: {fit_results[q]['min_offset'] * 1e3:.0f} mV | "
-        s_freq = f"Resonator frequency: {1e-9 * fit_results[q]['resonator_frequency']:.3f} GHz | "
+        s_freq = f"Qubit frequency: {1e-9 * fit_results[q]['qubit_frequency']:.3f} GHz | "
         s_shift = f"(shift of {1e-6 * fit_results[q]['frequency_shift']:.0f} MHz)\n"
         if fit_results[q]["success"]:
             s_qubit += " SUCCESS!\n"
         else:
             s_qubit += " FAIL!\n"
-        logger.info(s_qubit + s_idle_offset + s_min_offset + s_freq + s_shift)
+        logger.info(s_qubit + s_idle_offset + s_freq + s_shift)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
@@ -65,7 +63,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Add the amplitude and phase to the raw dataset
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     # Add the RF frequency as a coordinate of the raw dataset
-    full_freq = np.array([ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]])
+    full_freq = np.array([ds.detuning + q.xy.RF_frequency for q in node.namespace["qubits"]])
     ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     # Add the current axis of each qubit to the dataset coordinates for plotting
@@ -98,107 +96,69 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     xr.Dataset
         Dataset containing the fit results.
     """
-    #    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    #     ds = fetch_results_as_xarray(
-    #         job.result_handles, qubits, {"flux": dcs, "freq": dfs}
-    #     )
-    #     # Convert IQ data into volts
-    #     ds = convert_IQ_to_V(ds, qubits)
-    #     # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2)
-    #     ds = ds.assign({"IQ_abs": np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
-    #     # Add the resonator RF frequency axis of each qubit to the dataset coordinates for plotting
-    #     ds = ds.assign_coords(
-    #         {
-    #             "freq_full": (
-    #                 ["qubit", "freq"],
-    #                 np.array([dfs + q.xy.RF_frequency for q in qubits]),
-    #             )
-    #         }
-    #     )
-    #     ds.freq_full.attrs["long_name"] = "Frequency"
-    #     ds.freq_full.attrs["units"] = "GHz"
-    # # Add the dataset to the node
-    # node.results = {"ds": ds}
-    #
-    # # %% {Data_analysis}
-    # # Find the resonance dips for each flux point
-    # peaks = peaks_dips(ds.I, dim="freq", prominence_factor=5)
-    # # Fit the result with a parabola
-    # parabolic_fit_results = peaks.position.polyfit("flux", 2)
-    # # Try to fit again with a smaller prominence factor (may need some adjustment)
-    # if np.any(
-    #     np.isnan(np.concatenate(parabolic_fit_results.polyfit_coefficients.values))
-    # ):
-    #     # Find the resonance dips for each flux point
-    #     peaks = peaks_dips(ds.I, dim="freq", prominence_factor=4)
-    #     # Fit the result with a parabola
-    #     parabolic_fit_results = peaks.position.polyfit("flux", 2)
-    # # Extract relevant fitted parameters
-    # coeff = parabolic_fit_results.polyfit_coefficients
-    # fitted = (
-    #     coeff.sel(degree=2) * ds.flux**2
-    #     + coeff.sel(degree=1) * ds.flux
-    #     + coeff.sel(degree=0)
-    # )
-    # flux_shift = -coeff[1] / (2 * coeff[0])
-    # freq_shift = (
-    #     coeff.sel(degree=2) * flux_shift**2
-    #     + coeff.sel(degree=1) * flux_shift
-    #     + coeff.sel(degree=0)
-    # )
-    #
-    # # Save fitting results
-    # if node.parameters.load_data_id is None:
-    #     fit_results = {}
-    #     for q in qubits:
-    #         fit_results[q.name] = {}
-    #         if not np.isnan(flux_shift.sel(qubit=q.name).values):
-    #             if q.z.flux_point == "independent":
-    #                 offset = q.z.independent_offset
-    #             elif q.z.flux_point == "joint":
-    #                 offset = q.z.joint_offset
-    #             else:
-    #                 offset = 0.0
-    #             print(
-    #                 f"flux offset for qubit {q.name} is {offset*1e3 + flux_shift.sel(qubit = q.name).values*1e3:.0f} mV"
-    #             )
-    #             print(f"(shift of  {flux_shift.sel(qubit = q.name).values*1e3:.0f} mV)")
-    #             print(
-    #                 f"Drive frequency for {q.name} is {(freq_shift.sel(qubit = q.name).values + q.xy.RF_frequency)/1e9:.3f} GHz"
-    #             )
-    #             print(f"(shift of {freq_shift.sel(qubit = q.name).values/1e6:.0f} MHz)")
-    #             print(
-    #                 f"quad term for qubit {q.name} is {float(coeff.sel(degree = 2, qubit = q.name)/1e9):.3e} GHz/V^2 \n"
-    #             )
-    #             fit_results[q.name]["flux_shift"] = float(
-    #                 flux_shift.sel(qubit=q.name).values
-    #             )
-    #             fit_results[q.name]["drive_freq"] = float(
-    #                 freq_shift.sel(qubit=q.name).values
-    #             )
-    #             fit_results[q.name]["quad_term"] = float(
-    #                 coeff.sel(degree=2, qubit=q.name)
-    #             )
-    #         else:
-    #             print(f"No fit for qubit {q.name}")
-    #             fit_results[q.name]["flux_shift"] = np.nan
-    #             fit_results[q.name]["drive_freq"] = np.nan
-    #             fit_results[q.name]["quad_term"] = np.nan
-    #             fit_results[q.name]["success"] = False
-    #     node.results["fit_results"] = fit_results
-    # node.outcomes = {
-    #     qubit_name: ("successful" if fit_result["success"] else "failed")
-    #     for qubit_name, fit_result in node.results["fit_results"].items()
-    # }
-    # Find the minimum of each frequency line to follow the resonance vs flux
+    
+    peak_freq = peaks_dips(ds.IQ_abs, dim="detuning", prominence_factor=5)
+    # Fit to a cosine using the qiskit function: a * np.cos(2 * np.pi * f * t + phi) + offset
+    fit_results_da = fit_oscillation(peak_freq.position.dropna(dim="flux_bias"), "flux_bias")
+    fit_results_ds = xr.merge([fit_results_da.rename("fit_results"), peak_freq.position.rename("peak_freq")])
     # Extract the relevant fitted parameters
-    fit_dataset, fit_results = None, None
-    # fit_dataset, fit_results = _extract_relevant_fit_parameters(fit_results_ds, node)
+    fit_dataset, fit_results = _extract_relevant_fit_parameters(fit_results_ds, node)
     return fit_dataset, fit_results
 
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the fit dataset and fit result dictionary."""
-    pass
+    # Ensure that the phase is between -pi and pi
+    flux_idle = -fit.sel(fit_vals="phi")
+    flux_idle = np.mod(flux_idle + np.pi, 2 * np.pi) - np.pi
+    # converting the phase phi from radians to voltage
+    flux_idle = flux_idle / fit.sel(fit_vals="f") / 2 / np.pi
+    fit = fit.assign_coords(idle_offset=("qubit", flux_idle.fit_results.data))
+    fit.idle_offset.attrs = {"long_name": "idle flux bias", "units": "V"}
+    # finding the location of the minimum frequency flux point
+    flux_min = flux_idle + ((flux_idle < 0) - 0.5) / fit.sel(fit_vals="f")
+    flux_min = flux_min * (np.abs(flux_min) < 0.5) + 0.5 * (flux_min > 0.5) - 0.5 * (flux_min < -0.5)
+    fit = fit.assign_coords(flux_min=("qubit", flux_min.fit_results.data))
+    fit.flux_min.attrs = {"long_name": "minimum frequency flux bias", "units": "V"}
+    # finding the frequency as the sweet spot flux
+    full_freq = np.array([q.xy.RF_frequency for q in node.namespace["qubits"]])
+    freq_shift = fit.peak_freq.sel(flux_bias=flux_idle.fit_results, method="nearest")
+    fit = fit.assign_coords(freq_shift=("qubit", freq_shift.data))
+    fit.freq_shift.attrs = {"long_name": "frequency shift", "units": "Hz"}
+    fit = fit.assign_coords(sweet_spot_frequency=("qubit", freq_shift.data + full_freq))
+    fit.sweet_spot_frequency.attrs = {
+        "long_name": "sweet spot frequency",
+        "units": "Hz",
+    }
+    # m_pH
+    attenuation_factor = 10 ** (-node.parameters.line_attenuation_in_db / 20)
+    m_pH = (
+        1e12
+        * 2.068e-15
+        / (1 / fit.sel(fit_vals="f"))
+        / node.parameters.input_line_impedance_in_ohm
+        * attenuation_factor
+    )
+    # Assess whether the fit was successful or not
+    freq_success = np.abs(freq_shift.data) < node.parameters.frequency_span_in_mhz * 1e6
+    nan_success = np.isnan(freq_shift.data) | np.isnan(flux_min.fit_results.data) | np.isnan(flux_idle.fit_results.data)
+    success_criteria = freq_success & ~nan_success
+    fit = fit.assign_coords(success=("qubit", success_criteria))
 
-    # return fit, fit_results
+    fit_results = {
+        q: FitParameters(
+            success=fit.sel(qubit=q).success.values.__bool__(),
+            qubit_frequency=float(fit.sweet_spot_frequency.sel(qubit=q).values),
+            frequency_shift=float(freq_shift.sel(qubit=q).values),
+            idle_offset=float(flux_idle.sel(qubit=q).fit_results.data),
+            dv_phi0=1 / fit.sel(fit_vals="f", qubit=q).fit_results.data,
+            phi0_current=1
+            / fit.sel(fit_vals="f", qubit=q).fit_results.data
+            * node.parameters.input_line_impedance_in_ohm
+            * attenuation_factor,
+            m_pH=m_pH.sel(qubit=q).fit_results.data,
+        )
+        for q in fit.qubit.values
+    }
+
+    return fit, fit_results
