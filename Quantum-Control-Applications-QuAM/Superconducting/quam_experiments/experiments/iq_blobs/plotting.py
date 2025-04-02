@@ -38,7 +38,10 @@ def plot_iq_blobs(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     for ax, qubit in grid_iter(grid):
         plot_individual_iq_blobs(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
     handles, labels = ax.get_legend_handles_labels()
-    grid.fig.legend(handles, labels, loc="lower center", ncol=4)
+    grid.fig.legend(handles, labels, loc="lower center", ncol=2)
+    leg = grid.fig.legend(handles, labels, loc="lower center", ncol=2)
+    leg.legend_handles[0].set_markersize(6)
+    leg.legend_handles[1].set_markersize(6)
     grid.fig.suptitle("g.s. and e.s. discriminators (rotated)")
     # grid.fig.set_size_inches(15, 9)
     grid.fig.tight_layout()

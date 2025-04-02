@@ -51,6 +51,9 @@ def log_fitted_results(fit_results: Dict, logger=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
+    # Skip if the data has already been processed
+    if ~np.all([var in ds.data_vars for var in ["Ig", "Qg", "Ie", "Qe"]]):
+        return ds
     ds = convert_IQ_to_V(ds, node.namespace["qubits"], IQ_list=["Ig", "Qg", "Ie", "Qe"])
     # Add the absolute readout power to the dataset
     readout_amplitudes = np.array(
@@ -80,7 +83,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the qubit frequency and FWHM for each qubit in the dataset.
 
@@ -134,9 +137,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit = xr.merge([ds, fit_data.rename("fit_data")])
 
     # Extract the relevant fitted parameters
-    fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
+    fit_data, fit_results, ds_iq_blobs = _extract_relevant_fit_parameters(ds_fit, node)
 
-    return ds_fit, fit_results
+    return ds_fit, ds_iq_blobs, fit_results
 
 
 def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode):
@@ -161,7 +164,7 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode)
     ds_temp = xr.Dataset(
         {"Ig": Ig.drop("state"), "Ie": Ie.drop("state"), "Qg": Qg.drop("state"), "Qe": Qe.drop("state")}
     )
-    fit_data, _fit_results = fit_iq_blobs(ds_temp, node)
+    ds_iq_blobs, _fit_results = fit_iq_blobs(ds_temp, node)
 
     fit_results = {}
     for q in ds_fit.qubit.values:
@@ -171,4 +174,4 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode)
         params_dict["optimal_amplitude"] = float(ds_fit["optimal_amp"].sel(qubit=q))
         # Instantiate FitParameters using the updated dictionary
         fit_results[q] = FitParameters(**params_dict)
-    return ds_fit, fit_results
+    return ds_fit, fit_results, ds_iq_blobs

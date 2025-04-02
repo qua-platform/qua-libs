@@ -23,6 +23,7 @@ from quam_experiments.experiments.readout_power_optimization import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
+from quam_experiments.experiments.iq_blobs.plotting import plot_iq_blobs, plot_confusion_matrices
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
@@ -48,6 +49,7 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
+    node.parameters.load_data_id = 1657
     pass
 
 
@@ -180,7 +182,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["ds_fit"], node.results["ds_iq_blobs"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
@@ -196,10 +198,13 @@ def analyse_data(node: QualibrationNode[Parameters, QuAM]):
 def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_iq = plot_iq_blobs(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_iq_blobs"])
+    fig_confusion = plot_confusion_matrices(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_iq_blobs"])
     plt.show()
     # Store the generated figures
     node.results["figure_amplitude"] = fig_raw_fit
-
+    node.results["figure_iq_blobs"] = fig_iq
+    node.results["figure_confusion_matrix"] = fig_confusion
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
