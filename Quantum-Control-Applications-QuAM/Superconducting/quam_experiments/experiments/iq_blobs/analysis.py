@@ -170,8 +170,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             readout_fidelity=float(fit.sel(qubit=q).readout_fidelity),
             confusion_matrix=[
                 [float(fit.sel(qubit=q).gg), float(fit.sel(qubit=q).ge)],
-                [float(fit.sel(qubit=q).eg)],
-                float(fit.sel(qubit=q).ee),
+                [float(fit.sel(qubit=q).eg), float(fit.sel(qubit=q).ee)],
             ],
             success=fit.sel(qubit=q).success.values.__bool__(),
         )
