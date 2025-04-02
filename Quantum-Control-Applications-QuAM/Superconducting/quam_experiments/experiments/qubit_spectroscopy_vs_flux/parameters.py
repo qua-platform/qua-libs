@@ -1,10 +1,10 @@
+from typing import Optional
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from quam_experiments.parameters import (
     QubitsExperimentNodeParameters,
     CommonNodeParameters,
 )
-
 
 class NodeSpecificParameters(RunnableParameters):
     """
@@ -25,7 +25,7 @@ class NodeSpecificParameters(RunnableParameters):
     num_averages: int = 50
     operation: str = "saturation"
     operation_amplitude_factor: float = 0.1
-    operation_len_in_ns: int = None
+    operation_len_in_ns: Optional[int] = None
     frequency_span_in_mhz: float = 100
     frequency_step_in_mhz: float = 0.1
     min_flux_offset_in_v: float = -0.02
