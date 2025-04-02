@@ -21,6 +21,7 @@ from quam_experiments.experiments.T2echo import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
+from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
@@ -71,11 +72,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
     n_avg = node.parameters.num_averages  # The number of averages
     # Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
-    idle_times = np.arange(
-        node.parameters.min_wait_time_in_ns // 4,
-        node.parameters.max_wait_time_in_ns // 4,
-        node.parameters.wait_time_step_in_ns // 4,
-    )
+    idle_times = get_idle_times_in_clock_cycles(node.parameters)
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),

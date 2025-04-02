@@ -13,8 +13,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Minimum wait time in nanoseconds. Default is 16."""
     max_wait_time_in_ns: int = 70000
     """Maximum wait time in nanoseconds. Default is 70000."""
-    wait_time_step_in_ns: int = 300
-    """Wait time step in nanoseconds. Default is 300."""
+    wait_time_num_points: int = 51
+    """Number of points fpr the wait time scan. Default is 51."""
 
 
 class Parameters(
