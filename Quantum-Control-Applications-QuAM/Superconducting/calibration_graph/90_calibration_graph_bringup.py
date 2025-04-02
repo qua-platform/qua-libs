@@ -31,7 +31,7 @@ g = QualibrationGraph(
         "IQ_blobs": library.nodes["07_iq_blobs"].copy(name="IQ_blobs"),
         "power_rabi_error_amplification_x180": library.nodes["04b_power_rabi"].copy(
             name="power_rabi_error_amplification_x180",
-            max_number_rabi_pulses_per_sweep=100,
+            max_number_pulses_per_sweep=100,
             min_amp_factor=0.8,
             max_amp_factor=1.2,
             amp_factor_step=0.01,
@@ -39,7 +39,7 @@ g = QualibrationGraph(
         ),
         "power_rabi_error_amplification_x90": library.nodes["04b_power_rabi"].copy(
             name="power_rabi_error_amplification_x90",
-            max_number_rabi_pulses_per_sweep=100,
+            max_number_pulses_per_sweep=100,
             min_amp_factor=0.8,
             max_amp_factor=1.2,
             amp_factor_step=0.01,

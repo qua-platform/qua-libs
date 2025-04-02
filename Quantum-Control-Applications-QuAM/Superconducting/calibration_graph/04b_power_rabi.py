@@ -58,7 +58,7 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
-    # node.parameters.max_number_rabi_pulses_per_sweep = 50
+    # node.parameters.max_number_pulses_per_sweep = 50
     # node.parameters.min_amp_factor = 0.8
     # node.parameters.max_amp_factor = 1.2
     # node.parameters.amp_factor_step = 0.001
@@ -146,7 +146,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 if operation == "x180":
                     if state_discrimination:
                         state_st[i].boolean_to_int().buffer(len(amps)).buffer(
-                            np.ceil(node.parameters.max_number_rabi_pulses_per_sweep / 2)
+                            np.ceil(node.parameters.max_number_pulses_per_sweep / 2)
                         ).average().save(f"state{i + 1}")
                     else:
                         I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")

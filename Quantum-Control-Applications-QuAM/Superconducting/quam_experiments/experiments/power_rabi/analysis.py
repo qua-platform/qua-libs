@@ -70,7 +70,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     xr.Dataset
         Dataset containing the fit results.
     """
-    if node.parameters.max_number_rabi_pulses_per_sweep == 1:
+    if node.parameters.max_number_pulses_per_sweep == 1:
         ds_fit = ds.sel(nb_of_pulses=1)
         # Fit the power Rabi oscillations
         if node.parameters.use_state_discrimination:
@@ -101,7 +101,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
     limits = [instrument_limits(q.xy) for q in node.namespace["qubits"]]
-    if node.parameters.max_number_rabi_pulses_per_sweep == 1:
+    if node.parameters.max_number_pulses_per_sweep == 1:
         # Process the fit parameters to get the right amplitude
         phase = fit.fit.sel(fit_vals="phi") - np.pi * (fit.fit.sel(fit_vals="phi") > np.pi / 2)
         factor = (np.pi - phase) / (2 * np.pi * fit.fit.sel(fit_vals="f"))
