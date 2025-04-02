@@ -1,4 +1,5 @@
 from typing import Optional
+from pydantic import ConfigDict
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from quam_experiments.parameters import (
@@ -8,26 +9,20 @@ from quam_experiments.parameters import (
 
 
 class NodeSpecificParameters(RunnableParameters):
-    """
-    Parameters for configuring a qubit spectroscopy experiment.
-
-    Attributes:
-        num_averages (int): Number of averages to perform. Default is 100.
-        frequency_span_in_mhz (float): Span of frequencies to sweep in MHz. Default is 100 MHz.
-        frequency_step_in_mhz (float): Step size for frequency sweep in MHz. Default is 0.25 MHz.
-        operation (str): Type of operation to perform. Default is "saturation".
-        operation_amplitude_prefactor (Optional[float]): Amplitude pre-factor for the operation. Default is 1.0.
-        operation_len_in_ns (Optional[int]): Length of the operation in nanoseconds. Default is None.
-        target_peak_width (Optional[float]): Target peak width in Hz. Default is 3e6 Hz.
-    """
-
-    use_state_discrimination: bool = True
+    use_state_discrimination: bool = False
+    """state discrimination flag"""
     use_strict_timing: bool = False
+    """state discrimination flag"""
     num_random_sequences: int = 100  # Number of random sequences
+    """state discrimination flag"""
     num_averages: int = 20
+    """state discrimination flag"""
     max_circuit_depth: int = 1000  # Maximum circuit depth
+    """state discrimination flag"""
     delta_clifford: int = 20
+    """delta"""
     seed: int = 345324
+    """seed"""
 
 
 class Parameters(
@@ -36,4 +31,5 @@ class Parameters(
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
+    model_config = ConfigDict(use_attribute_docstrings=True)
     pass

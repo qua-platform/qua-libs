@@ -69,6 +69,7 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
+    node.parameters.
     pass
 
 
@@ -257,9 +258,13 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                                     play_sequence(sequence_list, depth, qubit)
                                 # Align the two elements to measure after playing the circuit.
                                 qubit.align()
-                                qubit.readout_state(state[i])
-
-                                save(state[i], state_st[i])
+                                if node.parameters.use_state_discrimination:
+                                    qubit.readout_state(state[i])
+                                    save(state[i], state_st[i])
+                                else:
+                                    qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                                    save(I[i], I_st[i])
+                                    save(Q[i], Q_st[i])
 
                             # Go to the next depth
                             assign(depth_target, depth_target + delta_clifford)
@@ -272,9 +277,17 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
         with stream_processing():
             m_st.save("n")
             for i in range(num_qubits):
-                state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save(
-                    f"state{i + 1}"
-                )
+                if node.parameters.use_state_discrimination:
+                    state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save(
+                        f"state{i + 1}"
+                    )
+                else:
+                    I_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save(
+                        f"I{i + 1}"
+                    )
+                    Q_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save(
+                        f"Q{i + 1}"
+                    )
 
     # with program() as randomized_benchmarking_multiplexed:
     #     depth = declare(int)  # QUA variable for the varying depth
