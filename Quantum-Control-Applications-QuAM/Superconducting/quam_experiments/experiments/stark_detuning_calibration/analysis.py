@@ -14,8 +14,9 @@ from quam_config.instrument_limits import instrument_limits
 class FitParameters:
     """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
 
+    stark_detuning: float
     success: bool
-    qubit_name: Optional[str] = ""
+
 
 
 def log_fitted_results(fit_results: Dict, logger=None):
@@ -51,7 +52,8 @@ def log_fitted_results(fit_results: Dict, logger=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    # ds = convert_IQ_to_V(ds, node.namespace["qubits"])
+    if not node.parameters.use_state_discrimination:
+        ds = convert_IQ_to_V(ds, node.namespace["qubits"])
     # ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     # full_freq = np.array(
     #     [ds.detuning + q.xy.RF_frequency for q in node.namespace["qubits"]]
@@ -78,40 +80,34 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     xr.Dataset
         Dataset containing the fit results.
     """
-    # # Get the average along the number of pulses axis to identify the best pulse amplitude
-    # state_n = ds.state.mean(dim="N")
-    # data_max_idx = state_n.argmin(dim="freq")
-    # detuning = ds.freq[data_max_idx]
-    #
-    # # Save fitting results
-    # fit_results = {
-    #     qubit.name: {"detuning": float(detuning.sel(qubit=qubit.name).values)}
-    #     for qubit in qubits
-    # }
-    # for q in qubits:
-    #     print(f"Detuning for {q.name} is {fit_results[q.name]['detuning']} Hz")
-    # node.results["fit_results"] = fit_results
-    # node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
-
     ds_fit = ds
-    fit_results = {
-        q: FitParameters(
-            success=False,
-        )
-        for q in ds_fit.qubit.values
-    }
+    # Get the average along the number of pulses axis to identify the best pulse amplitude
+    if node.parameters.use_state_discrimination:
+        ds_fit["averaged_data"] = ds.state.mean(dim="nb_of_pulses")
+    else:
+        ds_fit["averaged_data"] = ds.I.mean(dim="nb_of_pulses")
+    ds_fit["optimal_detuning"] = ds_fit["averaged_data"].idxmin(dim="detuning")
+
+    # Extract the relevant fitted parameters
+    fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
+
     return ds_fit, fit_results
 
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
-    pass
-    # # Save fitting results
-    # node.results["fit_results"] = {}
-    # for q in qubits:
-    #     node.results["fit_results"][q.name] = {}
-    #     node.results["fit_results"][q.name]["flux_offset"] = flux_offset[q.name]
-    #     node.results["fit_results"][q.name]["freq_offset"] = freq_offset[q.name]
-    #     node.results["fit_results"][q.name]["quad_term"] = a[q.name]
-    # node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
-    # return fit, fit_results
+
+    # Assess whether the fit was successful or not
+    nan_success = np.isnan(fit.optimal_detuning)
+    snr_success = np.abs((fit["averaged_data"].min("detuning") - fit["averaged_data"].mean("detuning")) / fit["averaged_data"].std("detuning")) > 2
+    success_criteria = ~nan_success & snr_success
+    fit = fit.assign({"success": success_criteria})
+    fit_results = {
+        q: FitParameters(
+            stark_detuning=float(fit.sel(qubit=q)["optimal_detuning"]),
+            success=bool(fit.sel(qubit=q).success),
+        )
+        for q in fit.qubit.values
+    }
+    node.outcomes = {q: "successful" if fit_results[q].success else "fail" for q in fit.qubit.values}
+    return fit, fit_results

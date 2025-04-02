@@ -7,7 +7,7 @@ from quam_experiments.parameters import (
 
 
 class NodeSpecificParameters(RunnableParameters):
-    use_state_discrimination: bool = True
+    use_state_discrimination: bool = False
     """Perform qubit state discrimination. Default is True."""
     use_strict_timing: bool = False
     """Use strict timing in the QUA program. Default is False."""
@@ -29,4 +29,5 @@ class Parameters(
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
+    model_config = ConfigDict(use_attribute_docstrings=True)
     pass

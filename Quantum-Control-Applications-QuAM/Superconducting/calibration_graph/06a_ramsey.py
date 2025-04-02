@@ -45,7 +45,7 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-node = QualibrationNode[Parameters, QuAM](name="06_ramsey", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, QuAM](name="06a_ramsey", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -191,7 +191,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
         print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
-    node.save()
 
 
 # %% {Load_data}

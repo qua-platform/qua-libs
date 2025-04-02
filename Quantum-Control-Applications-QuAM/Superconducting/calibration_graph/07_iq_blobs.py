@@ -39,7 +39,7 @@ are displayed, and the data is processed to determine:
     - The readout fidelity matrix, which is also influenced by the pi pulse fidelity.
 
 Prerequisites:
-    - Having calibrated a pi pulse (node 04_power_rabi.py).
+    - Having calibrated a pi pulse (node 04b_power_rabi.py).
 
 State update:
     - The integration weight angle

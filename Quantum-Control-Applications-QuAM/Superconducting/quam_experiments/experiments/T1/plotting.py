@@ -91,7 +91,7 @@ def _add_fit_text(ax, fit):
     ax.text(
         0.1,
         0.9,
-        f"T1 = {fit.tau.values:.1f} ± {fit.tau_error.values:.1f} µs\nSuccess: {fit.success.values}",
+        f"T1 = {1e-3 * fit.tau.values:.1f} ± {1e-3 * fit.tau_error.values:.1f} µs\nSuccess: {fit.success.values}",
         transform=ax.transAxes,
         fontsize=10,
         verticalalignment="top",

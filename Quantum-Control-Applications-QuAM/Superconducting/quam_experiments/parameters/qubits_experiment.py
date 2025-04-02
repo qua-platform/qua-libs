@@ -1,5 +1,4 @@
-from typing import List, Optional, Union, Literal
-from pydantic import Field
+from typing import List, Optional, Literal
 from qualibrate import QualibrationNode
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.batchable_list import BatchableList

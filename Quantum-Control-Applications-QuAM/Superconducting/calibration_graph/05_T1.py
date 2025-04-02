@@ -189,7 +189,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 
 
 # %% {Analyse_data}
-@node.run_action(skip_if=node.parameters.simulate, continue_on_failure=True)
+@node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analysis the raw data and store the fitted data in another xarray dataset and the fitted results in the fit_results class."""
     # todo check the units with real data

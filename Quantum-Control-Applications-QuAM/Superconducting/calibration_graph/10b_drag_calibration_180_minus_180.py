@@ -67,6 +67,7 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
+    node.parameters.min_amp_factor = -0.9
     pass
 
 
@@ -105,12 +106,13 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "nb_of_pulses": xr.DataArray(N_pi_vec, attrs={"long_name": "number of pulses"}),
-        "pulse_amplitude": xr.DataArray(amps, attrs={"long_name": "qubit pulse amplitude", "units": ""}),
+        "alpha_prefactor": xr.DataArray(amps, attrs={"long_name": "DRAG coefficient alpha pre-factor", "units": ""}),
     }
     with program() as node.namespace["qua_program"]:
-        I, _, Q, _, n, n_st = node.machine.qua_declaration()
-        state = [declare(bool) for _ in range(num_qubits)]
-        state_stream = [declare_stream() for _ in range(num_qubits)]
+        I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
+        if node.parameters.use_state_discrimination:
+            state = [declare(int) for _ in range(num_qubits)]
+            state_st = [declare_stream() for _ in range(num_qubits)]
         a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
         npi = declare(int)  # QUA variable for the number of qubit pulses
         count = declare(int)  # QUA variable for counting the qubit pulses
@@ -162,17 +164,22 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
                         align()
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                            assign(
-                                state[i],
-                                I[i] > qubit.resonator.operations["readout"].threshold,
-                            )
-                            save(state[i], state_stream[i])
+                            if node.parameters.use_state_discrimination:
+                                qubit.readout_state(state[i])
+                                save(state[i], state_st[i])
+                            else:
+                                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                                save(I[i], I_st[i])
+                                save(Q[i], Q_st[i])
 
         with stream_processing():
             n_st.save("n")
             for i, qubit in enumerate(qubits):
-                state_stream[i].boolean_to_int().buffer(len(amps)).buffer(N_pi).average().save(f"state{i + 1}")
+                if node.parameters.use_state_discrimination:
+                    state_st[i].boolean_to_int().buffer(len(amps)).buffer(N_pi).average().save(f"state{i + 1}")
+                else:
+                    I_st[i].buffer(len(amps)).buffer(N_pi).average().save(f"I{i + 1}")
+                    Q_st[i].buffer(len(amps)).buffer(N_pi).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate}
@@ -214,7 +221,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
         print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
-    node.save()
 
 
 # %% {Load_data}
@@ -269,8 +275,8 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
             if node.outcomes[q.name] == "failed":
                 continue
 
-            # fit_result = node.results["fit_results"][q.name]
-            # q.xy.operations[operation].alpha = fit_result["alpha"]
+            fit_result = node.results["fit_results"][q.name]
+            q.xy.operations[node.parameters.operation].alpha = fit_result["alpha"]
 
 
 # %% {Save_results}

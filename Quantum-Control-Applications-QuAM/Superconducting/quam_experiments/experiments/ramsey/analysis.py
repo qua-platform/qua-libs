@@ -44,7 +44,8 @@ def log_fitted_results(fit_results: Dict, logger=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    ds = convert_IQ_to_V(ds, node.namespace["qubits"])
+    if not node.parameters.use_state_discrimination:
+        ds = convert_IQ_to_V(ds, node.namespace["qubits"])
     return ds
 
 

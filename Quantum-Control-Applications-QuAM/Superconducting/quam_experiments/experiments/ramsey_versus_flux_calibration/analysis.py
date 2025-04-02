@@ -15,7 +15,7 @@ class FitParameters:
     """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
 
     success: bool
-    qubit_name: Optional[str] = ""
+
 
 
 def log_fitted_results(fit_results: Dict, logger=None):

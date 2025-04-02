@@ -14,7 +14,7 @@ class FitParameters:
     """Stores the relevant node-specific fitted parameters used to update the state at the end of the node."""
 
     success: bool
-    qubit_name: Optional[str] = ""
+
 
 
 def log_fitted_results(fit_results: Dict, logger=None):
@@ -96,7 +96,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
     fit_results = {
         q: FitParameters(
-            qubit_name=q,
+
             success=fit.sel(qubit=q).success.values.__bool__(),
         )
         for q in fit.qubit.values

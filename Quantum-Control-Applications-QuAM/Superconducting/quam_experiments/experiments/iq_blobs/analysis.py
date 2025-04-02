@@ -19,7 +19,7 @@ class FitParameters:
     readout_fidelity: float
     confusion_matrix: list
     success: bool
-    qubit_name: Optional[str] = ""
+
 
 
 def log_fitted_results(fit_results: Dict, logger=None):
@@ -163,15 +163,14 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
     fit_results = {
         q: FitParameters(
-            qubit_name=q,
+
             iw_angle=float(fit.sel(qubit=q).iw_angle),
             ge_threshold=float(fit.sel(qubit=q).ge_threshold),
             rus_threshold=float(fit.sel(qubit=q).rus_threshold),
             readout_fidelity=float(fit.sel(qubit=q).readout_fidelity),
             confusion_matrix=[
                 [float(fit.sel(qubit=q).gg), float(fit.sel(qubit=q).ge)],
-                [float(fit.sel(qubit=q).eg)],
-                float(fit.sel(qubit=q).ee),
+                [float(fit.sel(qubit=q).eg), float(fit.sel(qubit=q).ee)],
             ],
             success=fit.sel(qubit=q).success.values.__bool__(),
         )

@@ -67,6 +67,7 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
+    node.parameters.load_data_id = 1681
     pass
 
 
@@ -109,7 +110,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
         state = [declare(bool) for _ in range(num_qubits)]
-        state_stream = [declare_stream() for _ in range(num_qubits)]
+        state_st = [declare_stream() for _ in range(num_qubits)]
         df = declare(int)  # QUA variable for the qubit drive amplitude pre-factor
         npi = declare(int)  # QUA variable for the number of qubit pulses
         count = declare(int)  # QUA variable for counting the qubit pulses
@@ -152,7 +153,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                                 state[i],
                                 I[i] > qubit.resonator.operations["readout"].threshold,
                             )
-                            save(state[i], state_stream[i])
+                            save(state[i], state_st[i])
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
                         align()
@@ -160,7 +161,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
         with stream_processing():
             n_st.save("n")
             for i, qubit in enumerate(qubits):
-                state_stream[i].boolean_to_int().buffer(len(dfs)).buffer(N_pi).average().save(f"state{i + 1}")
+                state_st[i].boolean_to_int().buffer(len(dfs)).buffer(N_pi).average().save(f"state{i + 1}")
                 I_st[i].buffer(len(dfs)).buffer(N_pi).average().save(f"I{i + 1}")
                 Q_st[i].buffer(len(dfs)).buffer(N_pi).average().save(f"Q{i + 1}")
 
@@ -204,7 +205,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
         print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
-    node.save()
 
 
 # %% {Load_data}

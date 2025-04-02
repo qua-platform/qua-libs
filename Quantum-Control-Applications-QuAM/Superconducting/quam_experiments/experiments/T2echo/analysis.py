@@ -16,7 +16,7 @@ class FitParameters:
     T2_echo: float
     T2_echo_error: float
     success: bool
-    qubit_name: Optional[str] = ""
+
 
 
 def log_fitted_results(fit_results: Dict, logger=None):

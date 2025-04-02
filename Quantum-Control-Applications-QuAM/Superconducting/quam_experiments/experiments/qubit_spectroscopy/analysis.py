@@ -20,7 +20,7 @@ class FitParameters:
     saturation_amp: float
     x180_amp: float
     success: bool
-    qubit_name: Optional[str] = ""
+
 
 
 def log_fitted_results(fit_results: Dict, logger=None):
@@ -138,7 +138,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
     fit_results = {
         q: FitParameters(
-            qubit_name=q,
+
             frequency=fit.sel(qubit=q).res_freq.values.__float__(),
             fwhm=fit.sel(qubit=q).fwhm.values.__float__(),
             iw_angle=fit.sel(qubit=q).iw_angle.values.__float__(),

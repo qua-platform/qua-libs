@@ -23,6 +23,7 @@ from quam_experiments.experiments.readout_power_optimization import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
+from quam_experiments.experiments.iq_blobs.plotting import plot_iq_blobs, plot_confusion_matrices
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
@@ -53,7 +54,6 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
-
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
@@ -160,7 +160,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
         print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
-    node.save()
 
 
 # %% {Load_data}
@@ -180,7 +179,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["ds_fit"], node.results["ds_iq_blobs"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
@@ -196,10 +195,13 @@ def analyse_data(node: QualibrationNode[Parameters, QuAM]):
 def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_iq = plot_iq_blobs(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_iq_blobs"])
+    fig_confusion = plot_confusion_matrices(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_iq_blobs"])
     plt.show()
     # Store the generated figures
     node.results["figure_amplitude"] = fig_raw_fit
-
+    node.results["figure_iq_blobs"] = fig_iq
+    node.results["figure_confusion_matrix"] = fig_confusion
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
@@ -210,13 +212,13 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
             if node.outcomes[q.name] == "failed":
                 continue
 
-            # fit_results = node.results["results"][q.name]
-            # operation = q.resonator.operations["readout"]
-            # operation.integration_weights_angle -= float(fit_results["angle"])
-            # operation.threshold = float(fit_results["threshold"])
-            # operation.rus_exit_threshold = float(fit_results["rus_threshold"])
-            # operation.amplitude = float(fit_results["best_amp"])
-            # q.resonator.confusion_matrix = fit_results["confusion_matrix"].tolist()
+            fit_results = node.results["fit_results"][q.name]
+            operation = q.resonator.operations["readout"]
+            operation.integration_weights_angle -= float(fit_results["iw_angle"])
+            operation.threshold = float(fit_results["ge_threshold"]) * operation.length / 2**12
+            operation.rus_exit_threshold = float(fit_results["rus_threshold"]) * operation.length / 2**12
+            operation.amplitude = float(fit_results["optimal_amplitude"])
+            q.resonator.confusion_matrix = fit_results["confusion_matrix"]
 
 
 # %% {Save_results}

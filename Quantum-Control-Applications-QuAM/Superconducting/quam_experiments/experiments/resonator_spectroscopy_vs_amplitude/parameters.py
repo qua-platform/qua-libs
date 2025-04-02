@@ -25,7 +25,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Threshold for derivative crossing in Hz/dBm. Default is -50000 Hz/dBm."""
     derivative_smoothing_window_num_points: int = 10
     """Size of the window in number of points corresponding to the rolling average (number of points). Default is 10."""
-    moving_average_filter_window_num_points: int = 5
+    moving_average_filter_window_num_points: int = 10
     """Size of the moving average filter window (number of points). Default is 5."""
     buffer_from_crossing_threshold_in_dbm: int = 1
     """Buffer from the crossing threshold in dBm - the optimal readout power will be set to be this number in Db below
