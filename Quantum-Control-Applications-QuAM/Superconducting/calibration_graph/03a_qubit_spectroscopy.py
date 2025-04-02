@@ -239,8 +239,8 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
             # Update the saturation amplitude
             q.xy.operations["saturation"].amplitude = fit_result["saturation_amp"]
             # Update the x180 and x90 amplitudes
-            q.xy.operations["x180"].amplitude = fit_result["x180_amp"]
-            q.xy.operations["x90"].amplitude = fit_result["x180_amp"] / 2
+            # q.xy.operations["x180"].amplitude = fit_result["x180_amp"]
+            # q.xy.operations["x90"].amplitude = fit_result["x180_amp"] / 2
 
 
 # %% {Save_results}
