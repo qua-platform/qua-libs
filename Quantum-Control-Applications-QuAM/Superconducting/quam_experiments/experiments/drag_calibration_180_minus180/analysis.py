@@ -5,15 +5,14 @@ import numpy as np
 import xarray as xr
 
 from qualibrate import QualibrationNode
-from qualibration_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
-from quam_experiments.analysis.fit import peaks_dips
-from quam_config.instrument_limits import instrument_limits
+from qualibration_libs.qua_datasets import convert_IQ_to_V
 
 
 @dataclass
 class FitParameters:
     """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
 
+    alpha: float
     success: bool
     qubit_name: Optional[str] = ""
 
@@ -31,43 +30,28 @@ def log_fitted_results(fit_results: Dict, logger=None):
     """
     if logger is None:
         logger = logging.getLogger(__name__)
-    # for q in fit_results.keys():
-    #     s_qubit = f"Results for qubit {q}: "
-    #     s_freq = f"\tQubit frequency: {1e-9 * fit_results[q]['frequency']:.3f} GHz | "
-    #     s_fwhm = f"FWHM: {1e-3 * fit_results[q]['fwhm']:.1f} kHz | "
-    #     s_angle = (
-    #         f"The integration weight angle: {fit_results[q]['iw_angle']:.3f} rad\n "
-    #     )
-    #     s_saturation = f"To get the desired FWHM, the saturation amplitude is updated to: {1e3 * fit_results[q]['saturation_amp']:.1f} mV | "
-    #     s_x180 = f"To get the desired x180 gate, the x180 amplitude is updated to: {1e3 * fit_results[q]['x180_amp']:.1f} mV\n "
-    #     if fit_results[q]["success"]:
-    #         s_qubit += " SUCCESS!\n"
-    #     else:
-    #         s_qubit += " FAIL!\n"
-    #     logger.info(
-    #         s_qubit + s_freq + s_fwhm + s_freq + s_angle + s_saturation + s_x180
-    #     )
+    for q in fit_results.keys():
+        s_qubit = f"Results for qubit {q}: "
+        s_alpha = f"\tDRAG coefficient alpha: {fit_results[q]['alpha']:.2f}\n"
+        if fit_results[q]["success"]:
+            s_qubit += " SUCCESS!\n"
+        else:
+            s_qubit += " FAIL!\n"
+        logger.info(
+            s_qubit + s_alpha
+        )
     pass
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    # ds = convert_IQ_to_V(ds, node.namespace["qubits"])
-    # ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
-    # full_freq = np.array(
-    #     [ds.detuning + q.xy.RF_frequency for q in node.namespace["qubits"]]
-    # )
-    # ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
-    # ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
-    pass
-    # Add the qubit pulse absolute alpha coefficient to the dataset
-    # ds = ds.assign_coords(
-    #     {
-    #         "alpha": (
-    #             ["qubit", "amp"],
-    #             np.array([q.xy.operations[operation].alpha * amps for q in qubits]),
-    #         )
-    #     }
-    # )
+    if ~node.parameters.use_state_discrimination:
+        ds = convert_IQ_to_V(ds, node.namespace["qubits"])
+    # Add the DRAG coefficient alpha to the dataset
+    alpha = np.array(
+        [q.xy.operations[node.parameters.operation].alpha * ds.alpha_prefactor for q in node.namespace["qubits"]]
+    )
+    ds = ds.assign_coords(alpha=(["qubit", "alpha_prefactor"], alpha))
+    ds.alpha.attrs = {"long_name": "DRAG coefficient alpha"}
     return ds
 
 
@@ -87,44 +71,33 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     xr.Dataset
         Dataset containing the fit results.
     """
-    # # Get the average along the number of pulses axis to identify the best DRAG coefficient
-    # state_n = ds.state.mean(dim="N")
-    # data_max_idx = state_n.argmin(dim="amp")
-    # alphas = ds.amp[data_max_idx]
-    # # Save fitting results
-    # fit_results = {
-    #     qubit.name: {
-    #         "alpha": float(
-    #             alphas.sel(qubit=qubit.name).values
-    #             * qubit.xy.operations[operation].alpha
-    #         )
-    #     }
-    #     for qubit in qubits
-    # }
-    # for q in qubits:
-    #     print(f"DRAG coefficient for {q.name} is {fit_results[q.name]['alpha']}")
-    # node.results["fit_results"] = fit_results
-    # node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
-
     ds_fit = ds
-    fit_results = {
-        q: FitParameters(
-            success=False,
-        )
-        for q in ds_fit.qubit.values
-    }
+    # Get the average along the number of pulses axis to identify the best DRAG coefficient
+    if node.parameters.use_state_discrimination:
+        ds_fit["averaged_data"] = ds.state.mean(dim="nb_of_pulses")
+    else:
+        ds_fit["averaged_data"] = ds.I.mean(dim="nb_of_pulses")
+    ds_fit["optimal_alpha"] = ds_fit["averaged_data"].alpha[:, ds_fit["averaged_data"].argmin("alpha_prefactor")]
+
+    # Extract the relevant fitted parameters
+    fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
+
     return ds_fit, fit_results
 
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
-    pass
-    # # Save fitting results
-    # node.results["fit_results"] = {}
-    # for q in qubits:
-    #     node.results["fit_results"][q.name] = {}
-    #     node.results["fit_results"][q.name]["flux_offset"] = flux_offset[q.name]
-    #     node.results["fit_results"][q.name]["freq_offset"] = freq_offset[q.name]
-    #     node.results["fit_results"][q.name]["quad_term"] = a[q.name]
-    # node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
-    # return fit, fit_results
+    # Assess whether the fit was successful or not
+    nan_success = np.isnan(fit.optimal_alpha)
+    snr_success = np.abs((fit["averaged_data"].min("alpha_prefactor") - fit["averaged_data"].mean("alpha_prefactor")) / fit["averaged_data"].std("alpha_prefactor")) > 2
+    success_criteria = ~nan_success & snr_success
+    fit = fit.assign({"success": success_criteria})
+    fit_results = {
+        q: FitParameters(
+            alpha=float(fit.sel(qubit=q)["optimal_alpha"]),
+            success=bool(fit.sel(qubit=q).success),
+        )
+        for q in fit.qubit.values
+    }
+    node.outcomes = {q: "successful" if fit_results[q].success else "fail" for q in fit.qubit.values}
+    return fit, fit_results
