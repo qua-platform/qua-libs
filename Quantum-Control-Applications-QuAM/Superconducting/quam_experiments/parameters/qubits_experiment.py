@@ -8,24 +8,14 @@ from quam_config import QuAM
 
 
 class QubitsExperimentNodeParameters(RunnableParameters):
-    qubits: Optional[List[str]] = Field(
-        default=None,
-        description="A list of qubit names which should participate in the execution of the node.",
-    )
-    multiplexed: bool = Field(
-        default=False,
-        description="Whether to play control pulses, readout pulses and active/thermal reset "
-        "at the same time for all qubits (True) or to play the experiment sequentially"
-        "for each qubit (False)",
-    )
-    use_state_discrimination: bool = Field(
-        default=False,
-        description="Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated quadratures 'I' and 'Q'.",
-    )
-    reset_type: Literal["thermal", "active", "active_gef"] = Field(
-        default="thermal",
-        description="The qubit reset method to use. Must be implemented as a method of QuAM.qubit.",
-    )
+    qubits: Optional[List[str]] = None
+    """A list of qubit names which should participate in the execution of the node."""
+    multiplexed: bool = False
+    """Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True) or to play the experiment sequentially for each qubit (False)"""
+    use_state_discrimination: bool = False
+    """Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated quadratures 'I' and 'Q'."""
+    reset_type: Literal["thermal", "active", "active_gef"] = "thermal"
+    """"The qubit reset method to use. Must be implemented as a method of QuAM.qubit."""
 
 
 def make_batchable_list_from_multiplexed(items: List, multiplexed: bool) -> BatchableList:
