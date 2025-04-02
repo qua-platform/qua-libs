@@ -22,7 +22,6 @@ class FitParameters:
     success: bool
 
 
-
 def log_fitted_results(fit_results: Dict, logger=None):
     """
     Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
@@ -118,12 +117,12 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     x180_length = np.array([q.xy.operations["x180"].length * 1e-9 for q in node.namespace["qubits"]])
     used_amp = np.array(
         [
-            q.xy.operations["saturation"].amplitude * node.parameters.operation_amplitude_prefactor
+            q.xy.operations["saturation"].amplitude * node.parameters.operation_amplitude_factor
             for q in node.namespace["qubits"]
         ]
     )
     factor_cw = node.parameters.target_peak_width / fit.width
-    fit = fit.assign({"saturation_amplitude": factor_cw * used_amp / node.parameters.operation_amplitude_prefactor})
+    fit = fit.assign({"saturation_amplitude": factor_cw * used_amp / node.parameters.operation_amplitude_factor})
     # get expected x180 amplitude
     factor_x180 = np.pi / (fit.width * x180_length)
     fit = fit.assign({"x180_amplitude": factor_x180 * used_amp})
@@ -138,7 +137,6 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
     fit_results = {
         q: FitParameters(
-
             frequency=fit.sel(qubit=q).res_freq.values.__float__(),
             fwhm=fit.sel(qubit=q).fwhm.values.__float__(),
             iw_angle=fit.sel(qubit=q).iw_angle.values.__float__(),
