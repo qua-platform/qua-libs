@@ -29,17 +29,14 @@ from qualibration_libs.trackable_object import tracked_updates
 
 # %% {Description}
 description = """
-        POWER RABI WITH ERROR AMPLIFICATION
-This sequence involves repeatedly executing the qubit pulse (such as x180) 'N' times and
-measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
-By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
-amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
+        RABI CHEVRON
+TODO
 
 Prerequisites:
     - Having calibrated the qubit frequency (node 03a_qubit_spectroscopy.py).
 
 State update:
-    - The qubit pulse amplitude.
+    - Manually set the x180 pulse duration qubit.xy.operation["x180"].length.
 """
 
 

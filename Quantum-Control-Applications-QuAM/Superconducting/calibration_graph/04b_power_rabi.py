@@ -45,7 +45,7 @@ State update:
 
 # Be sure to include [Parameters, QuAM] so the node has proper type hinting
 node = QualibrationNode[Parameters, QuAM](
-    name="04_power_rabi",  # Name should be unique
+    name="04b_power_rabi",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the Qualibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
