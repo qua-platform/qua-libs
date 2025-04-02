@@ -96,7 +96,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     xr.Dataset
         Dataset containing the fit results.
     """
-    
+
     peak_freq = peaks_dips(ds.IQ_abs, dim="detuning", prominence_factor=5)
     # Fit to a cosine using the qiskit function: a * np.cos(2 * np.pi * f * t + phi) + offset
     fit_results_da = fit_oscillation(peak_freq.position.dropna(dim="flux_bias"), "flux_bias")

@@ -16,7 +16,6 @@ class T1Fit:
     success: bool
 
 
-
 def log_fitted_results(ds: xr.Dataset, logger=None):
     """
     Logs the node-specific fitted results for all qubits from the fit xarray Dataset.

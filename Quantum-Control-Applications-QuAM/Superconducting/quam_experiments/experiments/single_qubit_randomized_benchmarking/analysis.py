@@ -19,7 +19,6 @@ class FitParameters:
     success: bool
 
 
-
 def log_fitted_results(fit_results: Dict, logger=None):
     """
     Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
@@ -40,9 +39,7 @@ def log_fitted_results(fit_results: Dict, logger=None):
             s_qubit += " SUCCESS!\n"
         else:
             s_qubit += " FAIL!\n"
-        logger.info(
-            s_qubit + s_fidelity
-        )
+        logger.info(s_qubit + s_fidelity)
     pass
 
 

@@ -16,7 +16,6 @@ class FitParameters:
     success: bool
 
 
-
 def log_fitted_results(fit_results: Dict, logger=None):
     """
     Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
@@ -37,9 +36,7 @@ def log_fitted_results(fit_results: Dict, logger=None):
             s_qubit += " SUCCESS!\n"
         else:
             s_qubit += " FAIL!\n"
-        logger.info(
-            s_qubit + s_alpha
-        )
+        logger.info(s_qubit + s_alpha)
     pass
 
 
@@ -89,7 +86,13 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
     # Assess whether the fit was successful or not
     nan_success = np.isnan(fit.optimal_alpha)
-    snr_success = np.abs((fit["averaged_data"].min("alpha_prefactor") - fit["averaged_data"].mean("alpha_prefactor")) / fit["averaged_data"].std("alpha_prefactor")) > 2
+    snr_success = (
+        np.abs(
+            (fit["averaged_data"].min("alpha_prefactor") - fit["averaged_data"].mean("alpha_prefactor"))
+            / fit["averaged_data"].std("alpha_prefactor")
+        )
+        > 2
+    )
     success_criteria = ~nan_success & snr_success
     fit = fit.assign({"success": success_criteria})
     fit_results = {

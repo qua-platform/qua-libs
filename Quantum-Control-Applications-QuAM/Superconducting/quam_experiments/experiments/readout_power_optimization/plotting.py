@@ -63,7 +63,9 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    fit.fit_data.plot(ax=ax, x="readout_amplitude", hue="fit_vals", add_legend=False, label=("readout fidelity", "non-outliers"))
+    fit.fit_data.plot(
+        ax=ax, x="readout_amplitude", hue="fit_vals", add_legend=False, label=("readout fidelity", "non-outliers")
+    )
     ax.axvline(float(fit.optimal_amp), color="k", linestyle="dashed", label="optimal readout amplitude")
     ax.set_xlabel("Relative power")
     ax.set_ylabel("Fidelity / outliers")

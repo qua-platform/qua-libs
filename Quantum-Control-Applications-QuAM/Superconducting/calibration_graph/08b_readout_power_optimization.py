@@ -55,6 +55,7 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
 
+
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
@@ -196,12 +197,15 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     fig_iq = plot_iq_blobs(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_iq_blobs"])
-    fig_confusion = plot_confusion_matrices(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_iq_blobs"])
+    fig_confusion = plot_confusion_matrices(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_iq_blobs"]
+    )
     plt.show()
     # Store the generated figures
     node.results["figure_amplitude"] = fig_raw_fit
     node.results["figure_iq_blobs"] = fig_iq
     node.results["figure_confusion_matrix"] = fig_confusion
+
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)

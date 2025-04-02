@@ -72,10 +72,14 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], f
         raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
 
     # Create a first x-axis for full_freq_GHz
-    (fit.assign_coords(full_freq_GHz=fit.full_freq / u.GHz)[data] / u.mV).plot(ax=ax, y="pulse_duration", x="full_freq_GHz", add_colorbar=False)
+    (fit.assign_coords(full_freq_GHz=fit.full_freq / u.GHz)[data] / u.mV).plot(
+        ax=ax, y="pulse_duration", x="full_freq_GHz", add_colorbar=False
+    )
     ax.set_xlabel("RF frequency [GHz]")
     ax.set_ylabel("Pulse duration [ns]")
     # Create a second x-axis for detuning_MHz
     ax2 = ax.twiny()
-    (fit.assign_coords(detuning_MHz=fit.detuning / u.MHz)[data] / u.mV).plot(ax=ax2, y="pulse_duration", x="detuning_MHz", add_colorbar=False)
+    (fit.assign_coords(detuning_MHz=fit.detuning / u.MHz)[data] / u.mV).plot(
+        ax=ax2, y="pulse_duration", x="detuning_MHz", add_colorbar=False
+    )
     ax2.set_xlabel("Detuning [MHz]")

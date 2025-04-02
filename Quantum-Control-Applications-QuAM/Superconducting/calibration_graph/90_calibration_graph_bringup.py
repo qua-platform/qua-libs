@@ -11,6 +11,7 @@ library = QualibrationLibrary.get_active_library()
 class Parameters(GraphParameters):
     qubits: List[str] = ["q1"]
 
+
 g = QualibrationGraph(
     name="Independent_1Q_Calibration",
     parameters=Parameters(),
@@ -21,17 +22,40 @@ g = QualibrationGraph(
         "qubit_spectroscopy": library.nodes["03a_qubit_spectroscopy"].copy(name="qubit_spectroscopy"),
         "rabi_chevron": library.nodes["04a_rabi_chevron"].copy(name="rabi_chevron"),
         "power_rabi": library.nodes["04b_power_rabi"].copy(name="power_rabi"),
-        "readout_power_optimization": library.nodes["08b_readout_power_optimization"].copy(name="readout_power_optimization"),
-        "readout_frequency_optimization": library.nodes["08a_readout_frequency_optimization"].copy(name="readout_frequency_optimization"),
+        "readout_power_optimization": library.nodes["08b_readout_power_optimization"].copy(
+            name="readout_power_optimization"
+        ),
+        "readout_frequency_optimization": library.nodes["08a_readout_frequency_optimization"].copy(
+            name="readout_frequency_optimization"
+        ),
         "IQ_blobs": library.nodes["07_iq_blobs"].copy(name="IQ_blobs"),
-        "power_rabi_error_amplification_x180": library.nodes["04b_power_rabi"].copy(name="power_rabi_error_amplification_x180", max_number_rabi_pulses_per_sweep=100,min_amp_factor=0.8, max_amp_factor=1.2, amp_factor_step=0.01, use_state_discrimination=True),
-        "power_rabi_error_amplification_x90": library.nodes["04b_power_rabi"].copy(name="power_rabi_error_amplification_x90", max_number_rabi_pulses_per_sweep=100,min_amp_factor=0.8, max_amp_factor=1.2, amp_factor_step=0.01, operation="x90", update_x90=False, use_state_discrimination=True),
+        "power_rabi_error_amplification_x180": library.nodes["04b_power_rabi"].copy(
+            name="power_rabi_error_amplification_x180",
+            max_number_rabi_pulses_per_sweep=100,
+            min_amp_factor=0.8,
+            max_amp_factor=1.2,
+            amp_factor_step=0.01,
+            use_state_discrimination=True,
+        ),
+        "power_rabi_error_amplification_x90": library.nodes["04b_power_rabi"].copy(
+            name="power_rabi_error_amplification_x90",
+            max_number_rabi_pulses_per_sweep=100,
+            min_amp_factor=0.8,
+            max_amp_factor=1.2,
+            amp_factor_step=0.01,
+            operation="x90",
+            update_x90=False,
+            use_state_discrimination=True,
+        ),
         "T1": library.nodes["05_T1"].copy(name="T1", use_state_discrimination=True),
         "ramsey": library.nodes["06a_ramsey"].copy(name="ramsey", use_state_discrimination=True),
         "T2echo": library.nodes["06b_echo"].copy(name="T2echo", use_state_discrimination=True),
-        "DRAG_calibration": library.nodes["10b_drag_calibration_180_minus_180"].copy(name="DRAG_calibration", use_state_discrimination=True),
-        "Randomized_benchmarking": library.nodes["11a_single_qubit_randomized_benchmarking"].copy(name="Randomized_benchmarking", use_state_discrimination=True),
-
+        "DRAG_calibration": library.nodes["10b_drag_calibration_180_minus_180"].copy(
+            name="DRAG_calibration", use_state_discrimination=True
+        ),
+        "Randomized_benchmarking": library.nodes["11a_single_qubit_randomized_benchmarking"].copy(
+            name="Randomized_benchmarking", use_state_discrimination=True
+        ),
     },
     connectivity=[
         # ("time_of_flight", "resonator_spectroscopy"),

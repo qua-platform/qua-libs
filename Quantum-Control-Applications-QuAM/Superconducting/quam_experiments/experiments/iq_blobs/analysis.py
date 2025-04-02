@@ -21,7 +21,6 @@ class FitParameters:
     success: bool
 
 
-
 def log_fitted_results(fit_results: Dict, logger=None):
     """
     Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
@@ -163,7 +162,6 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
     fit_results = {
         q: FitParameters(
-
             iw_angle=float(fit.sel(qubit=q).iw_angle),
             ge_threshold=float(fit.sel(qubit=q).ge_threshold),
             rus_threshold=float(fit.sel(qubit=q).rus_threshold),

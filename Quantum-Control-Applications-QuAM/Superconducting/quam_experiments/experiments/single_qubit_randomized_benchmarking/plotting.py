@@ -65,7 +65,12 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
     # Fitted decay
-    fitted = decay_exp(fit.depths,fit.fit_data.sel(fit_vals="a"),fit.fit_data.sel(fit_vals="offset"),fit.fit_data.sel(fit_vals="decay"),)
+    fitted = decay_exp(
+        fit.depths,
+        fit.fit_data.sel(fit_vals="a"),
+        fit.fit_data.sel(fit_vals="offset"),
+        fit.fit_data.sel(fit_vals="decay"),
+    )
     if hasattr(fit, "state"):
         data = fit.state
         label = "qubit state"

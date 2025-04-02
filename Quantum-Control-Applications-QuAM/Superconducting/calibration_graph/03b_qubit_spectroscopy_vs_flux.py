@@ -58,10 +58,10 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q3"]
     node.parameters.num_flux_points = 21
-    node.parameters.max_flux_offset_in_v = .01
+    node.parameters.max_flux_offset_in_v = 0.01
     node.parameters.min_flux_offset_in_v = 0.0
     node.parameters.frequency_span_in_mhz = 20
-    node.parameters.frequency_step_in_mhz = .1
+    node.parameters.frequency_step_in_mhz = 0.1
     # node.parameters.load_data_id = 265
     pass
 
@@ -119,7 +119,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
-                    # Update the qubit frequency
+                # Update the qubit frequency
                 with for_(*from_array(dc, dcs)):
                     qubit.z.set_dc_offset(dc)
                     qubit.z.settle()
@@ -239,7 +239,6 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
     node.results["figure_amplitude"] = fig_raw_fit
 
 
-
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, QuAM]):
@@ -260,5 +259,6 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, QuAM]):
     node.save()
+
 
 # %%
