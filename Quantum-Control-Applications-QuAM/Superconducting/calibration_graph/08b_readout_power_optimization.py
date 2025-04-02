@@ -49,13 +49,11 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
-    node.parameters.load_data_id = 1657
     pass
 
 
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
-
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
@@ -215,13 +213,13 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
             if node.outcomes[q.name] == "failed":
                 continue
 
-            # fit_results = node.results["results"][q.name]
-            # operation = q.resonator.operations["readout"]
-            # operation.integration_weights_angle -= float(fit_results["angle"])
-            # operation.threshold = float(fit_results["threshold"])
-            # operation.rus_exit_threshold = float(fit_results["rus_threshold"])
-            # operation.amplitude = float(fit_results["best_amp"])
-            # q.resonator.confusion_matrix = fit_results["confusion_matrix"].tolist()
+            fit_results = node.results["fit_results"][q.name]
+            operation = q.resonator.operations["readout"]
+            operation.integration_weights_angle -= float(fit_results["iw_angle"])
+            operation.threshold = float(fit_results["ge_threshold"])
+            operation.rus_exit_threshold = float(fit_results["rus_threshold"])
+            operation.amplitude = float(fit_results["optimal_amplitude"])
+            q.resonator.confusion_matrix = fit_results["confusion_matrix"]
 
 
 # %% {Save_results}
