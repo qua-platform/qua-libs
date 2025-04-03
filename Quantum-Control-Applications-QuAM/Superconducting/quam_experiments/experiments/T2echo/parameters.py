@@ -15,7 +15,7 @@ class NodeSpecificParameters(RunnableParameters):
     max_wait_time_in_ns: int = 70000
     """Maximum wait time in nanoseconds. Default is 70000."""
     wait_time_num_points: int = 51
-    """Number of points fpr the wait time scan. Default is 51."""
+    """Number of points for the wait time scan. Default is 51."""
     log_or_linear_sweep: Literal["log", "linear"] = "linear"
     """Type of sweep, either "log" (logarithmic) or "linear". Default is "linear"."""
 
