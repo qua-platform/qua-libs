@@ -121,7 +121,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                         for i, qubit in multiplexed_qubits.items():
                             # Set the xy drive frequency back to the qubit frequency for active reset
                             qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
-                            qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                             qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
                         align()
                         # Qubit manipulation

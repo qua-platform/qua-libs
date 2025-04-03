@@ -110,7 +110,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 # Ground state iq blobs for all qubits
                 # Qubit initialization
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+                    qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                 align()
                 # Qubit readout
                 for i, qubit in multiplexed_qubits.items():
@@ -124,7 +124,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 # Excited state iq blobs for all qubits
                 # Qubit initialization
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+                    qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                 align()
 
                 # Qubit readout

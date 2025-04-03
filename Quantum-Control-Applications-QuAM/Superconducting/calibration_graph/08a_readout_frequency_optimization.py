@@ -114,7 +114,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                     for i, qubit in multiplexed_qubits.items():
                         # Update the resonator frequencies
                         update_frequency(qubit.resonator.name, df + qubit.resonator.intermediate_frequency)
-                        qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+                        qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                     align()
 
                     # Qubit readout - |g> state
@@ -127,7 +127,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
                     # Qubit initialization
                     for i, qubit in multiplexed_qubits.items():
-                        qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+                        qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                     align()
                     # Qubit readout - |e> state
                     for i, qubit in multiplexed_qubits.items():

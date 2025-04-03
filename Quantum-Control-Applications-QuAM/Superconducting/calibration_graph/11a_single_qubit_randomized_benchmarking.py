@@ -244,7 +244,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                         with if_((depth == 1) | (depth == depth_target)):
                             with for_(n, 0, n < n_avg, n + 1):
                                 # Initialize the qubits
-                                qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+                                qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                                 # Align the two elements to play the sequence after qubit initialization
                                 qubit.align()
                                 # The strict_timing ensures that the sequence will be played without gaps

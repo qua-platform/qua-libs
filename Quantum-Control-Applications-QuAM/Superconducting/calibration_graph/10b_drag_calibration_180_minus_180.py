@@ -129,7 +129,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                     with for_(*from_array(a, amps)):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.reset_qubit(node.parameters.reset_type, node.parameters.simulate)
+                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                         align()
                         # Qubit manipulation
                         for i, qubit in multiplexed_qubits.items():

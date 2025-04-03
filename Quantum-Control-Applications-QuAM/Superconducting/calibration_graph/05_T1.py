@@ -100,7 +100,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 with for_each_(t, idle_times):
                     # Reset the qubits to the ground state
                     for i, qubit in multiplexed_qubits.items():
-                        qubit.reset_qubit(
+                        qubit.reset(
                             node.parameters.reset_type,
                             node.parameters.simulate,
                             logger=logger,
