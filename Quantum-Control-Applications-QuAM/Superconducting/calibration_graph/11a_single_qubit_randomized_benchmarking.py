@@ -6,7 +6,6 @@ from dataclasses import asdict
 
 from qm.qua import *
 
-from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
@@ -453,7 +452,15 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
     node.results["figure_amplitude"] = fig_raw_fit
 
 
-# TODO: no state update?
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def update_state(node: QualibrationNode[Parameters, QuAM]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+    with node.record_state_updates():
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+            q.gate_fidelities["averaged"] = float(1-node.results["fit_results"][q.name]["error_per_gate"])
 
 
 # %% {Save_results}

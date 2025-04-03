@@ -29,5 +29,4 @@ class Parameters(
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
-    model_config = ConfigDict(use_attribute_docstrings=True)
     pass
