@@ -105,7 +105,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     }
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
-        init_state = declare(int)
+        init_state = [declare(int) for _ in range(num_qubits)]
         state = [declare(int) for _ in range(num_qubits)]
         state_st = [declare_stream() for _ in range(num_qubits)]
         t = declare(int)  # QUA variable for the idle time
@@ -122,27 +122,32 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 save(n, n_st)
                 with for_(*from_array(flux, fluxes)):
                     with for_(*from_array(t, idle_times)):
+                        # Read the state of the qubits before Ramsey starts
                         for i, qubit in multiplexed_qubits.items():
-                            # Read the state of the qubit before Ramsey starts
-                            qubit.readout_state(init_state)
-                            qubit.align()
+                            qubit.readout_state(init_state[i])
+                        align()
+
+                        # Qubit manipulation
+                        for i, qubit in multiplexed_qubits.items():
                             # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
                             # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
                             assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
                             # TODO: this has gaps and the Z rotation is not derived properly, is it okay still?
                             # Ramsey sequence
-                            qubit.xy.play("x180", amplitude_scale=0.5)
-                            qubit.wait(t)
+                            qubit.xy.play("x90")
                             qubit.xy.frame_rotation_2pi(phi)
-                            qubit.xy.play("x180", amplitude_scale=0.5)
+                            qubit.xy.wait(t + 1)
+                            qubit.z.wait(duration=qubit.xy.operations["x90"].length)
+                            qubit.z.play("const", amplitude_scale=flux / qubit.z.operations["const"].amplitude,
+                                         duration=t)
+                            qubit.xy.play("x90")
+                        align()
 
-                            # Align the elements to measure after playing the qubit pulse.
-                            qubit.align()
-                            # Measure the state of the resonators
+                        # Qubit readout
+                        for i, qubit in multiplexed_qubits.items():
                             qubit.readout_state(state[i])
-                            assign(state[i], init_state ^ state[i])
+                            assign(state[i], init_state[i] ^ state[i])
                             save(state[i], state_st[i])
-
                             # Reset the frame of the qubits in order not to accumulate rotations
                             reset_frame(qubit.xy.name)
                         align()
