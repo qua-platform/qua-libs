@@ -93,12 +93,17 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 
 def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
+    # Assess whether the fit was successful or not
+    nan_success = np.isnan(ds_fit["chi"]) | np.isnan(ds_fit["optimal_detuning"])  | np.isnan(ds_fit["optimal_frequency"])
+    freq_success = np.abs(np.isnan(ds_fit["optimal_detuning"])) < 400e6
+    success_criteria = ~nan_success & freq_success
+    ds_fit = ds_fit.assign({"success": success_criteria})
     fit_results = {
         q: FitParameters(
-            optimal_frequency=float(ds_fit["optimal_frequency"].sel(qubit=q).data),
-            optimal_detuning=float(ds_fit["optimal_detuning"].sel(qubit=q).data),
-            chi=float(ds_fit["chi"].sel(qubit=q).data),
-            success=False,
+            optimal_frequency=float(ds_fit.optimal_frequency.sel(qubit=q).data),
+            optimal_detuning=float(ds_fit.optimal_detuning.sel(qubit=q).data),
+            chi=float(ds_fit.chi.sel(qubit=q).data),
+            success=bool(ds_fit.sel(qubit=q).success.values),
         )
         for q in ds_fit.qubit.values
     }

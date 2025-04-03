@@ -80,7 +80,6 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     num_qubits = len(qubits)
 
     n_avg = node.parameters.num_averages  # The number of averages
-    state_discrimination = node.parameters.use_state_discrimination
     operation = node.parameters.operation  # The qubit operation to play
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
     amps = np.arange(
@@ -99,8 +98,8 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
-        if state_discrimination:
-            state = [declare(bool) for _ in range(num_qubits)]
+        if node.parameters.use_state_discrimination:
+            state = [declare(int) for _ in range(num_qubits)]
             state_st = [declare_stream() for _ in range(num_qubits)]
         a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
         npi = declare(int)  # QUA variable for the number of qubit pulses
@@ -126,16 +125,14 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                             with for_(count, 0, count < npi, count + 1):
                                 qubit.xy.play(operation, amplitude_scale=a)
                         align()
+
                         # Qubit readout
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                            if state_discrimination:
-                                assign(
-                                    state[i],
-                                    I[i] > qubit.resonator.operations["readout"].threshold,
-                                )
+                            if node.parameters.use_state_discrimination:
+                                qubit.readout_state(state[i])
                                 save(state[i], state_st[i])
                             else:
+                                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                                 save(I[i], I_st[i])
                                 save(Q[i], Q_st[i])
                         align()
@@ -144,7 +141,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             n_st.save("n")
             for i, qubit in enumerate(qubits):
                 if operation == "x180":
-                    if state_discrimination:
+                    if node.parameters.use_state_discrimination:
                         state_st[i].boolean_to_int().buffer(len(amps)).buffer(
                             np.ceil(node.parameters.max_number_pulses_per_sweep / 2)
                         ).average().save(f"state{i + 1}")
@@ -153,7 +150,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                         Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")
 
                 elif operation in ["x90", "-x90", "y90", "-y90"]:
-                    if state_discrimination:
+                    if node.parameters.use_state_discrimination:
                         state_st[i].boolean_to_int().buffer(len(amps)).buffer(len(N_pi_vec)).average().save(
                             f"state{i + 1}"
                         )

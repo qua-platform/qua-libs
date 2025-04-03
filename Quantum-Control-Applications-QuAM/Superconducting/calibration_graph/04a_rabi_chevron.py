@@ -122,23 +122,21 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                             # Set the xy drive frequency back to the qubit frequency for active reset
                             qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
                             qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                            # Update the xy drive frequency
                             qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
                         align()
                         # Qubit manipulation
                         for i, qubit in multiplexed_qubits.items():
                             qubit.xy.play("x180", duration=t)
                         align()
+
                         # Qubit readout
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-
                             if state_discrimination:
-                                assign(
-                                    state[i],
-                                    I[i] > qubit.resonator.operations["readout"].threshold,
-                                )
+                                qubit.readout_state(state[i])
                                 save(state[i], state_st[i])
                             else:
+                                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                                 save(I[i], I_st[i])
                                 save(Q[i], Q_st[i])
                         align()
