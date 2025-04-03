@@ -3,11 +3,11 @@ from qualibrate import QualibrationLibrary
 
 
 def test_02b_resonator_spectroscopy_vs_power(library: QualibrationLibrary):
-    node_template = library.nodes["02b_resonator_spectroscopy_vs_power"]
+    node = library.nodes["02b_resonator_spectroscopy_vs_power"]
 
-    executed_node, run_summary = node_template.run(load_data_id=1582)
+    run_summary = node.run(load_data_id=1582, skip_actions=["save_results"])
 
-    fit_results = executed_node.results["fit_results"]
+    fit_results = node.results["fit_results"]
     # TODO Why is this unsuccessful?
     # assert not fit_results["q1"]["success"]
     # assert np.isnan(fit_results["q1"]["resonator_frequency"])

@@ -3,8 +3,8 @@ from qualibrate import QualibrationLibrary
 
 
 def test_09_ramsey_vs_flux_calibration(library: QualibrationLibrary):
-    node_template = library.nodes["09_ramsey_vs_flux_calibration"]
+    node = library.nodes["09_ramsey_vs_flux_calibration"]
 
-    executed_node, run_summary = node_template.run(load_data_id=1566)
+    run_summary = node.run(load_data_id=1566, skip_actions=["save_results"])
 
-    fit_results = executed_node.results["fit_results"]
+    fit_results = node.results["fit_results"]
