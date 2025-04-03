@@ -73,14 +73,15 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
 
     if hasattr(fit, "state"):
         ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
+        ax.plot(ds.idle_time, fitted, "r--")
         ax.set_ylabel("State")
     elif hasattr(fit, "I"):
         (ds.sel(qubit=qubit["qubit"]).I * 1e3).plot(ax=ax)
+        ax.plot(ds.idle_time, fitted * 1e3, "r--")
         ax.set_ylabel("Trans. amp. I [mV]")
     else:
         raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
 
-    ax.plot(ds.idle_time, fitted * 1e3, "r--")
     ax.set_title(qubit["qubit"])
     ax.set_xlabel("Idle_time (µs)")
     ax.text(

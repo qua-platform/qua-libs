@@ -98,7 +98,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 with for_(shot, 0, shot < n_avg, shot + 1):
                     save(shot, n_st)
 
-                    with for_(*from_array(t, idle_times)):
+                    with for_each_(t, idle_times):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
                             reset_frame(qubit.xy.name)
