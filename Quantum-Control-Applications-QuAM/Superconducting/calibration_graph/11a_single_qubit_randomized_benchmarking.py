@@ -74,7 +74,6 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
 
-
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
