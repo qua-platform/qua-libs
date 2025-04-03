@@ -94,12 +94,8 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
 
 def plot_state(ax, ds, qubit, fitted=None):
     """Plot state data for a qubit."""
-    ds.sel(detuning_signs=1).state.plot(
-        ax=ax, x="idle_time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +"
-    )
-    ds.sel(detuning_signs=-1).state.plot(
-        ax=ax, x="idle_time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
-    )
+    ds.sel(detuning_signs=1).state.plot(ax=ax, x="idle_time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +")
+    ds.sel(detuning_signs=-1).state.plot(ax=ax, x="idle_time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -")
     if fitted is not None:
         ax.plot(
             ds.idle_time,
