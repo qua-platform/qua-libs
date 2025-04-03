@@ -44,8 +44,8 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 10
-    min_flux_offset_in_v: float = -0.5
-    max_flux_offset_in_v: float = 0.5
+    min_flux_offset_in_v: float = -0.4
+    max_flux_offset_in_v: float = 0.4
     num_flux_points: int = 201
     frequency_span_in_mhz: float = 10
     frequency_step_in_mhz: float = 0.1
@@ -265,7 +265,7 @@ if not node.parameters.simulate:
         ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].IQ_abs.plot(
             ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
         )
-        ax.plot(ds.flux, peak_freq_full[qubit["qubit"]]/1e9, linewidth=2, color = "purple")
+        ax.plot(ds.flux, peak_freq_full[qubit["qubit"]]/1e9, linewidth=1, color = "purple")
         ax.axvline(
             idle_offset.loc[qubit],
             linestyle="dashed",
