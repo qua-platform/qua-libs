@@ -214,7 +214,7 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
-        "amplitude": fig_raw_fit,
+        "raw_fit": fig_raw_fit,
     }
 
 

@@ -18,27 +18,28 @@ from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
 from quam_experiments.experiments.T1 import (
     Parameters,
-    fit_t1_decay,
+    process_raw_dataset,
+    fit_raw_data,
     log_fitted_results,
-    plot_t1s_data_with_fit,
+    plot_raw_data_with_fit,
 )
 
 
 # %% {Initialisation}
-# todo: improve the prerequisite section by highlighting the nodes to run for instance
 description = """
         T1 MEASUREMENT
 The sequence consists in putting the qubit in the excited stated by playing the x180 pulse and measuring the resonator
 after a varying time. The qubit T1 is extracted by fitting the exponential decay of the measured quadratures.
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, power_rabi and updated the state.
-    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
-    - Set the desired flux biases if relevant.
+    - Having calibrated the mixer or the Octave (nodes 01a or 01b).
+    - Having calibrated the readout parameters (nodes 02a, 02b and/or 02c).
+    - Having calibrated the qubit x180 pulse parameters (nodes 03a_qubit_spectroscopy.py and 04b_power_rabi.py).
+    - (optional) Having optimized the readout parameters (nodes 08a, 08b and 08c).
+    - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
 State update:
-    - The T1 relaxation time for each qubit: qubit.T1
+    - The T1 relaxation time: qubit.T1
 """
 
 # Be sure to include [Parameters, QuAM] so the node has proper type hinting
@@ -55,6 +56,7 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
+    node.parameters.load_data_id = 1853
     pass
 
 
@@ -69,7 +71,6 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
-    # todo: node.namespace loses the autocompletion
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(node.namespace["qubits"])
     # Extract the sweep parameters and axes from the node parameters
@@ -145,7 +146,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
-    # todo: we can't serialize the simulated samples [Serwan]
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
@@ -193,7 +193,8 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analysis the raw data and store the fitted data in another xarray dataset and the fitted results in the fit_results class."""
     # todo check the units with real data
-    node.results["ds_fit"], fit_results = fit_t1_decay(node.results["ds_raw"], node.parameters)
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     # todo: Serwan to add node.log so that we can do node.log.add(log_t1(node.results["ds_fit"])) or similar
     from qualibrate.utils.logger_m import logger
@@ -210,17 +211,14 @@ def analyse_data(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, QuAM]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit.grid_location."""
-    fig = plot_t1s_data_with_fit(
+    fig = plot_raw_data_with_fit(
         node.results["ds_raw"],
         node.namespace["qubits"],
-        node.parameters,
         node.results["ds_fit"],
     )
     plt.show()
     # Store the generated figures
-    node.results["figures"] = {
-        "amplitude": fig,
-    }
+    node.results["figures"] = {"raw_fit": fig}
 
 
 # %% {Update_state}

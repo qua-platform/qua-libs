@@ -39,9 +39,11 @@ Prerequisites:
     - Having calibrated the mixer or the Octave (nodes 01a or 01b).
     - Having calibrated the qubit frequency (node 03a_qubit_spectroscopy.py).
     - Having set the qubit gates duration (qubit.xy.operations["x180"].length).
+    - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
 State update:
-    - The qubit pulse amplitude.
+    - The qubit pulse amplitude corresponding to the specified operation (x180, x90...) 
+    (qubit.xy.operations[operation].amplitude).
 """
 
 

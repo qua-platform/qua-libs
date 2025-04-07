@@ -42,6 +42,7 @@ This is why calibrating the qubit mixer is highly recommended when using externa
 Prerequisites:
     - Having calibrated the mixer or the Octave (nodes 01a or 01b).
     - Having calibrated the readout parameters (nodes 02a, 02b and/or 02c).
+    - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
 State update:
     - The qubit 0->1 frequency: qubit.f_01 & qubit.xy.RF_frequency

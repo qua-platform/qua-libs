@@ -37,6 +37,7 @@ Analyzing the results allows for determining the qubit and estimating the x180 p
 Prerequisites:
     - Having calibrated the mixer or the Octave (nodes 01a or 01b).
     - Having calibrated the qubit frequency (node 03a_qubit_spectroscopy.py and/or 03b_qubit_spectroscopy_vs_flux.py).
+    - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
 State update:
     - Manually set the x180 pulse duration qubit.xy.operation["x180"].length.

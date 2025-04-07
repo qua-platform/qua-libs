@@ -2,9 +2,12 @@ import logging
 import numpy as np
 import xarray as xr
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Tuple
+from qualibrate import QualibrationNode
+from qualibration_libs.qua_datasets import convert_IQ_to_V
 from quam_experiments.experiments.T1.parameters import Parameters
 from quam_experiments.analysis.fit import fit_decay_exp
+
 
 
 @dataclass
@@ -49,8 +52,13 @@ def log_fitted_results(ds: xr.Dataset, logger=None):
                 f"T1 for qubit {q} : {1e-3 * ds.sel(qubit=q).tau.values:.2f} +/- {1e-3 * ds.sel(qubit=q).tau_error.values:.2f} us --> FAIL!"
             )
 
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
+    if not node.parameters.use_state_discrimination:
+        ds = convert_IQ_to_V(ds, node.namespace["qubits"])
+    return ds
 
-def fit_t1_decay(ds: xr.Dataset, node_parameters: Parameters) -> Tuple[xr.Dataset, dict[str, T1Fit]]:
+
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, T1Fit]]:
     """
     Fit the T1 relaxation time for each qubit according to ``a * np.exp(t * decay) + offset``.
 
@@ -68,9 +76,14 @@ def fit_t1_decay(ds: xr.Dataset, node_parameters: Parameters) -> Tuple[xr.Datase
     """
 
     # Fit the exponential decay
-    fit_results = _fit_t1_with_exponential_decay(ds, node_parameters.use_state_discrimination)
+    if node.parameters.use_state_discrimination:
+        fit_data = fit_decay_exp(ds.state, "idle_time")
+    else:
+        fit_data = fit_decay_exp(ds.I, "idle_time")
+
+    ds_fit = xr.merge([ds, fit_data.rename("fit_data")])
     # Extract the relevant fitted parameters
-    fit_data, fit_results = _extract_relevant_fit_parameters(fit_results.to_dataset(name="ds_fit"))
+    fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit)
 
     return fit_data, fit_results
 
@@ -89,15 +102,15 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset):
     # Add metadata to fit results
     fit.attrs = {"long_name": "time", "units": "ns"}
     # Get the fitted T1
-    tau = -1 / fit.sel(fit_vals="decay")
-    fit = fit.assign_coords(tau=("qubit", tau.ds_fit.data))
+    tau = -1 / fit.fit_data.sel(fit_vals="decay")
+    fit = fit.assign_coords(tau=("qubit", tau.data))
     fit.tau.attrs = {"long_name": "T1", "units": "ns"}
     # Get the error on T1
-    tau_error = -tau * (np.sqrt(fit.sel(fit_vals="decay_decay")) / fit.sel(fit_vals="decay"))
-    fit = fit.assign_coords(tau_error=("qubit", tau_error.ds_fit.data))
+    tau_error = -tau * (np.sqrt(fit.fit_data.sel(fit_vals="decay_decay")) / fit.fit_data.sel(fit_vals="decay"))
+    fit = fit.assign_coords(tau_error=("qubit", tau_error.data))
     fit.tau_error.attrs = {"long_name": "T1 error", "units": "ns"}
     # Assess whether the fit was successful or not
-    success_criteria = (tau.ds_fit.data > 16) & (tau_error.ds_fit.data / tau.ds_fit.data < 1)
+    success_criteria = (tau.data > 16) & (tau_error.data / tau.data < 1)
     fit = fit.assign_coords(success=("qubit", success_criteria))
 
     fit_results = {

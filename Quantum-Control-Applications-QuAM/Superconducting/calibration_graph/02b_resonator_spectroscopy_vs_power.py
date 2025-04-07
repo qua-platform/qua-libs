@@ -41,6 +41,7 @@ frequency splitting.
 
 Prerequisites:
     - Having calibrated the resonator frequency (node 02a_resonator_spectroscopy.py).
+    - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
 State update:
     - The readout frequency at the optimal readout power: qubit.resonator.f_01 & qubit.resonator.RF_frequency
