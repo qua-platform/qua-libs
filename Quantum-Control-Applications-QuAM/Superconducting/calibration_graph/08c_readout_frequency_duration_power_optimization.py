@@ -270,8 +270,8 @@ with open("debug.py", "w+") as f:
 
 # %% {Simulate}
 if node.parameters.simulate:
-    samples, fig = simulate_and_plot(qmm, config, programs[0], node.parameters)
-    node.results = {"figure": fig}
+    samples, fig, wf_report = simulate_and_plot(qmm, config, programs[0], node.parameters)
+    node.results = {"figure": fig, "wf_report": wf_report, "samples": samples}
     node.save()
 
 # %% {Execute}

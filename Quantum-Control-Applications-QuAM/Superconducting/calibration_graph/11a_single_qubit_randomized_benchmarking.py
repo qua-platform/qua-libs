@@ -74,6 +74,7 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
 # Instantiate the QuAM class from the state file
 node.machine = QuAM.load()
 
+
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
@@ -378,7 +379,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
-    node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
+    node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
 # %% {Execute}
