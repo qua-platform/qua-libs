@@ -60,10 +60,10 @@ from quam_libs.lib.qua_datasets import apply_angle
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ['q2-q4']
-    num_averages: int = 1000
+    qubit_pairs: Optional[List[str]] = None
+    num_averages: int = 200
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "active"
+    reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
     amp_range : float = 0.03

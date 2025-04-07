@@ -74,5 +74,5 @@ g = QualibrationGraph(
 )
 # %%
 
-g.run(qubits=["qubitC1", "qubitC2", "qubitC3", "qubitC4"])
+g.run(qubits=["qubitC1", "qubitC2", "qubitC3"])
 # %%
