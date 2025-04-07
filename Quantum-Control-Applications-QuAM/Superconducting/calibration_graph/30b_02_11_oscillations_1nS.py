@@ -54,10 +54,10 @@ from quam_libs.lib.pulses import FluxPulse
 class Parameters(NodeParameters):
 
     qubit_pairs: Optional[List[str]] = None
-    num_averages: int = 40
+    num_averages: int = 10
     max_time_in_ns: int = 128
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "active"
+    reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
     method: Literal['coarse', 'fine'] = "fine"
@@ -196,7 +196,7 @@ with program() as CPhase_Oscillations:
         else:
             machine.apply_all_flux_to_zero()
         wait(1000)
-        if qp.gates['Cz'].compensations:
+        if hasattr(qp.gates['Cz'], 'compensations'):
             compensation_qubits = [compensation["qubit"] for compensation in qp.gates['Cz'].compensations]
         else:
             compensation_qubits = []
