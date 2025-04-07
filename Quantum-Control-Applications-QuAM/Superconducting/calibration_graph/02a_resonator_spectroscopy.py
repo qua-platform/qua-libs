@@ -59,6 +59,7 @@ Prerequisites:
     - Having calibrated the IQ mixer/Octave connected to the readout line (node 01a_mixer_calibration.py).
     - Having calibrated the time of flight, offsets, and gains (node 01b_time_of_flight.py).
     - Having initialized the QUAM state parameters for the readout pulse amplitude and duration, and the resonators depletion time.
+    - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
 State update:
     - The readout frequency: qubit.resonator.f_01 & qubit.resonator.RF_frequency
@@ -79,6 +80,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
+    node.parameters.simulate = True
     pass
 
 
