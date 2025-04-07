@@ -29,21 +29,18 @@ from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 # %% {Initialisation}
 description = """
         READOUT OPTIMISATION: FREQUENCY
-This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
-(with the qubit in the |g> state) and then after applying a pi pulse to the qubit (transitioning the qubit to the
-|e> state). This is done while varying the readout frequency.
-The average I & Q quadratures for the qubit states |g> and |e>, along with their variances, are extracted to
-determine the Signal-to-Noise Ratio (SNR). The readout frequency that yields the highest SNR is selected as the
-optimal choice.
+The sequence consists in measuring the state of the resonator after thermalization (qubit in |g>) and after
+playing a pi pulse to the qubit (qubit in |e>) successively while sweeping the readout frequency.
+The 'I' & 'Q' quadratures when the qubit is in |g> and |e> are extracted to derive the readout fidelity.
+The optimal readout frequency is chosen as to maximize the state discrimination Signal-to-Noise Ratio (SNR).
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, power_rabi and updated the state.
-    - Set the desired flux bias
+    - Having calibrated the readout frequency (node 02a_resonator_spectroscopy.py).
+    - Having calibrated the qubit x180 pulse parameters (nodes 03a_qubit_spectroscopy.py and 04b_power_rabi.py).
 
-Next steps before going to the next node:
-    - Update the readout frequency and dispersive shift chi in the state.
-    - Save the current state
+State update:
+    - The readout frequency: qubit.resonator.f_01 & qubit.resonator.RF_frequency
+    - The dispersive shift: qubit.chi
 """
 
 

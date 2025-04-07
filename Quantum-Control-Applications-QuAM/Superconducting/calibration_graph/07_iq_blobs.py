@@ -29,23 +29,24 @@ from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 # %% {Description}
 description = """
         IQ BLOBS
-This sequence involves measuring the state of the resonator 'N' times, first after
-thermalization (with the qubit in the |g> state) and then after applying a pi pulse
-to the qubit (bringing the qubit to the |e> state) successively. The resulting IQ blobs
-are displayed, and the data is processed to determine:
+This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit in 
+the |g> state) and then after applying a x180 (pi) pulse to the qubit (bringing the qubit to the |e> state). 
+The resulting IQ blobs are displayed, and the data is processed to determine:
     - The rotation angle required for the integration weights, ensuring that the 
       separation between |g> and |e> states aligns with the 'I' quadrature.
-    - The threshold along the 'I' quadrature for effective qubit state discrimination.
-    - The readout fidelity matrix, which is also influenced by the pi pulse fidelity.
+    - The threshold along the 'I' quadrature for effective qubit state discrimination (at the center between the two blobs).
+    - The repeat-until-success threshold along the 'I' quadrature for effective active reset (at the center of the |g> blob).
+    - The readout confusion matrix, which is also influenced by the x180 pulse fidelity.
 
 Prerequisites:
-    - Having calibrated a pi pulse (node 04b_power_rabi.py).
+    - Having calibrated the readout frequency (node 02a_resonator_spectroscopy.py).
+    - Having calibrated the qubit x180 pulse parameters (nodes 03a_qubit_spectroscopy.py and 04b_power_rabi.py).
 
 State update:
-    - The integration weight angle
-    - the ge discrimination threshold
-    - the Repeat Until Success threshold
-    - The confusion matrix
+    - The integration weight angle: qubit.resonator.operations["readout"].integration_weights_angle
+    - the ge discrimination threshold: qubit.resonator.operations["readout"].threshold
+    - the Repeat Until Success threshold: qubit.resonator.operations["readout"].rus_exit_threshold
+    - The confusion matrix: qubit.resonator.operations["readout"].confusion_matrix
 """
 
 # Be sure to include [Parameters, QuAM] so the node has proper type hinting
@@ -163,8 +164,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
     """
-    Connect to the QOP, execute the QUA program and fetch the raw data and store it in
-    an xarray dataset called "ds_raw".
+    Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw".
     """
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -249,8 +249,7 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
             fit_result = node.results["fit_results"][q.name]
             operation = q.resonator.operations[node.parameters.operation]
             operation.integration_weights_angle -= float(fit_result["iw_angle"])
-            # Convert the thresholds back in demod units
-            # todo: what about when calibrating qnd_readout, would state discrimination be wrong?
+            # Convert the thresholds back to demod units
             operation.threshold = float(fit_result["ge_threshold"]) * operation.length / 2**12
             operation.rus_exit_threshold = float(fit_result["rus_threshold"]) * operation.length / 2**12
             # todo: add conf matrix to the readout operation rather than the resonator
