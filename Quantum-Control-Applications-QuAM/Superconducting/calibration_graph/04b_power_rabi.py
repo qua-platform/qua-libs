@@ -36,7 +36,9 @@ By doing so, the effect of amplitude inaccuracies is amplified, enabling a more 
 amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
 
 Prerequisites:
+    - Having calibrated the mixer or the Octave (nodes 01a or 01b).
     - Having calibrated the qubit frequency (node 03a_qubit_spectroscopy.py).
+    - Having set the qubit gates duration (qubit.xy.operations["x180"].length).
 
 State update:
     - The qubit pulse amplitude.

@@ -29,11 +29,14 @@ from qualibration_libs.trackable_object import tracked_updates
 
 # %% {Description}
 description = """
-        RABI CHEVRON
-TODO
+        RABI CHEVRON - DURATION VS AMPLITUDE
+This sequence involves executing the qubit x180 pulse and measuring the state
+of the resonator across various qubit intermediate frequencies and pulse durations.
+Analyzing the results allows for determining the qubit and estimating the x180 pulse duration for a specific amplitude.
 
 Prerequisites:
-    - Having calibrated the qubit frequency (node 03a_qubit_spectroscopy.py).
+    - Having calibrated the mixer or the Octave (nodes 01a or 01b).
+    - Having calibrated the qubit frequency (node 03a_qubit_spectroscopy.py and/or 03b_qubit_spectroscopy_vs_flux.py).
 
 State update:
     - Manually set the x180 pulse duration qubit.xy.operation["x180"].length.
