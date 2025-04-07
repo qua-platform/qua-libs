@@ -67,7 +67,6 @@ node = QualibrationNode[Parameters, QuAM](
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
-    node.parameters.min_amp_factor = -0.9
     pass
 
 
@@ -176,7 +175,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             n_st.save("n")
             for i, qubit in enumerate(qubits):
                 if node.parameters.use_state_discrimination:
-                    state_st[i].boolean_to_int().buffer(len(amps)).buffer(N_pi).average().save(f"state{i + 1}")
+                    state_st[i].buffer(len(amps)).buffer(N_pi).average().save(f"state{i + 1}")
                 else:
                     I_st[i].buffer(len(amps)).buffer(N_pi).average().save(f"I{i + 1}")
                     Q_st[i].buffer(len(amps)).buffer(N_pi).average().save(f"Q{i + 1}")

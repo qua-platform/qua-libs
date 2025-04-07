@@ -59,7 +59,7 @@ node = QualibrationNode[Parameters, QuAM](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, QuAM]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q2", "q3"]
+    node.parameters.qubits = ["q1", "q3"]
     pass
 
 
@@ -239,7 +239,7 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.results["fit_results"][q.name]["success"]:
-                q.resonator.f_01 += node.results["fit_results"][q.name]["optimal_frequency"]
+                q.resonator.f_01 = node.results["fit_results"][q.name]["optimal_frequency"]
                 q.resonator.RF_frequency = q.resonator.f_01
                 q.chi = node.results["fit_results"][q.name]["chi"]
 

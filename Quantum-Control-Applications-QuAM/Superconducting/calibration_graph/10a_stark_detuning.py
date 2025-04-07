@@ -109,7 +109,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     }
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
-        state = [declare(bool) for _ in range(num_qubits)]
+        state = [declare(int) for _ in range(num_qubits)]
         state_st = [declare_stream() for _ in range(num_qubits)]
         df = declare(int)  # QUA variable for the qubit drive amplitude pre-factor
         npi = declare(int)  # QUA variable for the number of qubit pulses
@@ -147,21 +147,19 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                             update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
                         align()
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                            # State discrimination
-                            assign(
-                                state[i],
-                                I[i] > qubit.resonator.operations["readout"].threshold,
-                            )
-                            save(state[i], state_st[i])
-                            save(I[i], I_st[i])
-                            save(Q[i], Q_st[i])
-                        align()
+                            if node.parameters.use_state_discrimination:
+                                qubit.readout_state(state[i])
+                                save(state[i], state_st[i])
+                            else:
+                                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                                save(I[i], I_st[i])
+                                save(Q[i], Q_st[i])
+
 
         with stream_processing():
             n_st.save("n")
             for i, qubit in enumerate(qubits):
-                state_st[i].boolean_to_int().buffer(len(dfs)).buffer(N_pi).average().save(f"state{i + 1}")
+                state_st[i].buffer(len(dfs)).buffer(N_pi).average().save(f"state{i + 1}")
                 I_st[i].buffer(len(dfs)).buffer(N_pi).average().save(f"I{i + 1}")
                 Q_st[i].buffer(len(dfs)).buffer(N_pi).average().save(f"Q{i + 1}")
 

@@ -207,6 +207,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, QuAM]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    # TODO: requires manual setting of the readout power since the analysis isn't robust enough...
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}

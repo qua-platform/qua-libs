@@ -59,8 +59,8 @@ g = QualibrationGraph(
     },
     connectivity=[
         # ("time_of_flight", "resonator_spectroscopy"),
+        # ("resonator_spectroscopy_vs_power", "resonator_spectroscopy"),
         ("resonator_spectroscopy", "qubit_spectroscopy"),
-        # ("resonator_spectroscopy_vs_power", "qubit_spectroscopy"),
         ("qubit_spectroscopy", "rabi_chevron"),
         ("rabi_chevron", "power_rabi"),
         ("power_rabi", "readout_power_optimization"),
@@ -77,4 +77,5 @@ g = QualibrationGraph(
     orchestrator=BasicOrchestrator(skip_failed=False),
 )
 
-g.run(qubits=[f"q{i+1}" for i in range(0, 4)])
+# g.run(qubits=[f"q{i+1}" for i in range(0, 4)])
+g.run(qubits=["q1", "q3"])

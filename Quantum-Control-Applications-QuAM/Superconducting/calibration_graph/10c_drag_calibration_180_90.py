@@ -112,7 +112,7 @@ amps = np.arange(
 
 with program() as drag_calibration:
     I, _, Q, _, n, n_st = node.machine.qua_declaration()
-    state = [declare(bool) for _ in range(num_qubits)]
+    state = [declare(int) for _ in range(num_qubits)]
     state_st = [declare_stream() for _ in range(num_qubits)]
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
     npi = declare(int)  # QUA variable for the number of qubit pulses
@@ -141,7 +141,7 @@ with program() as drag_calibration:
 
                     qubit.align()
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
+                    assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
                     save(state[i], state_st[i])
         # Measure sequentially
         if not node.parameters.multiplexed:
@@ -150,7 +150,7 @@ with program() as drag_calibration:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            state_st[i].boolean_to_int().buffer(len(amps)).buffer(2).average().save(f"state{i + 1}")
+            state_st[i].buffer(len(amps)).buffer(2).average().save(f"state{i + 1}")
 
 
 # %% {Simulate}

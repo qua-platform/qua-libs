@@ -58,10 +58,10 @@ def custom_param(node: QualibrationNode[Parameters, QuAM]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
-    # node.parameters.max_number_pulses_per_sweep = 50
+    # node.parameters.max_number_pulses_per_sweep = 100
     # node.parameters.min_amp_factor = 0.8
     # node.parameters.max_amp_factor = 1.2
-    # node.parameters.amp_factor_step = 0.001
+    # node.parameters.amp_factor_step = 0.01
     pass
 
 
@@ -142,7 +142,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
             for i, qubit in enumerate(qubits):
                 if operation == "x180":
                     if node.parameters.use_state_discrimination:
-                        state_st[i].boolean_to_int().buffer(len(amps)).buffer(
+                        state_st[i].buffer(len(amps)).buffer(
                             np.ceil(node.parameters.max_number_pulses_per_sweep / 2)
                         ).average().save(f"state{i + 1}")
                     else:
@@ -151,7 +151,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
                 elif operation in ["x90", "-x90", "y90", "-y90"]:
                     if node.parameters.use_state_discrimination:
-                        state_st[i].boolean_to_int().buffer(len(amps)).buffer(len(N_pi_vec)).average().save(
+                        state_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(
                             f"state{i + 1}"
                         )
                     else:

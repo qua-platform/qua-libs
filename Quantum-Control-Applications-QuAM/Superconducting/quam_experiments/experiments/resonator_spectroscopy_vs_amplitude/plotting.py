@@ -94,4 +94,8 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
             color="blue",
             linestyle="--",
         )
+    # ax3 = ax.twinx()
+    # ds.assign_coords(readout_amp=ds.detuning / u.MHz).loc[qubit].IQ_abs_norm.plot(
+    #     ax=ax3, add_colorbar=False, x="detuning_MHz", y="readout_amp", robust=True
+    # )
     # ax.set_title(qubit["qubit"])

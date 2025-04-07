@@ -88,12 +88,6 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
         else:
             raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
 
-        # if state_discrimination: todo: te
-        #     ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].state.plot(ax=ax, x="amp_mV")
-        #     ax.plot(ds.abs_amp.loc[qubit] * 1e3, fit_evals.loc[qubit][0])
-        #     ax.set_ylabel("Qubit state")
-        # else:
-
         (ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit] * 1e3)[data].plot(ax=ax, x="amp_mV")
         ax.plot(fit.full_amp * 1e3, 1e3 * fitted_data)
         ax.set_ylabel(label)

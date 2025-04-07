@@ -31,22 +31,16 @@ def log_fitted_results(fit_results: Dict, logger=None):
     """
     if logger is None:
         logger = logging.getLogger(__name__)
-    # for q in fit_results.keys():
-    #     s_qubit = f"Results for qubit {q}: "
-    #     s_freq = f"\tQubit frequency: {1e-9 * fit_results[q]['frequency']:.3f} GHz | "
-    #     s_fwhm = f"FWHM: {1e-3 * fit_results[q]['fwhm']:.1f} kHz | "
-    #     s_angle = (
-    #         f"The integration weight angle: {fit_results[q]['iw_angle']:.3f} rad\n "
-    #     )
-    #     s_saturation = f"To get the desired FWHM, the saturation amplitude is updated to: {1e3 * fit_results[q]['saturation_amp']:.1f} mV | "
-    #     s_x180 = f"To get the desired x180 gate, the x180 amplitude is updated to: {1e3 * fit_results[q]['x180_amp']:.1f} mV\n "
-    #     if fit_results[q]["success"]:
-    #         s_qubit += " SUCCESS!\n"
-    #     else:
-    #         s_qubit += " FAIL!\n"
-    #     logger.info(
-    #         s_qubit + s_freq + s_fwhm + s_freq + s_angle + s_saturation + s_x180
-    #     )
+    for q in fit_results.keys():
+        s_qubit = f"Results for qubit {q}: "
+        s_amp = f"\tOptimal readout amplitude: {1e3 * fit_results[q]['optimal_amplitude']:.3f} mV\n"
+        if fit_results[q]["success"]:
+            s_qubit += " SUCCESS!\n"
+        else:
+            s_qubit += " FAIL!\n"
+        logger.info(
+            s_qubit + s_amp
+        )
     pass
 
 
