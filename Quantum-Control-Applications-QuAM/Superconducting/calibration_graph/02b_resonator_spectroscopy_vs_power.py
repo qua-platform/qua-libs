@@ -33,7 +33,7 @@ description = """
         RESONATOR SPECTROSCOPY VERSUS READOUT POWER
 This sequence involves measuring the resonator by sending a readout pulse and
 demodulating the signals to extract the 'I' and 'Q' quadratures for all resonators
-simultaneously. This is done across various readout intermediate dfs and amplitudes.
+simultaneously. This is done across various readout frequencies and amplitudes.
 Based on the results, one can determine if a qubit is coupled to the resonator by
 noting the resonator frequency splitting. This information can then be used to adjust
 the readout amplitude, choosing a readout amplitude value just before the observed
@@ -43,7 +43,8 @@ Prerequisites:
     - Having calibrated the resonator frequency (node 02a_resonator_spectroscopy.py).
 
 State update:
-    - The readout power.
+    - The readout frequency at the optimal readout power: qubit.resonator.f_01 & qubit.resonator.RF_frequency
+    - The readout power: qubit.resonator.set_output_power()
     - The readout frequency for the optimal readout power. 
 """
 

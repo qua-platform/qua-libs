@@ -39,7 +39,7 @@ The resulting IQ blobs are displayed, and the data is processed to determine:
     - The readout confusion matrix, which is also influenced by the x180 pulse fidelity.
 
 Prerequisites:
-    - Having calibrated the readout frequency (node 02a_resonator_spectroscopy.py).
+    - Having calibrated the readout parameters (nodes 02a, 02b and/or 02c).
     - Having calibrated the qubit x180 pulse parameters (nodes 03a_qubit_spectroscopy.py and 04b_power_rabi.py).
 
 State update:

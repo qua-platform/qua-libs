@@ -35,7 +35,7 @@ The 'I' & 'Q' quadratures when the qubit is in |g> and |e> are extracted to deri
 The optimal readout frequency is chosen as to maximize the state discrimination Signal-to-Noise Ratio (SNR).
 
 Prerequisites:
-    - Having calibrated the readout frequency (node 02a_resonator_spectroscopy.py).
+    - Having calibrated the readout parameters (nodes 02a, 02b and/or 02c).
     - Having calibrated the qubit x180 pulse parameters (nodes 03a_qubit_spectroscopy.py and 04b_power_rabi.py).
 
 State update:
