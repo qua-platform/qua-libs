@@ -22,6 +22,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Length of the operation in nanoseconds. Default is the predefined pulse length."""
     target_peak_width: float = 3e6
     """Target peak width in Hz. Default is 3e6 Hz."""
+    update_pulses_amplitude: bool = False
+    """Whether to update the saturation pulse and x180/x90 pulse amplitudes based on the peak width. Default is False"""
 
 
 class Parameters(

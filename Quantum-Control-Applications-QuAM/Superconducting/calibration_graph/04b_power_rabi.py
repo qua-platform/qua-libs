@@ -119,6 +119,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                         for i, qubit in multiplexed_qubits.items():
                             qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                         align()
+
                         # Qubit manipulation
                         for i, qubit in multiplexed_qubits.items():
                             # Loop for error amplification (perform many qubit pulses)

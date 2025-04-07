@@ -1,7 +1,6 @@
 # %% {Imports}
 import warnings
 from dataclasses import asdict
-from typing import List, Literal, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,15 +31,14 @@ This sequence involves doing a qubit spectroscopy for several flux biases in ord
 versus flux response.
 
 Prerequisites:
-    - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
-    - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
-    - Identification of the approximate qubit frequency ("qubit_spectroscopy").
+    - Having calibrated the mixer or the Octave (nodes 01a or 01b).
+    - Having calibrated the readout parameters (nodes 02a, 02b and/or 02c).
+    - Having calibrated the qubit frequency (node 03a_qubit_spectroscopy.py).
+    - Having specified the desired flux point (qubit.z.flux_point).
 
-Before proceeding to the next node:
-    - Update the qubit frequency, in the state.
-    - Update the relevant flux points in the state.
-    - Update the frequency vs flux quadratic term in the state.
-    - Save the current state
+State update:
+    - The qubit 0->1 frequency at the set flux point: qubit.f_01 & qubit.xy.RF_frequency
+    - The flux bias corresponding to the set flux point: q.z.independent_offset or q.z.joint_offset.
 """
 
 
@@ -103,8 +101,8 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "flux_bias": xr.DataArray(dcs, attrs={"long_name": "flux bias", "units": "V"}),
         "detuning": xr.DataArray(dfs, attrs={"long_name": "qubit frequency", "units": "Hz"}),
+        "flux_bias": xr.DataArray(dcs, attrs={"long_name": "flux bias", "units": "V"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -113,39 +111,50 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
         df = declare(int)  # QUA variable for the qubit frequency
         dc = declare(fixed)  # QUA variable for the flux dc level
 
-        for i, qubit in enumerate(qubits):
-            # Bring the active qubits to the minimum frequency point
-            node.machine.initialize_qpu(target=qubit)
+        for multiplexed_qubits in qubits.batch():
+            # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
+            for qubit in multiplexed_qubits.values():
+                node.machine.initialize_qpu(target=qubit)
+            align()
 
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
-                # Update the qubit frequency
-                with for_(*from_array(dc, dcs)):
-                    qubit.z.set_dc_offset(dc)
-                    qubit.z.settle()
-                    # qubit.align()
-                    with for_(*from_array(df, dfs)):
-                        qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
-                        # Flux sweeping for a qubit
-                        duration = (
-                            operation_len * u.ns
-                            if operation_len is not None
-                            else qubit.xy.operations[operation].length * u.ns
-                        )
-                        # Apply saturation pulse to all qubits
-                        qubit.xy.play(
-                            operation,
-                            amplitude_scale=operation_amp,
-                            duration=duration,
-                        )
-                        qubit.align()
-                        # QUA macro to read the state of the active resonators
-                        qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                        # save data
-                        save(I[i], I_st[i])
-                        save(Q[i], Q_st[i])
-                        # Wait for the qubits to decay to the ground state
-                        qubit.resonator.wait(node.machine.depletion_time * u.ns)
+                with for_(*from_array(df, dfs)):
+                    with for_(*from_array(dc, dcs)):
+                        # Qubit initialization
+                        for i, qubit in multiplexed_qubits.items():
+                            # Update the qubit frequency
+                            qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
+                            # Wait for the qubits to decay to the ground state
+                            qubit.reset_qubit_thermal()
+                            # Flux sweeping for a qubit
+                            duration = (
+                                operation_len * u.ns
+                                if operation_len is not None
+                                else qubit.xy.operations[operation].length * u.ns
+                            )
+                        align()
+
+                        # Qubit manipulation
+                        for i, qubit in multiplexed_qubits.items():
+                            # Bring the qubit to the desired point during the saturation pulse
+                            qubit.z.play("const", amplitude_scale=dc / qubit.z.operations["const"].amplitude,
+                                         duration=duration)
+                            # Apply saturation pulse to all qubits
+                            qubit.xy.play(
+                                operation,
+                                amplitude_scale=operation_amp,
+                                duration=duration,
+                            )
+                        align()
+
+                        # Qubit readout
+                        for i, qubit in multiplexed_qubits.items():
+                            qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                            # save data
+                            save(I[i], I_st[i])
+                            save(Q[i], Q_st[i])
+
 
             # Measure sequentially
             if not node.parameters.multiplexed:
@@ -154,7 +163,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
         with stream_processing():
             n_st.save("n")
             for i, qubit in enumerate(qubits):
-                I_st[i].buffer(len(dfs)).buffer(len(dcs)).average().save(f"I{i + 1}")
+                I_st[i].buffer(len(dcs)).buffer(len(dfs)).average().save(f"I{i + 1}")
                 Q_st[i].buffer(len(dfs)).buffer(len(dcs)).average().save(f"Q{i + 1}")
 
 
@@ -194,7 +203,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        # print(job.execution_report())
+        print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
@@ -251,8 +260,10 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
                 continue
             else:
                 fit_results = node.results["fit_results"][q.name]
-
-                q.z.joint_offset = fit_results["idle_offset"]
+                if q.z.flux_point == "independent":
+                    q.z.independent_offset = fit_results["idle_offset"]
+                elif q.z.flux_point == "joint":
+                    q.z.joint_offset = fit_results["idle_offset"]
                 q.xy.RF_frequency += fit_results["frequency_shift"]
                 # q.freq_vs_flux_01_quad_term = fit_results["quad_term"]
 
@@ -261,6 +272,3 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, QuAM]):
     node.save()
-
-
-# %%
