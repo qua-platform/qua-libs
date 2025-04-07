@@ -30,9 +30,23 @@ from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 
 
 # %% {Description}
-# TODO: Write description
 description = """
         READOUT POWER OPTIMIZATION
+The sequence consists in measuring the state of the resonator after thermalization (qubit in |g>) and after
+playing a pi pulse to the qubit (qubit in |e>) successively while sweeping the readout amplitude.
+The 'I' & 'Q' quadratures when the qubit is in |g> and |e> are extracted to derive the readout fidelity.
+The optimal readout amplitude is chosen as to maximize the readout fidelity.
+
+Prerequisites:
+    - Having calibrated the readout frequency (node 02a_resonator_spectroscopy.py).
+    - Having calibrated the qubit x180 pulse parameters (nodes 03a_qubit_spectroscopy.py and 04b_power_rabi.py).
+
+State update:
+    - The readout amplitude: qubit.resonator.operations["readout"].amplitude
+    - The integration weight angle: qubit.resonator.operations["readout"].integration_weights_angle
+    - the ge discrimination threshold: qubit.resonator.operations["readout"].threshold
+    - the Repeat Until Success threshold: qubit.resonator.operations["readout"].rus_exit_threshold
+    - The confusion matrix: qubit.resonator.operations["readout"].confusion_matrix
 """
 
 
