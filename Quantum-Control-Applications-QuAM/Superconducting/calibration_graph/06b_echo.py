@@ -1,12 +1,10 @@
 # %% {Imports}
 import matplotlib.pyplot as plt
-import numpy as np
 import xarray as xr
 from dataclasses import asdict
 
 from qm.qua import *
 
-from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
@@ -29,15 +27,16 @@ from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 
 # %% {Description}
 description = """
-        T1 MEASUREMENT
-The sequence consists in putting the qubit in the excited stated by playing the x180 pulse and measuring the resonator
-after a varying time. The qubit T1 is extracted by fitting the exponential decay of the measured quadratures.
+        T2 echo MEASUREMENT
+The sequence consists in playing an echo sequence (x90 - idle_time - x180 - idle_time - -x90 - measurement) for 
+different idle times.
+The qubit T2 echo is extracted by fitting the exponential decay of the measured quadratures/state.
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, power_rabi and updated the state.
-    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
-    - Set the desired flux bias.
+    - Having calibrated the mixer or the Octave (nodes 01a or 01b).
+    - Having calibrated the qubit frequency precisely (node 06a_ramsey.py).
+    - (optional) Having optimized the readout parameters (nodes 08a, 08b and 08c).
+    - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
 Next steps before going to the next node:
     - Update the qubit T1 in the state.

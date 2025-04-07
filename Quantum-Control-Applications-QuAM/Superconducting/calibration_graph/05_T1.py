@@ -29,7 +29,7 @@ from quam_experiments.experiments.T1 import (
 description = """
         T1 MEASUREMENT
 The sequence consists in putting the qubit in the excited stated by playing the x180 pulse and measuring the resonator
-after a varying time. The qubit T1 is extracted by fitting the exponential decay of the measured quadratures.
+after a varying time. The qubit T1 is extracted by fitting the exponential decay of the measured quadratures/state.
 
 Prerequisites:
     - Having calibrated the mixer or the Octave (nodes 01a or 01b).

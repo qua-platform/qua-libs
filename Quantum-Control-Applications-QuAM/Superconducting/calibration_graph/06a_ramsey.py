@@ -28,7 +28,7 @@ from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 # %% {Description}
 description = """
         RAMSEY WITH VIRTUAL Z ROTATIONS
-The program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement) for different idle times.
+The program consists in playing a Ramsey sequence (x90 - idle_time - x90/y90 - measurement) for different idle times.
 Instead of detuning the qubit gates, the frame of the second x90 pulse is rotated (de-phased) to mimic an accumulated
 phase acquired for a given detuning after the idle time.
 This method has the advantage of playing gates on resonance as opposed to the detuned Ramsey.
@@ -36,13 +36,15 @@ This method has the advantage of playing gates on resonance as opposed to the de
 From the results, one can fit the Ramsey oscillations and precisely measure the qubit resonance frequency and T2*.
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, power_rabi and updated the state.
-    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
+    - Having calibrated the mixer or the Octave (nodes 01a or 01b).
+    - Having calibrated the readout parameters (nodes 02a, 02b and/or 02c).
+    - Having calibrated the qubit x180 pulse parameters (nodes 03a_qubit_spectroscopy.py and 04b_power_rabi.py).
+    - (optional) Having optimized the readout parameters (nodes 08a, 08b and 08c).
+    - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
-Next steps before going to the next node:
-    - Update the qubits frequency and T2_ramsey in the state.
-    - Save the current state
+State update:
+    - The qubit 0->1 frequency: qubit.f_01 & qubit.xy.RF_frequency
+    - T2*: qubit.T2ramsey.
 """
 
 node = QualibrationNode[Parameters, QuAM](name="06a_ramsey", description=description, parameters=Parameters())
