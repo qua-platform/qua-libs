@@ -219,7 +219,9 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
-    node.results["figure_amplitude"] = fig_raw_fit
+    node.results["figures"] = {
+        "amplitude": fig_raw_fit,
+    }
 
 
 # %% {Update_state}

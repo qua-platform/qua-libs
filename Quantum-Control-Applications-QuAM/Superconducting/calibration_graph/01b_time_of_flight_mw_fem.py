@@ -203,8 +203,10 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
     )
     plt.show()
     # Store the generated figures
-    node.results["figure_single_run"] = fig_single_run_fit
-    node.results["figure_averaged_run"] = fig_averaged_run_fit
+    node.results["figures"] = {
+        "single_run": fig_single_run_fit,
+        "averaged_run": fig_averaged_run_fit,
+    }
 
 
 # %% {Update_state}

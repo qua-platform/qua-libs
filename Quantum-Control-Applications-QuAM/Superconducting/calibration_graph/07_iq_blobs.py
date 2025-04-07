@@ -231,8 +231,10 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
     fig_confusion = plot_confusion_matrices(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
-    node.results["figure_iq_blobs"] = fig_iq
-    node.results["figure_confusion_matrix"] = fig_confusion
+    node.results["figures"] = {
+        "iq_blobs": fig_iq,
+        "confusion_matrix": fig_confusion,
+    }
 
 
 # %% {Update_state}

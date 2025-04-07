@@ -202,9 +202,11 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
     )
     plt.show()
     # Store the generated figures
-    node.results["figure_amplitude"] = fig_raw_fit
-    node.results["figure_iq_blobs"] = fig_iq
-    node.results["figure_confusion_matrix"] = fig_confusion
+    node.results["figures"] = {
+        "amplitude": fig_raw_fit,
+        "iq_blobs": fig_iq,
+        "confusion_matrix": fig_confusion,
+    }
 
 
 # %% {Update_state}

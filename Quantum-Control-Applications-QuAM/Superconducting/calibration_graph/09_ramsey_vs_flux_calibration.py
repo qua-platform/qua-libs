@@ -138,8 +138,9 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
                             qubit.xy.frame_rotation_2pi(phi)
                             qubit.xy.wait(t + 1)
                             qubit.z.wait(duration=qubit.xy.operations["x90"].length)
-                            qubit.z.play("const", amplitude_scale=flux / qubit.z.operations["const"].amplitude,
-                                         duration=t)
+                            qubit.z.play(
+                                "const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t
+                            )
                             qubit.xy.play("x90")
                         align()
 
@@ -234,7 +235,9 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
-    node.results["figure_amplitude"] = fig_raw_fit
+    node.results["figures"] = {
+        "amplitude": fig_raw_fit,
+    }
 
 
 # %% {Update_state}

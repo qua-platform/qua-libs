@@ -234,7 +234,9 @@ if not node.parameters.simulate:
     grid.fig.suptitle("DRAG calibration")
     plt.tight_layout()
     plt.show()
-    node.results["figure"] = grid.fig
+    node.results["figures"] = {
+        "amplitude": grid.fig,
+    }
 
 
 # %% {Update_state}

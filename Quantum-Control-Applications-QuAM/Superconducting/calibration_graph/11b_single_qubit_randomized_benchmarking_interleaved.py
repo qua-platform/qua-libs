@@ -437,7 +437,9 @@ if not node.parameters.simulate:
     plt.suptitle(f"Interleaved gate: {node.parameters.interleaved_gate_operation}")
     plt.tight_layout()
     plt.show()
-    node.results["figure"] = grid.fig
+    node.results["figures"] = {
+        "amplitude": grid.fig,
+    }
 
 
 # %% {Save_results}

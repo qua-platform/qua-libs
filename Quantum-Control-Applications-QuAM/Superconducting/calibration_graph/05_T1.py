@@ -218,7 +218,9 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
     )
     plt.show()
     # Store the generated figures
-    node.results["figure"] = fig
+    node.results["figures"] = {
+        "amplitude": fig,
+    }
 
 
 # %% {Update_state}

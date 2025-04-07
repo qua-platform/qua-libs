@@ -2,6 +2,7 @@
 import logging
 from typing import Optional, List
 import numpy as np
+from plotly.graph_objs._figure import Figure
 from tqdm import tqdm
 
 from qualang_tools.results import progress_counter, fetching_tool
@@ -305,14 +306,13 @@ if not node.parameters.simulate:
     node.results["optimal_ds"] = optimal_ds = get_maximum_fidelity_per_qubit(ds)
 
     if node.parameters.plotting_dimension == "3D":
-        # doesn't save the figure
-        fig = plot_fidelity_3d(ds, optimal_ds)
+        # TODO: doesn't save the figure
+        fig: Figure = plot_fidelity_3d(ds, optimal_ds)
         fig.show()
 
     elif node.parameters.plotting_dimension == "2D":
         figs = plot_fidelity_2d(ds, optimal_ds)
-        for i, q in enumerate(ds.qubit):
-            node.results[f"fig_{q.item()}"] = figs[i]
+        node.results["figures"] = {q.name: fig for i, q in enumerate(ds.qubit)}
 
     # undo temporary readout length
     for tracked_resonator in tracked_resonators:

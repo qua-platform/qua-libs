@@ -226,8 +226,10 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
     fig_iq_abs = plot_IQ_abs_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
-    node.results["figure_distances"] = fig_distances
-    node.results["figure_iq_abs"] = fig_iq_abs
+    node.results["figures"] = {
+        "distances": fig_distances,
+        "iq_abs": fig_iq_abs,
+    }
 
 
 # %% {Update_state}

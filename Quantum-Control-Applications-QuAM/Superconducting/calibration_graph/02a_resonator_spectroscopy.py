@@ -219,8 +219,10 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
     )
     plt.show()
     # Store the generated figures
-    node.results["figure_phase"] = fig_raw_phase
-    node.results["figure_amplitude"] = fig_fit_amplitude
+    node.results["figures"] = {
+        "phase": fig_raw_phase,
+        "amplitude": fig_fit_amplitude,
+    }
 
 
 # %% {Update_state}
