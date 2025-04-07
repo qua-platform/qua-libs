@@ -11,9 +11,9 @@ import numpy as np
 
 
 ########################################################################################################################
-# %%                                 QuAM loading and auxiliary functions
+# %%                                 QUAM loading and auxiliary functions
 ########################################################################################################################
-# Loads the QuAM
+# Loads the QUAM
 machine = Quam.load()
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
@@ -55,7 +55,7 @@ xy_max_power_dBm = 1
 
 
 ########################################################################################################################
-# %%                             Initialize the QuAM with the initial qubit parameters
+# %%                             Initialize the QUAM with the initial qubit parameters
 ########################################################################################################################
 for i, q in enumerate(machine.qubits):
     ## Update qubit rr freq and power
@@ -103,7 +103,7 @@ for i, q in enumerate(machine.qubits):
     # e.g., machine.qubits[q].xy.operations["new_pulse"] = FlatTopGaussianPulse(...)
 
 ########################################################################################################################
-# %%                                         Save the updated QuAM
+# %%                                         Save the updated QUAM
 ########################################################################################################################
 # save into state.json
 save_machine(machine)

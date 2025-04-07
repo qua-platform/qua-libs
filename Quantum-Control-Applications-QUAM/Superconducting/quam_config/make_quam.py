@@ -60,11 +60,11 @@ visualize(connectivity.elements, available_channels=instruments.available_channe
 
 
 ########################################################################################################################
-# %%                                   Build the wiring and QuAM
+# %%                                   Build the wiring and QUAM
 ########################################################################################################################
 quam = Quam()
-# Build the wiring (wiring.json) and initiate the QuAM
+# Build the wiring (wiring.json) and initiate the QUAM
 build_quam_wiring(connectivity, host_ip, cluster_name, quam)
-# Build the QuAM object and save the state as state.json
+# Build the QUAM object and save the state as state.json
 machine = Quam.load()
 quam = build_quam(machine, calibration_db_path)

@@ -7,10 +7,10 @@ from quam.components.channels import InOutMWChannel, MWChannel
 from quam.components.pulses import SquarePulse, SquareReadoutPulse
 from quam_config import Quam
 
-# TODO: put this in a tutorial section about QuAM
-machine = Quam()  # or, QuAM.load() if the state already exists
+# TODO: put this in a tutorial section about QUAM
+machine = Quam()  # or, Quam.load() if the state already exists
 
-# vvv  delete these if using QuAM.load()
+# vvv  delete these if using Quam.load()
 machine.network.host = "172.16.33.116"
 machine.network.cluster_name = "Beta_8"
 machine.wiring = QuamDict({})

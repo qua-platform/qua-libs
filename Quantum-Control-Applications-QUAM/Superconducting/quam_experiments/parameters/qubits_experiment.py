@@ -16,7 +16,7 @@ class QubitsExperimentNodeParameters(RunnableParameters):
     """Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated
     quadratures 'I' and 'Q'. Default is False."""
     reset_type: Literal["thermal", "active", "active_gef"] = "thermal"
-    """The qubit reset method to use. Must be implemented as a method of QuAM.qubit. Can be "thermal", "active", or
+    """The qubit reset method to use. Must be implemented as a method of Quam.qubit. Can be "thermal", "active", or
     "active_gef". Default is "thermal"."""
 
 

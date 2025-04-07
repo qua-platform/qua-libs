@@ -11,9 +11,9 @@ import numpy as np
 
 
 ########################################################################################################################
-# %%                                 QuAM loading and auxiliary functions
+# %%                                 QUAM loading and auxiliary functions
 ########################################################################################################################
-# Loads the QuAM
+# Loads the QUAM
 machine = Quam.load()
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
@@ -39,7 +39,7 @@ xy_if = xy_freq - xy_lo
 assert np.all(np.abs(xy_if) < 400 * u.MHz), "The xy intermediate frequency must be within [-400; 400] MHz."
 
 ########################################################################################################################
-# %%                             Initialize the QuAM with the initial qubit parameters
+# %%                             Initialize the QUAM with the initial qubit parameters
 ########################################################################################################################
 # NOTE: be aware of coupled ports for bands
 for i, q in enumerate(machine.qubits):
@@ -70,7 +70,7 @@ for i, q in enumerate(machine.qubits):
     machine.qubits[q].z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
 
 ########################################################################################################################
-# %%                                         Save the updated QuAM
+# %%                                         Save the updated QUAM
 ########################################################################################################################
 machine.qubits[list(machine.qubits.to_dict().keys())[0]].print_summary()
 
