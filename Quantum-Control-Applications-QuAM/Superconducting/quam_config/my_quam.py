@@ -4,11 +4,11 @@ from quam_builder.architecture.superconducting.qpu import FluxTunableQuAM
 # from quam_builder.architecture.superconducting.qpu import FixedFrequencyQuAM
 
 
-BaseQuAM = FluxTunableQuAM
+BaseQuam = FluxTunableQuAM
 # BaseQuAM = FixedFrequencyQuAM
 
 # BaseQuAM = BaseQuAM  # use this for a clean-slate, custom QuAM
 
 
-class QuAM(BaseQuAM):
+class Quam(BaseQuam):
     pass

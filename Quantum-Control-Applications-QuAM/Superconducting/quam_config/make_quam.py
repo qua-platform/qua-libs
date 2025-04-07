@@ -2,7 +2,7 @@ from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 from quam_builder.builder.qop_connectivity import build_quam_wiring
 from quam_builder.builder.superconducting import build_quam
-from quam_config import QuAM
+from quam_config import Quam
 
 ########################################################################################################################
 # %%                                              Define static parameters
@@ -62,9 +62,9 @@ visualize(connectivity.elements, available_channels=instruments.available_channe
 ########################################################################################################################
 # %%                                   Build the wiring and QuAM
 ########################################################################################################################
-quam = QuAM()
+quam = Quam()
 # Build the wiring (wiring.json) and initiate the QuAM
 build_quam_wiring(connectivity, host_ip, cluster_name, quam)
 # Build the QuAM object and save the state as state.json
-machine = QuAM.load()
+machine = Quam.load()
 quam = build_quam(machine, calibration_db_path)

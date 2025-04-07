@@ -1,3 +1,3 @@
-from .my_quam import QuAM
+from .my_quam import Quam
 
-__all__ = ["QuAM"]
+__all__ = ["Quam"]

@@ -13,7 +13,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM
+from quam_config import Quam
 from qualibration_libs.plot_utils import QubitGrid, grid_iter
 from qualibration_libs.save_utils import fetch_results_as_xarray
 from quam_experiments.analysis.fit import fit_decay_exp, decay_exp
@@ -70,7 +70,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode[Parameters, QuAM](
+node = QualibrationNode[Parameters, Quam](
     name="11b_single_qubit_randomized_benchmarking_interleaved",
     description=description,
     parameters=Parameters(),
@@ -80,13 +80,13 @@ node = QualibrationNode[Parameters, QuAM](
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[Parameters, QuAM]):
+def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
 
-# Instantiate the QuAM class from the state file
-node.machine = QuAM.load()
+# Instantiate the QUAM class from the state file
+node.machine = Quam.load()
 
 # %% {Create_QUA_program}
 # Class containing tools to help handling units and conversions.
@@ -444,5 +444,5 @@ if not node.parameters.simulate:
 
 # %% {Save_results}
 @node.run_action()
-def save_results(node: QualibrationNode[Parameters, QuAM]):
+def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()

@@ -7,7 +7,7 @@ from qm import SimulationConfig
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM
+from quam_config import Quam
 
 
 description = """
@@ -15,24 +15,24 @@ description = """
 """
 
 
-node = QualibrationNode[NodeParameters, QuAM](name="00_hello_qua", description=description, parameters=NodeParameters())
+node = QualibrationNode[NodeParameters, Quam](name="00_hello_qua", description=description, parameters=NodeParameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[Parameters, QuAM]):
+def custom_param(node: QualibrationNode[NodeParameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
 
 ###################################################
-#  Load QuAM and open Communication with the QOP  #
+#  Load QUAM and open Communication with the QOP  #
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Instantiate the QuAM class from the state file
-node.machine = QuAM.load()
+# Instantiate the QUAM class from the state file
+node.machine = Quam.load()
 # Generate the OPX and Octave configurations
 config = node.machine.generate_config()
 # Open Communication with the QOP

@@ -43,7 +43,7 @@ from quam_experiments.experiments.readout_optimization_3d.measurement_batching i
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from qualibration_libs.trackable_object import tracked_updates
-from quam_config import QuAM
+from quam_config import Quam
 from quam_experiments.experiments.readout_optimization_3d.parameters import (
     Parameters,
     get_durations,
@@ -80,7 +80,7 @@ Next steps before going to the next node:
     - Save the current state
 """
 
-node = QualibrationNode[Parameters, QuAM](
+node = QualibrationNode[Parameters, Quam](
     name="08c_readout_frequency_duration_power_optimization",
     description=description,
     parameters=Parameters(
@@ -109,12 +109,12 @@ node = QualibrationNode[Parameters, QuAM](
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[Parameters, QuAM]):
+def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
 
-node.machine = QuAM.load()
+node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
@@ -270,8 +270,8 @@ with open("debug.py", "w+") as f:
 
 # %% {Simulate}
 if node.parameters.simulate:
-    samples, fig = simulate_and_plot(qmm, config, programs[0], node.parameters)
-    node.results = {"figure": fig}
+    samples, fig, wf_report = simulate_and_plot(qmm, config, programs[0], node.parameters)
+    node.results = {"figure": fig, "wf_report": wf_report, "samples": samples}
     node.save()
 
 # %% {Execute}
@@ -322,7 +322,7 @@ if not node.parameters.simulate:
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def update_state(node: QualibrationNode[Parameters, QuAM]):
+def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         optimal_output_powers = {}
@@ -358,5 +358,5 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Save_results}
 @node.run_action()
-def save_results(node: QualibrationNode[Parameters, QuAM]):
+def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()

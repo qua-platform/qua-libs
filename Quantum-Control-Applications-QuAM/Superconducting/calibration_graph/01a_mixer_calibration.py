@@ -5,7 +5,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM
+from quam_config import Quam
 from quam_experiments.parameters.qubits_experiment import get_qubits
 
 description = """
@@ -20,7 +20,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode[Parameters, QuAM](
+node = QualibrationNode[Parameters, Quam](
     name="01a_mixer_calibration", description=description, parameters=Parameters()
 )
 
@@ -28,16 +28,16 @@ node = QualibrationNode[Parameters, QuAM](
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[Parameters, QuAM]):
+def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
 
-# %% {Initialize_QuAM_and_QOP}
+# %% {Initialize_QUAM_and_QOP}
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Instantiate the QuAM class from the state file
-node.machine = QuAM.load()
+# Instantiate the QUAM class from the state file
+node.machine = Quam.load()
 
 # Get the active qubits from the node and organize them by batches
 node.namespace["qubits"] = qubits = get_qubits(node)

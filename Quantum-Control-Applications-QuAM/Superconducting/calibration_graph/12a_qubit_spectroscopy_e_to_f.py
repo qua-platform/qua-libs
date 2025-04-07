@@ -12,7 +12,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode, NodeParameters
-from quam_config import QuAM
+from quam_config import Quam
 from qualibration_libs.plot_utils import QubitGrid, grid_iter
 from qualibration_libs.save_utils import fetch_results_as_xarray
 from quam_experiments.analysis.fit import peaks_dips
@@ -69,7 +69,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
 
 
-node = QualibrationNode[Parameters, QuAM](
+node = QualibrationNode[Parameters, Quam](
     name="12a_qubit_spectroscopy_e_to_f.py",
     description=description,
     parameters=Parameters(),
@@ -79,13 +79,13 @@ node = QualibrationNode[Parameters, QuAM](
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[Parameters, QuAM]):
+def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
 
-# Instantiate the QuAM class from the state file
-node.machine = QuAM.load()
+# Instantiate the QUAM class from the state file
+node.machine = Quam.load()
 
 # %% {Create_QUA_program}
 # Class containing tools to help handling units and conversions.
@@ -278,7 +278,7 @@ if not node.parameters.simulate:
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def update_state(node: QualibrationNode[Parameters, QuAM]):
+def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
 
     # Revert the change done at the beginning of the node
@@ -296,5 +296,5 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Save_results}
 @node.run_action()
-def save_results(node: QualibrationNode[Parameters, QuAM]):
+def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()

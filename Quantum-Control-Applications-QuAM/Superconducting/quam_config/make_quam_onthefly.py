@@ -5,10 +5,10 @@ from quam import QuamDict
 from quam.components.ports import MWFEMAnalogOutputPort, MWFEMAnalogInputPort
 from quam.components.channels import InOutMWChannel, MWChannel
 from quam.components.pulses import SquarePulse, SquareReadoutPulse
-from quam_config import QuAM
+from quam_config import Quam
 
 # TODO: put this in a tutorial section about QuAM
-machine = QuAM()  # or, QuAM.load() if the state already exists
+machine = Quam()  # or, QuAM.load() if the state already exists
 
 # vvv  delete these if using QuAM.load()
 machine.network.host = "172.16.33.116"

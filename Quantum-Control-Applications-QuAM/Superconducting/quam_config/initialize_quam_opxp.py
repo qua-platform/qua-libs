@@ -3,7 +3,7 @@
 ########################################################################################################################
 import json
 from qualang_tools.units import unit
-from quam_config import QuAM
+from quam_config import Quam
 from quam_builder.builder.superconducting.build_quam import save_machine
 from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
 from quam.components.pulses import GaussianPulse
@@ -14,7 +14,7 @@ import numpy as np
 # %%                                 QuAM loading and auxiliary functions
 ########################################################################################################################
 # Loads the QuAM
-machine = QuAM.load()
+machine = Quam.load()
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 

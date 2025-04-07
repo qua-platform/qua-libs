@@ -12,7 +12,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from qualibrate.utils.logger_m import logger
-from quam_config import QuAM
+from quam_config import Quam
 from quam_experiments.experiments.time_of_flight_mw import (
     Parameters,
     process_raw_dataset,
@@ -44,7 +44,7 @@ The data undergoes post-processing to calibrate three distinct parameters:
 """
 
 
-node = QualibrationNode[Parameters, QuAM](
+node = QualibrationNode[Parameters, Quam](
     name="01b_time_of_flight_mw_fem", description=description, parameters=Parameters()
 )
 
@@ -52,19 +52,19 @@ node = QualibrationNode[Parameters, QuAM](
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[Parameters, QuAM]):
+def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
     pass
 
 
-# Instantiate the QuAM class from the state file
-node.machine = QuAM.load()
+# Instantiate the QUAM class from the state file
+node.machine = Quam.load()
 
 
 # %% {QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
-def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
+def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
@@ -125,7 +125,7 @@ def create_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Simulate_or_execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
-def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
+def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -134,11 +134,11 @@ def simulate_qua_program(node: QualibrationNode[Parameters, QuAM]):
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
-    node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
+    node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
-def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
+def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -165,7 +165,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Data_loading_and_dataset_creation}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
-def load_data(node: QualibrationNode[Parameters, QuAM]):
+def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
     load_data_id = node.parameters.load_data_id
     # Load the specified dataset
@@ -177,7 +177,7 @@ def load_data(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Data_analysis}
 @node.run_action(skip_if=node.parameters.simulate)
-def analyse_data(node: QualibrationNode[Parameters, QuAM]):
+def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
@@ -193,7 +193,7 @@ def analyse_data(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
-def plot_data(node: QualibrationNode[Parameters, QuAM]):
+def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_single_run_fit = plot_single_run_with_fit(
         node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
@@ -211,7 +211,7 @@ def plot_data(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def update_state(node: QualibrationNode[Parameters, QuAM]):
+def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
 
     # Revert the change done at the beginning of the node
@@ -232,5 +232,5 @@ def update_state(node: QualibrationNode[Parameters, QuAM]):
 
 # %% {Save_results}
 @node.run_action()
-def save_results(node: QualibrationNode[Parameters, QuAM]):
+def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
