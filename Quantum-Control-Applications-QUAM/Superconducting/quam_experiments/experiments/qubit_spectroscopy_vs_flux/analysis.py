@@ -6,7 +6,7 @@ import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
 from quam_experiments.analysis.fit import fit_oscillation, peaks_dips
-from quam_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
+from qualibration_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
 
 
 @dataclass
