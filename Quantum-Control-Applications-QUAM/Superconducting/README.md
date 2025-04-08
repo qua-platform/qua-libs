@@ -5,11 +5,6 @@
 1. [Installation](#installation)
    1. [Requirements](#requirements)
    2. [Setup](#setup)
-      1. [Setting up the QUAM_STATE_PATH environment variable](#setting-up-the-quam_state_path-environment-variable)
-         1. [Linux](#linux)
-         2. [Mac](#mac)
-         3. [Windows](#windows)
-      2. [(Optional) Setting up the browser frontend (Qualibrate)](#setting-up-the-browser-frontend-qualibrate)
 2. [Folder structure](#folder-structure)
    1. [calibration_data](#calibration_data)
    2. [calibration_graph](#calibration_graph)
@@ -31,39 +26,16 @@
 This folder contains an installable module called `quam_builder`, which provides a collection of tailored components for controlling flux-tunable qubits and experiment functionality. These components extend the functionality of QUAM, making it easier to design and execute calibration nodes.
 
 ### Requirements
+- Local version of the superconducting folder
+  - This contains folders such as `calibration_graph`, as well as the README document you are currently reading
+- Python <= 3.12, set up in a virtual environment
 
-To run the calibration nodes in this folder, you need to install `quam_builder`. During this installation, _all relevant_ requirements for running QUA code
-and calibrations through the front-end will also be installed.
+### Setup
 
-To do so, first activate the desired Python environment and navigate to the `quam_builder` directory.
-Then run the following command to install the package:
-
-```sh
-# Install `quam_builder` (locally, from this directory)
+```bash
 pip install -e .
-# or, simply `pip install .`
 ```
 
-> **_NOTE:_** The `-e` flag means you _don't_ have to reinstall if you make a local change to `quam_builder`!
-
-## Setup
-
-The QUAM framework stores a database of calibration values in a collection of .json files.
-These files are generated when you run `make_quam.py`.
-In order to use them in experiment, you need to setup a `qualibrate` config file, which will reside in `~/.qualibrate/config.toml`.
-
-1. Open a terminal.
-2. Navigate to the main directory `qua-libs/Quantum-Control-Applications-QUAM/Superconducting/`.
-3. Run `python create_qualibrate_config.py`.  
-   This will interactively create a `qualibrate` config file in the `configuration` folder.
-   The available settings are:
-
-- `project`: The name of the project.
-- `storage_location`: The location to store the calibration data.
-- `calibration_library_folder`: The location of the calibration nodes.
-- `quam_state_path`: The location of the QUAM state.
-
-Usually the default values are fine, but you can change them to suit your needs, for example if you want to use a different storage location for the calibration data.
 
 To verify that `qualibrate` installed correctly, you can launch the web interface:
 
@@ -86,15 +58,14 @@ The typical QUAM/QUalibrate folder structure is as follows:
 |
 ├───calibration_graph
 │
-├───configuration
+├───quam_config
 │   └───quam_state
+│
+├───quam_experiments
+├───quam_experiments
 |
-└───quam_builder
-    ├───components
-    ├───lib
-    └───quam_builder
-        ├───transmons
-        └───wiring
+|
+|
 ```
 
 ### calibration_data
