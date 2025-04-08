@@ -5,7 +5,12 @@ from qualang_tools.multi_user import qm_session
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.experiments.mixer_calibration import Parameters, extract_relevant_fit_parameters, log_fitted_results, plot_raw_data_with_fit
+from quam_experiments.experiments.mixer_calibration import (
+    Parameters,
+    extract_relevant_fit_parameters,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+)
 
 description = """
     A simple program to calibrate Octave mixers for all qubits and resonators
@@ -29,8 +34,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 node.machine = Quam.load()
 
 
-
-
 # %% {Execute_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -50,7 +53,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 calibrate_drive=node.parameters.calibrate_drive,
                 calibrate_resonator=node.parameters.calibrate_resonator,
             )
-            node.namespace["calibration_results"][qubit.name] = {"resonator": calibration_results[0], "xy_drive": calibration_results[1]}
+            node.namespace["calibration_results"][qubit.name] = {
+                "resonator": calibration_results[0],
+                "xy_drive": calibration_results[1],
+            }
 
 
 # %% {Analyse_data}

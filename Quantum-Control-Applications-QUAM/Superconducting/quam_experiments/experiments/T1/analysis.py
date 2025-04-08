@@ -9,7 +9,6 @@ from quam_experiments.experiments.T1.parameters import Parameters
 from quam_experiments.analysis.fit import fit_decay_exp
 
 
-
 @dataclass
 class T1Fit:
     """Stores the relevant T1 experiment fit parameters for a single qubit"""
@@ -51,6 +50,7 @@ def log_fitted_results(ds: xr.Dataset, logger=None):
             logger.error(
                 f"T1 for qubit {q} : {1e-3 * ds.sel(qubit=q).tau.values:.2f} +/- {1e-3 * ds.sel(qubit=q).tau_error.values:.2f} us --> FAIL!"
             )
+
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     if not node.parameters.use_state_discrimination:

@@ -90,7 +90,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit["rr_min_response"] = ds.IQ_abs_norm.idxmin(dim="detuning")
     # Calculate the derivative along the power axis
     ds_fit["rr_min_response_diff"] = ds_fit.rr_min_response.differentiate(coord="power").dropna("power")
-    ds_fit["rr_min_response_filtered"] = ds_fit.rr_min_response.where(np.abs(ds_fit["rr_min_response_diff"])<1e6)
+    ds_fit["rr_min_response_filtered"] = ds_fit.rr_min_response.where(np.abs(ds_fit["rr_min_response_diff"]) < 1e6)
     # Calculate the moving average of the derivative
     ds_fit["rr_min_response_avg"] = (
         ds_fit.rr_min_response_filtered.rolling(
@@ -102,13 +102,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     )
     # Apply a filter to scale down the initial noisy values in the moving average if needed
     for j in range(node.parameters.moving_average_filter_window_num_points):
-        ds_fit.rr_min_response_avg.isel(power=j).data /= (
-            node.parameters.moving_average_filter_window_num_points - j
-        )
+        ds_fit.rr_min_response_avg.isel(power=j).data /= node.parameters.moving_average_filter_window_num_points - j
     # Find the first position where the moving average crosses below the threshold
-    ds_fit["below_threshold"] = (
-        ds_fit.rr_min_response_avg < node.parameters.derivative_crossing_threshold_in_hz_per_dbm
-    )
+    ds_fit["below_threshold"] = ds_fit.rr_min_response_avg < node.parameters.derivative_crossing_threshold_in_hz_per_dbm
     # Get the first occurrence below the derivative threshold
     optimal_power = ds_fit.below_threshold.idxmax(dim="power")
     optimal_power -= node.parameters.buffer_from_crossing_threshold_in_dbm

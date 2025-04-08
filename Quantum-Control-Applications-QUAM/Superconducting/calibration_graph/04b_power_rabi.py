@@ -156,9 +156,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 elif operation in ["x90", "-x90", "y90", "-y90"]:
                     if node.parameters.use_state_discrimination:
-                        state_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(
-                            f"state{i + 1}"
-                        )
+                        state_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"state{i + 1}")
                     else:
                         I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")
                         Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")

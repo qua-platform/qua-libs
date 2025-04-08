@@ -38,9 +38,7 @@ def log_fitted_results(fit_results: Dict, logger=None):
             s_qubit += " SUCCESS!\n"
         else:
             s_qubit += " FAIL!\n"
-        logger.info(
-            s_qubit + s_amp
-        )
+        logger.info(s_qubit + s_amp)
     pass
 
 

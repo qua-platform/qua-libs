@@ -138,8 +138,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Qubit manipulation
                         for i, qubit in multiplexed_qubits.items():
                             # Bring the qubit to the desired point during the saturation pulse
-                            qubit.z.play("const", amplitude_scale=dc / qubit.z.operations["const"].amplitude,
-                                         duration=duration)
+                            qubit.z.play(
+                                "const", amplitude_scale=dc / qubit.z.operations["const"].amplitude, duration=duration
+                            )
                             # Apply saturation pulse to all qubits
                             qubit.xy.play(
                                 operation,
@@ -154,7 +155,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # save data
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
-
 
             # Measure sequentially
             if not node.parameters.multiplexed:

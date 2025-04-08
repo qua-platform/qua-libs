@@ -52,8 +52,22 @@ def extract_relevant_fit_parameters(node: QualibrationNode):
     cal_results = node.namespace["calibration_results"]
     fit_results = {
         q: FitParameters(
-            resonator={"lo_leakage": CalibrationResultPlotter(cal_results[q]["resonator"]).get_lo_leakage_rejection(), "image_rejection": CalibrationResultPlotter(cal_results[q]["resonator"]).get_image_rejection()} if node.parameters.calibrate_resonator else None,
-            xy_drive={"lo_leakage": CalibrationResultPlotter(cal_results[q]["xy_drive"]).get_lo_leakage_rejection(), "image_rejection": CalibrationResultPlotter(cal_results[q]["xy_drive"]).get_image_rejection()} if node.parameters.calibrate_drive else None,
+            resonator=(
+                {
+                    "lo_leakage": CalibrationResultPlotter(cal_results[q]["resonator"]).get_lo_leakage_rejection(),
+                    "image_rejection": CalibrationResultPlotter(cal_results[q]["resonator"]).get_image_rejection(),
+                }
+                if node.parameters.calibrate_resonator
+                else None
+            ),
+            xy_drive=(
+                {
+                    "lo_leakage": CalibrationResultPlotter(cal_results[q]["xy_drive"]).get_lo_leakage_rejection(),
+                    "image_rejection": CalibrationResultPlotter(cal_results[q]["xy_drive"]).get_image_rejection(),
+                }
+                if node.parameters.calibrate_drive
+                else None
+            ),
             success=True,
         )
         for q in node.namespace["calibration_results"].keys()

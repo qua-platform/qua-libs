@@ -49,7 +49,6 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     else:
         fitted = None
 
-
     if hasattr(fit, "state"):
         ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
         if fitted is not None:

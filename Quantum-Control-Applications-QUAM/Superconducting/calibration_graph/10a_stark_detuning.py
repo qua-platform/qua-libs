@@ -155,7 +155,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 save(I[i], I_st[i])
                                 save(Q[i], Q_st[i])
 
-
         with stream_processing():
             n_st.save("n")
             for i, qubit in enumerate(qubits):
