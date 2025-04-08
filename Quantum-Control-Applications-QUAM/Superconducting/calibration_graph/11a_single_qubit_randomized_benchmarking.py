@@ -44,14 +44,14 @@ The data is then post-processed to extract the single-qubit gate fidelity and er
 gate.
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under
-      study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy,
-      rabi_chevron, power_rabi and updated the state.
-    - Having the qubit frequency perfectly calibrated (ramsey).
-    - (optional) Having calibrated the readout (readout_frequency, amplitude,
-      duration_optimization IQ_blobs) for better SNR and state discrimination.
-    - Set the desired flux bias.
+    - Having calibrated the mixer or the Octave (nodes 01a or 01b).
+    - Having calibrated the qubit parameters precisely (nodes 04b_power_rabi.py and 06a_ramsey.py).
+    - (optional) Having optimized the readout parameters (nodes 08a, 08b and 08c).
+    - (optional) Having calibrated the DRAG parameters (nodes 10a and 10b or 10c).
+    - Having specified the desired flux point if relevant (qubit.z.flux_point).
+
+State update:
+    - The averaged single qubit gate fidelity: qubit.gate_fidelity["averaged"].
 """
 
 
@@ -463,7 +463,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            q.gate_fidelities["averaged"] = float(1 - node.results["fit_results"][q.name]["error_per_gate"])
+            q.gate_fidelity["averaged"] = float(1 - node.results["fit_results"][q.name]["error_per_gate"])
 
 
 # %% {Save_results}

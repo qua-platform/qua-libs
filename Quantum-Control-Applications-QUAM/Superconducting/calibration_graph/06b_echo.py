@@ -39,7 +39,7 @@ Prerequisites:
     - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
 Next steps before going to the next node:
-    - Update the qubit T1 in the state.
+    - Update the qubit T2 echo: qubit.T2ech.
 """
 
 

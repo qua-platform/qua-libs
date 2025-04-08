@@ -141,7 +141,7 @@ with program() as drag_calibration:
 
                     qubit.align()
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
+                    assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].ge_threshold))
                     save(state[i], state_st[i])
         # Measure sequentially
         if not node.parameters.multiplexed:
