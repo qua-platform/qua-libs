@@ -36,7 +36,7 @@ This frequency is used to update the readout frequency in the state.
 
 Prerequisites:
     - Having calibrated the IQ mixer/Octave connected to the readout line (node 01a_mixer_calibration.py).
-    - Having calibrated the time of flight, offsets, and gains (node 01b_time_of_flight.py).
+    - Having calibrated the time of flight, offsets, and gains (node 01a_time_of_flight.py).
     - Having initialized the QUAM state parameters for the readout pulse amplitude and duration, and the resonators depletion time.
     - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
