@@ -134,14 +134,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
                             # TODO: this has gaps and the Z rotation is not derived properly, is it okay still?
                             # Ramsey sequence
-                            qubit.xy.play("x90")
-                            qubit.xy.frame_rotation_2pi(phi)
-                            qubit.xy.wait(t + 1)
-                            qubit.z.wait(duration=qubit.xy.operations["x90"].length)
-                            qubit.z.play(
-                                "const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t
-                            )
-                            qubit.xy.play("x90")
+                            with strict_timing_():
+                                qubit.xy.play("x90")
+                                qubit.xy.frame_rotation_2pi(phi)
+                                qubit.xy.wait(t + 1)
+                                qubit.z.wait(duration=qubit.xy.operations["x90"].length)
+                                qubit.z.play(
+                                    "const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t
+                                )
+                                qubit.xy.play("x90")
                         align()
 
                         # Qubit readout

@@ -252,7 +252,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             # Convert the thresholds back to demod units
             operation.ge_threshold = float(fit_result["ge_threshold"]) * operation.length / 2**12
             operation.rus_exit_threshold = float(fit_result["rus_threshold"]) * operation.length / 2**12
-            # todo: add conf matrix to the readout operation rather than the resonator
             if node.parameters.operation == "readout":
                 q.resonator.confusion_matrix = fit_result["confusion_matrix"]
 
