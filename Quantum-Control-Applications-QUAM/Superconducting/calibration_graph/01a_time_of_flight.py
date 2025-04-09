@@ -61,7 +61,7 @@ node = QualibrationNode[Parameters, Quam](name="01a_time_of_flight", description
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1"]
+    node.parameters.qubits = ["q1", "q2"]
     pass
 
 
@@ -225,6 +225,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         tracked_resonator.revert_changes()
 
     with node.record_state_updates():
+        controllers_to_update = np.unique(node.results["ds_fit"].con.values).tolist()
         for q in node.namespace["qubits"]:
             if not node.results["fit_results"][q.name]["success"]:
                 continue
@@ -234,14 +235,16 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 q.resonator.time_of_flight = node.parameters.time_of_flight_in_ns + fit_result["tof_to_add"]
             else:
                 q.resonator.time_of_flight += fit_result["tof_to_add"]
-            if q.resonator.opx_input_I.offset is not None:
-                q.resonator.opx_input_I.offset += fit_result["offset_I_to_add"]
-            else:
-                q.resonator.opx_input_I.offset = fit_result["offset_I_to_add"]
-            if q.resonator.opx_input_Q.offset is not None:
-                q.resonator.opx_input_Q.offset += fit_result["offset_Q_to_add"]
-            else:
-                q.resonator.opx_input_Q.offset = fit_result["offset_Q_to_add"]
+            if q.resonator.opx_input_I.controller_id in controllers_to_update:
+                if q.resonator.opx_input_I.offset is not None:
+                    q.resonator.opx_input_I.offset += fit_result["offset_I_to_add"]
+                else:
+                    q.resonator.opx_input_I.offset = fit_result["offset_I_to_add"]
+                if q.resonator.opx_input_Q.offset is not None:
+                    q.resonator.opx_input_Q.offset += fit_result["offset_Q_to_add"]
+                else:
+                    q.resonator.opx_input_Q.offset = fit_result["offset_Q_to_add"]
+                controllers_to_update.remove(q.resonator.opx_input_I.controller_id)
 
 
 # %% {Save_results}
