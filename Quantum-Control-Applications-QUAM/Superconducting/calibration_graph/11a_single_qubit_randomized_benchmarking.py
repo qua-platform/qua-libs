@@ -104,7 +104,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 
-    # %% {Utility functions}
     def power_law(power, a, b, p):
         return a * (p**power) + b
 
