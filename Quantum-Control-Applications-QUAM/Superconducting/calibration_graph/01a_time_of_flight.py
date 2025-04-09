@@ -6,7 +6,6 @@ from dataclasses import asdict
 
 from qm.qua import *
 
-from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
@@ -19,7 +18,8 @@ from quam_experiments.experiments.time_of_flight import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
-    plot_raw_data_with_fit,
+    plot_single_run_with_fit,
+    plot_averaged_run_with_fit,
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
@@ -29,7 +29,7 @@ from qualibration_libs.trackable_object import tracked_updates
 
 # %% {Initialisation}
 description = """
-        TIME OF FLIGHT
+        TIME OF FLIGHT - OPX+ & LF-FEM
 This sequence involves sending a readout pulse and capturing the raw ADC traces.
 The data undergoes post-processing to calibrate three distinct parameters:
     - Time of Flight: This represents the internal processing time and the propagation
@@ -43,10 +43,17 @@ The data undergoes post-processing to calibrate three distinct parameters:
     - Analog Inputs Gain: If a signal is constrained by digitization or if it saturates
       the ADC, the variable gain of the OPX analog input, ranging from -12 dB to 20 dB,
       can be modified to fit the signal within the ADC range of +/-0.5V.
+
+Prerequisites:
+    - Having initialized the Quam (quam_config/initialize_quam.py).
+
+State update:
+    - The time of flight: qubit.resonator.time_of_flight.
+    - The analog input offsets: qubit.resonator.opx_input_I.offset & qubit.resonator.opx_input_Q.offset.
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="01b_time_of_flight", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](name="01a_time_of_flight", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -54,7 +61,7 @@ node = QualibrationNode[Parameters, Quam](name="01b_time_of_flight", description
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q3"]
+    node.parameters.qubits = ["q1"]
     pass
 
 
@@ -72,7 +79,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    node.namespace["tracked_resonators"] = [] = []
+    node.namespace["tracked_resonators"] = []
     for q in qubits:
         resonator = q.resonator
         # make temporary updates before running the program and revert at the end.
@@ -93,19 +100,25 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     with program() as node.namespace["qua_program"]:
         n = declare(int)  # QUA variable for the averaging loop
+        n_st = declare_stream()
         adc_st = [declare_stream(adc_trace=True) for _ in range(num_qubits)]  # The stream to store the raw ADC trace
 
         for multiplexed_qubits in qubits.batch():
+            align()
+            for i, qubit in multiplexed_qubits.items():
+                qubit.resonator.update_frequency(50e6)
             with for_(n, 0, n < node.parameters.num_averages, n + 1):
+                save(n, n_st)
                 for i, qubit in multiplexed_qubits.items():
                     # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
-                    reset_phase(qubit.resonator.name)
+                    reset_if_phase(qubit.resonator.name)
                     # Measure the resonator (send a readout pulse and record the raw ADC trace)
                     qubit.resonator.measure("readout", stream=adc_st[i])
                     # Wait for the resonator to deplete
                     qubit.resonator.wait(node.machine.depletion_time * u.ns)
 
         with stream_processing():
+            n_st.save("n")
             for i in range(num_qubits):
                 # Will save average:
                 adc_st[i].input1().average().save(f"adcI{i + 1}")
@@ -188,11 +201,17 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_single_run_fit = plot_single_run_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+    )
+    fig_averaged_run_fit = plot_averaged_run_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+    )
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
-        "amplitude": fig_raw_fit,
+        "single_run": fig_single_run_fit,
+        "averaged_run": fig_averaged_run_fit,
     }
 
 
@@ -200,44 +219,29 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
-    ds = node.results["ds"]
+
+    # Revert the change done at the beginning of the node
+    for tracked_resonator in node.namespace.get("tracked_resonators", []):
+        tracked_resonator.revert_changes()
 
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
-            if node.outcomes[q.name] == "failed":
+            if not node.results["fit_results"][q.name]["success"]:
                 continue
 
-            # if node.parameters.time_of_flight_in_ns is not None:
-            #     q.resonator.time_of_flight = node.parameters.time_of_flight_in_ns + int(ds.sel(qubit=q.name).delays)
-            # else:
-            #     q.resonator.time_of_flight += int(ds.sel(qubit=q.name).delays)
-
-    # Revert the change done at the beginning of the node
-    for resonator in node.namespace["tracked_resonators"]:
-        resonator.revert_changes()
-
-    # # Update the offsets per controller for each qubit
-    # for con in np.unique(ds.con.values):
-    #     for i, q in enumerate(ds.where(ds.con == con).qubit.values):
-    #         resonator = node.machine.qubits[q].resonator
-    #         # Only add the offsets once,
-    #         if i == 0:
-    #             if resonator.opx_input_I.offset is not None:
-    #                 resonator.opx_input_I.offset += float(ds.where(ds.con == con).offsets_I.mean(dim="qubit").values)
-    #             else:
-    #                 resonator.opx_input_I.offset = float(ds.where(ds.con == con).offsets_I.mean(dim="qubit").values)
-    #             if resonator.opx_input_Q.offset is not None:
-    #                 resonator.opx_input_Q.offset += float(ds.where(ds.con == con).offsets_Q.mean(dim="qubit").values)
-    #             else:
-    #                 resonator.opx_input_Q.offset = float(ds.where(ds.con == con).offsets_Q.mean(dim="qubit").values)
-    #         # else copy the values from the updated qubit
-    #         else:
-    #             resonator.opx_input_I.offset = node.machine.qubits[
-    #                 ds.where(ds.con == con).qubit.values[0]
-    #             ].resonator.opx_input_I.offset
-    #             resonator.opx_input_Q.offset = node.machine.qubits[
-    #                 ds.where(ds.con == con).qubit.values[0]
-    #             ].resonator.opx_input_Q.offset
+            fit_result = node.results["fit_results"][q.name]
+            if node.parameters.time_of_flight_in_ns is not None:
+                q.resonator.time_of_flight = node.parameters.time_of_flight_in_ns + fit_result["tof_to_add"]
+            else:
+                q.resonator.time_of_flight += fit_result["tof_to_add"]
+            if q.resonator.opx_input_I.offset is not None:
+                q.resonator.opx_input_I.offset += fit_result["offset_I_to_add"]
+            else:
+                q.resonator.opx_input_I.offset = fit_result["offset_I_to_add"]
+            if q.resonator.opx_input_Q.offset is not None:
+                q.resonator.opx_input_Q.offset += fit_result["offset_Q_to_add"]
+            else:
+                q.resonator.opx_input_Q.offset = fit_result["offset_Q_to_add"]
 
 
 # %% {Save_results}

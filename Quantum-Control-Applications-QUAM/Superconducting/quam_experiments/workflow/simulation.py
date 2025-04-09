@@ -49,9 +49,7 @@ def simulate_and_plot(
 
     if node_parameters.use_waveform_report:
         wf_report = job.get_simulated_waveform_report()
-        # todo: make save_path use node's storage location
-        # todo can we serialize the full report, or at least the plotly figure?
-        wf_report.create_plot(samples, plot=True, save_path="./")
+        wf_report.create_plot(samples, plot=True, save_path=None)
         return samples, fig, wf_report
 
     return samples, fig, None
