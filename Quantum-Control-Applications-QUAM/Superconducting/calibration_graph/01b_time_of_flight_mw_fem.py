@@ -27,7 +27,7 @@ from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 from qualibration_libs.trackable_object import tracked_updates
 
 description = """
-        TIME OF FLIGHT
+        TIME OF FLIGHT - MW FEM
 This sequence involves sending a readout pulse and capturing the raw ADC traces.
 The data undergoes post-processing to calibrate three distinct parameters:
     - Time of Flight: This represents the internal processing time and the propagation
@@ -35,12 +35,15 @@ The data undergoes post-processing to calibrate three distinct parameters:
       "time_of_flight". This value is utilized to offset the acquisition window relative
       to when the readout pulse is dispatched.
 
-    - Analog Inputs Offset: Due to minor impedance mismatches, the signals captured by
-      the OPX might exhibit slight offsets.
-
     - Analog Inputs Gain: If a signal is constrained by digitization or if it saturates
       the ADC, the variable gain of the OPX analog input, ranging from -12 dB to 20 dB,
       can be modified to fit the signal within the ADC range of +/-0.5V.
+      
+Prerequisites:
+    - Having initialized the Quam (quam_config/initialize_quam.py).
+
+State update:
+    - The time of flight: qubit.resonator.time_of_flight
 """
 
 
