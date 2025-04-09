@@ -61,7 +61,7 @@ node = QualibrationNode[Parameters, Quam](name="01a_time_of_flight", description
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q2"]
+    node.parameters.qubits = ["q1"]
     pass
 
 
@@ -105,8 +105,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         for multiplexed_qubits in qubits.batch():
             align()
-            for i, qubit in multiplexed_qubits.items():
-                qubit.resonator.update_frequency(50e6)
             with for_(n, 0, n < node.parameters.num_averages, n + 1):
                 save(n, n_st)
                 for i, qubit in multiplexed_qubits.items():
