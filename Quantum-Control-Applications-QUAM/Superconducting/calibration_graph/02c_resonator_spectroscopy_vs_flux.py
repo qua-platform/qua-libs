@@ -248,7 +248,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 q.z.min_offset = fit_results["min_offset"]
             # Update the readout frequency for the given flux point
             q.resonator.f_01 += fit_results["frequency_shift"]
-            q.resonator.RF_frequency = q.resonator.f_01
+            q.resonator.RF_frequency += fit_results["frequency_shift"]
             q.phi0_voltage = fit_results["dv_phi0"]
             q.phi0_current = fit_results["phi0_current"]
 

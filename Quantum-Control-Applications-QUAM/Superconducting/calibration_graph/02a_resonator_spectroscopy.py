@@ -215,7 +215,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             q.resonator.f_01 = float(node.results["fit_results"][q.name]["frequency"])
-            q.resonator.RF_frequency = q.resonator.f_01
+            q.resonator.RF_frequency = float(node.results["fit_results"][q.name]["frequency"])
 
 
 # %% {Save_results}
