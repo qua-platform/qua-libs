@@ -66,7 +66,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     execution in the Python IDE.
     """
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q3"]
+    node.parameters.qubits = ["q1", "q2"]
     pass
 
 
@@ -140,10 +140,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubits):
-                I_g_st[i].save_all(f"Ig{i + 1}")
-                Q_g_st[i].save_all(f"Qg{i + 1}")
-                I_e_st[i].save_all(f"Ie{i + 1}")
-                Q_e_st[i].save_all(f"Qe{i + 1}")
+                I_g_st[i].buffer(n_runs).save(f"Ig{i + 1}")
+                Q_g_st[i].buffer(n_runs).save(f"Qg{i + 1}")
+                I_e_st[i].buffer(n_runs).save(f"Ie{i + 1}")
+                Q_e_st[i].buffer(n_runs).save(f"Qe{i + 1}")
 
 
 # %% {Simulate}
