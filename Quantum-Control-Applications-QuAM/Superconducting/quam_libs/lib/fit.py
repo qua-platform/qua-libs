@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 import matplotlib
-import qiskit_experiments.curve_analysis as ca
+from quam_libs.lib import guess
 from scipy.optimize import curve_fit
 import numpy as np
 import xarray as xr
@@ -25,7 +25,7 @@ def decay_exp(t, a, offset, decay, **kwargs):
 def fit_decay_exp(da, dim):
     def get_decay(dat):
         def oed(d):
-            return ca.guess.exp_decay(da[dim], d)
+            return guess.exp_decay(da[dim], d)
 
         return np.apply_along_axis(oed, -1, dat)
 
@@ -94,13 +94,13 @@ def oscillation_decay_exp(t, a, f, phi, offset, decay):
 def fit_oscillation_decay_exp(da, dim):
     def get_decay(dat):
         def oed(d):
-            return ca.guess.oscillation_exp_decay(da[dim], d)
+            return guess.oscillation_exp_decay(da[dim], d)
 
         return np.apply_along_axis(oed, -1, dat)
 
     def get_freq(dat):
         def f(d):
-            return ca.guess.frequency(da[dim], d)
+            return guess.frequency(da[dim], d)
 
         return np.apply_along_axis(f, -1, dat)
 
@@ -184,7 +184,7 @@ def echo_decay_exp(t, a, offset, decay, decay_echo):
 def fit_echo_decay_exp(da, dim):
     def get_decay(dat):
         def oed(d):
-            return ca.guess.oscillation_exp_decay(da[dim], d)
+            return guess.oscillation_exp_decay(da[dim], d)
 
         return np.apply_along_axis(oed, -1, dat)
 
@@ -229,7 +229,7 @@ def oscillation(t, a, f, phi, offset):
 def fit_oscillation(da, dim):
     def get_freq(dat):
         def f(d):
-            return ca.guess.frequency(da[dim], d)
+            return guess.frequency(da[dim], d)
 
         return np.apply_along_axis(f, -1, dat)
 

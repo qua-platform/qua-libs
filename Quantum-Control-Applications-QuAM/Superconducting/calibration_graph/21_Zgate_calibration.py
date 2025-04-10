@@ -34,7 +34,7 @@ from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from scipy.optimize import curve_fit
 import xarray as xr
-import qiskit_experiments.curve_analysis as ca
+from quam_libs.lib import guess
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
@@ -262,7 +262,7 @@ if not node.parameters.simulate:
         y = ds.sel(qubit = qubit.name).state
         # Initial guess for parameters
         A_guess = (y.max() - y.min()) / 2
-        f_guess = ca.guess.frequency(x,y)  
+        f_guess = guess.frequency(x,y)  
         f_guess = 1.5 / (x.max() - x.min())
         offset_guess = y.mean()
         
