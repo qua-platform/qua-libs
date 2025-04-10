@@ -88,10 +88,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num_of_sequences = node.parameters.num_random_sequences  # Number of random sequences
     # Number of averaging loops for each random sequence
     n_avg = node.parameters.num_averages
-    max_circuit_depth = node.parameters.max_circuit_depth  # Maximum circuit depth
-    if node.parameters.delta_clifford < 1:
-        raise NotImplementedError("Delta clifford < 2 is not supported.")
-    #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
+    max_circuit_depth = node.parameters.max_circuit_depth
     delta_clifford = node.parameters.delta_clifford
     assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
     num_depths = max_circuit_depth // delta_clifford
