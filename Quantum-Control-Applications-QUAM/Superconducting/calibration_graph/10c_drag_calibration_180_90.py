@@ -196,7 +196,7 @@ if not node.parameters.simulate:
             }
         )
     else:
-        node = node.load_from_id(node.parameters.load_data_id)
+        node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
     # Add the dataset to the node
     node.results = {"ds": ds}

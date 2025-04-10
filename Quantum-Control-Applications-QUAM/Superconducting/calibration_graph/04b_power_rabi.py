@@ -211,7 +211,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
     load_data_id = node.parameters.load_data_id
     # Load the specified dataset
-    node = node.load_from_id(node.parameters.load_data_id)
+    node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)

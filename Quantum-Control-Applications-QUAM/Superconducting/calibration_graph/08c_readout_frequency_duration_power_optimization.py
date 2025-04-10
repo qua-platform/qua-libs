@@ -295,7 +295,7 @@ elif node.parameters.load_data_id is None:
 if not node.parameters.simulate:
     if node.parameters.load_data_id is not None:
         load_data_id = node.parameters.load_data_id
-        node = node.load_from_id(load_data_id)
+        node.load_from_id(load_data_id)
         node.parameters.load_data_id = load_data_id
         ds = node.results["ds"]
 
