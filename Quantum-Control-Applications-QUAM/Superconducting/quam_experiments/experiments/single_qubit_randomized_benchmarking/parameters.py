@@ -1,3 +1,4 @@
+from typing import Optional
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from quam_experiments.parameters import (
@@ -19,8 +20,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum circuit depth (number of Clifford gates). Default is 1000."""
     delta_clifford: int = 20
     """Delta clifford (number of Clifford gates between the RB sequences). Default is 20."""
-    seed: int = 345324
-    """Seed for the random number generator. Default is 345324."""
+    seed: Optional[int] = None
+    """Seed for the random number generator. Default is None."""
 
 
 class Parameters(
