@@ -238,12 +238,11 @@ if not node.parameters.simulate:
         fit_results[q.name] = {}
         if not np.isnan(result.sel(qubit=q.name).position.values):
             fit_results[q.name]["success"] = True
-            print(f"Anharmonicity for {q.name} is {anharmonicities[q.name]/1e6:.3f} MHz")
+            node.log(f"Anharmonicity for {q.name} is {anharmonicities[q.name]/1e6:.3f} MHz")
             fit_results[q.name]["anharmonicity"] = anharmonicities[q.name].values
         else:
             fit_results[q.name]["success"] = False
-            print(f"Failed to find a peak for {q.name}")
-            print()
+            node.log(f"Failed to find a peak for {q.name}\n", level="warning")
 
     node.results["fit_results"] = fit_results
     node.outcomes = {

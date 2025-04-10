@@ -12,7 +12,6 @@ from qualang_tools.units import unit
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 
 from qualibrate import QualibrationNode
-from qualibrate.utils.logger_m import logger
 from quam_config import Quam
 from quam_experiments.experiments.single_qubit_randomized_benchmarking_interleaved import (
     Parameters,
@@ -273,7 +272,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # (that was replaced by the recovery gate at the beginning)
                     assign(sequence_list[depth], saved_gate)
 
-
         with stream_processing():
             m_st.save("n")
             for i in range(num_qubits):
@@ -326,7 +324,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())
+        node.log(f"Job execution report:\n{job.execution_report()}")
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
@@ -352,7 +350,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], logger)
+    log_fitted_results(node.results["fit_results"], node=node)
     node.outcomes = {
         qubit_name: ("successful" if fit_result["success"] else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()
@@ -365,7 +363,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     fig_raw_fit.suptitle(
-        f"Single qubit randomized benchmarking interleaved with {node.parameters.interleaved_gate_operation}")
+        f"Single qubit randomized benchmarking interleaved with {node.parameters.interleaved_gate_operation}"
+    )
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
@@ -381,7 +380,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            q.gate_fidelity[node.parameters.interleaved_gate_operation] = float(1 - node.results["fit_results"][q.name]["error_per_gate"])
+            q.gate_fidelity[node.parameters.interleaved_gate_operation] = float(
+                1 - node.results["fit_results"][q.name]["error_per_gate"]
+            )
 
 
 # %% {Save_results}

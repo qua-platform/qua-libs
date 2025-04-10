@@ -218,7 +218,7 @@ if not node.parameters.simulate:
     # Save fitting results
     fit_results = {qubit.name: {"alpha": float(intersection_alpha.sel(qubit=qubit.name).values)} for qubit in qubits}
     for q in qubits:
-        print(f"DRAG coefficient for {q.name} is {fit_results[q.name]['alpha']}")
+        node.log(f"DRAG coefficient for {q.name} is {fit_results[q.name]['alpha']}")
     node.results["fit_results"] = fit_results
     node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
 
