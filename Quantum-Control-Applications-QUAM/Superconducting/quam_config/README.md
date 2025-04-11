@@ -10,9 +10,9 @@ The `quam_config` library is organized into the following main files and directo
 quam_config/
 ├── __init__.py             # Makes quam_config a Python package.
 ├── my_quam.py              # Defines the core QUAM Python class structure.
-├── make_quam.py            # Script to generate the QUAM state file (e.g., JSON).
-├── make_quam_onthefly.py   # Script for dynamic QUAM generation (inferred).
-├── initialize_quam_*.py    # Scripts to populate QUAM with initial parameters for specific hardware.
+├── build_quam_wiring.py            # Script to generate the QUAM state file (e.g., JSON).
+├── build_quam_wiring_onthefly.py   # Script for dynamic QUAM generation (inferred).
+├── populate_quam_state_*.py    # Scripts to populate QUAM with initial parameters for specific hardware.
 ├── instrument_limits.py    # Defines operational limits for instruments.
 ├── wiring_examples/        # Example wiring/connectivity configurations.
 │   ├── wiring_opxp_octave.py
@@ -23,13 +23,13 @@ quam_config/
 
 **`my_quam.py`**: Defines the root-level QUAM class (inheriting from base `QuamRoot`) representing your physical setup (qubits, instruments). This will be used in each \`QualibrationNode\`. Customize to match your lab.
 
-**`make_quam.py`**:
+**`build_quam_wiring.py`**:
 Instantiates the structure from `my_quam.py` and generates the baseline QUAM state file (e.g., JSON) with default values.
 
-**`make_quam_onthefly.py`**:
+**`build_quam_wiring_onthefly.py`**:
 Alternative script for generating QUAM configurations dynamically at runtime.
 
-**`initialize_quam_*.py`** (e.g., `initialize_quam_opxp_octave.py`, `initialize_quam_lf_mw_fems.py`):
+**`populate_quam_state_*.py`** (e.g., `populate_quam_state_opxp_octave.py`, `populate_quam_state_lf_mw_fems.py`):
 Loads a base QUAM state and populates it with initial parameters and connectivity details for specific hardware setups (e.g., OPX+Octave), providing a better starting point for calibration.
 
 **`instrument_limits.py`**:
@@ -50,26 +50,26 @@ All relevant scripts reside here.
 
 Edit `my_quam.py` to define the Python classes representing your system's hierarchy. This involves specifying the types and number of components like qubits (including whether they are flux-tunable or fixed-frequency), resonators, instruments (OPX controllers, Octaves, FEMs), etc. This class should inherit from a base `QuamRoot`.
 
-### 3️⃣ Generate Static Configuration & Wiring (using `make_quam.py`)
+### 3️⃣ Generate Static Configuration & Wiring (using `build_quam_wiring.py`)
 
 This step creates the static part of the QUAM state, primarily defining the hardware layout and connectivity.
 
-- The `make_quam.py` script typically utilizes the external `quam-builder` Python package. This package provides helpful tools, including base QUAM classes and tools to simplify the process of programmatically defining your hardware structure and generating the initial configuration files. For detailed documentation on `quam-builder`, refer to its repository: [https://github.com/qua-platform/quam-builder](https://github.com/qua-platform/quam-builder).
-- It is recommended to copy the contents from a relevant template in the `wiring_examples/` folder (matching your hardware) into `make_quam.py` and adjust details like the number of qubits, specific instrument connections (FEM ports to qubit channels), and network information (IP address, cluster name).
-- Running `python make_quam.py` uses this wiring definition to generate two files in your QUAM state folder (default: `Superconducting/quam_state`):
+- The `build_quam_wiring.py` script typically utilizes the external `quam-builder` Python package. This package provides helpful tools, including base QUAM classes and tools to simplify the process of programmatically defining your hardware structure and generating the initial configuration files. For detailed documentation on `quam-builder`, refer to its repository: [https://github.com/qua-platform/quam-builder](https://github.com/qua-platform/quam-builder).
+- It is recommended to copy the contents from a relevant template in the `wiring_examples/` folder (matching your hardware) into `build_quam_wiring.py` and adjust details like the number of qubits, specific instrument connections (FEM ports to qubit channels), and network information (IP address, cluster name).
+- Running `python build_quam_wiring.py` uses this wiring definition to generate two files in your QUAM state folder (default: `Superconducting/quam_state`):
   - `wiring.json`: Contains the static hardware connectivity information based on the script.
   - `state.json`: A skeleton file based on the structure in `my_quam.py`, but largely empty of specific operational parameters (frequencies, pulse details, etc.).
-- _(Alternative: For direct, hardcoded QUAM structure creation without the builder, modify `make_quam_onthefly.py` instead)_.
+- _(Alternative: For direct, hardcoded QUAM structure creation without the builder, modify `build_quam_wiring_onthefly.py` instead)_.
 
-### 4️⃣ Initialize Dynamic Parameters (using `initialize_quam_*.py`)
+### 4️⃣ Initialize Dynamic Parameters (using `populate_quam_state_*.py`)
 
 This step populates the `state.json` file with initial operational parameters.
 
 - Choose the correct initialization script based on your hardware:
-  - For OPX+/Octave setups: Use `initialize_quam_opxp_octave.py`.
-  - For OPX1000/FEM setups: Use `initialize_quam_lf_mw_fems.py`.
+  - For OPX+/Octave setups: Use `populate_quam_state_opxp_octave.py`.
+  - For OPX1000/FEM setups: Use `populate_quam_state_lf_mw_fems.py`.
 - Edit the chosen script: These files contain hardcoded initial guesses for parameters like qubit/resonator frequencies, pulse amplitudes/durations, gains, etc. **You must adjust these values** to be reasonable starting points for your specific qubits and setup.
-- Run the script: Execute `python initialize_quam_{hw_type}.py` (replacing `{hw_type}` accordingly). This loads the existing `state.json` and `wiring.json`, populates the dynamic parameters based on the script's logic and hardcoded values, and saves the updated, populated `state.json`.
+- Run the script: Execute `python populate_quam_state_{hw_type}.py` (replacing `{hw_type}` accordingly). This loads the existing `state.json` and `wiring.json`, populates the dynamic parameters based on the script's logic and hardcoded values, and saves the updated, populated `state.json`.
 
 ## Saving and loading a QUAM state
 
