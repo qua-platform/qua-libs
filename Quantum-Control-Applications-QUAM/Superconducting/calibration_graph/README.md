@@ -1,72 +1,74 @@
-## Running QUAlibrate Nodes
+# Calibration Graph Overview
 
-### Node structure
+This document provides an overview of the calibration nodes and the concept of calibration graphs within the Qualibrate framework used in this project.
 
-> **_NOTE:_** For the most detailed and up-to-date documentation on calibration nodes, visit the QUAlibrate [documentation](https://qua-platform.github.io/qualibrate/calibration_nodes/).
->
-> Qualibrate provides a framework to convert any old calibration script into a calibration **node** to be used within
-> a calibration graph, whilst maintaining its ability to be run standalone. The core elements of this framework are as
-> follows:
+## Collection of Calibration Nodes
 
-#### Core features
+The `calibration_graph` directory contains a collection of standardized Python scripts, each representing a **Calibration Node**. Think of each node as a single, well-defined step in the overall process of calibrating and characterizing qubits or other quantum elements.
 
-```python
-from qualibrate import NodeParameters, QualibrationNode
+A typical calibration node performs the following workflow:
 
-# 1. Define the set of input parameters relevant for calibration
-class Parameters(NodeParameters):
-    span: float = 20
-    num_points: int = 101
+1.  **Loads QUAM State:** Reads the current state of the quantum machine configuration (QUAM).
+2.  **Executes QUA Program:** Runs a specific QUA sequence tailored to the calibration task (e.g., spectroscopy, Rabi, T1).
+3.  **Performs Analysis:** Processes the acquired data and performs fitting or other analysis to extract relevant parameters.
+4.  **Updates QUAM State (Proposal):** Based on the analysis, it proposes changes to the relevant QUAM parameters (e.g., updating a frequency, amplitude, or duration).
+5.  **Saves Results:** Persists the input parameters, raw/processed data, analysis results, generated plots, and the proposed QUAM state updates for review and tracking.
 
-# 2. Instantiate a QualibrationNode with a unique name
-node = QualibrationNode(name="my_calibration_node")
+## Node Anatomy Explained
 
-# Run your regular calibration code here
-...
+For a detailed breakdown of the internal structure of a typical calibration node, please refer to the **"Resonator Spectroscopy Node Explained"** document. It dissects the `02a_resonator_spectroscopy.py` node section by section, explaining the purpose of the common components like imports, initialization, run actions (`@node.run_action`), QUA program creation, data handling, analysis, state updates, and saving.
 
-# 3. Record any relevant output from the calibration
-node.results = {...}  # a dictionary with any result data you like (including figures)!
+## Extending the Calibration Library
 
-# 4. Save the results
-node.save()
-```
+You can easily extend this library by adding your own custom calibration nodes. To ensure compatibility and maintainability, new nodes should follow the same standardized structure and conventions outlined in the "Resonator Spectroscopy Node Explained" document. This includes:
 
-After executing the node, results will be saved at the `<path_to_your_data_folder>`, as well as being viewable on the
-web app.
+- Using the `# %%` separators for code cells.
+- Defining parameters in a separate `Parameters` class (usually imported).
+- Structuring the workflow using functions decorated with `@node.run_action`.
+- Loading and interacting with the `Quam` object.
+- Using `node.results`, `node.outcomes`, and `node.add_figure` for storing outputs.
+- Using `with node.record_state_updates():` for proposing QUAM changes.
+- Calling `node.save()` at the end.
 
-#### Additional Feature: Interactive calibration
+## Creating a Calibration Graph
 
-Naturally as part of a calibration node, one would like to _update their QUAM parameters_ according to calibration
-results. When using QUAlibrate, you can define **interactive** state-updates to a QUAM as follows:
+While individual nodes can be run standalone or via the Qualibrate UI for specific tasks, their real power comes from combining them into a **Calibration Graph**. A graph defines a sequence (or parallel execution) of nodes to perform a more complex calibration routine automatically.
 
-```python
-with node.record_state_updates():
-    # Modify the resonance frequency of a qubit
-    machine.qubits["q0"].f_01 = 5.1e9
-```
+Creating a typical calibration graph involves:
 
-This will simply update the values if the script is executed normally. However, if the node is executed through the
-QUAlibrate Web App, any changes will be presented as a proposed state update to the user, allowing them to interactively accept or decline the changes based on the measurement outcomes.
+1.  **Using the Qualibrate UI:** The web interface provides a visual editor for building graphs.
+2.  **Selecting Nodes:** Dragging and dropping nodes from the available library onto the graph canvas.
+3.  **Connecting Nodes:** Defining the execution order by drawing connections between nodes.
+4.  **Defining Dependencies:** Specifying conditions for running subsequent nodes (e.g., only run Node B if Node A was "successful") or passing results from one node as input parameters to another.
+5.  **Saving the Graph:** Storing the graph configuration for later execution.
+6.  **Running the Graph:** Initiating the execution of the entire sequence via the Qualibrate UI. Qualibrate manages the execution flow, parameter passing, and state updates according to the graph definition.
 
-### Execution
+Calibration graphs allow for robust, automated calibration sequences that can adapt based on intermediate results. For a more detailed explanation of graph components, dependencies, and advanced features, please refer to the 'Anatomy of a Calibration Graph' document.
 
-#### As standalone python scripts
+## Running Calibration Nodes and Graphs
 
-Simply run the script in your favourite IDE!
+There are two primary ways to execute calibration nodes and graphs:
 
-#### Within Qualibrate
+### Running via IDE / Standalone
 
-1. Activate your conda environment if you haven't already:
+Each calibration node script is designed to be runnable as a standalone Python file. The use of `# %%` separators allows you to treat the script like a Jupyter Notebook in compatible IDEs (such as VS Code with the Python/Jupyter extensions). You can run the script section by section (cell by cell) within an interactive kernel.
 
-```shell
-conda activate qm
-```
+This workflow is ideal for development and debugging:
 
-2. Start the QUAlibrate web-app in the command-line within your conda environment, e.g.,
+- Execute cells sequentially to understand the flow.
+- Inspect variables and data structures after each step.
+- Modify code within a cell and re-run only that cell.
+- Test individual components (like QUA program generation, analysis functions) in isolation.
 
-```shell
-qualibrate start
-```
+### Running via Qualibrate Frontend
+
+The Qualibrate frontend (web UI) is designed for running stable, well-tested calibration nodes and graphs, particularly when you primarily need to adjust input parameters rather than modify the code itself.
+
+- **Automatic Discovery:** Any calibration node script placed within the `calibration_graph` folder that follows the standard structure (including `QualibrationNode` instantiation) will automatically be discovered and made available in the Qualibrate UI.
+- **Launching the UI:** Start the Qualibrate web application by running the command `qualibrate start` in your terminal within the correct environment. This launches a local web server.
+- **Accessing Nodes/Graphs:** Open the provided URL (usually `http://localhost:8001` or similar) in your browser. The UI will list all discovered calibration nodes and saved calibration graphs.
+- **Execution:** Select the desired node or graph, modify its input parameters through the UI form, and click "Run" to execute it. The UI will display progress, results, plots, and any proposed state updates for review.
+
 
 3. Open http://localhost:8001/ on your browser:
    ![browser window](../.img/qualibrate_1.png)
@@ -78,9 +80,3 @@ qualibrate start
    ![change parameters](../.img/qualibrate_4.png)
 
 
-
-## Calibration Nodes
-
-The scripts within the `calibration_graph` directory are the building blocks for automated calibration routines. Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement). They are designed to be run via the QUAlibrate framework, either individually or as part of a larger calibration sequence (graph).
-
-Refer to the `calibration_graph/README.md` for detailed information on the structure and conventions used for these nodes.
