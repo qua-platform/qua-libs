@@ -68,7 +68,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    n_avg = node.parameters.num_averages  # The number of averages
+    n_avg = node.parameters.num_shots  # The number of averages
     # Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
     idle_times = get_idle_times_in_clock_cycles(node.parameters)
     # Register the sweep axes to be added to the dataset when fetching data
@@ -164,10 +164,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
+            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
-                node.parameters.num_averages,
+                node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors

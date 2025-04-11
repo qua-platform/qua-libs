@@ -84,7 +84,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num_qubits = len(qubits)
 
     operation = node.parameters.operation  # The qubit operation to play
-    n_avg = node.parameters.num_averages  # The number of averages
+    n_avg = node.parameters.num_shots  # The number of averages
     # Adjust the pulse duration and amplitude to drive the qubit into a mixed state - can be None
     operation_len = node.parameters.operation_len_in_ns
     # pre-factor to the value defined in the config - restricted to [-2; 2)
@@ -173,10 +173,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
+            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
-                node.parameters.num_averages,
+                node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors

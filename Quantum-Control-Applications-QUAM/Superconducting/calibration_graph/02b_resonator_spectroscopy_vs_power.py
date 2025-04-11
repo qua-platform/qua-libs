@@ -91,7 +91,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             node.namespace["tracked_resonators"].append(resonator)
 
     # Extract the sweep parameters and axes from the node parameters
-    n_avg = node.parameters.num_averages
+    n_avg = node.parameters.num_shots
     # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
     amp_min = calculate_voltage_scaling_factor(node.parameters.max_power_dbm, node.parameters.min_power_dbm)
     amps = np.geomspace(amp_min, 1, node.parameters.num_power_points)
@@ -180,10 +180,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
+            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
-                node.parameters.num_averages,
+                node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors

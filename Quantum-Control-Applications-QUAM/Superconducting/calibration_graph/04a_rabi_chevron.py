@@ -82,7 +82,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             q.xy.operations["x180"].length = 16
         node.namespace["tracked_qubits"].append(q)
 
-    n_avg = node.parameters.num_averages  # The number of averages
+    n_avg = node.parameters.num_shots  # The number of averages
     state_discrimination = node.parameters.use_state_discrimination
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
     pulse_durations = np.arange(
@@ -183,10 +183,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
+            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
-                node.parameters.num_averages,
+                node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
