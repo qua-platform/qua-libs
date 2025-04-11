@@ -17,7 +17,8 @@ class FitParameters:
     offset_Q_to_add: float
     success: bool
 
-def log_fitted_results(fit_results: Dict, logger=None):
+
+def log_fitted_results(fit_results: Dict, logger=None, node=None):
     """
     Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
 
@@ -28,9 +29,12 @@ def log_fitted_results(fit_results: Dict, logger=None):
     logger : logging.Logger, optional
         Logger for logging the fitted results. If None, a default logger is used.
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-
+    if logger is not None:
+        log_callable = logger.info
+    elif node is not None:
+        log_callable = node.log
+    else:
+        log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
         s_tof = f"\tTime of flight to add: {fit_results[q]['tof_to_add']:.0f} ns\n"
@@ -39,7 +43,7 @@ def log_fitted_results(fit_results: Dict, logger=None):
             s_qubit += " SUCCESS!\n"
         else:
             s_qubit += " FAIL!\n"
-        logger.info(s_qubit + s_tof + s_offsets)
+        log_callable(s_qubit + s_tof + s_offsets)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
@@ -89,36 +93,40 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     )
     # TODO: to test
     # Get the offsets
-    ds_fit = ds_fit.assign_coords({
-        "offsets_I": ds_fit.adcI.mean(dim="readout_time"),
-        "offsets_Q": ds_fit.adcQ.mean(dim="readout_time"),
-    })
+    ds_fit = ds_fit.assign_coords(
+        {
+            "offsets_I": ds_fit.adcI.mean(dim="readout_time"),
+            "offsets_Q": ds_fit.adcQ.mean(dim="readout_time"),
+        }
+    )
     # Get the averaged offsets for each controller
     mean_offset_I = {}
     mean_offset_Q = {}
     for con in np.unique(ds_fit.con.values):
-        mean_offset_I[con] = ds_fit.where(ds_fit.con==con).offsets_I.mean(dim="qubit").values
-        mean_offset_Q[con] = ds_fit.where(ds_fit.con==con).offsets_Q.mean(dim="qubit").values
+        mean_offset_I[con] = ds_fit.where(ds_fit.con == con).offsets_I.mean(dim="qubit").values
+        mean_offset_Q[con] = ds_fit.where(ds_fit.con == con).offsets_Q.mean(dim="qubit").values
     # Assign the averaged offsets to each qubit based on their controller
     test_I = []
     test_Q = []
     for q in ds_fit.qubit.values:
         test_I.append(mean_offset_I[str(ds_fit.sel(qubit=q).con.values)])
         test_Q.append(mean_offset_Q[str(ds_fit.sel(qubit=q).con.values)])
-    ds_fit = ds_fit.assign({"offsets_I_mean":xr.DataArray(test_I, coords=dict(qubit=ds_fit.qubit.data))})
-    ds_fit = ds_fit.assign({"offsets_Q_mean":xr.DataArray(test_Q, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign({"offsets_I_mean": xr.DataArray(test_I, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign({"offsets_Q_mean": xr.DataArray(test_Q, coords=dict(qubit=ds_fit.qubit.data))})
     ds_fit.offsets_I_mean.attrs = {"long_name": "Mean offset 'I'", "units": "V"}
     ds_fit.offsets_Q_mean.attrs = {"long_name": "Mean offset 'Q'", "units": "V"}
     # Assess whether the fit was successful or not
-    nan_success = np.isnan(ds_fit.delay.data) & np.isnan(ds_fit.offsets_I_mean.data) & np.isnan(ds_fit.offsets_Q_mean.data)
+    nan_success = (
+        np.isnan(ds_fit.delay.data) & np.isnan(ds_fit.offsets_I_mean.data) & np.isnan(ds_fit.offsets_Q_mean.data)
+    )
     offset_success = (np.abs(ds_fit.offsets_I_mean) < 0.5) & (np.abs(ds_fit.offsets_Q_mean) < 0.5)
     success_criteria = ~nan_success & offset_success.data
     ds_fit = ds_fit.assign_coords(success=("qubit", success_criteria))
     # Populate the FitParameters class with fitted values
     fit_results = {
         q: FitParameters(
-            offset_I_to_add = float(ds_fit.sel(qubit=q).offsets_I_mean),
-            offset_Q_to_add = float(ds_fit.sel(qubit=q).offsets_Q_mean),
+            offset_I_to_add=float(ds_fit.sel(qubit=q).offsets_I_mean),
+            offset_Q_to_add=float(ds_fit.sel(qubit=q).offsets_Q_mean),
             tof_to_add=int(ds_fit.sel(qubit=q).delay),
             success=bool(ds_fit.sel(qubit=q).success.values),
         )
@@ -135,12 +143,12 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     # return fit, fit_results
 
 
-
 def _filter_adc_signal(data, window_length=11, polyorder=3):
     """
     Applies a Savitzky-Golay filter to smooth the absolute IQ signal in the dataset.
     """
     return savgol_filter(data, window_length, polyorder)
+
 
 def _check_resonator_inputs(node: QualibrationNode):
     for q in node.namespace["qubits"]:

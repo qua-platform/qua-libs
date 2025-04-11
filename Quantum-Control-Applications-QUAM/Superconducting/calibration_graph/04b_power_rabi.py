@@ -12,7 +12,6 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
-from qualibrate.utils.logger_m import logger
 from quam_config import Quam
 from quam_experiments.experiments.power_rabi import (
     Parameters,
@@ -200,7 +199,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())
+        node.log(f"Job execution report:\n{job.execution_report()}")
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
@@ -226,7 +225,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], logger)
+    log_fitted_results(node.results["fit_results"], node=node)
     node.outcomes = {
         qubit_name: ("successful" if fit_result["success"] else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()
