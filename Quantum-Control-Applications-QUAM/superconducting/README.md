@@ -7,7 +7,7 @@
    2. [Setup](#setup)
 2. [Folder structure](#folder-structure)
    1. [calibration_data](#calibration_data)
-   2. [calibration_graph](#calibration_graph)
+   2. [calibrations](#calibrations)
    3. [configuration](#configuration)
    4. [quam_builder](#quam_builder)
 3. [How to generate the QUAM](#how-to-generate-the-quam)
@@ -27,7 +27,7 @@ This folder contains an installable module called `quam_builder`, which provides
 
 ### Requirements
 - Local version of the superconducting folder
-  - This contains folders such as `calibration_graph`, as well as the README document you are currently reading
+  - This contains folders such as `calibrations`, as well as the README document you are currently reading
 - Python <= 3.12, set up in a virtual environment
 
 ### Setup
@@ -44,7 +44,7 @@ qualibrate start
 ```
 
 Then, open a browser to http://127.0.0.1:8001, where you should see the list of calibration nodes stored in the
-`calibration_graph` directory.
+`calibrations` directory.
 
 ## Folder structure
 
@@ -56,7 +56,7 @@ The typical QUAM/QUalibrate folder structure is as follows:
 │       └───#1_01_Time_of_Flight_152438
 │           └───quam_state
 |
-├───calibration_graph
+├───calibrations
 │
 ├───quam_config
 │   └───quam_state
@@ -80,7 +80,7 @@ The saved data can have a different format depending on its type:
 - The arrays are saved as .npz.
 - The node parameters, state and wiring are saved as .json.
 
-### calibration_graph
+### calibrations
 
 This folder contains all the calibration scripts that can compose a qualibrate graph.
 The structure of the nodes is described below.
