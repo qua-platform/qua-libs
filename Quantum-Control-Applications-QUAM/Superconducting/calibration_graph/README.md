@@ -76,3 +76,11 @@ qualibrate start
    ![change parameters](../.img/qualibrate_3.png)
 6. Press "Run":
    ![change parameters](../.img/qualibrate_4.png)
+
+
+
+## Calibration Nodes
+
+The scripts within the `calibration_graph` directory are the building blocks for automated calibration routines. Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement). They are designed to be run via the QUAlibrate framework, either individually or as part of a larger calibration sequence (graph).
+
+Refer to the `calibration_graph/README.md` for detailed information on the structure and conventions used for these nodes.

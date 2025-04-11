@@ -7,27 +7,25 @@ It includes configurable experiment nodes, analysis routines, and tools for mana
 
 1.  [Prerequisites](#prerequisites)
 2.  [Getting Started](#getting-started)
-    * [Downloading the Library](#downloading-the-library)
-    * [Installation](#installation)
-3.  [Initial Setup (QUAlibrate Configuration)](#initial-setup-qualibrate-configuration)
-4.  [Verify Setup](#verify-setup)
-5.  [Usage](#usage)
-6.  [Project Structure](#project-structure)
-7.  [Calibration Nodes](#calibration-nodes)
-8.  [Creating Custom Nodes](#creating-custom-nodes)
-9.  [Contributing](#contributing)
-10. [License](#license)
+    - [Downloading the Library](#downloading-the-library)
+    - [Installation](#installation)
+    - [Initial Setup (QUAlibrate Configuration)](#initial-setup-qualibrate-configuration)
+    - [Verify Setup](#verify-setup)
+3.  [Usage](#usage)
+4.  [Project Structure](#project-structure)
+5.  [Contributing](#contributing)
+6.  [License](#license)
 
 ## Prerequisites
 
-* **Python:** Version 3.9 to 3.12 is supported.
-* **Python Virtual Environment:** Strongly recommended to avoid dependency conflicts.
-You can create one using:
-    * `venv`: `python -m venv .venv `` source .venv/bin/activate` (Linux/macOS) or `.venv\Scripts\activate` (Windows)
-    * `conda`: `conda create -n qualibrate_env python=3.10 `` conda activate qualibrate_env`
-* **Git:** (Optional but Recommended) For version control, easier updates (pulling changes), and collaboration (forking and contributing).
-[Install Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
-* **Access to Quantum Orchestration Platform (QOP):** Required for running experiments on hardware.
+- **Python:** Version 3.9 to 3.12 is supported.
+- **Python Virtual Environment:** Strongly recommended to avoid dependency conflicts.
+  You can create one using:
+  _ `venv`: ` python -m venv .venv `` source .venv/bin/activate ` (Linux/macOS) or `.venv\Scripts\activate` (Windows)
+  _ `conda`: ` conda create -n qualibrate_env python=3.10 `` conda activate qualibrate_env `
+- **Git:** (Optional but Recommended) For version control, easier updates (pulling changes), and collaboration (forking and contributing).
+  [Install Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
+- **Access to Quantum Orchestration Platform (QOP):** Required for running experiments on hardware.
 
 ## Getting Started
 
@@ -37,14 +35,14 @@ You have a few options to get the code:
 
 1.  **Customer Repository:** If provided as part of a customer installation, use the dedicated user repository.
 2.  **Fork (Recommended for Staying Updated):** Forking the `qua-libs` repository on GitHub to your account (see GitHub's guide on [how to fork a repo](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)) and then cloning your fork is the recommended way to stay periodically in sync with updates from the main repository.
-It also allows you to contribute changes back via pull requests.
+    It also allows you to contribute changes back via pull requests.
 3.  **Git Clone (Direct):** Clone the repository directly using Git.
-This allows you to pull updates but requires managing potential merge conflicts manually if you make local changes without forking.
-    ```bash
-    git clone https://github.com/qua-platform/qua-libs.git
-    ```
+    This allows you to pull updates but requires managing potential merge conflicts manually if you make local changes without forking.
+    `bash
+git clone https://github.com/qua-platform/qua-libs.git
+`
 4.  **Direct Download:** Navigate to the `qua-libs` repository on GitHub, download the ZIP file, and unzip it.
-This method doesn't require Git but makes updating and contributing harder.
+    This method doesn't require Git but makes updating and contributing harder.
 
 ### Installation
 
@@ -58,7 +56,8 @@ Once you have the code locally:
     pip install -e .
     ```
 
-    *Note for `uv` users:* If you are using `uv` instead of `pip`, you might need to allow pre-releases depending on the dependencies:
+    _Note for `uv` users:_ If you are using `uv` instead of `pip`, you might need to allow pre-releases depending on the dependencies:
+
     ```bash
     uv pip install -e . --prerelease=allow
     ```
@@ -74,50 +73,38 @@ The QUAlibrate framework needs some initial configuration to know where to find 
     ```
 
 2.  **Follow Prompts:** The script will interactively ask for the following details:
-    * `project name`: A unique name for your project or QPU chip (e.g., `MyQPU_Chip1`).
-    * `storage location`: The root directory where measurement data will be saved.
-Default: `data/{project_name}` relative to the current directory.
-    * `calibration library folder`: The path to the directory containing calibration nodes/graphs.
-Default: `calibration_graph`.
-    * `QUAM state path`: The location where the QUAM state file (containing system parameters, connectivity, etc.) is stored.
-Default: `quam_state`.
+    _ `project name`: A unique name for your project or QPU chip (e.g., `MyQPU_Chip1`).
+    _ `storage location`: The root directory where measurement data will be saved.
+    Default: `data/{project_name}` relative to the current directory.
+    _ `calibration library folder`: The path to the directory containing calibration nodes/graphs.
+    Default: `calibration_graph`.
+    _ `QUAM state path`: The location where the QUAM state file (containing system parameters, connectivity, etc.) is stored.
+    Default: `quam_state`.
 
-    You can press `Enter` or type `y` to accept the defaults, or `n` to provide custom paths.
+        You can press `Enter` or type `y` to accept the defaults, or `n` to provide custom paths.
 
 3.  **Confirm Full Config:** The script will show the complete QUAlibrate configuration for final confirmation.
-For detailed explanations of all settings, refer to the [QUAlibrate Configuration File Documentation](https://qua-platform.github.io/qualibrate/configuration/).
+    For detailed explanations of all settings, refer to the [QUAlibrate Configuration File Documentation](https://qua-platform.github.io/qualibrate/configuration/).
 
 ### Verify Setup
 
 To ensure QUAlibrate is installed and configured correctly:
 
-1.  **Launch the Web Interface:** Run the following command in your terminal (the ``` runs it in the background on Linux/macOS):
+1.  **Launch the Web Interface:** Run the following command in your terminal:
 
     ```bash
-    qualibrate web `
+    qualibrate start
     ```
-    *(On Windows, you might run it without ``` in a separate terminal)*
 
 2.  **Open in Browser:** Navigate to [http://127.0.0.1:8001](http://127.0.0.1:8001).
 
 You should see the QUAlibrate web UI, listing the calibration nodes found in your configured `calibration_graph` directory.
 
-## Usage
+## Calibration Nodes
 
-*(TODO: Add basic examples here)*
+The scripts within the `calibration_graph` directory are the building blocks for automated calibration routines. Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement). They are designed to be run via the QUAlibrate framework, either individually or as part of a larger calibration sequence (graph).
 
-* Example: How to run a single calibration node (e.g., Resonator Spectroscopy) using the `qualibrate run` command or via the web UI.
-* Example: How to construct and run a calibration graph.
-
-```python
-# Example placeholder: Running a node programmatically (Illustrative)
-# from qualibrate import QualibrateClient
-#
-# client = QualibrateClient()
-# result = client.run_node("02a_resonator_spectroscopy", quam_state_path="path/to/your/quam.json")
-# print(result)
-
-```
+Refer to the `calibration_graph/README.md` for detailed information on the structure and conventions used for these nodes.
 
 ## Project Structure
 
@@ -161,22 +148,20 @@ Superconducting/
 └── setup.py / pyproject.toml # Installation configuration for the package.
 ```
 
-* **`calibration_graph/`**: Contains individual Python scripts, each representing a calibration "node". These scripts typically import functionality from `quam_experiments`, define parameters, run a QUA program, analyze results, and update the QUAM state. See the `README.md` within this folder for more details on node structure.
-* **`data/`**: The default output directory where QUAlibrate saves results (plots, raw data, QUAM state snapshots) from calibration runs, organized by project, date, and run index/name.
-* **`quam_config/`**: Tools and examples for creating the `quam_state.json` file, which describes your specific hardware setup (instruments, connections, qubit parameters).
-* **`quam_experiments/`**: The core, reusable components for building experiments. This includes standardized ways to define parameters, run QUA programs, perform analysis (like fitting), and plot results, promoting modularity and consistency across different calibration nodes.
+**calibration_graph**  
+The `calibration_graph/` folder contains individual Python scripts, each representing a calibration "node". These scripts typically import functionality from **quam_experiments**, define parameters, run a QUA program, analyze results, and update the QUAM state. See the README.md within this folder for more details on node structure.
 
-## Calibration Nodes
+**data**  
+The `data/` folder is the default output directory where QUAlibrate saves results (plots, raw data, QUAM state snapshots) from calibration runs, organized by project, date, and run index/name.
+quam_config/: Tools and examples for creating the quam_state.json file, which describes your specific hardware setup (instruments, connections, qubit parameters).
 
-The scripts within the `calibration_graph` directory are the building blocks for automated calibration routines. Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement). They are designed to be run via the QUAlibrate framework, either individually or as part of a larger calibration sequence (graph).
-
-Refer to the `calibration_graph/README.md` for detailed information on the structure and conventions used for these nodes.
+**quam_experiments**  
+`quam_experiments/` contains the core, reusable components for building experiments. This includes standardized ways to define parameters, run QUA programs, perform analysis (like fitting), and plot results, promoting modularity and consistency across different calibration nodes.
 
 ## Creating Custom Nodes
 
-*`(TODO: Add guidelines or link to documentation on how to create new calibration nodes based on the existing structure and quam_experiments modules.)`*
-
 Creating a new calibration typically involves:
+
 1. Defining necessary parameters (potentially reusing/extending those in `quam_experiments/parameters`).
 2. Writing the QUA program logic (often within a dedicated function or class, possibly in `quam_experiments/experiments`).
 3. Implementing analysis and plotting functions (reusing `quam_experiments/analysis` and plotting utilities).
@@ -184,10 +169,8 @@ Creating a new calibration typically involves:
 
 ## Contributing
 
-*(TODO: Add contribution guidelines - e.g., coding style, testing, pull request process)*
-
 We welcome contributions! Please follow the standard fork-and-pull-request workflow. Ensure your code adheres to existing style conventions and includes appropriate tests and documentation.
 
 ## License
 
-*(TODO: Add license information - e.g., MIT, Apache 2.0)*
+This project is licensed under the BSD-3 license.
