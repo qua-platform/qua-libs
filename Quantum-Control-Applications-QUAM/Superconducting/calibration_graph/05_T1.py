@@ -10,7 +10,6 @@ from qualang_tools.units import unit
 from qualang_tools.results import progress_counter
 
 from qualibrate import QualibrationNode
-from qualibrate.utils.logger_m import logger
 from quam_config import Quam
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
@@ -194,11 +193,9 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-    # todo: Serwan to add node.log so that we can do node.log.add(log_t1(node.results["ds_fit"])) or similar
-    from qualibrate.utils.logger_m import logger
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["ds_fit"], logger)
+    log_fitted_results(node.results["ds_fit"], log_callable=node.log)
     node.outcomes = {
         qubit_name: ("successful" if fit_result["success"] else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()

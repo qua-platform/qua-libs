@@ -12,7 +12,6 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
-from qualibrate.utils.logger_m import logger
 from quam_config import Quam
 from quam_experiments.experiments.resonator_spectroscopy import (
     Parameters,

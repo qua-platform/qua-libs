@@ -22,14 +22,14 @@ class FitParameters:
     m_pH: float
 
 
-def log_fitted_results(fit_results: Dict, logger=None):
+def log_fitted_results(fit_results: Dict, log_callable=None):
     """
-    Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
+    Logs the node-specific fitted results for all qubits from the fit results
 
     Parameters:
     -----------
-    ds : xr.Dataset
-        Dataset containing the fitted results for all qubits.
+    fit_results : dict
+        Dictionary containing the fitted results for all qubits.
     logger : logging.Logger, optional
         Logger for logging the fitted results. If None, a default logger is used.
 
@@ -39,10 +39,10 @@ def log_fitted_results(fit_results: Dict, logger=None):
 
     Example:
     --------
-        >>> log_fitted_results(fit_results)
+        >>> log_fitted_results(fit_results, log_callable=node.log)
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
+    if log_callable is None:
+        log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
         s_idle_offset = f"\tidle offset: {fit_results[q]['idle_offset'] * 1e3:.0f} mV | "
@@ -52,7 +52,7 @@ def log_fitted_results(fit_results: Dict, logger=None):
             s_qubit += " SUCCESS!\n"
         else:
             s_qubit += " FAIL!\n"
-        logger.info(s_qubit + s_idle_offset + s_freq + s_shift)
+        log_callable(s_qubit + s_idle_offset + s_freq + s_shift)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):

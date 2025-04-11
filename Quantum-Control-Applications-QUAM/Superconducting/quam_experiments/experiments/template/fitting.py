@@ -16,14 +16,14 @@ class FitParameters:
     success: bool
 
 
-def log_fitted_results(fit_results: Dict, logger=None):
+def log_fitted_results(fit_results: Dict, log_callable=None):
     """
-    Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
+    Logs the node-specific fitted results for all qubits from the fit results
 
     Parameters:
     -----------
-    ds : xr.Dataset
-        Dataset containing the fitted results for all qubits.
+    fit_results : dict
+        Dictionary containing the fitted results for all qubits.
     logger : logging.Logger, optional
         Logger for logging the fitted results. If None, a default logger is used.
 
@@ -33,16 +33,16 @@ def log_fitted_results(fit_results: Dict, logger=None):
 
     Example:
     --------
-        >>> log_fitted_results(fit_results)
+        >>> log_fitted_results(fit_results, log_callable=node.log)
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
+    if log_callable is None:
+        log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
         s = f"Resonator frequency for qubit {q} : {1e-9 * fit_results[q]['frequency']:.3f} GHz --> "
         if fit_results[q]["success"]:
-            logger.info(s + "SUCCESS!")
+            log_callable(s + "SUCCESS!")
         else:
-            logger.error(s + "FAIL!")
+            log_callable(s + "FAIL!")
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
