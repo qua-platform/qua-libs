@@ -1,7 +1,9 @@
 # Superconducting Qubit Calibration Library
 
-This repository provides a comprehensive library for calibrating N flux-tunable superconducting transmon qubits using the Quantum Orchestration Platform (QOP), QUAM, and QUAlibrate.
+This repository provides a comprehensive library for calibrating flux-tunable superconducting transmon qubits using the Quantum Orchestration Platform (QOP), QUAM, and QUAlibrate.
 It includes configurable experiment nodes, analysis routines, and tools for managing the quantum system state (QUAM).
+
+This library is built upon **QUAlibrate**, an advanced, open-source software framework designed specifically for the automated calibration of Quantum Processing Units (QPUs). QUAlibrate provides tools to create, manage, and execute calibration routines efficiently. The configurable experiment nodes, analysis routines, and state management tools included here are designed to integrate seamlessly with the QUAlibrate ecosystem.
 
 ## Table of Contents
 
@@ -100,6 +102,22 @@ To ensure QUAlibrate is installed and configured correctly:
 
 You should see the QUAlibrate web UI, listing the calibration nodes found in your configured `calibration_graph` directory.
 
+## Creating the QUAM State
+
+QUAM (Quantum Abstract Machine) provides an abstraction layer over the low-level QUA configuration. It allows you to define your quantum system (hardware, connectivity, qubit parameters, pulses, etc.) in a structured, physicist-friendly way. The QUAM state, typically stored in a file like `quam_state.json` within the `quam_config/quam_state/` directory, serves as a persistent digital model of your entire setup.
+
+**Interaction with Calibration Nodes:**
+
+- **Loading:** Calibration nodes (scripts in `calibration_graph/`) typically load the latest QUAM state at the beginning of their execution. This provides them with all the necessary parameters (e.g., frequencies, amplitudes, timings) required to run the specific calibration experiment.
+- **Updating:** After a calibration node runs and analyzes the results, it often calculates updated parameters (e.g., a newly calibrated qubit frequency or an optimized pulse amplitude). The node then modifies the corresponding values within the loaded QUAM object.
+- **Saving:** QUAlibrate nodes save the modified QUAM state, often alongside the experiment results. This ensures that subsequent nodes in a calibration graph or future runs use the most up-to-date, calibrated parameters.
+
+**How to Create the State:**
+
+The process of creating the initial QUAM state file involves defining your specific hardware components (OPXs, Octaves, mixers, LOs), as well as the QPU layout that the hardware is attached to. Detailed instrutions are found in **[quam_config/README.md](quam_config/README.md)**
+
+This directory contains scripts (`make_quam.py`, wiring examples, etc.) that demonstrate how to build the QUAM object programmatically.
+
 ## Calibration Nodes
 
 The scripts within the `calibration_graph` directory are the building blocks for automated calibration routines. Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement). They are designed to be run via the QUAlibrate framework, either individually or as part of a larger calibration sequence (graph).
@@ -157,15 +175,6 @@ quam_config/: Tools and examples for creating the quam_state.json file, which de
 
 **quam_experiments**  
 `quam_experiments/` contains the core, reusable components for building experiments. This includes standardized ways to define parameters, run QUA programs, perform analysis (like fitting), and plot results, promoting modularity and consistency across different calibration nodes.
-
-## Creating Custom Nodes
-
-Creating a new calibration typically involves:
-
-1. Defining necessary parameters (potentially reusing/extending those in `quam_experiments/parameters`).
-2. Writing the QUA program logic (often within a dedicated function or class, possibly in `quam_experiments/experiments`).
-3. Implementing analysis and plotting functions (reusing `quam_experiments/analysis` and plotting utilities).
-4. Creating a main script in `calibration_graph` that orchestrates these steps and interacts with QUAlibrate.
 
 ## Contributing
 
