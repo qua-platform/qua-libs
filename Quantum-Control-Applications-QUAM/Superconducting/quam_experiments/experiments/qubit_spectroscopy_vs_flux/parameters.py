@@ -6,7 +6,7 @@ from quam_experiments.parameters import CommonNodeParameters, QubitsExperimentNo
 
 
 class NodeSpecificParameters(RunnableParameters):
-    num_averages: int = 50
+    num_shots: int = 50
     """Number of averages to perform. Default is 50."""
     operation: str = "saturation"
     """Operation to perform. Default is "saturation"."""
