@@ -146,7 +146,7 @@ Superconducting/
 ├── quam_config/            # Scripts and configurations for generating/managing QUAM state files.
 │   ├── quam_state/         # Default location for the main QUAM state file.
 │   ├── wiring_examples/    # Example configurations for different hardware setups.
-│   ├── make_quam.py        # Script to generate a QUAM file.
+│   ├── build_quam_wiring.py        # Script to generate a QUAM file.
 │   └── ...
 │
 ├── quam_experiments/       # Reusable experiment logic, analysis, plotting, and parameter definitions.

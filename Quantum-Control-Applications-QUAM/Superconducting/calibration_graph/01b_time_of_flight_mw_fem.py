@@ -39,7 +39,7 @@ The data undergoes post-processing to calibrate three distinct parameters:
       can be modified to fit the signal within the ADC range of +/-0.5V.
       
 Prerequisites:
-    - Having initialized the Quam (quam_config/initialize_quam.py).
+    - Having initialized the Quam (quam_config/populate_quam_state_*.py).
 
 State update:
     - The time of flight: qubit.resonator.time_of_flight
