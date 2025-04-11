@@ -13,10 +13,11 @@ This library is built upon **QUAlibrate**, an advanced, open-source software fra
     - [Installation](#installation)
     - [Initial Setup (QUAlibrate Configuration)](#initial-setup-qualibrate-configuration)
     - [Verify Setup](#verify-setup)
-3.  [Usage](#usage)
-4.  [Project Structure](#project-structure)
-5.  [Contributing](#contributing)
-6.  [License](#license)
+3.  [Creating the QUAM State](#creating-the-quam-state)
+4.  [Calibration Nodes and Graphs](calibration-nodes-and-graphs)
+5. [Project Structure](#project-structure)
+6.  [Contributing](#contributing)
+7.  [License](#license)
 
 ## Prerequisites
 
@@ -118,7 +119,7 @@ The process of creating the initial QUAM state file involves defining your speci
 
 This directory contains scripts (`build_quam_wiring.py`, examples, etc.) that demonstrate how to build the QUAM object programmatically.
 
-## Calibration Nodes
+## Calibration Nodes and Graphs
 
 The scripts within the `calibration_graph` directory are the building blocks for automated calibration routines. Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement). They are designed to be run via the QUAlibrate framework, either individually or as part of a larger calibration sequence (graph).
 
