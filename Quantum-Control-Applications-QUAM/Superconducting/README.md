@@ -116,13 +116,13 @@ QUAM (Quantum Abstract Machine) provides an abstraction layer over the low-level
 
 The process of creating the initial QUAM state file involves defining your specific hardware components (OPXs, Octaves, mixers, LOs), as well as the QPU layout that the hardware is attached to. Detailed instrutions are found in **[quam_config/README.md](quam_config/README.md)**
 
-This directory contains scripts (`make_quam.py`, wiring examples, etc.) that demonstrate how to build the QUAM object programmatically.
+This directory contains scripts (`build_quam_wiring.py`, examples, etc.) that demonstrate how to build the QUAM object programmatically.
 
 ## Calibration Nodes
 
 The scripts within the `calibration_graph` directory are the building blocks for automated calibration routines. Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement). They are designed to be run via the QUAlibrate framework, either individually or as part of a larger calibration sequence (graph).
 
-Refer to the `calibration_graph/README.md` for detailed information on the structure and conventions used for these nodes.
+Refer to the [calibration_graph/README.md](calibration_graph/README.md) for detailed information on the structure and conventions used for these nodes.
 
 ## Project Structure
 
