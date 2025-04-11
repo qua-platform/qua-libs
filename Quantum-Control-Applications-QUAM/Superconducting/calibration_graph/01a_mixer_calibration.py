@@ -65,10 +65,9 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analysis the raw data and store the fitted data in another xarray dataset and the fitted results in the fit_results class."""
     fit_results = extract_relevant_fit_parameters(node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-    from qualibrate.utils.logger_m import logger
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], logger)
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
         qubit_name: ("successful" if fit_result["success"] else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()

@@ -18,22 +18,26 @@ class FitParameters:
     success: bool
 
 
-def log_fitted_results(fit_results: Dict, logger=None, node=None):
+def log_fitted_results(fit_results: Dict, log_callable=None):
     """
-    Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
+    Logs the node-specific fitted results for all qubits from the fit results
 
     Parameters:
     -----------
-    ds : xr.Dataset
-        Dataset containing the fitted results for all qubits.
+    fit_results : dict
+        Dictionary containing the fitted results for all qubits.
     logger : logging.Logger, optional
         Logger for logging the fitted results. If None, a default logger is used.
+
+    Returns:
+    --------
+    None
+
+    Example:
+    --------
+        >>> log_fitted_results(fit_results, log_callable=node.log)
     """
-    if logger is not None:
-        log_callable = logger.info
-    elif node is not None:
-        log_callable = node.log
-    else:
+    if log_callable is None:
         log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
