@@ -102,7 +102,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.reset(
                             node.parameters.reset_type,
                             node.parameters.simulate,
-                            logger=logger,
+                            log_callable=node.log,
                         )
 
                     # The qubit manipulation sequence
