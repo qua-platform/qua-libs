@@ -16,7 +16,7 @@ A typical calibration node performs the following workflow:
 
 ## Node Anatomy Explained
 
-For a detailed breakdown of the internal structure of a typical calibration node, please refer to the **"Resonator Spectroscopy Node Explained"** document. It dissects the `02a_resonator_spectroscopy.py` node section by section, explaining the purpose of the common components like imports, initialization, run actions (`@node.run_action`), QUA program creation, data handling, analysis, state updates, and saving.
+For a detailed breakdown of the internal structure of a typical calibration node, please refer to the [Anatomy of a QualibrationNode](./node_anatomy.ipynb) document. It dissects the `02a_resonator_spectroscopy.py` node section by section, explaining the purpose of the common components like imports, initialization, run actions (`@node.run_action`), QUA program creation, data handling, analysis, state updates, and saving.
 
 ## Extending the Calibration Library
 
@@ -43,7 +43,7 @@ Creating a typical calibration graph involves:
 5.  **Saving the Graph:** Storing the graph configuration for later execution.
 6.  **Running the Graph:** Initiating the execution of the entire sequence via the Qualibrate UI. Qualibrate manages the execution flow, parameter passing, and state updates according to the graph definition.
 
-Calibration graphs allow for robust, automated calibration sequences that can adapt based on intermediate results. For a more detailed explanation of graph components, dependencies, and advanced features, please refer to the 'Anatomy of a Calibration Graph' document.
+Calibration graphs allow for robust, automated calibration sequences that can adapt based on intermediate results. For a more detailed explanation of graph components, dependencies, and advanced features, please refer to the [Anatomy of a Calibration Graph](./graph_anatomy.ipynb) document.
 
 ## Running Calibration Nodes and Graphs
 
@@ -69,7 +69,6 @@ The Qualibrate frontend (web UI) is designed for running stable, well-tested cal
 - **Accessing Nodes/Graphs:** Open the provided URL (usually `http://localhost:8001` or similar) in your browser. The UI will list all discovered calibration nodes and saved calibration graphs.
 - **Execution:** Select the desired node or graph, modify its input parameters through the UI form, and click "Run" to execute it. The UI will display progress, results, plots, and any proposed state updates for review.
 
-
 3. Open http://localhost:8001/ on your browser:
    ![browser window](../.img/qualibrate_1.png)
 4. Select the node you would like to run:
@@ -78,5 +77,3 @@ The Qualibrate frontend (web UI) is designed for running stable, well-tested cal
    ![change parameters](../.img/qualibrate_3.png)
 6. Press "Run":
    ![change parameters](../.img/qualibrate_4.png)
-
-
