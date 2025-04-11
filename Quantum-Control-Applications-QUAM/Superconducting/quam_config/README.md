@@ -33,7 +33,7 @@ Alternative script for generating QUAM configurations dynamically at runtime.
 Loads a base QUAM state and populates it with initial parameters and connectivity details for specific hardware setups (e.g., OPX+Octave), providing a better starting point for calibration.
 
 **`instrument_limits.py`**:
-Defines instrument operational limits (e.g., power, frequency) used for validation or constraints during experiments.
+Defines instrument operational limits (e.g., power, frequency) used for validation or constraints during the analysis and subsequent QUAK state updates of experiments.
 
 **`wiring_examples/`**:
 Contains example scripts showing how to define hardware wiring/connectivity within QUAM for various setups, serving as templates.
@@ -70,6 +70,10 @@ This step populates the `state.json` file with initial operational parameters.
   - For OPX1000/FEM setups: Use `populate_quam_state_lf_mw_fems.py`.
 - Edit the chosen script: These files contain hardcoded initial guesses for parameters like qubit/resonator frequencies, pulse amplitudes/durations, gains, etc. **You must adjust these values** to be reasonable starting points for your specific qubits and setup.
 - Run the script: Execute `python populate_quam_state_{hw_type}.py` (replacing `{hw_type}` accordingly). This loads the existing `state.json` and `wiring.json`, populates the dynamic parameters based on the script's logic and hardcoded values, and saves the updated, populated `state.json`.
+
+### 5️⃣ (Optional) Specify Instrument Limits (using `instrument_limits.py`)
+
+For device safety reasons, it may be necessary to impose certain limits on parameters such as waveform amplitudes. These can be set in the file `instrument_limits.py`. This step is optional, but it ensures that relevant parameters are not set above any defined limits.
 
 ## Saving and loading a QUAM state
 
