@@ -4,7 +4,6 @@
 import json
 from qualang_tools.units import unit
 from quam_config import Quam
-from quam_builder.builder.superconducting.build_quam import save_machine
 from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
 from quam.components.pulses import GaussianPulse
 import numpy as np
@@ -42,20 +41,21 @@ def get_full_scale_power_dBm_and_amplitude(desired_power: float, max_amplitude: 
     :return: the full_scale_power_dBm and waveform amplitude realizing the desired power.
     """
     allowed_powers = [-11, -8, -5, -2, 1, 4, 7, 10, 13, 16]
-    resulting_power = desired_power - 20*np.log10(max_amplitude)
+    resulting_power = desired_power - 20 * np.log10(max_amplitude)
     if resulting_power < 0:
         full_scale_power_dBm = closest_number(allowed_powers, max(resulting_power + 3, -11))
     else:
         full_scale_power_dBm = closest_number(allowed_powers, min(resulting_power + 3, 16))
     # amplitude =10**((desired_power - full_scale_power_dBm)/10)
-    amplitude = 10**(-(full_scale_power_dBm - desired_power)/20)
+    amplitude = 10 ** (-(full_scale_power_dBm - desired_power) / 20)
     return full_scale_power_dBm, amplitude
+
 
 ########################################################################################################################
 # %%                                    Gather the initial qubit parameters
 ########################################################################################################################
-for i in range(len(machine.qubits.items())):
-    machine.qubits[f"q{i+1}"].grid_location = f"{i},0"
+for k, qubit in enumerate(machine.qubits.values()):
+    qubit.grid_location = f"{k},0"
 
 # Update frequencies
 # NOTE: be aware of coupled ports for bands
@@ -78,42 +78,43 @@ drive_power = -10
 # %%                             Initialize the QUAM with the initial qubit parameters
 ########################################################################################################################
 # Get the full_scale_power_dBm and waveform amplitude corresponding to the desired powers
-rr_full_scale, rr_amplitude = get_full_scale_power_dBm_and_amplitude(readout_power, max_amplitude=0.125 / len(machine.qubits))
+rr_full_scale, rr_amplitude = get_full_scale_power_dBm_and_amplitude(
+    readout_power, max_amplitude=0.125 / len(machine.qubits)
+)
 xy_full_scale, xy_amplitude = get_full_scale_power_dBm_and_amplitude(drive_power)
 
-for i, q in enumerate(machine.qubits):
-    ## Update qubit rr freq and power
-    machine.qubits[q].resonator.f_01 = rr_freq[i]
-    machine.qubits[q].resonator.RF_frequency = machine.qubits[q].resonator.f_01
-    machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_full_scale
-    machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
-    machine.qubits[q].resonator.opx_input.band = get_band(rr_LO)
-    machine.qubits[q].resonator.opx_output.band = get_band(rr_LO)
+for k, qubit in enumerate(machine.qubits.values()):
+    # Update qubit rr freq and power
+    qubit.resonator.f_01 = rr_freq[k]
+    qubit.resonator.RF_frequency = qubit.resonator.f_01
+    qubit.resonator.opx_output.full_scale_power_dbm = rr_full_scale
+    qubit.resonator.opx_output.upconverter_frequency = rr_LO
+    qubit.resonator.opx_input.band = get_band(rr_LO)
+    qubit.resonator.opx_output.band = get_band(rr_LO)
 
-    ## Update qubit xy freq and power
-    machine.qubits[q].f_01 = xy_freq[i]
-    machine.qubits[q].xy.RF_frequency = machine.qubits[q].f_01
-    machine.qubits[q].xy.opx_output.full_scale_power_dbm = xy_full_scale
-    machine.qubits[q].xy.opx_output.upconverter_frequency = xy_LO[i]
-    machine.qubits[q].xy.opx_output.band = get_band(xy_LO[i])
+    # Update qubit xy freq and power
+    qubit.f_01 = xy_freq[i]
+    qubit.xy.RF_frequency = qubit.f_01
+    qubit.xy.opx_output.full_scale_power_dbm = xy_full_scale
+    qubit.xy.opx_output.upconverter_frequency = xy_LO[i]
+    qubit.xy.opx_output.band = get_band(xy_LO[i])
 
     # Update flux channels
-    machine.qubits[q].z.opx_output.output_mode = "direct"
-    machine.qubits[q].z.opx_output.upsampling_mode = "pulse"
-
-    ## Update pulses
+    qubit.z.opx_output.output_mode = "direct"
+    qubit.z.opx_output.upsampling_mode = "pulse"
+    # Update pulses
     # readout
-    machine.qubits[q].resonator.operations["readout"].length = 2.5 * u.us
-    machine.qubits[q].resonator.operations["readout"].amplitude = rr_amplitude
+    qubit.resonator.operations["readout"].length = 2.5 * u.us
+    qubit.resonator.operations["readout"].amplitude = rr_amplitude
     # Qubit saturation
-    machine.qubits[q].xy.operations["saturation"].length = 20 * u.us
-    machine.qubits[q].xy.operations["saturation"].amplitude = 5*xy_amplitude
+    qubit.xy.operations["saturation"].length = 20 * u.us
+    qubit.xy.operations["saturation"].amplitude = 5 * xy_amplitude
 
     # Single qubit gates - DragCosine & Square
-    add_DragCosine_pulses(machine.qubits[q], amplitude=xy_amplitude, length=48, alpha=0.0, detuning=0)
+    add_DragCosine_pulses(qubit, amplitude=xy_amplitude, length=48, alpha=0.0, detuning=0)
     # Single Gaussian flux pulse
-    if hasattr(machine.qubits[q], "z"):
-        machine.qubits[q].z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
+    if hasattr(qubit, "z"):
+        qubit.z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
 
     # Add new pulses
     # from quam.components.pulses import (
@@ -130,7 +131,7 @@ for i, q in enumerate(machine.qubits):
 # %%                                         Save the updated QUAM
 ########################################################################################################################
 # save into state.json
-save_machine(machine)
+machine.save()
 
 pprint(machine.generate_config())
 # %%

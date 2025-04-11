@@ -46,7 +46,7 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the qubits frequency (f_01) in the state.
-    - Save the current state by calling machine.save("quam")
+    - Save the current state by calling machine.save()
 """
 
 

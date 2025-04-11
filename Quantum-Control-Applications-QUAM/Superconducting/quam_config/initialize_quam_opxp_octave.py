@@ -4,7 +4,6 @@
 import json
 from qualang_tools.units import unit
 from quam_config import Quam
-from quam_builder.builder.superconducting.build_quam import save_machine
 from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
 from quam.components.pulses import GaussianPulse
 import numpy as np
@@ -41,8 +40,8 @@ def get_octave_gain_and_amplitude(desired_power: float, max_amplitude: float = 0
 ########################################################################################################################
 # %%                                    Gather the initial qubit parameters
 ########################################################################################################################
-for i in range(len(machine.qubits.items())):
-    machine.qubits[f"q{i+1}"].grid_location = f"{i},0"
+for k, qubit in enumerate(machine.qubits.values()):
+    qubit.grid_location = f"{k},0"
 
 # Resonator frequencies
 rr_freq = np.array([4.395, 4.412, 4.521, 4.785]) * u.GHz
@@ -69,31 +68,33 @@ rr_gain, rr_amplitude = get_octave_gain_and_amplitude(readout_power, max_amplitu
 xy_gain, xy_amplitude = get_octave_gain_and_amplitude(drive_power)
 
 # NOTE: be aware of coupled Octave channels and synthesizers
-for i, q in enumerate(machine.qubits):
-    ## Update qubit rr freq and power
-    machine.qubits[q].resonator.f_01 = rr_freq[i]
-    machine.qubits[q].resonator.RF_frequency = machine.qubits[q].resonator.f_01
-    machine.qubits[q].resonator.frequency_converter_up.LO_frequency = rr_lo  # [2 : 0.250 : 18] GHz
-    machine.qubits[q].resonator.frequency_converter_up.gain = rr_gain  # [-20 : 0.5 : 20] dB
-    machine.qubits[q].resonator.frequency_converter_up.output_mode = "always_on"  # "always_on" or "triggered"
-    ## Update qubit xy freq and power
-    machine.qubits[q].f_01 = xy_freq[i]
-    machine.qubits[q].xy.RF_frequency = machine.qubits[q].f_01
-    machine.qubits[q].xy.frequency_converter_up.LO_frequency = xy_lo[i]  # [2 : 0.250 : 18] GHz
-    machine.qubits[q].xy.frequency_converter_up.gain = xy_gain  # [-20 : 0.5 : 20] dB
-    machine.qubits[q].xy.frequency_converter_up.output_mode = "always_on"  # "always_on" or "triggered"
+for i, qubit in enumerate(machine.qubits.values()):
 
-    ## Update pulses
+    # Update qubit rr freq and power
+    qubit.resonator.f_01 = rr_freq[i]
+    qubit.resonator.RF_frequency = qubit.resonator.f_01
+    qubit.resonator.frequency_converter_up.LO_frequency = rr_lo  # [2 : 0.250 : 18] GHz
+    qubit.resonator.frequency_converter_up.gain = rr_gain  # [-20 : 0.5 : 20] dB
+    qubit.resonator.frequency_converter_up.output_mode = "always_on"  # "always_on" or "triggered"
+
+    # Update qubit xy freq and power
+    qubit.f_01 = xy_freq[i]
+    qubit.xy.RF_frequency = qubit.f_01
+    qubit.xy.frequency_converter_up.LO_frequency = xy_lo[i]  # [2 : 0.250 : 18] GHz
+    qubit.xy.frequency_converter_up.gain = xy_gain  # [-20 : 0.5 : 20] dB
+    qubit.xy.frequency_converter_up.output_mode = "always_on"  # "always_on" or "triggered"
+
+    # Update pulses
     # readout
-    machine.qubits[q].resonator.operations["readout"].length = 2.5 * u.us
-    machine.qubits[q].resonator.operations["readout"].amplitude = rr_amplitude
+    qubit.resonator.operations["readout"].length = 2.5 * u.us
+    qubit.resonator.operations["readout"].amplitude = rr_amplitude
     # Qubit saturation
-    machine.qubits[q].xy.operations["saturation"].length = 20 * u.us
-    machine.qubits[q].xy.operations["saturation"].amplitude = 100 * u.mV
+    qubit.xy.operations["saturation"].length = 20 * u.us
+    qubit.xy.operations["saturation"].amplitude = 100 * u.mV
 
     # Single qubit gates - DragCosine & Square
     add_DragCosine_pulses(
-        machine.qubits[q],
+        qubit,
         amplitude=xy_amplitude,
         length=32,
         alpha=0.0,
@@ -101,8 +102,8 @@ for i, q in enumerate(machine.qubits):
         anharmonicity=anharmonicity.tolist()[i],
     )
     # Single Gaussian flux pulse
-    if hasattr(machine.qubits[q], "z"):
-        machine.qubits[q].z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
+    if hasattr(qubit, "z"):
+        qubit.z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
 
     # Add new pulses
     # from quam.components.pulses import (
@@ -119,7 +120,7 @@ for i, q in enumerate(machine.qubits):
 # %%                                         Save the updated QUAM
 ########################################################################################################################
 # save into state.json
-save_machine(machine)
+machine.save()
 
 pprint(machine.generate_config())
 # Save the corresponding "raw-QUA" config
