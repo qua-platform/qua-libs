@@ -29,7 +29,7 @@ current_dir = Path(__file__).parent.absolute()
 parameters = {
     "project": "QPU_project",
     "storage_location": str(current_dir.parent.absolute() / "data/${#/qualibrate/project}"),
-    "calibration_library_folder": str(current_dir.parent.absolute() / "calibration_graph"),
+    "calibration_library_folder": str(current_dir.parent.absolute() / "calibrations"),
     "quam_state_path": str(current_dir / "quam_state"),
 }
 

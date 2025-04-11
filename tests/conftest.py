@@ -25,7 +25,7 @@ def setup_qualibrate_config():
     print("Setting up qualibrate config")
     package_root = get_package_root()
     quam_state_path = package_root / "configuration" / "quam_state"
-    calibration_library_folder = package_root / "calibration_graph"
+    calibration_library_folder = package_root / "calibrations"
     config_path = package_root / ".." / ".." / "tests" / "assets" / "config.toml"
     env_path = package_root / ".." / ".." / "tests" / "assets" / ".env"
 

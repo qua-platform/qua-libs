@@ -15,9 +15,25 @@ This library is built upon **QUAlibrate**, an advanced, open-source software fra
     - [Verify Setup](#verify-setup)
 3.  [Creating the QUAM State](#creating-the-quam-state)
 4.  [Calibration Nodes and Graphs](calibration-nodes-and-graphs)
-5. [Project Structure](#project-structure)
+5.  [Project Structure](#project-structure)
 6.  [Contributing](#contributing)
 7.  [License](#license)
+8.  [Installation](#installation)
+    1.  [Requirements](#requirements)
+    2.  [Setup](#setup)
+9.  [Folder structure](#folder-structure)
+    1.  [calibration_data](#calibration_data)
+    2.  [calibrations](#calibrations)
+    3.  [configuration](#configuration)
+    4.  [quam_builder](#quam_builder)
+10. [How to generate the QUAM](#how-to-generate-the-quam)
+    1.  [1. Define the wiring](#1-define-the-wiring)
+    2.  [2. The QUAM components](#2-the-quam-components)
+    3.  [3. Generating the QUAM and state.json](#3-generating-the-quam-and-statejson)
+    4.  [4. Updating the parameters of state.json](#4-updating-the-parameters-of-statejson)
+11. [How to run Qualibrate nodes](#how-to-run-qualibrate-nodes)
+    1.  [Node structure](#node-structure)
+    2.  [Execution](#execution) 1. [As standalone python scripts](#as-standalone-python-scripts) 2. [Within Qualibrate](#within-qualibrate)
 
 ## Prerequisites
 
@@ -55,15 +71,18 @@ Once you have the code locally:
 2.  **Activate Virtual Environment:** Ensure your dedicated Python virtual environment (see [Prerequisites](#prerequisites)) is activated.
 3.  **Install the Package:** Run the following command to install the library and its dependencies in editable mode (`-e`), which means changes you make to the source code will be reflected immediately without reinstalling:
 
-    ```bash
-    pip install -e .
-    ```
+    Then, open a browser to http://127.0.0.1:8001, where you should see the list of calibration nodes stored in the
+    `calibrations` directory.
 
-    _Note for `uv` users:_ If you are using `uv` instead of `pip`, you might need to allow pre-releases depending on the dependencies:
+        ```bash
+        pip install -e .
+        ```
 
-    ```bash
-    uv pip install -e . --prerelease=allow
-    ```
+        _Note for `uv` users:_ If you are using `uv` instead of `pip`, you might need to allow pre-releases depending on the dependencies:
+
+        ```bash
+        uv pip install -e . --prerelease=allow
+        ```
 
 ### Initial Setup (QUAlibrate Configuration)
 
@@ -131,7 +150,7 @@ The library is organized into the following main directories:
 
 ```
 Superconducting/
-├── calibration_graph/      # Individual calibration scripts (nodes) runnable by QUAlibrate.
+├── calibrations/      # Individual calibration scripts (nodes) runnable by QUAlibrate.
 │   ├── 00_hello_qua.py
 │   ├── 01a_time_of_flight.py
 │   └── ... (many calibration routines)
