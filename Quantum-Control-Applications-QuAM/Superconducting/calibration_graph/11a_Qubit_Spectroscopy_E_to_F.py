@@ -33,7 +33,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from quam_libs.lib.fit import peaks_dips
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -44,6 +44,7 @@ from qm.qua import *
 from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
+from datetime import datetime
 
 
 # %% {Node_parameters}
@@ -64,6 +65,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(name="11a_Qubit_Spectroscopy_E_to_F", parameters=Parameters())
+node_id = get_node_id()
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -159,6 +161,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(qubit_spec)
         results = fetching_tool(job, ["n"], mode="live")
@@ -251,7 +254,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Detuning [MHz]")
         ax.set_ylabel("Trans. amp. [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("Qubit spectroscopy (E-F)")
+    grid.fig.suptitle(f"Qubit spectroscopy (E-F) \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

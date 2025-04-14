@@ -25,7 +25,7 @@ from quam.components import pulses
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id
 from quam_libs.lib.fit import fit_oscillation, oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -36,6 +36,7 @@ from qm.qua import *
 from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
+from datetime import datetime
 
 
 # %% {Node_parameters}
@@ -52,7 +53,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 node = QualibrationNode(name="11c_Power_Rabi_E_to_F", parameters=Parameters())
-
+node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -159,6 +160,7 @@ if node.parameters.simulate:
     node.save()
 
 else:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(power_rabi)
         results = fetching_tool(job, ["n"], mode="live")
@@ -232,7 +234,7 @@ if not node.parameters.simulate:
         ax.set_ylabel("Trans. amp. I [mV]")
         ax.set_xlabel("Amplitude [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("EF Rabi : I vs. amplitude")
+    grid.fig.suptitle(f"EF Rabi : I vs. amplitude \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

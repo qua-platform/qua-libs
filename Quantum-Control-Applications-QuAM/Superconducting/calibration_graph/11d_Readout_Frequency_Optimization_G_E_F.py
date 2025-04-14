@@ -22,7 +22,7 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -32,6 +32,7 @@ from qm.qua import *
 from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
+from datetime import datetime
 
 
 # %% {Node_parameters}
@@ -49,6 +50,7 @@ class Parameters(NodeParameters):
 node = QualibrationNode(
     name="11d_Readout_Frequency_Optimization_G_E_F", parameters=Parameters()
 )
+node_id = get_node_id()
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -189,6 +191,7 @@ if node.parameters.simulate:
     node.save()
 
 else:
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(ro_freq_opt)
 
@@ -270,6 +273,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Frequency [MHz]")
         ax.set_ylabel("Distance between IQ blobs [m.v.]")
         ax.legend()
+    grid.fig.suptitle(f"Maximal difference between g.e.f. resonance \n {date_time} #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
@@ -288,6 +292,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Frequency [MHz]")
         ax.set_ylabel("Resonator response [mV]")
         ax.legend()
+    grid.fig.suptitle(f"{date_time} #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure2"] = grid.fig
