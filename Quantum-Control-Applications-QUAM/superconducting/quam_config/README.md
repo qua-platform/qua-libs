@@ -1,6 +1,6 @@
 # Creating the QUAM State
 
-This document explains the process of defining, generating, and initializing the QUantum Abstract Machine (QUAM) state, which serves as the central configuration object for your quantum system within the Qualibrate software ecosystem. The QUAM object holds information about hardware configuration, connectivity, elements (qubits, resonators, etc.), pulses, and operations.
+This document explains the process of defining, generating, and initializing the Quantum Abstract Machine (QUAM) state, which serves as the central configuration object for your quantum system within the Qualibrate software ecosystem. The QUAM object holds information about hardware configuration, connectivity, elements (qubits, resonators, etc.), pulses, and operations.
 
 ## Folder Contents (`quam_config/`)
 
@@ -81,10 +81,10 @@ After completing these steps, your QUAM state is ready. You can load and save it
 
 ```python
 # Make sure QuamRoot is correctly imported from your my_quam.py
-from quam_config.my_quam import QuamRoot
+from quam_config.my_quam import Quam
 
 # Load QUAM state (assuming QUAM_STATE_PATH environment variable is set or using default)
-machine = QuamRoot.load()
+machine = Quam.load()
 
 # Save QUAM state (updates the state.json file)
 machine.save()
