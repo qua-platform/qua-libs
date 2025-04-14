@@ -53,13 +53,8 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q3"]
-    node.parameters.num_flux_points = 21
-    node.parameters.max_flux_offset_in_v = 0.01
-    node.parameters.min_flux_offset_in_v = 0.0
-    node.parameters.frequency_span_in_mhz = 20
-    node.parameters.frequency_step_in_mhz = 0.1
-    # node.parameters.load_data_id = 265
+    node.parameters.qubits = ["q1", "q3"]
+
     pass
 
 
@@ -91,11 +86,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span / 2, +span / 2, step)
     # Flux bias sweep in V
-    dcs = np.linspace(
-        node.parameters.min_flux_offset_in_v,
-        node.parameters.max_flux_offset_in_v,
-        node.parameters.num_flux_points,
-    )
+    span = node.parameters.flux_offset_span_in_v * u.V
+    num = node.parameters.num_flux_points
+    dcs = np.linspace(-span / 2, +span / 2, num)
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -230,7 +223,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], node=node)
+    log_fitted_results(node.results["fit_results"])
     node.outcomes = {
         qubit_name: ("successful" if fit_result["success"] else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()
@@ -262,8 +255,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 if q.z.flux_point == "independent":
                     q.z.independent_offset = fit_results["idle_offset"]
                 elif q.z.flux_point == "joint":
-                    q.z.joint_offset = fit_results["idle_offset"]
-                q.xy.RF_frequency += fit_results["frequency_shift"]
+                    q.z.joint_offset += fit_results["idle_offset"]
+                q.xy.RF_frequency = fit_results["qubit_frequency"]
                 # q.freq_vs_flux_01_quad_term = fit_results["quad_term"]
 
 
