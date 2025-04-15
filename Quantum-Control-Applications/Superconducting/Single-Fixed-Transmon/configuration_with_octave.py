@@ -3,12 +3,12 @@ QUA-Config supporting OPX+ & Octave
 """
 
 from pathlib import Path
-import numpy as np
 
-from set_octave import OctaveUnit, octave_declaration
+import numpy as np
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-import plotly.io as pio
+from set_octave import OctaveUnit, octave_declaration
 
 pio.renderers.default = "browser"
 #######################
@@ -165,7 +165,7 @@ resonator_IF = 60 * u.MHz
 readout_len = 5000
 readout_amp = 0.2
 
-time_of_flight = 24
+time_of_flight = 32
 depletion_time = 2 * u.us
 
 opt_weights = False

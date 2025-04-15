@@ -4,11 +4,10 @@ Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
 """
 
 from pathlib import Path
-import numpy as np
-from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
-from qualang_tools.config.waveform_tools import flattop_blackman_waveform
-from qualang_tools.units import unit
 
+import numpy as np
+from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms, flattop_blackman_waveform
+from qualang_tools.units import unit
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -310,7 +309,7 @@ readout_amp_q1 = 0.1
 readout_amp_q2 = 0.1
 
 # TOF and depletion time
-time_of_flight = 24  # must be a multiple of 4
+time_of_flight = 32  # must be a multiple of 4
 depletion_time = 2 * u.us
 
 # Mixer parameters
