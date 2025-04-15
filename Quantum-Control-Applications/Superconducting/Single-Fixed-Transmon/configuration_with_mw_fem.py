@@ -3,10 +3,11 @@ QUA-Config supporting OPX1000 w/ MW-FEM
 """
 
 from pathlib import Path
+
 import numpy as np
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-import plotly.io as pio
 
 pio.renderers.default = "browser"
 
@@ -154,7 +155,7 @@ resonator_power = 1  # power in dBm at waveform amp = 1 (steps of 3 dB)
 readout_len = 5000
 readout_amp = 0.6
 
-time_of_flight = 24
+time_of_flight = 32
 depletion_time = 2 * u.us
 
 opt_weights = False
