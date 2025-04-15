@@ -12,7 +12,7 @@ class NodeSpecificParameters(RunnableParameters):
     Parameters for configuring a qubit spectroscopy experiment.
 
     Attributes:
-        num_averages (int): Number of averages to perform. Default is 100.
+        num_shots (int): Number of averages to perform. Default is 100.
         frequency_span_in_mhz (float): Span of frequencies to sweep in MHz. Default is 100 MHz.
         frequency_step_in_mhz (float): Step size for frequency sweep in MHz. Default is 0.25 MHz.
         operation (str): Type of operation to perform. Default is "saturation".
@@ -21,7 +21,7 @@ class NodeSpecificParameters(RunnableParameters):
         target_peak_width (Optional[float]): Target peak width in Hz. Default is 3e6 Hz.
     """
 
-    num_averages: int = 10
+    num_shots: int = 10
     operation: str = "x180"
     min_amp_factor: float = -1
     max_amp_factor: float = 2.0

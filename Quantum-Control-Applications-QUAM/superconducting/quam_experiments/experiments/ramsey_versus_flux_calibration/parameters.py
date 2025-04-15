@@ -7,7 +7,7 @@ from quam_experiments.parameters import (
 
 
 class NodeSpecificParameters(RunnableParameters):
-    num_averages: int = 100
+    num_shots: int = 100
     """Number of averages to perform. Default is 100."""
     frequency_detuning_in_mhz: float = 4.0
     """Frequency detuning in MHz. Default is 4.0 MHz."""

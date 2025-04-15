@@ -9,7 +9,7 @@ from quam_experiments.parameters import (
 
 
 class NodeSpecificParameters(RunnableParameters):
-    num_averages: int = 50
+    num_shots: int = 50
     """Number of averages to perform. Default is 50."""
     operation: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x180"
     """Type of operation to perform. Default is "x180"."""

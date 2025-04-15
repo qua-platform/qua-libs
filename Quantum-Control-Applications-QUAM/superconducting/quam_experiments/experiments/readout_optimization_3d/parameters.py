@@ -13,8 +13,8 @@ from quam_experiments.parameters import (
 
 
 class ReadoutOptimization3dParameters(RunnableParameters):
-    num_runs: int = 100
-    """Number of runs to perform. Default is 100."""
+    num_shots: int = 100
+    """Number of shots to perform. Default is 100."""
     frequency_span_in_mhz: float = 10
     """Span of frequencies to sweep in MHz. Default is 10 MHz."""
     frequency_step_in_mhz: float = 0.1

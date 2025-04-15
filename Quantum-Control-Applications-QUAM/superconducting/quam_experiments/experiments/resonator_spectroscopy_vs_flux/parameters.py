@@ -7,7 +7,7 @@ from quam_experiments.parameters import (
 
 
 class NodeSpecificParameters(RunnableParameters):
-    num_averages: int = 100
+    num_shots: int = 100
     """Number of averages to perform. Default is 100."""
     min_flux_offset_in_v: float = -0.5
     """Minimum flux bias offset in volts. Default is -0.5 V."""

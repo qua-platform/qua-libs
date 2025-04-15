@@ -16,7 +16,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Use strict timing in the QUA program. Default is False."""
     num_random_sequences: int = 100
     """Number of random RB sequences. Default is 100."""
-    num_averages: int = 20
+    num_shots: int = 20
     """Number of averages. Default is 20."""
     max_circuit_depth: int = 1000
     """Maximum circuit depth (number of Clifford gates). Default is 1000."""
@@ -53,6 +53,7 @@ def get_interleaved_gate_name(gate_index: int) -> str:
         return "-y90"
     else:
         raise ValueError(f"Interleaved gate index {gate_index} doesn't correspond to a single operation")
+
 
 def get_interleaved_gate_index(gate_operation) -> int:
     """Return the Clifford gate index corresponding to the specified gate name."""

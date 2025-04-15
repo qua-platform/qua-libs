@@ -32,7 +32,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.simulate = True
     node.parameters.multiplexed = True
-    node.parameters.num_averages = 2
+    node.parameters.num_shots = 2
     pass
 
 
@@ -61,7 +61,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 qubit.xy.update_frequency(0)
             align()
 
-            with for_(n, 0, n < node.parameters.num_averages, n + 1):
+            with for_(n, 0, n < node.parameters.num_shots, n + 1):
                 save(n, n_st)
                 with for_(*from_array(a, amps)):
                     for i, qubit in multiplexed_qubits.items():
@@ -100,10 +100,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
+            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
-                node.parameters.num_averages,
+                node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors

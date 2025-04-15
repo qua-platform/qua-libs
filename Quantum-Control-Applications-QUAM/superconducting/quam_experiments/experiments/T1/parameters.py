@@ -8,7 +8,7 @@ from quam_experiments.parameters import (
 
 
 class NodeSpecificParameters(RunnableParameters):
-    num_averages: int = 1000
+    num_shots: int = 1000
     """Number of averages to perform. Default is 1000."""
     min_wait_time_in_ns: int = 16
     """Minimum wait time in nanoseconds. Must be a multiple of 4ns and larger than 16ns. Default is 16."""
