@@ -21,19 +21,16 @@ quam_config/
 └── README.md               # Documentation for QUAM configuration (this file or original).
 ```
 
-**`my_quam.py`**: Defines the root-level QUAM class (inheriting from base `QuamRoot`) representing your physical setup (qubits, instruments). This will be used in each \`QualibrationNode\`. Customize to match your lab.
+**`my_quam.py`**: Defines the root-level QUAM class (inheriting from base `QuamRoot`) representing your physical setup (qubits, instruments). This will be used in each \`QualibrationNode\` and can either be imported from the `quam-builder` module or customized to match your set-up.
 
 **`build_quam_wiring.py`**:
 Instantiates the structure from `my_quam.py` and generates the baseline QUAM state file (e.g., JSON) with default values.
-
-**`build_quam_wiring_onthefly.py`**:
-Alternative script for generating QUAM configurations dynamically at runtime.
 
 **`populate_quam_state_*.py`** (e.g., `populate_quam_state_opxp_octave.py`, `populate_quam_state_lf_mw_fems.py`):
 Loads a base QUAM state and populates it with initial parameters and connectivity details for specific hardware setups (e.g., OPX+Octave), providing a better starting point for calibration.
 
 **`instrument_limits.py`**:
-Defines instrument operational limits (e.g., power, frequency) used for validation or constraints during the analysis and subsequent QUAK state updates of experiments.
+Defines instrument operational limits (e.g., power, frequency) used for validation or constraints during the analysis and subsequent QUAM state updates of experiments.
 
 **`wiring_examples/`**:
 Contains example scripts showing how to define hardware wiring/connectivity within QUAM for various setups, serving as templates.
@@ -48,6 +45,7 @@ All relevant scripts reside here.
 
 ### 2️⃣ Define the QUAM Root Class Structure (in `my_quam.py`)
 
+# TODO: not correct should be modified
 Edit `my_quam.py` to define the Python classes representing your system's hierarchy. This involves specifying the types and number of components like qubits (including whether they are flux-tunable or fixed-frequency), resonators, instruments (OPX controllers, Octaves, FEMs), etc. This class should inherit from a base `QuamRoot`.
 
 ### 3️⃣ Generate Static Configuration & Wiring (using `build_quam_wiring.py`)
@@ -59,7 +57,6 @@ This step creates the static part of the QUAM state, primarily defining the hard
 - Running `python build_quam_wiring.py` uses this wiring definition to generate two files in your QUAM state folder (default: `Superconducting/quam_state`):
   - `wiring.json`: Contains the static hardware connectivity information based on the script.
   - `state.json`: A skeleton file based on the structure in `my_quam.py`, but largely empty of specific operational parameters (frequencies, pulse details, etc.).
-- _(Alternative: For direct, hardcoded QUAM structure creation without the builder, modify `build_quam_wiring_onthefly.py` instead)_.
 
 ### 4️⃣ Initialize Dynamic Parameters (using `populate_quam_state_*.py`)
 
@@ -91,3 +88,5 @@ machine.save()
 ```
 
 This populated QUAM state serves as the starting point for running calibrations via Qualibrate nodes, which will further refine these parameters.
+
+## TODO! add a note on the customization of the components and the consequences regarding the nodes

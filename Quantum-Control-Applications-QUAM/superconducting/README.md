@@ -71,7 +71,6 @@ Once you have the code locally:
 2.  **Activate Virtual Environment:** Ensure your dedicated Python virtual environment (see [Prerequisites](#prerequisites)) is activated.
 3.  **Install the Package:** Run the following command to install the library and its dependencies in editable mode (`-e`), which means changes you make to the source code will be reflected immediately without reinstalling:
 
-    Then, open a browser to http://127.0.0.1:8001, where you should see the list of calibration nodes stored in the
     `calibrations` directory.
 
         ```bash
@@ -95,12 +94,12 @@ The Qualibrate framework needs some initial configuration to know where to find 
     ```
 
 2.  **Follow Prompts:** The script will interactively ask for the following details:
-    _ `project name`: A unique name for your project or QPU chip (e.g., `MyQPU_Chip1`).
-    _ `storage location`: The root directory where measurement data will be saved.
+    * `project name`: A unique name for your project or QPU chip (e.g., `MyQPU_Chip1`).
+    * `storage location`: The root directory where measurement data will be saved.
     Default: `data/{project_name}` relative to the current directory.
-    _ `calibration library folder`: The path to the directory containing calibration nodes/graphs.
-    Default: `calibration_graph`.
-    _ `QUAM state path`: The location where the QUAM state file (containing system parameters, connectivity, etc.) is stored.
+    * `calibration library folder`: The path to the directory containing calibration nodes/graphs.
+    Default: `calibrations`.
+    * `QUAM state path`: The location where the QUAM state file (containing system parameters, connectivity, etc.) is stored.
     Default: `quam_state`.
 
         You can press `Enter` or type `y` to accept the defaults, or `n` to provide custom paths.
@@ -120,7 +119,7 @@ To ensure Qualibrate is installed and configured correctly:
 
 2.  **Open in Browser:** Navigate to [http://127.0.0.1:8001](http://127.0.0.1:8001).
 
-You should see the Qualibrate web UI, listing the calibration nodes found in your configured `calibration_graph` directory.
+You should see the Qualibrate web UI, listing the calibration nodes found in your configured `calibrations` directory.
 
 ## Creating the QUAM State
 
@@ -128,7 +127,7 @@ QUAM (Quantum Abstract Machine) provides an abstraction layer over the low-level
 
 **Interaction with Calibration Nodes:**
 
-- **Loading:** Calibration nodes (scripts in `calibration_graph/`) typically load the latest QUAM state at the beginning of their execution. This provides them with all the necessary parameters (e.g., frequencies, amplitudes, timings) required to run the specific calibration experiment.
+- **Loading:** Calibration nodes (scripts in `calibrations/`) typically load the latest QUAM state at the beginning of their execution. This provides them with all the necessary parameters (e.g., frequencies, amplitudes, timings) required to run the specific calibration experiment.
 - **Updating:** After a calibration node runs and analyzes the results, it often calculates updated parameters (e.g., a newly calibrated qubit frequency or an optimized pulse amplitude). The node then modifies the corresponding values within the loaded QUAM object.
 - **Saving:** Qualibrate nodes save the modified QUAM state, often alongside the experiment results. This ensures that subsequent nodes in a calibration graph or future runs use the most up-to-date, calibrated parameters.
 
@@ -140,13 +139,14 @@ This directory contains scripts (`build_quam_wiring.py`, examples, etc.) that de
 
 ## Calibration Nodes and Graphs
 
-The scripts within the `calibration_graph` directory are the building blocks for automated calibration routines. Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement). They are designed to be run via the Qualibrate framework, either individually or as part of a larger calibration sequence (graph).
+The scripts within the `calibrations` directory are the building blocks for automated calibration routines. Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement). They are designed to be run via the Qualibrate framework, either individually or as part of a larger calibration sequence (graph).
 
-Refer to the [calibration_graph/README.md](calibration_graph/README.md) for detailed information on the structure and conventions used for these nodes.
+Refer to the [calibrations/README.md](calibrations/README.md) for detailed information on the structure and conventions used for these nodes.
 
 ## Project Structure
 
 The library is organized into the following main directories:
+# TODO: modify after moving things to Qualibration-libs
 
 ```
 Superconducting/
@@ -186,12 +186,14 @@ Superconducting/
 └── setup.py / pyproject.toml # Installation configuration for the package.
 ```
 
-**calibration_graph**  
-The `calibration_graph/` folder contains individual Python scripts, each representing a calibration "node". These scripts typically import functionality from **quam_experiments**, define parameters, run a QUA program, analyze results, and update the QUAM state. See the README.md within this folder for more details on node structure.
+**calibrations**  
+The `calibrations/` folder contains individual Python scripts, each representing a calibration "node". These scripts typically import functionality from **quam_experiments**, define parameters, run a QUA program, analyze results, and update the QUAM state. See the README.md within this folder for more details on node structure.
 
 **data**  
 The `data/` folder is the default output directory where Qualibrate saves results (plots, raw data, QUAM state snapshots) from calibration runs, organized by project, date, and run index/name.
-quam_config/: Tools and examples for creating the quam_state.json file, which describes your specific hardware setup (instruments, connections, qubit parameters).
+
+**quam_config/** 
+Tools and examples for creating the quam_state.json file, which describes your specific hardware setup (instruments, connections, qubit parameters).
 
 **quam_experiments**  
 `quam_experiments/` contains the core, reusable components for building experiments. This includes standardized ways to define parameters, run QUA programs, perform analysis (like fitting), and plot results, promoting modularity and consistency across different calibration nodes.
