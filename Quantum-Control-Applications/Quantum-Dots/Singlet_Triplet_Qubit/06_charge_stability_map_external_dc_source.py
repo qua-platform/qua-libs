@@ -103,7 +103,7 @@ with program() as charge_stability_prog:
                 # Wait at each iteration in order to ensure that the data will not be transferred faster than 1 sample
                 # per µs to the stream processing. Otherwise, the processor will receive the samples faster than it can
                 # process them which can cause the OPX to crash.
-                wait(1_000 * u.ns)  # in ns
+                wait(1_000 * u.ns, "tank_circuit")
         # Save the LO iteration to get the progress bar
         save(i, n_st)
 
