@@ -46,7 +46,7 @@ class QDACII:
         self._visa.write_binary_values(cmd, values)
 
     def __exit__(self):
-        self.close()
+        self._visa.close()
 
 
 # load list of voltages to the relevant QDAC2 channel
