@@ -46,7 +46,7 @@ class Parameters(NodeParameters):
     frequency_detuning_in_mhz: float = 1.0
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 3000
-    num_time_points: int = 500
+    num_time_points: int = 100
     log_or_linear_sweep: Literal["log", "linear"] = "linear"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     use_state_discrimination: bool = False

@@ -31,9 +31,9 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = ['qubitC2']    
-    num_averages: int = 40000
+    num_averages: int = 4000
     amplitude_factor: float = 0.2
-    cryoscope_len: int = 960
+    cryoscope_len: int = 240
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
@@ -62,10 +62,14 @@ else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
     
 if node.parameters.reset_filters:
+    # for qubit in qubits:  # QOP <3.3
+    #     qubit.z.opx_output.feedforward_filter = [1.0, 0.0]
+    #     qubit.z.opx_output.feedback_filter = [0.0, 0.0]
     for qubit in qubits:
-        qubit.z.opx_output.feedforward_filter = [1.0, 0.0]
-        qubit.z.opx_output.feedback_filter = [0.0, 0.0]
-                
+        # QOP >= 3.3
+        qubit.z.opx_output.exponential_filter = [(0,50)]
+
+              
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
