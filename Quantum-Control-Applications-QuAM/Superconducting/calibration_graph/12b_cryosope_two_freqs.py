@@ -32,15 +32,16 @@ from scipy.signal import savgol_filter
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None
-    num_averages: int = 2000
-    frequency_offset_in_mhz: float = 40
-    cryoscope_len: int = 350 # in clock cycles
-    num_frames: int = 12    
+    qubits: Optional[List[str]] = ["qubitC2"]
+    num_averages: int = 5000
+    frequency_offset_in_mhz: float = 400
+    ramsey_offset_in_mhz: float = -60
+    cryoscope_len: int = 100 # in clock cycles
+    num_frames: int = 16  
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
-    timeout: int = 100
+    timeout: int = 500
     reset_filters: bool = True
     load_data_id: Optional[int] = None
     
@@ -123,20 +124,22 @@ with program() as cryoscope:
                         
                         qubit.align()
                         # Play first X/2
-                        reset_frame(qubit.xy.name)
+                        # reset_frame(qubit.xy.name)
                         qubit.xy.play("x90")
 
                         # Play a flux pulse imidiatly after the X/2, for a long time
-                        qubit.z.play("const", amplitude_scale=flux_amplitudes[qubit.name] / qubit.z.operations["const"].amplitude, duration=cryoscope_len+100)
+                        qubit.z.wait(qubit.xy.operations["x90"].length // 4)
+                        qubit.z.play("const", amplitude_scale=flux_amplitudes[qubit.name] / qubit.z.operations["const"].amplitude, 
+                                     duration=cryoscope_len+100)
  
-                        # rotate the frame for a full tomography
-                        frame_rotation_2pi(frame, qubit.xy.name)
                         # update the frequency of the qubit to thew expected frequency during the flux pulse
-                        update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency - node.parameters.frequency_offset_in_mhz * u.MHz, keep_phase=True)
+                        qubit.xy.update_frequency(node.parameters.ramsey_offset_in_mhz * u.MHz + qubit.xy.intermediate_frequency - 
+                                                  node.parameters.frequency_offset_in_mhz * u.MHz, keep_phase=True)
                         
                         # wait for the desired time delay
                         qubit.xy.wait(t)
-                        
+                        # rotate the frame for a full tomography
+                        frame_rotation_2pi(frame, qubit.xy.name)                        
                         # play a second X/2 at the new frequency
                         qubit.xy.play("x90")
                         
@@ -144,6 +147,7 @@ with program() as cryoscope:
                         update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
                     
                         qubit.align()
+                        qubit.wait(100)
                         
                         # readout the qubit
                         readout_state(qubit, state[i])
@@ -196,7 +200,7 @@ if not node.parameters.simulate:
 ds.state.isel(frames = 0).plot(hue = "qubit")
 
 plt.show()
-ds.state.isel(time = 200).plot(hue = "qubit") 
+ds.state.isel(time = 20).plot(hue = "qubit") 
 
 plt.show()
 # ds_q = ds.sel(qubit = qubits[0].name) 
@@ -216,10 +220,14 @@ def extract_phase(ds):
             x_data = ds.frames
             
             # Fit sine wave to get phase
-            def sine_fit(x, phase, A):
-                return A * np.sin(2*np.pi*x + phase)
+            def sine_fit(x, phase, A, offset):
+                return A * np.sin(2*np.pi*x + phase) + offset
                 
-            popt, _ = curve_fit(sine_fit, x_data, y_data, p0=[0, 1], bounds=([-np.pi, 0], [np.pi, np.inf]))
+            popt, _ = curve_fit(sine_fit, x_data, y_data, p0=[0, 1, 0.5], bounds=([-np.pi, 0, -np.inf], [np.pi, np.inf, np.inf]))
+            # plt.plot(x_data, y_data, label = 'data')
+            # plt.plot(x_data, sine_fit(x_data, *popt), label = 'fit')
+            # plt.legend()
+            # plt.show()
             phase_q.append(popt[0])
         phases.append(np.unwrap(phase_q))
     return ds.assign_coords(phase=(['qubit', 'time'], phases))
@@ -232,7 +240,7 @@ def extract_freqs(ds):
 def extract_flux(ds):
     fluxes = []
     for qubit in qubits:
-        fluxes.append(np.sqrt(-1e6*(ds.sel(qubit = qubit.name).frequencies + node.parameters.frequency_offset_in_mhz) / qubit.freq_vs_flux_01_quad_term))
+        fluxes.append(np.sqrt(-1e6*(ds.sel(qubit = qubit.name).frequencies + node.parameters.frequency_offset_in_mhz + node.parameters.ramsey_offset_in_mhz) / qubit.freq_vs_flux_01_quad_term))
     return ds.assign_coords(flux=(['qubit', 'time'], fluxes))
 def exp_decay(t, A, s, tau):
     return A * (1 - s * np.exp(-t/tau))

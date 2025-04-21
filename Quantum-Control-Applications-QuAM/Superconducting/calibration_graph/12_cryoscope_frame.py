@@ -44,7 +44,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
     
 node = QualibrationNode(
-    name="12_Cryoscope_frame",
+    name="97b_Pi_vs_flux_time",
     parameters=Parameters()
 )
 
@@ -339,15 +339,19 @@ ds = extract_flux(ds)
 
 # %%
 ds.state.sel(frame = 0).plot()
+node.results['figure'] = plt.gcf()
 plt.show()
 
 ds.phase.plot()
+node.results['figure'] = plt.gcf()
 plt.show()
 
 ds.frequencies.plot()
+node.results['figure'] = plt.gcf()
 plt.show()
 
 ds.flux.plot()
+node.results['figure'] = plt.gcf()
 plt.show()
 
 # %%
