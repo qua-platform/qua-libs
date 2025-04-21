@@ -45,7 +45,6 @@ save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
     Path(__file__).name: Path(__file__).name,
-    "optimal_weights.npz": "optimal_weights.npz",
 }
 
 #####################
@@ -87,6 +86,7 @@ duration_readout = readout_len + 100
 duration_compensation_pulse = 4 * u.us  # Note, may need to be increased when running long RB sequences
 
 # Step parameters
+coulomb_step_length = 60  # in ns
 step_length = 16  # in ns
 P1_step_amp = 0.25  # in V
 P2_step_amp = 0.25  # in V

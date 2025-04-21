@@ -87,8 +87,8 @@ with program() as charge_stability_prog:
     # ____|    |____|    |____|    |____|    |...
     with for_(counter, 0, counter < N, counter + 1):
         # The Coulomb pulse
-        play("step" * amp(Coulomb_amp / P1_step_amp), "P1")
-        play("step" * amp(-Coulomb_amp / P1_step_amp), "P1")
+        play("coulomb_step" * amp(Coulomb_amp / P1_step_amp), "P1")
+        play("coulomb_step" * amp(-Coulomb_amp / P1_step_amp), "P1")
 
     with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
         with for_(i, 0, i < n_points_slow, i + 1):
