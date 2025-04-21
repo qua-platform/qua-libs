@@ -34,18 +34,20 @@ import matplotlib
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
+from qualang_tools.multi_user import qm_session
 
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ["qubitC2"]
     num_averages: int = 200
-    frequency_detuning_in_mhz: float = 1.0
+    frequency_detuning_in_mhz: float = 4.0
     min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 3000
+    max_wait_time_in_ns: int = 7000
     wait_time_step_in_ns: int = 4
-    flux_span : float = 0.2
-    flux_step : float = 0.005
+    flux_span : float = 0.03
+    flux_step : float = 0.001
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
+    timeout: int = 1000
 
 node = QualibrationNode(
     name="decoherence_T2_vs_flux",
@@ -167,37 +169,31 @@ with program() as ramsey:
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = node.parameters.simulate
-
-if simulate:
+if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, ramsey, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    job = qmm.simulate(config, iq_blobs, simulation_config)
+    # Get the simulated samples and plot them for all controllers
+    samples = job.get_simulated_samples()
+    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
+    for i, con in enumerate(samples.keys()):
+        plt.subplot(len(samples.keys()),1,i+1)
+        samples[con].plot()
+        plt.title(con)
+    plt.tight_layout()
+    # Save the figure
     node.results = {"figure": plt.gcf()}
+    node.machine = machine
+    node.save()
+    
 else:
-    # Open the quantum machine
-    qm = qmm.open_qm(config,keep_dc_offsets_when_closing=True)
-    # Calibrate the active qubits
-    # machine.calibrate_octave_ports(qm)
-    # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(ramsey)
-    # Get results from QUA program
-    for i in range(num_qubits):
-        print(f"Fetching results for qubit {qubits[i].name}")
-        data_list = ["n"] 
-        results = fetching_tool(job, data_list, mode="live")
-    # Live plotting
-    # fig, axes = plt.subplots(2, num_qubits, figsize=(4 * num_qubits, 8))
-    # interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-        while results.is_processing():
-        # Fetch results
-            fetched_data = results.fetch_all()
-            n = fetched_data[0]
-
-            progress_counter(n, n_avg, start_time=results.start_time)
-            
-    qm.close()
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        job = qm.execute(ramsey)
+        for i in range(num_qubits):
+            results = fetching_tool(job, ["n"], mode="live")
+            while results.is_processing():
+                n = results.fetch_all()[0]
+                progress_counter(n, n_avg)
 
 # %%
 # %%
