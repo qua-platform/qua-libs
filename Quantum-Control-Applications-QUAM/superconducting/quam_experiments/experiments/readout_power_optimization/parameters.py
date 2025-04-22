@@ -7,8 +7,8 @@ from quam_experiments.parameters import (
 
 
 class NodeSpecificParameters(RunnableParameters):
-    num_runs: int = 2000
-    """Number of runs to perform. Default is 2000."""
+    num_shots: int = 2000
+    """Number of shots to perform. Default is 2000."""
     start_amp: float = 0.5
     """Start amplitude. Default is 0.5."""
     end_amp: float = 1.99

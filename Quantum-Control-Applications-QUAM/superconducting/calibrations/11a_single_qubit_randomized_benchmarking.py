@@ -86,7 +86,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num_qubits = len(qubits)
     num_of_sequences = node.parameters.num_random_sequences  # Number of random sequences
     # Number of averaging loops for each random sequence
-    n_avg = node.parameters.num_averages
+    n_avg = node.parameters.num_shots
     max_circuit_depth = node.parameters.max_circuit_depth
     delta_clifford = node.parameters.delta_clifford
     assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
@@ -307,7 +307,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
+            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
                 node.parameters.num_random_sequences,
@@ -340,7 +340,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], node=node)
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
         qubit_name: ("successful" if fit_result["success"] else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()

@@ -8,7 +8,7 @@ from quam_experiments.parameters import (
 
 
 class NodeSpecificParameters(RunnableParameters):
-    num_averages: int = 20
+    num_shots: int = 20
     """Number of averages. Default is 20."""
     operation: str = "x180"
     """Type of operation to perform. Default is "x180"."""

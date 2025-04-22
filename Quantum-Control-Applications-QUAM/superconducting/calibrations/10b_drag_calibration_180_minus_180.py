@@ -86,7 +86,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 q.xy.operations[node.parameters.operation].alpha = node.parameters.alpha_setpoint
                 node.namespace["tracked_qubits"].append(q)
 
-    n_avg = node.parameters.num_averages  # The number of averages
+    n_avg = node.parameters.num_shots  # The number of averages
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
     amps = np.arange(
         node.parameters.min_amp_factor,
@@ -205,10 +205,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_averages)
+            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
-                node.parameters.num_averages,
+                node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
@@ -238,7 +238,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], node=node)
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
         qubit_name: ("successful" if fit_result["success"] else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()

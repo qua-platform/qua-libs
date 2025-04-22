@@ -18,7 +18,7 @@ class T1Fit:
     success: bool
 
 
-def log_fitted_results(ds: xr.Dataset, logger=None):
+def log_fitted_results(ds: xr.Dataset, log_callable=None):
     """
     Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
 
@@ -39,15 +39,15 @@ def log_fitted_results(ds: xr.Dataset, logger=None):
     --------
         >>> log_fitted_results(ds)
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
+    if log_callable is None:
+        log_callable = logging.getLogger(__name__).info
     for q in ds.qubit.values:
         if ds.sel(qubit=q).success.values:
-            logger.info(
+            log_callable(
                 f"T1 for qubit {q} : {1e-3 * ds.sel(qubit=q).tau.values:.2f} +/- {1e-3 * ds.sel(qubit=q).tau_error.values:.2f} us --> SUCCESS!"
             )
         else:
-            logger.error(
+            log_callable(
                 f"T1 for qubit {q} : {1e-3 * ds.sel(qubit=q).tau.values:.2f} +/- {1e-3 * ds.sel(qubit=q).tau_error.values:.2f} us --> FAIL!"
             )
 

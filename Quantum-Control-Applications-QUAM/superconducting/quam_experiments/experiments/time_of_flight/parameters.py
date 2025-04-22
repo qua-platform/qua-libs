@@ -8,7 +8,7 @@ from quam_experiments.parameters import (
 
 
 class NodeSpecificParameters(RunnableParameters):
-    num_averages: int = 100
+    num_shots: int = 100
     """Number of averages to perform. Default is 100."""
     time_of_flight_in_ns: Optional[int] = None
     """Time of flight in nanoseconds. Default is 28 ns."""

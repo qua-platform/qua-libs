@@ -216,7 +216,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], node=node)
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
         qubit_name: ("successful" if fit_result["success"] else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()
