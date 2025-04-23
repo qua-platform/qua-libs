@@ -1,6 +1,7 @@
 # %% {Imports}
 import matplotlib.pyplot as plt
 import numpy as np
+from quam_experiments.experiments.iq_blobs.plotting import plot_historams
 import xarray as xr
 from dataclasses import asdict
 
@@ -28,10 +29,10 @@ from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 # %% {Description}
 description = """
         IQ BLOBS
-This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit in 
-the |g> state) and then after applying a x180 (pi) pulse to the qubit (bringing the qubit to the |e> state). 
+This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit in
+the |g> state) and then after applying a x180 (pi) pulse to the qubit (bringing the qubit to the |e> state).
 The resulting IQ blobs are displayed, and the data is processed to determine:
-    - The rotation angle required for the integration weights, ensuring that the 
+    - The rotation angle required for the integration weights, ensuring that the
       separation between |g> and |e> states aligns with the 'I' quadrature.
     - The threshold along the 'I' quadrature for effective qubit state discrimination (at the center between the two blobs).
     - The repeat-until-success threshold along the 'I' quadrature for effective active reset (at the center of the |g> blob).
@@ -228,11 +229,13 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """
     fig_iq = plot_iq_blobs(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     fig_confusion = plot_confusion_matrices(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_histogram = plot_historams(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
         "iq_blobs": fig_iq,
         "confusion_matrix": fig_confusion,
+        "histograms": fig_histogram,
     }
 
 
