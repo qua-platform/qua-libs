@@ -111,11 +111,11 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit = ds_fit.assign({"Qe_rot": ds_fit.Ie * S + ds_fit.Qe * C})
 
     # Get the blobs histogram along the rotated axis
-    hist = np.histogram(ds_fit.Ig_rot, bins=100)
+    hist = [np.histogram(ds_fit.Ig_rot.sel(qubit=q.name), bins=100) for q in node.namespace["qubits"]]
     # Get the discriminating threshold along the rotated axis
     rus_threshold = [
-        hist[1][1:][np.argmax(np.histogram(ds_fit.Ig_rot.sel(qubit=q.name), bins=100)[0])]
-        for q in node.namespace["qubits"]
+        hist[ii][1][1:][np.argmax(np.histogram(ds_fit.Ig_rot.sel(qubit=q.name), bins=100)[0])]
+        for ii, q in enumerate(node.namespace["qubits"])
     ]
     ds_fit = ds_fit.assign({"rus_threshold": xr.DataArray(rus_threshold, coords=dict(qubit=ds_fit.qubit.data))})
 
