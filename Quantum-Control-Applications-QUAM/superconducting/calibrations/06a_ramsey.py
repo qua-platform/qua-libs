@@ -242,7 +242,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.results["fit_results"][q.name]["success"]:
                 q.f_01 -= float(node.results["fit_results"][q.name]["freq_offset"])
-                q.xy.RF_frequency = q.f_01
+                q.xy.RF_frequency -= float(node.results["fit_results"][q.name]["freq_offset"])
                 q.T2ramsey = float(node.results["fit_results"][q.name]["decay"])
 
 
