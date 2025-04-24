@@ -88,8 +88,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "readout amplitude", "units": ""}),
     }
     with program() as node.namespace["qua_program"]:
-        Ig, Ig_st, Qg, Qg_st, n, n_st = node.machine.qua_declaration()
-        Ie, Ie_st, Qe, Qe_st, _, _ = node.machine.qua_declaration()
+        Ig, Ig_st, Qg, Qg_st, n, n_st = node.machine.declare_qua_variables()
+        Ie, Ie_st, Qe, Qe_st, _, _ = node.machine.declare_qua_variables()
         a = declare(fixed)
 
         for multiplexed_qubits in qubits.batch():

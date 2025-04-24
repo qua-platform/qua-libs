@@ -116,7 +116,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     with program() as node.namespace["qua_program"]:
         # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
         # For instance, here 'I' is a python list containing two QUA fixed variables.
-        I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         a = declare(fixed)  # QUA variable for the readout amplitude pre-factor
         df = declare(int)  # QUA variable for the readout frequency
 
