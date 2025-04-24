@@ -100,7 +100,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "idle_times": xr.DataArray(4 * idle_times, attrs={"long_name": "idle times", "units": "ns"}),
     }
     with program() as node.namespace["qua_program"]:
-        I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         init_state = [declare(int) for _ in range(num_qubits)]
         state = [declare(int) for _ in range(num_qubits)]
         state_st = [declare_stream() for _ in range(num_qubits)]

@@ -96,8 +96,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        I_g, I_g_st, Q_g, Q_g_st, n, n_st = node.machine.qua_declaration()
-        I_e, I_e_st, Q_e, Q_e_st, _, _ = node.machine.qua_declaration()
+        I_g, I_g_st, Q_g, Q_g_st, n, n_st = node.machine.declare_qua_variables()
+        I_e, I_e_st, Q_e, Q_e_st, _, _ = node.machine.declare_qua_variables()
 
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
