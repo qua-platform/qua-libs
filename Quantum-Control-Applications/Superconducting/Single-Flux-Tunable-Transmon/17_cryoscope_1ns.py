@@ -31,21 +31,20 @@ Prerequisites:
     - Having calibrated qubit gates (x90 and y90) by running qubit spectroscopy, rabi_chevron, power_rabi, Ramsey and updated the configuration.
 
 Next steps before going to the next node:
-    - Update the FIR and IIR filter taps in the configuration (config/controllers/con1/analog_outputs/"filter": {"feedforward": fir, "feedback": iir}).
+    - Update the FIR and IIR filter taps in the configuration (config/controllers/con1/analog_outputs/"filter": {"feedforward": [], "feedback": [(A, tau)]}).
     - WARNING: the digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold).
 """
 
-from qm.qua import *
-from qm import QuantumMachinesManager
-from qm import SimulationConfig
-from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.plot import interrupt_on_close
-from qualang_tools.bakery import baking
-from macros import ge_averaged_measurement
-from scipy import signal, optimize
 import matplotlib.pyplot as plt
+from configuration import *
+from macros import ge_averaged_measurement
+from qm import QuantumMachinesManager, SimulationConfig
+from qm.qua import *
+from qualang_tools.bakery import baking
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.results.data_handler import DataHandler
+from scipy import optimize, signal
 
 
 ####################
