@@ -1,6 +1,6 @@
 import numpy as np
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import fetching_tool, progress_counter
 
 # from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms, drag_cosine_pulse_waveforms
 
@@ -189,18 +189,16 @@ flux_line_IF = 0e6
 const_flux_len = 260
 const_flux_amp = 0.15
 # Filter taps
-fir0 = [1.05838468, -0.99737684]
-iir0 = [0.93899217]
-# fir0 = []
-# iir0 = []
+A0 = -0.12
+tau0 = 19.56
 
 # Flux line 1 (same IF as flux line 0)
 offset8 = -0.23492508406984103
 const_flux_len1 = 260
 const_flux_amp1 = 0.15
 # Filter taps
-fir1 = [1.0684318, -1.01981586]
-iir1 = [0.95138406]
+A1 = -0.12
+tau1 = 19.56
 # fir1 = []
 # iir1 = []
 
@@ -215,8 +213,8 @@ config = {
                 4: {"offset": 0.0},  # q1 Q
                 5: {"offset": 0.0},  # resonators I
                 6: {"offset": 0.0},  # resonators Q
-                7: {"offset": offset7, "filter": {"feedforward": fir0, "feedback": iir0}},  # qo flux line
-                8: {"offset": offset8, "filter": {"feedforward": fir1, "feedback": iir1}},  # q1 flux line
+                7: {"offset": offset7, "filter": {"feedforward": [], "exponential": [(A0, tau0)]}},  # qo flux line
+                8: {"offset": offset8, "filter": {"feedforward": [], "exponential": [(A1, tau1)]}},  # q1 flux line
             },
             "digital_outputs": {},
             "analog_inputs": {
