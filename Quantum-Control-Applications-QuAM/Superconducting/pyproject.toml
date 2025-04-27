@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "quam_libs"
-version = "0.1.0"
+version = "0.1.2"
 description = "QuAM Components for Quantum Control"
 readme = "README.md"
 authors = ["Dean Poulos <dean.poulos@quantum-machines.co>"]
@@ -14,7 +14,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
-quam = "^0.3.10" 
+quam = "^0.4.0"
 qualang-tools = ">=0.18.0"
 xarray = "*"
 lmfit = "*"
@@ -22,6 +22,7 @@ tqdm = "*"
 qualibrate = "^0.2.0"
 qm-qua = "1.2.2"
 ipykernel = "^6.29.3"
+twine = "^6.1.0"
 
 
 [build-system]

@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+
+from quam.components.macro import QubitMacro, PulseMacro
 from quam.core import quam_dataclass, QuamComponent
 import numpy as np
 
@@ -59,11 +61,19 @@ class VirtualZGate(SingleQubitGate):
         self.qubit.xy.frame_rotation(angle)
 
 @quam_dataclass
-class HadamardGate(SingleQubitGate):
+class HadamardGate(QubitMacro):
     """single qubit Hadamard gate
 
     """
-    def execute(self):
-        self.qubit.gates["Z"]()
-        self.qubit.gates["sY"]()
+    def apply(self):
+        self.qubit.macros["Z"]()
+        self.qubit.macros["sY"]()
+
+class SYGate(PulseMacro):
+    def __init__(self, pulse):
+        self.pulse = pulse
+
+    def execute(self, amplitude_scale=None, duration=None):
+        self.qubit.play_pulse(self.pulse)
+
         

@@ -15,10 +15,11 @@ lxml = "^4.7.1"
 pikepdf = "^4.2.0"
 websockets = "^10.1"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 black = "^22.3.0"
 poethepoet = "^0.10.0"
 flake8 = "^3.9.1"
+twine = "6.1.0"
 
 [tool.black]
 line-length = 120
