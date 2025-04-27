@@ -53,7 +53,7 @@ class VirtualZGate(SingleQubitGate):
 
     """
 
-    angle: float
+    angle: float = np.pi
 
     def execute(self, angle=None):
         if angle is None:
