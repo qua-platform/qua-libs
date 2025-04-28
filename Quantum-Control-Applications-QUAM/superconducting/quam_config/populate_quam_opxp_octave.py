@@ -131,7 +131,7 @@ for k, q in enumerate(machine.qubits):
     machine.qubits[q].resonator.operations["readout"].amplitude = rr_amplitude
     # Qubit saturation
     machine.qubits[q].xy.operations["saturation"].length = 20 * u.us
-    machine.qubits[q].xy.operations["saturation"].amplitude = 5 * xy_amplitude
+    machine.qubits[q].xy.operations["saturation"].amplitude = 0.3
     # Single qubit gates - DragCosine
     add_DragCosine_pulses(
         machine.qubits[q],
@@ -142,8 +142,8 @@ for k, q in enumerate(machine.qubits):
         detuning=0,
     )
     # Single Gaussian flux pulse
-    if hasattr(machine.qubits[q], "z"):
-        machine.qubits[q].z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
+    # if hasattr(machine.qubits[q], "z"):
+    #     machine.qubits[q].z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
 
 ########################################################################################################################
 # %%                                         Save the updated QUAM

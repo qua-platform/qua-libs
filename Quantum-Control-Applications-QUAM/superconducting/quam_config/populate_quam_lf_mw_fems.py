@@ -75,7 +75,9 @@ def get_full_scale_power_dBm_and_amplitude(desired_power: float, max_amplitude: 
     if -11 <= full_scale_power_dBm <= 16 and -1 <= amplitude <= 1:
         return full_scale_power_dBm, amplitude
     else:
-        raise ValueError(f"The desired power is outside the specifications ([-11; +16]dBm, [-1; +1]), got ({full_scale_power_dBm}; {amplitude})")
+        raise ValueError(
+            f"The desired power is outside the specifications ([-11; +16]dBm, [-1; +1]), got ({full_scale_power_dBm}; {amplitude})"
+        )
 
 
 ########################################################################################################################
@@ -155,8 +157,9 @@ for k, qubit in enumerate(machine.qubits.values()):
 
 # Update flux channels
 for k, qubit in enumerate(machine.qubits.values()):
-    qubit.z.opx_output.output_mode = "direct"
-    qubit.z.opx_output.upsampling_mode = "pulse"
+    if hasattr(qubit, "z"):
+        qubit.z.opx_output.output_mode = "direct"
+        qubit.z.opx_output.upsampling_mode = "pulse"
 
 ########################################################################################################################
 # %%                                        Pulse parameters
@@ -190,8 +193,8 @@ for k, q in enumerate(machine.qubits):
         detuning=0,
     )
     # Single Gaussian flux pulse
-    if hasattr(machine.qubits[q], "z"):
-        machine.qubits[q].z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
+    # if hasattr(machine.qubits[q], "z"):
+    #     machine.qubits[q].z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
 
 
 ########################################################################################################################
