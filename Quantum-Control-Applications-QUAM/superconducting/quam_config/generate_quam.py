@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 from quam_builder.builder.qop_connectivity import build_quam_wiring
@@ -7,10 +8,9 @@ from quam_config import Quam
 ########################################################################################################################
 # %%                                              Define static parameters
 ########################################################################################################################
-host_ip = "172.16.33.101"  # QOP IP address
+host_ip = "127.0.0.1"  # QOP IP address
 port = None  # QOP Port
-cluster_name = "CS_1"  # Name of the cluster
-calibration_db_path = None  # "/path/to/some/config/folder"
+cluster_name = "Cluster_1"  # Name of the cluster
 
 ########################################################################################################################
 # %%                                      Define the available instrument setup
@@ -57,14 +57,16 @@ allocate_wiring(connectivity, instruments)
 
 # View wiring schematic
 visualize(connectivity.elements, available_channels=instruments.available_channels)
-
+plt.show(block=True)
 
 ########################################################################################################################
 # %%                                   Build the wiring and QUAM
 ########################################################################################################################
-quam = Quam()
-# Build the wiring (wiring.json) and initiate the QUAM
-build_quam_wiring(connectivity, host_ip, cluster_name, quam)
-# Build the QUAM object and save the state as state.json
-machine = Quam.load()
-quam = build_quam(machine, calibration_db_path)
+input("Do you want to save the updated QUAM? (y/n)")
+if input == "y":
+    quam = Quam()
+    # Build the wiring (wiring.json) and initiate the QUAM
+    build_quam_wiring(connectivity, host_ip, cluster_name, quam)
+    # Build the QUAM object and save the state as state.json
+    machine = Quam.load()
+    quam = build_quam(machine)

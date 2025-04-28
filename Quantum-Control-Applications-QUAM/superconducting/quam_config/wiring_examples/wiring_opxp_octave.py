@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+from dask.array import block
 from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 from quam_builder.builder.qop_connectivity import build_quam_wiring
@@ -48,6 +50,7 @@ allocate_wiring(connectivity, instruments)
 
 # View wiring schematic
 visualize(connectivity.elements, available_channels=instruments.available_channels)
+plt.show(block=True)
 
 ########################################################################################################################
 # %%                                   Build the wiring and QUAM
