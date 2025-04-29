@@ -1,10 +1,10 @@
 name: on-pull-request
-on: [workflow_dispatch,pull_request]
+on: [workflow_dispatch, pull_request]
 jobs:
   check-python-formatting:
     env:
-      POETRY_CACHE_FOLDER: '/home/runner/.cache/pypoetry/virtualenvs'
-    runs-on: ubuntu-20.04
+      POETRY_CACHE_FOLDER: "/home/runner/.cache/pypoetry/virtualenvs"
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
@@ -15,7 +15,7 @@ jobs:
         with:
           path: |
             ${{ env.POETRY_CACHE_FOLDER }}
-          key:  poetry-pr-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
+          key: poetry-pr-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
 
       - name: Install Dependnecies
         run: poetry install
