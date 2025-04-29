@@ -141,12 +141,12 @@ with program() as ramsey:
                         readout_state(qubit, state[i])
                         save(state[i], state_st[i])
                     else:
-                        qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                        qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]), wait_depletion_time=False)
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
 
                     # Wait for the qubits to decay to the ground state
-                    qubit.resonator.wait(qubit.thermalization_time * u.ns)
+                    qubit.resonator.wait(qubit.thermalization_time * u.ns // 4)
                     # Reset the frame of the qubits in order not to accumulate rotations
                     reset_frame(qubit.xy.name)
         # Measure sequentially
