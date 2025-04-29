@@ -44,7 +44,7 @@ Prerequisites:
 
 State update:
     - The integration weight angle: qubit.resonator.operations["readout"].integration_weights_angle
-    - the ge discrimination threshold: qubit.resonator.operations["readout"].ge_threshold
+    - the ge discrimination threshold: qubit.resonator.operations["readout"].threshold
     - the Repeat Until Success threshold: qubit.resonator.operations["readout"].rus_exit_threshold
     - The confusion matrix: qubit.resonator.operations["readout"].confusion_matrix
 """
@@ -252,7 +252,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             operation = q.resonator.operations[node.parameters.operation]
             operation.integration_weights_angle -= float(fit_result["iw_angle"])
             # Convert the thresholds back to demod units
-            operation.ge_threshold = float(fit_result["ge_threshold"]) * operation.length / 2**12
+            operation.threshold = float(fit_result["ge_threshold"]) * operation.length / 2**12
             operation.rus_exit_threshold = float(fit_result["rus_threshold"]) * operation.length / 2**12
             if node.parameters.operation == "readout":
                 q.resonator.confusion_matrix = fit_result["confusion_matrix"]
