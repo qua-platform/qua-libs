@@ -100,14 +100,15 @@ def node_save(
     quam.save(content_mapping={"wiring.json": {"wiring", "network"}})
 
 
-def readout_state(qubit, state, pulse_name: str = "readout", threshold: float = None, save_qua_var: StreamType = None):
+def readout_state(qubit, state, pulse_name: str = "readout", threshold: float = None, save_qua_var: StreamType = None, wait_depletion_time: bool = True):
     I = declare(fixed)
     Q = declare(fixed)
     if threshold is None:
         threshold = qubit.resonator.operations[pulse_name].threshold
     qubit.resonator.measure(pulse_name, qua_vars=(I, Q))
     assign(state, Cast.to_int(I > threshold))
-    wait(qubit.resonator.depletion_time // 4, qubit.resonator.name)
+    if wait_depletion_time:
+        wait(qubit.resonator.depletion_time // 4, qubit.resonator.name)
 
 
 def readout_state_gef(

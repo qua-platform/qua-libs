@@ -132,11 +132,13 @@ with program() as ramsey:
 
                     qubit.align()
                     # Measure the state of the resonators
-                    readout_state(qubit, state[i])
+                    readout_state(qubit, state[i], wait_depletion_time=False)
                     assign(final_state[i], init_state[i] ^ state[i])
                     save(final_state[i], state_st[i])
                     assign(init_state[i], state[i])
 
+                    # Wait for the qubits to decay to the ground state
+                    qubit.resonator.wait(qubit.thermalization_time * u.ns // 4)
                     # Reset the frame of the qubits in order not to accumulate rotations
                     reset_frame(qubit.xy.name)
 
