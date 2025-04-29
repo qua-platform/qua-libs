@@ -38,7 +38,7 @@ import numpy as np
 import xarray as xr
 from sklearn.mixture import GaussianMixture
 from scipy.optimize import curve_fit
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
@@ -207,7 +207,7 @@ if node.parameters.simulate:
     node.save()
 
 else:
-    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(iq_blobs)
         results = fetching_tool(job, ["n"], mode="live")
@@ -338,7 +338,7 @@ if not node.parameters.simulate:
         ax.set_title(qubit["qubit"])
 
     ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
-    grid.fig.suptitle(f"g.s. and e.s. discriminators (rotated) \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
+    grid.fig.suptitle(f"g.s. and e.s. discriminators (rotated) \n {date_time} GMT+3 #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     node.results["figure_IQ_blobs"] = grid.fig
     plt.show()
@@ -364,7 +364,7 @@ if not node.parameters.simulate:
                 )
         ax.set_title(qubit["qubit"])
 
-    grid.fig.suptitle(f"g.s. and e.s. fidelity \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
+    grid.fig.suptitle(f"g.s. and e.s. fidelity \n {date_time} GMT+3 #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     plt.show()
     node.results["figure_fidelity"] = grid.fig

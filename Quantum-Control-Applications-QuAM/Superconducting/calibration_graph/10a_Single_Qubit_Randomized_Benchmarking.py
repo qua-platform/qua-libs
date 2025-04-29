@@ -20,7 +20,7 @@ Prerequisites:
 """
 
 # %% {Imports}
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM, Transmon
 from quam_libs.macros import qua_declaration, active_reset, readout_state
@@ -371,7 +371,7 @@ if node.parameters.simulate:
 elif node.parameters.load_data_id is None:
     # Prepare data for saving
     node.results = {}
-    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         if not node.parameters.multiplexed:
             job = qm.execute(randomized_benchmarking_individual)

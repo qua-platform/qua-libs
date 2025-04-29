@@ -32,7 +32,7 @@ from qm.qua import *
 from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 
 # %% {Node_parameters}
@@ -191,7 +191,7 @@ if node.parameters.simulate:
     node.save()
 
 else:
-    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(ro_freq_opt)
 
@@ -273,7 +273,7 @@ if not node.parameters.simulate:
         ax.set_xlabel("Frequency [MHz]")
         ax.set_ylabel("Distance between IQ blobs [m.v.]")
         ax.legend()
-    grid.fig.suptitle(f"Maximal difference between g.e.f. resonance \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"Maximal difference between g.e.f. resonance \n {date_time} GMT+3 #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

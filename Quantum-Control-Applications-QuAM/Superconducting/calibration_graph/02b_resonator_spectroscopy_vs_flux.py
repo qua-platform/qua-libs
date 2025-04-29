@@ -19,7 +19,7 @@ Before proceeding to the next node:
 """
 
 # %% {Imports}
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
@@ -160,7 +160,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 elif node.parameters.load_data_id is None:
-    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(multi_res_spec_vs_flux)
         results = fetching_tool(job, ["n"], mode="live")
@@ -213,6 +213,8 @@ if not node.parameters.simulate:
     idle_offset = np.mod(idle_offset + np.pi, 2 * np.pi) - np.pi
     # converting the phase phi from radians to voltage
     idle_offset = idle_offset / fit_osc.sel(fit_vals="f") / 2 / np.pi
+    # Calculate the mode of each idle_offset element corresponding to 1 / fit_osc.sel(fit_vals="f")
+    idle_offset_mode = idle_offset % (1 / fit_osc.sel(fit_vals="f"))
     # finding the location of the minimum frequency flux point
     flux_min = idle_offset + ((idle_offset < 0) - 0.5) / fit_osc.sel(fit_vals="f")
     flux_min = flux_min * (np.abs(flux_min) < 0.5) + 0.5 * (flux_min > 0.5) - 0.5 * (flux_min < -0.5)
@@ -291,7 +293,7 @@ if not node.parameters.simulate:
         ax.set_title(qubit["qubit"])
         ax.set_xlabel("Flux (V)")
 
-    grid.fig.suptitle(f"Resonator spectroscopy vs flux \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"Resonator spectroscopy vs flux \n {date_time} GMT+3 #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

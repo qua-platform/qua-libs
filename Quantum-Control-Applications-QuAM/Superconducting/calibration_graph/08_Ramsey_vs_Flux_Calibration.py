@@ -19,7 +19,7 @@ Next steps before going to the next node:
 
 
 # %% {Imports}
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, readout_state
@@ -53,7 +53,7 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = False
+    multiplexed: bool = True
 
 node = QualibrationNode(name="08_Ramsey_vs_Flux_Calibration", parameters=Parameters())
 node_id = get_node_id()
@@ -120,15 +120,15 @@ with program() as ramsey:
                     # TODO: this has gaps and the Z rotation is not derived properly, is it okay still?
                     # Ramsey sequence
                     qubit.align()
-                    with strict_timing_():
-                        qubit.xy.play("x180", amplitude_scale=0.5)
-                        qubit.xy.frame_rotation_2pi(phi)
-                        qubit.z.wait(duration=qubit.xy.operations["x180"].length)
-                        
-                        qubit.xy.wait(t+1)
-                        qubit.z.play("const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t)
-                        
-                        qubit.xy.play("x180", amplitude_scale=0.5)
+                    # with strict_timing_():
+                    qubit.xy.play("x180", amplitude_scale=0.5)
+                    qubit.xy.frame_rotation_2pi(phi)
+                    qubit.z.wait(duration=qubit.xy.operations["x180"].length)
+                    
+                    qubit.xy.wait(t+1)
+                    qubit.z.play("const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t)
+                    
+                    qubit.xy.play("x180", amplitude_scale=0.5)
 
                     qubit.align()
                     # Measure the state of the resonators
@@ -168,7 +168,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(ramsey)
         results = fetching_tool(job, ["n"], mode="live")

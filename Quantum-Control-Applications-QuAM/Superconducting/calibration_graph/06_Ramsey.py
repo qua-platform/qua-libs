@@ -19,7 +19,7 @@ Next steps before going to the next node:
 
 
 # %% {Imports}
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, readout_state
@@ -182,7 +182,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(ramsey)
         results = fetching_tool(job, ["n"], mode="live")
@@ -309,7 +309,7 @@ if not node.parameters.simulate:
             bbox=dict(facecolor="white", alpha=0.5),
         )
         ax.legend()
-    grid.fig.suptitle(f"Ramsey : I vs. idle time \n {date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
+    grid.fig.suptitle(f"Ramsey : I vs. idle time \n {date_time} GMT+3 #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
