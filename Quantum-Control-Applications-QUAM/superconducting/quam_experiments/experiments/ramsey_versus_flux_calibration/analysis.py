@@ -1,20 +1,25 @@
 import logging
 from dataclasses import dataclass
-from typing import Optional, Tuple, Dict
+from typing import Dict, Optional, Tuple
+
 import numpy as np
 import xarray as xr
-
 from qualibrate import QualibrationNode
 from qualibration_libs.qua_datasets import add_amplitude_and_phase, convert_IQ_to_V
-from quam_experiments.analysis.fit import peaks_dips
 from quam_config.instrument_limits import instrument_limits
+from quam_experiments.analysis.fit import fit_oscillation_decay_exp, oscillation_decay_exp, peaks_dips
 
 
 @dataclass
 class FitParameters:
-    """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
+    """Stores the relevant Ramsey vs flux experiment fit parameters for a single qubit"""
 
     success: bool
+    quad_term: float
+    flux_offset: float
+    freq_offset: float
+    flux_offset: float
+    t2_star: np.ndarray
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
@@ -38,38 +43,10 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
-    # for q in fit_results.keys():
-    #     s_qubit = f"Results for qubit {q}: "
-    #     s_freq = f"\tQubit frequency: {1e-9 * fit_results[q]['frequency']:.3f} GHz | "
-    #     s_fwhm = f"FWHM: {1e-3 * fit_results[q]['fwhm']:.1f} kHz | "
-    #     s_angle = (
-    #         f"The integration weight angle: {fit_results[q]['iw_angle']:.3f} rad\n "
-    #     )
-    #     s_saturation = f"To get the desired FWHM, the saturation amplitude is updated to: {1e3 * fit_results[q]['saturation_amp']:.1f} mV | "
-    #     s_x180 = f"To get the desired x180 gate, the x180 amplitude is updated to: {1e3 * fit_results[q]['x180_amp']:.1f} mV\n "
-    #     if fit_results[q]["success"]:
-    #         s_qubit += " SUCCESS!\n"
-    #     else:
-    #         s_qubit += " FAIL!\n"
-    #     logger.info(
-    #         s_qubit + s_freq + s_fwhm + s_freq + s_angle + s_saturation + s_x180
-    #     )
     pass
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    # ds = convert_IQ_to_V(ds, node.namespace["qubits"])
-    # ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
-    # full_freq = np.array(
-    #     [ds.detuning + q.xy.RF_frequency for q in node.namespace["qubits"]]
-    # )
-    # ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
-    # ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
-    pass
-    # # Add the absolute time in µs to the dataset
-    # ds = ds.assign_coords(idle_time=4 * ds.idle_time / 1e3)
-    # ds.flux.attrs = {"long_name": "flux", "units": "V"}
-    # ds.idle_time.attrs = {"long_name": "idle time", "units": "µs"}
     return ds
 
 
@@ -90,75 +67,75 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         Dataset containing the fit results.
     """
     # # TODO: explain the data analysis
-    # fit_data = fit_oscillation_decay_exp(ds.state, "idle_time")
-    # fit_data.attrs = {"long_name": "time", "units": "µs"}
-    # fitted = oscillation_decay_exp(
-    #     ds.state.idle_time,
-    #     fit_data.sel(fit_vals="a"),
-    #     fit_data.sel(fit_vals="f"),
-    #     fit_data.sel(fit_vals="phi"),
-    #     fit_data.sel(fit_vals="offset"),
-    #     fit_data.sel(fit_vals="decay"),
-    # )
-    #
-    # frequency = fit_data.sel(fit_vals="f")
-    # frequency.attrs = {"long_name": "frequency", "units": "MHz"}
-    #
-    # decay = fit_data.sel(fit_vals="decay")
-    # decay.attrs = {"long_name": "decay", "units": "nSec"}
-    #
-    # tau = 1 / fit_data.sel(fit_vals="decay")
-    # tau.attrs = {"long_name": "T2*", "units": "uSec"}
-    #
-    # frequency = frequency.where(frequency > 0, drop=True)
-    #
-    # fitvals = frequency.polyfit(dim="flux", deg=2)
-    # flux = frequency.flux
-    # a = {}
-    # flux_offset = {}
-    # freq_offset = {}
-    # for q in qubits:
-    #     a[q.name] = float(
-    #         -1e6 * fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values
-    #     )
-    #     flux_offset[q.name] = float(
-    #         (
-    #                 -0.5
-    #                 * fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients
-    #                 / fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients
-    #         ).values
-    #     )
-    #     freq_offset[q.name] = (
-    #             1e6
-    #             * (
-    #                     flux_offset[q.name] ** 2
-    #                     * float(fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values)
-    #                     + flux_offset[q.name]
-    #                     * float(fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients.values)
-    #                     + float(fitvals.sel(qubit=q.name, degree=0).polyfit_coefficients.values)
-    #             )
-    #             - detuning
-    #     )
+    fit_data = fit_oscillation_decay_exp(ds.state, "idle_times")
+    fit_data.attrs = {"long_name": "time", "units": "µs"}
+    fitted = oscillation_decay_exp(
+        ds.state.idle_times,
+        fit_data.sel(fit_vals="a"),
+        fit_data.sel(fit_vals="f"),
+        fit_data.sel(fit_vals="phi"),
+        fit_data.sel(fit_vals="offset"),
+        fit_data.sel(fit_vals="decay"),
+    )
 
-    ds_fit = ds
+    frequency = fit_data.sel(fit_vals="f")
+    frequency.attrs = {"long_name": "frequency", "units": "MHz"}
+
+    decay = fit_data.sel(fit_vals="decay")
+    decay.attrs = {"long_name": "decay", "units": "nSec"}
+
+    tau = 1 / fit_data.sel(fit_vals="decay")
+    tau.attrs = {"long_name": "T2*", "units": "uSec"}
+
+    frequency = frequency.where(frequency > 0, drop=True)
+
+    fitvals = frequency.polyfit(dim="flux_bias", deg=2)
+    flux = frequency.flux_bias
+
+    a = {}
+    flux_offset = {}
+    freq_offset = {}
+    t2_star = {}
+
+    qubits = ds.qubit.values
+
+    for q in qubits:
+        a[q] = float(-1e6 * fitvals.sel(qubit=q, degree=2).polyfit_coefficients.values)
+        flux_offset[q] = float(
+            (
+                -0.5
+                * fitvals.sel(qubit=q, degree=1).polyfit_coefficients
+                / fitvals.sel(qubit=q, degree=2).polyfit_coefficients
+            ).values
+        )
+        freq_offset[q] = 1e6 * (
+            flux_offset[q] ** 2 * float(fitvals.sel(qubit=q, degree=2).polyfit_coefficients.values)
+            + flux_offset[q] * float(fitvals.sel(qubit=q, degree=1).polyfit_coefficients.values)
+            + float(fitvals.sel(qubit=q, degree=0).polyfit_coefficients.values)
+        )
+        t2_star[q] = tau.sel(qubit=q).values
+
+    ds_fit = ds.merge(fit_data.rename("fit_results"))
+
+    # Add a, flux_offset, and freq_offset as data variables in the dataset
+    ds_fit["quad_term"] = xr.DataArray([a[q] for q in qubits], dims=["qubit"], coords={"qubit": qubits})
+    ds_fit["flux_offset"] = xr.DataArray([flux_offset[q] for q in qubits], dims=["qubit"], coords={"qubit": qubits})
+    ds_fit["freq_offset"] = xr.DataArray([freq_offset[q] for q in qubits], dims=["qubit"], coords={"qubit": qubits})
+
     fit_results = {
         q: FitParameters(
-            success=False,
+            success=True,
+            quad_term=a[q],
+            flux_offset=flux_offset[q],
+            freq_offset=freq_offset[q],
+            t2_star=t2_star[q],
         )
         for q in ds_fit.qubit.values
     }
+
     return ds_fit, fit_results
 
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
     pass
-    # # Save fitting results
-    # node.results["fit_results"] = {}
-    # for q in qubits:
-    #     node.results["fit_results"][q.name] = {}
-    #     node.results["fit_results"][q.name]["flux_offset"] = flux_offset[q.name]
-    #     node.results["fit_results"][q.name]["freq_offset"] = freq_offset[q.name]
-    #     node.results["fit_results"][q.name]["quad_term"] = a[q.name]
-    # node.outcomes = {q.name: "successful" for q in node.namespace["qubits"]}
-    # return fit, fit_results

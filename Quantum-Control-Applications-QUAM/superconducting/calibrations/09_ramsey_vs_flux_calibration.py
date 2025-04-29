@@ -1,29 +1,26 @@
 # %% {Imports}
+from dataclasses import asdict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
-
 from qm.qua import *
-
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-
 from qualibrate import QualibrationNode
+from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 from quam_config import Quam
 from quam_experiments.experiments.ramsey_versus_flux_calibration import (
     Parameters,
-    process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
+    process_raw_dataset,
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
 from quam_experiments.workflow import simulate_and_plot
-from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
-
 
 # %% {Initialisation}
 description = """
@@ -62,7 +59,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q2"]
+    node.parameters.qubits = ["q1", "q3"]
     pass
 
 
@@ -91,10 +88,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
     detuning = int(1e6 * node.parameters.frequency_detuning_in_mhz)
-    fluxes = np.arange(
+    fluxes = np.linspace(
         -node.parameters.flux_span / 2,
-        node.parameters.flux_span / 2 + 0.001,
-        step=node.parameters.flux_step,
+        node.parameters.flux_span / 2,
+        node.parameters.flux_num,
     )
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -123,7 +120,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     with for_(*from_array(t, idle_times)):
                         # Read the state of the qubits before Ramsey starts
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.readout_state(init_state[i])
+                            # qubit.readout_state(init_state[i])
+                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                         align()
 
                         # Qubit manipulation
@@ -131,7 +129,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
                             # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
                             assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
-                            # TODO: this has gaps and the Z rotation is not derived properly, is it okay still?
                             # Ramsey sequence
                             with strict_timing_():
                                 qubit.xy.play("x90")
@@ -142,12 +139,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     "const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t
                                 )
                                 qubit.xy.play("x90")
+                        # align()
                         align()
 
                         # Qubit readout
                         for i, qubit in multiplexed_qubits.items():
                             qubit.readout_state(state[i])
-                            assign(state[i], init_state[i] ^ state[i])
+                            # assign(state[i], init_state[i] ^ state[i])
                             save(state[i], state_st[i])
                             # Reset the frame of the qubits in order not to accumulate rotations
                             reset_frame(qubit.xy.name)
@@ -248,15 +246,14 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-
-            # q.xy.intermediate_frequency -= freq_offset[q.name]
-            # if flux_point == "independent":
-            #     q.z.independent_offset += flux_offset[q.name]
-            # elif flux_point == "joint":
-            #     q.z.joint_offset += flux_offset[q.name]
-            # else:
-            #     raise RuntimeError(f"unknown flux_point")
-            # q.freq_vs_flux_01_quad_term = float(a[q.name])
+            flux_point = node.machine.qubits[q.name].z.flux_point
+            flux_offset = node.results["fit_results"][q.name]["flux_offset"]
+            if flux_point == "independent":
+                q.z.independent_offset += flux_offset
+            elif flux_point == "joint":
+                q.z.joint_offset += flux_offset
+            else:
+                raise RuntimeError("Unknown flux_point")
 
 
 # %% {Save_results}

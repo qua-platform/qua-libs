@@ -30,7 +30,7 @@ description = """
         QUBIT SPECTROSCOPY
 This sequence involves sending a saturation pulse to the qubit, placing it in a mixed state,
 and then measuring the state of the resonator across various qubit drive frequencies.
-In order to facilitate the qubit search, the qubit pulse duration and amplitude can be changed manually 
+In order to facilitate the qubit search, the qubit pulse duration and amplitude can be changed manually
 from the node parameters.
 
 The data is post-processed to determine the qubit resonance frequency and the width of the peak.
@@ -45,8 +45,8 @@ Prerequisites:
 
 State update:
     - The qubit 0->1 frequency: qubit.f_01 & qubit.xy.RF_frequency
-    - The integration weight angle to get the state discrimination along the 'I' quadrature: qubit.resonator.operations["readout"].integration_weights_angle. 
-    - (optional) The saturation pulse amplitude to get the targeted fwhm: qubit.xy.operations["saturation"].amplitude. 
+    - The integration weight angle to get the state discrimination along the 'I' quadrature: qubit.resonator.operations["readout"].integration_weights_angle.
+    - (optional) The saturation pulse amplitude to get the targeted fwhm: qubit.xy.operations["saturation"].amplitude.
     - (optional) The guessed x180/x90 pulse amplitude: qubit.xy.operations["x180"/"x90"].amplitude.
 """
 
@@ -236,7 +236,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             # Update the readout frequency for the given flux point
             q.f_01 = node.results["fit_results"][q.name]["frequency"]
-            q.xy.RF_frequency = q.f_01
+            q.xy.RF_frequency = node.results["fit_results"][q.name]["frequency"]
 
             fit_result = node.results["fit_results"][q.name]
             # Update the integration weight angle

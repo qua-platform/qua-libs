@@ -257,6 +257,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 elif q.z.flux_point == "joint":
                     q.z.joint_offset += fit_results["idle_offset"]
                 q.xy.RF_frequency = fit_results["qubit_frequency"]
+                q.f_01 = fit_results["qubit_frequency"]
                 # q.freq_vs_flux_01_quad_term = fit_results["quad_term"]
 
 
