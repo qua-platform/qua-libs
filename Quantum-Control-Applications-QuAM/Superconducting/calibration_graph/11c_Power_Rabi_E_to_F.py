@@ -241,13 +241,8 @@ if not node.parameters.simulate:
  
 # %% {Update_state}
 if not node.parameters.simulate:
-    ef_operation_name = f"EF_{operation}"
-    for q in qubits:
-        with node.record_state_updates():
-            if operation == "x180":
-                print("Creating EF_x180 operation")
-                # Create the |e> -> |f> operation
-                q.xy.operations["EF_x180"] = pulses.DragCosinePulse(
+    if operation == "x180":
+        ef_operation_value = pulses.DragCosinePulse(
                     amplitude=fit_results[q.name]["Pi_amplitude"],
                     alpha=q.xy.operations[operation].alpha,
                     anharmonicity=q.xy.operations[operation].anharmonicity,
@@ -258,6 +253,19 @@ if not node.parameters.simulate:
             else:
                 # set the new amplitude for the EF operation
                 q.xy.operations["EF_x180"].amplitude = fit_results[q.name]["Pi_amplitude"]
+
+
+    else:
+        ef_operation_value = fit_results[q.name]["Pi_amplitude"]
+    for q in qubits:
+        with node.record_state_updates():
+            if operation == "x180":
+                print("Creating EF_x180 operation")
+                # Create the |e> -> |f> operation
+                q.xy.operations["EF_x180"] = ef_operation_value
+            else:
+                # set the new amplitude for the EF operation
+                q.xy.operations["EF_x180"].amplitude = ef_operation_value
 
 
 
