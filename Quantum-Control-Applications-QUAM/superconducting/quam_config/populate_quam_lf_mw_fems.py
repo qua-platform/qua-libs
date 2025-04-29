@@ -152,7 +152,7 @@ for k, qubit in enumerate(machine.qubits.values()):
     qubit.xy.opx_output.full_scale_power_dbm = xy_full_scale  # Max drive power in dBm
     qubit.xy.opx_output.upconverter_frequency = xy_LO.tolist()[k]  # Qubit drive up-converter frequency
     qubit.xy.opx_output.band = get_band(xy_LO.tolist()[k])  # Qubit drive band for the up-conversion
-    qubit.grid_location = f"{k},0"  # Qubit grid location for plotting as "row,column"
+    qubit.grid_location = f"{k},0"  # Qubit grid location for plotting as "column,row"
 
 
 ########################################################################################################################
