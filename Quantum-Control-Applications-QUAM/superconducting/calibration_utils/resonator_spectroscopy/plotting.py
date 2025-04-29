@@ -5,7 +5,7 @@ from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
 from qualibration_libs.plot_utils import QubitGrid, grid_iter
-from quam_experiments.analysis.fit import lorentzian_deep
+from quam_experiments.analysis.fit import lorentzian_dip
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
@@ -102,7 +102,7 @@ def plot_individual_amplitude_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
     if fit:
-        fitted_data = lorentzian_deep(
+        fitted_data = lorentzian_dip(
             ds.detuning,
             float(fit.amplitude.values),
             float(fit.position.values),
