@@ -252,7 +252,7 @@ if not node.parameters.simulate:
         ax.set_title(qubit["qubit"])
         ax.set_xlabel("Idle_time (uS)")
         ax.set_ylabel(" Flux (V)")
-    grid.fig.suptitle(f"{date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
+    grid.fig.suptitle(f"{date_time} GMT+3 #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     plt.show()
     node.results["figure_raw"] = grid.fig
@@ -272,7 +272,7 @@ if not node.parameters.simulate:
         print(f"Flux offset for {qubit['qubit']} is {flux_offset[qubit['qubit']]*1e3:.1f} mV")
         print(f"Freq offset for {qubit['qubit']} is {freq_offset[qubit['qubit']]/1e6:.3f} MHz")
         print()
-    grid.fig.suptitle(f"{date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed}")
+    grid.fig.suptitle(f"{date_time} GMT+3 #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
