@@ -90,19 +90,20 @@ The Qualibrate framework needs some initial configuration to know where to find 
 1.  **Run the Configuration Script:** Execute the provided script from within the `Superconducting` directory:
 
     ```bash
-    python create_qualibrate_config.py
+    setup-qualibrate-config
     ```
 
 2.  **Follow Prompts:** The script will interactively ask for the following details:
-    * `project name`: A unique name for your project or QPU chip (e.g., `MyQPU_Chip1`).
-    * `storage location`: The root directory where measurement data will be saved.
-    Default: `data/{project_name}` relative to the current directory.
-    * `calibration library folder`: The path to the directory containing calibration nodes/graphs.
-    Default: `calibrations`.
-    * `QUAM state path`: The location where the QUAM state file (containing system parameters, connectivity, etc.) is stored.
-    Default: `quam_state`.
 
-        You can press `Enter` or type `y` to accept the defaults, or `n` to provide custom paths.
+    - `project name`: A unique name for your project or QPU chip (e.g., `MyQPU_Chip1`).
+    - `storage location`: The root directory where measurement data will be saved.
+      Default: `data/{project_name}` relative to the current directory.
+    - `calibration library folder`: The path to the directory containing calibration nodes/graphs.
+      Default: `calibrations`.
+    - `QUAM state path`: The location where the QUAM state file (containing system parameters, connectivity, etc.) is stored.
+      Default: `quam_state`.
+
+          You can press `Enter` or type `y` to accept the defaults, or `n` to provide custom paths.
 
 3.  **Confirm Full Config:** The script will show the complete Qualibrate configuration for final confirmation.
     For detailed explanations of all settings, refer to the [Qualibrate Configuration File Documentation](https://qua-platform.github.io/qualibrate/configuration/).
@@ -146,6 +147,7 @@ Refer to the [calibrations/README.md](calibrations/README.md) for detailed infor
 ## Project Structure
 
 The library is organized into the following main directories:
+
 # TODO: modify after moving things to Qualibration-libs
 
 ```
@@ -163,25 +165,23 @@ Superconducting/
 │               ├── results.npz
 │               └── plot.png
 │
+│── quam_state/         # Default location for the main QUAM state file.
+│   ├── state.json      # Contains the QUAM state except the wiring and network
+│   └── wiring.json     # Contains the static part of the QUAM state (wiring and network)
+|
 ├── quam_config/            # Scripts and configurations for generating/managing QUAM state files.
-│   ├── quam_state/         # Default location for the main QUAM state file.
 │   ├── wiring_examples/    # Example configurations for different hardware setups.
 │   ├── build_quam_wiring.py        # Script to generate a QUAM file.
 │   └── ...
 │
-├── quam_experiments/       # Reusable experiment logic, analysis, plotting, and parameter definitions.
-│   ├── analysis/           # Core fitting and analysis functions.
-│   ├── experiments/        # Specific experiment implementations (e.g., T1, Ramsey, Spectroscopy).
-│   │   └── resonator_spectroscopy/
-│   │       ├── analysis.py
-│   │       ├── node.py     # (If structured this way) QUA program logic.
-│   │       ├── parameters.py
-│   │       └── plotting.py
-│   │   └── ...
-│   ├── parameters/         # Common parameter structures.
-│   └── workflow/           # Execution, simulation, and data fetching logic.
+│── calibration_utils/  # Specific experiment implementations (e.g., T1, Ramsey, Spectroscopy).
+│   └── resonator_spectroscopy/
+│   │   ├── analysis.py
+│   │   ├── node.py     # (If structured this way) QUA program logic.
+│   │   ├── parameters.py
+│   │   └── plotting.py
+│   └── ...
 │
-├── create_qualibrate_config.py # Script for initial Qualibrate setup.
 ├── README.md               # This file.
 └── setup.py / pyproject.toml # Installation configuration for the package.
 ```
@@ -192,11 +192,14 @@ The `calibrations/` folder contains individual Python scripts, each representing
 **data**  
 The `data/` folder is the default output directory where Qualibrate saves results (plots, raw data, QUAM state snapshots) from calibration runs, organized by project, date, and run index/name.
 
-**quam_config/** 
+**quam_state**  
+The `quam_state/` directory is where the main QUAM state files are stored. These files are crucial for maintaining the current state of the quantum system, excluding the wiring and network configurations. The `state.json` file contains dynamic aspects of the QUAM state, while the `wiring.json` file holds static information about the system's wiring and network setup.
+
+**quam_config/**
 Tools and examples for creating the quam_state.json file, which describes your specific hardware setup (instruments, connections, qubit parameters).
 
-**quam_experiments**  
-`quam_experiments/` contains the core, reusable components for building experiments. This includes standardized ways to define parameters, run QUA programs, perform analysis (like fitting), and plot results, promoting modularity and consistency across different calibration nodes.
+**calibration_utils**  
+`calibration_utils/` contains the calibration-specific helper functions, such as specific fitting routines, parameter classes, and plotting functionality
 
 ## Contributing
 
