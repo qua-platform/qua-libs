@@ -250,11 +250,6 @@ if not node.parameters.simulate:
                     axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
                     digital_marker=q.xy.operations[operation].digital_marker,
                 )
-            else:
-                # set the new amplitude for the EF operation
-                q.xy.operations["EF_x180"].amplitude = fit_results[q.name]["Pi_amplitude"]
-
-
     else:
         ef_operation_value = fit_results[q.name]["Pi_amplitude"]
     for q in qubits:
