@@ -4,7 +4,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
-from qualibration_libs.plot_utils import QubitGrid, grid_iter
+from qualibration_libs.plotting import QubitGrid, grid_iter
 from calibration_utils.analysis.fit import lorentzian_dip
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 

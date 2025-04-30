@@ -3,7 +3,7 @@ import xarray as xr
 from matplotlib.axes import Axes
 from calibration_utils.analysis.fit import decay_exp
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
-from qualibration_libs.plot_utils import QubitGrid, grid_iter
+from qualibration_libs.plotting import QubitGrid, grid_iter
 
 
 def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
