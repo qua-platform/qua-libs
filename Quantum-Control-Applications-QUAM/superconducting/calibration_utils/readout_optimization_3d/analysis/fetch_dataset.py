@@ -6,7 +6,7 @@ from calibration_utils.readout_optimization_3d.parameters import (
     get_amplitude_factors,
     get_durations,
 )
-from qualibration_libs.qua_datasets import convert_IQ_to_V
+from qualibration_libs.data import convert_IQ_to_V
 from qualibration_libs.save_utils import fetch_results_as_xarray
 
 
