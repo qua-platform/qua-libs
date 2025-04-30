@@ -1,7 +1,7 @@
 # %% {Imports}
 import matplotlib.pyplot as plt
 import numpy as np
-from quam_experiments.experiments.iq_blobs.plotting import plot_historams
+from calibration_utils.iq_blobs.plotting import plot_historams
 import xarray as xr
 from dataclasses import asdict
 
@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from quam_experiments.experiments.iq_blobs import (
+from calibration_utils.iq_blobs import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,
@@ -21,9 +21,9 @@ from quam_experiments.experiments.iq_blobs import (
     plot_iq_blobs,
     plot_confusion_matrices,
 )
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot
-from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
+from qualibration_libs.parameters import get_qubits
+from qualibration_libs.runtime.simulate import simulate_and_plot
+from qualibration_libs.data import XarrayDataFetcher
 
 
 # %% {Description}
