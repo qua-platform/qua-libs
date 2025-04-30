@@ -43,7 +43,7 @@ Prerequisites:
 State update:
     - The readout amplitude: qubit.resonator.operations["readout"].amplitude
     - The integration weight angle: qubit.resonator.operations["readout"].integration_weights_angle
-    - the ge discrimination threshold: qubit.resonator.operations["readout"].ge_threshold
+    - the ge discrimination threshold: qubit.resonator.operations["readout"].threshold
     - the Repeat Until Success threshold: qubit.resonator.operations["readout"].rus_exit_threshold
     - The confusion matrix: qubit.resonator.operations["readout"].confusion_matrix
 """
@@ -164,7 +164,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
                 node.parameters.num_shots,
@@ -234,7 +233,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             fit_results = node.results["fit_results"][q.name]
             operation = q.resonator.operations["readout"]
             operation.integration_weights_angle -= float(fit_results["iw_angle"])
-            operation.ge_threshold = float(fit_results["ge_threshold"]) * operation.length / 2**12
+            operation.threshold = float(fit_results["ge_threshold"]) * operation.length / 2**12
             operation.rus_exit_threshold = float(fit_results["rus_threshold"]) * operation.length / 2**12
             operation.amplitude = float(fit_results["optimal_amplitude"])
             q.resonator.confusion_matrix = fit_results["confusion_matrix"]
