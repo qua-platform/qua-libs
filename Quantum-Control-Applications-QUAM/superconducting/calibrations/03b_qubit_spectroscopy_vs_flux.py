@@ -20,7 +20,7 @@ from calibration_utils.qubit_spectroscopy_vs_flux import (
     process_raw_dataset,
 )
 from qualibration_libs.parameters import get_qubits
-from calibration_utils.workflow import simulate_and_plot
+from qualibration_libs.runtime.simulate import simulate_and_plot
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 
 # %% {Description}

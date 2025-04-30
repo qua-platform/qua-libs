@@ -20,7 +20,7 @@ from calibration_utils.T2echo import (
 )
 from calibration_utils.parameters.sweep_parameters import get_idle_times_in_clock_cycles
 from qualibration_libs.parameters import get_qubits
-from calibration_utils.workflow import simulate_and_plot
+from qualibration_libs.runtime.simulate import simulate_and_plot
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 
 

@@ -21,7 +21,7 @@ from calibration_utils.resonator_spectroscopy_vs_amplitude import (
     plot_raw_data_with_fit,
 )
 from qualibration_libs.parameters import get_qubits
-from calibration_utils.workflow import simulate_and_plot
+from qualibration_libs.runtime.simulate import simulate_and_plot
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 from qualibration_libs.power_tools import calculate_voltage_scaling_factor
 from qualibration_libs.trackable_object import tracked_updates
