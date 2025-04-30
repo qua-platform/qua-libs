@@ -52,7 +52,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     amps = np.linspace(-1, 1, 11)
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
-        I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         a = declare(fixed)
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
@@ -100,7 +100,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
                 node.parameters.num_shots,

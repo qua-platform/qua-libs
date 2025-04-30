@@ -103,7 +103,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "alpha_prefactor": xr.DataArray(amps, attrs={"long_name": "DRAG coefficient alpha pre-factor", "units": ""}),
     }
     with program() as node.namespace["qua_program"]:
-        I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         if node.parameters.use_state_discrimination:
             state = [declare(int) for _ in range(num_qubits)]
             state_st = [declare_stream() for _ in range(num_qubits)]
@@ -205,14 +205,13 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        node.log(f"Job execution report:\n{job.execution_report()}")
+        node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
