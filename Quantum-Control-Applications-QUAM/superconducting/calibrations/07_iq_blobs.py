@@ -44,7 +44,7 @@ Prerequisites:
 
 State update:
     - The integration weight angle: qubit.resonator.operations["readout"].integration_weights_angle
-    - the ge discrimination threshold: qubit.resonator.operations["readout"].ge_threshold
+    - the ge discrimination threshold: qubit.resonator.operations["readout"].threshold
     - the Repeat Until Success threshold: qubit.resonator.operations["readout"].rus_exit_threshold
     - The confusion matrix: qubit.resonator.operations["readout"].confusion_matrix
 """
@@ -184,7 +184,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        node.log(f"Job execution report:\n{job.execution_report()}")
+        node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
@@ -252,7 +252,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             operation = q.resonator.operations[node.parameters.operation]
             operation.integration_weights_angle -= float(fit_result["iw_angle"])
             # Convert the thresholds back to demod units
-            operation.ge_threshold = float(fit_result["ge_threshold"]) * operation.length / 2**12
+            operation.threshold = float(fit_result["ge_threshold"]) * operation.length / 2**12
             operation.rus_exit_threshold = float(fit_result["rus_threshold"]) * operation.length / 2**12
             if node.parameters.operation == "readout":
                 q.resonator.confusion_matrix = fit_result["confusion_matrix"]

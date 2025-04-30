@@ -1,3 +1,10 @@
+"""
+This script is use to set instrument limits and prevent it from outputting too much power, saturating and overflowing
+in the case of multiplexing. These setpoints are used in the analysis sections of the nodes in order to cap the
+waveform amplitude to its limit.
+Feel free to add additional limits as you see fit.
+"""
+
 from dataclasses import dataclass
 from typing import Union
 
@@ -13,7 +20,6 @@ class InstrumentLimits:
 
 
 def instrument_limits(channel: Union[IQChannel, MWChannel]) -> InstrumentLimits:
-    # Todo: these parameters should be accessible to the user
     if not (isinstance(channel, IQChannel) ^ isinstance(channel, MWChannel)):
         raise TypeError(f"Expected channel to be type IQChannel xor MWChannel for type checking, got {type(channel)}.")
 
