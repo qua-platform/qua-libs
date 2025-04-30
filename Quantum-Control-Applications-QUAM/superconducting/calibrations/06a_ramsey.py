@@ -88,7 +88,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "detuning_signs": xr.DataArray(detuning_signs, attrs={"long_name": "detuning signs"}),
     }
     with program() as node.namespace["qua_program"]:
-        I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         idle_time = declare(int)
         detuning_sign = declare(int)
         virtual_detuning_phases = [declare(fixed) for _ in range(num_qubits)]
@@ -188,7 +188,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        node.log(f"Job execution report:\n{job.execution_report()}")
+        node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
