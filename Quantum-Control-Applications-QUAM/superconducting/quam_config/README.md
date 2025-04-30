@@ -40,7 +40,7 @@ All relevant scripts reside here.
 
 ### 2️⃣ Define the QUAM Root Class Structure (in `my_quam.py`)
 
-Edit `my_quam.py` to define the Python classes representing your system's hierarchy. This involves specifying the types and number of components like qubits (including whether they are flux-tunable or fixed-frequency), resonators, instruments (OPX controllers, Octaves, FEMs), etc.. This class should inherit from a base `QuamRoot`.
+Edit `my_quam.py` to define the Python classes representing your system's hierarchy. It contains a class definition `Quam`, which should typically inherit from `FluxTunableQuam` or `FixedFrequencyQuam` depending on the qubit type.
 
 ### 3️⃣ Generate Static Configuration & Wiring (using `generate_quam.py`)
 
