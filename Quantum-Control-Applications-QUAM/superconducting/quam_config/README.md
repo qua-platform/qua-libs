@@ -40,7 +40,8 @@ All relevant scripts reside here.
 
 ### 2️⃣ Define the QUAM Root Class Structure (in `my_quam.py`)
 
-Edit `my_quam.py` to define the Python classes representing your system's hierarchy. It contains a class definition `Quam`, which should typically inherit from `FluxTunableQuam` or `FixedFrequencyQuam` depending on the qubit type.
+Edit `my_quam.py` to define the Python classes representing your system's hierarchy. 
+It contains a class definition `Quam`, which should typically inherit from `FluxTunableQuam` or `FixedFrequencyQuam` depending on the qubit type and can be customized if needed.
 
 ### 3️⃣ Generate Static Configuration & Wiring (using `generate_quam.py`)
 
@@ -56,13 +57,15 @@ This step creates the static part of the QUAM state, primarily defining the hard
   - Review the wiring allocation logic and adjust if needed.
 - Run the script: Execute `python generate_quam.py`. This uses the definitions in the script (leveraging `quam-builder` tools internally) to generate the QUAM state files (e.g., `wiring.json` and `state.json`) in your QUAM state folder (default: `Superconducting/quam_state`). The `state.json` created at this stage contains the structure but is largely empty of specific operational parameters. This generated QUAM state should typically be populated with target values in the next step.
 
+![opx1000_wiring](../.img/opx1000_wiring.PNG)
+
 ### 4️⃣ Initialize Dynamic Parameters (using `populate_quam_*.py`)
 
 This step populates the QUAM state file (e.g., `state.json`) created in the previous step with initial operational parameters.
 
 - Choose the correct initialization script based on your hardware:
   - For OPX+/Octave setups: Use `populate_quam_opxp_octave.py`.
-  - For OPX+/FEM setups: Use `populate_quam_lf_mw_fems.py`.
+  - For OPX1000 setups: Use `populate_quam_lf_mw_fems.py`.
   - Adapt or create a new script if your setup differs significantly.
 - Edit the chosen script: These files contain initial guesses for parameters like qubit/resonator frequencies, pulse amplitudes/durations, gains, etc.. **You must adjust these values** to be reasonable starting points for your specific qubits and setup.
 - Run the script: Execute `python populate_quam_{hw_type}.py` (replacing `{hw_type}` accordingly). This loads the existing QUAM state, populates the dynamic parameters based on the script's logic and values, and saves the updated, populated QUAM state file (e.g., `state.json`).
