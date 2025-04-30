@@ -10,17 +10,17 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
-from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
+from qualibration_libs.data import XarrayDataFetcher
 from quam_config import Quam
-from quam_experiments.experiments.ramsey_versus_flux_calibration import (
+from calibration_utils.ramsey_versus_flux_calibration import (
     Parameters,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
     process_raw_dataset,
 )
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot
+from qualibration_libs.parameters import get_qubits
+from qualibration_libs.runtime.simulate import simulate_and_plot
 
 # %% {Initialisation}
 description = """
@@ -100,8 +100,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "idle_times": xr.DataArray(4 * idle_times, attrs={"long_name": "idle times", "units": "ns"}),
     }
     with program() as node.namespace["qua_program"]:
-        I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         init_state = [declare(int) for _ in range(num_qubits)]
+        current_state = [declare(int) for _ in range(num_qubits)]
         state = [declare(int) for _ in range(num_qubits)]
         state_st = [declare_stream() for _ in range(num_qubits)]
         t = declare(int)  # QUA variable for the idle time
@@ -114,16 +115,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 node.machine.initialize_qpu(target=qubit)
             align()
 
+            for i, qubit in multiplexed_qubits.items():
+                qubit.readout_state(init_state[i])
+
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(flux, fluxes)):
                     with for_(*from_array(t, idle_times)):
-                        # Read the state of the qubits before Ramsey starts
-                        for i, qubit in multiplexed_qubits.items():
-                            # qubit.readout_state(init_state[i])
-                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
-                        align()
-
                         # Qubit manipulation
                         for i, qubit in multiplexed_qubits.items():
                             # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
@@ -139,13 +137,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     "const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t
                                 )
                                 qubit.xy.play("x90")
-                        # align()
                         align()
 
                         # Qubit readout
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.readout_state(state[i])
-                            # assign(state[i], init_state[i] ^ state[i])
+                            qubit.readout_state(current_state[i])
+                            assign(state[i], init_state[i] ^ current_state[i])
+                            assign(init_state[i], current_state[i])
                             save(state[i], state_st[i])
                             # Reset the frame of the qubits in order not to accumulate rotations
                             reset_frame(qubit.xy.name)
@@ -186,14 +184,13 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        node.log(f"Job execution report:\n{job.execution_report()}")
+        node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
@@ -248,12 +245,18 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
             flux_point = node.machine.qubits[q.name].z.flux_point
             flux_offset = node.results["fit_results"][q.name]["flux_offset"]
+            freq_offset = (
+                node.parameters.frequency_detuning_in_mhz * 1e6
+                - node.results["ds_fit"].freq_offset.sel(qubit=q.name).values * 1e3
+            )
             if flux_point == "independent":
                 q.z.independent_offset += flux_offset
             elif flux_point == "joint":
                 q.z.joint_offset += flux_offset
             else:
                 raise RuntimeError("Unknown flux_point")
+            q.f_01 += freq_offset
+            q.xy.RF_frequency += freq_offset
 
 
 # %% {Save_results}

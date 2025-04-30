@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 from qualang_tools.multi_user import qm_session
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.experiments.mixer_calibration import (
+from qualibration_libs.parameters import get_qubits
+from calibration_utils.mixer_calibration import (
     Parameters,
     extract_relevant_fit_parameters,
     log_fitted_results,

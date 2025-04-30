@@ -1,7 +1,7 @@
 # %% {Imports}
 import matplotlib.pyplot as plt
 import numpy as np
-from quam_experiments.experiments.iq_blobs.plotting import plot_historams
+from calibration_utils.iq_blobs.plotting import plot_historams
 import xarray as xr
 from dataclasses import asdict
 
@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from quam_experiments.experiments.iq_blobs import (
+from calibration_utils.iq_blobs import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,
@@ -21,9 +21,9 @@ from quam_experiments.experiments.iq_blobs import (
     plot_iq_blobs,
     plot_confusion_matrices,
 )
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot
-from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
+from qualibration_libs.parameters import get_qubits
+from qualibration_libs.runtime.simulate import simulate_and_plot
+from qualibration_libs.data import XarrayDataFetcher
 
 
 # %% {Description}
@@ -96,8 +96,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        I_g, I_g_st, Q_g, Q_g_st, n, n_st = node.machine.qua_declaration()
-        I_e, I_e_st, Q_e, Q_e_st, _, _ = node.machine.qua_declaration()
+        I_g, I_g_st, Q_g, Q_g_st, n, n_st = node.machine.declare_qua_variables()
+        I_e, I_e_st, Q_e, Q_e_st, _, _ = node.machine.declare_qua_variables()
 
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
@@ -177,14 +177,13 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        node.log(f"Job execution report:\n{job.execution_report()}")
+        node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)

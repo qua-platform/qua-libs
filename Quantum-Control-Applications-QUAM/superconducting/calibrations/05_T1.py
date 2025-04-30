@@ -11,11 +11,10 @@ from qualang_tools.results import progress_counter
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
-from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot
-from quam_experiments.experiments.T1 import (
+from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.parameters import get_qubits, get_idle_times_in_clock_cycles
+from qualibration_libs.runtime.simulate import simulate_and_plot
+from calibration_utils.T1 import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,
@@ -82,7 +81,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
-        I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         t = declare(int)
         if node.parameters.use_state_discrimination:
             state = [declare(int) for _ in range(num_qubits)]
@@ -161,14 +160,13 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())
+        node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 

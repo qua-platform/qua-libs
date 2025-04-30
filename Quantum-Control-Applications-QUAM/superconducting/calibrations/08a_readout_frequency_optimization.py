@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from quam_experiments.experiments.readout_frequency_optimization import (
+from calibration_utils.readout_frequency_optimization import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,
@@ -21,9 +21,9 @@ from quam_experiments.experiments.readout_frequency_optimization import (
     plot_distances_with_fit,
     plot_IQ_abs_with_fit,
 )
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot
-from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
+from qualibration_libs.parameters import get_qubits
+from qualibration_libs.runtime.simulate import simulate_and_plot
+from qualibration_libs.data import XarrayDataFetcher
 
 # %% {Initialisation}
 description = """
@@ -174,14 +174,13 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        node.log(f"Job execution report:\n{job.execution_report()}")
+        node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
