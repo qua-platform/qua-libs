@@ -1,5 +1,3 @@
-# TODO: this script isn't working great, the readout amp found at the end isn't always correct maybe because of SNR...
-
 # %% {Imports}
 import matplotlib.pyplot as plt
 import numpy as np
