@@ -1,4 +1,4 @@
-# Superconducting Qubit Calibration Library
+# Superconducting QUAlibration graphs
 
 This repository provides a comprehensive library for calibrating flux-tunable superconducting transmon qubits using the Quantum Orchestration Platform (QOP), QUAM, and Qualibrate.
 It includes configurable experiment nodes, analysis routines, and tools for managing the quantum system state (QUAM).
