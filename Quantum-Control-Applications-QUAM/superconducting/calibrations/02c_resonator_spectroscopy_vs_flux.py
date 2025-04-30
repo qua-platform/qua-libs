@@ -23,7 +23,7 @@ from calibration_utils.resonator_spectroscopy_vs_flux import (
 )
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime.simulate import simulate_and_plot
-from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
+from qualibration_libs.data import XarrayDataFetcher
 
 
 # %% {Initialisation}

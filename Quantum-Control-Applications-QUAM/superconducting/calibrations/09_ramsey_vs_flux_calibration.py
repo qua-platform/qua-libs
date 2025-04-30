@@ -10,7 +10,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
-from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
+from qualibration_libs.data import XarrayDataFetcher
 from quam_config import Quam
 from calibration_utils.ramsey_versus_flux_calibration import (
     Parameters,

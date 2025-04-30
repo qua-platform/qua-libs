@@ -13,7 +13,7 @@ from quam_config import Quam
 from calibration_utils.hello_qua import Parameters
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime.simulate import simulate_and_plot
-from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
+from qualibration_libs.data import XarrayDataFetcher
 
 
 description = """
