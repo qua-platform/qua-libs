@@ -458,6 +458,13 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure"] = grid.fig
 
+# %% {Update_state}
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            for qubit in qubits:
+                qubit.gate_fidelity["single_qubit_rb"] = 1 - EPG.sel(qubit=qubit.name).values
+                print(f"Updated {qubit.name} fidelity to {qubit.gate_fidelity['single_qubit_rb']:.4f}")
+
 
     # %% {Save_results}
     if not node.parameters.simulate:
