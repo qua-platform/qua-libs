@@ -23,7 +23,7 @@ from calibration_utils.drag_calibration_180_minus180 import (
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime.simulate import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.trackable_object import tracked_updates
+from qualibration_libs.core import tracked_updates
 
 
 # %% {Initialisation}

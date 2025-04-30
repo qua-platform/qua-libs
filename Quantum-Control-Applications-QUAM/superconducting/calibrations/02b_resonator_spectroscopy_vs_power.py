@@ -24,7 +24,7 @@ from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime.simulate import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.power_tools import calculate_voltage_scaling_factor
-from qualibration_libs.trackable_object import tracked_updates
+from qualibration_libs.core import tracked_updates
 
 
 # %% {Initialisation}

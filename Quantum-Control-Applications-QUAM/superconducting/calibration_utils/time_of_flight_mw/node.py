@@ -4,7 +4,7 @@ from quam_builder.architecture.superconducting.components.readout_resonator impo
     ReadoutResonatorIQ,
     ReadoutResonatorMW,
 )
-from qualibration_libs.trackable_object import tracked_updates
+from qualibration_libs.core import tracked_updates
 from calibration_utils.time_of_flight.parameters import Parameters
 
 
