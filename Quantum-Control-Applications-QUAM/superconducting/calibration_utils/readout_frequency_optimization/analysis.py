@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import  Tuple, Dict
+from typing import Tuple, Dict
 import numpy as np
 import xarray as xr
 

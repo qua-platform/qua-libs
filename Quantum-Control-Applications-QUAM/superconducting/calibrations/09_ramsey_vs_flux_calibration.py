@@ -117,7 +117,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             for i, qubit in multiplexed_qubits.items():
                 qubit.readout_state(init_state[i])
-                
+
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(flux, fluxes)):

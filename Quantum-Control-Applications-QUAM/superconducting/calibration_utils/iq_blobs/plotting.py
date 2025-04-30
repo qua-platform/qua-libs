@@ -90,6 +90,7 @@ def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fi
     ax.set_ylabel("Q [mV]")
     ax.set_title(qubit["qubit"])
 
+
 def plot_historams(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     """
     Plots the IQ blobs with the derived thresholds for the given qubits.
