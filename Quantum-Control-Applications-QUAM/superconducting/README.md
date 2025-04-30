@@ -136,11 +136,13 @@ QUAM (Quantum Abstract Machine) provides an abstraction layer over the low-level
 
 The process of creating the initial QUAM state file involves defining your specific hardware components (OPXs, Octaves, mixers, LOs), as well as the QPU layout that the hardware is attached to. Detailed instructions are found in **[quam_config/README.md](quam_config/README.md)**
 
-This directory contains scripts (`build_quam_wiring.py`, examples, etc.) that demonstrate how to build the QUAM object programmatically.
+This directory contains scripts (`generate_quam.py`, `populate_quam_xx.py`, examples, etc.) that demonstrate how to build the QUAM object programmatically.
 
 ## Calibration Nodes and Graphs
 
-The scripts within the `calibrations` directory are the building blocks for automated calibration routines. Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement). They are designed to be run via the Qualibrate framework, either individually or as part of a larger calibration sequence (graph).
+The scripts within the `calibrations` directory are the building blocks for automated calibration routines. 
+Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement). 
+They are designed to be run via the Qualibrate framework, either individually or as part of a larger calibration sequence (graph), but can also be executed as a standalone script from your favorite Python IDE (e.g. PyCharm, VScode...).
 
 Refer to the [calibrations/README.md](calibrations/README.md) for detailed information on the structure and conventions used for these nodes.
 
@@ -158,12 +160,17 @@ Superconducting/
 │   └── ... (many calibration routines)
 │
 ├── data/                   # Default location for storing experiment results.
-│   └── {project_name}/     # Data organized by project name
+│   └── {project_name}/     # Data organized by project name.
 │       └── YYYY-MM-DD/     # Data organized by date.
 │           └── #idx_{node_name}_HHMMSS/ # Data for a specific run.
-│               ├── quam_state.json
-│               ├── results.npz
-│               └── plot.png
+│               └── quam_state/
+│                   ├── state.json      # Contains the QUAM state except the wiring and network.
+│                   └── wiring.json     # Contains the static part of the QUAM state (wiring and network).
+│               ├── data.json       # Structure containing the data outpoutted by the node (fit results, figures,...).
+│               ├── ds_raw.h5       # HDF5 dataset containing the raw data.
+│               ├── ds_fit.h5       # HDF5 dataset containg the post-processed data.
+│               ├── figures.png     # Generated figures. 
+│               └── node.json       # Metadat about the node used by QUAlibrate.
 │
 │── quam_state/         # Default location for the main QUAM state file.
 │   ├── state.json      # Contains the QUAM state except the wiring and network
@@ -171,23 +178,24 @@ Superconducting/
 |
 ├── quam_config/            # Scripts and configurations for generating/managing QUAM state files.
 │   ├── wiring_examples/    # Example configurations for different hardware setups.
-│   ├── build_quam_wiring.py        # Script to generate a QUAM file.
+│   ├── generate_quam.py        # Script to generate a QUAM file.
+│   ├── populate_quam_xx.py     # Script to populate the newly generated QUAM file with initial values.
 │   └── ...
 │
 │── calibration_utils/  # Specific experiment implementations (e.g., T1, Ramsey, Spectroscopy).
 │   └── resonator_spectroscopy/
-│   │   ├── analysis.py
-│   │   ├── node.py     # (If structured this way) QUA program logic.
-│   │   ├── parameters.py
-│   │   └── plotting.py
+│   │   ├── analysis.py     # Contains all the analysis functions.
+│   │   ├── parameters.py   # Contains node-specific parameters.
+│   │   └── plotting.py     # Contains all the plotting functions.
 │   └── ...
 │
 ├── README.md               # This file.
-└── setup.py / pyproject.toml # Installation configuration for the package.
+└── pyproject.toml # Installation configuration for the package.
 ```
 
 **calibrations**  
-The `calibrations/` folder contains individual Python scripts, each representing a calibration "node". These scripts typically import functionality from **quam_experiments**, define parameters, run a QUA program, analyze results, and update the QUAM state. See the README.md within this folder for more details on node structure.
+The `calibrations/` folder contains individual Python scripts, each representing a calibration "node". 
+These scripts typically import functionality from **calibration_utils**, define parameters, run a QUA program, analyze results, and update the QUAM state. See the README.md within this folder for more details on node structure.
 
 **data**  
 The `data/` folder is the default output directory where Qualibrate saves results (plots, raw data, QUAM state snapshots) from calibration runs, organized by project, date, and run index/name.
