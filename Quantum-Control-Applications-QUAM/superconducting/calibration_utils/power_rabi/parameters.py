@@ -2,7 +2,7 @@ from typing import Literal
 import numpy as np
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from quam_experiments.parameters import (
+from calibration_utils.parameters import (
     QubitsExperimentNodeParameters,
     CommonNodeParameters,
 )

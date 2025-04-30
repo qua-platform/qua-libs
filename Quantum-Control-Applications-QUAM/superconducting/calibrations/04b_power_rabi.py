@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from quam_experiments.experiments.power_rabi import (
+from calibration_utils.power_rabi import (
     Parameters,
     get_number_of_pulses,
     process_raw_dataset,
@@ -21,8 +21,8 @@ from quam_experiments.experiments.power_rabi import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot
+from qualibration_libs.parameters import get_qubits
+from calibration_utils.workflow import simulate_and_plot
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 
 

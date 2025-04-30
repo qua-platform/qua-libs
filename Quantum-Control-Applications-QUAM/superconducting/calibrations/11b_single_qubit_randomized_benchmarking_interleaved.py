@@ -13,18 +13,18 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from quam_experiments.experiments.single_qubit_randomized_benchmarking_interleaved import (
+from calibration_utils.single_qubit_randomized_benchmarking_interleaved import (
     Parameters,
     get_interleaved_gate_index,
 )
-from quam_experiments.experiments.single_qubit_randomized_benchmarking import (
+from calibration_utils.single_qubit_randomized_benchmarking import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot
+from qualibration_libs.parameters import get_qubits
+from calibration_utils.workflow import simulate_and_plot
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 
 

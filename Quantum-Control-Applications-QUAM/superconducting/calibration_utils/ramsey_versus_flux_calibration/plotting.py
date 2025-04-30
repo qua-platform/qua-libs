@@ -7,7 +7,7 @@ from matplotlib.figure import Figure
 from qualang_tools.units import unit
 from qualibration_libs.plot_utils import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
-from quam_experiments.analysis.fit import lorentzian_peak
+from calibration_utils.analysis.fit import lorentzian_peak
 
 u = unit(coerce_to_integer=True)
 

@@ -15,16 +15,16 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from quam_experiments.experiments.readout_power_optimization import (
+from calibration_utils.readout_power_optimization import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from quam_experiments.experiments.iq_blobs.plotting import plot_iq_blobs, plot_confusion_matrices
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot
+from calibration_utils.iq_blobs.plotting import plot_iq_blobs, plot_confusion_matrices
+from qualibration_libs.parameters import get_qubits
+from calibration_utils.workflow import simulate_and_plot
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 
 

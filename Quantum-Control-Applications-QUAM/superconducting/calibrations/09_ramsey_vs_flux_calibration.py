@@ -12,15 +12,15 @@ from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 from quam_config import Quam
-from quam_experiments.experiments.ramsey_versus_flux_calibration import (
+from calibration_utils.ramsey_versus_flux_calibration import (
     Parameters,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
     process_raw_dataset,
 )
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot
+from qualibration_libs.parameters import get_qubits
+from calibration_utils.workflow import simulate_and_plot
 
 # %% {Initialisation}
 description = """

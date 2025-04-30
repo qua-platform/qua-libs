@@ -1,6 +1,6 @@
 import numpy as np
 
-from quam_experiments.experiments.readout_optimization_3d.parameters import (
+from calibration_utils.readout_optimization_3d.parameters import (
     get_frequency_detunings_in_hz,
     ReadoutOptimization3dParameters,
     get_amplitude_factors,

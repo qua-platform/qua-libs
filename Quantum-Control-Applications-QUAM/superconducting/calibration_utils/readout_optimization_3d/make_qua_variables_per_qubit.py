@@ -3,7 +3,7 @@ from typing import Sequence, Union, Tuple, List
 from qm.qua import declare, fixed, QuaVariableType
 
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
-from quam_experiments.experiments.readout_optimization_3d.parameters import (
+from calibration_utils.readout_optimization_3d.parameters import (
     ReadoutOptimization3dParameters,
 )
 

@@ -5,7 +5,7 @@ from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
 from qualibration_libs.plot_utils import QubitGrid, grid_iter
-from quam_experiments.analysis.fit import oscillation_decay_exp
+from calibration_utils.analysis.fit import oscillation_decay_exp
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)

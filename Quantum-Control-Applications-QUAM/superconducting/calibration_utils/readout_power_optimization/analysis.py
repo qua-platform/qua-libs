@@ -7,8 +7,8 @@ from sklearn.mixture import GaussianMixture
 
 from qualibrate import QualibrationNode
 from qualibration_libs.qua_datasets import convert_IQ_to_V
-from quam_experiments.experiments.iq_blobs import fit_raw_data as fit_iq_blobs
-from quam_experiments.experiments.iq_blobs.analysis import FitParameters as FitParametersIQblobs
+from calibration_utils.iq_blobs import fit_raw_data as fit_iq_blobs
+from calibration_utils.iq_blobs.analysis import FitParameters as FitParametersIQblobs
 
 
 @dataclass

@@ -12,10 +12,10 @@ from qualang_tools.results import progress_counter
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
-from quam_experiments.parameters.sweep_parameters import get_idle_times_in_clock_cycles
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot
-from quam_experiments.experiments.T1 import (
+from calibration_utils.parameters.sweep_parameters import get_idle_times_in_clock_cycles
+from qualibration_libs.parameters import get_qubits
+from calibration_utils.workflow import simulate_and_plot
+from calibration_utils.T1 import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,

@@ -6,7 +6,7 @@ import xarray as xr
 
 from qualibrate import QualibrationNode
 from qualibration_libs.qua_datasets import convert_IQ_to_V
-from quam_experiments.analysis.fit import fit_oscillation
+from calibration_utils.analysis.fit import fit_oscillation
 from quam_config.instrument_limits import instrument_limits
 
 

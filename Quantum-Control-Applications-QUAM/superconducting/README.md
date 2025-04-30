@@ -61,8 +61,8 @@ The typical QUAM/QUalibrate folder structure is as follows:
 ├───quam_config
 │   └───quam_state
 │
-├───quam_experiments
-├───quam_experiments
+├───calibration_utils
+├───calibration_utils
 |
 |
 |

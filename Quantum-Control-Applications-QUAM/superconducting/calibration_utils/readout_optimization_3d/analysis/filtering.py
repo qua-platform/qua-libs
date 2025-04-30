@@ -3,7 +3,7 @@ import xarray as xr
 
 from scipy.ndimage import gaussian_filter
 
-from quam_experiments.experiments.readout_optimization_3d.parameters import (
+from calibration_utils.readout_optimization_3d.parameters import (
     ReadoutOptimization3dParameters,
 )
 

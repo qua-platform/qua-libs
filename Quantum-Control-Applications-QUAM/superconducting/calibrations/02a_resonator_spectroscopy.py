@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from quam_experiments.experiments.resonator_spectroscopy import (
+from calibration_utils.resonator_spectroscopy import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,
@@ -21,8 +21,8 @@ from quam_experiments.experiments.resonator_spectroscopy import (
     plot_raw_amplitude_with_fit,
     plot_raw_phase,
 )
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot
+from qualibration_libs.parameters import get_qubits
+from calibration_utils.workflow import simulate_and_plot
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 
 # %% {Initialisation}

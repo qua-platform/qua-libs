@@ -12,7 +12,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from quam_experiments.experiments.time_of_flight_mw import (
+from calibration_utils.time_of_flight_mw import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,
@@ -20,8 +20,8 @@ from quam_experiments.experiments.time_of_flight_mw import (
     plot_single_run_with_fit,
     plot_averaged_run_with_fit,
 )
-from quam_experiments.parameters.qubits_experiment import get_qubits
-from quam_experiments.workflow import simulate_and_plot
+from qualibration_libs.parameters import get_qubits
+from calibration_utils.workflow import simulate_and_plot
 from qualibration_libs.xarray_data_fetcher import XarrayDataFetcher
 from qualibration_libs.trackable_object import tracked_updates
 

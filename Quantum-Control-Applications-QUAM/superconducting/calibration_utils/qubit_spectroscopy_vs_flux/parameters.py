@@ -2,7 +2,7 @@ from typing import Optional
 
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from quam_experiments.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
+from calibration_utils.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):

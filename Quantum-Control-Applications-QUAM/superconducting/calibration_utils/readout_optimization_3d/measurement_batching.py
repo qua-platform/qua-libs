@@ -5,7 +5,7 @@ from typing import Sequence, List
 
 from quam.components import MWChannel, IQChannel
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
-from quam_experiments.experiments.readout_optimization_3d.parameters import Parameters
+from calibration_utils.readout_optimization_3d.parameters import Parameters
 
 
 def get_max_accumulated_readouts(qubits: Sequence[AnyTransmon], node_parameters: Parameters) -> int:
