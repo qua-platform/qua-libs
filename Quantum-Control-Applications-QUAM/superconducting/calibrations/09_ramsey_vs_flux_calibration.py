@@ -102,6 +102,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.qua_declaration()
         init_state = [declare(int) for _ in range(num_qubits)]
+        current_state = [declare(int) for _ in range(num_qubits)]
         state = [declare(int) for _ in range(num_qubits)]
         state_st = [declare_stream() for _ in range(num_qubits)]
         t = declare(int)  # QUA variable for the idle time
@@ -114,16 +115,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 node.machine.initialize_qpu(target=qubit)
             align()
 
+            for i, qubit in multiplexed_qubits.items():
+                qubit.readout_state(init_state[i])
+                
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(flux, fluxes)):
                     with for_(*from_array(t, idle_times)):
-                        # Read the state of the qubits before Ramsey starts
-                        for i, qubit in multiplexed_qubits.items():
-                            # qubit.readout_state(init_state[i])
-                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
-                        align()
-
                         # Qubit manipulation
                         for i, qubit in multiplexed_qubits.items():
                             # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
@@ -139,13 +137,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     "const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t
                                 )
                                 qubit.xy.play("x90")
-                        # align()
                         align()
 
                         # Qubit readout
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.readout_state(state[i])
-                            # assign(state[i], init_state[i] ^ state[i])
+                            qubit.readout_state(current_state[i])
+                            assign(state[i], init_state[i] ^ current_state[i])
+                            assign(init_state[i], current_state[i])
                             save(state[i], state_st[i])
                             # Reset the frame of the qubits in order not to accumulate rotations
                             reset_frame(qubit.xy.name)
@@ -248,12 +246,18 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
             flux_point = node.machine.qubits[q.name].z.flux_point
             flux_offset = node.results["fit_results"][q.name]["flux_offset"]
+            freq_offset = (
+                node.parameters.frequency_detuning_in_mhz * 1e6
+                - node.results["ds_fit"].freq_offset.sel(qubit=q.name).values * 1e3
+            )
             if flux_point == "independent":
                 q.z.independent_offset += flux_offset
             elif flux_point == "joint":
                 q.z.joint_offset += flux_offset
             else:
                 raise RuntimeError("Unknown flux_point")
+            q.f_01 += freq_offset
+            q.xy.RF_frequency += freq_offset
 
 
 # %% {Save_results}
