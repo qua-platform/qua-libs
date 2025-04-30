@@ -26,7 +26,7 @@ You can easily extend this library by adding your own custom calibration nodes. 
 - Defining parameters in a separate `Parameters` class (usually imported).
 - Structuring the workflow using functions decorated with `@node.run_action`.
 - Loading and interacting with the `QUAM` object.
-- Using `node.results`, `node.outcomes`, and `node.add_figure` for storing outputs.
+- Using `node.results`, `node.outcomes` for storing outputs.
 - Using `with node.record_state_updates():` for proposing QUAM changes.
 - Calling `node.save()` at the end.
 
