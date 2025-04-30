@@ -10,12 +10,12 @@ class NodeSpecificParameters(RunnableParameters):
 
     Attributes:
         num_shots (int): Number of averages to perform. Default is 100.
-        frequency_span_in_mhz (float): Span of frequencies to sweep in MHz. Default is 100 MHz.
-        frequency_step_in_mhz (float): Step size for frequency sweep in MHz. Default is 0.25 MHz.
         operation (str): Type of operation to perform. Default is "saturation".
-        operation_amplitude_factor (Optional[float]): Amplitude pre-factor for the operation. Default is 1.0.
-        operation_len_in_ns (Optional[int]): Length of the operation in nanoseconds. Default is None.
-        target_peak_width (Optional[float]): Target peak width in Hz. Default is 3e6 Hz.
+        min_amp_factor (float): Minimum amplitude pre-factor for sweeping the DRAG coefficient. Default is -1.0.
+        max_amp_factor (float): Maximum amplitude pre-factor for sweeping the DRAG coefficient. Default is 2.0.
+        amp_factor_step (float): Step of amplitude pre-factor for sweeping the DRAG coefficient. Default is 0.02.
+        max_number_pulses_per_sweep (int): Maximum number of drive pulses. Default is 40.
+        alpha_setpoint (Optional[float]): Optional setpoint for the alpha coefficient. Default is None.
     """
 
     num_shots: int = 10
@@ -24,7 +24,7 @@ class NodeSpecificParameters(RunnableParameters):
     max_amp_factor: float = 2.0
     amp_factor_step: float = 0.02
     max_number_pulses_per_sweep: int = 40
-    alpha_setpoint: Optional[float] = -1.0
+    alpha_setpoint: Optional[float] = None
 
 
 class Parameters(
