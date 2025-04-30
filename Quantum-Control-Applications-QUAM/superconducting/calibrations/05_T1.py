@@ -90,7 +90,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
-            # todo: is this the right behaviour?
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
 
@@ -161,7 +160,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
-        for dataset in data_fetcher:  # todo: is there any use-case where we have several datasets?
+        for dataset in data_fetcher:
             # print_progress_bar(job, iteration_variable="n", total_number_of_iterations=node.parameters.num_shots)
             progress_counter(
                 data_fetcher["n"],
@@ -169,7 +168,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        print(job.execution_report())  # TODO: shall we log it?
+        print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
