@@ -6,7 +6,7 @@ from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
 from qualibration_libs.plotting import QubitGrid, grid_iter
-from calibration_utils.analysis.fit import decay_exp
+from qualibration_libs.analysis import decay_exp
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
@@ -40,7 +40,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
         plot_individual_data_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
 
     grid.fig.suptitle("Single qubit randomized benchmarking")
-    # grid.fig.set_size_inches(15, 9)
+    grid.fig.set_size_inches(15, 9)
     grid.fig.tight_layout()
     return grid.fig
 

@@ -5,8 +5,7 @@ from dataclasses import dataclass
 from typing import Tuple
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
-from calibration_utils.T1.parameters import Parameters
-from calibration_utils.analysis.fit import fit_decay_exp
+from qualibration_libs.analysis import fit_decay_exp
 
 
 @dataclass

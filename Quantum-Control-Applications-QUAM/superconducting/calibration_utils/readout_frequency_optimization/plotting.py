@@ -5,7 +5,6 @@ from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
 from qualibration_libs.plotting import QubitGrid, grid_iter
-from calibration_utils.analysis.fit import lorentzian_peak
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)

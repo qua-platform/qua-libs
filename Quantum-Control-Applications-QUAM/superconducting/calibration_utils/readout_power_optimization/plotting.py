@@ -39,7 +39,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     handles, labels = ax.get_legend_handles_labels()
     grid.fig.legend(handles, labels, loc="lower center", ncol=1)
     grid.fig.suptitle("Assignment fidelity and non-outlier probability")
-    # grid.fig.set_size_inches(15, 9)
+    grid.fig.set_size_inches(15, 9)
     grid.fig.tight_layout()
     return grid.fig
 

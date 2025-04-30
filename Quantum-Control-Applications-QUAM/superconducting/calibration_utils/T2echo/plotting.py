@@ -4,7 +4,7 @@ from matplotlib.axes import Axes
 
 from qualang_tools.units import unit
 from qualibration_libs.plotting import QubitGrid, grid_iter
-from calibration_utils.analysis.fit import decay_exp
+from qualibration_libs.analysis import decay_exp
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)

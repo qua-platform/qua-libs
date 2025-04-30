@@ -6,7 +6,7 @@ import xarray as xr
 
 from qualibrate import QualibrationNode
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
-from calibration_utils.analysis.fit_utils import peaks_dips
+from qualibration_libs.analysis import peaks_dips
 
 
 @dataclass
@@ -30,13 +30,6 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     logger : logging.Logger, optional
         Logger for logging the fitted results. If None, a default logger is used.
 
-    Returns:
-    --------
-    None
-
-    Example:
-    --------
-        >>> log_fitted_results(fit_results, log_callable=node.log)
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info

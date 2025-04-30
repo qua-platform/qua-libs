@@ -5,7 +5,6 @@ from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
 from qualibration_libs.plotting import QubitGrid, grid_iter
-from calibration_utils.analysis.fit import oscillation
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
@@ -39,7 +38,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
         plot_individual_data_with(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
 
     grid.fig.suptitle("Rabi chevron")
-    # grid.fig.set_size_inches(15, 9)
+    grid.fig.set_size_inches(15, 9)
     grid.fig.tight_layout()
     return grid.fig
 

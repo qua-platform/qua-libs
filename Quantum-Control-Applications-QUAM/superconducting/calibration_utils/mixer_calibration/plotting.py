@@ -1,5 +1,4 @@
 from typing import Dict
-import xarray as xr
 from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
@@ -13,16 +12,6 @@ u = unit(coerce_to_integer=True)
 def plot_raw_data_with_fit(node: QualibrationNode):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing the quadrature data.
-    qubits : list of AnyTransmon
-        A list of qubits to plot.
-    fits : xr.Dataset
-        The dataset containing the fit parameters.
-
     Returns
     -------
     Figure
@@ -43,11 +32,6 @@ def plot_raw_data_with_fit(node: QualibrationNode):
 def plot_individual_data_with_fit(calibration_results: Dict[str, Dict[str, MixerCalibrationResults]], qubit_name: str):
     """
     Plots individual qubit data on a given axis with optional fit.
-
-    Parameters
-    ----------
-    fit : xr.Dataset, optional
-        The dataset containing the fit parameters (default is None).
     """
     figs = {}
     for key in ["resonator", "xy_drive"]:

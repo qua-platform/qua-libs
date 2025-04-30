@@ -1,7 +1,7 @@
 from typing import List
 import xarray as xr
 from matplotlib.axes import Axes
-from calibration_utils.analysis.fit import decay_exp
+from qualibration_libs.analysis import decay_exp
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from qualibration_libs.plotting import QubitGrid, grid_iter
 

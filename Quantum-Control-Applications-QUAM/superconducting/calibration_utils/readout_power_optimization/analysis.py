@@ -1,6 +1,6 @@
 import logging
-from dataclasses import dataclass, replace
-from typing import Optional, Tuple, Dict
+from dataclasses import dataclass
+from typing import Tuple, Dict
 import numpy as np
 import xarray as xr
 from sklearn.mixture import GaussianMixture
@@ -29,13 +29,6 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     logger : logging.Logger, optional
         Logger for logging the fitted results. If None, a default logger is used.
 
-    Returns:
-    --------
-    None
-
-    Example:
-    --------
-        >>> log_fitted_results(fit_results, log_callable=node.log)
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
