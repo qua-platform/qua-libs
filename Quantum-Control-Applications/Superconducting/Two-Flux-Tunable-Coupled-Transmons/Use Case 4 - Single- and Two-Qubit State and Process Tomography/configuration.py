@@ -226,7 +226,7 @@ readout_amp_q1 = 0.01
 readout_amp_q2 = 0.01
 
 # TOF and depletion time
-time_of_flight = 320  # must be a multiple of 4
+time_of_flight = 240  # must be a multiple of 4
 depletion_time = 50 * u.us
 
 opt_weights = False

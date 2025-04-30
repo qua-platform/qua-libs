@@ -184,7 +184,7 @@ resonator_IF = 60 * u.MHz
 readout_len = 5000
 readout_amp = 0.2
 
-time_of_flight = 32
+time_of_flight = 28
 depletion_time = 2 * u.us
 
 opt_weights = False

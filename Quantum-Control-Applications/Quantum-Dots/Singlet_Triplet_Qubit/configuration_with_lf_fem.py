@@ -64,7 +64,7 @@ reflectometry_readout_length = 1 * u.us
 reflectometry_readout_amp = 30 * u.mV
 
 # Time of flight
-time_of_flight = 32
+time_of_flight = 28
 
 ######################
 #      DC GATES      #

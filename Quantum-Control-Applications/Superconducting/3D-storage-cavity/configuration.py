@@ -215,7 +215,7 @@ resonator_off_pump_amp = 0.45
 readout_len = 1000
 readout_amp = 0.05
 
-time_of_flight = 32
+time_of_flight = 28
 depletion_time = 2 * u.us
 
 opt_weights = False

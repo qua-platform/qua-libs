@@ -155,7 +155,7 @@ resonator_power = 1  # power in dBm at waveform amp = 1
 readout_len = 5000
 readout_amp = 0.6
 
-time_of_flight = 32
+time_of_flight = 28
 depletion_time = 2 * u.us
 
 
