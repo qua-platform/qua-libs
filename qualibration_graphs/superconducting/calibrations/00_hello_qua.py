@@ -77,11 +77,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.wait(250 * u.ns)
                     align()
 
-            with stream_processing():
-                n_st.save("n")
-                # This example doesn't save I/Q, adjust if needed
-                # I_st[0].buffer(len(amps)).average().save("I1")
-                # Q_st[0].buffer(len(amps)).average().save("Q1")
+        with stream_processing():
+            n_st.save("n")
+        # This example doesn't save I/Q, adjust if needed
+        # I_st[0].buffer(len(amps)).average().save("I1")
+        # Q_st[0].buffer(len(amps)).average().save("Q1")
 
 
 # %% {Simulate}
