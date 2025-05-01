@@ -19,7 +19,7 @@ from calibration_utils.T2echo import (
     plot_raw_data_with_fit,
 )
 from qualibration_libs.parameters import get_qubits, get_idle_times_in_clock_cycles
-from qualibration_libs.runtime.simulate import simulate_and_plot
+from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
 

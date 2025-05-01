@@ -22,7 +22,7 @@ from calibration_utils.iq_blobs import (
     plot_confusion_matrices,
 )
 from qualibration_libs.parameters import get_qubits
-from qualibration_libs.runtime.simulate import simulate_and_plot
+from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
 

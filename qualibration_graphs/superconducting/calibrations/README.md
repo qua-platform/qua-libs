@@ -1,4 +1,4 @@
-# Calibration Graph Overview
+# Calibration Node & Graph Overview
 
 This document provides an overview of the calibration nodes and the concept of calibration graphs within the Qualibrate framework used in this project.
 
