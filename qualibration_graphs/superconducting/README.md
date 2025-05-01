@@ -17,8 +17,9 @@ This library is built upon **Qualibrate**, an advanced, open-source software fra
 3.  [Creating the QUAM State](#creating-the-quam-state)
 4.  [Calibration Nodes and Graphs](calibration-nodes-and-graphs)
 5.  [Project Structure](#project-structure)
-6.  [Contributing](#contributing)
-7.  [License](#license)
+6.  [Extending QUAM Components](#extending-quam-components)
+7.  [Contributing](#contributing)
+8.  [License](#license)
 
 ## Prerequisites
 
@@ -205,6 +206,32 @@ Tools and examples for creating the quam_state.json file, which describes your s
 
 **calibration_utils**  
 `calibration_utils/` contains the calibration-specific helper functions, such as specific fitting routines, parameter classes, and plotting functionality
+
+## Extending QUAM Components
+
+QUAM Builder provides a repository containing a standard set of components related to qubits, such as superconducting qubits (e.g., `FluxTunableTransmon`), resonators (e.g., `ReadoutResonatorIQ`), and associated pulses. While this provides a solid foundation, it should not be viewed as a fixed set. As you advance your calibration routines and develop custom calibration nodes and graphs, you may find it necessary to extend or modify these standard components.
+
+There are several ways you might want to extend the QUAM components:
+
+1.  **Adding Parameters:** You might need to add different parameters to the standard classes to accommodate specific characteristics of your hardware or calibration methods. For example, you may have a different coherence time metric you want to keep track of.
+2.  **Adding Components:** You might want to introduce entirely new components. This could include custom pulse shapes tailored to your experiments or other quantum elements relevant to your setup.
+
+### Method 1: Forking or Cloning QUAM Builder
+
+One way to achieve these extensions is by creating a fork or a local clone of the main QUAM Builder repository.
+
+1.  **Clone/Fork:** Obtain a local copy of the QUAM Builder source code.
+2.  **Locate Components:** Navigate to the `architecture` folder within the repository. This folder contains the definitions for the different QUAM components.
+3.  **Modify or Add:** You can now directly modify the existing Python classes for the components or add new Python files defining your custom components.
+
+**Important Considerations:**
+
+- **Compatibility:** When modifying existing components, be mindful of compatibility with existing calibration nodes. For example, if a calibration node expects a Transmon object to have a property named `T2echo`, renaming or removing this property in your modified class will break that node unless you also update the node's code to use the new property name. Try to maintain backward compatibility where possible or update your calibration nodes accordingly.
+- **Synchronization:** If you intend to keep your local version synchronized with future updates from the main QUAM Builder repository, be aware that modifying the core component files can lead to merge conflicts when you try to pull the latest changes. This requires careful management of your version control.
+
+### Method 2: Extension via QUAM Documentation
+
+An alternative approach exists for extending QUAM components without directly cloning or forking the repository. This method is detailed in the QUAM documentation on [Custom Components](https://qua-platform.github.io/quam/components/custom-components/). Using this approach, you can subclass any existing classes in QUAM Builder, and add parameters and methods, as well as create new QUAM components. However, note that this approach is generally more limited in scope, typically allowing only for the extension of existing components rather than fundamental modifications or additions of entirely new component types in the same manner as direct code modification.
 
 ## Contributing
 
