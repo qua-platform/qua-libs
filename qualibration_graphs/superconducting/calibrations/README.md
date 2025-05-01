@@ -1,6 +1,6 @@
 # Calibration Node & Graph Overview
 
-This document provides an overview of the calibration nodes and the concept of calibration graphs within the Qualibrate framework used in this project.
+This document provides an overview of the calibration nodes and the concept of calibration graphs within the QUAlibrate framework used in this project.
 
 ## Collection of Calibration Nodes
 
@@ -68,7 +68,7 @@ You can easily extend this library by adding your own custom calibration nodes. 
 
 ## Creating a Calibration Graph
 
-While individual nodes can be run standalone or via the Qualibrate UI for specific tasks, their real power comes from combining them into a **Calibration Graph**. A graph defines a sequence (or parallel execution) of nodes to perform a more complex calibration routine automatically.
+While individual nodes can be run standalone or via the QUAlibrate UI for specific tasks, their real power comes from combining them into a **Calibration Graph**. A graph defines a sequence (or parallel execution) of nodes to perform a more complex calibration routine automatically.
 
 Creating a typical calibration graph involves:
 
@@ -94,12 +94,12 @@ This workflow is ideal for development and debugging:
 - Modify code within a cell and re-run only that cell.
 - Test individual components (like QUA program generation, analysis functions) in isolation.
 
-### Running via Qualibrate Frontend
+### Running via QUAlibrate Frontend
 
-The Qualibrate frontend (web UI) is designed for running stable, well-tested calibration nodes and graphs, particularly when you primarily need to adjust input parameters rather than modify the code itself.
+The QUAlibrate frontend (web UI) is designed for running stable, well-tested calibration nodes and graphs, particularly when you primarily need to adjust input parameters rather than modify the code itself.
 
-- **Automatic Discovery:** Any calibration node script placed within the `calibrations` folder that follows the standard structure (including `QualibrationNode` instantiation) will automatically be discovered and made available in the Qualibrate UI.
-- **Launching the UI:** Start the Qualibrate web application by running the command `qualibrate start` in your terminal within the correct environment. This launches a local web server.
+- **Automatic Discovery:** Any calibration node script placed within the `calibrations` folder that follows the standard structure (including `QualibrationNode` instantiation) will automatically be discovered and made available in the QUAlibrate UI.
+- **Launching the UI:** Start the QUAlibrate web application by running the command `qualibrate start` in your terminal within the correct environment. This launches a local web server.
 - **Accessing Nodes/Graphs:** Open the provided URL (usually `http://localhost:8001` or similar) in your browser. The UI will list all discovered calibration nodes and saved calibration graphs.
 - **Execution:** Select the desired node or graph, modify its input parameters through the UI form, and click "Run" to execute it. The UI will display progress, results, plots, and any proposed state updates for review.
 

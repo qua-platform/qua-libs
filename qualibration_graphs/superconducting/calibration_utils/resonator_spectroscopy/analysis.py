@@ -61,7 +61,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds : xr.Dataset
         Dataset containing the raw data.
     node : QualibrationNode
-        The Qualibrate node.
+        The QUAlibrate node.
 
     Returns:
     --------
