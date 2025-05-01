@@ -101,10 +101,15 @@ def get_full_scale_power_dBm_and_amplitude(desired_power: float, max_amplitude: 
 # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, and O8 & I2 must be in the same band.
 
 # Resonator frequencies
-rr_freq = np.array([4.395, 4.412, 4.521, 4.728, 4.915, 5.147, 5.247, 5.347]) * u.GHz
+rr_freq = np.array([4.395, 4.412, 4.521, 4.728, 4.915, 5.000, 5.050, 5.100]) * u.GHz
 rr_LO = 4.75 * u.GHz
 rr_if = rr_freq - rr_LO  # The intermediate frequency is inferred from the LO and readout frequencies
-assert np.all(np.abs(rr_if) < 400 * u.MHz), "The resonator intermediate frequency must be within [-400; 400] MHz."
+assert np.all(np.abs(rr_if) < 400 * u.MHz), (
+    "The resonator intermediate frequency must be within [-400; 400] MHz. \n"
+    f"Readout frequencies: {rr_freq} \n"
+    f"Readout LO frequency: {rr_LO} \n"
+    f"Readout IF frequencies: {rr_if} \n"
+)
 
 # Desired output power in dBm - Must be within [-80, 16] dBm
 readout_power = -40
@@ -134,9 +139,14 @@ for k, qubit in enumerate(machine.qubits.values()):
 
 # Qubit drive frequencies
 xy_freq = np.array([6.012, 6.421, 6.785, 7.001, 7.083, 7.121, 7.184, 7.254]) * u.GHz
-xy_LO = np.array([6.0, 6.1, 6.2, 6.3, 7.1, 7.1, 7.1, 7.1]) * u.GHz
+xy_LO = np.array([6.0, 6.1, 6.5, 6.8, 7.1, 7.1, 7.1, 7.1]) * u.GHz
 xy_if = xy_freq - xy_LO  # The intermediate frequency is inferred from the LO and qubit frequencies
-assert np.all(np.abs(xy_if) < 400 * u.MHz), "The xy intermediate frequency must be within [-400; 400] MHz."
+assert np.all(np.abs(xy_if) < 400 * u.MHz), (
+    "The xy intermediate frequency must be within [-400; 400] MHz. \n"
+    f"Qubit drive frequencies: {xy_freq} \n"
+    f"Qubit drive LO frequencies: {xy_LO} \n"
+    f"Qubit drive IF frequencies: {xy_if} \n"
+)
 # Transmon anharmonicity
 anharmonicity = np.array([150, 200, 175, 310, 214, 198, 179, 235]) * u.MHz
 
@@ -192,7 +202,7 @@ for k, q in enumerate(machine.qubits):
     machine.qubits[q].resonator.operations["readout"].amplitude = rr_amplitude
     # Qubit saturation
     machine.qubits[q].xy.operations["saturation"].length = 20 * u.us
-    machine.qubits[q].xy.operations["saturation"].amplitude = 5 * xy_amplitude
+    machine.qubits[q].xy.operations["saturation"].amplitude = 0.1 * xy_amplitude
     # Single qubit gates - DragCosine
     add_DragCosine_pulses(
         machine.qubits[q],

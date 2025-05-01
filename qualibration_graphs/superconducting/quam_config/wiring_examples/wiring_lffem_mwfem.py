@@ -17,7 +17,7 @@ cluster_name = "Cluster_1"  # Name of the cluster
 ########################################################################################################################
 instruments = Instruments()
 instruments.add_mw_fem(controller=1, slots=[1, 2])
-instruments.add_lf_fem(controller=1, slots=[3, 4])
+instruments.add_lf_fem(controller=1, slots=[3, 5])
 
 ########################################################################################################################
 # %%                                 Define which qubit ids are present in the system
