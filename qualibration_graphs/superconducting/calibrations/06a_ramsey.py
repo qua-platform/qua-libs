@@ -19,7 +19,7 @@ from calibration_utils.ramsey import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from qualibration_libs.parameters import get_qubits
+from qualibration_libs.parameters import get_qubits, get_idle_times_in_clock_cycles
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
@@ -73,9 +73,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num_qubits = len(qubits)
 
     n_avg = node.parameters.num_shots
-    from calibration_utils.ramsey.parameters import (
-        get_idle_times_in_clock_cycles,
-    )
 
     idle_times = get_idle_times_in_clock_cycles(node.parameters)
     detuning = node.parameters.frequency_detuning_in_mhz * u.MHz

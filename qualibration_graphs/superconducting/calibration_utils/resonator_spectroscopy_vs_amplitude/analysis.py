@@ -93,6 +93,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         .mean()
         .dropna("power")
     )
+    # ensure rr_min_response_avg buffer is writeable
+    ds_fit["rr_min_response_avg"].data = ds_fit["rr_min_response_avg"].data.copy()
     # Apply a filter to scale down the initial noisy values in the moving average if needed
     for j in range(node.parameters.moving_average_filter_window_num_points):
         ds_fit.rr_min_response_avg.isel(power=j).data /= node.parameters.moving_average_filter_window_num_points - j

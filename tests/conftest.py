@@ -3,8 +3,11 @@ import subprocess
 from pathlib import Path
 import pytest
 import json
-import tempfile
 from qualibrate import QualibrationLibrary
+import matplotlib
+
+# Use Agg backend to avoid matplotlib GUI during tests
+matplotlib.use("Agg")
 
 
 def get_package_root(package_name="quam_config") -> Path:
@@ -89,6 +92,19 @@ def library():
 @pytest.fixture(scope="session")
 def superconducting_folder():
     return Path("qualibration_graphs/superconducting").resolve()
+
+
+@pytest.fixture
+def env_vars() -> dict | None:
+    package_root = get_package_root()
+    env_path = package_root / ".." / ".." / "tests" / "assets" / ".env"
+
+    if env_path.exists():
+        file_contents = env_path.read_text()
+        env_vars = json.loads(file_contents)
+        return env_vars
+    else:
+        return None
 
 
 @pytest.fixture(scope="session")
