@@ -34,13 +34,13 @@ quam_config/
 
 The typical workflow to create a QUAM state that accurately represents your quantum setup involves the following steps:
 
-### 1️⃣ Navigate to `Superconducting/quam_config` folder
+### 1️⃣ Navigate to `superconducting/quam_config` folder
 
 All relevant scripts reside here.
 
 ### 2️⃣ Define the QUAM Root Class Structure (in `my_quam.py`)
 
-Edit `my_quam.py` to define the Python classes representing your system's hierarchy. 
+Edit `my_quam.py` to define the Python classes representing your system's hierarchy.
 It contains a class definition `Quam`, which should typically inherit from `FluxTunableQuam` or `FixedFrequencyQuam` depending on the qubit type and can be customized if needed.
 
 ### 3️⃣ Generate Static Configuration & Wiring (using `generate_quam.py`)
@@ -55,7 +55,7 @@ This step creates the static part of the QUAM state, primarily defining the hard
   - Specify the qubit IDs present in your system.
   - Define any custom channel addresses if necessary.
   - Review the wiring allocation logic and adjust if needed.
-- Run the script: Execute `python generate_quam.py`. This uses the definitions in the script (leveraging `quam-builder` tools internally) to generate the QUAM state files (e.g., `wiring.json` and `state.json`) in your QUAM state folder (default: `Superconducting/quam_state`). The `state.json` created at this stage contains the structure but is largely empty of specific operational parameters. This generated QUAM state should typically be populated with target values in the next step.
+- Run the script: Execute `python generate_quam.py`. This uses the definitions in the script (leveraging `quam-builder` tools internally) to generate the QUAM state files (e.g., `wiring.json` and `state.json`) in your QUAM state folder (default: `superconducting/quam_state`). The `state.json` created at this stage contains the structure but is largely empty of specific operational parameters. This generated QUAM state should typically be populated with target values in the next step.
 
 ![opx1000_wiring](../.img/opx1000_wiring.PNG)
 
@@ -80,7 +80,7 @@ After completing these steps, your QUAM state is ready. You can load and save it
 
 ```python
 # Make sure Quam class is correctly imported from your my_quam.py
-from quam_config.my_quam import Quam
+from quam_config import Quam
 
 # Load QUAM state (adjust path if needed)
 machine = Quam.load()

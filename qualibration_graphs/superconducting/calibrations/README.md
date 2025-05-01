@@ -24,7 +24,8 @@ You can easily extend this library by adding your own custom calibration nodes. 
 
 - Using the `# %%` separators for code cells.
 - Defining parameters in a separate `Parameters` class (usually imported).
-- Structuring the workflow using functions decorated with `@node.run_action`.
+- Structuring the workflow using functions decorated with `@node.run_action`.  
+  It is recommended to implement the same actions as those defined in the other calibration nodes
 - Loading and interacting with the `QUAM` object.
 - Using `node.results`, `node.outcomes` for storing outputs.
 - Using `with node.record_state_updates():` for proposing QUAM changes.
@@ -36,12 +37,10 @@ While individual nodes can be run standalone or via the Qualibrate UI for specif
 
 Creating a typical calibration graph involves:
 
-1.  **Using the Qualibrate UI:** The web interface provides a visual editor for building graphs.
-2.  **Selecting Nodes:** Dragging and dropping nodes from the available library onto the graph canvas.
-3.  **Connecting Nodes:** Defining the execution order by drawing connections between nodes.
-4.  **Defining Dependencies:** Specifying conditions for running subsequent nodes (e.g., only run Node B if Node A was "successful") or passing results from one node as input parameters to another.
-5.  **Saving the Graph:** Storing the graph configuration for later execution.
-6.  **Running the Graph:** Initiating the execution of the entire sequence via the Qualibrate UI. Qualibrate manages the execution flow, parameter passing, and state updates according to the graph definition.
+1.  **Define Paraemters:** Typically the only relevant parameter is the targets type, e.g. `qubits`
+2.  **Specifying Nodes:** Define which nodes will be used in the graph
+3.  **Connecting Nodes:** Defining the execution order by defining connections between nodes.
+4.  **Create the Graph:** Pass these parameters to create a `QualibrationGraph` instance
 
 Calibration graphs allow for robust, automated calibration sequences that can adapt based on intermediate results. For a more detailed explanation of graph components, dependencies, and advanced features, please refer to the [Anatomy of a Calibration Graph](./graph_anatomy.ipynb) document.
 
