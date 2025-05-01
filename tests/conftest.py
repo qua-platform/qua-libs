@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 import pytest
 import json
+import tempfile
 from qualibrate import QualibrationLibrary
 
 
@@ -21,13 +22,18 @@ def run_cmd(command) -> str:
     return result.stdout
 
 
-def setup_qualibrate_config():
+def setup_qualibrate_config(use_test_calibrations=True):
     print("Setting up qualibrate config")
     package_root = get_package_root()
-    quam_state_path = package_root / "configuration" / "quam_state"
-    calibration_library_folder = package_root / "calibrations"
-    config_path = package_root / ".." / ".." / "tests" / "assets" / "config.toml"
+    test_path = package_root / ".." / ".." / "tests"
+    quam_state_path = test_path / "assets" / "quam_state"
+    config_path = test_path / "assets" / "config.toml"
     env_path = package_root / ".." / ".." / "tests" / "assets" / ".env"
+
+    if use_test_calibrations:
+        calibration_library_folder = test_path / "assets" / "calibrations"
+    else:
+        calibration_library_folder = package_root / "calibrations"
 
     if "QUA_LIBS_STORAGE_LOCATION" in os.environ:
         print("Using QUA_LIBS_STORAGE_LOCATION from environment variable")
@@ -38,6 +44,10 @@ def setup_qualibrate_config():
         env_vars = json.loads(file_contents)
         storage_location = env_vars["QUA_LIBS_STORAGE_LOCATION"]
     else:
+
+        # with tempfile.TemporaryDirectory() as temp_dir:
+        #     print("Created temporary folder at:", temp_dir)
+        #     storage_location = temp_dir
         raise Exception("QUA_LIBS_STORAGE_LOCATION is not set")
 
     command = [
@@ -57,16 +67,36 @@ def setup_qualibrate_config():
     run_cmd(" ".join(command))
 
     os.environ["QUALIBRATE_CONFIG_FILE"] = str(config_path)
+    os.environ["QUAM_CONFIG_FILE"] = str(config_path)
+    return str(config_path)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def qualibrate_test_config():
-    setup_qualibrate_config()
+    setup_qualibrate_config(use_test_calibrations=True)
+
+
+@pytest.fixture(scope="session")
+def qualibrate_calibrations_config():
+    setup_qualibrate_config(use_test_calibrations=False)
 
 
 @pytest.fixture(scope="session")
 def library():
     return QualibrationLibrary.get_active_library()
+
+
+@pytest.fixture(scope="session")
+def superconducting_folder():
+    return Path("qualibration_graphs/superconducting").resolve()
+
+
+@pytest.fixture(scope="session")
+def quam_state_path():
+    package_root = get_package_root()
+    test_path = package_root / ".." / ".." / "tests"
+    quam_state_path = test_path / "assets" / "quam_state"
+    return quam_state_path
 
 
 if __name__ == "__main__":

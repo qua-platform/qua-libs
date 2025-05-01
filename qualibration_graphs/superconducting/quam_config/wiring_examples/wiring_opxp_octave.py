@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-from dask.array import block
 from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 from quam_builder.builder.qop_connectivity import build_quam_wiring
@@ -55,11 +54,12 @@ plt.show(block=True)
 ########################################################################################################################
 # %%                                   Build the wiring and QUAM
 ########################################################################################################################
-input("Do you want to save the updated QUAM? (y/n)")
-if input == "y":
-    quam = Quam()
+user_input = input("Do you want to save the updated QUAM? (y/n)")
+if user_input.lower() == "y":
+    machine = Quam()
     # Build the wiring (wiring.json) and initiate the QUAM
-    build_quam_wiring(connectivity, host_ip, cluster_name, quam)
-    # Build the QUAM object and save the state as state.json
+    build_quam_wiring(connectivity, host_ip, cluster_name, machine)
+
+    # Reload QUAM, build the QUAM object and save the state as state.json
     machine = Quam.load()
-    quam = build_quam(machine, calibration_db_path)
+    build_quam(machine, calibration_db_path)
