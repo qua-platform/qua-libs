@@ -5,7 +5,7 @@ This includes both flux-tunable and fixed-frequency qubits.
 It includes configurable experiment nodes, analysis routines, and tools for managing the quantum system state (QUAM).
 
 This library is built upon **QUAlibrate**, an advanced, open-source software framework designed specifically for the automated calibration of Quantum Processing Units (QPUs). QUAlibrate provides tools to create, manage, and execute calibration routines efficiently. The configurable experiment nodes, analysis routines, and state management tools included here are designed to integrate seamlessly with the QUAlibrate ecosystem.
-See the [QUAlibrate Documentation](https://qua-platform.github.io/qualibrate/] for more information.
+See the [QUAlibrate Documentation](https://qua-platform.github.io/qualibrate/) for more information.
 
 ## Table of Contents
 
