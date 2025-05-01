@@ -1,5 +1,6 @@
 # %% {Imports}
 import numpy as np
+import xarray as xr
 
 from qm.qua import *
 
@@ -30,9 +31,8 @@ node = QualibrationNode[Parameters, Quam](name="00_hello_qua", description=descr
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.simulate = True
-    node.parameters.multiplexed = True
-    node.parameters.num_shots = 2
+    # node.parameters.multiplexed = True
+    # node.parameters.num_shots = 2
     pass
 
 
@@ -50,6 +50,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = get_qubits(node)
 
     amps = np.linspace(-1, 1, 11)
+    # Register the sweep axes to be added to the dataset when fetching data
+    node.namespace["sweep_axes"] = {
+        "qubit": xr.DataArray(qubits.get_names()),
+        "amplitude": xr.DataArray(amps, attrs={"long_name": "amplitude scale", "units": ""}),
+    }
+
+    # node.namespace["sweep"]
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
@@ -69,6 +76,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.xy.play("x180", amplitude_scale=a)
                         qubit.wait(250 * u.ns)
                     align()
+
+            with stream_processing():
+                n_st.save("n")
+                # This example doesn't save I/Q, adjust if needed
+                # I_st[0].buffer(len(amps)).average().save("I1")
+                # Q_st[0].buffer(len(amps)).average().save("Q1")
 
 
 # %% {Simulate}
@@ -109,3 +122,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
+
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Save the node results and state."""
+    node.save()

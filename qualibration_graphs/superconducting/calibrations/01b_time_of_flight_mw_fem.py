@@ -56,7 +56,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q2"]
+    # node.parameters.qubits = ["q1", "q2"]
     pass
 
 
@@ -125,7 +125,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 stream.image().save(f"adc_single_runQ{i + 1}")
 
 
-# %% {Simulate_or_execute}
+# %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
@@ -139,6 +139,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
+# %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""

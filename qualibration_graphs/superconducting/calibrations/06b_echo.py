@@ -49,7 +49,7 @@ node = QualibrationNode[Parameters, Quam](name="06b_echo", description=descripti
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q2"]
+    # node.parameters.qubits = ["q1", "q2"]
     pass
 
 
