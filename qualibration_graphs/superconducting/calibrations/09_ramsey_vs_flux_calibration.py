@@ -20,7 +20,7 @@ from calibration_utils.ramsey_versus_flux_calibration import (
     process_raw_dataset,
 )
 from qualibration_libs.parameters import get_qubits
-from qualibration_libs.runtime.simulate import simulate_and_plot
+from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Initialisation}
 description = """
@@ -43,7 +43,7 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the qubits frequency (f_01) in the state.
-    - Save the current state by calling machine.save("quam")
+    - Save the current state by calling machine.save()
 """
 
 

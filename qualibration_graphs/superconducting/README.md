@@ -1,424 +1,242 @@
-# N Flux-Tunable Transmon Qubits
+# Superconducting QUAlibration graphs
+
+This repository provides a comprehensive library for calibrating superconducting transmon qubits using the Quantum Orchestration Platform (QOP), QUAM, and Qualibrate.
+This includes both flux-tunable and fixed-frequency qubits.
+It includes configurable experiment nodes, analysis routines, and tools for managing the quantum system state (QUAM).
+
+This library is built upon **Qualibrate**, an advanced, open-source software framework designed specifically for the automated calibration of Quantum Processing Units (QPUs). Qualibrate provides tools to create, manage, and execute calibration routines efficiently. The configurable experiment nodes, analysis routines, and state management tools included here are designed to integrate seamlessly with the Qualibrate ecosystem.
 
 ## Table of Contents
 
-1. [Installation](#installation)
-   1. [Requirements](#requirements)
-   2. [Setup](#setup)
-2. [Folder structure](#folder-structure)
-   1. [calibration_data](#calibration_data)
-   2. [calibrations](#calibrations)
-   3. [configuration](#configuration)
-   4. [quam_builder](#quam_builder)
-3. [How to generate the QUAM](#how-to-generate-the-quam)
-   1. [1. Define the wiring](#1-define-the-wiring)
-   2. [2. The QUAM components](#2-the-quam-components)
-   3. [3. Generating the QUAM and state.json](#3-generating-the-quam-and-statejson)
-   4. [4. Updating the parameters of state.json](#4-updating-the-parameters-of-statejson)
-4. [How to run Qualibrate nodes](#how-to-run-qualibrate-nodes)
-   1. [Node structure](#node-structure)
-   2. [Execution](#execution)
-      1. [As standalone python scripts](#as-standalone-python-scripts)
-      2. [Within Qualibrate](#within-qualibrate)
+1.  [Prerequisites](#prerequisites)
+2.  [Getting Started](#getting-started)
+    - [Downloading the Library](#downloading-the-library)
+    - [Installation](#installation)
+    - [Initial Setup (Qualibrate Configuration)](#initial-setup-qualibrate-configuration)
+    - [Verify Setup](#verify-setup)
+3.  [Creating the QUAM State](#creating-the-quam-state)
+4.  [Calibration Nodes and Graphs](calibration-nodes-and-graphs)
+5.  [Project Structure](#project-structure)
+6.  [Extending QUAM Components](#extending-quam-components)
+7.  [Contributing](#contributing)
+8.  [License](#license)
 
-## Installation
+## Prerequisites
 
-This folder contains an installable module called `quam_builder`, which provides a collection of tailored components for controlling flux-tunable qubits and experiment functionality. These components extend the functionality of QUAM, making it easier to design and execute calibration nodes.
+- **Python:** Version 3.9 to 3.12 is supported.
+- **Python Virtual Environment:** Strongly recommended to avoid dependency conflicts.
+  You can create one using:
 
-### Requirements
-- Local version of the superconducting folder
-  - This contains folders such as `calibrations`, as well as the README document you are currently reading
-- Python <= 3.12, set up in a virtual environment
+  - **venv**: Python's built-in virtual environment handler
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate ` (Linux/macOS)
+    .venv\Scripts\activate` (Windows)
+    ```
+  - **conda**: Anaconda's virtual environment manager
+    ```bash
+    conda create -n qualibrate_env python=3.10
+    conda activate qualibrate_env
+    ```
 
-### Setup
+- **Git:** (Optional but Recommended) For version control, easier updates (pulling changes), and collaboration (forking and contributing).
+  [Install Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
+- **Access to Quantum Orchestration Platform (QOP) hardware:** Required for running experiments on hardware.
 
-```bash
-pip install -e .
+## Getting Started
+
+### Downloading the Library
+
+You have a few options to get the code:
+
+1.  **Customer Repository:** If provided as part of a customer installation, use the dedicated user repository.
+2.  **Fork (Recommended for Staying Updated):** Forking the `qua-libs` repository on GitHub to your account (see GitHub's guide on [how to fork a repo](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)) and then cloning your fork is the recommended way to stay periodically in sync with updates from the main repository.
+    It also allows you to contribute changes back via pull requests.
+3.  **Git Clone (Direct):** Clone the repository directly using Git.
+    This allows you to pull updates but requires managing potential merge conflicts manually if you make local changes without forking.
+    `bash
+git clone https://github.com/qua-platform/qua-libs.git
+`
+4.  **Direct Download:** Navigate to the `qua-libs` repository on GitHub, download the ZIP file, and unzip it.
+    This method doesn't require Git but makes updating and contributing harder.
+
+### Installation
+
+Once you have the code locally:
+
+1.  **Navigate to the Directory:** Open a terminal or command prompt and change into the `superconducting` directory within the downloaded/cloned repository.
+2.  **Activate Virtual Environment:** Ensure your dedicated Python virtual environment (see [Prerequisites](#prerequisites)) is activated.
+3.  **Install the Package:** Run the following command to install the library and its dependencies in editable mode (`-e`), which means changes you make to the source code will be reflected immediately without reinstalling:
+
+    ```bash
+    pip install -e .
+    ```
+
+    _Note for `uv` users:_ If you are using `uv` instead of `pip`, you might need to allow pre-releases depending on the dependencies:
+
+    ```bash
+    uv pip install -e . --prerelease=allow
+    ```
+
+### Initial Setup (Qualibrate Configuration)
+
+The Qualibrate framework needs some initial configuration to know where to find calibration scripts, store data, and manage the system state (QUAM).
+
+1.  **Run the Configuration Script:** Execute the provided script from within the `Superconducting` directory:
+
+    ```bash
+    setup-qualibrate-config
+    ```
+
+    If this command does not work, you may need to first restart your terminal or IDE.
+
+2.  **Follow Prompts:** The script will interactively ask for the following details:
+
+    - `project name`: A unique name for your project or QPU chip (e.g., `MyQPU_Chip1`).  
+      Default: `QPU_project`.
+    - `storage location`: The root directory where measurement data will be saved.  
+      Default: `data/{project_name}` relative to the current directory.
+    - `calibration library folder`: The path to the directory containing calibration nodes/graphs.  
+      Default: `./calibrations` relative to the current directory.
+    - `QUAM state path`: The location where the QUAM state file (containing system parameters, connectivity, etc.) is stored.  
+      Default: `./quam_state` relative to the current directory.
+
+          You can press `Enter` or type `y` to accept the defaults, or `n` to provide custom paths.
+
+3.  **Confirm Full Config:** The script will show the complete Qualibrate configuration for final confirmation.
+    For detailed explanations of all settings, refer to the [Qualibrate Configuration File Documentation](https://qua-platform.github.io/qualibrate/configuration/).
+
+### Verify Setup
+
+To ensure Qualibrate is installed and configured correctly:
+
+1.  **Launch the Web Interface:** Run the following command in your terminal:
+
+    ```bash
+    qualibrate start
+    ```
+
+2.  **Open in Browser:** Navigate to [http://127.0.0.1:8001](http://127.0.0.1:8001).
+
+You should see the Qualibrate web UI, listing the calibration nodes found in your configured `calibrations` directory.
+
+## Creating the QUAM State
+
+QUAM (Quantum Abstract Machine) provides an abstraction layer over the low-level QUA configuration. It allows you to define your quantum system (hardware, connectivity, qubit parameters, pulses, etc.) in a structured, physicist-friendly way. The QUAM state is stored in the `./quam_state/` directory, separated into a static part `./quam_state/wiring.json` for the wiring and network, and the main contents in `./quam_state/state.json`. The QUAM state serves as a persistent digital model of your entire setup, one that is continuously updated with calibrations.
+
+**Interaction with Calibration Nodes:**
+
+- **Loading:** Calibration nodes (scripts in `calibrations/`) typically load the latest QUAM state at the beginning of their execution. This provides them with all the necessary parameters (e.g., frequencies, amplitudes, timings) required to run the specific calibration experiment.
+- **Updating:** After a calibration node runs and analyzes the results, it often calculates updated parameters (e.g., a newly calibrated qubit frequency or an optimized pulse amplitude). The node then modifies the corresponding values within the loaded QUAM object.
+- **Saving:** Qualibrate nodes save the modified QUAM state, often alongside the experiment results. This ensures that subsequent nodes in a calibration graph or future runs use the most up-to-date, calibrated parameters. This also updates the latest QUAM state in the `./quam_state/` directory.
+
+**How to Create the State:**
+
+The process of creating the initial QUAM state file involves defining your specific hardware components (OPXs, Octaves, mixers, LOs), as well as the QPU layout that the hardware is attached to. Detailed instructions are found in **[quam_config/README.md](quam_config/README.md)**
+
+This directory contains scripts (`generate_quam.py`, `populate_quam_xx.py`, examples, etc.) that demonstrate how to build the QUAM object programmatically.
+
+## Calibration Nodes and Graphs
+
+The scripts within the `calibrations` directory are the building blocks for automated calibration routines.
+Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement).
+They are designed to be run via the Qualibrate framework, either individually or as part of a larger calibration sequence (graph), but can also be executed as a standalone script from your favorite Python IDE (e.g. PyCharm, VScode...).
+
+Refer to the [calibrations/README.md](calibrations/README.md) for detailed information on the structure and conventions used for these nodes.
+
+## Project Structure
+
+The library is organized into the following main directories:
+
+TODO: modify after moving things to Qualibration-libs
+
 ```
-
-
-To verify that `qualibrate` installed correctly, you can launch the web interface:
-
-```shell
-qualibrate start
-```
-
-Then, open a browser to http://127.0.0.1:8001, where you should see the list of calibration nodes stored in the
-`calibrations` directory.
-
-## Folder structure
-
-The typical QUAM/QUalibrate folder structure is as follows:
-
-```
-├───calibration_data
-│   └───2024-09-17
-│       └───#1_01_Time_of_Flight_152438
-│           └───quam_state
-|
-├───calibrations
+superconducting/
+├── calibrations/      # Individual calibration scripts (nodes) runnable by Qualibrate.
+│   ├── 00_hello_qua.py
+│   ├── 01a_time_of_flight.py
+│   └── ... (many calibration routines)
 │
-├───quam_config
-│   └───quam_state
+├── data/                   # Default location for storing experiment results.
+│   └── {project_name}/     # Data organized by project name.
+│       └── YYYY-MM-DD/     # Data organized by date.
+│           └── #idx_{node_name}_HHMMSS/ # Data for a specific run.
+│               └── quam_state/
+│                   ├── state.json      # Contains the QUAM state except the wiring and network.
+│                   └── wiring.json     # Contains the static part of the QUAM state (wiring and network).
+│               ├── data.json       # Structure containing the data outpoutted by the node (fit results, figures,...).
+│               ├── ds_raw.h5       # HDF5 dataset containing the raw data.
+│               ├── ds_fit.h5       # HDF5 dataset containg the post-processed data.
+│               ├── figures.png     # Generated figures.
+│               └── node.json       # Metadat about the node used by QUAlibrate.
 │
-├───calibration_utils
-├───calibration_utils
+│── quam_state/         # Default location for the main QUAM state file.
+│   ├── state.json      # Contains the QUAM state except the wiring and network
+│   └── wiring.json     # Contains the static part of the QUAM state (wiring and network)
 |
-|
-|
+├── quam_config/            # Scripts and configurations for generating/managing QUAM state files.
+│   ├── wiring_examples/    # Example configurations for different hardware setups.
+│   ├── generate_quam.py        # Script to generate a QUAM file.
+│   ├── populate_quam_xx.py     # Script to populate the newly generated QUAM file with initial values.
+│   └── ...
+│
+│── calibration_utils/  # Specific experiment implementations (e.g., T1, Ramsey, Spectroscopy).
+│   └── resonator_spectroscopy/
+│   │   ├── analysis.py     # Contains all the analysis functions.
+│   │   ├── parameters.py   # Contains node-specific parameters.
+│   │   └── plotting.py     # Contains all the plotting functions.
+│   └── ...
+│
+├── README.md               # This file.
+└── pyproject.toml # Installation configuration for the package.
 ```
 
-### calibration_data
-
-This folder contains the data that will be saved after the execution of each calibration node.
-The [data handler](https://github.com/qua-platform/py-qua-tools/tree/main/qualang_tools/results#data-handler) is used to save data into an automatically generated folder with folder structure:
-`<path_to_your_data_folder>/%Y-%m-%d/#{idx}_{name}_%H%M%S`
-
-The saved data can have a different format depending on its type:
-
-- The figures are saved as .png.
-- The arrays are saved as .npz.
-- The node parameters, state and wiring are saved as .json.
-
-### calibrations
-
-This folder contains all the calibration scripts that can compose a qualibrate graph.
-The structure of the nodes is described below.
+**calibrations**  
+The `calibrations/` folder contains individual Python scripts, each representing a calibration "node".
+These scripts typically import functionality from **calibration_utils**, define parameters, run a QUA program, analyze results, and update the QUAM state. See the README.md within this folder for more details on node structure.
 
-### configuration
+**data**  
+The `data/` folder is the default output directory where Qualibrate saves results (plots, raw data, QUAM state snapshots) from calibration runs, organized by project, date, and run index/name.
 
-The configuration folder contains the python scripts used to build the QUAM before starting the experiments.
-It contains three files whose working principles are explained in more details below:
+**quam_state**  
+The `quam_state/` directory is where the main QUAM state files are stored. These files are crucial for maintaining the current state of the quantum system, excluding the wiring and network configurations. The `state.json` file contains dynamic aspects of the QUAM state, while the `wiring.json` file holds static information about the system's wiring and network setup.
 
-- **make_wiring**: create the port mapping between the control hardware (OPX+, Octave, OPX1000 LF fem, MW fem) and the quantum elements (qubits, resonators, flux lines...).
-  - [make_wiring_lffem_mwfem.py](./configuration/make_wiring_lffem_mwfem.py) for a cluster made of LF and MW FEMs (OPX1000).
-  - [make_wiring_lffem_octave.py](./configuration/make_wiring_lffem_octave.py) for a cluster made of LF-FEMs and Octaves (OPX1000).
-  - [make_wiring_opxp_octave.py](./configuration/make_wiring_opxp_octave.py) for a cluster made of OPX+ and Octaves.
-- [make_quam.py](./configuration/make_quam.py): create the state of the system based on the generated wiring and QUAM components and containing all the information necessary to calibrate the chip and run experiments. This state is used to generate the OPX configuration.
-- [modify_quam.py](./configuration/modify_quam.py): update the parameters of the state programmatically based on defaults values (previous calibration, chip manufacturer specification...).
-
-### quam_builder
-
-This folder contains all the utility functions necessary to create the wiring or build the QUAM, as well as QUA macros and data processing tools:
-
-- [components](./quam_builder.architecture): this is where the QUAM root and custom QUAM components are defined. A set of basic QUAM components are already present, but advanced user can easily modify them or create new ones.
-- [lib](./quam_libs): contains several utility functions for saving, fitting and post-processing data.
-- [quam_builder](./quam_builder.builder): contains the main functions called in [machine.py](./quam_builder.builder/machine.py) and used to generate the wiring and build the QUAM structure from it and the QUAM components declared in the [components](./quam_builder.architecture) folder. It also contains the [pulses.py](./quam_builder.builder/pulses.py) file where the default qubits pulses are defined.
-
-## How to generate the QUAM
-
-Before starting to run experiments, it is necessary to build the Quantum Abstract Machine ([QUAM](https://github.com/qua-platform/quam)) for the desired
-qubit chip architecture. More details about QUAM itself can be found in the [QUAM documentation](https://qua-platform.github.io/quam/).
-
-The process can be divided into three sections:
-
-1. First one needs to create the wiring specifying which quantum element (qubit, resonator, flux line...) is connected to
-   which OPX channel.
-2. Then, the QUAM components can be derived from the resulting wiring.json file.
-   The attributes (methods or parameters) of these components can be customized at will.
-3. Finally, a file called state.json, containing all the desired parameters that describe the full state of the system
-   will be created.
-
-### [1. Define the wiring](./configuration/make_wiring.py)
+**quam_config**
+Tools and examples for creating the quam_state.json file, which describes your specific hardware setup (instruments, connections, qubit parameters).
 
-The wiring is generated from a python script called [make_wiring.py](./configuration/make_wiring.py).
-It uses a tool called [wirer](https://github.com/qua-platform/py-qua-tools/tree/feature/auto_wiring/qualang_tools/wirer)
-which helps to define the connectivity between the quantum elements (qubits, resonators, flux lines...) and the
-channels of the control hardware (OPX+, Octave, MW-fem, LF-fem). It will create a json file called wiring.json which
-contains the port mapping in a format requested by the QUAM builder, as well as the network settings.
+**calibration_utils**  
+`calibration_utils/` contains the calibration-specific helper functions, such as specific fitting routines, parameter classes, and plotting functionality
 
-1. First one needs to set up the instruments available in the QOP cluster
+## Extending QUAM Components
 
-```python
-from qualang_tools.wirer import Instruments
+QUAM Builder provides a repository containing a standard set of components related to qubits, such as superconducting qubits (e.g., `FluxTunableTransmon`), resonators (e.g., `ReadoutResonatorIQ`), and associated pulses. While this provides a solid foundation, it should not be viewed as a fixed set. As you advance your calibration routines and develop custom calibration nodes and graphs, you may find it necessary to extend or modify these standard components.
 
-# Define static parameters
-host_ip = "127.0.0.1"  # QOP IP address
-cluster_name = "Cluster_1"  # Name of the cluster
-# Desired location of wiring.json and state.json
-# The folder must not contain other json files.
-path = "./quam_state"
+There are several ways you might want to extend the QUAM components:
 
-instruments = Instruments()
-# instruments.add_opx_plus(controllers = [1])
-# instruments.add_octave(indices = 1)
-instruments.add_mw_fem(controller=1, slots=[1, 2])
-instruments.add_lf_fem(controller=1, slots=[3, 4])
-```
-
-2. Then the port mapping between the different quantum elements and the available channels can be generated automatically
-   based on the following hierarchy: resonators > qubit xy drive lines > qubit flux lines > qubit charge lines > tunable couplers.
-   Some constrains can also be added in order to force all the resonators to be on the same line for instance.
-
-```python
-from qualang_tools.wirer import Connectivity, allocate_wiring
-from qualang_tools.wirer.wirer.channel_specs import mw_fem_spec
-# Define which qubits are present in the system
-qubits = [1, 2, 3, 4, 5, 6]
-# Allocate the wiring to the connectivity object based on the available instruments
-connectivity = Connectivity()
-# Define any custom/hardcoded channel addresses
-q1_res_ch = mw_fem_spec(con=1, slot=1, in_port=1, out_port=1)
-# Single feed-line for reading the resonators & individual qubit drive lines
-connectivity.add_resonator_line(qubits=qubits, constraints=q1_res_ch)
-connectivity.add_qubit_flux_lines(qubits=qubits)
-connectivity.add_qubit_drive_lines(qubits=qubits)
-allocate_wiring(connectivity, instruments)
-```
-
-3. Finally, the wiring and network information is serialized and store in wiring.json and the QUAM state is initiated in state.json.
-   The wiring and port mapping can also be visualized in a matplotlib figure.
-
-```python
-from quam_builder.builder.machine import build_quam_wiring
-from qualang_tools.wirer import visualize
-# Build the wiring and network into a QUAM machine and save it as "wiring.json"
-build_quam_wiring(connectivity, host_ip, cluster_name, path)
-
-# View wiring schematic
-visualize(connectivity.elements, available_channels=instruments.available_channels)
-```
-
-![opx1000_wiring](./.img/opx1000_wiring.PNG)
-
-### [2. The QUAM components](./quam_builder.architecture)
-
-Describe the structure of the QUAM components and how they can be customized, what to pay attention to...
-Also, how to create a new one and update the wiring and build_quam accordingly.
-
-The hierarchy and structure of QUAM can be detailed as follows:
-
-1. [quam_root.py](./quam_builder.architecture/quam_root.py) represents the highest level in terms of hierarchy.
-   It contains the qubits and qubit pairs objects, as well as the wiring, network and Octaves.
-   Its methods are usually applied to all qubits or active qubits.
-2. The definition of a QUAM transmon is defined in [transmon.py](./quam_builder.architecture/transmon.py). It contains the
-   general transmon attributes (T1, T2, f_01...) as well as the QUAM components composing the transmon (`xy`, `resonator` and
-   `z` in this case). Two-qubit gates can also be implemented by defining a specific qubit pair component as shown in
-   [transmon_pair.py](./quam_builder.architecture/transmon_pair.py).
-3. The QUAM components are either defined from the base QUAM components directly, such as the qubit xy drive which is
-   directly defined as an `IQChannel`, or from user-defined components such as
-   [readout_resonator](./quam_builder.architecture/readout_resonator.py) or [flux_line](./quam_builder.architecture/flux_line.py),
-   which allows the customization of their attributes.
-
-### [3. Generating the QUAM and state.json](./configuration/make_quam.py)
-
-Once the QUAM root and the corresponding QUAM components are implemented, the QUAM state can be generated automatically and each
-parameter of the QUAM components is initialized to its arbitrary default value.
-All of these parameters can be updated programmatically based on the specs from the chip manufacturer for instance and
-the process is described in the next section.
-
-The script called [make_quam.py](./configuration/make_quam.py) takes care of generating the QUAM and filling the state
-according to the wiring file. The Octaves connection parameters can also be edited here if relevant.
-
-The QUAM generation happens in the `build_quam` function, which programmatically adds all the Octaves, ports, transmons and pulses
-according to the wiring and the QUAM components. The default values used for the QUAM components and pulses can be found
-under the [quam_builder](./quam_builder.builder) folder.
-
-```python
-from quam_config import Quam
-from quam_builder.builder.machine import build_quam
-
-path = "./quam_state"
-
-machine = Quam.load(path)
-
-# octave_settings = {"octave1": {"port": 11250} }  # externally configured: (11XXX where XXX are last three digits of oct ip)
-# octave_settings = {"oct1": {"ip": "192.168.88.250"} }  # "internally" configured: use the local ip address of the Octave
-octave_settings = {}
-
-# Make the QUAM object and save it
-quam = build_quam(machine, quam_state_path=path, octaves_settings=octave_settings)
-```
-
-Note that the set of default pulses, e.g. CosineDrag and Square, can be edited in [pulses.py](./quam_builder.builder/pulses.py).
-
-For simplicity, or quick debugging/testing, the QUAM can also be generated "on-the-fly":
-
-```python
-import json
-from qm import SimulationConfig
-from qm.qua import program
-from quam import QuamDict
-from quam.components.ports import MWFEMAnalogOutputPort, MWFEMAnalogInputPort
-from quam.components.channels import InOutMWChannel, MWChannel
-from quam.components.pulses import SquarePulse, SquareReadoutPulse
-from quam_config import Quam
-
-machine = Quam()  # or, Quam.load() if the state already exists
-
-# vvv  delete these if using Quam.load()
-machine.network.host = "172.16.33.116"
-machine.network.cluster_name = "Beta_8"
-machine.wiring = QuamDict({})
-# ^^^
-
-mw_out = MWChannel(
-    id="mw_out",
-    operations={
-        "cw": SquarePulse(amplitude=1, length=100),
-        "readout": SquareReadoutPulse(amplitude=0.2, length=100), },
-    opx_output=MWFEMAnalogOutputPort(
-        controller_id="con1", fem_id=1, port_id=2, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
-    ),
-    upconverter=1,
-    intermediate_frequency=20e6
-)
-mw_in = InOutMWChannel(
-    id="mw_in",
-    operations={
-        "readout": SquareReadoutPulse(amplitude=0.1, length=100), },
-    opx_output=MWFEMAnalogOutputPort(
-        controller_id="con1", fem_id=1, port_id=1, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
-    ),
-    opx_input=MWFEMAnalogInputPort(
-        controller_id="con1", fem_id=1, port_id=1, band=1, downconverter_frequency=int(3e9)
-    ),
-    upconverter=1,
-    time_of_flight=28,
-    intermediate_frequency=10e6
-)
-
-machine.qubits["dummy_out"] = mw_out
-machine.qubits["dummy_in"] = mw_in
-
-with program() as prog:
-    mw_out.play("cw")
-    mw_in.align()
-    mw_in.play("readout")
-
-config = machine.generate_config()
-qmm = machine.connect()
-
-simulation_config = SimulationConfig(duration=250)  # In clock cycles = 4ns
-job = qmm.simulate(config, prog, simulation_config)
-job.get_simulated_samples().con1.plot()
-
-# save machine into state.json
-machine.save("dummy_state.json")
-
-# %%
-# View the corresponding "raw-QUA" config
-with open("dummy_qua_config.json", "w+") as f:
-    json.dump(machine.generate_config(), f, indent=4)
-```
-
-### [4. Updating the parameters of state.json](./configuration/modify_quam.py)
-
-Once the state is created, each parameter can be updated based on the desired initial values using
-[modify_quam.py](./configuration/modify_quam.py).
-
-```python
-# %%
-import numpy as np
-import json
-from quam_config import Quam
-from quam_builder.builder.machine import save_machine
-
-# Load QUAM
-path = "./quam_state"
-machine = Quam.load(path)
-
-# %%
-# Update the resonator parameters
-rr_freq = np.array([4.395, 4.412, 4.521, 4.728, 4.915, 5.147]) * 1e9
-rr_LO = 4.75e9
-rr_if = rr_freq - rr_LO
-rr_max_power_dBm = -8
-
-for i, q in enumerate(machine.qubits):
-    machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
-    machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
-    machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
-    machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
-
-# %%
-# save into state.json
-save_machine(machine, path)
-
-# %%
-# View the corresponding "raw-QUA" config
-with open("qua_config.json", "w+") as f:
-    json.dump(machine.generate_config(), f, indent=4)
-```
-
-Note that these parameters serve as a starting point before starting to calibrate the chip and their values will be
-updated at the end of each calibration node.
-
-## How to run Qualibrate nodes
-
-### Node structure
-
-> **_NOTE:_** For the most detailed and up-to-date documentation on calibration nodes, visit the QUAlibrate [documentation](https://qua-platform.github.io/qualibrate/calibration_nodes/).
->
-> Qualibrate provides a framework to convert any old calibration script into a calibration **node** to be used within
-> a calibration graph, whilst maintaining its ability to be run standalone. The core elements of this framework are as
-> follows:
-
-#### Core features
-
-```python
-from qualibrate import NodeParameters, QualibrationNode
-
-# 1. Define the set of input parameters relevant for calibration
-class Parameters(NodeParameters):
-    span: float = 20
-    num_points: int = 101
-
-# 2. Instantiate a QualibrationNode with a unique name
-node = QualibrationNode(name="my_calibration_node")
-
-# Run your regular calibration code here
-...
-
-# 3. Record any relevant output from the calibration
-node.results = {...}  # a dictionary with any result data you like (including figures)!
-
-# 4. Save the results
-node.save()
-```
-
-After executing the node, results will be saved at the `<path_to_your_data_folder>`, as well as being viewable on the
-web app.
-
-#### Additional Feature: Interactive calibration
-
-Naturally as part of a calibration node, one would like to _update their QUAM parameters_ according to calibration
-results. When using QUAlibrate, you can define **interactive** state-updates to a QUAM as follows:
-
-```python
-with node.record_state_updates():
-    # Modify the resonance frequency of a qubit
-    machine.qubits["q0"].f_01 = 5.1e9
-```
-
-This will simply update the values if the script is executed normally. However, if the node is executed through the
-QUAlibrate Web App, any changes will be presented as a proposed state update to the user, allowing them to interactively accept or decline the changes based on the measurement outcomes.
-
-### Execution
-
-#### As standalone python scripts
-
-Simply run the script in your favourite IDE!
-
-#### Within Qualibrate
-
-1. Activate your conda environment if you haven't already:
-
-```shell
-conda activate qm
-```
-
-2. Start the QUAlibrate web-app in the command-line within your conda environment, e.g.,
-
-```shell
-qualibrate start
-```
-
-3. Open http://localhost:8001/ on your browser:
-   ![browser window](./.img/qualibrate_1.png)
-4. Select the node you would like to run:
-   ![select node](./.img/qualibrate_2.png)
-5. Change the input parameters to your liking:
-   ![change parameters](./.img/qualibrate_3.png)
-6. Press "Run":
-   ![change parameters](./.img/qualibrate_4.png)
+1.  **Adding Parameters:** You might need to add different parameters to the standard classes to accommodate specific characteristics of your hardware or calibration methods. For example, you may have a different coherence time metric you want to keep track of.
+2.  **Adding Components:** You might want to introduce entirely new components. This could include custom pulse shapes tailored to your experiments or other quantum elements relevant to your setup.
+
+### Method 1: Forking or Cloning QUAM Builder
+
+One way to achieve these extensions is by creating a fork or a local clone of the main QUAM Builder repository.
+
+1.  **Clone/Fork:** Obtain a local copy of the QUAM Builder source code.
+2.  **Locate Components:** Navigate to the `architecture` folder within the repository. This folder contains the definitions for the different QUAM components.
+3.  **Modify or Add:** You can now directly modify the existing Python classes for the components or add new Python files defining your custom components.
+
+**Important Considerations:**
+
+- **Compatibility:** When modifying existing components, be mindful of compatibility with existing calibration nodes. For example, if a calibration node expects a Transmon object to have a property named `T2echo`, renaming or removing this property in your modified class will break that node unless you also update the node's code to use the new property name. Try to maintain backward compatibility where possible or update your calibration nodes accordingly.
+- **Synchronization:** If you intend to keep your local version synchronized with future updates from the main QUAM Builder repository, be aware that modifying the core component files can lead to merge conflicts when you try to pull the latest changes. This requires careful management of your version control.
+
+### Method 2: Extension via QUAM Documentation
+
+An alternative approach exists for extending QUAM components without directly cloning or forking the repository. This method is detailed in the QUAM documentation on [Custom Components](https://qua-platform.github.io/quam/components/custom-components/). Using this approach, you can subclass any existing classes in QUAM Builder, and add parameters and methods, as well as create new QUAM components. However, note that this approach is generally more limited in scope, typically allowing only for the extension of existing components rather than fundamental modifications or additions of entirely new component types in the same manner as direct code modification.
+
+## Contributing
+
+We welcome contributions! Please follow the standard fork-and-pull-request workflow. Ensure your code adheres to existing style conventions and includes appropriate tests and documentation.
+
+## License
+
+This project is licensed under the BSD-3 license.

@@ -13,7 +13,7 @@ from qualibrate import QualibrationNode
 from quam_config import Quam
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits, get_idle_times_in_clock_cycles
-from qualibration_libs.runtime.simulate import simulate_and_plot
+from qualibration_libs.runtime import simulate_and_plot
 from calibration_utils.T1 import (
     Parameters,
     process_raw_dataset,
@@ -89,7 +89,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
-            # todo: is this the right behaviour?
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
 
@@ -160,7 +159,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
-        for dataset in data_fetcher:  # todo: is there any use-case where we have several datasets?
+        for dataset in data_fetcher:
             progress_counter(
                 data_fetcher["n"],
                 node.parameters.num_shots,

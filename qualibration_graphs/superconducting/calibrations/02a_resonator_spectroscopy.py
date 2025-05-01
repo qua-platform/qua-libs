@@ -22,7 +22,7 @@ from calibration_utils.resonator_spectroscopy import (
     plot_raw_phase,
 )
 from qualibration_libs.parameters import get_qubits
-from qualibration_libs.runtime.simulate import simulate_and_plot
+from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
 # %% {Initialisation}
