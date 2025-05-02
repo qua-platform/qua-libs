@@ -1,8 +1,8 @@
 from pathlib import Path
+
 import numpy as np
-from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
+from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms, flattop_gaussian_waveform
 from qualang_tools.units import unit
-from qualang_tools.config.waveform_tools import flattop_gaussian_waveform
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -169,7 +169,7 @@ readout_len = 4000
 readout_amp_q1 = 0.07
 readout_amp_q2 = 0.07
 
-time_of_flight = 24  # must be a multiple of 4
+time_of_flight = 28  # must be a multiple of 4
 
 # state discrimination
 rotation_angle_q1 = (0.0 / 180) * np.pi
