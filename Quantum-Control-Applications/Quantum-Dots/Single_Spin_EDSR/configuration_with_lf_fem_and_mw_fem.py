@@ -3,11 +3,12 @@ QUA-Config supporting OPX1000 w/ LF-FEM & MW-FEM
 """
 
 from pathlib import Path
+
 import numpy as np
-from scipy.signal.windows import gaussian
+import plotly.io as pio
 from qualang_tools.units import unit
 from qualang_tools.voltage_gates import VoltageGateSequence
-import plotly.io as pio
+from scipy.signal.windows import gaussian
 
 pio.renderers.default = "browser"
 
@@ -128,14 +129,15 @@ config = {
                     #   2: (4.5 GHz - 7.5 GHz)
                     #   3: (6.5 GHz - 10.5 GHz)
                     # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, and O8 & I2
-                    # must be in the same band, or in bands 1 & 3 (that is, if you assign band 2 to one of the coupled ports, the other must use the same band).
+                    # must be in the same band.
+                    # MW-FEM outputs are delayed with respect to the LF-FEM outputs by 141ns for bands 1 and 3 and 161ns for band 2.
                     # The keyword "full_scale_power_dbm" is the maximum power of
                     # normalized pulse waveforms in [-1,1]. To convert to voltage,
                     #   power_mw = 10**(full_scale_power_dbm / 10)
                     #   max_voltage_amp = np.sqrt(2 * power_mw * 50 / 1000)
                     #   amp_in_volts = waveform * max_voltage_amp
                     #   ^ equivalent to OPX+ amp
-                    # Its range is -41dBm to +10dBm with 3dBm steps.
+                    # Its range is -11dBm to +16dBm with 3dBm steps.
                     "type": "MW",
                     "analog_outputs": {
                         1: {
@@ -168,6 +170,9 @@ config = {
                             #   modulated pulses (optimized for modulated pulses):      "mw"    (default)
                             #   unmodulated pulses (optimized for clean step response): "pulse"
                             "upsampling_mode": "pulse",
+                            # Synchronization of the LF-FEM outputs with the MW-FEM outputs
+                            # 141ns delay (band 1 and 3) or 161ns delay (band 2)
+                            "delay": 141 * u.ns,
                         },
                         # P2
                         2: {
