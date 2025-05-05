@@ -213,8 +213,6 @@ if not node.parameters.simulate:
     idle_offset = np.mod(idle_offset + np.pi, 2 * np.pi) - np.pi
     # converting the phase phi from radians to voltage
     idle_offset = idle_offset / fit_osc.sel(fit_vals="f") / 2 / np.pi
-    # Calculate the mode of each idle_offset element corresponding to 1 / fit_osc.sel(fit_vals="f")
-    idle_offset_mode = idle_offset % (1 / fit_osc.sel(fit_vals="f"))
     # finding the location of the minimum frequency flux point
     flux_min = idle_offset + ((idle_offset < 0) - 0.5) / fit_osc.sel(fit_vals="f")
     flux_min = flux_min * (np.abs(flux_min) < 0.5) + 0.5 * (flux_min > 0.5) - 0.5 * (flux_min < -0.5)

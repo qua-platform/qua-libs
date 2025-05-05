@@ -17,7 +17,7 @@ Before proceeding to the next node:
 
 
 # %% {Imports}
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
@@ -175,7 +175,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(multi_qubit_spec_vs_flux)
         results = fetching_tool(job, ["n"], mode="live")
@@ -258,7 +258,7 @@ if not node.parameters.simulate:
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Flux (V)")
         ax.set_title(f"{qubit["qubit"]} - {qubit_pair.coupler.name}")
-    grid.fig.suptitle(f"Qubit spectroscopy vs coupler flux \n {date_time}  #{node_id}")
+    grid.fig.suptitle(f"Qubit spectroscopy vs coupler flux \n {date_time} GMT+3  #{node_id}")
     
     plt.tight_layout()
     plt.show()
