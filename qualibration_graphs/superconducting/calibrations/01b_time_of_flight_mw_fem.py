@@ -109,6 +109,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     qubit.resonator.measure("readout", stream=adc_st[i])
                     # Wait for the resonator to deplete
                     qubit.resonator.wait(node.machine.depletion_time * u.ns)
+                align()
 
         with stream_processing():
             n_st.save("n")
