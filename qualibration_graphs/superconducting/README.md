@@ -55,9 +55,9 @@ You have a few options to get the code:
     It also allows you to contribute changes back via pull requests.
 3.  **Git Clone (Direct):** Clone the repository directly using Git.
     This allows you to pull updates but requires managing potential merge conflicts manually if you make local changes without forking.
-    `bash
-git clone https://github.com/qua-platform/qua-libs.git
-`
+    ```bash
+    git clone https://github.com/qua-platform/qua-libs.git
+    ```
 4.  **Direct Download:** Navigate to the `qua-libs` repository on GitHub, download the ZIP file, and unzip it.
     This method doesn't require Git but makes updating and contributing harder.
 
