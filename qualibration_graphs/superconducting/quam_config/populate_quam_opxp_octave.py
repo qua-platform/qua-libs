@@ -114,7 +114,7 @@ xy_gain, xy_amplitude = get_octave_gain_and_amplitude(drive_power)
 for k, qubit in enumerate(machine.qubits.values()):
     qubit.f_01 = xy_freq.tolist()[k]  # Qubit 0 to 1 (|g> -> |e>) transition frequency
     qubit.xy.RF_frequency = qubit.f_01  # Qubit drive frequency
-    qubit.xy.frequency_converter_up.LO_frequency = xy_LO  # Octave LO frequency [2 : 0.250 : 18] GHz
+    qubit.xy.frequency_converter_up.LO_frequency = xy_LO.tolist()[k]  # Octave LO frequency [2 : 0.250 : 18] GHz
     qubit.xy.frequency_converter_up.gain = xy_gain  # Octave gain [-20 : 0.5 : 20] dB
     qubit.xy.frequency_converter_up.output_mode = "always_on"  # Octave RF switch mode "always_on" or "triggered"
     qubit.grid_location = f"{k},0"  # Qubit grid location for plotting as "column,row"
