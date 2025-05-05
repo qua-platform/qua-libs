@@ -86,7 +86,7 @@ The QUAlibrate framework needs some initial configuration to know where to find 
 1.  **Run the Configuration Script:** Execute the provided script from within the `Superconducting` directory:
 
     ```bash
-    setup-qualibrate-config
+    python setup_qualibrate.py
     ```
 
     If this command does not work, you may need to first restart your terminal or IDE.
