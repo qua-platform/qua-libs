@@ -138,10 +138,10 @@ with program() as ramsey:
                     qubit.align()
                     # Measure the state of the resonators and save data
                     if node.parameters.use_state_discrimination:
-                        readout_state(qubit, state[i])
+                        readout_state(qubit, state[i], wait_depletion_time=False)
                         save(state[i], state_st[i])
                     else:
-                        qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]), wait_depletion_time=False)
+                        qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
 
