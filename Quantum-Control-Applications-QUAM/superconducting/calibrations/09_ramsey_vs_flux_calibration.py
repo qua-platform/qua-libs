@@ -17,6 +17,7 @@ from quam_experiments.experiments.ramsey_versus_flux_calibration import (
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
+    plot_parabolas_with_fit,
     process_raw_dataset,
 )
 from quam_experiments.parameters.qubits_experiment import get_qubits
@@ -60,6 +61,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["q1", "q3"]
+    node.parameters.load_data_id = 706
     pass
 
 
@@ -117,7 +119,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             for i, qubit in multiplexed_qubits.items():
                 qubit.readout_state(init_state[i])
-                
+
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(flux, fluxes)):
@@ -228,10 +230,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_parabola_fit = plot_parabolas_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
-        "amplitude": fig_raw_fit,
+        "raw_data": fig_raw_fit,
+        "parabola_fit": fig_parabola_fit,
     }
 
 

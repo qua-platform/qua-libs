@@ -121,6 +121,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit["quad_term"] = xr.DataArray([a[q] for q in qubits], dims=["qubit"], coords={"qubit": qubits})
     ds_fit["flux_offset"] = xr.DataArray([flux_offset[q] for q in qubits], dims=["qubit"], coords={"qubit": qubits})
     ds_fit["freq_offset"] = xr.DataArray([freq_offset[q] for q in qubits], dims=["qubit"], coords={"qubit": qubits})
+    ds_fit["artifitial_detuning"] = xr.DataArray(node.parameters.frequency_detuning_in_mhz, dims=["qubit"], coords={"qubit": qubits})
 
     fit_results = {
         q: FitParameters(
