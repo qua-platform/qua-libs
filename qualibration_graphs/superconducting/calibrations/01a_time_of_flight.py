@@ -231,7 +231,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.parameters.time_of_flight_in_ns is not None:
                 q.resonator.time_of_flight = node.parameters.time_of_flight_in_ns + fit_result["tof_to_add"]
             else:
-                q.resonator.time_of_flight += fit_result["tof_to_add"]
+                q.resonator.time_of_flight = fit_result["tof_to_add"]
             if q.resonator.opx_input_I.controller_id in controllers_to_update:
                 if q.resonator.opx_input_I.offset is not None:
                     q.resonator.opx_input_I.offset += fit_result["offset_I_to_add"]
