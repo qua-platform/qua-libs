@@ -31,7 +31,9 @@ Prerequisites:
     - Having calibrated qubit gates (x90 and y90) by running qubit spectroscopy, rabi_chevron, power_rabi, Ramsey and updated the configuration.
 
 Next steps before going to the next node:
-    - Update the FIR and IIR filter taps in the configuration (config/controllers/con1/analog_outputs/"filter": {"feedforward": [], "feedback": [(A, tau)]}).
+    - Update the FIR and IIR filter taps in the configuration:
+        - For OPX+: (config/controllers/con1/analog_outputs/"filter": {"feedforward": fir, "feedback": iir}).
+        - For OPX1000: (config/controllers/con1/analog_outputs/"filter": {"feedforward": [], "exponential": [(A, tau)]}).
     - WARNING: the digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold).
 """
 
