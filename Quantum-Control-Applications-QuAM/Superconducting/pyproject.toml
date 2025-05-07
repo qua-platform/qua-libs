@@ -15,15 +15,15 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
 quam = "^0.3.10" 
-qualang-tools = ">=0.18.0"
+qualang-tools = "0.19.3"
 xarray = "*"
 lmfit = "*"
 tqdm = "*"
 qualibrate = "^0.2.0"
 qm-qua = "1.2.2"
 ipykernel = "^6.29.3"
-#
-#more-itertools = "*"
+qualibrate-lab-notebook = { git = "https://github.com/i-qcc/qualibrate-lab-notebook.git" }
+more-itertools = "*"
 #qiskit = "*"
 #pylatexenc = "*"
 
