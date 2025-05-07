@@ -23,6 +23,10 @@ It includes:
   It also includes various examples and results from labs.
   Note that several codes there make use of the [py-qua-tools](https://github.com/qua-platform/py-qua-tools) that make QUA program more efficient and easy to write.
   It is thus advised to download the last version.
+* The ["QUAlibration Graphs"](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs) 
+  folder contains the framework to build calibration nodes and graphs for various qubit architectures and using the [QUAM](https://qua-platform.github.io/quam/) framework and [QUAlibrate](https://qua-platform.github.io/qualibrate/) platform.
+  The creation of the qubit-specific QUAM structure is made seamless thanks to the set of QUAM components and building functions provided by the [quam-builder](https://github.com/qua-platform/quam-builder) repository.
+  The [qualibration-libs](https://github.com/qua-platform/qualibration-libs) repository provides a set of utility functions supporting calibration nodes and graphs for the QUAlibration graphs platform.
 
 ## Support and Contribution
 This is a beta version of the repo, and thus, if you see quirks and inaccuracies please tell us! 
