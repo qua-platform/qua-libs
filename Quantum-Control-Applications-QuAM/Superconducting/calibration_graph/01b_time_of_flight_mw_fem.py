@@ -12,7 +12,7 @@ The data undergoes post-processing to calibrate three distinct parameters:
     the variable gain of the OPX analog input, ranging from -12 dB to 20 dB, can be modified to fit the signal within the ADC range of +/-0.5V.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
@@ -121,7 +121,7 @@ if node.parameters.simulate:
     node.results = {"figure": plt.gcf()}
 else:
     
-    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(raw_trace_prog)
@@ -176,7 +176,7 @@ else:
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("Readout amplitude [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Single run \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"Single run \n {date_time} GMT+3 #{node_id}")
     plt.tight_layout()
     plt.legend(loc="upper right", ncols=4, bbox_to_anchor=(0.5, 1.35))
     node.results["adc_single_run"] = grid.fig
@@ -190,7 +190,7 @@ else:
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("Readout amplitude [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Averaged run \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"Averaged run \n {date_time} GMT+3 #{node_id}")
     plt.tight_layout()
     plt.legend(loc="upper right", ncols=4, bbox_to_anchor=(0.5, 1.35))
     node.results["adc_averaged"] = grid.fig

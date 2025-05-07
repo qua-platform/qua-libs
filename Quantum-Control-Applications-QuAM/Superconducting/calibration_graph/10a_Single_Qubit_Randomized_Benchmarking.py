@@ -20,7 +20,7 @@ Prerequisites:
 """
 
 # %% {Imports}
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM, Transmon
 from quam_libs.macros import qua_declaration, active_reset, readout_state
@@ -51,7 +51,7 @@ class Parameters(NodeParameters):
     delta_clifford: int = 20
     seed: int = 345324
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
@@ -218,25 +218,24 @@ with program() as randomized_benchmarking_individual:
 
     for i, qubit in enumerate(qubits):
 
-        align()
-
         # Bring the active qubits to the desired frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
-        # QUA for_ loop over the random sequences
-        with for_(m, 0, m < num_of_sequences, m + 1):
-            # Generate the random sequence of length max_circuit_depth
-            sequence_list, inv_gate_list = generate_sequence()
-            assign(depth_target, 0)  # Initialize the current depth to 0
-            
-            with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
-                # Replacing the last gate in the sequence with the sequence's inverse gate
-                # The original gate is saved in 'saved_gate' and is being restored at the end
-                assign(saved_gate, sequence_list[depth])
-                assign(sequence_list[depth], inv_gate_list[depth - 1])
-                # Only played the depth corresponding to target_depth
-                with if_((depth == 1) | (depth == depth_target)):
-                    with for_(n, 0, n < n_avg, n + 1):
+    # QUA for_ loop over the random sequences
+    with for_(m, 0, m < num_of_sequences, m + 1):
+        # Generate the random sequence of length max_circuit_depth
+        sequence_list, inv_gate_list = generate_sequence()
+        assign(depth_target, 0)  # Initialize the current depth to 0
+        
+        with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
+            # Replacing the last gate in the sequence with the sequence's inverse gate
+            # The original gate is saved in 'saved_gate' and is being restored at the end
+            assign(saved_gate, sequence_list[depth])
+            assign(sequence_list[depth], inv_gate_list[depth - 1])
+            # Only played the depth corresponding to target_depth
+            with if_((depth == 1) | (depth == depth_target)):
+                with for_(n, 0, n < n_avg, n + 1):
+                    for i, qubit in enumerate(qubits):
                         # Initialize the qubits
                         if reset_type == "active":
                             active_reset(qubit, "readout")
@@ -256,14 +255,16 @@ with program() as randomized_benchmarking_individual:
                         readout_state(qubit, state[i])
 
                         save(state[i], state_st[i])
+                        
+                        align()
 
-                    # Go to the next depth
-                    assign(depth_target, depth_target + delta_clifford)
-                # Reset the last gate of the sequence back to the original Clifford gate
-                # (that was replaced by the recovery gate at the beginning)
-                assign(sequence_list[depth], saved_gate)
-            # Save the counter for the progress bar
-            save(m, m_st)
+                # Go to the next depth
+                assign(depth_target, depth_target + delta_clifford)
+            # Reset the last gate of the sequence back to the original Clifford gate
+            # (that was replaced by the recovery gate at the beginning)
+            assign(sequence_list[depth], saved_gate)
+        # Save the counter for the progress bar
+        save(m, m_st)
 
     with stream_processing():
         m_st.save("iteration")
@@ -317,7 +318,7 @@ with program() as randomized_benchmarking_multiplexed:
                             qubit.resonator.wait(qubit.thermalization_time * u.ns)
                         # Align the two elements to play the sequence after qubit initialization
 
-                    align()
+                    qubit.align()
 
                     for i, qubit in enumerate(qubits):
 
@@ -329,7 +330,7 @@ with program() as randomized_benchmarking_multiplexed:
                         else:
                             play_sequence(sequence_list, depth, qubit)
 
-                    align()
+                    qubit.align()
 
                     # Align the two elements to measure after playing the circuit.
                     for i, qubit in enumerate(qubits):
@@ -371,7 +372,7 @@ if node.parameters.simulate:
 elif node.parameters.load_data_id is None:
     # Prepare data for saving
     node.results = {}
-    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         if not node.parameters.multiplexed:
             job = qm.execute(randomized_benchmarking_individual)
@@ -454,10 +455,17 @@ if not node.parameters.simulate:
             f"RB fidelity = {1 - EPG.sel(**qubit).values:.4f}",
             transform=ax.transAxes,
         )
-    plt.suptitle(f"{date_time} #{node_id} \n multiplexed = {node.parameters.multiplexed} reset Type = {node.parameters.reset_type_thermal_or_active}")
+    plt.suptitle(f"{date_time} GMT+3 #{node_id} \n multiplexed = {node.parameters.multiplexed} reset Type = {node.parameters.reset_type_thermal_or_active}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
+
+# %% {Update_state}
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            for qubit in qubits:
+                qubit.gate_fidelity["single_qubit_rb"] = 1 - EPG.sel(qubit=qubit.name).values
+                print(f"Updated {qubit.name} fidelity to {qubit.gate_fidelity['single_qubit_rb']:.4f}")
 
 
     # %% {Save_results}

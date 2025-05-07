@@ -54,6 +54,7 @@ class Transmon(QuamComponent):
     T1: float = 10e-6
     T2ramsey: float = None
     T2echo: float = None
+    gate_fidelity: Dict[str, float] = field(default_factory=dict)
     thermalization_time_factor: int = 5
     sigma_time_factor: int = 5
     phi0_current: float = 0.0

@@ -242,7 +242,8 @@ def fit_oscillation(da, dim):
     freq_guess = fix_initial_value(xr.apply_ufunc(get_freq, da_c, input_core_dims=[[dim]]).rename("freq guess"), da_c)
     amp_guess = fix_initial_value(xr.apply_ufunc(get_amp, da, input_core_dims=[[dim]]).rename("amp guess"), da)
     # phase_guess = np.pi * (da.loc[{dim : da.coords[dim].values[0]}] < da.mean(dim=dim) )
-    phase_guess = np.pi * (da.loc[{dim: np.abs(da.coords[dim]).min()}] < da.mean(dim=dim))
+    # phase_guess = np.pi * (da.loc[{dim: np.abs(da.coords[dim]).min()}] < da.mean(dim=dim))
+    phase_guess = np.pi * (da.sel({dim : np.abs(da.coords[dim]).min()}, method="nearest") < da.mean(dim=dim))
     offset_guess = da.mean(dim=dim)
 
     def apply_fit(x, y, a, f, phi, offset):

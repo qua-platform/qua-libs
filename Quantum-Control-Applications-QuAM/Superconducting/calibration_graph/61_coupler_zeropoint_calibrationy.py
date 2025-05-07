@@ -33,7 +33,7 @@ Outcomes:
 """
 
 # %% {Imports}
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef, active_reset_simple
@@ -226,7 +226,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 elif node.parameters.load_data_id is None:
-    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(CPhase_Oscillations)
 
@@ -309,7 +309,7 @@ if not node.parameters.simulate:
         sec_ax.set_xlabel('Detuning [MHz]')
         ax.set_xlabel('Qubit flux pulse [mV]')
         ax.set_ylabel('Coupler flux pulse [mV]')
-    grid.fig.suptitle(f'Control \n {date_time} #{node_id} \n reset type = {node.parameters.reset_type}')
+    grid.fig.suptitle(f'Control \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type}')
     plt.tight_layout()
     plt.show()
     node.results['figure_control'] = grid.fig
@@ -340,7 +340,7 @@ if not node.parameters.simulate:
         sec_ax.set_xlabel('Detuning [MHz]')
         ax.set_xlabel('Qubit flux shift [mV]')
         ax.set_ylabel('Coupler flux [mV]')
-    grid.fig.suptitle(f'Target \n {date_time} #{node_id}')
+    grid.fig.suptitle(f'Target \n {date_time} GMT+3 #{node_id}')
     plt.tight_layout()
     plt.show()
     node.results['figure_target'] = grid.fig
