@@ -146,7 +146,7 @@ with program() as ramsey:
                         save(Q[i], Q_st[i])
 
                     # Wait for the qubits to decay to the ground state
-                    qubit.resonator.wait(qubit.thermalization_time * u.ns // 4)
+                    qubit.resonator.wait(qubit.thermalization_time * u.ns)
                     # Reset the frame of the qubits in order not to accumulate rotations
                     reset_frame(qubit.xy.name)
         # Measure sequentially

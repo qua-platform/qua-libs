@@ -255,6 +255,8 @@ with program() as randomized_benchmarking_individual:
                         readout_state(qubit, state[i])
 
                         save(state[i], state_st[i])
+                        
+                        align()
 
                 # Go to the next depth
                 assign(depth_target, depth_target + delta_clifford)
@@ -316,7 +318,7 @@ with program() as randomized_benchmarking_multiplexed:
                             qubit.resonator.wait(qubit.thermalization_time * u.ns)
                         # Align the two elements to play the sequence after qubit initialization
 
-                    align()
+                    qubit.align()
 
                     for i, qubit in enumerate(qubits):
 
@@ -328,7 +330,7 @@ with program() as randomized_benchmarking_multiplexed:
                         else:
                             play_sequence(sequence_list, depth, qubit)
 
-                    align()
+                    qubit.align()
 
                     # Align the two elements to measure after playing the circuit.
                     for i, qubit in enumerate(qubits):
