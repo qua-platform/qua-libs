@@ -134,7 +134,6 @@ def plot_individual_parabolas_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str
     ax.set_xlabel("Flux offset (V)")
     ax.set_ylabel("Qubit SweetSpot detuning (MHz)")
 
-
     flux_offset = fit.flux_offset
 
     ax.axvline(flux_offset, color="red", linestyle="--", label="Flux offset")
