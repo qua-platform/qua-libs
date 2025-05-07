@@ -45,6 +45,7 @@ from qualang_tools.loops import from_array
 from macros import ge_averaged_measurement
 from scipy import signal, optimize
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
 
 ####################
@@ -102,9 +103,10 @@ def filter_calc(exponential):
     return feedforward_taps, feedback_taps
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 10_000  # Number of averages
 # Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
@@ -115,6 +117,17 @@ flux_waveform = np.array([const_flux_amp] * max(durations))
 xplot = durations * 4  # x-axis for plotting and deriving the filter taps - must be in ns.
 step_response_th = [1.0] * len(xplot)  # Perfect step response (square)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "durations": durations,
+    "flux_waveform": flux_waveform,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the flux pulse duration
@@ -208,8 +221,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, cryoscope, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -335,3 +358,20 @@ else:
     plt.tight_layout()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    if state_discrimination:
+        save_data_dict.update({"I_data": I})
+        save_data_dict.update({"Q_data": Q})
+        save_data_dict.update({"state_data": state})
+    else:
+        save_data_dict.update({"I_data": I})
+        save_data_dict.update({"Q_data": Q})
+        save_data_dict.update({"Ig_data": Ig})
+        save_data_dict.update({"Qg_data": Qg})
+        save_data_dict.update({"Ie_data": Ie})
+        save_data_dict.update({"Qe_data": Qe})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

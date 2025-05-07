@@ -23,17 +23,28 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # The number of averages
 # The frequency sweep parameters
 span = 10 * u.MHz
 df = 200 * u.kHz
 dfs = np.arange(-span, +span + 0.1, df)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "IF_frequencies": dfs,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as ro_freq_opt:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the readout frequency
@@ -124,9 +135,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, ro_freq_opt, simulation_config)
-    job.get_simulated_samples().con1.plot()
-
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -159,3 +179,17 @@ else:
         plt.grid("on")
         plt.pause(0.1)
     print(f"The optimal readout frequency is {dfs[np.argmax(SNR)] + resonator_IF} Hz (SNR={max(SNR)})")
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"Ig_avg_data": Ig_avg})
+    save_data_dict.update({"Qg_avg_data": Qg_avg})
+    save_data_dict.update({"Ie_avg_data": Ie_avg})
+    save_data_dict.update({"Qe_avg_data": Qe_avg})
+    save_data_dict.update({"Ig_var_data": Ig_var})
+    save_data_dict.update({"Qg_var_data": Qg_var})
+    save_data_dict.update({"Ie_var_data": Ie_var})
+    save_data_dict.update({"Qe_var_data": Qe_var})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

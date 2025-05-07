@@ -17,6 +17,7 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
+from qualang_tools.results.data_handler import DataHandler
 
 
 ######################################
@@ -148,12 +149,21 @@ bloch_sphere.label_bra(bloch_sphere.West * 1.1, "Y")
 # bloch_sphere.plot_vector((1, 1, 0), 'Test', color='r')
 # bloch_sphere.plot_vector((1, 0, 1), bra_tex('k'), color='g')
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+n_avg = 1_000_000  # Number of averaging iterations
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
+
 ###################
 # The QUA program #
 ###################
-
-n_avg = 1_000_000  # Number of averaging iterations
-
 with program() as state_tomography:
     times = declare(int, size=100)  # QUA vector for storing the time-tags
     counts = declare(int)  # variable for number of counts
@@ -173,7 +183,7 @@ with program() as state_tomography:
                 with case_(1):  # projection along Y
                     play("x90", "NV")
                 with case_(2):  # projection along Z
-                    wait(pi_len_NV * u.ns, "NV")
+                    wait(x180_len_NV * u.ns, "NV")
             align()  # Play the laser pulse after the mw sequence
             # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
@@ -199,8 +209,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, state_tomography, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -226,3 +246,9 @@ else:
     # Zero order approximation
     rho = 0.5 * (I + state[0] * sigma_x + state[1] * sigma_y + state[2] * sigma_z)
     print(f"The density matrix is:\n{rho}")
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"counts_data": counts})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

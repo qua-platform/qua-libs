@@ -29,22 +29,28 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from macros import readout_macro
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-
-##############################
-# Program-specific variables #
-##############################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 num_of_sequences = 50  # Number of random sequences
 n_avg = 20  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
-delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 0
+delta_clifford = 10  # Play each sequence with a depth step equals to 'delta_clifford - Must be > 0
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 seed = 345324  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
 state_discrimination = False
 # List of recovery gates from the lookup table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 
 
 ###################################
@@ -246,8 +252,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, rb, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
 else:
     # Open the quantum machine
@@ -338,3 +354,14 @@ else:
     # np.savez("rb_values", value)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    if state_discrimination:
+        save_data_dict.update({"state_avg_data": state})
+    else:
+        save_data_dict.update({"I_data": I})
+        save_data_dict.update({"Q_data": Q})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

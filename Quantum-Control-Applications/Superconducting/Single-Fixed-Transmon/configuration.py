@@ -3,10 +3,13 @@ QUA-Config supporting OPX+ & External Mixers
 """
 
 from pathlib import Path
+
 import numpy as np
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
+pio.renderers.default = "browser"
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
@@ -35,8 +38,17 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+#############
+# Save Path #
+#############
 # Path to save data
-save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 #####################
 # OPX configuration #
@@ -155,7 +167,7 @@ mixer_resonator_phi = 0.0
 readout_len = 5000
 readout_amp = 0.2
 
-time_of_flight = 24
+time_of_flight = 28
 depletion_time = 2 * u.us
 
 opt_weights = False

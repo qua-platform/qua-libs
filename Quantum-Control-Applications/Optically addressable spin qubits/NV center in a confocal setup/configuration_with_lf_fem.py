@@ -2,12 +2,15 @@
 QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
 """
 
+from pathlib import Path
 import numpy as np
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
+import plotly.io as pio
 
+pio.renderers.default = "browser"
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
@@ -29,16 +32,30 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-#############
-# VARIABLES #
-#############
+######################
+# Network parameters #
+######################
 qop_ip = "127.0.0.1"  # Write the OPX IP address
 cluster_name = "Cluster_1"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+#############
+# Save Path #
+#############
+# Path to save data
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
+
+#####################
+# OPX configuration #
+#####################
 con = "con1"
 fem = 1  # This should be the index of the LF-FEM module, e.g., 1
-
 # Set octave_config to None if no octave are present
 octave_config = None
 
@@ -107,6 +124,7 @@ config = {
                             # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
                             #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
                             #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
+                            # Note, 'offset' takes absolute values, e.g., if in amplified mode and want to output 2.0 V, then set "offset": 2.0
                             "output_mode": "direct",
                             # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
                             #   1 GS/s: uses one core per output (default)

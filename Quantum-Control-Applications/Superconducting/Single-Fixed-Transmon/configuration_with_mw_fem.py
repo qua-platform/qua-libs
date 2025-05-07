@@ -3,9 +3,18 @@ QUA-Config supporting OPX1000 w/ MW-FEM
 """
 
 from pathlib import Path
+
 import numpy as np
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
+
+pio.renderers.default = "browser"
+
+#######################
+# AUXILIARY FUNCTIONS #
+#######################
+u = unit(coerce_to_integer=True)
 
 ######################
 # Network parameters #
@@ -14,17 +23,30 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
-octave_config = None
+#############
+# Save Path #
+############
+# Path to save data
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
+
+#####################
+# OPX configuration #
+#####################
 
 con = "con1"
-fem = 5
+fem = 1
+# Set octave_config to None if no octave are present
+octave_config = None
 
-# Path to save data
-save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 #############################################
 #                  Qubits                   #
 #############################################
-u = unit(coerce_to_integer=True)
 
 qubit_LO = 7 * u.GHz
 qubit_IF = 50 * u.MHz
@@ -133,7 +155,7 @@ resonator_power = 1  # power in dBm at waveform amp = 1 (steps of 3 dB)
 readout_len = 5000
 readout_amp = 0.6
 
-time_of_flight = 24
+time_of_flight = 28
 depletion_time = 2 * u.us
 
 opt_weights = False
@@ -168,8 +190,8 @@ config = {
                     #   1: (50 MHz - 5.5 GHz)
                     #   2: (4.5 GHz - 7.5 GHz)
                     #   3: (6.5 GHz - 10.5 GHz)
-                    # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, O8 & O1
-                    # must be in the same band, or in bands 1 & 3.
+                    # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, and O8 & I2
+                    # must be in the same band, or in bands 1 & 3 (that is, if you assign band 2 to one of the coupled ports, the other must use the same band).
                     # The keyword "full_scale_power_dbm" is the maximum power of
                     # normalized pulse waveforms in [-1,1]. To convert to voltage,
                     #   power_mw = 10**(full_scale_power_dbm / 10)
@@ -179,14 +201,22 @@ config = {
                     # Its range is -41dBm to +10dBm with 3dBm steps.
                     "type": "MW",
                     "analog_outputs": {
-                        1: {"band": 2, "full_scale_power_dbm": resonator_power},  # resonator
-                        2: {"band": 2, "full_scale_power_dbm": qubit_power},  # qubit
+                        1: {
+                            "band": 2,
+                            "full_scale_power_dbm": resonator_power,
+                            "upconverters": {1: {"frequency": resonator_LO}},
+                        },  # resonator
+                        2: {
+                            "band": 2,
+                            "full_scale_power_dbm": qubit_power,
+                            "upconverters": {1: {"frequency": qubit_LO}},
+                        },  # qubit
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
-                        1: {"band": 2},  # I from down-conversion
+                        1: {"band": 2, "downconverter_frequency": resonator_LO},  # for down-conversion
                     },
-                }
+                },
             },
         },
     },
@@ -194,10 +224,7 @@ config = {
         "resonator": {
             "MWInput": {
                 "port": (con, fem, 1),
-                # Note the 'oscillator_frequency' field will be renamed 'upconverter_frequency'
-                # and will be moved to the port definition in QOP 3.2.
-                # The ability to use multiple upconverters in the same output will also be added.
-                "oscillator_frequency": resonator_LO,
+                "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF,
             "operations": {
@@ -206,9 +233,6 @@ config = {
             },
             "MWOutput": {
                 "port": (con, fem, 1),
-                # Note the 'oscillator_frequency' field will be renamed 'downconverter_frequency'
-                # and will be moved to the port definition in QOP 3.2.
-                "oscillator_frequency": resonator_LO,
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
@@ -216,10 +240,7 @@ config = {
         "qubit": {
             "MWInput": {
                 "port": (con, fem, 2),
-                # Note the 'oscillator_frequency' field will be renamed 'upconverter_frequency'
-                # and will be moved to the port definition in QOP 3.2.
-                # The ability to use multiple upconverters in the same output will also be added.
-                "oscillator_frequency": qubit_LO,
+                "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF,
             "operations": {

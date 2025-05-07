@@ -23,13 +23,23 @@ from qm import SimulationConfig
 from qm import QuantumMachinesManager
 from configuration import *
 from qualang_tools.analysis.discriminator import two_state_discriminator
+from qualang_tools.results.data_handler import DataHandler
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+n_runs = 10000  # Number of runs
+
+# Data to save
+save_data_dict = {
+    "n_runs": n_runs,
+    "config": config,
+}
 
 ###################
 # The QUA program #
 ###################
-
-n_runs = 10000  # Number of runs
-
 with program() as IQ_blobs:
     n = declare(int)
     I_g = declare(fixed)
@@ -95,9 +105,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, IQ_blobs, simulation_config)
-    job.get_simulated_samples().con1.plot()
-
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -160,3 +179,13 @@ else:
     #     assign(cont_condition, ((I > threshold) & (count < 3)))
     #
     #########################################
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"Ig_data": Ig})
+    save_data_dict.update({"Qg_data": Qg})
+    save_data_dict.update({"Ie_data": Ie})
+    save_data_dict.update({"Qe_data": Qe})
+    save_data_dict.update({"two_state_discriminator": [angle, threshold, fidelity, gg, ge, eg, ee]})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

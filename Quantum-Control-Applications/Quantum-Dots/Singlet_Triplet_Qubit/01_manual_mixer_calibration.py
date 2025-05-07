@@ -19,7 +19,6 @@ from configuration import *
 ###################
 # The QUA program #
 ###################
-
 with program() as cw_output:
     with infinite_loop_():
         # It is best to calibrate LO leakage first and without any power played (cf. note below)
