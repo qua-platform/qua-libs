@@ -22,6 +22,10 @@ tqdm = "*"
 qualibrate = "^0.2.0"
 qm-qua = "1.2.2"
 ipykernel = "^6.29.3"
+#
+#more-itertools = "*"
+#qiskit = "*"
+#pylatexenc = "*"
 
 
 [build-system]
