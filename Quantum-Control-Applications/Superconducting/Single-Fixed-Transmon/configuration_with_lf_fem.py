@@ -3,10 +3,11 @@ QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
 """
 
 from pathlib import Path
+
 import numpy as np
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-import plotly.io as pio
 
 pio.renderers.default = "browser"
 #######################
@@ -184,7 +185,7 @@ mixer_resonator_phi = 0.0
 readout_len = 5000
 readout_amp = 0.2
 
-time_of_flight = 24
+time_of_flight = 28
 depletion_time = 2 * u.us
 
 opt_weights = False

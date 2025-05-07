@@ -1,7 +1,7 @@
 import numpy as np
+import plotly.io as pio
 from qualang_tools.units import unit
 from qualang_tools.voltage_gates import VoltageGateSequence
-import plotly.io as pio
 
 pio.renderers.default = "browser"
 
@@ -54,7 +54,7 @@ reflectometry_readout_length = 1 * u.us
 reflectometry_readout_amp = 30 * u.mV
 
 # Time of flight
-time_of_flight = 24
+time_of_flight = 28
 
 ######################
 #      DC GATES      #

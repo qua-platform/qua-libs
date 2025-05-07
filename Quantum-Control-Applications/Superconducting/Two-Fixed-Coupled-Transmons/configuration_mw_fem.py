@@ -4,10 +4,11 @@ Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
 """
 
 from pathlib import Path
+
 import numpy as np
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-import plotly.io as pio
 
 pio.renderers.default = "browser"
 
@@ -251,7 +252,7 @@ readout_amp_q1 = 0.1
 readout_amp_q2 = 0.1
 
 # TOF and depletion time
-time_of_flight = 24  # must be a multiple of 4
+time_of_flight = 28  # must be a multiple of 4
 depletion_time = 2 * u.us
 
 opt_weights = False
