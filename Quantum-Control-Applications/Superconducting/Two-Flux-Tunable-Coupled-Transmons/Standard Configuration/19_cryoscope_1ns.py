@@ -31,21 +31,23 @@ Prerequisites:
     - Having calibrated qubit gates (x90 and y90) by running qubit spectroscopy, rabi_chevron, power_rabi, Ramsey and updated the configuration.
 
 Next steps before going to the next node:
-    - Update the FIR and IIR filter taps in the configuration (config/controllers/con1/analog_outputs/"filter": {"feedforward": fir, "feedback": iir}).
+    - Update the FIR and IIR filter taps in the configuration:
+        - For OPX+: (config/controllers/con1/analog_outputs/"filter": {"feedforward": fir, "feedback": iir}).
+        - For OPX1000: (config/controllers/con1/analog_outputs/"filter": {"feedforward": [], "exponential": [(A, tau)]}).
+    - WARNING: the digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold).
 """
 
-from qm import QuantumMachinesManager
-from qm.qua import *
-from qm import SimulationConfig
-from configuration import *
-from scipy import signal, optimize
 import matplotlib.pyplot as plt
-from qualang_tools.results import fetching_tool, progress_counter
-from qualang_tools.plot import interrupt_on_close
 import numpy as np
-from macros import qua_declaration, multiplexed_readout
+from configuration import *
+from macros import multiplexed_readout, qua_declaration
+from qm import QuantumMachinesManager, SimulationConfig
+from qm.qua import *
 from qualang_tools.bakery import baking
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.results.data_handler import DataHandler
+from scipy import optimize, signal
 
 
 ####################
