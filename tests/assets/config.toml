@@ -1,0 +1,28 @@
+[quam]
+state_path = "C:\\git\\qua-libs\\Quantum-Control-Applications-QuAM\\Superconducting\\configuration\\quam_state"
+
+[qualibrate]
+version = 2
+project = "init_project"
+log_folder = "C:\\Users\\TheoQM\\.qualibrate\\logs"
+
+[qualibrate.storage]
+type = "local_storage"
+location = "C:\\Users\\TheoQM\\OneDrive - QM Machines LTD\\experimental_data\\OQC_data"
+
+[qualibrate.app]
+static_site_files = "C:\\Users\\TheoQM\\AppData\\Roaming\\Python\\Python311\\site-packages\\qualibrate_static"
+
+[qualibrate.runner]
+address = "http://localhost:8001/execution/"
+timeout = 1.0
+
+[qualibrate.composite.app]
+spawn = true
+
+[qualibrate.composite.runner]
+spawn = true
+
+[qualibrate.calibration_library]
+folder = "C:\\git\\qua-libs\\Quantum-Control-Applications-QuAM\\Superconducting\\calibration_graph"
+resolver = "qualibrate.QualibrationLibrary"
