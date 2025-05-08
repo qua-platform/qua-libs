@@ -32,11 +32,12 @@ from scipy.signal import savgol_filter
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ["qubitC2"]
-    num_averages: int = 5000
-    frequency_offset_in_mhz: float = 400
-    ramsey_offset_in_mhz: float = -60
-    cryoscope_len: int = 100 # in clock cycles
+    qubits: Optional[List[str]] = None
+    num_averages: int = 1000
+    frequency_offset_in_mhz: float = 50
+    ramsey_offset_in_mhz: float = 0
+    cryoscope_len: int = 250 # in clock cycles
+    time_step: int = 5
     num_frames: int = 16  
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
@@ -90,7 +91,7 @@ num_qubits = len(qubits)
 
 
 # %% {QUA_program}
-cryoscope_time = np.arange(8, cryoscope_len + 1, 1)  # x-axis for plotting - in clocl cycles
+cryoscope_time = np.arange(8, cryoscope_len + 1, node.parameters.time_step)  # x-axis for plotting - in clocl cycles
 frames = np.arange(0, 1, 1/node.parameters.num_frames)
 
 # %%
@@ -126,6 +127,7 @@ with program() as cryoscope:
                         # Play first X/2
                         # reset_frame(qubit.xy.name)
                         qubit.xy.play("x90")
+                        # qubit.xy.play("x90", amplitude_scale=0, duration=4)
 
                         # Play a flux pulse imidiatly after the X/2, for a long time
                         qubit.z.wait(qubit.xy.operations["x90"].length // 4)
@@ -135,17 +137,18 @@ with program() as cryoscope:
                         # update the frequency of the qubit to thew expected frequency during the flux pulse
                         qubit.xy.update_frequency(node.parameters.ramsey_offset_in_mhz * u.MHz + qubit.xy.intermediate_frequency - 
                                                   node.parameters.frequency_offset_in_mhz * u.MHz, keep_phase=True)
-                        
+                        # qubit.xy.play("x90", amplitude_scale=0, duration=4)
                         # wait for the desired time delay
                         qubit.xy.wait(t)
                         # rotate the frame for a full tomography
-                        frame_rotation_2pi(frame, qubit.xy.name)                        
+                        frame_rotation_2pi(frame, qubit.xy.name)
+                        # qubit.xy.play("x90", amplitude_scale=0, duration=4)                        
                         # play a second X/2 at the new frequency
                         qubit.xy.play("x90")
                         
                         # revert the frequency of the qubit to the original frequency
                         update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
-                    
+                        # qubit.xy.play("x90", amplitude_scale=0, duration=4)
                         qubit.align()
                         qubit.wait(100)
                         
