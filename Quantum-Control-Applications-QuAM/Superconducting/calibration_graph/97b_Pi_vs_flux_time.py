@@ -34,19 +34,20 @@ from qm.qua import *
 from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
-
+import time
+start = time.time()
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ["qubitC1"]
+    qubits: Optional[List[str]] = None
     num_averages: int = 100
-    operation: str = "x180"
+    operation: str = "x180_Gaussian"
     operation_amplitude_factor: Optional[float] = 1
-    duration_in_ns: Optional[int] = 3000
-    frequency_span_in_mhz: float = 1000
-    frequency_step_in_mhz: float = 5
-    flux_amp : float = 0.06
+    duration_in_ns: Optional[int] = 500
+    frequency_span_in_mhz: float = 400
+    frequency_step_in_mhz: float = 0.5
+    flux_amp : float = 0.05
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500
@@ -56,7 +57,7 @@ class Parameters(NodeParameters):
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
 
 
-node = QualibrationNode(name="97_Pi_vs_flux", parameters=Parameters())
+node = QualibrationNode(name="97b_Pi_vs_flux_time", parameters=Parameters())
 node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
@@ -90,10 +91,11 @@ else:
 # Qubit detuning sweep with respect to their resonance frequencies
 span = node.parameters.frequency_span_in_mhz * u.MHz
 step = node.parameters.frequency_step_in_mhz * u.MHz
-dfs = np.arange(-span // 2, span // 20, step, dtype=np.int32)
+dfs = np.arange(-span // 2, span // 2, step, dtype=np.int32)
 # Flux bias sweep
 times = np.arange(4, node.parameters.duration_in_ns // 4, 12, dtype=np.int32)
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
+detuning = [q.freq_vs_flux_01_quad_term * node.parameters.flux_amp**2 for q in qubits]
 
 with program() as multi_qubit_spec_vs_flux:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
@@ -101,7 +103,8 @@ with program() as multi_qubit_spec_vs_flux:
     state = [declare(int) for _ in range(num_qubits)]
     state_st = [declare_stream() for _ in range(num_qubits)]
     df = declare(int)  # QUA variable for the qubit frequency
-    time = declare(int)
+    t_delay = declare(int)
+    duration = node.parameters.duration_in_ns * u.ns
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the minimum frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
@@ -111,24 +114,24 @@ with program() as multi_qubit_spec_vs_flux:
 
             with for_(*from_array(df, dfs)):
                 # Update the qubit frequency
-                qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
-                with for_(*from_array(time, times)):
+                
+                with for_(*from_array(t_delay, times)):
                     if node.parameters.reset_type_active_or_thermal == "active":
                         active_reset(qubit)
                     else:
                         qubit.wait(qubit.thermalization_time * u.ns)                    # Flux sweeping for a qubit
-                    duration = node.parameters.duration_in_ns * u.ns 
+                    qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency + detuning[i])
                     # Bring the qubit to the desired point during the saturation pulse
                     qubit.align()
-                    qubit.z.wait(4)
                     qubit.z.play("const", amplitude_scale=node.parameters.flux_amp / qubit.z.operations["const"].amplitude, duration=duration+100)
                     # Apply saturation pulse to all qubits
                     # qubit.xy.wait(qubit.z.settle_time * u.ns)
-                    qubit.xy.wait(time)
+                    qubit.xy.wait(t_delay)
                     qubit.xy.play(
                         operation,
                         amplitude_scale=operation_amp
                     )
+                    qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
                     qubit.align()
                     # QUA macro to read the state of the active resonators
                     readout_state(qubit, state[i])
@@ -198,7 +201,7 @@ if not node.parameters.simulate:
             {
                 "freq_full": (
                     ["qubit", "freq"],
-                    np.array([dfs + q.xy.RF_frequency for q in qubits]),
+                    np.array([dfs + q.xy.RF_frequency + q.freq_vs_flux_01_quad_term*node.parameters.flux_amp**2 for q in qubits]),
                 )
             }
         )
@@ -206,11 +209,79 @@ if not node.parameters.simulate:
         ds.freq_full.attrs["units"] = "GHz"
     # Add the dataset to the node
     node.results = {"ds": ds}
+    end = time.time()
+    print(f"Script runtime: {end - start:.2f} seconds")
 
     # %% {Data_analysis}
 
+    import numpy as np
+    import xarray as xr
+    from scipy.optimize import curve_fit
+
+    # Define the Gaussian
+    def gaussian(x, a, x0, sigma, offset):
+        return a * np.exp(-(x - x0)**2 / (2 * sigma**2)) + offset
+
+    # Fit function for one time point
+    def fit_gaussian(freqs, states):
+        p0 = [
+            np.max(states) - np.min(states),   # amplitude
+            freqs[np.argmax(states)],          # center
+            (freqs[-1] - freqs[0]) / 10,        # width
+            np.min(states)                     # offset
+        ]
+        try:
+            popt, _ = curve_fit(gaussian, freqs, states, p0=p0)
+            return popt[1]  # center frequency
+        except RuntimeError:
+            return np.nan
+
+    freqs = ds['freq'].values
+
+    # Transpose to ensure ('qubit', 'time', 'freq') order
+    stacked = ds.transpose('qubit', 'time', 'freq')
+
+    # Now apply along 'freq' per (qubit, time)
+    center_freqs = xr.apply_ufunc(
+        lambda states: fit_gaussian(freqs, states),
+        stacked,
+        input_core_dims=[['freq']],
+        output_core_dims=[[]],  # no dimensions left after fitting
+        vectorize=True,
+        dask='parallelized',
+        output_dtypes=[float]
+    )
+
+    # center_freqs now has dims ('qubit', 'time')
+    center_freqs = center_freqs.rename({"state": "center_frequency"})
+    center_freqs = center_freqs.center_frequency + [q.freq_vs_flux_01_quad_term * node.parameters.flux_amp**2 for q in qubits][0]
+    flux_response = np.sqrt(center_freqs/qubits[0].freq_vs_flux_01_quad_term)
+    flux_response.plot()
+    
+
+    # %%
+
+    # Define your model function
+    def model(t, a0, a1, t1):
+        return a0 * (1+ a1 * np.exp(-t / t1))
+
+    t_data = flux_response.time.values
+    y_data = flux_response.isel(qubit=0).values
+
+    # Fit the data
+    popt, pcov = curve_fit(model, t_data, y_data, p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 1000])  # p0 = initial guess
+
+    # Plot
+    plt.figure()
+    plt.scatter(t_data, y_data, label='Data')
+    plt.plot(t_data, model(t_data, *popt), 'r-', label=f'Fit: a0={popt[0]:.2f}, a1={popt[1]:.2f}, t1={popt[2]:.2f}')
+    plt.xlabel('Time')
+    plt.ylabel('Value')
+    plt.legend()
+    plt.show()
 
     # %% {Plotting}
+
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
     for ax, qubit in grid_iter(grid):
@@ -222,11 +293,31 @@ if not node.parameters.simulate:
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Time (ns)")
         ax.set_title(qubit["qubit"])
+    grid.fig.suptitle(f"Qubit spectroscopy vs time after flux pulse \n {date_time} #{node_id}")
+    
+    plt.tight_layout()
+    plt.show()
+    node.results["figure_raw"] = grid.fig   
+
+
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+
+    for ax, qubit in grid_iter(grid):
+        added_freq = machine.qubits[qubit['qubit']].xy.RF_frequency*0 + machine.qubits[qubit['qubit']].freq_vs_flux_01_quad_term*node.parameters.flux_amp**2
+        (-(center_freqs.center_frequency.sel(qubit = qubit["qubit"])+ added_freq)/1e9).plot()
+        ax.set_ylabel("Freq (GHz)")
+        ax.set_xlabel("Time (ns)")
+        ax.set_title(qubit["qubit"])
     grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time} #{node_id}")
     
     plt.tight_layout()
     plt.show()
-    node.results["figure"] = grid.fig
+    node.results["figure_freqs"] = grid.fig
+
+
+
+
+ 
 
     # %% {Update_state}
 
