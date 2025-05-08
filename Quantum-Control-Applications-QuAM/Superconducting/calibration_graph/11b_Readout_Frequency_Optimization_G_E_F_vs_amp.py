@@ -77,14 +77,13 @@ for q in qubits:  # TODO: weird since operation is a single string
     else:
         operation = "x180"
 
-
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
 # The frequency sweep around the resonator resonance frequency
 span = node.parameters.frequency_span_in_mhz * u.MHz
 step = node.parameters.frequency_step_in_mhz * u.MHz
 dfs = np.arange(-span / 2, +span / 2, step)
-amp_max = 1.0
+amp_max = 1.5
 amp_min = 0.1
 amp_step = 0.05
 amps = np.arange(amp_min, amp_max, amp_step)
@@ -145,7 +144,7 @@ with program() as ro_freq_opt:
                     # Play the x180 gate to put the qubits in the excited state
                     qubit.xy.play("x180")
                     # Align the elements to measure after playing the qubit pulses.
-                    align()
+                    qubit.align()
                     # Measure the state of the resonators
                     qubit.resonator.measure("readout", qua_vars=(I_e[i], Q_e[i]))
                     # wait(1000)
@@ -157,13 +156,11 @@ with program() as ro_freq_opt:
 
                     # Play the x180 gate and EFx180 gate to put the qubits in the f state
                     qubit.xy.play("x180")
-                    qubit.align()
                     update_frequency(
                         qubit.xy.name, qubit.xy.intermediate_frequency  - qubit.anharmonicity
                     )
-                    qubit.align()
+                    qubit.wait(10)
                     qubit.xy.play(operation, amplitude_scale=amp)
-                    qubit.align()
                     update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
                     # Align the elements to measure after playing the qubit pulses.
                     qubit.align()
@@ -346,6 +343,8 @@ if not node.parameters.simulate:
     for q in qubits:
         with node.record_state_updates():
             q.resonator.GEF_frequency_shift = int(fit_results[q.name]["GEF_detuning"])
+            
+            EF_x180_amp = q.xy.operations[operation].amplitude * fit_results[q.name]["GEF_amp"]
 
             if operation == "x180":
                 # Create the |e> -> |f> operation
@@ -360,7 +359,24 @@ if not node.parameters.simulate:
             else:
                 # set the new amplitude for the EF operation
                 q.xy.operations["EF_x180"].amplitude *= fit_results[q.name]["GEF_amp"]
+            
+            q.xy.operations["EF_x90"] = pulses.DragCosinePulse(
+                amplitude=EF_x180_amp / 2,
+                alpha=q.xy.operations[operation].alpha,
+                anharmonicity=q.xy.operations[operation].anharmonicity,
+                length=q.xy.operations[operation].length,
+                axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
+                digital_marker=q.xy.operations[operation].digital_marker,
+            )
 
+            q.xy.operations["EF_y90"] = pulses.DragCosinePulse(
+                amplitude=EF_x180_amp / 2,
+                alpha=q.xy.operations[operation].alpha,
+                anharmonicity=q.xy.operations[operation].anharmonicity,
+                length=q.xy.operations[operation].length,
+                axis_angle=np.pi/2,  # TODO: to check that the rotation does not overwrite y-pulses
+                digital_marker=q.xy.operations[operation].digital_marker,
+            )
 
             
 

@@ -175,6 +175,7 @@ with program() as iq_blobs:
             update_frequency(
                 qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity
             )
+            qubit.wait(10)
             qubit.xy.play(GEF_operation)
             update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
             qubit.align()
