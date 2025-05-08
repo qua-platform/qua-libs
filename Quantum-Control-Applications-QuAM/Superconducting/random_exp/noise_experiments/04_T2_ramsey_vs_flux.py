@@ -37,14 +37,14 @@ from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
 from qualang_tools.multi_user import qm_session
 
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ["qubitC2"]
-    num_averages: int = 200
-    frequency_detuning_in_mhz: float = 4.0
+    qubits: Optional[List[str]] = None
+    num_averages: int = 100
+    frequency_detuning_in_mhz: float = 1.0
     min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 7000
-    wait_time_step_in_ns: int = 4
-    flux_span : float = 0.03
-    flux_step : float = 0.001
+    max_wait_time_in_ns: int = 15000
+    wait_time_step_in_ns: int = 20
+    flux_span : float = 0.04
+    flux_step : float = 0.002
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
     timeout: int = 1000
@@ -122,14 +122,16 @@ with program() as ramsey:
         # Bring the active qubits to the minimum frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
         assign(init_state[i], 0)
-        with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st)
-            with for_(flux_index, 0, flux_index < len(dcs), flux_index + 1):
-            # with for_(*from_array(dc, dcs)):
-                assign(dc, fluxes_qua[flux_index])
-                assign(freq,freqs_qua[flux_index])
-                # with for_(*from_array(t, idle_times)):
-                with for_each_(t, idle_times):
+        
+        
+        with for_(flux_index, 0, flux_index < len(dcs), flux_index + 1):
+        # with for_(*from_array(dc, dcs)):
+            assign(dc, fluxes_qua[flux_index])
+            assign(freq,freqs_qua[flux_index])
+            # with for_(*from_array(t, idle_times)):
+            with for_each_(t, idle_times):
+                with for_(n, 0, n < n_avg, n + 1):
+                    save(n, n_st)
                     # readout_state(qubit, init_state)
                     qubit.align()
                     # update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency + freq)
@@ -163,8 +165,8 @@ with program() as ramsey:
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubits):
-            state_st[i].buffer(len(idle_times)).buffer(len(dcs)).average().save(f"state{i + 1}")
-            debug_st[i].buffer(len(idle_times)).buffer(len(dcs)).average().save(f"phi{i + 1}")
+            state_st[i].buffer(n_avg).buffer(len(idle_times)).buffer(len(dcs)).map(FUNCTIONS.average(2)).save(f"state{i + 1}")
+            # debug_st[i].buffer(n_avg).buffer(len(idle_times)).buffer(len(dcs)).map(FUNCTIONS.average(0)).save(f"phi{i + 1}")
 
 ###########################
 # Run or Simulate Program #
@@ -196,6 +198,7 @@ else:
                 progress_counter(n, n_avg)
 
 # %%
+simulate = node.parameters.simulate
 # %%
 if not simulate:
     handles = job.result_handles
@@ -219,7 +222,7 @@ if not simulate:
     ds.detuning.attrs["units"] = "MHz"
 
     def df_dphi(q, flux):
-        return -2*np.pi*2e-9 * q.freq_vs_flux_01_quad_term * flux * q.phi0_voltage
+        return -2e-9 * q.freq_vs_flux_01_quad_term * flux * q.phi0_voltage
 
     ds = ds.assign_coords(
         {"df_dphi": (["qubit", "flux"], np.array([df_dphi(q, dcs) for q in qubits]))}
@@ -257,6 +260,12 @@ if not simulate:
     tau_error = tau * (decay_error/decay)
     tau_error.attrs = {'long_name' : 'T2* error', 'units' : 'uSec'}
 
+    for qubit in qubits:
+        for flux in dcs:
+            ds.sel(qubit = qubit.name, flux = flux).state.plot()
+            fitted.sel(qubit = qubit.name, flux = flux).plot()
+            plt.show()
+
     # Combine fitted data arrays into a dataset
     fit_dataset = xr.Dataset({
         'frequency': frequency,
@@ -290,6 +299,7 @@ if not simulate:
         # Calculate fitted y values and residuals
         y_fit = linear_model(x, slope, intercept)
         residuals = y - y_fit
+        
 
         slopes.append(slope)
         intercepts.append(intercept)
@@ -349,13 +359,12 @@ if not simulate:
                     fmt='o-', capsize=5)
         ax.plot(fit_dataset.df_dphi.sel(qubit = qubit['qubit']), fit_dataset.decay_vs_df_dphi_slope.sel(qubit = qubit['qubit']) * fit_dataset.df_dphi.sel(qubit = qubit['qubit']) + fit_dataset.decay_vs_df_dphi_intercept.sel(qubit = qubit['qubit']), 'r--')
         kappa_r = fit_dataset.decay_vs_df_dphi_slope.sel(qubit = qubit['qubit'])
-        sA_phi = kappa_r/(2 * np.pi * np.sqrt(2 * np.pi * 1 * 1e-6))                                                                                    
-                                                                                                 
+        sA_phi = 1e3*kappa_r/(2 * np.pi * np.sqrt(np.abs(np.log(2 * np.pi * 1 * 100e-6))))  
         ax.text(0.05, 0.95, f"$\kappa_R$: {1e3*kappa_r:.0f} $\pm$ {fit_dataset.decay_vs_df_dphi_slope_error.sel(qubit = qubit['qubit']):.0f} $\mu \phi_0$", transform=ax.transAxes, fontsize=10, verticalalignment='top')
         ax.text(0.05, 0.85, "$\sqrt{A_\phi}$" + f": {sA_phi:.0f} $\mu \phi_0$", transform=ax.transAxes, fontsize=10, verticalalignment='top')
         ax.set_title(qubit['qubit'])
         ax.set_ylabel('$\Gamma_R$ (MHz)')
-        ax.set_xlabel("$2 \Pi^{-1} $ $df/d\phi$ (GHz/$\phi_0$)")
+        ax.set_xlabel("$df/d\phi$ (GHz/$\phi_0$)")
         
         
         # Add extra coordinates to the ax axis representing detuning
