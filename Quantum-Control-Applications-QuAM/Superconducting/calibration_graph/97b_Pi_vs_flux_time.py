@@ -94,6 +94,7 @@ step = node.parameters.frequency_step_in_mhz * u.MHz
 dfs = np.arange(-span // 2, span // 2, step, dtype=np.int32)
 # Flux bias sweep
 times = np.arange(4, node.parameters.duration_in_ns // 4, 12, dtype=np.int32)
+# times = np.logspace(np.log10(4), np.log10(node.parameters.duration_in_ns // 4), 30, dtype=np.int32)
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 detuning = [q.freq_vs_flux_01_quad_term * node.parameters.flux_amp**2 for q in qubits]
 
@@ -115,7 +116,8 @@ with program() as multi_qubit_spec_vs_flux:
             with for_(*from_array(df, dfs)):
                 # Update the qubit frequency
                 
-                with for_(*from_array(t_delay, times)):
+                # with for_(*from_array(t_delay, times)):
+                with for_each_(t_delay, times):
                     if node.parameters.reset_type_active_or_thermal == "active":
                         active_reset(qubit)
                     else:
@@ -123,7 +125,7 @@ with program() as multi_qubit_spec_vs_flux:
                     qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency + detuning[i])
                     # Bring the qubit to the desired point during the saturation pulse
                     qubit.align()
-                    qubit.z.play("const", amplitude_scale=node.parameters.flux_amp / qubit.z.operations["const"].amplitude, duration=duration+100)
+                    qubit.z.play("const", amplitude_scale=node.parameters.flux_amp / qubit.z.operations["const"].amplitude, duration=t_delay+200)
                     # Apply saturation pulse to all qubits
                     # qubit.xy.wait(qubit.z.settle_time * u.ns)
                     qubit.xy.wait(t_delay)
@@ -293,6 +295,7 @@ if not node.parameters.simulate:
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Time (ns)")
         ax.set_title(qubit["qubit"])
+        # ax.set_xscale('log')
     grid.fig.suptitle(f"Qubit spectroscopy vs time after flux pulse \n {date_time} #{node_id}")
     
     plt.tight_layout()
@@ -304,18 +307,31 @@ if not node.parameters.simulate:
 
     for ax, qubit in grid_iter(grid):
         added_freq = machine.qubits[qubit['qubit']].xy.RF_frequency*0 + machine.qubits[qubit['qubit']].freq_vs_flux_01_quad_term*node.parameters.flux_amp**2
-        (-(center_freqs.center_frequency.sel(qubit = qubit["qubit"])+ added_freq)/1e9).plot()
+        (-(center_freqs.sel(qubit = qubit["qubit"])+ added_freq)/1e9).plot()
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Time (ns)")
         ax.set_title(qubit["qubit"])
+        # ax.set_xscale('log')
+        ax.grid()
     grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time} #{node_id}")
     
     plt.tight_layout()
     plt.show()
     node.results["figure_freqs"] = grid.fig
 
-
-
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+    for ax, qubit in grid_iter(grid):
+        (1e3*flux_response).plot(ax=ax, marker='.')
+        ax.set_ylabel("Flux (mV)")
+        ax.set_xlabel("Time (ns)")
+        ax.set_title(qubit["qubit"])
+        # ax.set_xscale('log')
+        ax.grid()
+    grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time} #{node_id}")
+    
+    plt.tight_layout()
+    plt.show()
+    node.results["figure_flux"] = grid.fig
 
  
 
@@ -329,4 +345,42 @@ if not node.parameters.simulate:
     node.machine = machine
     node.save()
 
+# %%
+
+
+    # Define your model function
+    def model_1exp(t, a0, a1, t1):
+        return a0 * (1+ a1 * np.exp(-t / t1))
+    
+    def model_2exp(t, a0, a1, a2, t1, t2):
+        return a0 * (1 + a1 * np.exp(-t / t1) + a2 * np.exp(-t / t2))
+    
+
+    t_data = flux_response.time.values
+    y_data = flux_response.isel(qubit=0).values
+
+    # Fit the data
+    popt, pcov = curve_fit(model_1exp, t_data, y_data, p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 1000])
+
+    a0_0 = popt[0]
+    a1_0 = a2_0 = popt[1] / 2 # np.real(amplitudes_esprit)
+    t1_0 = popt[-1] # lambda1_0, lambda2_0 = np.real(lambdas_esprit)
+    t2_0 = 100
+
+    initial_guess = [a0_0, a1_0, a2_0, t1_0, t2_0] # [-0.0015, -1 / 200, a2_0, lambda2_0, c_0]
+
+    # Perform nonlinear curve fitting
+    popt, pcov = curve_fit(model_2exp, t_data, y_data, p0=initial_guess)
+
+    y_fit = model_2exp(t_data, *popt)
+    # y_fit = model(t_data, -0.0015, -1 / 200, popt[2], popt[3], popt[4])
+
+    # Plot
+    plt.figure()
+    plt.scatter(t_data, y_data, label='Data')
+    plt.plot(t_data, y_fit, 'r-', label=f'Fit: a0={popt[0]:.3f}, a1={popt[1]:.3f}, a2={popt[2]:.3f}, t1={popt[3]:.0f}, t2={popt[4]:.0f}')
+    plt.xlabel('Time')
+    plt.ylabel('Value')
+    plt.legend()
+    plt.show()
 # %%
