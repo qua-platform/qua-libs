@@ -3397,20 +3397,21 @@ uvicorn = ">=0.34.0,<0.35.0"
 
 [[package]]
 name = "quam"
-version = "0.3.10"
-description = "Quantum Abstract Machine (QuAM) facilitates development of abstraction layers in experiments."
+version = "0.4.1"
+description = "Quantum Abstract Machine (QUAM) facilitates development of abstraction layers in experiments."
 optional = false
 python-versions = "<3.13,>=3.9"
 groups = ["main"]
 files = [
-    {file = "quam-0.3.10-py3-none-any.whl", hash = "sha256:1cb969d09635d80548bd996f3868de3d8e7ab77f702a912dfa6b61588c32ae1f"},
-    {file = "quam-0.3.10.tar.gz", hash = "sha256:f375295522417f376e9bf3a8b7a9efe3179bfbf48bc4baac1f439f19b0bd2592"},
+    {file = "quam-0.4.1-py3-none-any.whl", hash = "sha256:9405f17479cca39a9d71b3ce821929220efb14532157a25fd8d1c1fbf367026f"},
+    {file = "quam-0.4.1.tar.gz", hash = "sha256:195f999ca707a403d3231f00fc5f72fed3f2e919e1d900d65deccdca60eaf1ea"},
 ]
 
 [package.dependencies]
 numpy = ">=1.21.2"
 qm-qua = ">=1.1.0"
 qualang-tools = ">=0.15.0"
+qualibrate-config = ">=0.1.4"
 typeguard = ">=4.1.0"
 
 [package.extras]
@@ -4053,4 +4054,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.13"
-content-hash = "bc0fc7a8bf8ff4d8d44f9660115c1984dd3a5df1dcf2d60c1bae497d33c97467"
+content-hash = "62c970be377b6e5010ef0dd98479bdf5226ce10efeccb968b9e5b36986afa056"

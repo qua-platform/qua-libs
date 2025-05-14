@@ -14,7 +14,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
-quam = "^0.3.10" 
+quam = "^0.4.1" 
 qualang-tools = "0.19.3"
 xarray = "*"
 lmfit = "*"
