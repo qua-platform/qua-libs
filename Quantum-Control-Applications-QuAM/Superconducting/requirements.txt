@@ -1,0 +1,11 @@
+quam>=0.4.1
+qualang-tools==0.19.3
+xarray
+lmfit
+tqdm
+qualibrate>=0.2.0
+qm-qua==1.2.2
+ipykernel>=6.29.3
+more-itertools
+git+https://github.com/i-qcc/qualibrate-lab-notebook.git
+git+https://github.com/i-qcc/cloud_qualibrate_link.git 

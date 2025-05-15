@@ -23,6 +23,7 @@ qualibrate = "^0.2.0"
 qm-qua = "1.2.2"
 ipykernel = "^6.29.3"
 qualibrate-lab-notebook = { git = "https://github.com/i-qcc/qualibrate-lab-notebook.git" }
+cloud-qualibrate-link = { git = "https://github.com/i-qcc/cloud_qualibrate_link.git" }
 more-itertools = "*"
 #qiskit = "*"
 #pylatexenc = "*"
