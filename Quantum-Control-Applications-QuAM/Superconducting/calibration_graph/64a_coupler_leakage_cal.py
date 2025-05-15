@@ -37,7 +37,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef, active_reset_simple
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -58,7 +58,7 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ["coupler_q1_q2"]
+    qubit_pairs: Optional[List[str]] = ["coupler_qA3_qA4"]
     num_averages: int = 100
     flux_point_joint_or_independent_or_pairwise: Literal["joint", "independent", "pairwise"] = "joint"
     reset_type: Literal['active', 'thermal'] = "active"
@@ -79,7 +79,8 @@ node = QualibrationNode(
     name="64a_coupler_leakage_cal", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
-
+node_id = get_node_id()
+get_pulse_scheme(node.name)
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)

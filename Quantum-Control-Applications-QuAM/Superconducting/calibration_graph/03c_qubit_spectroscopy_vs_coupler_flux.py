@@ -23,7 +23,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset, get_node_id, get_pulse_scheme
 from quam_libs.lib.fit import peaks_dips
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -60,6 +60,7 @@ class Parameters(NodeParameters):
 
 node = QualibrationNode(name="03c_Qubit_Spectroscopy_vs_Coupler_Flux", parameters=Parameters())
 node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 
 if node.parameters.qubit_pair is None:

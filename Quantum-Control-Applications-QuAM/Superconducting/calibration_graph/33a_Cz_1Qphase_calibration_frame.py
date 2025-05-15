@@ -36,7 +36,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -72,6 +72,9 @@ class Parameters(NodeParameters):
 node = QualibrationNode(
     name="33a_Cz_1Qphase_calibration_frame", parameters=Parameters()
 )
+node_id = get_node_id()
+get_pulse_scheme(node.name)
+
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
 # %% {Initialize_QuAM_and_QOP}

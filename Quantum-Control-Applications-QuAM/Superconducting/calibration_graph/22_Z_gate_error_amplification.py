@@ -24,7 +24,7 @@ from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.instrument_limits import instrument_limits
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset
 from quam_libs.lib.fit import fit_oscillation, oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -48,7 +48,7 @@ class Parameters(NodeParameters):
     amp_factor_step: float = 0.005
     max_number_rabi_pulses_per_sweep: int = 50
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     state_discrimination: bool = True
     update_x90: bool = True
     simulate: bool = False

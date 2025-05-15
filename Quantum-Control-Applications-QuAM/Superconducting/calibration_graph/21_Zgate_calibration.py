@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.multi_user import qm_session
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset
 from scipy.optimize import curve_fit
 import xarray as xr
 from quam_libs.lib import guess
@@ -39,15 +39,15 @@ from quam_libs.lib import guess
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
-    num_averages: int = 1000
+    num_averages: int = 100
     ref_frequnecy_MHz: float = 0.0
     num_points: int = 100
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
-    reset_type: Literal['active', 'thermal'] = "active"
+    reset_type: Literal['active', 'thermal'] = "thermal"
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True
+    multiplexed: bool = False
 
 node = QualibrationNode(
     name="21_Zgate_calibration",

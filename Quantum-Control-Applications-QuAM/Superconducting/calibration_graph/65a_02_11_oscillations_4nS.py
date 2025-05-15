@@ -31,7 +31,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset_simple, readout_state, readout_state_gef, active_reset_gef
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset
 from quam_libs.lib.fit import fit_oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -53,7 +53,7 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ["coupler_q1_q2"]
+    qubit_pairs: Optional[List[str]] = ["coupler_qA3_qA4"]
     num_averages: int = 100
     max_time_in_ns: int = 200
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"

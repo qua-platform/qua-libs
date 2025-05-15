@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset
 from quam_libs.lib.fit import fit_oscillation, oscillation
 from quam_libs.trackable_object import tracked_updates
 from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
@@ -30,7 +30,7 @@ import xarray as xr
 # %% {Node_parameters}
 
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ["q1", "q4", "q5"]
+    qubits: Optional[List[str]] = None
     duration_ns: int = 44
     timeout: int = 100
     target_qubit_frequency_in_ghz: float = 0.05
@@ -43,8 +43,14 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
 
 node = QualibrationNode(name="23a_Z_crosstalk_pulsed_amp", parameters=Parameters())
-
-
+# see the pulse scheme
+import os
+import matplotlib.image as mpimg
+os.chdir('C:/Users/wjd__/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/calibration_graph/pulse_scheme')
+img = mpimg.imread(os.getcwd().replace('\\', '/')+'/'+node.name+'.png')
+plt.imshow(img)
+plt.axis('off')  # Hide axes
+plt.show()
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.

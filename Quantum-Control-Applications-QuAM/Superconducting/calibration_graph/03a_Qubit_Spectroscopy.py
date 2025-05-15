@@ -31,7 +31,7 @@ from quam_libs.lib.instrument_limits import instrument_limits
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset, get_node_id, get_pulse_scheme
 from quam_libs.lib.fit import peaks_dips
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -48,7 +48,7 @@ import numpy as np
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
-    num_averages: int = 500
+    num_averages: int = 300
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.1
     operation_len_in_ns: Optional[int] = None
@@ -62,11 +62,12 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True
+    multiplexed: bool = False
 
 
 node = QualibrationNode(name="03a_Qubit_Spectroscopy", parameters=Parameters())
 node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.

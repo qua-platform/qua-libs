@@ -16,7 +16,7 @@ from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset, get_node_id, get_pulse_scheme
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
@@ -44,6 +44,7 @@ class Parameters(NodeParameters):
 
 node = QualibrationNode(name="01b_Time_of_Flight_MW_FEM", parameters=Parameters())
 node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.

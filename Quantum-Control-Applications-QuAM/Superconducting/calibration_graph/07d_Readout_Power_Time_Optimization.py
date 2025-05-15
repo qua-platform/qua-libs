@@ -9,7 +9,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset, get_node_id, get_pulse_scheme
 from qualang_tools.analysis import two_state_discriminator
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -48,6 +48,7 @@ class Parameters(NodeParameters):
 
 node = QualibrationNode(name="07d_Readout_Power_Time_Optimization", parameters=Parameters())
 node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 # check that duration_chunks is multiple of 4
 if node.parameters.duration_chunks % 4 != 0:

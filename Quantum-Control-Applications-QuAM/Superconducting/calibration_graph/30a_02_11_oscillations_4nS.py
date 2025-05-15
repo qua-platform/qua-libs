@@ -31,7 +31,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset
 from quam_libs.lib.fit import fit_oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -61,13 +61,15 @@ class Parameters(NodeParameters):
     simulate: bool = False
     timeout: int = 100
     amp_range : float = 0.1
-    amp_step : float = 0.003
+    amp_step : float = 0.5
     load_data_id: Optional[int] = None  
 
 node = QualibrationNode(
     name="30a_02_11_oscillations_4nS", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
+node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -136,6 +138,7 @@ flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or
 pulse_amplitudes = {}
 for qp in qubit_pairs:
     detuning = qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency - qp.qubit_target.anharmonicity
+    detuning=np.abs(detuning)
     pulse_amplitudes[qp.name] = float(np.sqrt(-detuning/qp.qubit_control.freq_vs_flux_01_quad_term))
 
 # Loop parameters

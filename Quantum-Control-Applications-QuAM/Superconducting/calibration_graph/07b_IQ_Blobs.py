@@ -28,7 +28,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset, get_node_id, get_pulse_scheme
 from qualang_tools.analysis.discriminator import two_state_discriminator
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.multi_user import qm_session
@@ -53,11 +53,12 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True
+    multiplexed: bool = False
 
 
 node = QualibrationNode(name="07b_IQ_Blobs", parameters=Parameters())
 node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.

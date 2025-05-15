@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset
 from quam_libs.lib.fit import fit_oscillation, oscillation
 from quam_libs.trackable_object import tracked_updates
 from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
@@ -30,7 +30,7 @@ import xarray as xr
 # %% {Node_parameters}
 
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ["qubitC1", "qubitC2"]
+    qubits: Optional[List[str]] = None
     operation: Literal["z90", "z180"] = "z180"
     timeout: int = 100
     target_qubit_frequency_in_ghz: float = 0.1
@@ -39,7 +39,7 @@ class Parameters(NodeParameters):
     max_wait_time_in_ns: int = 4000
     wait_time_step_in_ns: int = 4
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     simulate: bool = False
     load_data_id: Optional[int] = None
    

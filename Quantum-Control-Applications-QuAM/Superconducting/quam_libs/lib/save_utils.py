@@ -8,6 +8,8 @@ from pathlib import Path
 import xarray as xr
 import json
 import numpy as np
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
 
 def extract_string(input_string):
     # Find the index of the first occurrence of a digit in the input string
@@ -134,3 +136,10 @@ def get_node_id() -> int:
             )
     
     return storage_manager.data_handler.generate_node_contents()['id']
+
+def get_pulse_scheme(node_name):    
+    os.chdir('C:/Users/wjd__/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/calibration_graph/pulse_scheme')
+    img = mpimg.imread(os.getcwd().replace('\\', '/')+'/'+node_name+'.png')
+    plt.imshow(img)
+    plt.axis('off')  # Hide axes
+    plt.show()

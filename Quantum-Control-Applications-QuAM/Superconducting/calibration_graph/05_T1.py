@@ -20,7 +20,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset, readout_state
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset, get_node_id, get_pulse_scheme
 from quam_libs.lib.fit import fit_decay_exp, decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -36,9 +36,9 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
-    num_averages: int = 100
+    num_averages: int = 300
     min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 100000
+    max_wait_time_in_ns: int = 150000
     wait_time_step_in_ns: int = 600
     flux_point_joint_or_independent_or_arbitrary: Literal["joint", "independent", "arbitrary"] = "joint"
     reset_type: Literal["active", "thermal"] = "thermal"
@@ -51,6 +51,7 @@ class Parameters(NodeParameters):
 
 node = QualibrationNode(name="05_T1", parameters=Parameters())
 node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handle units and conversions.

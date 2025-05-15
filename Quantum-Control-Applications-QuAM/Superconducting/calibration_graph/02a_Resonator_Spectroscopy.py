@@ -24,7 +24,7 @@ from quam_libs.macros import qua_declaration
 from quam_libs.lib.fit_utils import fit_resonator
 from quam_libs.lib.qua_datasets import apply_angle, subtract_slope, convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset, get_node_id, get_pulse_scheme, get_pulse_scheme
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -55,6 +55,7 @@ assert not (
     node.parameters.simulate and node.parameters.load_data_id is not None
 ), "If simulate is True, load_data_id must be None, and vice versa."
 node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.

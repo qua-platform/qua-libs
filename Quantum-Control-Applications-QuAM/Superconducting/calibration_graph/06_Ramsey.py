@@ -25,7 +25,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, readout_state
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset, get_node_id, get_pulse_scheme
 from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -42,7 +42,7 @@ import numpy as np
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
-    num_averages: int = 100
+    num_averages: int = 200
     frequency_detuning_in_mhz: float = 1.0
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 3000
@@ -54,10 +54,12 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True
+    multiplexed: bool = False
 
 node = QualibrationNode(name="06_Ramsey", parameters=Parameters())
 node_id = get_node_id()
+get_pulse_scheme(node.name)
+
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handle units and conversions.

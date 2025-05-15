@@ -36,7 +36,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -124,8 +124,16 @@ with program() as CPhase_Oscillations:
     
     for i, qp in enumerate(qubit_pairs):
         # Bring the active qubits to the minimum frequency point
-        machine.
-
+################# something gone!
+        if flux_point == "independent":
+            machine.apply_all_flux_to_min()
+            # qp.apply_mutual_flux_point()
+        elif flux_point == "joint":
+            machine.apply_all_flux_to_joint_idle()
+        else:
+            machine.apply_all_flux_to_zero()
+        wait(1000)
+ ################################3
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)         
             with for_(*from_array(frame, frames)):

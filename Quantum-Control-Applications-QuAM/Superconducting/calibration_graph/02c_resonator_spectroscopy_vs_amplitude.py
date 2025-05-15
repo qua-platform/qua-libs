@@ -29,7 +29,7 @@ from quam_libs.lib.fit_utils import fit_resonator
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V, subtract_slope, apply_angle
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset, get_node_id, get_pulse_scheme
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -66,6 +66,7 @@ class Parameters(NodeParameters):
 
 node = QualibrationNode(name="02c_Resonator_Spectroscopy_vs_Amplitude", parameters=Parameters())
 node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 # %% {Initialize_QuAM_and_QOP}
 u = unit(coerce_to_integer=True)
