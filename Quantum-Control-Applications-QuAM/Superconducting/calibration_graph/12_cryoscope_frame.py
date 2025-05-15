@@ -20,7 +20,7 @@ from qualang_tools.loops import from_array
 
 import matplotlib
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, save_node
 import xarray as xr
 from scipy.optimize import curve_fit, minimize
 from scipy.signal import deconvolve, lfilter, convolve
@@ -582,5 +582,5 @@ if not node.parameters.simulate and node.parameters.reset_filters:
 # %%
 node.results['initial_parameters'] = node.parameters.model_dump()
 node.machine = machine
-node.save()
+save_node(node)
 # %%
