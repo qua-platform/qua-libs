@@ -22,7 +22,7 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id, save_node
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
