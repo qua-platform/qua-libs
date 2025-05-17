@@ -74,11 +74,6 @@ else:
         
 num_qubits = len(qubits)
 
-for q in qubits:
-    # Check if an optimized GEF frequency exists
-    if not hasattr(q, "GEF_frequency_shift"):
-        q.resonator.GEF_frequency_shift = 0
-
 
 # %% {QUA_program}
 operation = node.parameters.operation  # The qubit operation to play
@@ -120,6 +115,7 @@ with program() as power_rabi:
                 update_frequency(
                     qubit.resonator.name,
                     qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift,
+                    keep_phase=True
                 )
 
                 # Reset the qubit frequency
@@ -240,27 +236,27 @@ if not node.parameters.simulate:
     node.results["figure"] = grid.fig
  
 # %% {Update_state}
-if not node.parameters.simulate:
-    if operation == "x180":
-        ef_operation_value = pulses.DragCosinePulse(
-                    amplitude=fit_results[q.name]["Pi_amplitude"],
-                    alpha=q.xy.operations[operation].alpha,
-                    anharmonicity=q.xy.operations[operation].anharmonicity,
-                    length=q.xy.operations[operation].length,
-                    axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
-                    digital_marker=q.xy.operations[operation].digital_marker,
-                )
-    else:
-        ef_operation_value = fit_results[q.name]["Pi_amplitude"]
+if not node.parameters.simulate: # TODO : verify this block with TOM !!!
+    # if operation == "x180":
+    #     ef_operation_value = pulses.DragCosinePulse(
+    #                 amplitude=fit_results[q.name]["Pi_amplitude"],
+    #                 alpha=q.xy.operations[operation].alpha,
+    #                 anharmonicity=q.xy.operations[operation].anharmonicity,
+    #                 length=q.xy.operations[operation].length,
+    #                 axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
+    #                 digital_marker=q.xy.operations[operation].digital_marker,
+    #             )
+    # else:
+    #     ef_operation_value = fit_results[q.name]["Pi_amplitude"]
     for q in qubits:
         with node.record_state_updates():
             if operation == "x180":
                 print("Creating EF_x180 operation")
                 # Create the |e> -> |f> operation
-                q.xy.operations["EF_x180"] = ef_operation_value
+                q.xy.operations["EF_x180"].amplitude = fit_results[q.name]["Pi_amplitude"]
             else:
                 # set the new amplitude for the EF operation
-                q.xy.operations["EF_x180"].amplitude = ef_operation_value
+                q.xy.operations["EF_x180"].amplitude = fit_results[q.name]["Pi_amplitude"]
 
 
 
