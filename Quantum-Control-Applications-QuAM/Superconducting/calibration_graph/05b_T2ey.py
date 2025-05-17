@@ -19,7 +19,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset, readout_state
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, save_node
 from quam_libs.lib.fit import fit_decay_exp, decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -262,7 +262,7 @@ if not node.parameters.simulate:
     if node.parameters.load_data_id is None:        
         node.results["initial_parameters"] = node.parameters.model_dump()
         node.machine = machine
-        node.save()
+        save_node(node)
 
 
 # %%

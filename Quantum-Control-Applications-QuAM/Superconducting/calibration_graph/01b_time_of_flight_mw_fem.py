@@ -16,7 +16,7 @@ from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, save_node
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
@@ -214,5 +214,5 @@ else:
     node.results["ds"] = ds
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
-    node.save()
+    save_node(node)
 
