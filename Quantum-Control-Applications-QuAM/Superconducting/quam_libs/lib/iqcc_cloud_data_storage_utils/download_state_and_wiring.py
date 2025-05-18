@@ -10,7 +10,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def download_state_and_wiring(quantum_computer_backend: str = "qc_qwtune") -> None:
+def download_state_and_wiring(quantum_computer_backend: str = "arbel") -> None:
     """
     Download the latest state and wiring files from the quantum computer backend.
     
