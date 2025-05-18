@@ -8,6 +8,24 @@ from pathlib import Path
 import xarray as xr
 import json
 import numpy as np
+import logging
+
+# ANSI color codes
+MAGENTA = '\033[95m'
+RESET = '\033[0m'
+
+# Custom formatter for magenta colored logs
+class MagentaFormatter(logging.Formatter):
+    def format(self, record):
+        record.msg = f"{MAGENTA}{record.msg}{RESET}"
+        return super().format(record)
+
+# Configure logging with magenta color
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(MagentaFormatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 def extract_string(input_string):
     # Find the index of the first occurrence of a digit in the input string
@@ -134,3 +152,24 @@ def get_node_id() -> int:
             )
     
     return storage_manager.data_handler.generate_node_contents()['id']
+
+def save_node(node : QualibrationNode):
+    logger.info(f"Saving node with snapshot index {node.snapshot_idx}")
+    
+    node.save()
+    logger.info("Node saved locally")
+    
+    quantum_computer_backend = node.machine.network.get("quantum_computer_backend", None)
+    if quantum_computer_backend is not None:
+        logger.info(f"Found quantum computer backend: {quantum_computer_backend}")
+        qc = IQCC_Cloud(quantum_computer_backend=quantum_computer_backend)
+        if qc.access_rights['projects'] == ['iqcc']:
+            logger.info("IQCC project access confirmed, proceeding with cloud upload")
+            q_config_path = get_qualibrate_config_path()
+            qs = get_qualibrate_config(q_config_path)
+            base_path = qs.storage.location
+            node_id = node.snapshot_idx
+            node_dir = get_node_dir_path(node_id, base_path)
+            handler = QualibrateCloudHandler(str(node_dir))
+            handler.upload_to_cloud(quantum_computer_backend)
+            logger.info("Node successfully uploaded to cloud")
