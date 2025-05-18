@@ -391,6 +391,25 @@ files = [
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
+name = "cloud-qualibrate-link"
+version = "0.1.1"
+description = "A tool to link Qualibrate experiment data to cloud storage"
+optional = false
+python-versions = ">=3.9,<3.13"
+groups = ["main"]
+files = []
+develop = false
+
+[package.dependencies]
+pathlib = "*"
+
+[package.source]
+type = "git"
+url = "https://github.com/i-qcc/cloud_qualibrate_link.git"
+reference = "main"
+resolved_reference = "b1f58dc1487b9b9b81460f7464981ef30ebf1a82"
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -2435,6 +2454,18 @@ qa = ["flake8 (==5.0.4)", "mypy (==0.971)", "types-setuptools (==67.2.0.1)"]
 testing = ["docopt", "pytest"]
 
 [[package]]
+name = "pathlib"
+version = "1.0.1"
+description = "Object-oriented filesystem paths"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pathlib-1.0.1-py3-none-any.whl", hash = "sha256:f35f95ab8b0f59e6d354090350b44a80a80635d22efdedfa84c7ad1cf0a74147"},
+    {file = "pathlib-1.0.1.tar.gz", hash = "sha256:6940718dfc3eff4258203ad5021090933e5c04707d5ca8cc9e73c94a7894ea9f"},
+]
+
+[[package]]
 name = "pathspec"
 version = "0.12.1"
 description = "Utility library for gitignore style pattern matching of file paths."
@@ -4054,4 +4085,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.13"
-content-hash = "62c970be377b6e5010ef0dd98479bdf5226ce10efeccb968b9e5b36986afa056"
+content-hash = "cbf5ebf7a99adc8145424d01324be784cd461d840ee2c85494f178bb006cc064"
