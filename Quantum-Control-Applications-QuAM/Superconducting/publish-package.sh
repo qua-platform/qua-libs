@@ -1,7 +1,7 @@
 #! /bin/bash
 
-#rm -rf dist
-#poetry build
+rm -rf dist
+poetry build
 
 export CODEARTIFACT_AUTH_TOKEN=`aws codeartifact get-authorization-token --domain quantum-machines --domain-owner 439440158105 --region us-east-1 --query authorizationToken --output text`
 

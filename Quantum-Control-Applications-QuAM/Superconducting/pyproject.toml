@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "quam_libs"
-version = "0.1.2"
+version = "0.1.3.dev5+iqcc"
 description = "QuAM Components for Quantum Control"
 readme = "README.md"
 authors = ["Dean Poulos <dean.poulos@quantum-machines.co>"]
