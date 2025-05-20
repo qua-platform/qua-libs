@@ -25,7 +25,7 @@ from quam.components import pulses
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id, save_node
 from quam_libs.lib.fit import fit_oscillation, oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -74,11 +74,6 @@ else:
         
 num_qubits = len(qubits)
 
-for q in qubits:
-    # Check if an optimized GEF frequency exists
-    if not hasattr(q, "GEF_frequency_shift"):
-        q.resonator.GEF_frequency_shift = 0
-
 
 # %% {QUA_program}
 operation = node.parameters.operation  # The qubit operation to play
@@ -120,9 +115,13 @@ with program() as power_rabi:
                 update_frequency(
                     qubit.resonator.name,
                     qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift,
+                    keep_phase=True
                 )
 
-                # Reset the qubit frequency
+        with for_(n, 0, n < n_avg, n + 1):
+            save(n, n_st)
+            with for_(*from_array(a, amps)):
+                # Reset the qubit frequency # TODO: is this even needed?
                 update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
                 # Drive the qubit to the excited state
                 qubit.align()
@@ -240,35 +239,29 @@ if not node.parameters.simulate:
     node.results["figure"] = grid.fig
  
 # %% {Update_state}
-if not node.parameters.simulate:
-    if operation == "x180":
-        ef_operation_value = pulses.DragCosinePulse(
-                    amplitude=fit_results[q.name]["Pi_amplitude"],
-                    alpha=q.xy.operations[operation].alpha,
-                    anharmonicity=q.xy.operations[operation].anharmonicity,
-                    length=q.xy.operations[operation].length,
-                    axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
-                    digital_marker=q.xy.operations[operation].digital_marker,
-                )
-    else:
-        ef_operation_value = fit_results[q.name]["Pi_amplitude"]
+if not node.parameters.simulate: 
+    for q in qubits:
+        if "EF_180" not in q.xy.operations:
+            print("Creating EF_x180 operation")
+            ef_operation_value = pulses.DragCosinePulse(
+                        amplitude=0.0,
+                        alpha=q.xy.operations[operation].alpha,
+                        anharmonicity=q.xy.operations[operation].anharmonicity,
+                        length=q.xy.operations[operation].length,
+                        axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
+                        digital_marker=q.xy.operations[operation].digital_marker,
+                    )
+            
+            q.xy.operations["EF_180"] = ef_operation_value
     for q in qubits:
         with node.record_state_updates():
-            if operation == "x180":
-                print("Creating EF_x180 operation")
-                # Create the |e> -> |f> operation
-                q.xy.operations["EF_x180"] = ef_operation_value
-            else:
-                # set the new amplitude for the EF operation
-                q.xy.operations["EF_x180"].amplitude = ef_operation_value
-
-
+            q.xy.operations["EF_180"].amplitude = fit_results[q.name]["Pi_amplitude"]
 
 # %% {Save_results}
 if not node.parameters.simulate:
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
-    node.save()
+    save_node(node)
 
 # %%

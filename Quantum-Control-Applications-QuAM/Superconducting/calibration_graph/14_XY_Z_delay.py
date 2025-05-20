@@ -12,7 +12,7 @@ from typing import Optional, Literal
 from scipy.optimize import curve_fit
 
 from quam_libs.trackable_object import tracked_updates
-
+from quam_libs.lib.save_utils import save_node
 
 class Parameters(NodeParameters):
     qubits: Optional[str] = None
@@ -308,6 +308,6 @@ with node.record_state_updates():
 # %%
 node.results['initial_parameters'] = node.parameters.model_dump()
 node.machine = machine
-node.save()
+save_node(node)
 
 # %%

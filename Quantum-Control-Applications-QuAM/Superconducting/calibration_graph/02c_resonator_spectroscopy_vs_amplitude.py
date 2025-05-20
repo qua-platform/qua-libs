@@ -29,7 +29,7 @@ from quam_libs.lib.fit_utils import fit_resonator
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V, subtract_slope, apply_angle
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, save_node
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -302,13 +302,15 @@ if not node.parameters.simulate:
     fit_results = {}
     for q in qubits:
         fit_results[q.name] = {}
+        
+        power_settings_conditional = q.resonator.set_output_power(
+            power_in_dbm=rr_optimal_power_dbm[q.name].item(),
+            max_amplitude=0.1
+        )
         if not node.parameters.load_data_id:
             with node.record_state_updates():
                 if not np.isnan(rr_optimal_power_dbm[q.name]):
-                    power_settings = q.resonator.set_output_power(
-                        power_in_dbm=rr_optimal_power_dbm[q.name].item(),
-                        max_amplitude=0.1
-                    )
+                    power_settings = power_settings_conditional
                 if not np.isnan(rr_optimal_frequencies[q.name]):
                     q.resonator.intermediate_frequency += rr_optimal_frequencies[q.name]
         fit_results[q.name] = power_settings
@@ -316,13 +318,10 @@ if not node.parameters.simulate:
     node.results["fit_results"] = fit_results
 
     # %% {Save_results}
-    if node.parameters.load_data_id is not None:
-        if node.storage_manager is not None:
-            node.storage_manager.active_machine_path = None
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
-    node.save()
+    save_node(node)
 
 
 # %%

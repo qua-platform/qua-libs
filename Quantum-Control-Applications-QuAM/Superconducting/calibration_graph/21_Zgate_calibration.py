@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.multi_user import qm_session
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, save_node
 from scipy.optimize import curve_fit
 import xarray as xr
 from quam_libs.lib import guess
@@ -352,7 +352,7 @@ if not node.parameters.simulate:
 
     node.results['initial_parameters'] = node.parameters.model_dump()
     node.machine = machine
-    node.save()
+    save_node(node)
 # %%
 
 # %%

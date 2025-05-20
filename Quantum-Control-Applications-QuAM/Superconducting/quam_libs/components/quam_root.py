@@ -13,6 +13,8 @@ from quam.components.ports import (
     FEMPortsContainer,
     OPXPlusPortsContainer,
 )
+from quam.serialisation.json import JSONSerialiser
+
 from .transmon import Transmon
 from .transmon_pair import TransmonPair
 
@@ -43,6 +45,16 @@ class QuAM(QuamRoot):
     _data_handler: ClassVar[DataHandler] = None
     qmm: ClassVar[Optional[QuantumMachinesManager]] = None
 
+    @classmethod
+    def get_serialiser(cls) -> JSONSerialiser:
+        """Get the serialiser for the QuamRoot class, which is the JSONSerialiser.
+
+        This method can be overridden by subclasses to provide a custom serialiser.
+        """
+        return JSONSerialiser(
+            content_mapping={"wiring": "wiring.json", "network": "wiring.json"}
+        )
+    
     @classmethod
     def load(cls, *args, **kwargs) -> "QuAM":
         if not args:
@@ -176,8 +188,7 @@ class QuAM(QuamRoot):
         else:
             settings = dict(
                 host=self.network["host"],
-                cluster_name=self.network["cluster_name"],
-                octave=self.get_octave_config(),
+                cluster_name=self.network["cluster_name"]
             )
 
             if "port" in self.network:

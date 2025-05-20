@@ -1,5 +1,6 @@
 from quam.core import quam_dataclass
 from quam.components.channels import IQChannel, Pulse
+from quam.components.quantum_components.qubit import Qubit
 from quam import QuamComponent
 from .flux_line import FluxLine
 from .readout_resonator import ReadoutResonator
@@ -14,7 +15,7 @@ __all__ = ["Transmon"]
 
 
 @quam_dataclass
-class Transmon(QuamComponent):
+class Transmon(Qubit):
     """
     Example QuAM component for a transmon qubit.
 
@@ -60,7 +61,6 @@ class Transmon(QuamComponent):
     phi0_current: float = 0.0
     phi0_voltage: float = 0.0
 
-    GEF_frequency_shift: int = 10
     chi: float = 0.0
     grid_location: str = None
     extras: Dict[str, Any] = field(default_factory=dict)

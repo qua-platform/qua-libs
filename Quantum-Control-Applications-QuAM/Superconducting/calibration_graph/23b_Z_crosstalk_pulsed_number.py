@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, save_node
 from quam_libs.lib.fit import fit_oscillation, oscillation
 from quam_libs.trackable_object import tracked_updates
 from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
@@ -352,5 +352,5 @@ if not node.parameters.simulate:
     # %%
     node.results['initial_parameters'] = node.parameters.model_dump()
     node.machine = machine
-    node.save()
+    save_node(node)
 # %%

@@ -21,7 +21,7 @@ from qualibrate import NodeParameters, QualibrationNode
 from quam_libs.components import QuAM
 from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coefficients, expdecay, savgol, two_expdecay
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, save_node
 from quam_libs.macros import active_reset, multiplexed_readout, node_save, qua_declaration
 from scipy import signal
 from scipy.optimize import curve_fit, minimize
@@ -458,5 +458,5 @@ if not node.parameters.simulate and node.parameters.reset_filters:
 # %%
 node.results["initial_parameters"] = node.parameters.model_dump()
 node.machine = machine
-node.save()
+save_node(node)
 # %%
