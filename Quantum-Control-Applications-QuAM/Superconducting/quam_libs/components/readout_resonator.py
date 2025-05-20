@@ -18,17 +18,17 @@ class ReadoutResonatorBase:
         frequency_bare (int, float): the bare resonator frequency in Hz.
     """
 
-    depletion_time: int = 5000
+    depletion_time: int = 3000
     frequency_bare: float = None
 
     f_01: float = None
     f_12: float = None
     confusion_matrix: list = None
     
-    GEF_frequency_shift: float = None
+    GEF_frequency_shift: int = 0
     gef_centers: list = None
     gef_confusion_matrix: list = None
-    GEF_frequency_shift: float = None
+
     @staticmethod
     def calculate_voltage_scaling_factor(fixed_power_dBm: float, target_power_dBm: float):
         """

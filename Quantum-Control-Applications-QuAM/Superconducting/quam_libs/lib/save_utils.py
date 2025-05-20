@@ -5,8 +5,6 @@ from qualibrate_app.config import get_config_path, get_settings
 from qualibrate import QualibrationNode
 from qualibrate.utils.node.path_solver import get_node_dir_path
 from quam_libs.components import QuAM
-from iqcc_cloud_client import IQCC_Cloud
-from cloud_qualibrate_link.qualibrate_cloud_handler import QualibrateCloudHandler
 import os
 from pathlib import Path
 import xarray as xr
@@ -158,22 +156,47 @@ def get_node_id() -> int:
     return storage_manager.data_handler.generate_node_contents()['id']
 
 def save_node(node : QualibrationNode):
+    """
+    Save a QualibrationNode both locally and to cloud if possible.
+    
+    This function first saves the node locally, then attempts to upload to cloud
+    if the necessary cloud dependencies are available and the user has proper access rights.
+    The cloud upload is optional and will be skipped if:
+    1. Cloud dependencies (IQCC_Cloud and QualibrateCloudHandler) are not available
+    2. No quantum computer backend is specified
+    3. User doesn't have proper IQCC project access rights
+    """
     logger.info(f"Saving node with snapshot index {node.snapshot_idx}")
     
     node.save()
     logger.info("Node saved locally")
     
-    quantum_computer_backend = node.machine.network.get("quantum_computer_backend", None)
-    if quantum_computer_backend is not None:
-        logger.info(f"Found quantum computer backend: {quantum_computer_backend}")
-        qc = IQCC_Cloud(quantum_computer_backend=quantum_computer_backend)
-        if qc.access_rights['projects'] == ['iqcc']:
-            logger.info("IQCC project access confirmed, proceeding with cloud upload")
-            q_config_path = get_qualibrate_config_path()
-            qs = get_qualibrate_config(q_config_path)
-            base_path = qs.storage.location
-            node_id = node.snapshot_idx
-            node_dir = get_node_dir_path(node_id, base_path)
-            handler = QualibrateCloudHandler(str(node_dir))
-            handler.upload_to_cloud(quantum_computer_backend)
-            logger.info("Node successfully uploaded to cloud")
+    # Check if cloud dependencies are available
+    try:
+        from iqcc_cloud_client import IQCC_Cloud
+        from cloud_qualibrate_link.qualibrate_cloud_handler import QualibrateCloudHandler
+        cloud_deps_available = True
+    except ImportError:
+        logger.info("Cloud dependencies not available - skipping cloud upload")
+        cloud_deps_available = False
+    
+    # Only proceed with cloud upload if dependencies are available
+    if cloud_deps_available:
+        quantum_computer_backend = node.machine.network.get("quantum_computer_backend", None)
+        if quantum_computer_backend is not None:
+            logger.info(f"Found quantum computer backend: {quantum_computer_backend}")
+            qc = IQCC_Cloud(quantum_computer_backend=quantum_computer_backend)
+            if qc.access_rights['projects'] == ['iqcc']:
+                logger.info("IQCC project access confirmed, proceeding with cloud upload")
+                q_config_path = get_qualibrate_config_path()
+                qs = get_qualibrate_config(q_config_path)
+                base_path = qs.storage.location
+                node_id = node.snapshot_idx
+                node_dir = get_node_dir_path(node_id, base_path)
+                handler = QualibrateCloudHandler(str(node_dir))
+                handler.upload_to_cloud(quantum_computer_backend)
+                logger.info("Node successfully uploaded to cloud")
+            else:
+                logger.info("No IQCC project access - skipping cloud upload")
+        else:
+            logger.info("No quantum computer backend specified - skipping cloud upload")

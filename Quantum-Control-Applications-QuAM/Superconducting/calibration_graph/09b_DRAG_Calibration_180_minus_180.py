@@ -47,7 +47,7 @@ class Parameters(NodeParameters):
     amp_factor_step: float = 0.02
     max_number_pulses_per_sweep: int = 40
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100

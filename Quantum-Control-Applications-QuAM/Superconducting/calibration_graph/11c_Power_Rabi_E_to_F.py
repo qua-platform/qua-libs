@@ -236,29 +236,23 @@ if not node.parameters.simulate:
     node.results["figure"] = grid.fig
  
 # %% {Update_state}
-if not node.parameters.simulate: # TODO : verify this block with TOM !!!
-    # if operation == "x180":
-    #     ef_operation_value = pulses.DragCosinePulse(
-    #                 amplitude=fit_results[q.name]["Pi_amplitude"],
-    #                 alpha=q.xy.operations[operation].alpha,
-    #                 anharmonicity=q.xy.operations[operation].anharmonicity,
-    #                 length=q.xy.operations[operation].length,
-    #                 axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
-    #                 digital_marker=q.xy.operations[operation].digital_marker,
-    #             )
-    # else:
-    #     ef_operation_value = fit_results[q.name]["Pi_amplitude"]
+if not node.parameters.simulate: 
+    for q in qubits:
+        if "EF_180" not in q.xy.operations:
+            print("Creating EF_x180 operation")
+            ef_operation_value = pulses.DragCosinePulse(
+                        amplitude=0.0,
+                        alpha=q.xy.operations[operation].alpha,
+                        anharmonicity=q.xy.operations[operation].anharmonicity,
+                        length=q.xy.operations[operation].length,
+                        axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
+                        digital_marker=q.xy.operations[operation].digital_marker,
+                    )
+            
+            q.xy.operations["EF_180"] = ef_operation_value
     for q in qubits:
         with node.record_state_updates():
-            if operation == "x180":
-                print("Creating EF_x180 operation")
-                # Create the |e> -> |f> operation
-                q.xy.operations["EF_x180"].amplitude = fit_results[q.name]["Pi_amplitude"]
-            else:
-                # set the new amplitude for the EF operation
-                q.xy.operations["EF_x180"].amplitude = fit_results[q.name]["Pi_amplitude"]
-
-
+            q.xy.operations["EF_180"].amplitude = fit_results[q.name]["Pi_amplitude"]
 
 # %% {Save_results}
 if not node.parameters.simulate:

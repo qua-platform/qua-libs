@@ -188,9 +188,7 @@ class QuAM(QuamRoot):
         else:
             settings = dict(
                 host=self.network["host"],
-                cluster_name=self.network["cluster_name"],
-                # octave=self.get_octave_config(),
-                # timeout = 60
+                cluster_name=self.network["cluster_name"]
             )
 
             if "port" in self.network:
