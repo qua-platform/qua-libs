@@ -118,7 +118,10 @@ with program() as power_rabi:
                     keep_phase=True
                 )
 
-                # Reset the qubit frequency
+        with for_(n, 0, n < n_avg, n + 1):
+            save(n, n_st)
+            with for_(*from_array(a, amps)):
+                # Reset the qubit frequency # TODO: is this even needed?
                 update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
                 # Drive the qubit to the excited state
                 qubit.align()
