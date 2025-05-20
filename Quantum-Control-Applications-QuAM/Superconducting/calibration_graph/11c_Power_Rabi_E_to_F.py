@@ -108,11 +108,8 @@ with program() as power_rabi:
             wait(1000, qb.z.name)
 
         align()
-
-        with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st)
-            with for_(*from_array(a, amps)):
-                update_frequency(
+        
+        update_frequency(
                     qubit.resonator.name,
                     qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift,
                     keep_phase=True
