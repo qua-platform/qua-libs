@@ -1,11 +1,12 @@
 from typing import List
+
 import xarray as xr
+from calibration_utils.cryoscope import expdecay, two_expdecay
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-
 from qualang_tools.units import unit
-from qualibration_libs.plotting import QubitGrid, grid_iter
 from qualibration_libs.analysis import oscillation
+from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
@@ -80,9 +81,6 @@ def plot_individual_raw_data(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fi
     ax.set_title(f"qubit = {qubit['qubit']}")
 
 
-
-
-
 def plot_normalized_flux(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
@@ -136,7 +134,7 @@ def plot_individual_flux(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: x
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    fit.fit_results.flux.plot()
-
-
-
+    fit.fit_results.flux.plot(ax=ax, linestyle="--", marker=".")
+    ax.plot(fit.time, expdecay(fit.time, *fit.fit_results.fit_1exp), label="fit_1exp", linewidth=5)
+    ax.plot(fit.time, two_expdecay(fit.time, *fit.fit_results.fit_2exp), label="fit_2exp", linewidth=5)
+    ax.legend()

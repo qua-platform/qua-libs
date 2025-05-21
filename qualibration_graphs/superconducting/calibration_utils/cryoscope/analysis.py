@@ -7,6 +7,8 @@ from qualibration_libs.data.processing import _apply_angle
 from scipy.optimize import minimize
 from scipy.signal import deconvolve, savgol_filter
 from qualibration_libs.data import convert_IQ_to_V
+from scipy.optimize import curve_fit, minimize
+
 
 
 
@@ -119,7 +121,7 @@ def cryoscope_frequency(ds, stable_time_indices, quad_term=-1, sg_range=3, sg_or
     #     plt.title("Flux")
     #     plt.show()
     if quad_term == -1:
-        flux_cryoscope = flux_cryoscope / flux_cryoscope.sel(time=slice(80, 120)).mean(dim="time")
+        flux_cryoscope = flux_cryoscope / flux_cryoscope.sel(time=slice(stable_time_indices[0], stable_time_indices[1])).mean(dim="time")
 
     ds["flux"] = flux_cryoscope
     return ds
@@ -216,21 +218,41 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
 
-    if not node.parameters.use_state_discrimination:
-        da = ds.I
-    else:
-        da = ds.state
+    if hasattr(ds, "I"):
+        data = "I"
+    elif hasattr(ds, "state"):
+        data = "state"
 
     sg_order = 2
     sg_range = 3
 
     ds_fit = cryoscope_frequency(
-        da,
+        ds[data],
         quad_term=-1,
         stable_time_indices=(node.parameters.cryoscope_len - 20, node.parameters.cryoscope_len),
         sg_order=sg_order,
         sg_range=sg_range,
     )
+
+    first_vals = ds_fit.flux.sel(time=slice(0, 1)).mean()
+    final_vals = ds_fit.flux.sel(time=slice(node.parameters.cryoscope_len - 20, None)).mean()
+
+    try:
+        p0 = [final_vals, -1 + first_vals / final_vals, 50]
+        fit, _ = curve_fit(expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit="qD1").values, p0=p0)
+    except:
+        fit = p0
+        print("single exp fit failed")
+    try:
+        p0 = [fit[0], fit[1], 5, fit[1], fit[2]]
+        fit2, _ = curve_fit(two_expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit="qD1").values, p0=p0)
+    except:
+        fit2 = None
+        print("two exp fit failed")
+
+    # Save fit results as attributes or DataArrays
+    ds_fit.attrs["fit_1exp"] = fit
+    ds_fit.attrs["fit_2exp"] = fit2
 
     ds["fit_results"] = ds_fit
 

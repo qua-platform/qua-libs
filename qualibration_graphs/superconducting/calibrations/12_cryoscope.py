@@ -33,8 +33,6 @@ from scipy.optimize import curve_fit, minimize
 from scipy.signal import convolve, deconvolve, lfilter
 from sklearn.metrics import fowlkes_mallows_score
 
-from debug_octave import plot
-
 # %% {Node_parameters}
 description = """
         cryoscope
@@ -54,15 +52,15 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["qD1"]
     node.parameters.reset_type = "active"
-    node.parameters.cryoscope_len = 200
+    node.parameters.cryoscope_len = 500
     node.parameters.use_state_discrimination = False
     node.parameters.amp_factor = 0.03
-    node.parameters.num_shots = 20_000
+    node.parameters.num_shots = 10_000
     node.parameters.simulate = False
     node.parameters.simulation_duration_ns = 20_000
     node.parameters.timeout = 10000
     node.parameters.buffer = 10
-    node.parameters.load_data_id = 742
+    node.parameters.load_data_id = 763
     pass
 
 
@@ -328,9 +326,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
     node.results["figure_raw"] = fig_raw
     node.results["figure_flux"] = fig_flux
-    node.save()
-
-
 
 # %%
 # extract the rising part of the data for analysis
@@ -348,14 +343,22 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # node.results["figure"] = f
 # plt.show()
 
+
+# except:
+#     print("single exp fit failed")
+# try:
+#     p0 = [fit[0], fit[1], 5, fit[1], fit[2]]
+#     fit2, _ = curve_fit(two_expdecay, dsfit.time, dsfit, p0=p0)
+# except:
+#     fit2 = p0
+#     print("two exp fit failed")
+
 # %%TODO: HERE
 
 # if not node.parameters.simulate and node.parameters.reset_filters:
 # Fit two exponents
 # da = flux_cryoscope_q
 
-# first_vals = da.sel(time=slice(0, 1)).mean().values
-# final_vals = da.sel(time=slice(50, None)).mean().values
 
 # try:
 #     p0 = [final_vals, -1 + first_vals / final_vals, 50]
