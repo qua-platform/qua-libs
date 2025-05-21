@@ -41,7 +41,7 @@ start = time.time()
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
-    num_averages: int = 100
+    num_averages: int = 50
     operation: str = "x180_Gaussian"
     operation_amplitude_factor: Optional[float] = 1
     duration_in_ns: Optional[int] = 500
@@ -52,7 +52,7 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    load_data_id: Optional[int] = None
+    load_data_id: Optional[int] = None #193
     multiplexed: bool = True
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
 
@@ -257,24 +257,91 @@ if not node.parameters.simulate:
     center_freqs = center_freqs.center_frequency + [q.freq_vs_flux_01_quad_term * node.parameters.flux_amp**2 for q in qubits][0]
     flux_response = np.sqrt(center_freqs/qubits[0].freq_vs_flux_01_quad_term)
     flux_response.plot()
+    plt.gca().set_ylabel("Flux[V]")
+    plt.show()
     
 
     # %%
+    from scipy.linalg import svd, eig
+
+    def esprit(t, signal, rank):
+        """
+        ESPRIT algorithm to estimate the exponentials in a signal.
+
+        Args:
+            t (np.ndarray): Time vector.
+            signal (np.ndarray): Input time-domain signal.
+            rank (int): Number of exponentials to estimate.
+
+        Returns:
+            lambdas (np.ndarray): Continuous-time exponential rates (complex).
+            amplitudes (np.ndarray): Corresponding amplitudes.
+        """
+        N = len(signal)
+        L = N // 2
+        K = N - L
+        dt = t[1] - t[0]
+
+        # Form Hankel matrix
+        X = np.column_stack([signal[i:i+L] for i in range(K)])
+
+        # SVD and truncation
+        U, s_vals, Vh = svd(X, full_matrices=False)
+        U_r = U[:, :rank]
+
+        # Subspace shift
+        U1 = U_r[:-1, :]
+        U2 = U_r[1:, :]
+
+        # Solve for Phi (U1^† * U2)
+        Phi = np.linalg.pinv(U1) @ U2
+        eigvals = np.linalg.eigvals(Phi)
+        lambdas = np.log(eigvals) / dt
+
+        # Vandermonde matrix
+        V = np.column_stack([np.exp(lam * t) for lam in lambdas])
+        amplitudes, _, _, _ = np.linalg.lstsq(V, signal, rcond=None)
+
+        return lambdas, amplitudes
 
     # Define your model function
-    def model(t, a0, a1, t1):
+    def model_1exp(t, a0, a1, t1):
         return a0 * (1+ a1 * np.exp(-t / t1))
+    
+    def model_2exp(t, a0, a1, a2, t1, t2):
+        return a0 * (1 + a1 * np.exp(-t / t1) + a2 * np.exp(-t / t2))
+    
 
     t_data = flux_response.time.values
     y_data = flux_response.isel(qubit=0).values
 
     # Fit the data
-    popt, pcov = curve_fit(model, t_data, y_data, p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 1000])  # p0 = initial guess
+    popt, pcov = curve_fit(model_1exp, t_data, y_data, p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 1000])  # p0 = initial guess
+
+    # lambdas_esprit, amplitudes_esprit = esprit(t_data, y_data, rank=2)
+    
+    # Use ESPRIT results as initial guesses
+    a0_0 = popt[0]
+    a1_0 = a2_0 = popt[1] / 2 # np.real(amplitudes_esprit)
+    t1_0 = popt[-1] # lambda1_0, lambda2_0 = np.real(lambdas_esprit)
+    t2_0 = 100
+
+    # lambda1_0 = -0.1
+    # a1_0 = 0.1 
+    c_0 = np.max(y_data)  # Initial guess for constant
+
+    initial_guess = [a0_0, a1_0, a2_0, t1_0, t2_0] # [-0.0015, -1 / 200, a2_0, lambda2_0, c_0]
+    popt, pcov = curve_fit(model_2exp, t_data, y_data, p0=initial_guess)
+
+    y_fit = model_2exp(t_data, *popt)
+    # y_fit = model_1exp(t_data, *popt)
+    # y_fit = model(t_data, -0.0015, -1 / 200, popt[2], popt[3], popt[4])
 
     # Plot
     plt.figure()
     plt.scatter(t_data, y_data, label='Data')
-    plt.plot(t_data, model(t_data, *popt), 'r-', label=f'Fit: a0={popt[0]:.2f}, a1={popt[1]:.2f}, t1={popt[2]:.2f}')
+    # plt.plot(t_data, y_fit, 'r-', label=f'Fit: a0={popt[0]:.2f}, a1={popt[1]:.3f}, t1={popt[2]:.0f}')
+    plt.plot(t_data, y_fit, 'r-', label=f'Fit: a0={popt[0]:.2f}, a1={popt[1]:.3f}, a2={popt[2]:.3f}, t1={popt[3]:.0f}, t2={popt[4]:.0f}')
     plt.xlabel('Time')
     plt.ylabel('Value')
     plt.legend()
@@ -304,7 +371,7 @@ if not node.parameters.simulate:
 
     for ax, qubit in grid_iter(grid):
         added_freq = machine.qubits[qubit['qubit']].xy.RF_frequency*0 + machine.qubits[qubit['qubit']].freq_vs_flux_01_quad_term*node.parameters.flux_amp**2
-        (-(center_freqs.center_frequency.sel(qubit = qubit["qubit"])+ added_freq)/1e9).plot()
+        (-(center_freqs.sel(qubit = qubit["qubit"])+ added_freq)/1e9).plot()
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Time (ns)")
         ax.set_title(qubit["qubit"])
