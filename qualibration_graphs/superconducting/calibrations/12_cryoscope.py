@@ -50,17 +50,17 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qD1"]
+    node.parameters.qubits = ["qC3"]
     node.parameters.reset_type = "active"
-    node.parameters.cryoscope_len = 500
-    node.parameters.use_state_discrimination = False
+    node.parameters.cryoscope_len = 50
+    node.parameters.use_state_discrimination = True
     node.parameters.amp_factor = 0.03
-    node.parameters.num_shots = 10_000
+    node.parameters.num_shots = 50_000
     node.parameters.simulate = False
     node.parameters.simulation_duration_ns = 20_000
     node.parameters.timeout = 10000
     node.parameters.buffer = 10
-    node.parameters.load_data_id = 763
+    # node.parameters.load_data_id = 763
     pass
 
 
@@ -292,7 +292,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # print(f"QPU time: {node.namespace["job"].result_handles.get("__qpu_execution_time_seconds").fetch_all()}")
     # print(f"Total Python time: {node.namespace["job"].result_handles.get("__total_python_runtime_seconds").fetch_all()}")
 
-
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
@@ -326,6 +325,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
     node.results["figure_raw"] = fig_raw
     node.results["figure_flux"] = fig_flux
+    node.save()
 
 # %%
 # extract the rising part of the data for analysis

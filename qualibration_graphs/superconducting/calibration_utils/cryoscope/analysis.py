@@ -237,15 +237,17 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
     first_vals = ds_fit.flux.sel(time=slice(0, 1)).mean()
     final_vals = ds_fit.flux.sel(time=slice(node.parameters.cryoscope_len - 20, None)).mean()
 
+    qubit = node.namespace["qubits"][0].name
+
     try:
         p0 = [final_vals, -1 + first_vals / final_vals, 50]
-        fit, _ = curve_fit(expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit="qD1").values, p0=p0)
+        fit, _ = curve_fit(expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit=qubit).values, p0=p0)
     except:
         fit = p0
         print("single exp fit failed")
     try:
         p0 = [fit[0], fit[1], 5, fit[1], fit[2]]
-        fit2, _ = curve_fit(two_expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit="qD1").values, p0=p0)
+        fit2, _ = curve_fit(two_expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit=qubit).values, p0=p0)
     except:
         fit2 = None
         print("two exp fit failed")
