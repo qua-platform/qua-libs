@@ -10,12 +10,12 @@ from calibration_utils.cryoscope import (
     cryoscope_frequency,
     estimate_fir_coefficients,
     expdecay,
-    process_raw_dataset,
     fit_raw_data,
+    plot_normalized_flux,
+    plot_raw_data,
+    process_raw_dataset,
     savgol,
     two_expdecay,
-    plot_raw_data,
-    plot_normalized_flux,
 )
 from qm.qua import *
 from qualang_tools.bakery import baking
@@ -50,17 +50,18 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qC3"]
+    node.parameters.qubits = ["qC1"]
     node.parameters.reset_type = "active"
-    node.parameters.cryoscope_len = 50
+    node.parameters.cryoscope_len = 500
     node.parameters.use_state_discrimination = True
-    node.parameters.amp_factor = 0.03
-    node.parameters.num_shots = 50_000
-    node.parameters.simulate = False
+    node.parameters.amp_factor = 0.04
+    node.parameters.num_shots = 200
+    # node.parameters.simulate = True
     node.parameters.simulation_duration_ns = 20_000
     node.parameters.timeout = 10000
     node.parameters.buffer = 10
-    # node.parameters.load_data_id = 763
+    node.parameters.multiplexed = True
+    # node.parameters.load_data_id = 836
     pass
 
 
@@ -312,6 +313,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"] = fit_raw_data(node.results["ds_raw"], node)
 
+
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
@@ -325,235 +327,30 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
     node.results["figure_raw"] = fig_raw
     node.results["figure_flux"] = fig_flux
-    node.save()
-
-# %%
-# extract the rising part of the data for analysis
-# threshold = flux_cryoscope_q.max().values * 0.6  # Set the threshold value
-# rise_index = np.argmax(flux_cryoscope_q.values > threshold) + 1
-# drop_index = len(flux_cryoscope_q) - 4
-# flux_cryoscope_tp = flux_cryoscope_q.sel(time=slice(rise_index, drop_index))
-# flux_cryoscope_tp = flux_cryoscope_tp.assign_coords(time=flux_cryoscope_tp.time - rise_index + 1)
-
-# f, axs = plt.subplots(2)
-# flux_cryoscope_q.plot(ax=axs[0])
-# axs[0].axvline(rise_index, color="r", lw=0.5, ls="--")
-# axs[0].axvline(drop_index, color="r", lw=0.5, ls="--")
-# flux_cryoscope_tp.plot(ax=axs[1])
-# node.results["figure"] = f
-# plt.show()
+    # node.save()
 
 
-# except:
-#     print("single exp fit failed")
-# try:
-#     p0 = [fit[0], fit[1], 5, fit[1], fit[2]]
-#     fit2, _ = curve_fit(two_expdecay, dsfit.time, dsfit, p0=p0)
-# except:
-#     fit2 = p0
-#     print("two exp fit failed")
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def update_state(node: QualibrationNode[Parameters, Quam]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+    with node.record_state_updates():
+        for q in node.namespace["qubits"]:
+            # if node.outcomes[q.name] == "failed":
+            #     continue
 
-# %%TODO: HERE
+            fit_1exp = node.results["ds_fit"].sel(qubit=q.name).fit_results.fit_1exp
+            fit_2exp = node.results["ds_fit"].sel(qubit=q.name).fit_results.fit_2exp
 
-# if not node.parameters.simulate and node.parameters.reset_filters:
-# Fit two exponents
-# da = flux_cryoscope_q
+            print(f"fit_1exp: {fit_1exp}")
+            print(f"fit_2exp: {fit_2exp}")
 
+            node.machine.qubits[q.name].z.opx_output.exponential_filter = [
+                (-fit_2exp[1], fit_2exp[2]),
+                (-fit_2exp[3], fit_2exp[4]),
+            ]
 
-# try:
-#     p0 = [final_vals, -1 + first_vals / final_vals, 50]
-#     fit, _ = curve_fit(expdecay, da.time, da, p0=p0)
-# except:
-#     fit = p0
-#     print("single exp fit failed")
-# try:
-#     p0 = [fit[0], fit[1], 5, fit[1], fit[2]]
-#     fit2, _ = curve_fit(two_expdecay, da.time, da, p0=p0)
-# except:
-#     fit2 = p0
-#     print("two exp fit failed")
+            node.save()
 
 
-# da.plot(marker=".")
-# # plt.plot(filtered_flux_cryoscope_q.time, filtered_flux_cryoscope_q, label = 'filtered')
-# plt.plot(da.time, expdecay(da.time, *fit), label="fit single exp")
-# if fit2 is not None:
-#     plt.plot(da.time, two_expdecay(da.time, *fit2), label="fit two exp")
-# plt.legend()
-# plt.show()
-
-# # Print fit2 parameters nicely (two_expdecay function)
-# if fit2 is not None:
-#     print("Fit2 parameters (two_expdecay function):")
-#     print(f"s: {fit2[0]:.6f}")
-#     print(f"a: {fit2[1]:.6f}")
-#     print(f"t: {fit2[2]:.6f}")
-#     print(f"a2: {fit2[3]:.6f}")
-#     print(f"t2: {fit2[4]:.6f}")
-
-# # Print fit parameters nicely (expdecay function)
-# print("\nFit parameters (expdecay function):")
-# print(f"s: {fit[0]:.6f}")
-# print(f"a: {fit[1]:.6f}")
-# print(f"t: {fit[2]:.6f}")
-
-# from qualang_tools.digital_filters import (
-#     bounce_and_delay_correction,
-#     calc_filter_taps,
-#     exponential_decay,
-#     single_exponential_correction,
-# )
-
-# feedforward_taps_1exp, feedback_tap_1exp = calc_filter_taps(exponential=list(zip([fit[1] * 1.0], [fit[2]])))
-# feedforward_taps_2exp, feedback_tap_2exp = calc_filter_taps(
-#     exponential=list(zip([fit2[1], fit2[3]], [fit2[2], fit2[4]]))
-# )
-
-# FIR_1exp = feedforward_taps_1exp
-# FIR_2exp = feedforward_taps_2exp
-# IIR_1exp = [1, -feedback_tap_1exp[0]]
-# IIR_2exp = convolve([1, -feedback_tap_2exp[0]], [1, -feedback_tap_2exp[1]], mode="full")
-
-# filtered_response_long_1exp = lfilter(FIR_1exp, IIR_1exp, flux_cryoscope_q)
-# filtered_response_long_2exp = lfilter(FIR_2exp, IIR_2exp, flux_cryoscope_q)
-
-
-# f, ax = plt.subplots()
-# ax.plot(flux_cryoscope_q.time, flux_cryoscope_q, label="data")
-# ax.plot(flux_cryoscope_q.time, filtered_response_long_1exp, label="filtered long time 1exp")
-# ax.plot(flux_cryoscope_q.time, filtered_response_long_2exp, label="filtered long time 2exp")
-# ax.set_ylim([final_vals * 0.9, final_vals * 1.05])
-# ax.legend()
-# plt.show()
-
-
-# # %%
-# if not node.parameters.simulate and node.parameters.reset_filters:
-#     ####  FIR filter for the response
-#     fitting_approach = "2exp"
-#     if fitting_approach == "1exp":
-#         filtered_response_long = filtered_response_long_1exp
-#         long_FIR = FIR_1exp
-#         long_IIR = IIR_1exp
-#     elif fitting_approach == "2exp":
-#         filtered_response_long = filtered_response_long_2exp
-#         long_FIR = FIR_2exp
-#         long_IIR = IIR_2exp
-
-#     flux_q = flux_cryoscope_q.copy()
-#     flux_q.values = filtered_response_long
-#     flux_q_tp = flux_q.sel(time=slice(rise_index, 200))  # calculate the FIR only based on the first 200 nS
-#     flux_q_tp = flux_q_tp.assign_coords(time=flux_q_tp.time - rise_index)
-#     final_vals = flux_q_tp.sel(time=slice(100, None)).mean().values
-#     step = np.ones(len(flux_q) + 100) * final_vals
-#     fir_est = estimate_fir_coefficients(step, flux_q_tp.values, 28)
-
-#     FIR_new = fir_est
-
-#     convolved_fir = convolve(long_FIR, FIR_new, mode="full")
-#     filtered_response_Full = lfilter(convolved_fir, long_IIR, flux_cryoscope_q)
-
-#     if plot_process:
-#         flux_cryoscope_q.plot(label="data")
-#         plt.plot(filtered_response_long, label="filtered long time")
-#         plt.plot(filtered_response_Full, label="filtered full, deconvolved")
-#         plt.axhline(final_vals * 1.001, color="k")
-#         plt.axhline(final_vals * 0.999, color="k")
-#         plt.ylim([final_vals * 0.95, final_vals * 1.05])
-#         plt.legend()
-#         plt.show()
-
-
-# # %%
-# if not node.parameters.simulate and node.parameters.reset_filters:
-
-#     def find_diff(x, y, y0, plot=False):
-#         filterd_y = lfilter(x, [1, 0], y)
-#         diffs = np.sum(np.abs(filterd_y - y0))
-#         if plot:
-#             plt.plot(filterd_y)
-#         return diffs
-
-#     result = minimize(
-#         find_diff,
-#         x0=FIR_new,
-#         args=(filtered_response_long[:100], np.mean(filtered_response_long[rise_index + 50 : drop_index])),
-#         bounds=[(-3, 3)] * len(FIR_new),
-#     )
-
-#     convolved_fir = convolve(long_FIR, result.x, mode="full")
-#     if np.abs(np.max(convolved_fir)) > 2:
-#         convolved_fir = 1.99 * convolved_fir / np.max(np.abs(convolved_fir))
-#     filtered_response_Full = lfilter(convolved_fir, long_IIR, flux_cryoscope_q)
-
-#     if plot_process:
-#         flux_cryoscope_q.plot(label="data")
-#         plt.plot(filtered_response_long, label="filtered long time")
-#         plt.plot(filtered_response_Full, label="filtered full, fitted")
-#         plt.axhline(final_vals * 1.001, color="k")
-#         plt.axhline(final_vals * 0.999, color="k")
-#         plt.ylim([final_vals * 0.95, final_vals * 1.05])
-#         plt.legend()
-#         plt.show()
-
-# # %%
-# if not node.parameters.simulate and node.parameters.reset_filters:
-#     # plotting the results
-#     fig, ax = plt.subplots()
-#     ax.plot(flux_cryoscope_q.time, flux_cryoscope_q / np.mean(flux_cryoscope_q[-50:]), label="data")
-#     ax.plot(
-#         flux_cryoscope_q.time,
-#         filtered_response_long / np.mean(filtered_response_long[-50:]),
-#         "--",
-#         label="slow rise correction",
-#     )
-#     ax.plot(
-#         flux_q.time,
-#         filtered_response_Full / np.mean(filtered_response_Full[-50:]),
-#         "--",
-#         label="expected corrected response",
-#     )
-#     ax.axhline(1.001, color="k")
-#     ax.axhline(0.999, color="k")
-#     ax.set_ylim([0.95, 1.05])
-#     ax.legend()
-#     ax.set_xlabel("time (ns)")
-#     ax.set_ylabel("normalized amplitude")
-#     node.results["figure"] = fig
-# elif not node.parameters.simulate:
-#     fig, ax = plt.subplots()
-#     ax.plot(flux_cryoscope_q.time, flux_cryoscope_q / np.mean(flux_cryoscope_q[-50:]), label="data")
-#     ax.axhline(1.001, color="k")
-#     ax.axhline(0.999, color="k")
-#     ax.set_ylim([0.95, 1.05])
-#     ax.set_xlabel("time (ns)")
-#     ax.set_ylabel("normalized amplitude")
-#     ax.legend()
-#     node.results["figure"] = fig
-# # %%
-# if not node.parameters.simulate and node.parameters.reset_filters:
-#     node.results["fit_results"] = {}
-#     for q in qubits:
-#         node.results["fit_results"][q.name] = {}
-#         node.results["fit_results"][q.name]["fir"] = convolved_fir.tolist()
-#         if fitting_approach == "1exp":
-#             node.results["fit_results"][q.name]["iir"] = feedback_tap_1exp
-#         elif fitting_approach == "2exp":
-#             node.results["fit_results"][q.name]["iir"] = feedback_tap_2exp
-
-# # %%
-
-# if not node.parameters.simulate and node.parameters.reset_filters:
-#     with node.record_state_updates():
-#         for qubit in qubits:
-#             qubit.z.opx_output.feedforward_filter = convolved_fir.tolist()
-#             if fitting_approach == "1exp":
-#                 qubit.z.opx_output.feedback_filter = feedback_tap_1exp
-#             elif fitting_approach == "2exp":
-#                 qubit.z.opx_output.feedback_filter = feedback_tap_2exp
-
-# # %%
-# node.results["initial_parameters"] = node.parameters.model_dump()
-# node.machine = machine
-# node.save()
 # %%
