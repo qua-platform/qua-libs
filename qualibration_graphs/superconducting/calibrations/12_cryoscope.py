@@ -1,37 +1,23 @@
 # %%
-from typing import List, Literal, Optional
-
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from calibration_utils.cryoscope import (
     Parameters,
-    cryoscope_frequency,
-    estimate_fir_coefficients,
-    expdecay,
     fit_raw_data,
     plot_normalized_flux,
     plot_raw_data,
     process_raw_dataset,
-    savgol,
-    two_expdecay,
 )
 from qm.qua import *
 from qualang_tools.bakery import baking
 from qualang_tools.multi_user import qm_session
-from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.units import unit
 from qualibrate import NodeParameters, QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.parameters import get_idle_times_in_clock_cycles, get_qubits
+from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
-from scipy import signal
-from scipy.optimize import curve_fit, minimize
-from scipy.signal import convolve, deconvolve, lfilter
-from sklearn.metrics import fowlkes_mallows_score
 
 # %% {Node_parameters}
 description = """
@@ -71,7 +57,7 @@ node.machine = Quam.load()
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
-def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # TODO: add buffer time
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
@@ -82,7 +68,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     n_avg = node.parameters.num_shots  # The number of averages
     cryoscope_len = node.parameters.cryoscope_len  # The length of the cryoscope in nanoseconds
     amplitude_factor = node.parameters.amp_factor  # The amplitude factor for the flux pulse
-    # assert cryoscope_len % 16 == 0, "cryoscope_len is not multiple of 16 nanoseconds"
 
     buffer = node.parameters.buffer  # Buffer time in ns
 
@@ -290,8 +275,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
-    # print(f"QPU time: {node.namespace["job"].result_handles.get("__qpu_execution_time_seconds").fetch_all()}")
-    # print(f"Total Python time: {node.namespace["job"].result_handles.get("__total_python_runtime_seconds").fetch_all()}")
+
 
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
@@ -311,7 +295,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
 
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"] = fit_raw_data(node.results["ds_raw"], node)
+    node.results["ds_fit"] = fit_raw_data(node.results["ds_raw"], node)  # TODO: multiple qubits and fit_results dict
 
 
 # %% {Plot_data}
@@ -327,7 +311,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
     node.results["figure_raw"] = fig_raw
     node.results["figure_flux"] = fig_flux
-    # node.save()
 
 
 # %% {Update_state}
@@ -338,7 +321,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             # if node.outcomes[q.name] == "failed":
             #     continue
-
+            # TODO: add fit success check and update the node state accordingly
             fit_1exp = node.results["ds_fit"].sel(qubit=q.name).fit_results.fit_1exp
             fit_2exp = node.results["ds_fit"].sel(qubit=q.name).fit_results.fit_2exp
 
@@ -351,6 +334,3 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             ]
 
             node.save()
-
-
-# %%
