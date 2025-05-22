@@ -148,4 +148,4 @@ class DelayMacro(QubitMacro):
 
     def apply(self, duration) -> None:
         qubit: Transmon = self.qubit
-        qubit.wait(duration // 4)
+        qubit.wait(duration)
