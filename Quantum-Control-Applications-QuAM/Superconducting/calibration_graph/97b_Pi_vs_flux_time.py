@@ -21,10 +21,10 @@ from datetime import datetime
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset, readout_state
+from quam_libs.trackable_object import tracked_updates
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
-from quam_libs.lib.fit import peaks_dips
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -34,13 +34,15 @@ from qm.qua import *
 from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
+import xarray as xr
+from scipy.optimize import curve_fit
 import time
 start = time.time()
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ['qC1', 'qC2']
     num_averages: int = 50
     operation: str = "x180_Gaussian"
     operation_amplitude_factor: Optional[float] = 1
@@ -48,11 +50,12 @@ class Parameters(NodeParameters):
     frequency_span_in_mhz: float = 400
     frequency_step_in_mhz: float = 0.5
     flux_amp : float = 0.05
+    update_lo: bool = False
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    load_data_id: Optional[int] = None #193
+    load_data_id: Optional[int] = None
     multiplexed: bool = True
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
 
@@ -65,11 +68,6 @@ node_id = get_node_id()
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 machine = QuAM.load()
-# Generate the OPX and Octave configurations
-config = machine.generate_config()
-# Open Communication with the QOP
-if node.parameters.load_data_id is None:
-    qmm = machine.connect()
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
@@ -78,6 +76,22 @@ else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
 
+# Modify the lo frequency to allow for maximum detuning 
+tracked_qubits = []
+if node.parameters.update_lo:
+    for q in qubits:
+        with tracked_updates(q, auto_revert=False, dont_assign_to_none=True) as q:
+            rf_frequency = q.xy.intermediate_frequency + q.xy.opx_output.upconverter_frequency
+            q.xy.intermediate_frequency = 500e6
+            q.xy.opx_output.upconverter_frequency = rf_frequency - 500e6
+            tracked_qubits.append(q)
+
+# Generate the OPX and Octave configurations
+config = machine.generate_config()
+
+# Open Communication with the QOP
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
@@ -202,6 +216,14 @@ if not node.parameters.simulate:
                 "freq_full": (
                     ["qubit", "freq"],
                     np.array([dfs + q.xy.RF_frequency + q.freq_vs_flux_01_quad_term*node.parameters.flux_amp**2 for q in qubits]),
+                ),
+                "detuning": (
+                    ["qubit", "freq"],
+                    np.array([dfs + q.freq_vs_flux_01_quad_term * node.parameters.flux_amp**2 for q in qubits]),
+                ),
+                "flux": (
+                    ["qubit", "freq"],
+                    np.array([np.sqrt(dfs / q.freq_vs_flux_01_quad_term + node.parameters.flux_amp**2) for q in qubits]),
                 )
             }
         )
@@ -212,12 +234,12 @@ if not node.parameters.simulate:
     end = time.time()
     print(f"Script runtime: {end - start:.2f} seconds")
 
-    # %% {Data_analysis}
-
-    import numpy as np
-    import xarray as xr
-    from scipy.optimize import curve_fit
-
+    
+    # %%
+    ######################################
+    # Helper functions for data analysis #
+    ######################################
+    
     # Define the Gaussian
     def gaussian(x, a, x0, sigma, offset):
         return a * np.exp(-(x - x0)**2 / (2 * sigma**2)) + offset
@@ -235,6 +257,14 @@ if not node.parameters.simulate:
             return popt[1]  # center frequency
         except RuntimeError:
             return np.nan
+        
+    def model_1exp(t, a0, a1, t1):
+        return a0 * (1+ a1 * np.exp(-t / t1))
+    
+    def model_2exp(t, a0, a1, a2, t1, t2):
+        return a0 * (1 + a1 * np.exp(-t / t1) + a2 * np.exp(-t / t2))
+        
+    # %% {Data_analysis}
 
     freqs = ds['freq'].values
 
@@ -250,67 +280,55 @@ if not node.parameters.simulate:
         vectorize=True,
         dask='parallelized',
         output_dtypes=[float]
-    )
+    ).rename({"state": "center_frequency"})
 
     # center_freqs now has dims ('qubit', 'time')
-    center_freqs = center_freqs.rename({"state": "center_frequency"})
-    center_freqs = center_freqs.center_frequency + [q.freq_vs_flux_01_quad_term * node.parameters.flux_amp**2 for q in qubits][0]
-    flux_response = np.sqrt(center_freqs/qubits[0].freq_vs_flux_01_quad_term)
-    flux_response.plot()
-    plt.gca().set_ylabel("Flux[V]")
-    plt.show()
+    center_freqs = center_freqs.center_frequency + np.array([q.freq_vs_flux_01_quad_term * node.parameters.flux_amp**2 * np.ones_like(times) for q in qubits])
     
+    flux_response = np.sqrt(center_freqs / xr.DataArray([q.freq_vs_flux_01_quad_term for q in qubits], coords={"qubit": center_freqs.qubit}, dims=["qubit"]))
 
     # %%
-    from scipy.linalg import svd, eig
+    # from scipy.linalg import svd, eig
 
-    def esprit(t, signal, rank):
-        """
-        ESPRIT algorithm to estimate the exponentials in a signal.
+    # def esprit(t, signal, rank):
+    #     """
+    #     ESPRIT algorithm to estimate the exponentials in a signal.
 
-        Args:
-            t (np.ndarray): Time vector.
-            signal (np.ndarray): Input time-domain signal.
-            rank (int): Number of exponentials to estimate.
+    #     Args:
+    #         t (np.ndarray): Time vector.
+    #         signal (np.ndarray): Input time-domain signal.
+    #         rank (int): Number of exponentials to estimate.
 
-        Returns:
-            lambdas (np.ndarray): Continuous-time exponential rates (complex).
-            amplitudes (np.ndarray): Corresponding amplitudes.
-        """
-        N = len(signal)
-        L = N // 2
-        K = N - L
-        dt = t[1] - t[0]
+    #     Returns:
+    #         lambdas (np.ndarray): Continuous-time exponential rates (complex).
+    #         amplitudes (np.ndarray): Corresponding amplitudes.
+    #     """
+    #     N = len(signal)
+    #     L = N // 2
+    #     K = N - L
+    #     dt = t[1] - t[0]
 
-        # Form Hankel matrix
-        X = np.column_stack([signal[i:i+L] for i in range(K)])
+    #     # Form Hankel matrix
+    #     X = np.column_stack([signal[i:i+L] for i in range(K)])
 
-        # SVD and truncation
-        U, s_vals, Vh = svd(X, full_matrices=False)
-        U_r = U[:, :rank]
+    #     # SVD and truncation
+    #     U, s_vals, Vh = svd(X, full_matrices=False)
+    #     U_r = U[:, :rank]
 
-        # Subspace shift
-        U1 = U_r[:-1, :]
-        U2 = U_r[1:, :]
+    #     # Subspace shift
+    #     U1 = U_r[:-1, :]
+    #     U2 = U_r[1:, :]
 
-        # Solve for Phi (U1^† * U2)
-        Phi = np.linalg.pinv(U1) @ U2
-        eigvals = np.linalg.eigvals(Phi)
-        lambdas = np.log(eigvals) / dt
+    #     # Solve for Phi (U1^† * U2)
+    #     Phi = np.linalg.pinv(U1) @ U2
+    #     eigvals = np.linalg.eigvals(Phi)
+    #     lambdas = np.log(eigvals) / dt
 
-        # Vandermonde matrix
-        V = np.column_stack([np.exp(lam * t) for lam in lambdas])
-        amplitudes, _, _, _ = np.linalg.lstsq(V, signal, rcond=None)
+    #     # Vandermonde matrix
+    #     V = np.column_stack([np.exp(lam * t) for lam in lambdas])
+    #     amplitudes, _, _, _ = np.linalg.lstsq(V, signal, rcond=None)
 
-        return lambdas, amplitudes
-
-    # Define your model function
-    def model_1exp(t, a0, a1, t1):
-        return a0 * (1+ a1 * np.exp(-t / t1))
-    
-    def model_2exp(t, a0, a1, a2, t1, t2):
-        return a0 * (1 + a1 * np.exp(-t / t1) + a2 * np.exp(-t / t2))
-    
+    #     return lambdas, amplitudes
 
     t_data = flux_response.time.values
     y_data = flux_response.isel(qubit=0).values
@@ -320,6 +338,7 @@ if not node.parameters.simulate:
 
     # lambdas_esprit, amplitudes_esprit = esprit(t_data, y_data, rank=2)
     
+    # TODO: Make fit with more than 2 exponentials
     # Use ESPRIT results as initial guesses
     a0_0 = popt[0]
     a1_0 = a2_0 = popt[1] / 2 # np.real(amplitudes_esprit)
@@ -352,14 +371,16 @@ if not node.parameters.simulate:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
     for ax, qubit in grid_iter(grid):
-        freq_ref = (ds.freq_full-ds.freq).sel(qubit = qubit["qubit"]).values[0]
-        ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].state.plot(
+        # freq_ref = (ds.freq_full-ds.freq).sel(qubit=qubit["qubit"]).values[0]
+        im = ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].state.plot(
             ax=ax, add_colorbar=False, x="time", y="freq_GHz"
             
         )
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Time (ns)")
         ax.set_title(qubit["qubit"])
+        cbar = grid.fig.colorbar(im, ax=ax)
+        cbar.set_label("Qubit State")
     grid.fig.suptitle(f"Qubit spectroscopy vs time after flux pulse \n {date_time} #{node_id}")
     
     plt.tight_layout()
@@ -367,27 +388,35 @@ if not node.parameters.simulate:
     node.results["figure_raw"] = grid.fig   
 
 
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+    grid = QubitGrid(center_freqs, [q.grid_location for q in qubits])
 
     for ax, qubit in grid_iter(grid):
-        added_freq = machine.qubits[qubit['qubit']].xy.RF_frequency*0 + machine.qubits[qubit['qubit']].freq_vs_flux_01_quad_term*node.parameters.flux_amp**2
-        (-(center_freqs.sel(qubit = qubit["qubit"])+ added_freq)/1e9).plot()
+        # added_freq = machine.qubits[qubit['qubit']].xy.RF_frequency*0 + machine.qubits[qubit['qubit']].freq_vs_flux_01_quad_term * node.parameters.flux_amp**2
+        # (-(center_freqs.sel(qubit=qubit["qubit"]) + added_freq)/1e9).plot()
+        (center_freqs.sel(qubit=qubit["qubit"]) / 1e9).plot(ax=ax)
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Time (ns)")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time} #{node_id}")
+    grid.fig.suptitle(f"Qubit frequency shift vs time after flux pulse \n {date_time} #{node_id}")
     
     plt.tight_layout()
     plt.show()
     node.results["figure_freqs"] = grid.fig
 
 
+    grid = QubitGrid(flux_response, [q.grid_location for q in qubits])
 
-
+    for ax, qubit in grid_iter(grid):
+        flux_response.sel(qubit=qubit["qubit"]).plot(ax=ax)
+        ax.set_ylabel("Flux (V)")
+        ax.set_xlabel("Time (ns)")
+        ax.set_title(qubit["qubit"])
+    grid.fig.suptitle(f"Flux response vs time \n {date_time} #{node_id}")
  
 
     # %% {Update_state}
-
+    for qubit in tracked_qubits:
+        qubit.revert_changes()
 
     # %% {Save_results}
     node.results["ds"] = ds
