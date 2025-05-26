@@ -391,6 +391,25 @@ files = [
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
+name = "cloud-qualibrate-link"
+version = "0.1.1"
+description = "A tool to link Qualibrate experiment data to cloud storage"
+optional = false
+python-versions = ">=3.9,<3.13"
+groups = ["main"]
+files = []
+develop = false
+
+[package.dependencies]
+pathlib = "*"
+
+[package.source]
+type = "git"
+url = "https://github.com/i-qcc/cloud_qualibrate_link.git"
+reference = "main"
+resolved_reference = "b1f58dc1487b9b9b81460f7464981ef30ebf1a82"
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -2435,6 +2454,18 @@ qa = ["flake8 (==5.0.4)", "mypy (==0.971)", "types-setuptools (==67.2.0.1)"]
 testing = ["docopt", "pytest"]
 
 [[package]]
+name = "pathlib"
+version = "1.0.1"
+description = "Object-oriented filesystem paths"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pathlib-1.0.1-py3-none-any.whl", hash = "sha256:f35f95ab8b0f59e6d354090350b44a80a80635d22efdedfa84c7ad1cf0a74147"},
+    {file = "pathlib-1.0.1.tar.gz", hash = "sha256:6940718dfc3eff4258203ad5021090933e5c04707d5ca8cc9e73c94a7894ea9f"},
+]
+
+[[package]]
 name = "pathspec"
 version = "0.12.1"
 description = "Utility library for gitignore style pattern matching of file paths."
@@ -3397,20 +3428,21 @@ uvicorn = ">=0.34.0,<0.35.0"
 
 [[package]]
 name = "quam"
-version = "0.3.10"
-description = "Quantum Abstract Machine (QuAM) facilitates development of abstraction layers in experiments."
+version = "0.4.1"
+description = "Quantum Abstract Machine (QUAM) facilitates development of abstraction layers in experiments."
 optional = false
 python-versions = "<3.13,>=3.9"
 groups = ["main"]
 files = [
-    {file = "quam-0.3.10-py3-none-any.whl", hash = "sha256:1cb969d09635d80548bd996f3868de3d8e7ab77f702a912dfa6b61588c32ae1f"},
-    {file = "quam-0.3.10.tar.gz", hash = "sha256:f375295522417f376e9bf3a8b7a9efe3179bfbf48bc4baac1f439f19b0bd2592"},
+    {file = "quam-0.4.1-py3-none-any.whl", hash = "sha256:9405f17479cca39a9d71b3ce821929220efb14532157a25fd8d1c1fbf367026f"},
+    {file = "quam-0.4.1.tar.gz", hash = "sha256:195f999ca707a403d3231f00fc5f72fed3f2e919e1d900d65deccdca60eaf1ea"},
 ]
 
 [package.dependencies]
 numpy = ">=1.21.2"
 qm-qua = ">=1.1.0"
 qualang-tools = ">=0.15.0"
+qualibrate-config = ">=0.1.4"
 typeguard = ">=4.1.0"
 
 [package.extras]
@@ -4053,4 +4085,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.13"
-content-hash = "bc0fc7a8bf8ff4d8d44f9660115c1984dd3a5df1dcf2d60c1bae497d33c97467"
+content-hash = "cbf5ebf7a99adc8145424d01324be784cd461d840ee2c85494f178bb006cc064"

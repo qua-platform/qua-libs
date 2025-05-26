@@ -2,6 +2,7 @@ from typing import Dict, Any, Optional, Union, List, Tuple
 from dataclasses import field
 
 from quam.core import QuamComponent, quam_dataclass
+from quam.components.quantum_components.qubit_pair import QubitPair
 from .transmon import Transmon
 from .tunable_coupler import TunableCoupler
 from .gates.two_qubit_gates import TwoQubitGate
@@ -11,7 +12,7 @@ __all__ = ["TransmonPair"]
 
 
 @quam_dataclass
-class TransmonPair(QuamComponent):
+class TransmonPair(QubitPair):
     id: Union[int, str]
     qubit_control: Transmon = None
     qubit_target: Transmon = None
