@@ -48,7 +48,7 @@ class Parameters(NodeParameters):
     frequency_step_in_mhz: float = 0.25
     min_flux_offset_in_v: float = -0.01
     max_flux_offset_in_v: float = 0.01
-    num_flux_points: int = 11
+    num_flux_points: int = 51
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500
@@ -290,3 +290,5 @@ if not node.parameters.simulate:
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
+
+# %%

@@ -30,11 +30,11 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ['qubitC2']    
-    num_averages: int = 4000
+    qubits: Optional[List[str]] = ['qC1']   
+    num_averages: int = 100
     amplitude_factor: float = 0.2
-    cryoscope_len: int = 240
-    reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
+    cryoscope_len: int = 160
+    reset_type_active_or_thermal: Literal['active', 'thermal'] = 'thermal'
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
     timeout: int = 100
@@ -45,7 +45,8 @@ node = QualibrationNode(
     name="12_Cryoscope",
     parameters=Parameters()
 )
-
+node_id = get_node_id()
+# get_pulse_scheme(node.name)
 
 
 

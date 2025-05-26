@@ -22,7 +22,7 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme, load_dataset, get_node_id, get_pulse_scheme
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -69,12 +69,13 @@ if node.parameters.qubits is None or node.parameters.qubits == "":
 else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
-for q in qubits:  # TODO: weird since operation is a single string
-    # check if an EF_x180 operation exists
-    if "EF_x180" in q.xy.operations:
-        operation = "EF_x180"
-    else:
-        operation = "x180"
+# for q in qubits:  # TODO: weird since operation is a single string
+#     # check if an EF_x180 operation exists
+#     if "EF_x180" in q.xy.operations:
+#         operation = "EF_x180"
+#     else:
+#         operation = "x180"
+operation = "x180"
 
 
 # %% {QUA_program}

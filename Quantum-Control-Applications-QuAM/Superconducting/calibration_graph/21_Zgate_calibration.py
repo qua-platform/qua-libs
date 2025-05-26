@@ -53,7 +53,8 @@ node = QualibrationNode(
     name="21_Zgate_calibration",
     parameters=Parameters()
 )
-
+node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 # %% {Utility_functions}
 

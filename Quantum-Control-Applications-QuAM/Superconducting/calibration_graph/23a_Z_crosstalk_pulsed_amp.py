@@ -43,14 +43,8 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
 
 node = QualibrationNode(name="23a_Z_crosstalk_pulsed_amp", parameters=Parameters())
-# see the pulse scheme
-import os
-import matplotlib.image as mpimg
-os.chdir('C:/Users/wjd__/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/calibration_graph/pulse_scheme')
-img = mpimg.imread(os.getcwd().replace('\\', '/')+'/'+node.name+'.png')
-plt.imshow(img)
-plt.axis('off')  # Hide axes
-plt.show()
+node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.

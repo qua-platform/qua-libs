@@ -55,7 +55,7 @@ class Parameters(NodeParameters):
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.5
     operation_len_in_ns: Optional[int] = None
-    frequency_span_in_mhz: float = 100
+    frequency_span_in_mhz: float = 250
     frequency_step_in_mhz: float = 0.5
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False

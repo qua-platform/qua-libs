@@ -42,7 +42,8 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
    
 node = QualibrationNode(name="23b_Z_crosstalk_pulsed", parameters=Parameters())
-
+node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 
 # %% {Initialize_QuAM_and_QOP}

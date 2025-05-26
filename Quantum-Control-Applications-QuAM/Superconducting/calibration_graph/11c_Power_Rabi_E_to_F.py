@@ -25,7 +25,7 @@ from quam.components import pulses
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, get_pulse_scheme
 from quam_libs.lib.fit import fit_oscillation, oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -43,7 +43,7 @@ from datetime import datetime, timezone, timedelta
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
-    num_averages: int = 200
+    num_averages: int = 500
     operation: str = "x180"
     min_amp_factor: float = 0.0
     max_amp_factor: float = 2.0
@@ -54,6 +54,7 @@ class Parameters(NodeParameters):
 
 node = QualibrationNode(name="11c_Power_Rabi_E_to_F", parameters=Parameters())
 node_id = get_node_id()
+get_pulse_scheme(node.name)
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -77,7 +78,7 @@ num_qubits = len(qubits)
 for q in qubits:
     # Check if an optimized GEF frequency exists
     if not hasattr(q, "GEF_frequency_shift"):
-        q.resonator.GEF_frequency_shift = 0
+        q.GEF_frequency_shift = 0
 
 
 # %% {QUA_program}
@@ -113,14 +114,15 @@ with program() as power_rabi:
             wait(1000, qb.z.name)
 
         align()
-
+        update_frequency(
+                    qubit.resonator.name,
+                    qubit.resonator.intermediate_frequency + qubit.GEF_frequency_shift
+            
+                )
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(a, amps)):
-                update_frequency(
-                    qubit.resonator.name,
-                    qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift,
-                )
+             
 
                 # Reset the qubit frequency
                 update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
@@ -254,13 +256,13 @@ if not node.parameters.simulate:
         ef_operation_value = fit_results[q.name]["Pi_amplitude"]
     for q in qubits:
         with node.record_state_updates():
-            if operation == "x180":
+            if "EF_x180" not in q.xy.operations:
                 print("Creating EF_x180 operation")
                 # Create the |e> -> |f> operation
                 q.xy.operations["EF_x180"] = ef_operation_value
             else:
                 # set the new amplitude for the EF operation
-                q.xy.operations["EF_x180"].amplitude = ef_operation_value
+                q.xy.operations["EF_x180"].amplitude = ef_operation_value.amplitude
 
 
 
