@@ -22,7 +22,6 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset, readout_state
 from quam_libs.trackable_object import tracked_updates
-from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id
 from qualang_tools.results import progress_counter, fetching_tool
@@ -43,10 +42,10 @@ start = time.time()
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = ['qC1', 'qC2']
-    num_averages: int = 50
+    num_averages: int = 100
     operation: str = "x180_Gaussian"
     operation_amplitude_factor: Optional[float] = 1
-    duration_in_ns: Optional[int] = 500
+    duration_in_ns: Optional[int] = 1000
     frequency_span_in_mhz: float = 400
     frequency_step_in_mhz: float = 0.5
     flux_amp : float = 0.05
@@ -178,7 +177,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i+1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -198,19 +197,46 @@ elif node.parameters.load_data_id is None:
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
+# %%
+######################################
+# Helper functions for data analysis #
+######################################
+
+# Define the Gaussian
+def gaussian(x, a, x0, sigma, offset):
+    return a * np.exp(-(x - x0)**2 / (2 * sigma**2)) + offset
+
+# Fit function for one time point
+def fit_gaussian(freqs, states):
+    p0 = [
+        np.max(states) - np.min(states),   # amplitude
+        freqs[np.argmax(states)],          # center
+        (freqs[-1] - freqs[0]) / 10,        # width
+        np.min(states)                     # offset
+    ]
+    try:
+        popt, _ = curve_fit(gaussian, freqs, states, p0=p0)
+        return popt[1]  # center frequency
+    except RuntimeError:
+        return np.nan
+    
+def model_1exp(t, a0, a1, t1):
+    return a0 * (1+ a1 * np.exp(-t / t1))
+
+def model_2exp(t, a0, a1, a2, t1, t2):
+    return a0 * (1 + a1 * np.exp(-t / t1) + a2 * np.exp(-t / t2))
+
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is not None:
         node = node.load_from_id(node.parameters.load_data_id)
+        machine = node.machine
         ds = node.results["ds"]
+        times = ds.time.values
+        qubits = [machine.qubits[q] for q in ds.qubit.values]
     else:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(job.result_handles, qubits, {"time": times*4, "freq": dfs})
-        # Convert IQ data into volts
-        # ds = convert_IQ_to_V(ds, qubits)
-        # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2)
-        # ds = ds.assign({"IQ_abs": np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
-        # Add the resonator RF frequency axis of each qubit to the dataset coordinates for plotting
         ds = ds.assign_coords(
             {
                 "freq_full": (
@@ -234,37 +260,7 @@ if not node.parameters.simulate:
     end = time.time()
     print(f"Script runtime: {end - start:.2f} seconds")
 
-    
-    # %%
-    ######################################
-    # Helper functions for data analysis #
-    ######################################
-    
-    # Define the Gaussian
-    def gaussian(x, a, x0, sigma, offset):
-        return a * np.exp(-(x - x0)**2 / (2 * sigma**2)) + offset
-
-    # Fit function for one time point
-    def fit_gaussian(freqs, states):
-        p0 = [
-            np.max(states) - np.min(states),   # amplitude
-            freqs[np.argmax(states)],          # center
-            (freqs[-1] - freqs[0]) / 10,        # width
-            np.min(states)                     # offset
-        ]
-        try:
-            popt, _ = curve_fit(gaussian, freqs, states, p0=p0)
-            return popt[1]  # center frequency
-        except RuntimeError:
-            return np.nan
-        
-    def model_1exp(t, a0, a1, t1):
-        return a0 * (1+ a1 * np.exp(-t / t1))
-    
-    def model_2exp(t, a0, a1, a2, t1, t2):
-        return a0 * (1 + a1 * np.exp(-t / t1) + a2 * np.exp(-t / t2))
-        
-    # %% {Data_analysis}
+    # %%  {Data_analysis}
 
     freqs = ds['freq'].values
 
@@ -287,87 +283,10 @@ if not node.parameters.simulate:
     
     flux_response = np.sqrt(center_freqs / xr.DataArray([q.freq_vs_flux_01_quad_term for q in qubits], coords={"qubit": center_freqs.qubit}, dims=["qubit"]))
 
-    # %%
-    # from scipy.linalg import svd, eig
-
-    # def esprit(t, signal, rank):
-    #     """
-    #     ESPRIT algorithm to estimate the exponentials in a signal.
-
-    #     Args:
-    #         t (np.ndarray): Time vector.
-    #         signal (np.ndarray): Input time-domain signal.
-    #         rank (int): Number of exponentials to estimate.
-
-    #     Returns:
-    #         lambdas (np.ndarray): Continuous-time exponential rates (complex).
-    #         amplitudes (np.ndarray): Corresponding amplitudes.
-    #     """
-    #     N = len(signal)
-    #     L = N // 2
-    #     K = N - L
-    #     dt = t[1] - t[0]
-
-    #     # Form Hankel matrix
-    #     X = np.column_stack([signal[i:i+L] for i in range(K)])
-
-    #     # SVD and truncation
-    #     U, s_vals, Vh = svd(X, full_matrices=False)
-    #     U_r = U[:, :rank]
-
-    #     # Subspace shift
-    #     U1 = U_r[:-1, :]
-    #     U2 = U_r[1:, :]
-
-    #     # Solve for Phi (U1^† * U2)
-    #     Phi = np.linalg.pinv(U1) @ U2
-    #     eigvals = np.linalg.eigvals(Phi)
-    #     lambdas = np.log(eigvals) / dt
-
-    #     # Vandermonde matrix
-    #     V = np.column_stack([np.exp(lam * t) for lam in lambdas])
-    #     amplitudes, _, _, _ = np.linalg.lstsq(V, signal, rcond=None)
-
-    #     return lambdas, amplitudes
-
-    t_data = flux_response.time.values
-    y_data = flux_response.isel(qubit=0).values
-
-    # Fit the data
-    popt, pcov = curve_fit(model_1exp, t_data, y_data, p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 1000])  # p0 = initial guess
-
-    # lambdas_esprit, amplitudes_esprit = esprit(t_data, y_data, rank=2)
-    
-    # TODO: Make fit with more than 2 exponentials
-    # Use ESPRIT results as initial guesses
-    a0_0 = popt[0]
-    a1_0 = a2_0 = popt[1] / 2 # np.real(amplitudes_esprit)
-    t1_0 = popt[-1] # lambda1_0, lambda2_0 = np.real(lambdas_esprit)
-    t2_0 = 100
-
-    # lambda1_0 = -0.1
-    # a1_0 = 0.1 
-    c_0 = np.max(y_data)  # Initial guess for constant
-
-    initial_guess = [a0_0, a1_0, a2_0, t1_0, t2_0] # [-0.0015, -1 / 200, a2_0, lambda2_0, c_0]
-    popt, pcov = curve_fit(model_2exp, t_data, y_data, p0=initial_guess)
-
-    y_fit = model_2exp(t_data, *popt)
-    # y_fit = model_1exp(t_data, *popt)
-    # y_fit = model(t_data, -0.0015, -1 / 200, popt[2], popt[3], popt[4])
-
-    # Plot
-    plt.figure()
-    plt.scatter(t_data, y_data, label='Data')
-    # plt.plot(t_data, y_fit, 'r-', label=f'Fit: a0={popt[0]:.2f}, a1={popt[1]:.3f}, t1={popt[2]:.0f}')
-    plt.plot(t_data, y_fit, 'r-', label=f'Fit: a0={popt[0]:.2f}, a1={popt[1]:.3f}, a2={popt[2]:.3f}, t1={popt[3]:.0f}, t2={popt[4]:.0f}')
-    plt.xlabel('Time')
-    plt.ylabel('Value')
-    plt.legend()
-    plt.show()
+    ds['center_freqs'] = center_freqs
+    ds['flux_response'] = flux_response
 
     # %% {Plotting}
-
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
     for ax, qubit in grid_iter(grid):
@@ -393,7 +312,8 @@ if not node.parameters.simulate:
     for ax, qubit in grid_iter(grid):
         # added_freq = machine.qubits[qubit['qubit']].xy.RF_frequency*0 + machine.qubits[qubit['qubit']].freq_vs_flux_01_quad_term * node.parameters.flux_amp**2
         # (-(center_freqs.sel(qubit=qubit["qubit"]) + added_freq)/1e9).plot()
-        (center_freqs.sel(qubit=qubit["qubit"]) / 1e9).plot(ax=ax)
+        # (center_freqs.sel(qubit=qubit["qubit"]) / 1e9).plot(ax=ax)
+        (ds.loc[qubit].center_freqs / 1e9).plot(ax=ax)
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Time (ns)")
         ax.set_title(qubit["qubit"])
@@ -401,18 +321,22 @@ if not node.parameters.simulate:
     
     plt.tight_layout()
     plt.show()
-    node.results["figure_freqs"] = grid.fig
+    node.results["figure_freqs_shift"] = grid.fig
 
 
     grid = QubitGrid(flux_response, [q.grid_location for q in qubits])
 
     for ax, qubit in grid_iter(grid):
-        flux_response.sel(qubit=qubit["qubit"]).plot(ax=ax)
+        # flux_response.sel(qubit=qubit["qubit"]).plot(ax=ax)
+        ds.loc[qubit].flux_response.plot(ax=ax)
         ax.set_ylabel("Flux (V)")
         ax.set_xlabel("Time (ns)")
         ax.set_title(qubit["qubit"])
     grid.fig.suptitle(f"Flux response vs time \n {date_time} #{node_id}")
- 
+
+    plt.tight_layout()
+    plt.show()
+    node.results["figure_flux_response"] = grid.fig
 
     # %% {Update_state}
     for qubit in tracked_qubits:
@@ -425,4 +349,34 @@ if not node.parameters.simulate:
     node.machine = machine
     node.save()
 
-# %%
+    # %% Data analysis of multi-exponential fitting starts here
+    t_data = flux_response.time.values
+    y_data = flux_response.isel(qubit=0).values
+
+    # Fit the data
+    popt, pcov = curve_fit(model_1exp, t_data, y_data, p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 1000])  # p0 = initial guess
+
+    # lambdas_esprit, amplitudes_esprit = esprit(t_data, y_data, rank=2)
+    
+    # TODO: Make fit with more than 2 exponentials
+    a0_0 = popt[0]
+    a1_0 = a2_0 = popt[1] / 2
+    t1_0 = popt[-1]
+    t2_0 = t1_0 / 10
+
+    initial_guess = [a0_0, a1_0, a2_0, t1_0, t2_0]
+    popt, pcov = curve_fit(model_2exp, t_data, y_data, p0=initial_guess)
+
+    y_fit = model_2exp(t_data, *popt)
+    # y_fit = model_1exp(t_data, *popt)
+    # y_fit = model(t_data, -0.0015, -1 / 200, popt[2], popt[3], popt[4])
+
+    # Plot
+    plt.figure()
+    plt.scatter(t_data, y_data, label='Data')
+    # plt.plot(t_data, y_fit, 'r-', label=f'Fit: a0={popt[0]:.2f}, a1={popt[1]:.3f}, t1={popt[2]:.0f}')
+    plt.plot(t_data, y_fit, 'r-', label=f'Fit: a0={popt[0]:.2f}, a1={popt[1]:.3f}, a2={popt[2]:.3f}, t1={popt[3]:.0f}, t2={popt[4]:.0f}')
+    plt.xlabel('Time')
+    plt.ylabel('Value')
+    plt.legend()
+    plt.show()
