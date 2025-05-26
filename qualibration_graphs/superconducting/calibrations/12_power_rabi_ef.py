@@ -1,6 +1,7 @@
 # %% {Imports}
 import matplotlib.pyplot as plt
 import numpy as np
+from qualibration_libs import data
 import xarray as xr
 from dataclasses import asdict
 
@@ -24,6 +25,7 @@ from calibration_utils.power_rabi import (
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
+import dataclasses
 
 
 # %% {Description}
@@ -53,6 +55,8 @@ node = QualibrationNode[Parameters, Quam](
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
 
+node.namespace["Rabi_ef"] = True
+node.parameters.operation = "x180"
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
@@ -60,7 +64,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qC1"]
+    node.parameters.qubits = ["qC2"]
     # node.parameters.max_number_pulses_per_sweep = 100
     node.parameters.min_amp_factor = 0.001
     node.parameters.max_amp_factor = 1.999
@@ -98,6 +102,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "nb_of_pulses": xr.DataArray(N_pi_vec, attrs={"long_name": "number of pulses"}),
         "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "pulse amplitude prefactor"}),
     }
+    for qubit in qubits:
+        # Check if the qubit has the required operations
+        if hasattr(qubit.xy.operations, "x180_ef"):
+            continue
+        else:
+            x180 = qubit.xy.operations["x180"]
+            qubit.xy.operations["x180_ef"] = dataclasses.replace(x180, alpha=0.0)
+
 
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
@@ -245,8 +257,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            operation = q.xy.operations["x180_ef"]
-            operation.amplitude *= node.results["fit_results"][q.name]["opt_amp_prefactor"]
+            else:
+                operation = q.xy.operations["x180_ef"]
+                operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
 
 
 # %% {Save_results}
