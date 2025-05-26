@@ -43,10 +43,10 @@ start = time.time()
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = ['qC1', 'qC2']
-    num_averages: int = 100
+    num_averages: int = 10
     operation: str = "x180_Gaussian"
     operation_amplitude_factor: Optional[float] = 1
-    duration_in_ns: Optional[int] = 1000
+    duration_in_ns: Optional[int] = 500
     frequency_span_in_mhz: float = 400
     frequency_step_in_mhz: float = 0.5
     flux_amp : float = 0.05
@@ -234,7 +234,7 @@ if not node.parameters.simulate:
     if node.parameters.load_data_id is not None:
         node = node.load_from_id(node.parameters.load_data_id)
         machine = node.machine
-        ds = node.results["ds"]
+        ds = xr.Dataset({"state": node.results["ds"].state})
         times = ds.time.values
         qubits = [machine.qubits[q] for q in ds.qubit.values]
     else:
@@ -289,115 +289,104 @@ if not node.parameters.simulate:
     ds['center_freqs'] = center_freqs
     ds['flux_response'] = flux_response
 
-    # %% {Plotting}
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+# %% {Plotting}
+grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
-    for ax, qubit in grid_iter(grid):
-        # freq_ref = (ds.freq_full-ds.freq).sel(qubit=qubit["qubit"]).values[0]
-        im = ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].state.plot(
-            ax=ax, add_colorbar=False, x="time", y="freq_GHz"
-            
-        )
-        ax.set_ylabel("Freq (GHz)")
-        ax.set_xlabel("Time (ns)")
-        ax.set_title(qubit["qubit"])
-        # ax.set_xscale('log')
-    grid.fig.suptitle(f"Qubit spectroscopy vs time after flux pulse \n {date_time} #{node_id}")
-    
-    plt.tight_layout()
-    plt.show()
-    node.results["figure_raw"] = grid.fig   
+for ax, qubit in grid_iter(grid):
+    # freq_ref = (ds.freq_full-ds.freq).sel(qubit=qubit["qubit"]).values[0]
+    im = ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].state.plot(
+        ax=ax, add_colorbar=False, x="time", y="freq_GHz"
+        
+    )
+    ax.set_ylabel("Freq (GHz)")
+    ax.set_xlabel("Time (ns)")
+    ax.set_title(qubit["qubit"])
+    cbar = grid.fig.colorbar(im, ax=ax)
+    cbar.set_label("Qubit State")
+grid.fig.suptitle(f"Qubit spectroscopy vs time after flux pulse \n {date_time} #{node_id}")
 
-
-    grid = QubitGrid(center_freqs, [q.grid_location for q in qubits])
-
-    for ax, qubit in grid_iter(grid):
-        added_freq = machine.qubits[qubit['qubit']].xy.RF_frequency*0 + machine.qubits[qubit['qubit']].freq_vs_flux_01_quad_term*node.parameters.flux_amp**2
-        (-(center_freqs.sel(qubit = qubit["qubit"])+ added_freq)/1e9).plot()
-        ax.set_ylabel("Freq (GHz)")
-        ax.set_xlabel("Time (ns)")
-        ax.set_title(qubit["qubit"])
-        # ax.set_xscale('log')
-        ax.grid()
-    grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time} #{node_id}")
-    
-    plt.tight_layout()
-    plt.show()
-    node.results["figure_freqs_shift"] = grid.fig
-
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        (1e3*flux_response).plot(ax=ax, marker='.')
-        ax.set_ylabel("Flux (mV)")
-        ax.set_xlabel("Time (ns)")
-        ax.set_title(qubit["qubit"])
-        # ax.set_xscale('log')
-        ax.grid()
-    grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time} #{node_id}")
-    
-    plt.tight_layout()
-    plt.show()
-    node.results["figure_flux"] = grid.fig
-
-    for ax, qubit in grid_iter(grid):
-        # flux_response.sel(qubit=qubit["qubit"]).plot(ax=ax)
-        ds.loc[qubit].flux_response.plot(ax=ax)
-        ax.set_ylabel("Flux (V)")
-        ax.set_xlabel("Time (ns)")
-        ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Flux response vs time \n {date_time} #{node_id}")
-
-    plt.tight_layout()
-    plt.show()
-    node.results["figure_flux_response"] = grid.fig
-
-    # %% {Update_state}
-    for qubit in tracked_qubits:
-        qubit.revert_changes()
-
-    # %% {Save_results}
-    node.results["ds"] = ds
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    save_node(node)
-
-# %%
+plt.tight_layout()
+plt.show()
+node.results["figure_raw"] = grid.fig   
 
 
-    # Define your model function
-    def model_1exp(t, a0, a1, t1):
-        return a0 * (1+ a1 * np.exp(-t / t1))
-    
-    def model_2exp(t, a0, a1, a2, t1, t2):
-        return a0 * (1 + a1 * np.exp(-t / t1) + a2 * np.exp(-t / t2))
-    
+grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
-    t_data = flux_response.time.values
-    y_data = flux_response.isel(qubit=0).values
+for ax, qubit in grid_iter(grid):
+    # added_freq = machine.qubits[qubit['qubit']].xy.RF_frequency*0 + machine.qubits[qubit['qubit']].freq_vs_flux_01_quad_term * node.parameters.flux_amp**2
+    # (-(center_freqs.sel(qubit=qubit["qubit"]) + added_freq)/1e9).plot()
+    # (center_freqs.sel(qubit=qubit["qubit"]) / 1e9).plot(ax=ax)
+    (ds.loc[qubit].center_freqs / 1e9).plot(ax=ax)
+    ax.set_ylabel("Freq (GHz)")
+    ax.set_xlabel("Time (ns)")
+    ax.set_title(qubit["qubit"])
+grid.fig.suptitle(f"Qubit frequency shift vs time after flux pulse \n {date_time} #{node_id}")
 
-    # Fit the data
-    popt, pcov = curve_fit(model_1exp, t_data, y_data, p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 1000])
+plt.tight_layout()
+plt.show()
+node.results["figure_freqs_shift"] = grid.fig
 
-    a0_0 = popt[0]
-    a1_0 = a2_0 = popt[1] / 2 # np.real(amplitudes_esprit)
-    t1_0 = popt[-1] # lambda1_0, lambda2_0 = np.real(lambdas_esprit)
-    t2_0 = 100
 
-    initial_guess = [a0_0, a1_0, a2_0, t1_0, t2_0] # [-0.0015, -1 / 200, a2_0, lambda2_0, c_0]
+grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
-    # Perform nonlinear curve fitting
-    popt, pcov = curve_fit(model_2exp, t_data, y_data, p0=initial_guess)
+for ax, qubit in grid_iter(grid):
+    # flux_response.sel(qubit=qubit["qubit"]).plot(ax=ax)
+    ds.loc[qubit].flux_response.plot(ax=ax)
+    ax.set_ylabel("Flux (V)")
+    ax.set_xlabel("Time (ns)")
+    ax.set_title(qubit["qubit"])
+grid.fig.suptitle(f"Flux response vs time \n {date_time} #{node_id}")
 
-    y_fit = model_2exp(t_data, *popt)
-    # y_fit = model(t_data, -0.0015, -1 / 200, popt[2], popt[3], popt[4])
+plt.tight_layout()
+plt.show()
+node.results["figure_flux_response"] = grid.fig
 
-    # Plot
-    plt.figure()
-    plt.scatter(t_data, y_data, label='Data')
-    plt.plot(t_data, y_fit, 'r-', label=f'Fit: a0={popt[0]:.3f}, a1={popt[1]:.3f}, a2={popt[2]:.3f}, t1={popt[3]:.0f}, t2={popt[4]:.0f}')
-    plt.xlabel('Time')
-    plt.ylabel('Value')
-    plt.legend()
-    plt.show()
-# %%
+# %% {Update_state}
+for qubit in tracked_qubits:
+    qubit.revert_changes()
+
+# %% {Save_results}
+node.results["ds"] = ds
+node.outcomes = {q.name: "successful" for q in qubits}
+node.results["initial_parameters"] = node.parameters.model_dump()
+node.machine = machine
+save_node(node)
+
+# %% Fitting multi-exponential
+# TODO: Make it to work on multiple qubits
+
+# Define your model function
+def model_1exp(t, a0, a1, t1):
+    return a0 * (1+ a1 * np.exp(-t / t1))
+
+def model_2exp(t, a0, a1, a2, t1, t2):
+    return a0 * (1 + a1 * np.exp(-t / t1) + a2 * np.exp(-t / t2))
+
+
+t_data = flux_response.time.values
+y_data = flux_response.isel(qubit=0).values
+
+# Fit the data
+popt, pcov = curve_fit(model_1exp, t_data, y_data, p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 1000])
+
+a0_0 = popt[0]
+a1_0 = a2_0 = popt[1] / 2 
+t1_0 = popt[-1]
+t2_0 = 100
+
+initial_guess = [a0_0, a1_0, a2_0, t1_0, t2_0]
+
+# Perform nonlinear curve fitting
+popt, pcov = curve_fit(model_2exp, t_data, y_data, p0=initial_guess)
+
+y_fit = model_2exp(t_data, *popt)
+# y_fit = model(t_data, -0.0015, -1 / 200, popt[2], popt[3], popt[4])
+
+# Plot
+plt.figure()
+plt.scatter(t_data, y_data, label='Data')
+plt.plot(t_data, y_fit, 'r-', label=f'Fit: a0={popt[0]:.3f}, a1={popt[1]:.3f}, a2={popt[2]:.3f}, t1={popt[3]:.0f}, t2={popt[4]:.0f}')
+plt.xlabel('Time')
+plt.ylabel('Value')
+plt.legend()
+plt.show()
