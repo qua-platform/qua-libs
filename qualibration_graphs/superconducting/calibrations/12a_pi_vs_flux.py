@@ -6,7 +6,13 @@ from typing import List, Literal, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.pi_flux import Parameters
+from calibration_utils.pi_flux import (
+    Parameters,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+    process_raw_dataset,
+)
 from qm import SimulationConfig
 from qm.qua import *
 from qualang_tools.loops import from_array
@@ -42,13 +48,19 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qC1"]
-    node.parameters.num_shots = 20
-    node.parameters.flux_amp = 0.07
-    node.parameters.update_lo = True
+    node.parameters.qubits = ["qC1", "qC2"]
+    node.parameters.num_shots = 100
+    # node.parameters.flux_amp = 0.07
+    node.parameters.flux_amp = 0.03
+    # node.parameters.update_lo = True
+    node.parameters.update_lo = False
     node.parameters.frequency_span_in_mhz = 200
     node.parameters.frequency_step_in_mhz = 1
     node.parameters.operation_amplitude_factor = 0.8
+    node.parameters.duration_in_ns = 3000
+    node.parameters.reset_type = "active"
+    node.parameters.multiplexed = True
+    node.parameters.load_data_id = 926
 
     pass
 
@@ -81,7 +93,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             #     length=int(x180.length), amplitude=float(x180.amplitude), sigma=int(x180.length / 4)
             # )
             qubit.xy.operations[operation] = DragGaussianPulse(
-                length=int(x180.length), amplitude=float(x180.amplitude), sigma=int(x180.length / 4), alpha=0.0, anharmonicity=200e6, axis_angle=0.0
+                length=int(x180.length),
+                amplitude=float(x180.amplitude),
+                sigma=int(x180.length / 4),
+                alpha=0.0,
+                anharmonicity=200e6,
+                axis_angle=0.0,
             )
     # Modify the lo frequency to allow for maximum detuning
     tracked_qubits = []
@@ -103,8 +120,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Qubit detuning sweep with respect to their resonance frequencies
     span = node.parameters.frequency_span_in_mhz * u.MHz
     step = node.parameters.frequency_step_in_mhz * u.MHz
-    dfs = np.arange(-span // 2, span // 2, step, dtype=np.int32).tolist()
-    times = np.arange(4, node.parameters.duration_in_ns // 4, 12, dtype=np.int32).tolist()
+    dfs = np.arange(-span // 2, span // 2, step, dtype=np.int32)
+    times = np.arange(4, node.parameters.duration_in_ns // 4, 12, dtype=np.int32)
     # times = np.logspace(np.log10(4), np.log10(node.parameters.duration_in_ns // 4), 30, dtype=np.int32)
 
     detuning = [q.freq_vs_flux_01_quad_term * node.parameters.flux_amp**2 for q in qubits]
@@ -112,7 +129,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "detuning": xr.DataArray(dfs, attrs={"long_name": "qubit frequency", "units": "Hz"}),
-        "time": xr.DataArray(times, attrs={"long_name": "Flux pulse duration", "units": "ns"}),
+        "time": xr.DataArray(4 * times, attrs={"long_name": "Flux pulse duration", "units": "ns"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -216,7 +233,66 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
-    dataset.I.sel(qubit="qC1").plot()
+
+# %% {Load_data}
+@node.run_action(skip_if=node.parameters.load_data_id is None)
+def load_data(node: QualibrationNode[Parameters, Quam]):
+    """Load a previously acquired dataset."""
+    load_data_id = node.parameters.load_data_id
+    # Load the specified dataset
+    node.load_from_id(node.parameters.load_data_id)
+    node.parameters.load_data_id = load_data_id
+    # Get the active qubits from the loaded node parameters
+    node.namespace["qubits"] = get_qubits(node)
+
+
+# %% {Analyse_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def analyse_data(node: QualibrationNode[Parameters, Quam]):
+    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"] = fit_raw_data(node.results["ds_raw"], node)
+    # node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+
+    # # Log the relevant information extracted from the data analysis
+    # log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    # node.outcomes = {
+    #     qubit_name: ("successful" if fit_result["success"] else "failed")
+    #     for qubit_name, fit_result in node.results["fit_results"].items()
+    # }
+
+
+# %% {Plot_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def plot_data(node: QualibrationNode[Parameters, Quam]):
+    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
+    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    plt.show()
+    # Store the generated figures
+    node.results["figures"] = {
+        "amplitude": fig_raw_fit,
+    }
+
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def update_state(node: QualibrationNode[Parameters, Quam]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+    with node.record_state_updates():
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
+
+            operation = q.xy.operations[node.parameters.operation]
+            operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
+            if node.parameters.operation == "x180":
+                q.xy.operations["x90"].amplitude = node.results["fit_results"][q.name]["opt_amp"] / 2
+
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
+    node.save()
 
 
 # %%
