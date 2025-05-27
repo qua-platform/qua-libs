@@ -4,6 +4,7 @@ from quam.components.quantum_components import qubit
 import xarray as xr
 from qualibrate import QualibrationNode
 from qualibration_libs.data.processing import _apply_angle
+from qualibration_libs.analysis import fit_oscillation, unwrap_phase
 from scipy.optimize import minimize
 from scipy.signal import deconvolve, savgol_filter
 from qualibration_libs.data import convert_IQ_to_V
@@ -91,25 +92,7 @@ def diff_savgol(da, dim, range=3, order=2):
 def cryoscope_frequency(ds, stable_time_indices, quad_term=-1, sg_range=3, sg_order=2, plot=False):
     ds = ds.copy()
 
-    ds_max = ds.sel(time=slice(stable_time_indices[0], stable_time_indices[1])).max(dim="time")
-    ds_min = ds.sel(time=slice(stable_time_indices[0], stable_time_indices[1])).min(dim="time")
-    ds_offset = (ds_max + ds_min) / 2
-    ds -= ds_offset
-
-    # if plot:
-    #     plt.scatter(ds.sel(axis="x"), ds.sel(axis="y"))
-    #     plt.gca().set_aspect("equal", adjustable="box")
-    #     plt.xlabel("<X>")
-    #     plt.ylabel("<Y>")
-    #     plt.show()
-
-    angle = _apply_angle(ds.sel(axis="x") + 1j * ds.sel(axis="y"), "time")
-    ds["angle"] = angle
-    # if plot:
-    #     angle.plot()
-    #     plt.show()
-
-    freq_cryoscope = diff_savgol(angle, "time", range=sg_range, order=sg_order)
+    freq_cryoscope = diff_savgol(ds, "time", range=sg_range, order=sg_order)
     ds["freq"] = freq_cryoscope
     # if plot:
     #     (-freq_cryoscope).plot()
@@ -223,11 +206,14 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
     elif hasattr(ds, "state"):
         data = "state"
 
+    dafit = fit_oscillation(ds[data], "frame")
+
+    daphi = unwrap_phase(dafit.sel(fit_vals="phi"), "time")
     sg_order = 2
     sg_range = 3
 
     ds_fit = cryoscope_frequency(
-        ds[data],
+        daphi,
         quad_term=-1,
         stable_time_indices=(node.parameters.cryoscope_len - 20, node.parameters.cryoscope_len),
         sg_order=sg_order,

@@ -26,7 +26,7 @@ description = """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="12_cryoscope",  # Name should be unique
+    name="12b_cryoscope",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
@@ -38,16 +38,17 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["qC1"]
     node.parameters.reset_type = "active"
-    node.parameters.cryoscope_len = 500
+    node.parameters.cryoscope_len = 100
     node.parameters.use_state_discrimination = True
-    node.parameters.amp_factor = 0.04
-    node.parameters.num_shots = 200
+    node.parameters.amp_factor = 0.07
+    node.parameters.num_shots = 2_000
     # node.parameters.simulate = True
     node.parameters.simulation_duration_ns = 20_000
     node.parameters.timeout = 10000
     node.parameters.buffer = 10
     node.parameters.multiplexed = True
-    # node.parameters.load_data_id = 836
+    node.parameters.num_frames = 17
+    # node.parameters.load_data_id = 899
     pass
 
 
@@ -74,6 +75,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # TODO: add b
     # cryoscope_time = np.concatenate([np.arange(1 - buffer, 1, 1), np.arange(1, cryoscope_len + 1, 1)])  # x-axis for plotting - must be in ns
     cryoscope_time = np.arange(1, cryoscope_len + 1, 1)  # x-axis for plotting - must be in ns
 
+    frames = np.linspace(0, 1, node.parameters.num_frames)
+
     baked_config = node.machine.generate_config()
 
     def baked_waveform(waveform_amp, qubit):
@@ -99,7 +102,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # TODO: add b
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "time": xr.DataArray(cryoscope_time, attrs={"long_name": "Cryoscope pulse duration", "units": "ns"}),
-        "axis": xr.DataArray(["x", "y"], attrs={"long_name": "Tomography rotation axis"}),
+        "frame": xr.DataArray(frames, attrs={"long_name": "Frame rotation index"}),
     }
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
@@ -112,7 +115,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # TODO: add b
         t_left_ns = declare(int)  # QUA variable for the flux pulse segment index
         t_cycles = declare(int)  # QUA variable for the flux pulse segment index
         idx = declare(int)
-        flag = declare(bool)
+        frame = declare(fixed)
 
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
@@ -128,7 +131,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # TODO: add b
                 with for_(idx, 1, idx <= cryoscope_len, idx + 1):
                     # Alternate between X/2 and Y/2 pulses
                     # for tomo in ['x90', 'y90']:
-                    with for_each_(flag, [True, False]):
+                    with for_each_(frame, frames):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
                             qubit.reset(node.parameters.reset_type, node.parameters.simulate)
@@ -158,13 +161,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # TODO: add b
                                             qubit.z.wait((qubit.xy.operations["x90"].length + 16) // 4)
                                             baked_signals[qubit.name][j - 1].run()
                                             qubit.xy.wait((cryoscope_len + 32) // 4)
-                                            # Play second X/2 or Y/2
-                                            # if tomo == 'x90':
-                                            with if_(flag):
-                                                qubit.xy.play("x90")
-                                            # elif tomo == 'y90':
-                                            with else_():
-                                                qubit.xy.play("y90")
+                                            qubit.xy.frame_rotation_2pi(frame)
+                                            qubit.xy.play("x90")
 
                         with else_():
                             assign(t_cycles, idx >> 2)  # Right shift by 2 is a quick way to divide by 4
@@ -181,13 +179,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # TODO: add b
                                             amplitude_scale=amplitude_factor / qubit.z.operations["const"].amplitude,
                                         )
                                         qubit.xy.wait((cryoscope_len + 32) // 4)
-                                        # Play second X/2 or Y/2
-                                        # if tomo == 'x90':
-                                        with if_(flag):
-                                            qubit.xy.play("x90")
-                                        # elif tomo == 'y90':
-                                        with else_():
-                                            qubit.xy.play("y90")
+                                        qubit.xy.frame_rotation_2pi(frame)
+                                        qubit.xy.play("x90")
                                 for j in range(1, 4):
                                     with case_(j):
                                         align()
@@ -202,13 +195,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # TODO: add b
                                             )
                                             baked_signals[qubit.name][j - 1].run()
                                             qubit.xy.wait((cryoscope_len + 32) // 4)
-                                            # Play second X/2 or Y/2
-                                            # if tomo == 'x90':
-                                            with if_(flag):
-                                                qubit.xy.play("x90")
-                                            # elif tomo == 'y90':
-                                            with else_():
-                                                qubit.xy.play("y90")
+                                            qubit.xy.frame_rotation_2pi(frame)
+                                            qubit.xy.play("x90")
                         # Wait for the idle time set slightly above the maximum flux pulse duration
                         # to ensure that the 2nd x90 pulse arrives after the longest flux pulse
 
@@ -228,13 +216,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # TODO: add b
             n_st.save("n")
             for i in range(num_qubits):
                 if node.parameters.use_state_discrimination:
-                    # state_st[i].buffer(2).buffer(cryoscope_len + buffer).average().save(f"state{i + 1}")
-                    state_st[i].buffer(2).buffer(cryoscope_len).average().save(f"state{i + 1}")
+                    # state_st[i].buffer(len(frames)).buffer(cryoscope_len + buffer).average().save(f"state{i + 1}")
+                    state_st[i].buffer(len(frames)).buffer(cryoscope_len).average().save(f"state{i + 1}")
                 else:
-                    # I_st[i].buffer(2).buffer(cryoscope_len + buffer).average().save(f"I{i + 1}")
-                    # Q_st[i].buffer(2).buffer(cryoscope_len + buffer).average().save(f"Q{i + 1}")
-                    I_st[i].buffer(2).buffer(cryoscope_len).average().save(f"I{i + 1}")
-                    Q_st[i].buffer(2).buffer(cryoscope_len).average().save(f"Q{i + 1}")
+                    # I_st[i].buffer(len(frames)).buffer(cryoscope_len + buffer).average().save(f"I{i + 1}")
+                    # Q_st[i].buffer(len(frames)).buffer(cryoscope_len + buffer).average().save(f"Q{i + 1}")
+                    I_st[i].buffer(len(frames)).buffer(cryoscope_len).average().save(f"I{i + 1}")
+                    Q_st[i].buffer(len(frames)).buffer(cryoscope_len).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate}
@@ -306,10 +294,10 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     qubit.grid_location.
     """
 
-    fig_raw = plot_raw_data(node.results["ds_raw"], node.namespace["qubits"], fits=node.results["ds_fit"])
+    # fig_raw = plot_raw_data(node.results["ds_raw"], node.namespace["qubits"], fits=node.results["ds_fit"])
     fig_flux = plot_normalized_flux(node.results["ds_raw"], node.namespace["qubits"], fits=node.results["ds_fit"])
 
-    node.results["figure_raw"] = fig_raw
+    # node.results["figure_raw"] = fig_raw
     node.results["figure_flux"] = fig_flux
 
 

@@ -15,6 +15,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum amplitude factor for the operation. Default is 1.99."""
     reset_filters: bool = True
     buffer: int = 10
+    num_frames: int = 17
 
 
 class Parameters(
