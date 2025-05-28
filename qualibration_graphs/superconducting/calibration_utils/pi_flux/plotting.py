@@ -70,4 +70,4 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
         label="I quadrature",
     )
 
-    fit.peak_freq.plot(ax=ax)
+    fit.peak_freq.plot(ax=ax, linestyle="--", marker="o", color="black", label="Peak frequency")

@@ -48,19 +48,19 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qC1", "qC2"]
-    node.parameters.num_shots = 100
-    # node.parameters.flux_amp = 0.07
-    node.parameters.flux_amp = 0.03
-    # node.parameters.update_lo = True
-    node.parameters.update_lo = False
+    node.parameters.qubits = ["qC1"]
+    node.parameters.num_shots = 300
+    node.parameters.flux_amp = 0.07
+    # node.parameters.flux_amp = 0.03
+    node.parameters.update_lo = True
+    # node.parameters.update_lo = False
     node.parameters.frequency_span_in_mhz = 200
     node.parameters.frequency_step_in_mhz = 1
     node.parameters.operation_amplitude_factor = 0.8
     node.parameters.duration_in_ns = 3000
     node.parameters.reset_type = "active"
     node.parameters.multiplexed = True
-    node.parameters.load_data_id = 926
+    # node.parameters.load_data_id = 929
 
     pass
 
@@ -111,6 +111,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 q.xy.RF_frequency -= 400e6
                 tracked_qubits.append(q)
 
+    node.namespace["tracked_qubits"] = tracked_qubits
     # Adjust the pulse duration and amplitude to drive the qubit into a mixed state - can be None
     if node.parameters.operation_amplitude_factor:
         # pre-factor to the value defined in the config - restricted to [-2; 2)
@@ -275,23 +276,25 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
-def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the qubit data analysis was successful."""
-    with node.record_state_updates():
-        for q in node.namespace["qubits"]:
-            if node.outcomes[q.name] == "failed":
-                continue
+# @node.run_action(skip_if=node.parameters.simulate)
+# def update_state(node: QualibrationNode[Parameters, Quam]):
+#     """Update the relevant parameters if the qubit data analysis was successful."""
+#     with node.record_state_updates():
+#         for q in node.namespace["qubits"]:
+#             if node.outcomes[q.name] == "failed":
+#                 continue
 
-            operation = q.xy.operations[node.parameters.operation]
-            operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
-            if node.parameters.operation == "x180":
-                q.xy.operations["x90"].amplitude = node.results["fit_results"][q.name]["opt_amp"] / 2
+#             operation = q.xy.operations[node.parameters.operation]
+#             operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
+#             if node.parameters.operation == "x180":
+#                 q.xy.operations["x90"].amplitude = node.results["fit_results"][q.name]["opt_amp"] / 2
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    for qubit in node.namespace["tracked_qubits"]:
+        qubit.revert_changes()
     node.save()
 
 
