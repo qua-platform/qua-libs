@@ -16,13 +16,14 @@ from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
+from configuraqtion_with_lf_fem_and_mw_fem import *
 
 description = """
-        Basic script to play with the QUA program and test the QOP connectivity.
+        A template for a node that contains a QUA program.
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="node_2", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](name="hello_qua", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -31,13 +32,11 @@ node = QualibrationNode[Parameters, Quam](name="node_2", description=description
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.multiplexed = True
-    # node.parameters.num_shots = 2
+    node.parameters.num_shots = 10
+    node.parameters.simulate = True
     pass
 
 
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
@@ -48,26 +47,32 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
-
-    amps = np.linspace(-1, 1, 11)
+    # The qubit operation to play
+    operation = node.parameters.operation
+    # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+    amps = np.arange(
+        node.parameters.min_amp_factor,
+        node.parameters.max_amp_factor,
+        node.parameters.amp_factor_step,
+    )
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "amplitude": xr.DataArray(amps, attrs={"long_name": "amplitude scale", "units": ""}),
+        "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "pulse amplitude prefactor"}),
     }
 
     # node.namespace["sweep"]
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
-        a = declare(fixed)
-        n = declare(int)
+        n = declare(int) # QUA variable for the number of averages
+        a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
         n_st = declare_stream()
         for multiplexed_qubits in qubits.batch():
             with for_(n, 0, n < node.parameters.num_shots, n + 1):
                 save(n, n_st)
                 with for_(*from_array(a, amps)):
                     for i, qubit in multiplexed_qubits.items():
-                        qubit.xy.play("x180", amplitude_scale=a)
+                        qubit.xy.play(operation, amplitude_scale=a)
                         qubit.wait(250 * u.ns)
                     align()
 
@@ -95,8 +100,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
     qmm = node.machine.connect()
-    # Get the config from the machine
-    config = node.machine.generate_config()
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
@@ -115,8 +118,4 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 
-# %% {Save_results}
-@node.run_action()
-def save_results(node: QualibrationNode[Parameters, Quam]):
-    """Save the node results and state."""
-    node.save()
+
