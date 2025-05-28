@@ -51,7 +51,8 @@ octave_config = None
 sampling_rate = int(1e9)  # or, int(2e9)
 
 qubit_LO = 7.4 * u.GHz
-qubit_IF = 110 * u.MHz
+q1_IF = 110 * u.MHz
+q2_IF = 210 * u.MHz
 qubit_power = 1  # power in dBm at waveform amp = 1 (steps of 3 dB)
 
 qubit_T1 = int(10 * u.us)
@@ -150,7 +151,8 @@ minus_y90_Q_wf = minus_y90_wf
 #                Resonators                 #
 #############################################
 resonator_LO = 5.5 * u.GHz
-resonator_IF = 60 * u.MHz
+q1_resonator_IF = 50 * u.MHz
+q2_resonator_IF = 150 * u.MHz
 resonator_power = 1  # power in dBm at waveform amp = 1
 
 # Note: amplitudes can be -1..1 and are scaled up to `resonator_power` at amp=1
@@ -223,12 +225,17 @@ config = {
                             "band": 2,
                             "full_scale_power_dbm": resonator_power,
                             "upconverters": {1: {"frequency": resonator_LO}},
-                        },  # resonator
+                        },  # q1 resonator and q2 resonator
                         2: {
                             "band": 2,
                             "full_scale_power_dbm": qubit_power,
                             "upconverters": {1: {"frequency": qubit_LO}},
-                        },  # qubit
+                        },  # q1
+                        3: {
+                            "band": 2,
+                            "full_scale_power_dbm": qubit_power,
+                            "upconverters": {1: {"frequency": qubit_LO}},
+                        },  # q2
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
@@ -238,7 +245,6 @@ config = {
                 lf_fem: {
                     "type": "LF",
                     "analog_outputs": {
-                        # Flux line
                         1: {
                             # Note, 'offset' takes absolute values, e.g., if in amplified mode and want to output 2.0 V, then set "offset": 2.0
                             "offset": max_frequency_point,
@@ -259,7 +265,28 @@ config = {
                             # Synchronization of the LF-FEM outputs with the MW-FEM outputs
                             # 141ns delay (band 1 and 3) or 161ns delay (band 2)
                             "delay": 141 * u.ns,
-                        },
+                        }, # q1 flux line
+                        2: {
+                            # Note, 'offset' takes absolute values, e.g., if in amplified mode and want to output 2.0 V, then set "offset": 2.0
+                            "offset": max_frequency_point,
+                            # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
+                            #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
+                            #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
+                            "output_mode": "amplified",
+                            # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
+                            #   1 GS/s: uses one core per output (default)
+                            #   2 GS/s: uses two cores per output
+                            # NOTE: duration parameterization of arb. waveforms, sticky elements and chirping
+                            #       aren't yet supported in 2 GS/s.
+                            "sampling_rate": sampling_rate,
+                            # At 1 GS/s, use the "upsampling_mode" to optimize output for
+                            #   modulated pulses (optimized for modulated pulses):      "mw"    (default)
+                            #   unmodulated pulses (optimized for clean step response): "pulse"
+                            "upsampling_mode": "pulse",
+                            # Synchronization of the LF-FEM outputs with the MW-FEM outputs
+                            # 141ns delay (band 1 and 3) or 161ns delay (band 2)
+                            "delay": 141 * u.ns,
+                        }, # q2 flux line
                     },
                     "digital_outputs": {
                         1: {},
@@ -269,13 +296,13 @@ config = {
         },
     },
     "elements": {
-        "qubit": {
+        "q1": {
             # MWInput corresponds to an OPX physical output port
             "MWInput": {
                 "port": (con, mw_fem, 2),
                 "upconverter": 1,
             },
-            "intermediate_frequency": qubit_IF,
+            "intermediate_frequency": q1_IF,
             "operations": {
                 "cw": "const_pulse",
                 "saturation": "saturation_pulse",
@@ -289,13 +316,13 @@ config = {
                 "-y90": "-y90_pulse",
             },
         },
-        "resonator": {
+        "q1_resonator": {
             # MWInput corresponds to an OPX physical output port
             "MWInput": {
                 "port": (con, mw_fem, 1),
                 "upconverter": 1,
             },
-            "intermediate_frequency": resonator_IF,
+            "intermediate_frequency": q1_resonator_IF,
             "operations": {
                 "cw": "const_pulse",
                 "readout": "readout_pulse",
@@ -307,7 +334,7 @@ config = {
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
-        "flux_line": {
+        "q1_flux_line": {
             "singleInput": {
                 "port": (con, lf_fem, 1),
             },
@@ -315,11 +342,48 @@ config = {
                 "const": "const_flux_pulse",
             },
         },
-        "flux_line_sticky": {
-            "singleInput": {
-                "port": (con, lf_fem, 1),
+        "q2": {
+            # MWInput corresponds to an OPX physical output port
+            "MWInput": {
+                "port": (con, mw_fem, 3),
+                "upconverter": 1,
             },
-            "sticky": {"analog": True, "duration": 20},
+            "intermediate_frequency": q2_IF,
+            "operations": {
+                "cw": "const_pulse",
+                "saturation": "saturation_pulse",
+                "pi": "pi_pulse",
+                "pi_half": "pi_half_pulse",
+                "x180": "x180_pulse",
+                "x90": "x90_pulse",
+                "-x90": "-x90_pulse",
+                "y90": "y90_pulse",
+                "y180": "y180_pulse",
+                "-y90": "-y90_pulse",
+            },
+        },
+        "q2_resonator": {
+            # MWInput corresponds to an OPX physical output port
+            "MWInput": {
+                "port": (con, mw_fem, 1),
+                "upconverter": 1,
+            },
+            "intermediate_frequency": q2_resonator_IF,
+            "operations": {
+                "cw": "const_pulse",
+                "readout": "readout_pulse",
+            },
+            # MWOutput corresponds to an OPX physical input port
+            "MWOutput": {
+                "port": (con, mw_fem, 1),
+            },
+            "time_of_flight": time_of_flight,
+            "smearing": 0,
+        },
+        "q2_flux_line": {
+            "singleInput": {
+                "port": (con, lf_fem, 2),
+            },
             "operations": {
                 "const": "const_flux_pulse",
             },

@@ -3,7 +3,7 @@ import numpy as np
 import xarray as xr
 
 from qm.qua import *
-
+import os
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
@@ -11,7 +11,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.hello_qua import Parameters
+from calibration_utils_test.hello_qua_test import Parameters
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -46,7 +46,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
-    node.namespace["qubits"] = qubits = get_qubits(node)
+    # node.namespace["qubits"] = qubits = get_qubits(node) #TODO: DELETE
     # The qubit operation to play
     operation = node.parameters.operation
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
@@ -57,7 +57,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     )
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
-        "qubit": xr.DataArray(qubits.get_names()),
+        "qubit": xr.DataArray(['q1', 'q2']),
         "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "pulse amplitude prefactor"}),
     }
 
