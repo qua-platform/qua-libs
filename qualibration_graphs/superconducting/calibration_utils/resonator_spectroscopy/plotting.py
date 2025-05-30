@@ -1,11 +1,16 @@
 from typing import List
+
+import numpy as np
+import plotly.graph_objects as go
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-
+from plotly.graph_objs import Figure as PlotlyFigure
+from plotly.subplots import make_subplots
 from qualang_tools.units import unit
-from qualibration_libs.plotting import QubitGrid, grid_iter
 from qualibration_libs.analysis import lorentzian_dip
+from qualibration_libs.plotting import QubitGrid, grid_iter
+from qualibration_libs.plotting.grids import PlotlyQubitGrid, plotly_grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
@@ -123,3 +128,172 @@ def plot_individual_amplitude_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str
     # Plot the fitted data
     if fitted_data is not None:
         ax2.plot(ds.detuning / u.MHz, fitted_data / u.mV, "r--")
+
+def plotly_plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> PlotlyFigure:
+    """
+    Robust Plotly version: only plot RF frequency trace, add detuning as a hover label for each point.
+    Adds a visible detuning axis (top x-axis) to each subplot, with ticks/range matching detuning data.
+    """
+    grid = PlotlyQubitGrid(ds, [q.grid_location for q in qubits])
+    fig = make_subplots(
+        rows=grid.n_rows,
+        cols=grid.n_cols,
+        subplot_titles=[f"Qubit {list(nd.values())[0]}" for nd in grid.name_dicts],
+        shared_xaxes=False,
+        shared_yaxes=False,
+    )
+    detuning_axes = []
+    for i, name_dict in plotly_grid_iter(grid):
+        row = i // grid.n_cols + 1
+        col = i % grid.n_cols + 1
+        qubit_id = list(name_dict.values())[0]
+        freq_data = ds.assign_coords(full_freq_GHz=ds.full_freq / u.GHz).loc[name_dict]
+        detuning_data = ds.assign_coords(detuning_MHz=ds.detuning / u.MHz).loc[name_dict]
+        fig.add_trace(
+            go.Scatter(
+                x=freq_data.full_freq_GHz,
+                y=freq_data.phase,
+                name=f"Qubit {qubit_id}",
+                showlegend=False,
+                line=dict(color="#1f77b4"),
+                customdata=np.stack([detuning_data.detuning_MHz], axis=-1),
+                hovertemplate="RF freq: %{x:.6f} GHz<br>Detuning: %{customdata[0]:.2f} MHz<br>Phase: %{y:.3f} rad<extra></extra>",
+            ),
+            row=row,
+            col=col,
+        )
+        detuning_axes.append(detuning_data.detuning_MHz.values)
+    # Add visible detuning axis (top x-axis) for each subplot, no dummy trace
+    for i in range(grid.n_rows):
+        for j in range(grid.n_cols):
+            row = i + 1
+            col = j + 1
+            subplot_index = i * grid.n_cols + j + 1  # 1-based indexing for Plotly axis names
+            main_xaxis = f"x{subplot_index}"  # Always use the full axis name
+            top_xaxis_layout = f"xaxis{subplot_index + 100}"
+            # Get detuning values for this subplot
+            detuning_vals = detuning_axes[subplot_index - 1] if subplot_index - 1 < len(detuning_axes) else None
+            if detuning_vals is not None and len(detuning_vals) > 1:
+                fig['layout'][top_xaxis_layout] = dict(
+                    overlaying=main_xaxis,
+                    side='top',
+                    title="Detuning [MHz]",
+                    showgrid=False,
+                    tickmode='array',
+                    tickvals=list(detuning_vals),
+                    ticktext=[f"{v:.2f}" for v in detuning_vals],
+                    range=[float(np.min(detuning_vals)), float(np.max(detuning_vals))],
+                )
+            else:
+                fig['layout'][top_xaxis_layout] = dict(
+                    overlaying=main_xaxis,
+                    side='top',
+                    title="Detuning [MHz]",
+                    showgrid=False,
+                    tickmode='auto',
+                )
+            fig.update_xaxes(title_text="RF frequency [GHz]", row=row, col=col)
+            fig.update_yaxes(title_text="phase [rad]", row=row, col=col)
+    fig.update_layout(
+        title="Resonator spectroscopy (phase)",
+        height=900,
+        width=1500,
+        showlegend=False,
+    )
+    return fig
+
+def plotly_plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset) -> PlotlyFigure:
+    """
+    Robust Plotly version: only plot RF frequency trace, add detuning as a hover label for each point. Overlay fit if present.
+    Adds a visible detuning axis (top x-axis) to each subplot, with ticks/range matching detuning data.
+    """
+    grid = PlotlyQubitGrid(ds, [q.grid_location for q in qubits])
+    fig = make_subplots(
+        rows=grid.n_rows,
+        cols=grid.n_cols,
+        subplot_titles=[f"Qubit {list(nd.values())[0]}" for nd in grid.name_dicts],
+        shared_xaxes=False,
+        shared_yaxes=False,
+    )
+    detuning_axes = []
+    for i, name_dict in plotly_grid_iter(grid):
+        row = i // grid.n_cols + 1
+        col = i % grid.n_cols + 1
+        qubit_id = list(name_dict.values())[0]
+        fit = fits.sel(qubit=qubit_id)
+        freq_data = ds.assign_coords(full_freq_GHz=ds.full_freq / u.GHz).loc[name_dict]
+        detuning_data = ds.assign_coords(detuning_MHz=ds.detuning / u.MHz).loc[name_dict]
+        y_raw = (freq_data.IQ_abs / u.mV).values
+        x_raw = freq_data.full_freq_GHz.values
+        detuning_vals = detuning_data.detuning_MHz.values
+        fig.add_trace(
+            go.Scatter(
+                x=x_raw,
+                y=y_raw,
+                name=f"Qubit {qubit_id}",
+                showlegend=False,
+                line=dict(color="#1f77b4"),
+                customdata=np.stack([detuning_vals], axis=-1),
+                hovertemplate="RF freq: %{x:.6f} GHz<br>Detuning: %{customdata[0]:.2f} MHz<br>R: %{y:.3f} mV<extra></extra>",
+            ),
+            row=row,
+            col=col,
+        )
+        # Fit (overlay, same x as raw, on RF frequency axis)
+        if fit is not None:
+            fitted_data = lorentzian_dip(
+                ds.detuning.values,
+                float(fit.amplitude.values),
+                float(fit.position.values),
+                float(fit.width.values) / 2,
+                float(fit.base_line.mean().values),
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=x_raw,
+                    y=fitted_data / u.mV,
+                    name=f"Qubit {qubit_id} - Fit",
+                    line=dict(dash="dash", color="red"),
+                    showlegend=False,
+                ),
+                row=row,
+                col=col,
+            )
+        detuning_axes.append(detuning_vals)
+    # Add visible detuning axis (top x-axis) for each subplot, no dummy trace
+    for i in range(grid.n_rows):
+        for j in range(grid.n_cols):
+            row = i + 1
+            col = j + 1
+            subplot_index = i * grid.n_cols + j + 1
+            main_xaxis = f"x{subplot_index}"  # Always use the full axis name
+            top_xaxis_layout = f"xaxis{subplot_index + 100}"
+            detuning_vals = detuning_axes[subplot_index - 1] if subplot_index - 1 < len(detuning_axes) else None
+            if detuning_vals is not None and len(detuning_vals) > 1:
+                fig['layout'][top_xaxis_layout] = dict(
+                    overlaying=main_xaxis,
+                    side='top',
+                    title="Detuning [MHz]",
+                    showgrid=False,
+                    tickmode='array',
+                    tickvals=list(detuning_vals),
+                    ticktext=[f"{v:.2f}" for v in detuning_vals],
+                    range=[float(np.min(detuning_vals)), float(np.max(detuning_vals))],
+                )
+            else:
+                fig['layout'][top_xaxis_layout] = dict(
+                    overlaying=main_xaxis,
+                    side='top',
+                    title="Detuning [MHz]",
+                    showgrid=False,
+                    tickmode='auto',
+                )
+            fig.update_xaxes(title_text="RF frequency [GHz]", row=row, col=col)
+            fig.update_yaxes(title_text=r"<i>R</i> = √(I² + Q²) [mV]", row=row, col=col)
+    fig.update_layout(
+        title="Resonator spectroscopy (amplitude + fit)",
+        height=900,
+        width=1500,
+        showlegend=False,
+    )
+    return fig
