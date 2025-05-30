@@ -13,11 +13,11 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.units import unit
 from qualibrate import NodeParameters, QualibrationNode
+from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 from scipy.optimize import curve_fit
-from qualibration_libs.data import XarrayDataFetcher
 
 # %% {Node_parameters}
 description = """
@@ -49,7 +49,7 @@ Outcomes:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="13_chevron_11-02",  # Name should be unique
+    name="13_chevron_cz",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
@@ -63,7 +63,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubit_pairs = ["qD1-qD2"]
     node.parameters.reset_type = "active"
-    node.parameters.num_shots = 400
+    node.parameters.num_shots = 100
     node.parameters.max_time_in_ns = 100
     node.parameters.amp_range = 0.2
     node.parameters.amp_step = 0.005
@@ -99,7 +99,7 @@ times_cycles = np.arange(4, node.parameters.max_time_in_ns // 4)
 node.namespace["sweep_axes"] = {
     "qubit_pair": xr.DataArray([pair.id for pair in qubit_pairs], attrs={"long_name": "qubit pairs"}),
     "amplitude": xr.DataArray(amplitudes, attrs={"long_name": "amplitudes of the flux pulse"}),
-    "time": xr.DataArray(times_cycles*4, attrs={"long_name": "pulse duration", "units": "ns"}),
+    "time": xr.DataArray(times_cycles * 4, attrs={"long_name": "pulse duration", "units": "ns"}),
 }
 
 with program() as node.namespace["qua_program"]:
@@ -162,25 +162,13 @@ with program() as node.namespace["qua_program"]:
         n_st.save("n")
         for i in range(num_qubit_pairs):
             if node.parameters.use_state_discrimination:
-                state_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(
-                    f"state_control_{qubit_pairs[i].qubit_control.name}"
-                )
-                state_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(
-                    f"state_target_{qubit_pairs[i].qubit_target.name}"
-                )
+                state_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"state_control{i}")
+                state_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"state_target{i+1}")
             else:
-                I_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(
-                    f"I_control_{qubit_pairs[i].qubit_control.name}"
-                )
-                Q_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(
-                    f"Q_control_{qubit_pairs[i].qubit_control.name}"
-                )
-                I_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(
-                    f"I_target_{qubit_pairs[i].qubit_target.name}"
-                )
-                Q_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(
-                    f"Q_target_{qubit_pairs[i].qubit_target.name}"
-                )
+                I_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"I_control{i}")
+                Q_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"Q_control{i}")
+                I_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"I_target{i+1}")
+                Q_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"Q_target{i+1}")
 
 
 # %% {Simulate}
@@ -222,9 +210,16 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
+
 ds = node.results["ds_raw"]
 
-ds.state_target_qD.plot()
+fig, ax = plt.subplots(1, 1, figsize=(10, 5))
+
+ds.state_target.plot(ax=ax)
+
+node.results["figure_raw"] = fig
+
+node.save()
 
 # %%
 
