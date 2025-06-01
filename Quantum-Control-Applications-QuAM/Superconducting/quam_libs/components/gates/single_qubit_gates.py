@@ -1,8 +1,14 @@
 from abc import ABC, abstractmethod
+from typing import Any
+
+from qm.qua import declare
+from quam.components.macro import QubitMacro, PulseMacro
 from quam.core import quam_dataclass, QuamComponent
 import numpy as np
 
 __all__ = ["SingleQubitGate", "SinglePulseGate", "VirtualZGate", "HadamardGate"]
+
+from quam_libs.macros import active_reset, readout_state
 
 
 @quam_dataclass
@@ -51,19 +57,96 @@ class VirtualZGate(SingleQubitGate):
 
     """
 
-    angle: float
+    angle: float = np.pi
 
     def execute(self, angle=None):
         if angle is None:
             angle = self.angle
         self.qubit.xy.frame_rotation(angle)
 
+
 @quam_dataclass
-class HadamardGate(SingleQubitGate):
+class HadamardGate(QubitMacro):
     """single qubit Hadamard gate
 
     """
-    def execute(self):
-        self.qubit.gates["Z"]()
-        self.qubit.gates["sY"]()
-        
+
+    def apply(self):
+        self.qubit.xy.play('y90')
+        self.qubit.xy.play('x180')
+
+
+class SYGate(PulseMacro):
+    def __init__(self, pulse):
+        self.pulse = pulse
+
+    def execute(self, amplitude_scale=None, duration=None):
+        self.qubit.play_pulse(self.pulse)
+
+
+class ResetGate(QubitMacro):
+
+    def apply(self, *args, **kwargs) -> Any:
+        self.qubit.wait(self.qubit.thermalization_time * 0.25)
+        active_reset(self.qubit)
+
+
+class MeasurementGate(QubitMacro):
+    def apply(self, *args, **kwargs) -> Any:
+        state = declare(int)
+        readout_state(self.qubit, state)
+        return state
+
+
+class XGate(QubitMacro):
+    def apply(self, *args, **kwargs) -> Any:
+        self.qubit.xy.play('x180')
+
+
+class YGate(QubitMacro):
+    def apply(self, *args, **kwargs) -> Any:
+        self.qubit.xy.play('y180')
+
+
+class SXGate(QubitMacro):
+    def apply(self, *args, **kwargs) -> Any:
+        self.qubit.xy.play('x90')
+
+
+class RZGate(QubitMacro):
+    def apply(self, *args, **kwargs) -> Any:
+        self.qubit.xy.frame_rotation(args[0])
+
+
+class DelayGate(QubitMacro):
+    def apply(self, *args, **kwargs) -> Any:
+        duration = args[0]
+        self.qubit.wait(duration)
+
+
+class UGate(QubitMacro):
+    def _rz(self, angle):
+        self.qubit.xy.frame_rotation(angle)
+
+    def _x90(self):
+        self.qubit.xy.play('x90')
+
+    # implementation based on https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.U3Gate
+    def apply(self, *args, **kwargs) -> Any:
+        theta = args[0]
+        phi = args[1]
+        lambda_ = args[2]
+        self._rz(lambda_)
+        self._x90()
+        self._rz(theta + np.pi)
+        self._x90()
+        self._rz(phi + np.pi)
+
+
+class U1Gate(UGate):
+    def apply(self, *args, **kwargs) -> Any:
+        return super().apply(0, 0, args[0])
+
+
+class U3Gate(UGate):
+    pass

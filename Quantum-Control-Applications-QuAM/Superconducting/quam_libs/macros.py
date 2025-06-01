@@ -4,7 +4,7 @@ from typing import Optional, Union, Any
 import warnings
 
 from qm.qua import *
-from quam_libs.components import QuAM
+#from quam_libs.components import QuAM
 from quam_libs.components import Transmon
 
 try:
@@ -59,7 +59,7 @@ def multiplexed_readout(qubits, I, I_st, Q, Q_st, sequential=False, amplitude=1.
 
 
 def node_save(
-    quam: QuAM,
+    quam, #: QuAM,
     name: str,
     data: dict,
     additional_files: Optional[Union[dict, bool]] = None,

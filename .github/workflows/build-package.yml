@@ -1,0 +1,60 @@
+name: Build and upload package
+
+on:
+  workflow_dispatch:
+    inputs:
+      BRANCH:
+        description: 'Branch to build'
+        type: string
+        required: true
+        default: ''
+
+permissions:
+  id-token: write
+  contents: write
+  checks: write
+
+
+jobs:
+  Build-package:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+        name: checkout
+        
+      - uses: actions/setup-python@v4
+        name: setup python
+        with:
+          python-version: '3.11'
+
+      - name: Configure AWS credentials
+        # env:
+        #   AWS_ACCESS_KEY_ID: ${{ secrets.CI_AWS_ACCESS_KEY_ID }}
+        #   AWS_SECRET_ACCESS_KEY: ${{ secrets.CI_AWS_SECRET_ACCESS_KEY }}
+        #   AWS_REGION: us-east-1
+        #   BUCKET: qm-pypi-repository
+        #   GITHUB_TOKEN: ${{ secrets.ORGANIZATION_PAT_RO }}
+        #   SHA: ${{ github.event.pull_request.head.sha }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/sw_gh_actions
+          aws-region: us-east-1
+      - name: Setup poetry
+        run: |
+          set -xe
+          cd ${GITHUB_WORKSPACE}
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade virtualenv
+          pip install poetry==2.1.1
+          pip install poetry-dynamic-versioning
+          export CODEARTIFACT_AUTH_TOKEN=`aws codeartifact get-authorization-token --domain quantum-machines --domain-owner 439440158105 --region us-east-1 --query authorizationToken --output text`
+          poetry config http-basic.qm-pypi aws ${CODEARTIFACT_AUTH_TOKEN}
+          poetry install --no-root
+      - name: publish-package
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          ./publish-package.sh
+
+
+          
+          
