@@ -27,21 +27,17 @@ from quam_config import Quam
 
 # %% {Description}
 description = """
-        POWER RABI WITH ERROR AMPLIFICATION
-This sequence involves repeatedly executing the qubit pulse (such as x180) 'N' times and
-measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
-By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
-amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
-
+        EF POWER RABI CALIBRATION
+This node calibrates the pi pulse operation between the |e> and |f> states of a superconducting qubit
+by populating the |e> state with a previously calibrated pi pulse and applying a varying amplitude detuned pulse at the |e> -> |f> transition frequency.
 Prerequisites:
-    - Having calibrated the mixer or the Octave (nodes 01a or 01b).
-    - Having calibrated the qubit frequency (node 03a_qubit_spectroscopy.py).
-    - Having set the qubit gates duration (qubit.xy.operations["x180"].length).
-    - Having specified the desired flux point if relevant (qubit.z.flux_point).
+    - Having calibrated a pi pulse operation between the |g> and |e> states of the qubit (x180). (04_power_rabi.py)
+    - Having calibrated the readout resonator dispersive shift (chi). (08a_readout_frequency_optimization.py)
+    - Having calibrated the qubit anharmonicity.
 
 State update:
-    - The qubit pulse amplitude corresponding to the specified operation (x180, x90...)
-    (qubit.xy.operations[operation].amplitude).
+    - The qubit pulse amplitude corresponding to the x180_ef operation
+    (qubit.xy.operations["x180_ef"].amplitude).
 """
 
 
@@ -54,6 +50,7 @@ node = QualibrationNode[Parameters, Quam](
 
 node.namespace["Rabi_ef"] = True
 node.parameters.operation = "x180"
+node.parameters.max_number_pulses_per_sweep = 1
 
 
 # Any parameters that should change for debugging purposes only should go in here
