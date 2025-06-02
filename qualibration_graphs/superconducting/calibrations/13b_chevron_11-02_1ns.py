@@ -8,6 +8,7 @@ import xarray as xr
 from calibration_utils.chevron_cz import Parameters, fit_raw_data, plot_raw_data_with_fit, process_raw_dataset
 from qm import SimulationConfig
 from qm.qua import *
+from qualang_tools.bakery import baking
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import fetching_tool, progress_counter
@@ -49,7 +50,7 @@ Outcomes:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="13_chevron_cz",  # Name should be unique
+    name="13b_chevron_cz_1ns",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
@@ -64,8 +65,8 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.qubit_pairs = ["qD1-qD2"]
     node.parameters.reset_type = "active"
     node.parameters.num_shots = 100
-    node.parameters.max_time_in_ns = 100
-    node.parameters.amp_range = 0.2
+    node.parameters.max_time_in_ns = 200
+    node.parameters.amp_range = 0.1
     node.parameters.amp_step = 0.005
     node.parameters.use_state_discrimination = True
     pass
@@ -94,20 +95,44 @@ n_avg = node.parameters.num_shots  # The number of averages
 
 # Loop parameters
 amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
-times_cycles = np.arange(4, node.parameters.max_time_in_ns // 4)
+times_cycles = np.arange(1, node.parameters.max_time_in_ns)
 
 node.namespace["sweep_axes"] = {
     "qubit_pair": xr.DataArray([pair.id for pair in qubit_pairs], attrs={"long_name": "qubit pairs"}),
     "amplitude": xr.DataArray(amplitudes, attrs={"long_name": "amplitudes of the flux pulse"}),
-    "time": xr.DataArray(times_cycles * 4, attrs={"long_name": "pulse duration", "units": "ns"}),
+    "time": xr.DataArray(times_cycles, attrs={"long_name": "pulse duration", "units": "ns"}),
 }
+
+baked_config = node.machine.generate_config()
+
+
+def baked_waveform(qubit):
+    pulse_segments = []  # Stores the baking objects
+    # Create the different baked sequences, each one corresponding to a different truncated duration
+    waveform = [0.5] * 16
+
+    for i in range(1, 17):  # from first item up to pulse_duration (16)
+        with baking(baked_config, padding_method="right") as b:
+            wf = waveform[:i]
+            b.add_op(f"flux_pulse{i}", qubit.z.name, wf)
+            b.play(f"flux_pulse{i}", qubit.z.name)
+        # Append the baking object in the list to call it from the QUA program
+        pulse_segments.append(b)
+
+    return pulse_segments
+
+
+baked_signals = {qubits.qubit_control.name: baked_waveform(qubits.qubit_control) for qubits in qubit_pairs}
+
+node.namespace["baked_config"] = baked_config
 
 with program() as node.namespace["qua_program"]:
     t = declare(int)  # QUA variable for the flux pulse segment indexz
-    idx = declare(int)
     amp = declare(fixed)
     n = declare(int)
     n_st = declare_stream()
+    t_left_ns = declare(int)  # QUA variable for the flux pulse segment index
+    t_cycles = declare(int)  # QUA variable for the flux pulse segment index
     I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
     if node.parameters.use_state_discrimination:
         state = [declare(int) for _ in range(num_qubits)]
@@ -134,15 +159,34 @@ with program() as node.namespace["qua_program"]:
                     align()
 
                     # play the flux pulse
+                    with if_(t <= 16):
+                        with switch_(t):
+                            for j in range(1, 17):
+                                with case_(j):
+                                    baked_signals[qp.qubit_control.name][j - 1].run(amp_array=[(qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * amp)])
 
-                    qp.qubit_control.z.play(
-                        "const",
-                        duration=t,
-                        amplitude_scale=pulse_amplitudes[qp.name]
-                        / qp.qubit_control.z.operations["const"].amplitude
-                        * amp,
-                    )
-
+                    with else_():
+                        assign(t_cycles, t >> 2)  # Right shift by 2 is a quick way to divide by 4
+                        assign(t_left_ns, t - (t_cycles << 2))  # left shift by 2 is a quick way to multiply by 4
+                        with switch_(t_left_ns):
+                            with case_(0):
+                                qp.qubit_control.z.play(
+                                    "const",
+                                    duration=t_cycles,
+                                    amplitude_scale=pulse_amplitudes[qp.name]
+                                    / qp.qubit_control.z.operations["const"].amplitude
+                                    * amp,
+                                )
+                            for j in range(1, 4):
+                                with case_(j):
+                                    qp.qubit_control.z.play(
+                                        "const",
+                                        duration=t_cycles,
+                                        amplitude_scale=pulse_amplitudes[qp.name]
+                                        / qp.qubit_control.z.operations["const"].amplitude
+                                        * amp,
+                                    )
+                                    baked_signals[qp.qubit_control.name][j - 1].run(amp_array=[(qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * amp)])
                     align()
 
                     if node.parameters.use_state_discrimination:
@@ -192,7 +236,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
-    config = node.machine.generate_config()
+    config = node.namespace["baked_config"]
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
