@@ -1,32 +1,29 @@
 # %% {Imports}
-import matplotlib.pyplot as plt
-import numpy as np
-from qualibration_libs import data
-import xarray as xr
+import dataclasses
 from dataclasses import asdict
 
+import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
+from calibration_utils.power_rabi import (
+    Parameters,
+    fit_raw_data,
+    get_number_of_pulses,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+    process_raw_dataset,
+)
 from qm.qua import *
-
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-
 from qualibrate import QualibrationNode
-from quam_config import Quam
-from calibration_utils.power_rabi import (
-    Parameters,
-    get_number_of_pulses,
-    process_raw_dataset,
-    fit_raw_data,
-    log_fitted_results,
-    plot_raw_data_with_fit,
-)
+from qualibration_libs import data
+from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher
-import dataclasses
-
+from quam_config import Quam
 
 # %% {Description}
 description = """
@@ -58,18 +55,13 @@ node = QualibrationNode[Parameters, Quam](
 node.namespace["Rabi_ef"] = True
 node.parameters.operation = "x180"
 
+
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qC2"]
-    # node.parameters.max_number_pulses_per_sweep = 100
-    node.parameters.min_amp_factor = 0.001
-    node.parameters.max_amp_factor = 1.999
-    node.parameters.num_shots = 500
-    # node.parameters.amp_factor_step = 0.01
     pass
 
 
@@ -109,7 +101,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         else:
             x180 = qubit.xy.operations["x180"]
             qubit.xy.operations["x180_ef"] = dataclasses.replace(x180, alpha=0.0)
-
 
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
@@ -266,5 +257,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
 
 # %%
