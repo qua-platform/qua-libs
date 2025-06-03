@@ -10,7 +10,7 @@ from .readout_resonator import ReadoutResonatorIQ
 from qm.qua import declare, assign, fixed
 from quam.utils.qua_types import QuaVariableBool
 
-__all__ = ["MeasureMacro", "ResetMacro", "VirtualZMacro", "CZMacro", "DelayMacro"]
+__all__ = ["MeasureMacro", "ResetMacro", "VirtualZMacro", "CZMacro", "DelayMacro", "IdMacro"]
 
 
 def get_pulse_name(pulse: Pulse) -> str:
@@ -85,7 +85,7 @@ class ResetMacro(QubitMacro):
 @quam_dataclass
 class VirtualZMacro(QubitMacro):
     def apply(self, angle: float) -> None:
-        self.qubit.xy.frame_rotation_2pi(angle)
+        self.qubit.xy.frame_rotation(angle)
 
 
 @quam_dataclass
@@ -158,3 +158,15 @@ class DelayMacro(QubitMacro):
     def apply(self, duration) -> None:
         qubit: Transmon = self.qubit
         qubit.wait(duration)
+
+@quam_dataclass
+class IdMacro(QubitMacro):
+    """
+    Identity macro for a qubit.
+    This macro does not perform any operation on the qubit.
+    It is used to ensure that the qubit is in a valid state.
+    """
+
+    def apply(self, **kwargs) -> None:
+        # No operation is performed
+        self.qubit.align()
