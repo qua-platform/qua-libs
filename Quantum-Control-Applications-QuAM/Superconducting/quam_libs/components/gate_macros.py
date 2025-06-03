@@ -151,6 +151,21 @@ class CZMacro(QubitPairMacro):
         self.qubit_target.xy.play("x180", amplitude_scale=0.0, duration=4)
         self.qubit_pair.align()
 
+# this is a place holder for now 
+@quam_dataclass
+class CZFixedMacro(QubitPairMacro):
+    flux_pulse_control: Union[Pulse, str] = None
+    
+    def apply(
+        self,
+        *,
+        amplitude_scale=None,
+        phase_shift_control=None,
+        phase_shift_target=None,
+        **kwargs,
+    ) -> None:
+        self.qubit_control.wait(1000//4)
+
 
 @quam_dataclass
 class DelayMacro(QubitMacro):
