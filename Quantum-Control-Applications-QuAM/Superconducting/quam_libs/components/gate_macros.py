@@ -1,7 +1,7 @@
 from typing import Union, Literal
 
 import numpy as np
-from quam.components.macro import QubitMacro, QubitPairMacro
+from quam.components.macro import QubitMacro, QubitPairMacro, PulseMacro
 from quam.components.pulses import ReadoutPulse, Pulse
 from quam.core import quam_dataclass
 from .transmon import Transmon
@@ -56,7 +56,6 @@ class ResetMacro(QubitMacro):
         assert self.max_attempts > 0, "max_attempts must be greater than 0"
 
     def apply(self, **kwargs) -> None:
-
         pi_pulse: Pulse = (
             self.pi_pulse
             if isinstance(self.pi_pulse, Pulse)
@@ -185,3 +184,62 @@ class IdMacro(QubitMacro):
     def apply(self, **kwargs) -> None:
         # No operation is performed
         self.qubit.align()
+
+@quam_dataclass
+class HadamardGate(QubitMacro):
+    """single qubit Hadamard gate
+
+    """
+
+    def apply(self):
+        self.qubit.xy.play('y90')
+        self.qubit.xy.play('x180')
+
+
+@quam_dataclass
+class XGate(QubitMacro):
+    def apply(self, *args, **kwargs):
+        self.qubit.xy.play('x180')
+
+
+@quam_dataclass
+class YGate(QubitMacro):
+    def apply(self, *args, **kwargs):
+        self.qubit.xy.play('y180')
+
+
+@quam_dataclass
+class SXGate(QubitMacro):
+    def apply(self, *args, **kwargs):
+        self.qubit.xy.play('x90')
+
+
+@quam_dataclass
+class UGate(QubitMacro):
+    def _rz(self, angle):
+        self.qubit.xy.frame_rotation(angle)
+
+    def _x90(self):
+        self.qubit.xy.play('x90')
+
+    # implementation based on https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.U3Gate
+    def apply(self, *args, **kwargs):
+        theta = args[0]
+        phi = args[1]
+        lambda_ = args[2]
+        self._rz(lambda_)
+        self._x90()
+        self._rz(theta + np.pi)
+        self._x90()
+        self._rz(phi + np.pi)
+
+
+@quam_dataclass
+class U1Gate(UGate):
+    def apply(self, *args, **kwargs):
+        return super().apply(0, 0, args[0])
+
+
+@quam_dataclass
+class U3Gate(UGate):
+    pass
