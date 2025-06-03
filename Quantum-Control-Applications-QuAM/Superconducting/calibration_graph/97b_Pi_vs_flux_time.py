@@ -42,15 +42,16 @@ start = time.time()
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['qC1', 'qC2']
+    qubits: Optional[List[str]] = ['qC1']
     num_averages: int = 10
     operation: str = "x180_Gaussian"
     operation_amplitude_factor: Optional[float] = 1
-    duration_in_ns: Optional[int] = 500
+    duration_in_ns: Optional[int] = 1000
     frequency_span_in_mhz: float = 400
     frequency_step_in_mhz: float = 0.5
-    flux_amp : float = 0.05
-    update_lo: bool = False
+    flux_amp : float = 0.075
+    update_lo: bool = True
+    update_state: bool = True
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500
@@ -81,9 +82,16 @@ tracked_qubits = []
 if node.parameters.update_lo:
     for q in qubits:
         with tracked_updates(q, auto_revert=False, dont_assign_to_none=True) as q:
+            lo_band = q.xy.opx_output.band
             rf_frequency = q.xy.intermediate_frequency + q.xy.opx_output.upconverter_frequency
-            q.xy.intermediate_frequency = 500e6
-            q.xy.opx_output.upconverter_frequency = rf_frequency - 500e6
+            lo_frequency = rf_frequency - 400e6
+            if (lo_band == 3) and (lo_frequency < 6.5e9):
+                lo_frequency = 6.5e9
+            elif (lo_band == 2) and (lo_frequency < 4.5e9):
+                lo_frequency = 4.5e9
+            
+            q.xy.intermediate_frequency = rf_frequency - lo_frequency
+            q.xy.opx_output.upconverter_frequency = lo_frequency
             tracked_qubits.append(q)
 
 # Generate the OPX and Octave configurations
@@ -229,6 +237,43 @@ def model_1exp(t, a0, a1, t1):
 def model_2exp(t, a0, a1, a2, t1, t2):
     return a0 * (1 + a1 * np.exp(-t / t1) + a2 * np.exp(-t / t2))
 
+def fit_two_exponentials(t_data: np.ndarray, y_data: np.ndarray):
+    
+    fit_results = {}
+    try:
+        popt, pcov = curve_fit(
+            f=model_1exp, 
+            xdata=t_data, 
+            ydata=y_data, 
+            p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 1000]
+            )
+        fit_results['1exp'] = {"fit_successful": True, "params": popt, "covariance": pcov}
+    except RuntimeError:
+        print("failed to fit the first exponential")
+        fit_results['1exp'] = {"fit_successful": False, "params": None, "covariance": None}
+        return fit_results
+    
+    # Use the first fit to initialize the second fit
+    a0_0 = popt[0]
+    a1_0 = a2_0 = popt[1] / 2 
+    t1_0 = popt[-1]
+    t2_0 = t1_0 / 10
+
+    try:
+        popt, pcov = curve_fit(
+            f=model_2exp, 
+            xdata=t_data, 
+            ydata=y_data, 
+            p0=[a0_0, a1_0, a2_0, t1_0, t2_0]
+            )
+        fit_results['2exp'] = {"fit_successful": True, "params": popt, "covariance": pcov}
+    except RuntimeError:
+        print("failed to fit the second exponential")
+        fit_results['2exp'] = {"fit_successful": False, "params": None, "covariance": None}
+        return fit_results
+    
+    return fit_results
+
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is not None:
@@ -263,37 +308,45 @@ if not node.parameters.simulate:
     end = time.time()
     print(f"Script runtime: {end - start:.2f} seconds")
 
-    # %%  {Data_analysis}
+# %%  {Data_analysis}
 
-    freqs = ds['freq'].values
+freqs = ds['freq'].values
 
-    # Transpose to ensure ('qubit', 'time', 'freq') order
-    stacked = ds.transpose('qubit', 'time', 'freq')
+# Transpose to ensure ('qubit', 'time', 'freq') order
+stacked = ds.transpose('qubit', 'time', 'freq')
 
-    # Now apply along 'freq' per (qubit, time)
-    center_freqs = xr.apply_ufunc(
-        lambda states: fit_gaussian(freqs, states),
-        stacked,
-        input_core_dims=[['freq']],
-        output_core_dims=[[]],  # no dimensions left after fitting
-        vectorize=True,
-        dask='parallelized',
-        output_dtypes=[float]
-    ).rename({"state": "center_frequency"})
+# Now apply along 'freq' per (qubit, time)
+center_freqs = xr.apply_ufunc(
+    lambda states: fit_gaussian(freqs, states),
+    stacked,
+    input_core_dims=[['freq']],
+    output_core_dims=[[]],  # no dimensions left after fitting
+    vectorize=True,
+    dask='parallelized',
+    output_dtypes=[float]
+).rename({"state": "center_frequency"})
 
-    # center_freqs now has dims ('qubit', 'time')
-    center_freqs = center_freqs.center_frequency + np.array([q.freq_vs_flux_01_quad_term * node.parameters.flux_amp**2 * np.ones_like(times) for q in qubits])
-    
-    flux_response = np.sqrt(center_freqs / xr.DataArray([q.freq_vs_flux_01_quad_term for q in qubits], coords={"qubit": center_freqs.qubit}, dims=["qubit"]))
+# center_freqs now has dims ('qubit', 'time')
+center_freqs = center_freqs.center_frequency + np.array([q.freq_vs_flux_01_quad_term * node.parameters.flux_amp**2 * np.ones_like(times) for q in qubits])
 
-    ds['center_freqs'] = center_freqs
-    ds['flux_response'] = flux_response
+flux_response = np.sqrt(center_freqs / xr.DataArray([q.freq_vs_flux_01_quad_term for q in qubits], coords={"qubit": center_freqs.qubit}, dims=["qubit"]))
+
+ds['center_freqs'] = center_freqs
+ds['flux_response'] = flux_response
+
+fit_results = {}
+for q in qubits:
+    fit_results[q.name] = fit_two_exponentials(
+        t_data=flux_response.sel(qubit=q.name).time.values, 
+        y_data=flux_response.sel(qubit=q.name).values
+    )
+
+node.results["fit_results"] = fit_results
 
 # %% {Plotting}
 grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
 for ax, qubit in grid_iter(grid):
-    # freq_ref = (ds.freq_full-ds.freq).sel(qubit=qubit["qubit"]).values[0]
     im = ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].state.plot(
         ax=ax, add_colorbar=False, x="time", y="freq_GHz"
         
@@ -313,9 +366,6 @@ node.results["figure_raw"] = grid.fig
 grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
 for ax, qubit in grid_iter(grid):
-    # added_freq = machine.qubits[qubit['qubit']].xy.RF_frequency*0 + machine.qubits[qubit['qubit']].freq_vs_flux_01_quad_term * node.parameters.flux_amp**2
-    # (-(center_freqs.sel(qubit=qubit["qubit"]) + added_freq)/1e9).plot()
-    # (center_freqs.sel(qubit=qubit["qubit"]) / 1e9).plot(ax=ax)
     (ds.loc[qubit].center_freqs / 1e9).plot(ax=ax)
     ax.set_ylabel("Freq (GHz)")
     ax.set_xlabel("Time (ns)")
@@ -330,8 +380,14 @@ node.results["figure_freqs_shift"] = grid.fig
 grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
 for ax, qubit in grid_iter(grid):
-    # flux_response.sel(qubit=qubit["qubit"]).plot(ax=ax)
     ds.loc[qubit].flux_response.plot(ax=ax)
+    if fit_results[qubit["qubit"]]["2exp"]["fit_successful"]:
+        popt = fit_results[qubit["qubit"]]["2exp"]["params"]
+        t_data = flux_response.sel(qubit=qubit["qubit"]).time.values
+        y_data = flux_response.sel(qubit=qubit["qubit"]).values
+        y_fit = model_2exp(t_data, *popt)
+        ax.plot(t_data, y_fit, 'r-', label=f'Fit: a0={popt[0]:.3f}, a1={popt[1]:.3f}, a2={popt[2]:.3f}, t1={popt[3]:.0f}, t2={popt[4]:.0f}')
+        # ax.legend()
     ax.set_ylabel("Flux (V)")
     ax.set_xlabel("Time (ns)")
     ax.set_title(qubit["qubit"])
@@ -342,8 +398,16 @@ plt.show()
 node.results["figure_flux_response"] = grid.fig
 
 # %% {Update_state}
-for qubit in tracked_qubits:
-    qubit.revert_changes()
+if node.parameters.load_data_id is None:
+    if node.parameters.update_state:
+        with node.record_state_updates():
+            for q in qubits:
+                if fit_results[q.name]["2exp"]["fit_successful"]:
+                    pass
+                    # q.z.opx_output.exponential_filter = 
+
+for q in tracked_qubits:
+    q.revert_changes()
 
 # %% {Save_results}
 node.results["ds"] = ds
@@ -351,42 +415,3 @@ node.outcomes = {q.name: "successful" for q in qubits}
 node.results["initial_parameters"] = node.parameters.model_dump()
 node.machine = machine
 save_node(node)
-
-# %% Fitting multi-exponential
-# TODO: Make it to work on multiple qubits
-
-# Define your model function
-def model_1exp(t, a0, a1, t1):
-    return a0 * (1+ a1 * np.exp(-t / t1))
-
-def model_2exp(t, a0, a1, a2, t1, t2):
-    return a0 * (1 + a1 * np.exp(-t / t1) + a2 * np.exp(-t / t2))
-
-
-t_data = flux_response.time.values
-y_data = flux_response.isel(qubit=0).values
-
-# Fit the data
-popt, pcov = curve_fit(model_1exp, t_data, y_data, p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 1000])
-
-a0_0 = popt[0]
-a1_0 = a2_0 = popt[1] / 2 
-t1_0 = popt[-1]
-t2_0 = 100
-
-initial_guess = [a0_0, a1_0, a2_0, t1_0, t2_0]
-
-# Perform nonlinear curve fitting
-popt, pcov = curve_fit(model_2exp, t_data, y_data, p0=initial_guess)
-
-y_fit = model_2exp(t_data, *popt)
-# y_fit = model(t_data, -0.0015, -1 / 200, popt[2], popt[3], popt[4])
-
-# Plot
-plt.figure()
-plt.scatter(t_data, y_data, label='Data')
-plt.plot(t_data, y_fit, 'r-', label=f'Fit: a0={popt[0]:.3f}, a1={popt[1]:.3f}, a2={popt[2]:.3f}, t1={popt[3]:.0f}, t2={popt[4]:.0f}')
-plt.xlabel('Time')
-plt.ylabel('Value')
-plt.legend()
-plt.show()
