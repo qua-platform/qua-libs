@@ -76,18 +76,28 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     return fit_data, fit_results
 
 
-def get_fit_outcome(freq_success: bool, fwhm_success: bool, num_peaks: int) -> str:
+def get_fit_outcome(freq_success: bool, fwhm_success: bool, num_peaks: int, snr: float) -> str:
     """
     Returns the outcome string for a given fit result.
     """
+    # Check for no peaks detected
+    if num_peaks == 0:
+        if snr < 2:
+            return "The SNR isn't large enough, consider increasing the number of shots and ensure you are looking at the correct frequency range"
+        return "No peaks were detected, consider changing the frequency range"
+    # Check for multiple peaks
     if num_peaks > 1:
         return "Several peaks were detected, consider refining the experiment"
+    # Check for low SNR
+    if snr < 2:
+        return "The SNR isn't large enough, consider increasing the number of shots"
+    # Check for frequency and FWHM success
     if not freq_success:
         return "No peaks were detected, consider changing the frequency range"
-    elif not fwhm_success:
+    if not fwhm_success:
         return "The SNR isn't large enough, consider increasing the number of shots"
-    else:
-        return "successful"
+    # If all checks pass, fit is successful
+    return "successful"
 
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
@@ -111,10 +121,11 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
     fit_results = {}
     for i, q in enumerate(fit.qubit.values):
-        # Extract num_peaks robustly for each qubit
+        # Extract num_peaks and snr robustly for each qubit
         num_peaks = int(fit.sel(qubit=q).num_peaks.values)
-        # print(f"[DEBUG] Qubit {q}: num_peaks = {num_peaks}")  # Debug logging
-        outcome = get_fit_outcome(freq_success[i], fwhm_success[i], num_peaks)
+        snr = float(fit.sel(qubit=q).snr.values)
+        print(f"[DEBUG] Qubit {q}: num_peaks = {num_peaks}, snr = {snr}")  # Debug logging
+        outcome = get_fit_outcome(freq_success[i], fwhm_success[i], num_peaks, snr)
         fit_results[q] = FitParameters(
             frequency=fit.sel(qubit=q).res_freq.values.__float__(),
             fwhm=fit.sel(qubit=q).fwhm.values.__float__(),
