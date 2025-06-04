@@ -36,12 +36,12 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qC1"]
+    node.parameters.qubits = ["qD2"]
     node.parameters.reset_type = "active"
-    node.parameters.cryoscope_len = 100
+    node.parameters.cryoscope_len = 200
     node.parameters.use_state_discrimination = True
-    node.parameters.amp_factor = 0.07
-    node.parameters.num_shots = 2_000
+    node.parameters.amp_factor = 0.05
+    node.parameters.num_shots = 1_000
     # node.parameters.simulate = True
     node.parameters.simulation_duration_ns = 20_000
     node.parameters.timeout = 10000
@@ -317,8 +317,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             print(f"fit_2exp: {fit_2exp}")
 
             node.machine.qubits[q.name].z.opx_output.exponential_filter = [
-                (-fit_2exp[1], fit_2exp[2]),
-                (-fit_2exp[3], fit_2exp[4]),
+                (-fit_1exp[1], fit_1exp[2]),
+                # (-fit_2exp[3], fit_2exp[4]),
             ]
 
             node.save()
+
+# %%
