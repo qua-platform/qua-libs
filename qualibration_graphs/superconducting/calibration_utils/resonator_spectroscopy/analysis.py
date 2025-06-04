@@ -1,12 +1,13 @@
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Dict
+from typing import Dict, Tuple
+
 import numpy as np
 import xarray as xr
+from qualibration_libs.analysis import peaks_dips
+from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 
 from qualibrate import QualibrationNode
-from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
-from qualibration_libs.analysis import peaks_dips
 
 
 @dataclass
@@ -15,7 +16,7 @@ class FitParameters:
 
     frequency: float
     fwhm: float
-    success: bool
+    outcome: str
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
@@ -36,10 +37,10 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         s_qubit = f"Results for qubit {q}: "
         s_freq = f"\tResonator frequency: {1e-9 * fit_results[q]['frequency']:.3f} GHz | "
         s_fwhm = f"FWHM: {1e-3 * fit_results[q]['fwhm']:.1f} kHz | "
-        if fit_results[q]["success"]:
+        if fit_results[q]["outcome"] == "successful":
             s_qubit += " SUCCESS!\n"
         else:
-            s_qubit += " FAIL!\n"
+            s_qubit += f" FAIL! Reason: {fit_results[q]['outcome']}\n"
         log_callable(s_qubit + s_freq + s_fwhm)
 
 
@@ -75,6 +76,20 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     return fit_data, fit_results
 
 
+def get_fit_outcome(freq_success: bool, fwhm_success: bool, num_peaks: int) -> str:
+    """
+    Returns the outcome string for a given fit result.
+    """
+    if num_peaks > 1:
+        return "Several peaks were detected, consider refining the experiment"
+    if not freq_success:
+        return "No peaks were detected, consider changing the frequency range"
+    elif not fwhm_success:
+        return "The SNR isn't large enough, consider increasing the number of shots"
+    else:
+        return "successful"
+
+
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
     # Add metadata to fit results
@@ -94,12 +109,15 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     success_criteria = freq_success & fwhm_success
     fit = fit.assign_coords(success=("qubit", success_criteria))
 
-    fit_results = {
-        q: FitParameters(
+    fit_results = {}
+    for i, q in enumerate(fit.qubit.values):
+        # Extract num_peaks robustly for each qubit
+        num_peaks = int(fit.sel(qubit=q).num_peaks.values)
+        # print(f"[DEBUG] Qubit {q}: num_peaks = {num_peaks}")  # Debug logging
+        outcome = get_fit_outcome(freq_success[i], fwhm_success[i], num_peaks)
+        fit_results[q] = FitParameters(
             frequency=fit.sel(qubit=q).res_freq.values.__float__(),
             fwhm=fit.sel(qubit=q).fwhm.values.__float__(),
-            success=fit.sel(qubit=q).success.values.__bool__(),
+            outcome=outcome,
         )
-        for q in fit.qubit.values
-    }
     return fit, fit_results
