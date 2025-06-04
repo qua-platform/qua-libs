@@ -42,16 +42,17 @@ start = time.time()
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['qC1']
-    num_averages: int = 10
+    qubits: Optional[List[str]] = ['qC5']
+    num_averages: int = 50
     operation: str = "x180_Gaussian"
     operation_amplitude_factor: Optional[float] = 1
-    duration_in_ns: Optional[int] = 1000
+    duration_in_ns: Optional[int] = 700
     frequency_span_in_mhz: float = 400
     frequency_step_in_mhz: float = 0.5
-    flux_amp : float = 0.075
+    flux_amp : float = 0.2
     update_lo: bool = True
-    update_state: bool = True
+    fit_single_exponential: bool = True
+    update_state: bool = False
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500
@@ -237,7 +238,7 @@ def model_1exp(t, a0, a1, t1):
 def model_2exp(t, a0, a1, a2, t1, t2):
     return a0 * (1 + a1 * np.exp(-t / t1) + a2 * np.exp(-t / t2))
 
-def fit_two_exponentials(t_data: np.ndarray, y_data: np.ndarray):
+def fit_two_exponentials(t_data: np.ndarray, y_data: np.ndarray, fit_single_exponential: bool):
     
     fit_results = {}
     try:
@@ -251,26 +252,29 @@ def fit_two_exponentials(t_data: np.ndarray, y_data: np.ndarray):
     except RuntimeError:
         print("failed to fit the first exponential")
         fit_results['1exp'] = {"fit_successful": False, "params": None, "covariance": None}
+        if not fit_single_exponential:
+            fit_results['2exp'] = {"fit_successful": False, "params": None, "covariance": None}
         return fit_results
     
-    # Use the first fit to initialize the second fit
-    a0_0 = popt[0]
-    a1_0 = a2_0 = popt[1] / 2 
-    t1_0 = popt[-1]
-    t2_0 = t1_0 / 10
+    if not fit_single_exponential:
+        # Use the first fit to initialize the second fit
+        a0_0 = popt[0]
+        a1_0 = a2_0 = popt[1] / 2 
+        t1_0 = popt[-1]
+        t2_0 = t1_0 / 10
 
-    try:
-        popt, pcov = curve_fit(
-            f=model_2exp, 
-            xdata=t_data, 
-            ydata=y_data, 
-            p0=[a0_0, a1_0, a2_0, t1_0, t2_0]
-            )
-        fit_results['2exp'] = {"fit_successful": True, "params": popt, "covariance": pcov}
-    except RuntimeError:
-        print("failed to fit the second exponential")
-        fit_results['2exp'] = {"fit_successful": False, "params": None, "covariance": None}
-        return fit_results
+        try:
+            popt, pcov = curve_fit(
+                f=model_2exp, 
+                xdata=t_data, 
+                ydata=y_data, 
+                p0=[a0_0, a1_0, a2_0, t1_0, t2_0]
+                )
+            fit_results['2exp'] = {"fit_successful": True, "params": popt, "covariance": pcov}
+        except RuntimeError:
+            print("failed to fit the second exponential")
+            fit_results['2exp'] = {"fit_successful": False, "params": None, "covariance": None}
+            return fit_results
     
     return fit_results
 
@@ -338,7 +342,8 @@ fit_results = {}
 for q in qubits:
     fit_results[q.name] = fit_two_exponentials(
         t_data=flux_response.sel(qubit=q.name).time.values, 
-        y_data=flux_response.sel(qubit=q.name).values
+        y_data=flux_response.sel(qubit=q.name).values,
+        fit_single_exponential=node.parameters.fit_single_exponential
     )
 
 node.results["fit_results"] = fit_results
@@ -381,13 +386,25 @@ grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
 for ax, qubit in grid_iter(grid):
     ds.loc[qubit].flux_response.plot(ax=ax)
-    if fit_results[qubit["qubit"]]["2exp"]["fit_successful"]:
+
+    if not node.parameters.fit_single_exponential and fit_results[qubit["qubit"]]["2exp"]["fit_successful"]:
         popt = fit_results[qubit["qubit"]]["2exp"]["params"]
         t_data = flux_response.sel(qubit=qubit["qubit"]).time.values
         y_data = flux_response.sel(qubit=qubit["qubit"]).values
         y_fit = model_2exp(t_data, *popt)
-        ax.plot(t_data, y_fit, 'r-', label=f'Fit: a0={popt[0]:.3f}, a1={popt[1]:.3f}, a2={popt[2]:.3f}, t1={popt[3]:.0f}, t2={popt[4]:.0f}')
-        # ax.legend()
+        ax.plot(t_data, y_fit, 'r-')
+        fit_text = f'a0={popt[0]:.3f}\na1={popt[1]:.3f}\na2={popt[2]:.3f}\nt1={popt[3]:.0f}ns\nt2={popt[4]:.0f}ns'
+        ax.text(0.02, 0.98, fit_text, transform=ax.transAxes, verticalalignment='top', fontsize=8)
+    
+    elif fit_results[qubit["qubit"]]["1exp"]["fit_successful"]:
+        popt = fit_results[qubit["qubit"]]["1exp"]["params"]
+        t_data = flux_response.sel(qubit=qubit["qubit"]).time.values
+        y_data = flux_response.sel(qubit=qubit["qubit"]).values
+        y_fit = model_1exp(t_data, *popt)
+        ax.plot(t_data, y_fit, 'r-')
+        fit_text = f'a0={popt[0]:.3f}\na1={popt[1]:.3f}\nt1={popt[2]:.0f}ns'
+        ax.text(0.02, 0.98, fit_text, transform=ax.transAxes, verticalalignment='top', fontsize=8)
+
     ax.set_ylabel("Flux (V)")
     ax.set_xlabel("Time (ns)")
     ax.set_title(qubit["qubit"])
@@ -402,9 +419,15 @@ if node.parameters.load_data_id is None:
     if node.parameters.update_state:
         with node.record_state_updates():
             for q in qubits:
-                if fit_results[q.name]["2exp"]["fit_successful"]:
-                    pass
-                    # q.z.opx_output.exponential_filter = 
+                if not node.parameters.fit_single_exponential and fit_results[q.name]["2exp"]["fit_successful"]:
+                    q.z.opx_output.exponential_filter = [
+                        [fit_results[q.name]["2exp"]["params"][1], fit_results[q.name]["2exp"]["params"][3]],
+                        [fit_results[q.name]["2exp"]["params"][2], fit_results[q.name]["2exp"]["params"][4]]
+                        ]
+                elif fit_results[q.name]["1exp"]["fit_successful"]:
+                    q.z.opx_output.exponential_filter = [
+                        [fit_results[q.name]["1exp"]["params"][1], fit_results[q.name]["1exp"]["params"][2]]
+                        ]
 
 for q in tracked_qubits:
     q.revert_changes()
