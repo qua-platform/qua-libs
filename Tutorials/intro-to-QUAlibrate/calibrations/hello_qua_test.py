@@ -1,6 +1,7 @@
 # %% {Imports}
 import numpy as np
 import xarray as xr
+from qm import QuantumMachinesManager
 
 from qm.qua import *
 import os
@@ -10,7 +11,6 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
-from quam_config import Quam
 from calibration_utils_test.hello_qua_test import Parameters
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
@@ -23,17 +23,17 @@ description = """
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="hello_qua", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, None](name="hello_qua", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[Parameters, Quam]):
+def custom_param(node: QualibrationNode[Parameters, None]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.num_shots = 10
-    node.parameters.simulate = True
+    node.parameters.simulate = False
     pass
 
 
@@ -41,12 +41,11 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
-def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+def create_qua_program(node: QualibrationNode[Parameters, None]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
-    # node.namespace["qubits"] = qubits = get_qubits(node) #TODO: DELETE
     # The qubit operation to play
     operation = node.parameters.operation
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
@@ -60,21 +59,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "qubit": xr.DataArray(['q1', 'q2']),
         "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "pulse amplitude prefactor"}),
     }
-
+    qubits = ['q1', 'q2']
     # node.namespace["sweep"]
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
         n = declare(int) # QUA variable for the number of averages
         a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
         n_st = declare_stream()
-        for multiplexed_qubits in qubits.batch():
-            with for_(n, 0, n < node.parameters.num_shots, n + 1):
-                save(n, n_st)
-                with for_(*from_array(a, amps)):
-                    for i, qubit in multiplexed_qubits.items():
-                        qubit.xy.play(operation, amplitude_scale=a)
-                        qubit.wait(250 * u.ns)
-                    align()
+        with for_(n, 0, n < node.parameters.num_shots, n + 1):
+            save(n, n_st)
+            with for_(*from_array(a, amps)):
+                for qubit in qubits:
+                    play(operation * amp(a), qubit)
+                    wait(250 * u.ns, qubit)
+                align()
 
         with stream_processing():
             n_st.save("n")
@@ -82,12 +80,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
-def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+def simulate_qua_program(node: QualibrationNode[Parameters, None]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
-    qmm = node.machine.connect()
-    # Get the config from the machine
-    config = node.machine.generate_config()
+    qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
@@ -96,10 +92,10 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
-def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+def execute_qua_program(node: QualibrationNode[Parameters, None]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
-    qmm = node.machine.connect()
+    qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
