@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -51,28 +51,14 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
 def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots individual qubit data on a given axis with optional fit.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The axis on which to plot the data.
-    ds : xr.Dataset
-        The dataset containing the quadrature data.
-    qubit : dict[str, str]
-        mapping to the qubit to plot.
-    fit : xr.Dataset, optional
-        The dataset containing the fit parameters (default is None).
-
-    Notes
-    -----
-    - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
+    Now only overlays red 'x' markers for good fits, not a continuous orange line.
     """
     ds.assign_coords(freq_GHz=ds.full_freq / 1e9).loc[qubit].IQ_abs.plot(
         ax=ax,
         add_colorbar=False,
         x="freq_GHz",
         y="power",
-        linewidth=0.5,
+        linewidth=2,
     )
     ax.set_ylabel("Power (dBm)")
     ax2 = ax.twiny()
@@ -80,24 +66,25 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
         ax=ax2, add_colorbar=False, x="detuning_MHz", y="power", robust=True
     )
     ax2.set_xlabel("Detuning [MHz]")
-    # Plot the resonance frequency for each amplitude
-    ax2.plot(
-        (fit.rr_min_response) * 1e-6,
-        fit.power,
-        color="orange",
-        linewidth=0.5,
-    )
+    # Overlay red 'x' markers for good fits only
+    if hasattr(fit, "fit_quality_mask") and hasattr(fit, "rr_min_response_good"):
+        mask = fit.fit_quality_mask.values.astype(bool)
+        xvals = fit.rr_min_response_good.values * 1e-6  # MHz
+        yvals = fit.power.values
+        ax2.scatter(xvals[mask], yvals[mask], color="red", marker="x", label="Good fit", zorder=10)
     # Plot where the optimum readout power was found
-    if fit.success:
+    if getattr(fit, "outcome", None) == "successful":
         ax2.axhline(
             y=fit.optimal_power,
-            color="g",
+            color="magenta",
             linestyle="-",
+            linewidth=2,
         )
         ax2.axvline(
             x=fit.freq_shift * 1e-6,
             color="blue",
             linestyle="--",
+            linewidth=2,
         )
     # ax3 = ax.twinx()
     # ds.assign_coords(readout_amp=ds.detuning / u.MHz).loc[qubit].IQ_abs_norm.plot(
@@ -114,7 +101,7 @@ def plotly_plot_raw_data_with_fit(
     """
     Plotly version of resonator spectroscopy vs power: one (n_powers×n_freqs) heatmap
     per qubit (with Detuning shown on hover), plus three overlays if 'fits.success':
-      • Red “×” markers at (absolute_dip_freq [GHz], power_dBm), hover also shows Detuning [MHz]
+      • Red "×" markers at (absolute_dip_freq [GHz], power_dBm), hover also shows Detuning [MHz]
       • Magenta dashed vertical at the center resonator frequency
       • Cyan dotted horizontal line at the optimal_readout_power
 
@@ -243,7 +230,7 @@ def plotly_plot_raw_data_with_fit(
         zmin_i = per_zmin[q_idx]
         zmax_i = per_zmax[q_idx]
 
-        # (e) Add the Viridis heatmap (with a “placeholder” colorbar):
+        # (e) Add the Viridis heatmap (with a "placeholder" colorbar):
         fig.add_trace(
             go.Heatmap(
                 z             = z_mat,
@@ -255,7 +242,7 @@ def plotly_plot_raw_data_with_fit(
                 zmax          = zmax_i,
                 showscale     = True,
                 colorbar      = dict(
-                    x         = 1.0,      # placeholder (we’ll move below)
+                    x         = 1.0,      # placeholder (we'll move below)
                     y         = 0.5,
                     len       = 1.0,
                     thickness = 14,
@@ -280,69 +267,68 @@ def plotly_plot_raw_data_with_fit(
 
         # (f) Overlay the fit if success=True:
         fit_ds = fits.sel(qubit=qubit_id)
-        if "success" in fit_ds.coords and bool(fit_ds.success):
-            center_Hz  = float(fit_ds.res_freq.values)
-            rr_detune  = fit_ds.rr_min_response.values   # (n_powers,) in Hz
-            abs_rr_Hz  = center_Hz + rr_detune           # (n_powers,) in Hz
-            rr_vals_GHz= abs_rr_Hz / 1e9                 # (n_powers,) in GHz
-            p_fit_vals = fit_ds.power.values             # (n_powers,) in dBm
-
-            # Build 1D Detuning [MHz] for those fit markers:
-            det_fit_MHz = (rr_detune.astype(float) / 1e6)  # (n_powers,) in MHz
-
-            # — (i) Red “×” markers at (rr_vals_GHz, p_fit_vals):
+        if "fit_quality_mask" in fit_ds and "rr_min_response_good" in fit_ds:
+            mask = fit_ds.fit_quality_mask.values.astype(bool)
+            rr_detune = fit_ds.rr_min_response_good.values  # (n_powers,) in Hz
+            center_Hz = float(fit_ds.res_freq.values)
+            abs_rr_Hz = center_Hz + rr_detune
+            overlay_freqs = []
+            for d in rr_detune:
+                idx = np.argmin(np.abs(detuning_array - d))
+                overlay_freqs.append(freq_array[q_idx][idx])
+            overlay_freqs = np.array(overlay_freqs) / 1e9  # to GHz
+            p_fit_vals = fit_ds.power.values
+            # Only plot where mask is True
             fig.add_trace(
                 go.Scatter(
-                    x             = rr_vals_GHz,
-                    y             = p_fit_vals,
-                    customdata    = det_fit_MHz,
-                    mode          = "markers",
-                    marker        = dict(symbol="x", color="red", size=8),
-                    hovertemplate = (
+                    x=overlay_freqs[mask],
+                    y=p_fit_vals[mask],
+                    mode="markers",
+                    marker=dict(symbol="x", color="red", size=8),
+                    name="Good Fit",
+                    showlegend=False,
+                    hovertemplate=(
                         "Freq [GHz]: %{x:.3f}<br>"
                         "Power [dBm]: %{y:.2f}<br>"
-                        "Detuning [MHz]: %{customdata:.2f}<extra></extra>"
+                        "<extra></extra>"
                     ),
-                    showlegend    = False
                 ),
-                row = row, col = col
+                row=row, col=col
             )
-
-            # — (ii) Magenta dashed vertical at center_Hz/1e9:
-            res_GHz = center_Hz / 1e9
+        if "outcome" in fit_ds.coords and fit_ds.outcome == "successful":
+            res_GHz = float(fit_ds.res_freq.values) / 1e9
             fig.add_trace(
                 go.Scatter(
-                    x          = [res_GHz, res_GHz],
-                    y          = [power_vals.min(), power_vals.max()],
-                    mode       = "lines",
-                    line       = dict(color="magenta", width=2, dash="dash"),
-                    showlegend = False,
-                    hoverinfo  = "skip"
+                    x=[res_GHz, res_GHz],
+                    y=[power_vals.min(), power_vals.max()],
+                    mode="lines",
+                    line=dict(color="magenta", width=2, dash="dash"),
+                    showlegend=False,
+                    hoverinfo="skip"
                 ),
-                row = row, col = col
+                row=row, col=col
             )
-
-            # — (iii) Cyan dotted horizontal at optimal_power:
             opt_pwr = float(fit_ds.optimal_power.values)
             fig.add_trace(
                 go.Scatter(
-                    x          = [freq_vals.min(), freq_vals.max()],
-                    y          = [opt_pwr, opt_pwr],
-                    mode       = "lines",
-                    line       = dict(color="cyan", width=2, dash="dot"),
-                    showlegend = False,
-                    hoverinfo  = "skip"
+                    x=[freq_vals.min(), freq_vals.max()],
+                    y=[opt_pwr, opt_pwr],
+                    mode="lines",
+                    line=dict(color="cyan", width=2, dash="dot"),
+                    showlegend=False,
+                    hoverinfo="skip"
                 ),
-                row = row, col = col
+                row=row, col=col
             )
 
         # (g) Tidy axis titles & annotation font
         fig.update_xaxes(title_text="RF frequency [GHz]", row=row, col=col)
         fig.update_yaxes(title_text="Power [dBm]",       row=row, col=col)
-        fig.layout.annotations[idx]["font"] = dict(size=16)
+        if idx < len(fig.layout.annotations):
+            fig.layout.annotations[idx]["font"] = dict(size=16)
 
     # ----------------------------------------------------
-    # 7) Reposition each colorbar so it doesn’t overlap
+    # 7) Reposition each colorbar so it doesn't overlap
     # ----------------------------------------------------
     for (hm_idx, row, col) in heatmap_info:
         axis_num = (row - 1) * ncols + col
@@ -394,7 +380,7 @@ def plotly_plot_raw_data(
 ) -> go.Figure:
     """
     Plotly version: one heatmap per qubit, each with its own colorbar,
-    with ‘Detuning [MHz]’ included in the hover tooltip.  Subplots do not overlap.
+    with 'Detuning [MHz]' included in the hover tooltip.  Subplots do not overlap.
 
     Requirements (ds):
       - Must have "full_freq" or "freq_full" (Hz) as a DataArray of shape (n_qubits, n_freqs).
@@ -451,7 +437,7 @@ def plotly_plot_raw_data(
         rows               = nrows,
         cols               = ncols,
         subplot_titles     = subplot_titles,
-        horizontal_spacing = 0.15,    # leave ~15% gap so colorbars + titles don’t overlap
+        horizontal_spacing = 0.15,    # leave ~15% gap so colorbars + titles don't overlap
         vertical_spacing   = 0.12,    # leave ~12% gap between rows
         shared_xaxes       = False,
         shared_yaxes       = False
@@ -482,7 +468,7 @@ def plotly_plot_raw_data(
         col      = (idx % ncols)  + 1
         qubit_id = list(name_dict.values())[0]
 
-        # We assume qubits in ds.qubit.values are in the same order as freq_array’s first axis:
+        # We assume qubits in ds.qubit.values are in the same order as freq_array's first axis:
         # If that is not guaranteed, look up index by name.  For now:
         q_labels = list(ds.qubit.values)
         try:
@@ -503,7 +489,7 @@ def plotly_plot_raw_data(
         if np.all(np.isnan(z_mat)):
             z_mat = np.zeros_like(z_mat)
 
-        # Build a 2D “detuning_MHz” array for hover: same shape as z_mat, each row identical:
+        # Build a 2D "detuning_MHz" array for hover: same shape as z_mat, each row identical:
         detuning_MHz = (detuning_array / 1e6).astype(float)          # (n_freqs,) in MHz
         det2d = np.tile(detuning_MHz[np.newaxis, :], (n_powers, 1))  # shape (n_powers, n_freqs)
 
@@ -511,7 +497,7 @@ def plotly_plot_raw_data(
         zmin_i = per_zmin[q_idx]
         zmax_i = per_zmax[q_idx]
 
-        # Add the heatmap with a “placeholder” colorbar (we’ll reposition it in step 6)
+        # Add the heatmap with a "placeholder" colorbar (we'll reposition it in step 6)
         fig.add_trace(
             go.Heatmap(
                 z             = z_mat,
@@ -544,35 +530,36 @@ def plotly_plot_raw_data(
         )
         heatmap_idx = len(fig.data) - 1  # record index of this heatmap
         # Store (trace_index, row, col) to reposition its colorbar later
-        # (We’ll do that in step 6)
+        # (We'll do that in step 6)
 
         # Tidy axis titles and annotation font for this subplot:
         fig.update_xaxes(title_text="RF frequency [GHz]", row=row, col=col)
         fig.update_yaxes(title_text="Power [dBm]",       row=row, col=col)
-        fig.layout.annotations[idx]["font"] = dict(size=16)
+        if idx < len(fig.layout.annotations):
+            fig.layout.annotations[idx]["font"] = dict(size=16)
 
     # ----------------------------------------------------
     # 6) Reposition each colorbar so it sits to the right of its subplot
-    #    and shrink it to 90% of subplot’s height, with “outside” ticks/labels
+    #    and shrink it to 90% of subplot's height, with "outside" ticks/labels
     # ----------------------------------------------------
     for idx in range(n_qubits):
         axis_num = idx + 1
         xaxis_key = f"xaxis{axis_num}"
         yaxis_key = f"yaxis{axis_num}"
 
-        # The domain of the subplot’s axes:
+        # The domain of the subplot's axes:
         x_dom = fig.layout[xaxis_key].domain  # [x_start, x_end]
         y_dom = fig.layout[yaxis_key].domain  # [y_start, y_end]
 
-        # Place the colorbar just to the right of x_end by +0.03 of the figure’s width
+        # Place the colorbar just to the right of x_end by +0.03 of the figure's width
         x0_cb = x_dom[1] + 0.01
         x1_cb = x0_cb + 0.02     # bar width = 2% of figure width
         y0    = y_dom[0]
         y1    = y_dom[1]
-        bar_len      = (y1 - y0) * 0.90   # 90% of subplot’s vertical span
+        bar_len      = (y1 - y0) * 0.90   # 90% of subplot's vertical span
         bar_center_y = (y0 + y1) / 2
 
-        hm_trace = fig.data[idx]  # this subplot’s heatmap trace
+        hm_trace = fig.data[idx]  # this subplot's heatmap trace
         hm_trace.colorbar.update({
             "x"                   : x0_cb,
             "y"                   : bar_center_y,
