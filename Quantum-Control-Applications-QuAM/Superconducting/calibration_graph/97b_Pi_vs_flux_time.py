@@ -42,14 +42,14 @@ start = time.time()
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['qC5']
-    num_averages: int = 50
-    operation: str = "x180_Gaussian"
+    qubits: Optional[List[str]] = None
+    num_averages: int = 10
+    operation: str = "x180"
     operation_amplitude_factor: Optional[float] = 1
-    duration_in_ns: Optional[int] = 700
-    frequency_span_in_mhz: float = 400
-    frequency_step_in_mhz: float = 0.5
-    flux_amp : float = 0.2
+    duration_in_ns: Optional[int] = 400
+    frequency_span_in_mhz: float = 200
+    frequency_step_in_mhz: float = 0.2
+    flux_amp : float = 0.08
     update_lo: bool = True
     fit_single_exponential: bool = True
     update_state: bool = False
@@ -246,7 +246,8 @@ def fit_two_exponentials(t_data: np.ndarray, y_data: np.ndarray, fit_single_expo
             f=model_1exp, 
             xdata=t_data, 
             ydata=y_data, 
-            p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 1000]
+            p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 300],
+            bounds=([0, -np.inf, 0], [np.inf, np.inf, 300])  # Adding constraint for the third parameter to be below 300
             )
         fit_results['1exp'] = {"fit_successful": True, "params": popt, "covariance": pcov}
     except RuntimeError:
@@ -415,6 +416,9 @@ plt.show()
 node.results["figure_flux_response"] = grid.fig
 
 # %% {Update_state}
+for q in tracked_qubits:
+    q.revert_changes()
+
 if node.parameters.load_data_id is None:
     if node.parameters.update_state:
         with node.record_state_updates():
@@ -428,9 +432,9 @@ if node.parameters.load_data_id is None:
                     q.z.opx_output.exponential_filter = [
                         [fit_results[q.name]["1exp"]["params"][1], fit_results[q.name]["1exp"]["params"][2]]
                         ]
+                    print("updated the exponential filter")
 
-for q in tracked_qubits:
-    q.revert_changes()
+
 
 # %% {Save_results}
 node.results["ds"] = ds
@@ -438,3 +442,4 @@ node.outcomes = {q.name: "successful" for q in qubits}
 node.results["initial_parameters"] = node.parameters.model_dump()
 node.machine = machine
 save_node(node)
+# %%
