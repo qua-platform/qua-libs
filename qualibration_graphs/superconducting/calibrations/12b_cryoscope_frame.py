@@ -317,10 +317,11 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             print(f"fit_2exp: {fit_2exp}")
 
             node.machine.qubits[q.name].z.opx_output.exponential_filter = [
-                (-fit_1exp[1], fit_1exp[2]),
+                (fit_1exp[1], fit_1exp[2]),
                 # (-fit_2exp[3], fit_2exp[4]),
             ]
 
             node.save()
+
 
 # %%
