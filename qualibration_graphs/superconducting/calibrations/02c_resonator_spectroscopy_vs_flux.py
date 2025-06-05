@@ -1,30 +1,24 @@
 # %% {Imports}
+import warnings
+from dataclasses import asdict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
-import warnings
-
+from calibration_utils.resonator_spectroscopy_vs_flux import (
+    Parameters, fit_raw_data, log_fitted_results, plot_raw_data_with_fit,
+    plotly_plot_raw_data, plotly_plot_raw_data_with_fit, process_raw_dataset)
 from qm.qua import *
-
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-
-from qualibrate import QualibrationNode
-from quam_config import Quam
-from calibration_utils.resonator_spectroscopy_vs_flux import (
-    Parameters,
-    process_raw_dataset,
-    fit_raw_data,
-    log_fitted_results,
-    plot_raw_data_with_fit,
-)
+from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher
+from quam_config import Quam
 
+from qualibrate import QualibrationNode
 
 # %% {Initialisation}
 description = """
@@ -219,9 +213,15 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
+
+    plot_fit = plotly_plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    plot_raw = plotly_plot_raw_data(node.results["ds_raw"], node.namespace["qubits"])
+
     # Store the generated figures
     node.results["figures"] = {
         "amplitude": fig_raw_fit,
+        "plotly_raw_data": plot_raw,
+        "plotly_amplitude": plot_fit
     }
 
 
