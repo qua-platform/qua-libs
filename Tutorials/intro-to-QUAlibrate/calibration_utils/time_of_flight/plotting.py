@@ -1,0 +1,179 @@
+from typing import List
+
+import numpy as np
+import xarray as xr
+from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+
+from qualang_tools.units import unit
+from qualibration_libs.plotting import QubitGrid, grid_iter
+from quam_builder.architecture.superconducting.qubit import AnyTransmon
+
+u = unit(coerce_to_integer=True)
+
+
+def plot_single_run_with_fit(num_resonators, data: dict):
+    """
+        Plot single-shot I/Q traces for each qubit with threshold and delay markers.
+
+        Each subplot displays:
+            - The single-run I (blue) and Q (red) quadrature signals.
+            - Horizontal dashed lines at +0.5 and -0.5 as visual thresholds.
+            - Dashed lines representing the mean offset of I and Q.
+            - A vertical dashed line marking the extracted delay.
+
+        Args:
+            num_resonators (int): Number of resonators (or qubits) to plot.
+            data (dict): Dictionary containing processed signal data, including:
+                - 'adc_single_runI{i}'
+                - 'adc_single_runQ{i}'
+                - 'mean_values'
+                - 'delay{i}'
+
+        Returns:
+            matplotlib.figure.Figure: The figure object containing the subplots.
+        """
+    fig_single_run, axs1 = plt.subplots(num_resonators, 1, figsize=(10, 4 * num_resonators))
+
+    for i in range(num_resonators):
+        q = i + 1
+        adcI = data[f'adc_single_runI{q}']
+        adcQ = data[f'adc_single_runQ{q}']
+        adcI_mean = data["mean_values"][f'adcI{q}']
+        adcQ_mean = data["mean_values"][f'adcQ{q}']
+        delay = data[f'delay{q}']
+
+        ax = axs1[i] if num_resonators > 1 else axs1
+        ax.set_title(f"Qubit {q} - Single Run")
+        ax.plot(adcI, "b", label="I")
+        ax.plot(adcQ, "r", label="Q")
+        ax.axhline(0.5, color="gray", linestyle="-")
+        ax.axhline(-0.5, color="gray", linestyle="-")
+        xl = ax.get_xlim()
+        yl = ax.get_ylim()
+        ax.plot(xl, adcI_mean * np.ones(2), "k--")
+        ax.plot(xl, adcQ_mean * np.ones(2), "k--")
+        ax.plot([delay, delay], yl, "k--")
+        ax.set_xlabel("Time [ns]")
+        ax.set_ylabel("Signal amplitude [V]")
+        ax.legend()
+        ax.grid(True)
+
+    fig_single_run.tight_layout()
+
+    return fig_single_run
+
+
+def plot_averaged_run_with_fit(num_resonators, data: dict):
+    """
+    Plot averaged I/Q traces for each qubit with mean lines and delay markers.
+
+    Each subplot displays:
+        - Averaged I (blue) and Q (red) readout signals.
+        - Dashed lines at their respective means (I and Q).
+        - A vertical dashed line at the detected signal delay.
+
+    Args:
+        num_resonators (int): Number of resonators (or qubits) to plot.
+        data (dict): Dictionary containing averaged signal data, including:
+            - 'adcI{i}'
+            - 'adcQ{i}'
+            - 'mean_values'
+            - 'delay{i}'
+
+    Returns:
+        matplotlib.figure.Figure: The figure object containing the subplots.
+    """
+    fig_averaged_run, axs2 = plt.subplots(num_resonators, 1, figsize=(10, 4 * num_resonators))
+
+    for i in range(num_resonators):
+        q = i + 1
+        adcI = data[f'adcI{q}']
+        adcQ = data[f'adcQ{q}']
+        adcI_mean = data["mean_values"][f'adcI{q}']
+        adcQ_mean = data["mean_values"][f'adcQ{q}']
+        delay = data[f'delay{q}']
+
+        ax = axs2[i] if num_resonators > 1 else axs2
+        ax.set_title(f"Qubit {q} - Averaged Run")
+        ax.plot(adcI, "b", label="I")
+        ax.plot(adcQ, "r", label="Q")
+        xl = ax.get_xlim()
+        yl = ax.get_ylim()
+        ax.plot(xl, adcI_mean * np.ones(2), "k--")
+        ax.plot(xl, adcQ_mean * np.ones(2), "k--")
+        ax.plot([delay, delay], yl, "k--")
+        ax.set_xlabel("Time [ns]")
+        ax.set_ylabel("Signal amplitude [V]")
+        ax.legend()
+        ax.grid(True)
+
+    fig_averaged_run.tight_layout()
+
+    return fig_averaged_run
+
+# def plot_individual_single_run_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+#     """
+#     Plots individual qubit data on a given axis with optional fit.
+#
+#     Parameters
+#     ----------
+#     ax : matplotlib.axes.Axes
+#         The axis on which to plot the data.
+#     ds : xr.Dataset
+#         The dataset containing the quadrature data.
+#     qubit : dict[str, str]
+#         mapping to the qubit to plot.
+#     fit : xr.Dataset, optional
+#         The dataset containing the fit parameters (default is None).
+#
+#     Notes
+#     -----
+#     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
+#     """
+#     ds.loc[qubit].adc_single_runI.plot(ax=ax, x="readout_time", label="I", color="b")
+#     ds.loc[qubit].adc_single_runQ.plot(ax=ax, x="readout_time", label="Q", color="r")
+#     ax.axvline(fit.delay, color="k", linestyle="--", label="TOF")
+#     # ax.axhline(ds.loc[qubit].offsets_I, color="b", linestyle="--")
+#     # ax.axhline(ds.loc[qubit].offsets_Q, color="r", linestyle="--")
+#     ax.fill_between(
+#         range(ds.sizes["readout_time"]),
+#         -0.5,
+#         0.5,
+#         color="grey",
+#         alpha=0.2,
+#         label="ADC Range",
+#     )
+#     ax.set_xlabel("Time [ns]")
+#     ax.set_ylabel("Readout amplitude [mV]")
+#     ax.set_title(qubit["qubit"])
+#
+#
+# def plot_individual_averaged_run_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+#     """
+#     Plots individual qubit data on a given axis with optional fit.
+#
+#     Parameters
+#     ----------
+#     ax : matplotlib.axes.Axes
+#         The axis on which to plot the data.
+#     ds : xr.Dataset
+#         The dataset containing the quadrature data.
+#     qubit : dict[str, str]
+#         mapping to the qubit to plot.
+#     fit : xr.Dataset, optional
+#         The dataset containing the fit parameters (default is None).
+#
+#     Notes
+#     -----
+#     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
+#     """
+#     ds.loc[qubit].adcI.plot(ax=ax, x="readout_time", label="I", color="b")
+#     ds.loc[qubit].adcQ.plot(ax=ax, x="readout_time", label="Q", color="r")
+#     ax.axvline(fit.delay, color="k", linestyle="--", label="TOF")
+#     # ax.axhline(ds.loc[qubit].offsets_I, color="b", linestyle="--")
+#     # ax.axhline(ds.loc[qubit].offsets_Q, color="r", linestyle="--")
+#     ax.set_xlabel("Time [ns]")
+#     ax.set_ylabel("Readout amplitude [mV]")
+#     ax.set_title(qubit["qubit"])
