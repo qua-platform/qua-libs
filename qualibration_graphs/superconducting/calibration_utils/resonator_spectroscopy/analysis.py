@@ -168,13 +168,8 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode) ->
     fit = fit.assign_coords(fwhm=("qubit", fwhm.data))
     fit.fwhm.attrs = {"long_name": "resonator fwhm", "units": "Hz"}
 
-    # Assess whether the fit was successful or not (Legacy)
-    freq_success = np.abs(res_freq.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
-    fwhm_success = np.abs(fwhm.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
-    success_criteria = freq_success & fwhm_success
-    fit = fit.assign_coords(success=("qubit", success_criteria))
-
     fit_results: Dict[str, FitParameters] = {}
+    outcomes = []
     for i, q in enumerate(fit.qubit.values):
         num_peaks = int(fit.sel(qubit=q).num_peaks.values)
         snr = float(fit.sel(qubit=q).snr.values)
@@ -188,7 +183,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode) ->
         asymmetry = float(fit.sel(qubit=q).asymmetry.values)
         skewness = float(fit.sel(qubit=q).skewness.values)
         opx_bandwidth_artifact = not bool(fit.sel(qubit=q).opx_bandwidth_artifact.values)
-        # Assess whether the fit was successful or not with failure messages
+        # Get the outcome string for this qubit
         outcome = get_fit_outcome(
             num_peaks,
             snr,
@@ -198,9 +193,15 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode) ->
             skewness,
             opx_bandwidth_artifact,
         )
+        outcomes.append(outcome)
         fit_results[q] = FitParameters(
             frequency=fit.sel(qubit=q).res_freq.values.__float__(),
             fwhm=fwhm_val,
             outcome=outcome,
         )
+    
+    # Add outcomes to the fit dataset
+    fit = fit.assign_coords(outcome=("qubit", outcomes))
+    fit.outcome.attrs = {"long_name": "fit outcome", "units": ""}
+    
     return fit, fit_results

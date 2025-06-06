@@ -104,9 +104,9 @@ def plot_individual_amplitude_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str
 
     Notes
     -----
-    - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
+    - If the fit dataset is provided and the outcome is "successful", the fitted curve is plotted along with the raw data.
     """
-    if fit:
+    if fit and fit.outcome.values == "successful":
         fitted_data = lorentzian_dip(
             ds.detuning,
             float(fit.amplitude.values),
@@ -240,7 +240,7 @@ def plotly_plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon]
             col=col,
         )
         # Fit (overlay, same x as raw, on RF frequency axis)
-        if fit is not None:
+        if fit is not None and fit.outcome.values == "successful":
             fitted_data = lorentzian_dip(
                 ds.detuning.values,
                 float(fit.amplitude.values),
