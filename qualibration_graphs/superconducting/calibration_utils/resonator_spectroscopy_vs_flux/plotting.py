@@ -87,19 +87,19 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
     ds.assign_coords(freq_GHz=ds.full_freq / 1e9).loc[qubit].IQ_abs.plot(
         ax=ax, add_colorbar=False, x="flux_bias", y="freq_GHz", robust=True
     )
-    if fit.fit_results.success.values:
+    if fit.fit_results.outcome.values == "successful":
         ax.axvline(
             fit.fit_results.idle_offset,
             linestyle="dashed",
-            linewidth=2,
+            linewidth=2.5,
             color="r",
             label="idle offset",
         )
         ax.axvline(
             fit.fit_results.flux_min,
             linestyle="dashed",
-            linewidth=2,
-            color="orange",
+            linewidth=2.5,
+            color="magenta",
             label="min offset",
         )
         # Location of the current resonator frequency
@@ -300,7 +300,7 @@ def plotly_plot_raw_data_with_fit(
 
         # (h) Overlay the fit if success=True
         fit_ds = fits.sel(qubit=qubit_id)
-        if "success" in fit_ds.coords and bool(fit_ds.success):
+        if "outcome" in fit_ds.coords and fit_ds.outcome.values == "successful":
             # pull from fit_results
             flux_offset = float(fit_ds.fit_results.idle_offset.values)
             min_offset  = float(fit_ds.fit_results.flux_min.values)
