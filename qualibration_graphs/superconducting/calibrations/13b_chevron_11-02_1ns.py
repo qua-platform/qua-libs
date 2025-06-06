@@ -128,7 +128,7 @@ node.namespace["baked_config"] = baked_config
 
 with program() as node.namespace["qua_program"]:
     t = declare(int)  # QUA variable for the flux pulse segment indexz
-    amp = declare(fixed)
+    a = declare(fixed)
     n = declare(int)
     n_st = declare_stream()
     t_left_ns = declare(int)  # QUA variable for the flux pulse segment index
@@ -145,7 +145,7 @@ with program() as node.namespace["qua_program"]:
     for ii, qp in enumerate(qubit_pairs):
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
-            with for_(*from_array(amp, amplitudes)):
+            with for_(*from_array(a, amplitudes)):
                 # rest of the pulse
                 with for_(*from_array(t, times_cycles)):
                     # Qubit initialization
@@ -163,30 +163,36 @@ with program() as node.namespace["qua_program"]:
                         with switch_(t):
                             for j in range(1, 17):
                                 with case_(j):
-                                    baked_signals[qp.qubit_control.name][j - 1].run(amp_array=[(qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * amp)])
+                                    baked_signals[qp.qubit_control.name][j - 1].run(
+                                        amp_array=[(qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * a)]
+                                    )
 
                     with else_():
                         assign(t_cycles, t >> 2)  # Right shift by 2 is a quick way to divide by 4
                         assign(t_left_ns, t - (t_cycles << 2))  # left shift by 2 is a quick way to multiply by 4
                         with switch_(t_left_ns):
                             with case_(0):
+                                align()
                                 qp.qubit_control.z.play(
                                     "const",
                                     duration=t_cycles,
                                     amplitude_scale=pulse_amplitudes[qp.name]
                                     / qp.qubit_control.z.operations["const"].amplitude
-                                    * amp,
+                                    * a,
                                 )
                             for j in range(1, 4):
                                 with case_(j):
+                                    align()
                                     qp.qubit_control.z.play(
                                         "const",
                                         duration=t_cycles,
                                         amplitude_scale=pulse_amplitudes[qp.name]
                                         / qp.qubit_control.z.operations["const"].amplitude
-                                        * amp,
+                                        * a,
                                     )
-                                    baked_signals[qp.qubit_control.name][j - 1].run(amp_array=[(qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * amp)])
+                                    baked_signals[qp.qubit_control.name][j - 1].run(
+                                        amp_array=[(qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * a)]
+                                    )
                     align()
 
                     if node.parameters.use_state_discrimination:
