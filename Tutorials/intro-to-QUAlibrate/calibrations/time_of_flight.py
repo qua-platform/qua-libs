@@ -40,11 +40,11 @@ Prerequisites:
 """
 
 
-node = QualibrationNode[Parameters, None](
-    name="time_of_flight", description=description, parameters=Parameters()
-)
+node = QualibrationNode[Parameters, None](name="time_of_flight", description=description, parameters=Parameters())
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
+
+
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
@@ -55,7 +55,6 @@ def custom_param(node: QualibrationNode[Parameters, None]):
     node.parameters.multiplexed = True
     node.parameters.num_shots = 10
     node.parameters.depletion_time = 10 * u.us
-
 
 
 # %% {QUA_program}
@@ -70,7 +69,9 @@ def create_qua_program(node: QualibrationNode[Parameters, None]):
     with program() as node.namespace["qua_program"]:
         n = declare(int)  # QUA variable for the averaging loop
         n_st = declare_stream()
-        adc_st = [declare_stream(adc_trace=True) for _ in range(len(resonators))]  # The stream to store the raw ADC trace
+        adc_st = [
+            declare_stream(adc_trace=True) for _ in range(len(resonators))
+        ]  # The stream to store the raw ADC trace
 
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
             save(n, n_st)
@@ -126,12 +127,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, None]):
     keys = []
 
     for i in range(1, len(node.parameters.resonators) + 1):
-        keys.extend([
-            f"adcI{i}",
-            f"adcQ{i}",
-            f"adc_single_runI{i}",
-            f"adc_single_runQ{i}"
-        ])
+        keys.extend([f"adcI{i}", f"adcQ{i}", f"adc_single_runI{i}", f"adc_single_runQ{i}"])
     data_fetcher = fetching_tool(job, data_list=keys, mode="wait_for_all")
     values = data_fetcher.fetch_all()
     # Display the execution report to expose possible runtime errors
@@ -151,14 +147,12 @@ def load_data(node: QualibrationNode[Parameters, None]):
     node.parameters.load_data_id = load_data_id
 
 
-
 # %% {Data_analysis}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, None]):
     """Analyse the raw data and store the fitted data in another node.results."""
     process_raw_data(node.results)
     fit_raw_data(node.results, node)
-
 
 
 # %% {Plotting}
@@ -178,4 +172,3 @@ def plot_data(node: QualibrationNode[Parameters, None]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, None]):
     node.save()
-

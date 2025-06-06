@@ -9,6 +9,7 @@ from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonNodeParameters
 
+
 class NodeSpecificParameters(RunnableParameters):
     """
     Parameters specific to this node's time-of-flight acquisition logic.
@@ -26,6 +27,7 @@ class NodeSpecificParameters(RunnableParameters):
     simulate: bool = False
     resonators: List[str] = ["q1_resonator"]
     multiplexed: bool = True
+
 
 class Parameters(
     NodeParameters,

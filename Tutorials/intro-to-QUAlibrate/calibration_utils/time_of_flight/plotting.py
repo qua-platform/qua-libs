@@ -15,34 +15,34 @@ u = unit(coerce_to_integer=True)
 
 def plot_single_run_with_fit(num_resonators, data: dict):
     """
-        Plot single-shot I/Q traces for each qubit with threshold and delay markers.
+    Plot single-shot I/Q traces for each qubit with threshold and delay markers.
 
-        Each subplot displays:
-            - The single-run I (blue) and Q (red) quadrature signals.
-            - Horizontal dashed lines at +0.5 and -0.5 as visual thresholds.
-            - Dashed lines representing the mean offset of I and Q.
-            - A vertical dashed line marking the extracted delay.
+    Each subplot displays:
+        - The single-run I (blue) and Q (red) quadrature signals.
+        - Horizontal dashed lines at +0.5 and -0.5 as visual thresholds.
+        - Dashed lines representing the mean offset of I and Q.
+        - A vertical dashed line marking the extracted delay.
 
-        Args:
-            num_resonators (int): Number of resonators (or qubits) to plot.
-            data (dict): Dictionary containing processed signal data, including:
-                - 'adc_single_runI{i}'
-                - 'adc_single_runQ{i}'
-                - 'mean_values'
-                - 'delay{i}'
+    Args:
+        num_resonators (int): Number of resonators (or qubits) to plot.
+        data (dict): Dictionary containing processed signal data, including:
+            - 'adc_single_runI{i}'
+            - 'adc_single_runQ{i}'
+            - 'mean_values'
+            - 'delay{i}'
 
-        Returns:
-            matplotlib.figure.Figure: The figure object containing the subplots.
-        """
+    Returns:
+        matplotlib.figure.Figure: The figure object containing the subplots.
+    """
     fig_single_run, axs1 = plt.subplots(num_resonators, 1, figsize=(10, 4 * num_resonators))
 
     for i in range(num_resonators):
         q = i + 1
-        adcI = data[f'adc_single_runI{q}']
-        adcQ = data[f'adc_single_runQ{q}']
-        adcI_mean = data["mean_values"][f'adcI{q}']
-        adcQ_mean = data["mean_values"][f'adcQ{q}']
-        delay = data[f'delay{q}']
+        adcI = data[f"adc_single_runI{q}"]
+        adcQ = data[f"adc_single_runQ{q}"]
+        adcI_mean = data["mean_values"][f"adcI{q}"]
+        adcQ_mean = data["mean_values"][f"adcQ{q}"]
+        delay = data[f"delay{q}"]
 
         ax = axs1[i] if num_resonators > 1 else axs1
         ax.set_title(f"Qubit {q} - Single Run")
@@ -89,11 +89,11 @@ def plot_averaged_run_with_fit(num_resonators, data: dict):
 
     for i in range(num_resonators):
         q = i + 1
-        adcI = data[f'adcI{q}']
-        adcQ = data[f'adcQ{q}']
-        adcI_mean = data["mean_values"][f'adcI{q}']
-        adcQ_mean = data["mean_values"][f'adcQ{q}']
-        delay = data[f'delay{q}']
+        adcI = data[f"adcI{q}"]
+        adcQ = data[f"adcQ{q}"]
+        adcI_mean = data["mean_values"][f"adcI{q}"]
+        adcQ_mean = data["mean_values"][f"adcQ{q}"]
+        delay = data[f"delay{q}"]
 
         ax = axs2[i] if num_resonators > 1 else axs2
         ax.set_title(f"Qubit {q} - Averaged Run")
@@ -112,6 +112,7 @@ def plot_averaged_run_with_fit(num_resonators, data: dict):
     fig_averaged_run.tight_layout()
 
     return fig_averaged_run
+
 
 # def plot_individual_single_run_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
 #     """

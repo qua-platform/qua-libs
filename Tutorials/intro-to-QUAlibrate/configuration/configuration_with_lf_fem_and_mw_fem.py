@@ -265,7 +265,7 @@ config = {
                             # Synchronization of the LF-FEM outputs with the MW-FEM outputs
                             # 141ns delay (band 1 and 3) or 161ns delay (band 2)
                             "delay": 141 * u.ns,
-                        }, # q1 flux line
+                        },  # q1 flux line
                         2: {
                             # Note, 'offset' takes absolute values, e.g., if in amplified mode and want to output 2.0 V, then set "offset": 2.0
                             "offset": max_frequency_point,
@@ -286,7 +286,7 @@ config = {
                             # Synchronization of the LF-FEM outputs with the MW-FEM outputs
                             # 141ns delay (band 1 and 3) or 161ns delay (band 2)
                             "delay": 141 * u.ns,
-                        }, # q2 flux line
+                        },  # q2 flux line
                     },
                     "digital_outputs": {
                         1: {},
