@@ -18,13 +18,13 @@ See the [QUAlibrate Documentation](https://qua-platform.github.io/qualibrate/) f
     - [Verify Setup](#verify-setup)
 3. [Calibration Nodes](calibration-nodes)
 4. [Project Structure](#project-structure)
-5. [Example Code](#example-code)
+5. [Example Code - Time of Flight Node](#example-code---time-of-flight-node)
 6. [Contributing](#contributing)
 7. [License](#license)
 
 ## Prerequisites
 
-Follow [this link](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs/superconducting#prerequisites) for the prerequisites
+Follow [this link](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs/superconducting#prerequisites) for system requirements.
 
 ## Getting Started
 
@@ -139,7 +139,7 @@ The `data/` folder is the default output directory where QUAlibrate saves result
 **calibration_utils**  
 `calibration_utils/` contains the calibration-specific helper functions, such as specific fitting routines, parameter classes, and plotting functionality
 
-## Example Code
+## Example Code - Time of Flight Node
     
 This example contains a complete implementation of a Time of Flight (ToF) calibration protocol using the QUAlibrate framework. It is built for use with the OPX quantum control platform and includes all the necessary components to execute, analyze, and visualize a ToF measurement.
 
@@ -147,68 +147,38 @@ This example contains a complete implementation of a Time of Flight (ToF) calibr
 
 1. **Main Script**
 
-- File: `main_time_of_flight.py`
+| File                                      | Description                                             |
+| ----------------------------------------- |---------------------------------------------------------|
+| `main_time_of_flight.py`                  | sets up node, executes QUA, analyzes and saves results  |
+| `parameters.py`                           | Defines node parameters (`num_shots`, `simulate`, etc.) |
+| `analysis.py`                             | Computes analysis                                       |
+| `plotting.py`                             | Plots the data                                          |
+| `configuration_with_lf_fem_and_mw_fem.py` | Hardware config for the OPX system                      |
 
-- Entry point that:
 
-    * Creates a QualibrationNode
 
-    * Runs the QUA program
-
-    * Simulates or executes
-
-    * Analyzes and plots data
-
-    * Saves results
-
-2. **Configuration**
-
-- File: `configuration_with_lf_fem_and_mw_fem.py`
-
-3. **Parameters**
-
-- File: `parameters.py`
-
-- Defines experiment parameters with descriptions using RunnableParameters: num_shots, depletion_time, simulate, resonators, multiplexed
-This can be modified in python or in the QUAlibrate GUI. 
-
-4. **Data Analysis**
-
-- File: `analysis.py`
-
-Processes and fits the acquired data
-
-5. **Plotting**
-
-- File: `plotting.py`
-
-- Plots ths data. 
 
 ### Running the node from the QUAlibrate GUI
 
-After having the configuration file `configuration_with_lf_fem_and_mw_fem.py` and the node `time_of_flight.py`, it is possible to use the web interface for running the experiment, modifying the declared parameters and look at the outputted graphs. 
+Once your configuration file and node script are in place, you can launch the QUAlibrate GUI
 
-This is done by launching the web interface as described in [Verify Setup](#verify-setup) as can be seen below:
+    ```bash
+    setup-qualibrate-config
+    ```
+Open http://127.0.0.1:8001 and locate the time_of_flight node.
+
+
 ![Web Interface](Web_interface.JPG)
 
 What can be seen in the figure?
-- **Node Library**
-  - A list of all the python scripts that are written in the calibrations folder.
+- **Node Library**: Lists calibration scripts under `calibrations/`
   
-- **Parameters** on the left side:
-  - The parameters that are defined for this script and can be modified from the GUI.
+- **Parameters**: Editable fields defined in `parameters.py`
 
-- **Execution Status**:
-  - The start time.
-  - Run duration.
-  - Parameters what were used in the last execution.
+- **Run Status**: Start time, run duration and parameters used.
 
-- **Extracted Results**:
-  - The measured data.
-  - The fit results.
+- **Results**: The measured data, fit results and the plots. 
 
-- **Plots**:
-  - The plots that are outputted from the script.
 
 ## Contributing
 
