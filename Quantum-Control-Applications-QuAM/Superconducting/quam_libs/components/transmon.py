@@ -92,7 +92,7 @@ class Transmon(Qubit):
             raise AttributeError(f"Error inferring anharmonicity for channel {name}: {self.f_12=} is not a number")
         return self.f_12 - self.f_01
 
-    @property
+    # @property
     def sigma(self, operation: Pulse):
         return operation.length / self.sigma_time_factor
 
