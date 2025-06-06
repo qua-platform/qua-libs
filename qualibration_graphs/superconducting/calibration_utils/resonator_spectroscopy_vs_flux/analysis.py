@@ -130,6 +130,50 @@ def has_resonator_trace(
 
     return (dip_depth > dip_threshold) and (gradient > gradient_threshold)
 
+def has_insufficient_flux_modulation(
+    ds: xr.Dataset,
+    qubit: str,
+    min_modulation_hz: float = 1e6,
+    smooth_sigma: float = 1.5
+) -> bool:
+    """
+    Detects whether the flux modulation of the resonator is too small to extract meaningful flux dependence.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset containing spectroscopy data.
+    qubit : str
+        Qubit to evaluate.
+    min_modulation_hz : float
+        Minimum required frequency shift across flux bias range to be considered sufficient.
+    smooth_sigma : float
+        Gaussian smoothing (in flux index units) to suppress noise.
+
+    Returns
+    -------
+    bool
+        True if flux modulation is too small, else False.
+    """
+    # Calculate peak frequency from IQ_abs minimum
+    peak_idx = ds.IQ_abs.argmin(dim="detuning")
+    peak_freq = ds.full_freq.isel(detuning=peak_idx)
+    peak_freq = peak_freq.transpose("qubit", "flux_bias")  # shape: (qubit, flux_bias)
+
+    pf = peak_freq.sel(qubit=qubit)
+    if pf.isnull().all():
+        return True
+
+    freq_vals = pf.values
+    freq_vals = freq_vals[~np.isnan(freq_vals)]
+
+    if freq_vals.size < 2:
+        return True
+
+    smoothed = gaussian_filter1d(freq_vals, sigma=smooth_sigma)
+    modulation_range = np.max(smoothed) - np.min(smoothed)
+
+    return modulation_range < min_modulation_hz
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
@@ -153,6 +197,11 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         # First check if there's a resonator trace
         if not has_resonator_trace(ds, q):
             qubit_outcomes[q] = "no_peaks"
+            continue
+
+        # Check for insufficient flux modulation
+        if has_insufficient_flux_modulation(ds, q):
+            qubit_outcomes[q] = "no_oscillations"
             continue
             
         pf = peak_freq.sel(qubit=q)
@@ -275,6 +324,9 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qu
         outcome = "successful"
         if qubit_outcomes.get(q) == "no_peaks":
             outcome = "No peaks were detected, consider changing the frequency range"
+            amp = np.nan
+        if qubit_outcomes.get(q) == "no_oscillations":
+            outcome = "No oscillations were detected, consider checking that the flux line is connected or increase the flux range"
             amp = np.nan
         else:
             # Extract fit amplitude
