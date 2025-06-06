@@ -1,26 +1,11 @@
 # Intro to QUAlibrate
-This folder contains a tutorial for QUAlibrate, as well as a minimal example for running hello_QUA using QUAlibrate. 
+This folder contains a complete implementation of a Time of Flight (TOF) calibration protocol using the QUAlibrate framework. It includes all the necessary components to execute, analyze, and visualize a TOF measurement.
 
 ## Overview
-QUAlibrate is a flexible and modular calibration framework built on top of QUA, designed to automate and manage calibration workflows for quantum systems. It enables scalable, repeatable, and structured calibrations across a variety of quantum hardware platforms.
+The QUAlibrate framework is a flexible and modular calibration framework built on top of QUA, designed to automate and manage calibration workflows for quantum systems. It enables scalable, repeatable, and structured calibrations across a variety of quantum hardware platforms.
 
-This tutorial introduces the core concepts of QUAlibrate, shows how to configure and run calibrations, and provides a lightweight example using its graph-based structure.
+This tutorial introduces the core concepts of QUAlibrate, shows how to configure and run calibrations, and provides an example using its node structure.
 See the [QUAlibrate Documentation](https://qua-platform.github.io/qualibrate/) for more information.
-
-## Core Concepts
-QUAlibrate represents calibrations as graphs, where:
-
-* Nodes represent calibration steps (e.g., finding a qubit's resonance frequency).
-
-* Edges express dependencies (e.g., T1 calibration requires knowing the qubit frequency).
-
-* State is passed between nodes, storing parameters and results.
-
-Each node is defined as a Python function with:
-
-* a condition: When to run this node.
-
-* a definition: What the node does (i.e., QUA program or analysis).
 
 
 ## Table of Contents
@@ -31,34 +16,15 @@ Each node is defined as a Python function with:
     - [Installation](#installation)
     - [Initial Setup (QUAlibrate Configuration)](#initial-setup-qualibrate-configuration)
     - [Verify Setup](#verify-setup)
-3.  [Creating the QUAM State](#creating-the-quam-state)
-4.  [Calibration Nodes and Graphs](calibration-nodes-and-graphs)
-5.  [Project Structure](#project-structure)
-6.  [Extending QUAM Components](#extending-quam-components)
-7.  [Contributing](#contributing)
-8.  [License](#license)
+3. [Calibration Nodes](calibration-nodes)
+4. [Project Structure](#project-structure)
+5. [Example Code](#example-code)
+6. [Contributing](#contributing)
+7. [License](#license)
 
 ## Prerequisites
 
-- **Python:** Version 3.9 to 3.12 is supported.
-- **Python Virtual Environment:** Strongly recommended to avoid dependency conflicts.
-  You can create one using:
-
-  - **venv**: Python's built-in virtual environment handler
-    ```bash
-    python -m venv .venv
-    source .venv/bin/activate ` (Linux/macOS)
-    .venv\Scripts\activate` (Windows)
-    ```
-  - **conda**: Anaconda's virtual environment manager
-    ```bash
-    conda create -n qualibrate_env python=3.10
-    conda activate qualibrate_env
-    ```
-
-- **Git:** (Optional but Recommended) For version control, easier updates (pulling changes), and collaboration (forking and contributing).
-  [Install Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
-- **Access to Quantum Orchestration Platform (QOP) hardware:** Required for running experiments on hardware.
+Follow [this link](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs/superconducting#prerequisites) for the prerequisites
 
 ## Getting Started
 
@@ -68,8 +34,7 @@ You have a few options to get the code:
 
 1.  **Customer Repository:** If provided as part of a customer installation, use the dedicated user repository.
 2.  **Fork (Recommended for Staying Updated):** Forking the `qua-libs` repository on GitHub to your account (see GitHub's guide on [how to fork a repo](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)) and then cloning your fork is the recommended way to stay periodically in sync with updates from the main repository.
-    It also allows you to contribute changes back via pull requests.
-3.  **Git Clone (Direct):** Clone the repository directly using Git.
+    It also allows you to contribute changes back via pull requests.**Git Clone (Direct):** Clone the repository directly using Git.
     This allows you to pull updates but requires managing potential merge conflicts manually if you make local changes without forking.
     ```bash
     git clone https://github.com/qua-platform/qua-libs.git
@@ -81,7 +46,7 @@ You have a few options to get the code:
 
 Once you have the code locally:
 
-1.  **Navigate to the Directory:** Open a terminal or command prompt and change into the `superconducting` directory within the downloaded/cloned repository.
+1.  **Navigate to the Directory:** Open a terminal or command prompt and change into the `intro-to-QUAlibrate` directory within the downloaded/cloned repository.
 2.  **Activate Virtual Environment:** Ensure your dedicated Python virtual environment (see [Prerequisites](#prerequisites)) is activated.
 3.  **Install the Package:** Run the following command to install the library and its dependencies in editable mode (`-e`), which means changes you make to the source code will be reflected immediately without reinstalling:
 
@@ -99,29 +64,18 @@ Once you have the code locally:
 
 The QUAlibrate framework needs some initial configuration to know where to find calibration scripts, store data, and manage the system state (QUAM).
 
-1.  **Run the Configuration Script:** Execute the provided script from within the `Superconducting` directory:
+**Run the Configuration Script:** Execute the provided script from within the `Superconducting` directory:
 
     ```bash
     setup-qualibrate-config
     ```
 
-    If this command does not work, you may need to first restart your terminal or IDE.
+If this command does not work, you may need to first restart your terminal or IDE.
 
-2.  **Follow Prompts:** The script will interactively ask for the following details:
+    You can press `Enter` or type `y` to accept the defaults, or `n` to provide custom paths. 
 
-    - `project name`: A unique name for your project or QPU chip (e.g., `MyQPU_Chip1`).  
-      Default: `QPU_project`.
-    - `storage location`: The root directory where measurement data will be saved.  
-      Default: `data/{project_name}` relative to the current directory.
-    - `calibration library folder`: The path to the directory containing calibration nodes/graphs.  
-      Default: `./calibrations` relative to the current directory.
-    - `QUAM state path`: The location where the QUAM state file (containing system parameters, connectivity, etc.) is stored.  
-      Default: `./quam_state` relative to the current directory.
+Take a look [here](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs/superconducting#initial-setup-qualibrate-configuration) for more information about the custom options. 
 
-          You can press `Enter` or type `y` to accept the defaults, or `n` to provide custom paths.
-
-3.  **Confirm Full Config:** The script will show the complete QUAlibrate configuration for final confirmation.
-    For detailed explanations of all settings, refer to the [QUAlibrate Configuration File Documentation](https://qua-platform.github.io/qualibrate/configuration/).
 
 ### Verify Setup
 
@@ -137,118 +91,124 @@ To ensure QUAlibrate is installed and configured correctly:
 
 You should see the QUAlibrate web UI, listing the calibration nodes found in your configured `calibrations` directory.
 
-## Creating the QUAM State
+## Calibration Nodes
 
-QUAM (Quantum Abstract Machine) provides an abstraction layer over the low-level QUA configuration. It allows you to define your quantum system (hardware, connectivity, qubit parameters, pulses, etc.) in a structured, physicist-friendly way. The QUAM state is stored in the `./quam_state/` directory, separated into a static part `./quam_state/wiring.json` for the wiring and network, and the main contents in `./quam_state/state.json`. The QUAM state serves as a persistent digital model of your entire setup, one that is continuously updated with calibrations.
-
-**Interaction with Calibration Nodes:**
-
-- **Loading:** Calibration nodes (scripts in `calibrations/`) typically load the latest QUAM state at the beginning of their execution. This provides them with all the necessary parameters (e.g., frequencies, amplitudes, timings) required to run the specific calibration experiment.
-- **Updating:** After a calibration node runs and analyzes the results, it often calculates updated parameters (e.g., a newly calibrated qubit frequency or an optimized pulse amplitude). The node then modifies the corresponding values within the loaded QUAM object.
-- **Saving:** QUAlibrate nodes save the modified QUAM state, often alongside the experiment results. This ensures that subsequent nodes in a calibration graph or future runs use the most up-to-date, calibrated parameters. This also updates the latest QUAM state in the `./quam_state/` directory.
-
-**How to Create the State:**
-
-The process of creating the initial QUAM state file involves defining your specific hardware components (OPXs, Octaves, mixers, LOs), as well as the QPU layout that the hardware is attached to. Detailed instructions are found in **[quam_config/README.md](quam_config/README.md)**
-
-This directory contains scripts (`generate_quam.py`, `populate_quam_xx.py`, examples, etc.) that demonstrate how to build the QUAM object programmatically.
-
-## Calibration Nodes and Graphs
-
-The scripts within the `calibrations` directory are the building blocks for automated calibration routines.
-Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement).
-They are designed to be run via the QUAlibrate framework, either individually or as part of a larger calibration sequence (graph), but can also be executed as a standalone script from your favorite Python IDE (e.g. PyCharm, VScode...).
-
-Refer to the [calibrations/README.md](calibrations/README.md) for detailed information on the structure and conventions used for these nodes.
+The scripts in the calibrations directory provide modular routines for performing specific quantum measurements, such as Resonator Spectroscopy, Rabi Oscillations, or T1 measurements. Each script is focused on a single task and can be executed directly using the QUAlibrate framework or run independently from your preferred Python development environment (e.g., PyCharm, VS Code).
 
 ## Project Structure
 
 The library is organized into the following main directories:
 
-TODO: modify after moving things to Qualibration-libs
-
 ```
-superconducting/
+intro-to-QUAlibrate/
 ├── calibrations/      # Individual calibration scripts (nodes) runnable by QUAlibrate.
-│   ├── 00_hello_qua.py
-│   ├── 01a_time_of_flight.py
+│   ├── time_of_flight.py
 │   └── ... (many calibration routines)
 │
 ├── data/                   # Default location for storing experiment results.
 │   └── {project_name}/     # Data organized by project name.
 │       └── YYYY-MM-DD/     # Data organized by date.
 │           └── #idx_{node_name}_HHMMSS/ # Data for a specific run.
-│               └── quam_state/
-│                   ├── state.json      # Contains the QUAM state except the wiring and network.
-│                   └── wiring.json     # Contains the static part of the QUAM state (wiring and network).
 │               ├── data.json       # Structure containing the data outpoutted by the node (fit results, figures,...).
-│               ├── ds_raw.h5       # HDF5 dataset containing the raw data.
-│               ├── ds_fit.h5       # HDF5 dataset containg the post-processed data.
+│               ├── arrays.npz      # npz dataset containing the raw data.
 │               ├── figures.png     # Generated figures.
 │               └── node.json       # Metadat about the node used by QUAlibrate.
+
 │
-│── quam_state/         # Default location for the main QUAM state file.
-│   ├── state.json      # Contains the QUAM state except the wiring and network
-│   └── wiring.json     # Contains the static part of the QUAM state (wiring and network)
-|
-├── quam_config/            # Scripts and configurations for generating/managing QUAM state files.
-│   ├── wiring_examples/    # Example configurations for different hardware setups.
-│   ├── generate_quam.py        # Script to generate a QUAM file.
-│   ├── populate_quam_xx.py     # Script to populate the newly generated QUAM file with initial values.
-│   └── ...
-│
-│── calibration_utils/  # Specific experiment implementations (e.g., T1, Ramsey, Spectroscopy).
-│   └── resonator_spectroscopy/
+│── calibration_utils/  # Specific experiment implementations (e.g.,time_of_flight, Spectroscopy, T1, Ramsey).
+│   └── time_of_flight/
 │   │   ├── analysis.py     # Contains all the analysis functions.
 │   │   ├── parameters.py   # Contains node-specific parameters.
 │   │   └── plotting.py     # Contains all the plotting functions.
 │   └── ...
-│
+├── configuration/          # configuration files.
+│   ├── configuration_with_lf_fem_and_mw_fem/    # Example configuration for lf and mw FEM..
+│   └── ...
+│ 
 ├── README.md               # This file.
 └── pyproject.toml # Installation configuration for the package.
 ```
 
 **calibrations**  
 The `calibrations/` folder contains individual Python scripts, each representing a calibration "node".
-These scripts typically import functionality from **calibration_utils**, define parameters, run a QUA program, analyze results, and update the QUAM state. See the README.md within this folder for more details on node structure.
+These scripts typically import functionality from **calibration_utils**, define parameters, run a QUA program, analyze results, and save the measurement result.
 
 **data**  
-The `data/` folder is the default output directory where QUAlibrate saves results (plots, raw data, QUAM state snapshots) from calibration runs, organized by project, date, and run index/name.
-
-**quam_state**  
-The `quam_state/` directory is where the main QUAM state files are stored. These files are crucial for maintaining the current state of the quantum system, excluding the wiring and network configurations. The `state.json` file contains dynamic aspects of the QUAM state, while the `wiring.json` file holds static information about the system's wiring and network setup.
-
-**quam_config**
-Tools and examples for creating the quam_state.json file, which describes your specific hardware setup (instruments, connections, qubit parameters).
+The `data/` folder is the default output directory where QUAlibrate saves results (plots, raw data) from calibration runs, organized by project, date, and run index/name.
 
 **calibration_utils**  
 `calibration_utils/` contains the calibration-specific helper functions, such as specific fitting routines, parameter classes, and plotting functionality
 
-## Extending QUAM Components
+## Example Code
+    
+This example contains a complete implementation of a Time of Flight (ToF) calibration protocol using the QUAlibrate framework. It is built for use with the OPX quantum control platform and includes all the necessary components to execute, analyze, and visualize a ToF measurement.
 
-QUAM Builder provides a repository containing a standard set of components related to qubits, such as superconducting qubits (e.g., `FluxTunableTransmon`), resonators (e.g., `ReadoutResonatorIQ`), and associated pulses. While this provides a solid foundation, it should not be viewed as a fixed set. As you advance your calibration routines and develop custom calibration nodes and graphs, you may find it necessary to extend or modify these standard components.
+### Scripts Overview
 
-There are several ways you might want to extend the QUAM components:
+1. **Main Script**
 
-1.  **Adding Parameters:** You might need to add different parameters to the standard classes to accommodate specific characteristics of your hardware or calibration methods. For example, you may have a different coherence time metric you want to keep track of.
-2.  **Adding Components:** You might want to introduce entirely new components. This could include custom pulse shapes tailored to your experiments or other quantum elements relevant to your setup.
+- File: `main_time_of_flight.py`
 
-### Method 1: Forking or Cloning QUAM Builder
+- Entry point that:
 
-One way to achieve these extensions is by creating a fork or a local clone of the main QUAM Builder repository.
+    * Creates a QualibrationNode
 
-1.  **Clone/Fork:** Obtain a local copy of the QUAM Builder source code.
-2.  **Locate Components:** Navigate to the `architecture` folder within the repository. This folder contains the definitions for the different QUAM components.
-3.  **Modify or Add:** You can now directly modify the existing Python classes for the components or add new Python files defining your custom components.
+    * Runs the QUA program
 
-**Important Considerations:**
+    * Simulates or executes
 
-- **Compatibility:** When modifying existing components, be mindful of compatibility with existing calibration nodes. For example, if a calibration node expects a Transmon object to have a property named `T2echo`, renaming or removing this property in your modified class will break that node unless you also update the node's code to use the new property name. Try to maintain backward compatibility where possible or update your calibration nodes accordingly.
-- **Synchronization:** If you intend to keep your local version synchronized with future updates from the main QUAM Builder repository, be aware that modifying the core component files can lead to merge conflicts when you try to pull the latest changes. This requires careful management of your version control.
+    * Analyzes and plots data
 
-### Method 2: Extension via QUAM Documentation
+    * Saves results
 
-An alternative approach exists for extending QUAM components without directly cloning or forking the repository. This method is detailed in the QUAM documentation on [Custom Components](https://qua-platform.github.io/quam/components/custom-components/). Using this approach, you can subclass any existing classes in QUAM Builder, and add parameters and methods, as well as create new QUAM components. However, note that this approach is generally more limited in scope, typically allowing only for the extension of existing components rather than fundamental modifications or additions of entirely new component types in the same manner as direct code modification.
+2. **Configuration**
+
+- File: `configuration_with_lf_fem_and_mw_fem.py`
+
+3. **Parameters**
+
+- File: `parameters.py`
+
+- Defines experiment parameters with descriptions using RunnableParameters: num_shots, depletion_time, simulate, resonators, multiplexed
+This can be modified in python or in the QUAlibrate GUI. 
+
+4. **Data Analysis**
+
+- File: `analysis.py`
+
+Processes and fits the acquired data
+
+5. **Plotting**
+
+- File: `plotting.py`
+
+- Plots ths data. 
+
+### Running the node from the QUAlibrate GUI
+
+After having the configuration file `configuration_with_lf_fem_and_mw_fem.py` and the node `time_of_flight.py`, it is possible to use the web interface for running the experiment, modifying the declared parameters and look at the outputted graphs. 
+
+This is done by launching the web interface as described in [Verify Setup](#verify-setup) as can be seen below:
+![Web Interface](Web_interface.JPG)
+
+What can be seen in the figure?
+- **Node Library**
+  - A list of all the python scripts that are written in the calibrations folder.
+  
+- **Parameters** on the left side:
+  - The parameters that are defined for this script and can be modified from the GUI.
+
+- **Execution Status**:
+  - The start time.
+  - Run duration.
+  - Parameters what were used in the last execution.
+
+- **Extracted Results**:
+  - The measured data.
+  - The fit results.
+
+- **Plots**:
+  - The plots that are outputted from the script.
 
 ## Contributing
 
