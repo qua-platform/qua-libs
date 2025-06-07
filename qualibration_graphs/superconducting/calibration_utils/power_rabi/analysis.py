@@ -1,13 +1,15 @@
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Dict
+from typing import Dict, Tuple
+
 import numpy as np
 import xarray as xr
+from qualibration_libs.analysis import fit_oscillation
+from qualibration_libs.data import convert_IQ_to_V
+from quam_config.instrument_limits import instrument_limits
+from scipy.signal import correlate
 
 from qualibrate import QualibrationNode
-from qualibration_libs.data import convert_IQ_to_V
-from qualibration_libs.analysis import fit_oscillation
-from quam_config.instrument_limits import instrument_limits
 
 
 @dataclass
@@ -17,7 +19,137 @@ class FitParameters:
     opt_amp_prefactor: float
     opt_amp: float
     operation: str
-    success: bool
+    outcome: str
+
+
+def compute_snr(signal: np.ndarray) -> float:
+    """
+    Compute the signal-to-noise ratio (SNR) for a 1D array.
+    SNR is defined as (max(signal) - min(signal)) / std(noise),
+    where noise is estimated as the residual after subtracting a smoothed version of the signal.
+    """
+    if signal.size < 2:
+        return 0.0
+    from scipy.ndimage import uniform_filter1d
+    smooth = uniform_filter1d(signal, size=max(3, signal.size // 10))
+    noise = signal - smooth
+    noise_std = np.std(noise)
+    if noise_std == 0:
+        return 0.0
+    return (np.max(signal) - np.min(signal)) / noise_std
+
+
+def should_fit_qubits(ds: xr.Dataset, signal_key: str = "state") -> dict[str, bool]:
+    """
+    Evaluate fit-worthiness of each qubit based on autocorrelation of its signal.
+    Smooth structured signals (like Rabi) show slow autocorrelation decay.
+    Spiky/noisy signals decay immediately.
+
+    Returns:
+    --------
+    dict[str, bool]: {qubit: True/False}
+    """
+    result = {}
+
+    for q in ds.qubit.values:
+        try:
+            s = ds[signal_key].sel(qubit=q).squeeze().values
+            if s.ndim == 2:
+                s = s.mean(axis=0)
+
+            ptp = np.ptp(s)
+            if ptp == 0 or np.isnan(ptp):
+                result[q] = False
+                continue
+
+            s_norm = (s - np.mean(s)) / (np.std(s) + 1e-9)
+            ac = correlate(s_norm, s_norm, mode='full')
+            ac = ac[ac.size // 2:]  # take only positive lags
+            ac /= ac[0]  # normalize
+
+            # Check lag-1 and lag-2 autocorrelation
+            r1, r2 = ac[1], ac[2]
+
+            result[q] = (r1 > 0.8 and r2 > 0.5)
+
+        except Exception:
+            result[q] = False
+
+    return result
+
+
+def has_chevron_modulation(sig_2d: np.ndarray, threshold: float = 0.4) -> bool:
+    """
+    Determines whether the signal exhibits chevron-like modulation.
+    This is detected via variation in peak-to-peak amplitude across the amplitude axis.
+    
+    Parameters:
+    -----------
+    sig_2d : np.ndarray
+        2D array of signal values
+    threshold : float
+        Minimum ratio of modulation range to average peak-to-peak amplitude to consider as valid modulation
+        
+    Returns:
+    --------
+    bool
+        True if significant modulation is detected, False otherwise
+    """
+    if sig_2d.ndim != 2:
+        return False
+    amp_axis = 1
+    ptps = np.ptp(sig_2d, axis=0)
+    modulation_range = np.ptp(ptps)
+    avg_ptp = np.mean(ptps)
+    return (modulation_range / (avg_ptp + 1e-12)) > threshold
+
+
+def get_fit_outcome(
+    nan_success: bool,
+    amp_success: bool,
+    opt_amp: float,
+    max_amplitude: float,
+    fit_quality: float = None,
+    min_fit_quality: float = 0.8,
+    min_amplitude: float = 0.01,
+    max_amp_prefactor: float = 10.0,
+    amp_prefactor: float = None,
+    snr: float = None,
+    snr_min: float = 2.5,
+    should_fit: bool = True,
+    is_1d_dataset: bool = True,
+    has_structure: bool = True,
+) -> str:
+
+    if not nan_success:
+        return "Fit parameters are invalid (NaN values detected)"
+    
+    if not has_structure and not is_1d_dataset:
+        return "No chevron modulation detected. Likely off-resonant drive or flat amplitude sweep."
+    
+    if fit_quality is not None and fit_quality < min_fit_quality:
+            return f"Poor fit quality (R² = {fit_quality:.3f} < {min_fit_quality})"
+        
+    if snr is not None and snr < snr_min:
+        return f"SNR too low (SNR = {snr:.2f} < {snr_min})"
+    
+    if fit_quality is not None and fit_quality < min_fit_quality:
+        return f"Poor fit quality (R² = {fit_quality:.3f} < {min_fit_quality})"
+    
+    # Only apply noise check for 1D datasets
+    if is_1d_dataset and opt_amp < min_amplitude:
+        return f"There is too much noise in the data, consider increasing averaging or shot count"
+    
+    if not amp_success:
+        return f"The drive frequency is off-resonant with high detuning, please adjust the drive frequency"
+    
+    if amp_prefactor is not None and abs(amp_prefactor) > max_amp_prefactor:
+        return f"Amplitude prefactor too large (|{amp_prefactor:.2f}| > {max_amp_prefactor})"
+
+    if not should_fit and is_1d_dataset:
+        return "There is too much noise in the data, consider increasing averaging or shot count"
+    
+    return "successful"
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
@@ -37,10 +169,10 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
         s_amp = f"The calibrated {fit_results[q]['operation']} amplitude: {1e3 * fit_results[q]['opt_amp']:.2f} mV (x{fit_results[q]['opt_amp_prefactor']:.2f})\n "
-        if fit_results[q]["success"]:
+        if fit_results[q]["outcome"] == "successful":
             s_qubit += " SUCCESS!\n"
         else:
-            s_qubit += " FAIL!\n"
+            s_qubit += f" FAIL! Reason: {fit_results[q]['outcome']}\n"
         log_callable(s_qubit + s_amp)
 
 
@@ -53,7 +185,6 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     ds = ds.assign_coords(full_amp=(["qubit", "amp_prefactor"], full_amp))
     ds.full_amp.attrs = {"long_name": "pulse amplitude", "units": "V"}
     return ds
-
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
@@ -118,7 +249,6 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
         opt_amp = factor * current_amps
         fit = fit.assign({"opt_amp": opt_amp})
         fit.opt_amp.attrs = {"long_name": "x180 pulse amplitude", "units": "V"}
-
     else:
         current_amps = xr.DataArray(
             [q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]],
@@ -131,17 +261,66 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
         }
 
     # Assess whether the fit was successful or not
-    nan_success = np.isnan(fit.opt_amp_prefactor) | np.isnan(fit.opt_amp)
+    nan_success = ~(np.isnan(fit.opt_amp_prefactor) | np.isnan(fit.opt_amp))
     amp_success = fit.opt_amp < limits[0].max_x180_wf_amplitude
-    success_criteria = ~nan_success & amp_success
-    fit = fit.assign({"success": success_criteria})
-    # Populate the FitParameters class with fitted values
+    
+    # Compute SNR for each qubit
+    snrs = []
+    for q in fit.qubit.values:
+        if hasattr(fit, "I") and hasattr(fit.I, "sel"):
+            signal = fit.I.sel(qubit=q).values
+        elif hasattr(fit, "state") and hasattr(fit.state, "sel"):
+            signal = fit.state.sel(qubit=q).values
+        else:
+            signal = np.zeros(2)
+        snrs.append(compute_snr(signal))
+    fit = fit.assign_coords(snr=("qubit", snrs))
+    fit.snr.attrs = {"long_name": "signal-to-noise ratio", "units": ""}
+
+    # Check if signals are worth fitting
+    signal_key = "state" if hasattr(fit, "state") else "I"
+    fit_flags = should_fit_qubits(fit, signal_key=signal_key)
+
+    # Get outcomes for each qubit
+    outcomes = []
+    for i, q in enumerate(fit.qubit.values):
+        fit_quality = None
+        if 'fit' in fit and 'r_squared' in fit.fit.attrs:
+            fit_quality = float(fit.fit.attrs['r_squared'])
+            
+        # Check for chevron modulation in 2D case
+        has_structure = True
+        if node.parameters.max_number_pulses_per_sweep > 1:
+            if hasattr(fit, "I") and hasattr(fit.I, "sel"):
+                signal = fit.I.sel(qubit=q).values
+            elif hasattr(fit, "state") and hasattr(fit.state, "sel"):
+                signal = fit.state.sel(qubit=q).values
+            else:
+                signal = np.zeros((2, 2))
+            has_structure = has_chevron_modulation(signal)
+            
+        outcome = get_fit_outcome(
+            nan_success=bool(nan_success.sel(qubit=q).values),
+            amp_success=bool(amp_success.sel(qubit=q).values),
+            opt_amp=float(fit.sel(qubit=q).opt_amp.values),
+            max_amplitude=float(limits[i].max_x180_wf_amplitude),
+            fit_quality=fit_quality,
+            amp_prefactor=float(fit.sel(qubit=q).opt_amp_prefactor.values),
+            snr=float(fit.sel(qubit=q).snr.values),
+            should_fit=fit_flags[q],
+            is_1d_dataset=node.parameters.max_number_pulses_per_sweep == 1,
+            has_structure=has_structure,
+        )
+        outcomes.append(outcome)
+    fit = fit.assign_coords(outcome=("qubit", outcomes))
+    fit.outcome.attrs = {"long_name": "fit outcome", "units": ""}
+
     fit_results = {
         q: FitParameters(
             opt_amp_prefactor=fit.sel(qubit=q).opt_amp_prefactor.values.__float__(),
             opt_amp=fit.sel(qubit=q).opt_amp.values.__float__(),
             operation=node.parameters.operation,
-            success=fit.sel(qubit=q).success.values.__bool__(),
+            outcome=fit.sel(qubit=q).outcome.values.__str__(),
         )
         for q in fit.qubit.values
     }

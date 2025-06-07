@@ -1,11 +1,11 @@
 from typing import List
+
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-
 from qualang_tools.units import unit
-from qualibration_libs.plotting import QubitGrid, grid_iter
 from qualibration_libs.analysis import oscillation
+from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
@@ -68,7 +68,9 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
     """
 
     if len(ds.nb_of_pulses.data) == 1:
-        if fit:
+        fitted_data = None
+        plot_fit = False
+        if fit is not None and hasattr(fit, "outcome") and getattr(fit.outcome, "values", None) == "successful":
             fitted_data = oscillation(
                 fit.amp_prefactor.data,
                 fit.fit.sel(fit_vals="a").data,
@@ -76,8 +78,7 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
                 fit.fit.sel(fit_vals="phi").data,
                 fit.fit.sel(fit_vals="offset").data,
             )
-        else:
-            fitted_data = None
+            plot_fit = True
 
         if hasattr(ds, "I"):
             data = "I"
@@ -88,12 +89,13 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
         else:
             raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
 
-        (ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit] * 1e3)[data].plot(ax=ax, x="amp_mV")
-        ax.plot(fit.full_amp * 1e3, 1e3 * fitted_data)
+        (ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit] * 1e3)[data].plot(ax=ax, x="amp_mV", alpha=0.5)
+        if plot_fit:
+            ax.plot(fit.full_amp * 1e3, 1e3 * fitted_data, linewidth=2, color="red")
         ax.set_ylabel(label)
         ax.set_xlabel("Pulse amplitude [mV]")
         ax2 = ax.twiny()
-        (ds.assign_coords(amp_mV=ds.amp_prefactor).loc[qubit] * 1e3)[data].plot(ax=ax2, x="amp_mV")
+        (ds.assign_coords(amp_mV=ds.amp_prefactor).loc[qubit] * 1e3)[data].plot(ax=ax2, x="amp_mV", alpha=0.5)
         ax2.set_xlabel("amplitude prefactor")
 
 
@@ -133,9 +135,10 @@ def plot_individual_data_with_fit_2D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
         ax=ax2, add_colorbar=False, x="amp_mV", y="nb_of_pulses", robust=True
     )
     ax2.set_xlabel("amplitude prefactor")
-    if fit.success:
+    if fit.outcome.values == "successful":
         ax2.axvline(
             x=fit.opt_amp_prefactor,
-            color="g",
+            color="red",
             linestyle="-",
+            linewidth=2,
         )
