@@ -34,7 +34,7 @@ class Parameters(NodeParameters):
     waveform_I: List[float] = [1.0] * 100
     waveform_Q: Optional[List[float]] = [0.5] * 100
     num_averages: int = 500
-    simulate: bool = False
+    simulate: bool = True
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
