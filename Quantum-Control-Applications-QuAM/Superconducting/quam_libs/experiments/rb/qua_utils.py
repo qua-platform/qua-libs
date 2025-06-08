@@ -1,3 +1,4 @@
+from typing import Literal
 from more_itertools import flatten
 import numpy as np
 from quam_libs.components import Transmon, TransmonPair
@@ -17,7 +18,7 @@ def reset_qubits(node, control: Transmon, target: Transmon, thermalization_time:
         control.resonator.wait(thermalization_time//4)
 
 
-def play_gate(gate: QuaVariable, qubit_pair: TransmonPair, state: QuaVariable, state_control: QuaVariable, state_target: QuaVariable, state_st: "_ResultSource"):
+def play_gate(gate: QuaVariable, qubit_pair: TransmonPair, state: QuaVariable, state_control: QuaVariable, state_target: QuaVariable, state_st: "_ResultSource", reset_type: Literal["thermal", "active"]):
     with switch_(gate, unsafe=True):
                                
         with case_(0):
@@ -206,8 +207,7 @@ def play_gate(gate: QuaVariable, qubit_pair: TransmonPair, state: QuaVariable, s
             qubit_pair.qubit_target.wait(int(1e9*(qubit_pair.qubit_target.T1/50)) // 4)
         
         with case_(66):
-            # qubit_pair.qubit_target.xy.play("x90")
-           
+            
             align()
             
             readout_state(qubit_pair.qubit_control, state_control, wait_depletion_time=False)
@@ -215,22 +215,25 @@ def play_gate(gate: QuaVariable, qubit_pair: TransmonPair, state: QuaVariable, s
             assign(state, state_control*2 + state_target)
             save(state, state_st)
             
-            qubit_pair.qubit_control.resonator.wait(qubit_pair.qubit_control.thermalization_time // 4)
-            qubit_pair.qubit_target.resonator.wait(qubit_pair.qubit_target.thermalization_time // 4)
+            # Initialize the qubits
+            if reset_type == "active":
+                active_reset(qubit_pair.qubit_control, "readout")
+                active_reset(qubit_pair.qubit_target, "readout")
+            else:
+                qubit_pair.qubit_control.resonator.wait(qubit_pair.qubit_control.thermalization_time // 4)
+                qubit_pair.qubit_target.resonator.wait(qubit_pair.qubit_target.thermalization_time // 4)
+            
             
             # Reset the frame of the qubits in order not to accumulate rotations
             reset_frame(qubit_pair.qubit_control.xy.name, qubit_pair.qubit_target.xy.name)
             
-            # qubit_pair.qubit_control.resonator.wait(25)
-            # qubit_pair.qubit_target.resonator.wait(25)
-            
             align()
             
-def play_sequence(sequence: QuaArrayVariable, depth: int, qubit_pair: TransmonPair, state: list[QuaVariable], state_control: QuaVariable, state_target: QuaVariable, state_st):
+def play_sequence(sequence: QuaArrayVariable, depth: int, qubit_pair: TransmonPair, state: list[QuaVariable], state_control: QuaVariable, state_target: QuaVariable, state_st, reset_type: Literal["thermal", "active"]): 
     
     i = declare(int)
     with for_(i, 0, i < depth, i + 1):
-        play_gate(sequence[i], qubit_pair, state, state_control, state_target, state_st)    
+        play_gate(sequence[i], qubit_pair, state, state_control, state_target, state_st, reset_type)    
 
 class QuaProgramHandler:
     
@@ -287,7 +290,7 @@ class QuaProgramHandler:
 
                     with for_(n, 0, n < self.node.parameters.num_averages, n + 1):
                         
-                        play_sequence(sequence, l, qubit_pair, state, state_control, state_target, state_st[i])
+                        play_sequence(sequence, l, qubit_pair, state, state_control, state_target, state_st[i], self.node.parameters.reset_type_thermal_or_active)
                                     
                         save(n, n_st)
 
@@ -337,7 +340,7 @@ class QuaProgramHandler:
                 
                 with for_(n, 0, n < self.node.parameters.num_averages, n + 1):
                     
-                    play_sequence(job_sequence_qua, sequence_length, qubit_pair, state, state_control, state_target, state_st[i])
+                    play_sequence(job_sequence_qua, sequence_length, qubit_pair, state, state_control, state_target, state_st[i], self.node.parameters.reset_type_thermal_or_active)
                                 
                     save(n, n_st)
 

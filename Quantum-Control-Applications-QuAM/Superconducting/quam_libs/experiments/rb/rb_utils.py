@@ -5,7 +5,6 @@ import numpy as np
 from qiskit import QuantumCircuit, transpile
 from qiskit.circuit import QuantumCircuit
 from qiskit.circuit.instruction import Instruction
-from qiskit.converters import circuit_to_dag, dag_to_circuit
 from qiskit.quantum_info import random_clifford
 from qiskit.quantum_info import Clifford
 from qiskit.circuit.equivalence_library import SessionEquivalenceLibrary as sel
@@ -238,108 +237,5 @@ class InterleavedRB(RBBase):
         instruction.name = self.target_gate
         return instruction
 
-def layerize_quantum_circuit(qc: QuantumCircuit) -> QuantumCircuit:
-
-    dag = circuit_to_dag(qc)
-    layered_qc = QuantumCircuit(qc.num_qubits)
-    for layer in dag.layers():
-        layer_as_circuit = dag_to_circuit(layer['graph'])
-        layer_as_circuit.barrier()
-        layered_qc = layered_qc.compose(layer_as_circuit)
-
-    return layered_qc
-
-def collect_gates_as_2_qubit_layers(qc: QuantumCircuit) -> list[str]:
-    """
-    Iterates over a qiskit quantum circuit and collects the gates as strings.
-    The circuit is separated by barriers. Between each barrier, the function collects the gates as strings.
-    The name of the gate as string should be like <name>_<qubit>. Between gates place a dash.
-    
-    Args:
-        qc (QuantumCircuit): The quantum circuit to iterate over.
-    
-    Returns:
-        list[str]: A list of strings representing the gates in the circuit.
-    """
-    gate_strings = []
-    current_gates = []
-
-    for instruction in qc:
-        if instruction.name == 'barrier':
-            if current_gates:
-                gate_strings.append('-'.join(current_gates))
-                current_gates = []
-        else:
-            for qubit in instruction.qubits:
-                gate_str = f"{instruction.name}_{qubit.index}"
-                current_gates.append(gate_str)
-    
-    if current_gates:
-        gate_strings.append('-'.join(current_gates))
-    
-    return gate_strings
-
-
-def quantum_circuit_to_integer_and_angle_list(qc: QuantumCircuit, gate_map: dict, ignore_barriers: bool = True) -> tuple[list[int], list[float]]:
-
-    gate_interger_list = []
-    rz_angle_count_q0 = []
-    rz_angle_count_q1 = []
-    qubit_index_list = [] # need to make this more robust
-
-    layered_qc = layerize_quantum_circuit(qc)
-
-    ang_q0 = 0
-    ang_q1 = 0
-    
-    for instruction in layered_qc:
-        
-        qubit_index = instruction.qubits[0]._index # TODO : make this more robust
-        
-        if instruction.name == 'rz':
-            # only follows the accumulation of rz angles. does not add a to gate list
-            if qubit_index == 0:
-                ang_q0 += instruction.params[0]
-            elif qubit_index == 1:
-                ang_q1 += instruction.params[0]
-            else:
-                raise ValueError("Only 2 qubits are supported")
-        
-        else:
-            # add a gate
-            if instruction.name in ['rx', 'ry']:
-                axis = instruction.name[1]
-                theta = instruction.params[0]
-                if (theta/np.pi - 0.5) < EPS:
-                    gate_int = gate_map[f's{axis}']
-                elif (theta/np.pi - (-0.5)) < EPS:
-                    gate_int = gate_map[f'{axis}270']
-                elif (theta/np.pi - 1) < EPS or (theta/np.pi - (-1)) < EPS:
-                    gate_int = gate_map[f'{axis}']
-                else:
-                    raise ValueError(f"Only 90, -90, 180, -180 rotations are supported not angle={theta}")
-            
-            elif instruction.name == 'barrier' and ignore_barriers:
-                continue
-            
-            else:
-                gate_int = gate_map[instruction.name]
-            
-            gate_interger_list.append(gate_int)
-            qubit_index_list.append(qubit_index)
-            rz_angle_count_q0.append(ang_q0)
-            rz_angle_count_q1.append(ang_q1)
-            
-            ang_q0 = 0  
-            ang_q1 = 0
-            
-
-    # measurement
-    gate_interger_list.append(gate_map['measure'])
-    rz_angle_count_q0.append(0)
-    rz_angle_count_q1.append(0)
-    qubit_index_list.append(0)
-
-    return gate_interger_list, qubit_index_list, rz_angle_count_q0, rz_angle_count_q1
     
    
