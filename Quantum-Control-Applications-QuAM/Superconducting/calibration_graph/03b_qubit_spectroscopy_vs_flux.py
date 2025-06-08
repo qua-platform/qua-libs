@@ -137,7 +137,7 @@ with program() as multi_qubit_spec_vs_flux:
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
                     # Wait for the qubits to decay to the ground state
-                    qubit.resonator.wait(machine.depletion_time * u.ns)
+                    qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
 
         # Measure sequentially
         if not node.parameters.multiplexed:

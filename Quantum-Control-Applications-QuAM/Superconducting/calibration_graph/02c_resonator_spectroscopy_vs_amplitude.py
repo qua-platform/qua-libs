@@ -61,7 +61,7 @@ class Parameters(NodeParameters):
     derivative_crossing_threshold_in_hz_per_dbm: int = int(-50e3)
     derivative_smoothing_window_num_points: int = 30
     moving_average_filter_window_num_points: int = 30
-    multiplexed: bool = False
+    multiplexed: bool = False # We get compilation error for this true and 15 qubits (5 OK)
     load_data_id: Optional[int] = None
 
 node = QualibrationNode(name="02c_Resonator_Spectroscopy_vs_Amplitude", parameters=Parameters())
@@ -138,13 +138,13 @@ with program() as multi_res_spec_vs_amp:
             with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
                 # Update the resonator frequencies for all resonators
                 update_frequency(rr.name, df + rr.intermediate_frequency)
-                rr.wait(machine.depletion_time * u.ns)
+                rr.wait(qubit.resonator.depletion_time * u.ns)
                 # QUA for_ loop for sweeping the readout amplitude
                 with for_(*from_array(a, amps)):
                     # readout the resonator
                     rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=a)
                     # wait for the resonator to relax
-                    rr.wait(machine.depletion_time * u.ns)
+                    rr.wait(qubit.resonator.depletion_time * u.ns)
                     # save data
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
@@ -238,9 +238,14 @@ if not node.parameters.simulate:
     # Get the first occurrence below the derivative threshold
     rr_optimal_power_dbm = {}
     rr_optimal_frequencies = {}
+    rr_optimal_amplitudes = {}
     for qubit in qubits:
         if below_threshold.sel(qubit=qubit.name).any():
-            rr_optimal_power_dbm[qubit.name] = below_threshold.sel(qubit=qubit.name).idxmax(dim="power_dbm")  # Get the first occurrence
+            optimal_power_dbm = below_threshold.sel(qubit=qubit.name).idxmax(dim="power_dbm")
+            rr_optimal_power_dbm[qubit.name] = optimal_power_dbm  # Get the first occurrence
+            optimal_power_index = ds.power_dbm.get_index("power_dbm").get_indexer([optimal_power_dbm], method="nearest")[0]
+            rr_optimal_amplitudes[qubit.name] = amps[optimal_power_index]
+            print(f"Optimal power dBm: {optimal_power_dbm}, Amplitude: {rr_optimal_amplitudes[qubit.name]}")
         else:
             rr_optimal_power_dbm[qubit.name] = np.nan
 
@@ -254,7 +259,6 @@ if not node.parameters.simulate:
         else:
             rr_optimal_frequencies[qubit.name] = np.nan
 
-
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
@@ -267,6 +271,28 @@ if not node.parameters.simulate:
             robust=True,
         )
         ax.set_ylabel("Power (dBm)")
+        
+        # Create second y-axis with same tick locations
+        ax2 = ax.twinx()
+        
+        # Set y-axis limits to match the actual data range
+        y_min = ds.power_dbm.min().item()
+        y_max = ds.power_dbm.max().item()
+        ax.set_ylim(y_min, y_max)
+        ax2.set_ylim(y_min, y_max)
+        
+        # Get the current tick locations and map them to corresponding amplitudes
+        left_ticks = ax.get_yticks()
+        corresponding_amps = amps[ds.power_dbm.get_index("power_dbm").get_indexer(left_ticks, method="nearest")]
+        
+        # Explicitly set the same ticks for both axes
+        ax.set_yticks(left_ticks)
+        ax2.set_yticks(left_ticks)
+        
+        # Set the new tick labels for the second axis
+        ax2.set_yticklabels([f"{amp:.3f}" for amp in corresponding_amps])
+        ax2.set_ylabel("Amplitude")
+        
         # Plot the resonance frequency  for each amplitude
         ax.plot(
             ds.rr_min_response.loc[qubit],
@@ -274,6 +300,7 @@ if not node.parameters.simulate:
             color="orange",
             linewidth=0.5,
         )
+        
         # Plot where the optimum readout power was found
         if not np.isnan(rr_optimal_power_dbm[qubit['qubit']]):
             ax.axhline(
@@ -287,7 +314,7 @@ if not node.parameters.simulate:
                 color="blue",
                 linestyle="--",
             )
-
+    
     grid.fig.suptitle(f"Resonator spectroscopy VS. power at base \n {date_time} GMT+3 #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     plt.show()
@@ -298,6 +325,7 @@ if not node.parameters.simulate:
     for tracked_resonator in tracked_resonators:
         tracked_resonator.revert_changes()
 
+    
     # Save fitting results
     fit_results = {}
     for q in qubits:
@@ -313,6 +341,8 @@ if not node.parameters.simulate:
                     power_settings = power_settings_conditional
                 if not np.isnan(rr_optimal_frequencies[q.name]):
                     q.resonator.intermediate_frequency += rr_optimal_frequencies[q.name]
+                    q.resonator.operations.readout.amplitude = rr_optimal_amplitudes[q.name]
+                    
         fit_results[q.name] = power_settings
         fit_results[q.name]["RO_frequency"] = q.resonator.RF_frequency
     node.results["fit_results"] = fit_results
