@@ -44,7 +44,7 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 200
-    operation: str = "EF_180"
+    operation: str = "EF_x180"
     min_amp_factor: float = 0.0
     max_amp_factor: float = 2.0
     amp_factor_step: float = 0.02
@@ -239,8 +239,8 @@ if not node.parameters.simulate:
 # %% {Update_state}
 if not node.parameters.simulate: 
     for q in qubits:
-        if "EF_180" not in q.xy.operations:
-            print("Creating EF_180 operation")
+        if "EF_x180" not in q.xy.operations:
+            print("Creating EF_x180 operation")
             ef_operation = pulses.DragCosinePulse(
                         amplitude=0.0,
                         alpha=q.xy.operations[operation].alpha,
@@ -250,10 +250,10 @@ if not node.parameters.simulate:
                         digital_marker=q.xy.operations[operation].digital_marker,
                     )
             
-            q.xy.operations["EF_180"] = ef_operation
+            q.xy.operations["EF_x180"] = ef_operation
     for q in qubits:
         with node.record_state_updates():
-            q.xy.operations["EF_180"].amplitude = fit_results[q.name]["Pi_amplitude"]
+            q.xy.operations["EF_x180"].amplitude = fit_results[q.name]["Pi_amplitude"]
 
 # %% {Save_results}
 if not node.parameters.simulate:

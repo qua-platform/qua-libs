@@ -121,14 +121,14 @@ with program() as ramsey:
                     # Ramsey sequence
                     qubit.align()
                     # with strict_timing_():
-                    qubit.xy.play("x180", amplitude_scale=0.5)
+                    qubit.xy.play("x90")
                     qubit.xy.frame_rotation_2pi(phi)
-                    qubit.z.wait(duration=qubit.xy.operations["x180"].length)
+                    qubit.z.wait(duration=qubit.xy.operations["x90"].length)
                     
                     qubit.xy.wait(t+1)
                     qubit.z.play("const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t)
                     
-                    qubit.xy.play("x180", amplitude_scale=0.5)
+                    qubit.xy.play("x90")
 
                     qubit.align()
                     # Measure the state of the resonators
