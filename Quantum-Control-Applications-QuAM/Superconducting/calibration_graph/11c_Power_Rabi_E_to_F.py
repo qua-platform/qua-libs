@@ -75,6 +75,20 @@ else:
 num_qubits = len(qubits)
 
 
+for q in qubits:
+    if "EF_x180" not in q.xy.operations:
+        print("Creating EF_x180 operation")
+        ef_operation = pulses.DragCosinePulse(
+                    amplitude=0.025,
+                    alpha=q.xy.operations["x180"].alpha,
+                    anharmonicity=q.xy.operations["x180"].anharmonicity,
+                    length=q.xy.operations["x180"].length,
+                    axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
+                    digital_marker=q.xy.operations["x180"].digital_marker,
+                )
+        
+        q.xy.operations["EF_x180"] = ef_operation
+
 # %% {QUA_program}
 operation = node.parameters.operation  # The qubit operation to play 
 n_avg = node.parameters.num_averages  # The number of averages
@@ -122,14 +136,13 @@ with program() as power_rabi:
                 update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
                 # Drive the qubit to the excited state
                 qubit.align()
-                qubit.xy.play(operation)
-                # Update the qubit frequency to scan around the expected f_12
+                qubit.xy.play("x180")
                 qubit.align()
+                # Update the qubit frequency to scan around the expected f_12
                 update_frequency(
                     qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity
                 )
                 qubit.align()
-
                 qubit.xy.play(operation, amplitude_scale=a)
                 qubit.align()
                 qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
@@ -238,19 +251,6 @@ if not node.parameters.simulate:
  
 # %% {Update_state}
 if not node.parameters.simulate: 
-    for q in qubits:
-        if "EF_x180" not in q.xy.operations:
-            print("Creating EF_x180 operation")
-            ef_operation = pulses.DragCosinePulse(
-                        amplitude=0.0,
-                        alpha=q.xy.operations[operation].alpha,
-                        anharmonicity=q.xy.operations[operation].anharmonicity,
-                        length=q.xy.operations[operation].length,
-                        axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
-                        digital_marker=q.xy.operations[operation].digital_marker,
-                    )
-            
-            q.xy.operations["EF_x180"] = ef_operation
     for q in qubits:
         with node.record_state_updates():
             q.xy.operations["EF_x180"].amplitude = fit_results[q.name]["Pi_amplitude"]
