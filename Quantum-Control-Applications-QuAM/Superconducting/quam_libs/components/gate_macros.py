@@ -5,8 +5,8 @@ from quam.components.channels import IQChannel
 from quam.components.macro import QubitMacro, QubitPairMacro, PulseMacro
 from quam.components.pulses import ReadoutPulse, Pulse
 from quam.core import quam_dataclass
-from .transmon import Transmon
-from .readout_resonator import ReadoutResonatorIQ
+from quam_libs.components.transmon import Transmon
+from quam_libs.components.readout_resonator import ReadoutResonatorIQ
 from qm.qua import declare, assign, while_, Cast, broadcast, fixed
 from quam.utils.qua_types import QuaVariableBool, QuaVariableFloat, QuaVariableInt
 
@@ -142,6 +142,20 @@ class VirtualZMacro(QubitMacro):
 #         self.qubit_target.xy.play("x180", amplitude_scale=None, duration=4)
 #         self.qubit_pair.align()
 
+# this is a place holder for now 
+@quam_dataclass
+class CZFixedMacro(QubitPairMacro):
+    flux_pulse_control: Union[Pulse, str] = None
+    
+    def apply(
+        self,
+        *,
+        amplitude_scale=None,
+        phase_shift_control=None,
+        phase_shift_target=None,
+        **kwargs,
+    ) -> None:
+        self.qubit_control.wait(1000//4)
 
 @quam_dataclass
 class DelayMacro(QubitMacro):
