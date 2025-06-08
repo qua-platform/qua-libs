@@ -30,7 +30,7 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ['qubitC2']    
+    qubits: Optional[List[str]] = ['qC2']    
     num_averages: int = 4000
     amplitude_factor: float = 0.2
     cryoscope_len: int = 240
@@ -273,7 +273,7 @@ with program() as cryoscope:
             state_st[i].buffer(2).buffer(cryoscope_len).average().save(f"state{i + 1}")
 
 
-# %%
+# %% {Simulate_or_execute}
 
 simulate =  node.parameters.simulate
 
@@ -522,7 +522,7 @@ if not node.parameters.simulate and node.parameters.reset_filters:
         elif fitting_approach == '2exp':
             node.results['fit_results'][q.name]['iir']  = feedback_tap_2exp  
 
-# %%
+# %% {Update_state}
 
 if not node.parameters.simulate and node.parameters.reset_filters:
     with node.record_state_updates():
@@ -533,7 +533,7 @@ if not node.parameters.simulate and node.parameters.reset_filters:
             elif fitting_approach == '2exp':
                 qubit.z.opx_output.feedback_filter = feedback_tap_2exp
 
-# %%
+# %% {Save_results}
 node.results['initial_parameters'] = node.parameters.model_dump()
 node.machine = machine
 node.save()

@@ -44,7 +44,7 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 200
-    operation: str = "x180"
+    operation: str = "EF_180"
     min_amp_factor: float = 0.0
     max_amp_factor: float = 2.0
     amp_factor_step: float = 0.02
@@ -76,7 +76,7 @@ num_qubits = len(qubits)
 
 
 # %% {QUA_program}
-operation = node.parameters.operation  # The qubit operation to play
+operation = node.parameters.operation  # The qubit operation to play 
 n_avg = node.parameters.num_averages  # The number of averages
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 
@@ -129,6 +129,7 @@ with program() as power_rabi:
                     qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity
                 )
                 qubit.align()
+
                 qubit.xy.play(operation, amplitude_scale=a)
                 qubit.align()
                 qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
@@ -239,8 +240,8 @@ if not node.parameters.simulate:
 if not node.parameters.simulate: 
     for q in qubits:
         if "EF_180" not in q.xy.operations:
-            print("Creating EF_x180 operation")
-            ef_operation_value = pulses.DragCosinePulse(
+            print("Creating EF_180 operation")
+            ef_operation = pulses.DragCosinePulse(
                         amplitude=0.0,
                         alpha=q.xy.operations[operation].alpha,
                         anharmonicity=q.xy.operations[operation].anharmonicity,
@@ -249,7 +250,7 @@ if not node.parameters.simulate:
                         digital_marker=q.xy.operations[operation].digital_marker,
                     )
             
-            q.xy.operations["EF_180"] = ef_operation_value
+            q.xy.operations["EF_180"] = ef_operation
     for q in qubits:
         with node.record_state_updates():
             q.xy.operations["EF_180"].amplitude = fit_results[q.name]["Pi_amplitude"]
