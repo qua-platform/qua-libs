@@ -89,7 +89,7 @@ with program() as raw_trace_prog:
             # Measure the resonator (send a readout pulse and record the raw ADC trace)
             rr.measure("readout", stream=adc_st[i])
             # Wait for the resonator to deplete
-            rr.wait(rr.resonator.depletion_time * u.ns)
+            rr.wait(rr.depletion_time * u.ns)
         # Measure sequentially
         align(*[rr.name for rr in resonators])
 

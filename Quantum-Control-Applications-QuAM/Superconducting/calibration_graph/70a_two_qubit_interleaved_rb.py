@@ -76,7 +76,7 @@ class Parameters(NodeParameters):
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     reduce_to_1q_cliffords: bool = True
-    use_input_stream: bool = True
+    use_input_stream: bool = False
     simulate: bool = False
     simulation_duration_ns: int = 10000
     load_data_id: Optional[int] = None

@@ -1,5 +1,3 @@
-import os
-import json
 from quam_libs.components import QuAM
 
 
@@ -33,9 +31,14 @@ def create_controller_to_qubit_mapping(wiring : dict[dict] = None) -> dict:
                     # Extract controller and port from the reference
                     # Example reference: "#/ports/analog_outputs/con1/1/1"
                     
-                    controller = port_ref.controller_id
-                    fem_id = port_ref.fem_id
-                    port = port_ref.port_id
+                    if type(port_ref) == str:
+                        controller = port_ref.split('/')[-3]
+                        fem_id = port_ref.split('/')[-2]
+                        port = port_ref.split('/')[-1]
+                    else:
+                        controller = port_ref.controller_id
+                        fem_id = port_ref.fem_id
+                        port = port_ref.port_id
                     # Create the controller/port notation
                     con_port = f"{controller}/{fem_id}/{port}"
                     

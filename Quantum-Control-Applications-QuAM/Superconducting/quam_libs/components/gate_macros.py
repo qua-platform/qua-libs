@@ -98,7 +98,7 @@ class CZMacro(QubitPairMacro):
     phase_shift_target: float = 0.0
     
     @property
-    def coupler(self) -> TunableCoupler:
+    def coupler(self) : # -> "TunableCoupler":
         return self.qubit_pair.coupler
     
     @property
