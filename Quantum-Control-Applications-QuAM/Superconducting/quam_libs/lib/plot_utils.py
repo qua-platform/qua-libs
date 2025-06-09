@@ -6,10 +6,10 @@ import plotly
 import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
-from matplotlib import axes
 from matplotlib import pyplot as plt
 import matplotlib
 from qm import QmJob
+from quam_libs.lib.wiring_utils import create_controller_to_qubit_mapping
 import xarray as xr
 
 
@@ -378,3 +378,55 @@ def grid_iter(grid: xr.plot.FacetGrid) -> Tuple[matplotlib.axes.Axes, dict]:
     for axr, ndr in zip(grid.axes, grid.name_dicts):
         for ax, nd in zip(axr, ndr):
             yield ax, nd
+
+
+def plot_samples(samples: dict[str, np.ndarray], active_qubit_names: list[str], wiring: dict[str, dict[str, str]] = None, xlim: Tuple[int, int] = None, readout_lines: list[str] = None):
+    
+    wire_to_qubit_line = create_controller_to_qubit_mapping(wiring)
+    wire_to_qubit_line = {ch: q for v in wire_to_qubit_line.values() for ch, q in v.items()}
+
+    qubit_ports = []
+    for ch, q in wire_to_qubit_line.items():
+        if q.split('-')[0] in active_qubit_names:
+            port = '-'.join(ch.split('/')[1:])
+            if q.split('-')[1] == 'xy':
+                port = port + '-1'
+            qubit_ports.append(port)
+        if readout_lines is not None and q.split('-')[1] == 'rr' and q.split('-')[0] in readout_lines:
+            port = '-'.join(ch.split('/')[1:]) + '-1'
+            qubit_ports.append(port)
+
+    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
+    for i, con in enumerate(samples.keys()):
+        plt.subplot(len(samples.keys()),1,i+1)
+        samples[con].plot(qubit_ports)
+        plt.title(con)
+
+    # Move legend to top right
+    plt.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0))
+
+    legend = plt.gca().get_legend()
+    current_labels = [text.get_text() for text in legend.get_texts()]
+    new_labels = [f"con1/{label.split('-')[0][-1]}/{label.split('-')[1][-1]}" for label in current_labels]
+
+    qubit_lines_labels = []
+    for l, l_old in zip(new_labels, current_labels):
+        if l in wire_to_qubit_line.keys():
+            label = wire_to_qubit_line.get(l)
+            if l_old[-1] in "IQ":
+                label = label + f' {l_old[-1]}'
+            qubit_lines_labels.append(label)
+        else:
+            qubit_lines_labels.append(l)
+            
+    for text, qubit_line in zip(legend.get_texts(), qubit_lines_labels):
+        text.set_text(qubit_line)
+
+    plt.tight_layout()
+    
+    if xlim is not None:
+        plt.xlim(*xlim)
+
+    plt.show()
+    
+    return plt.gcf()

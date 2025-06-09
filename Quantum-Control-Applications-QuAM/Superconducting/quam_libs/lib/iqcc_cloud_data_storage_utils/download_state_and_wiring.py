@@ -10,7 +10,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def download_state_and_wiring(quantum_computer_backend: str = "arbel") -> None:
+def download_state_and_wiring(quantum_computer_backend: str) -> None:
     """
     Download the latest state and wiring files from the quantum computer backend.
     
@@ -50,4 +50,4 @@ def download_state_and_wiring(quantum_computer_backend: str = "arbel") -> None:
         raise
 
 if __name__ == "__main__":
-    download_state_and_wiring() 
+    download_state_and_wiring("gilboa") 
