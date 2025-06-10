@@ -1,14 +1,14 @@
 from typing import Union, Literal
 
 import numpy as np
-from quam.components.macro import QubitMacro, QubitPairMacro, PulseMacro
+from qm.qua import declare
+from quam.components.macro import QubitMacro, QubitPairMacro
 from quam.components.pulses import ReadoutPulse, Pulse
 from quam.core import quam_dataclass
+from quam.utils.qua_types import QuaVariableBool
+
 from .transmon import Transmon
 from .tunable_coupler import TunableCoupler
-from .readout_resonator import ReadoutResonatorIQ
-from qm.qua import declare, assign, fixed
-from quam.utils.qua_types import QuaVariableBool
 
 __all__ = ["MeasureMacro", "ResetMacro", "VirtualZMacro", "CZMacro", "DelayMacro", "IdMacro"]
 
@@ -25,21 +25,29 @@ def get_pulse_name(pulse: Pulse) -> str:
         raise AttributeError(f"Cannot infer id of {pulse} because it is not attached to a parent")
 
 
+def _rz(qubit, angle):
+    qubit.xy.frame_rotation(angle)
+
+
+def _x90(qubit):
+    qubit.xy.play('x90')
+
+
+def _u3(qubit, theta, phi, lambda_):
+    _rz(qubit, lambda_)
+    _x90(qubit)
+    _rz(qubit, theta + np.pi)
+    _x90(qubit)
+    _rz(qubit, phi + np.pi)
+
+
 @quam_dataclass
 class MeasureMacro(QubitMacro):
     pulse: Union[ReadoutPulse, str] = "readout"
 
     def apply(self, **kwargs) -> QuaVariableBool:
         state: QuaVariableBool = kwargs.get("state", declare(bool))
-        qua_vars = kwargs.get("qua_vars", (declare(fixed), declare(fixed)))
-        pulse: ReadoutPulse = (
-            self.pulse if isinstance(self.pulse, Pulse) else self.qubit.get_pulse(self.pulse)
-        )
-
-        resonator: ReadoutResonatorIQ = self.qubit.resonator
-        resonator.measure(get_pulse_name(pulse), qua_vars=qua_vars)
-        I, Q = qua_vars
-        assign(state, I > pulse.threshold)
+        self.qubit.readout_state(state, pulse_name=self.pulse)
         return state
 
 
@@ -55,30 +63,8 @@ class ResetMacro(QubitMacro):
         super().__post_init__()
         assert self.max_attempts > 0, "max_attempts must be greater than 0"
 
-    def apply(self, **kwargs) -> None:
-        pi_pulse: Pulse = (
-            self.pi_pulse
-            if isinstance(self.pi_pulse, Pulse)
-            else self.qubit.get_pulse(self.pi_pulse)
-        )
-        readout_pulse: ReadoutPulse = (
-            self.readout_pulse
-            if isinstance(self.readout_pulse, Pulse)
-            else self.qubit.get_pulse(self.readout_pulse)
-        )
-        if self.reset_type == "active":
-            from ..macros import active_reset
-            active_reset(self.qubit, pi_pulse_name=get_pulse_name(pi_pulse),
-                         readout_pulse_name=get_pulse_name(readout_pulse),
-                         max_attempts=self.max_attempts)
-            # self.qubit.reset_qubit_active(
-            #     pi_pulse_name=get_pulse_name(pi_pulse),
-            #     readout_pulse_name=get_pulse_name(readout_pulse),
-            #     max_attempts=self.max_attempts,
-            # )
-        else:
-            # Thermalize the qubit
-            self.qubit.wait(self.thermalize_time // 4)
+    def apply(self) -> None:
+        self.qubit.reset(self.reset_type)
 
 
 @quam_dataclass
@@ -150,7 +136,8 @@ class CZMacro(QubitPairMacro):
         self.qubit_target.xy.play("x180", amplitude_scale=0.0, duration=4)
         self.qubit_pair.align()
 
-# this is a place holder for now 
+
+# this is a placeholder for now
 @quam_dataclass
 class CZFixedMacro(QubitPairMacro):
     flux_pulse_control: Union[Pulse, str] = None
@@ -164,6 +151,18 @@ class CZFixedMacro(QubitPairMacro):
         **kwargs,
     ) -> None:
         self.qubit_control.wait(1000//4)
+
+
+@quam_dataclass
+class CXMacro(CZMacro):
+    def apply(self, *, amplitude_scale=None, phase_shift_control=None, **kwargs) -> None:
+        # cx var0[0], var0[1]; ==>
+        # h var0[1];
+        # cz var0[0], var0[1];
+        # h var0[1];
+        _u3(self.qubit_target, np.pi / 2, 0, np.pi)
+        super().apply(amplitude_scale=amplitude_scale, phase_shift_control=phase_shift_control, **kwargs)
+        _u3(self.qubit_control, np.pi / 2, 0, np.pi)
 
 
 @quam_dataclass
@@ -192,54 +191,87 @@ class HadamardGate(QubitMacro):
     """
 
     def apply(self):
-        self.qubit.xy.play('y90')
-        self.qubit.xy.play('x180')
+        _u3(self.qubit, np.pi/2, 0, np.pi)
 
 
 @quam_dataclass
 class XGate(QubitMacro):
-    def apply(self, *args, **kwargs):
-        self.qubit.xy.play('x180')
+    def apply(self):
+        #U3(π, π / 2, 0).
+        _u3(self.qubit, np.pi, np.pi/2, 0)
+        #self.qubit.xy.play('x180')
 
 
 @quam_dataclass
 class YGate(QubitMacro):
-    def apply(self, *args, **kwargs):
+    def apply(self):
         self.qubit.xy.play('y180')
 
 
 @quam_dataclass
 class SXGate(QubitMacro):
-    def apply(self, *args, **kwargs):
+    def apply(self):
         self.qubit.xy.play('x90')
 
 
 @quam_dataclass
 class UGate(QubitMacro):
-    def _rz(self, angle):
-        self.qubit.xy.frame_rotation(angle)
-
-    def _x90(self):
-        self.qubit.xy.play('x90')
-
     # implementation based on https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.U3Gate
-    def apply(self, *args, **kwargs):
-        theta = args[0]
-        phi = args[1]
-        lambda_ = args[2]
-        self._rz(lambda_)
-        self._x90()
-        self._rz(theta + np.pi)
-        self._x90()
-        self._rz(phi + np.pi)
+    def apply(self, theta, phi, lambda_):
+        _u3(self.qubit, theta, phi, lambda_)
 
 
 @quam_dataclass
-class U1Gate(UGate):
-    def apply(self, *args, **kwargs):
-        return super().apply(0, 0, args[0])
+class U1Gate(QubitMacro):
+    # UGate.apply(0, 0, lambda_)
+    def apply(self, lambda_):
+        _u3(self.qubit, 0, 0, lambda_)
 
 
 @quam_dataclass
 class U3Gate(UGate):
     pass
+
+
+@quam_dataclass
+class ZGate(U1Gate):
+    def apply(self, **kwargs):
+        super().apply(np.pi)
+
+
+@quam_dataclass
+class R1Gate(U1Gate):
+    pass
+
+
+@quam_dataclass
+class RxGate(QubitMacro):
+    def apply(self, angle):
+        _u3(self.qubit, angle, 0, 0)
+
+
+@quam_dataclass
+class RyGate(QubitMacro):
+    def apply(self, angle):
+        #U3(θ, π/2, 0)
+        _u3(self.qubit, angle, np.pi/2, 0)
+
+
+@quam_dataclass
+class RzGate(QubitMacro):
+    def apply(self, angle):
+        _rz(self.qubit, angle)
+
+
+@quam_dataclass
+class TGate(QubitMacro):
+    def apply(self):
+        #U3(π/2, 0, π/2)
+        _u3(self.qubit, np.pi/2, 0, np.pi/2)
+
+
+@quam_dataclass
+class SGate(QubitMacro):
+    def apply(self):
+        #U3(0, 0, π/2)
+        _u3(self.qubit, 0, 0, np.pi/2)

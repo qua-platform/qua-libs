@@ -92,7 +92,6 @@ class Transmon(Qubit):
             raise AttributeError(f"Error inferring anharmonicity for channel {name}: {self.f_12=} is not a number")
         return self.f_12 - self.f_01
 
-    #@property
     def sigma(self, operation: Pulse):
         return operation.length / self.sigma_time_factor
 
@@ -149,7 +148,7 @@ class Transmon(Qubit):
         if self is other:
             raise ValueError("Cannot create a qubit pair with same qubit (q1 @ q1), where q1={self}")
 
-        for qubit_pair in self._root.qubit_pairs.values():
+        for qubit_pair in self.get_root().qubit_pairs.values():
             if qubit_pair.qubit_control is self and qubit_pair.qubit_target is other:
                 return qubit_pair
         else:
@@ -192,7 +191,6 @@ class Transmon(Qubit):
         self.resonator.measure(pulse_name, qua_vars=(I, Q))
         assign(state, Cast.to_int(I > threshold))
         wait(self.resonator.depletion_time // 4, self.resonator.name)
-
 
     def reset(
         self,
