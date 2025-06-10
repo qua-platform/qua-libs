@@ -1,8 +1,10 @@
 import logging
 from typing import Any, List, Tuple
 
+import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
+import scipy.stats
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -60,21 +62,22 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
         x="freq_GHz",
         y="power",
         linewidth=2,
+        zorder=1,
     )
     ax.set_ylabel("Power (dBm)")
+    # Overlay red 'x' markers for good fits only (plot on ax, not ax2, and do it here)
+    if hasattr(fit, "fit_quality_mask") and hasattr(fit, "rr_min_response_good"):
+        mask = fit.fit_quality_mask.values.astype(bool)
+        if np.any(mask):  # Only proceed if there are any True values in the mask
+            xvals = (fit.res_freq.values + fit.rr_min_response_good.values) / 1e9  # GHz
+            yvals = fit.power.values
+            ax.scatter(xvals[mask], yvals[mask], color="red", marker="x", label="Good fit", zorder=10)
+    # Now create the detuning axis
     ax2 = ax.twiny()
     ds.assign_coords(detuning_MHz=ds.detuning / u.MHz).loc[qubit].IQ_abs_norm.plot(
         ax=ax2, add_colorbar=False, x="detuning_MHz", y="power", robust=True
     )
     ax2.set_xlabel("Detuning [MHz]")
-    """
-    # Overlay red 'x' markers for good fits only
-    if hasattr(fit, "fit_quality_mask") and hasattr(fit, "rr_min_response_good"):
-        mask = fit.fit_quality_mask.values.astype(bool)
-        xvals = fit.rr_min_response_good.values * 1e-6  # MHz
-        yvals = fit.power.values
-        ax2.scatter(xvals[mask], yvals[mask], color="red", marker="x", label="Good fit", zorder=10)
-    """
     # Plot where the optimum readout power was found
     if getattr(fit, "outcome", None) == "successful":
         ax2.axhline(
@@ -208,7 +211,10 @@ def plotly_plot_raw_data_with_fit(
         row      = (idx // ncols) + 1
         col      = (idx % ncols)  + 1
         qubit_id = list(name_dict.values())[0]
-
+        # Only print debug for the first qubit
+        if idx == 0:
+            # print("[plotly debug] qubit:", qubit_id)
+            pass
         # Find integer index of this qubit in ds2.qubit.values
         try:
             q_idx = q_labels.index(qubit_id)
@@ -246,7 +252,7 @@ def plotly_plot_raw_data_with_fit(
                 colorscale    = "Viridis",
                 zmin          = zmin_i,
                 zmax          = zmax_i,
-                showscale     = True,
+                showscale     = False,
                 colorbar      = dict(
                     x         = 1.0,      # placeholder (we'll move below)
                     y         = 0.5,
@@ -277,29 +283,34 @@ def plotly_plot_raw_data_with_fit(
             mask = fit_ds.fit_quality_mask.values.astype(bool)
             rr_detune = fit_ds.rr_min_response_good.values  # (n_powers,) in Hz
             res_freq = float(fit_ds.res_freq.values)        # in Hz
-
-            # Only plot valid, non-NaN, in-mask values
             valid = np.isfinite(rr_detune) & mask
-
             overlay_freqs = (res_freq + rr_detune[valid]) / 1e9  # GHz
             p_fit_vals = fit_ds.power.values[valid]
-            # Commenting out the red crosses overlay
-            # fig.add_trace(
-            #     go.Scatter(
-            #         x=overlay_freqs,
-            #         y=p_fit_vals,
-            #         mode="markers",
-            #         marker=dict(symbol="x", color="red", size=8),
-            #         name="Good Fit",
-            #         showlegend=False,
-            #         hovertemplate=(
-            #             "Freq [GHz]: %{x:.3f}<br>"
-            #             "Power [dBm]: %{y:.2f}<br>"
-            #             "<extra></extra>"
-            #         ),
-            #     ),
-            #     row=row, col=col
-            # )
+            # Print debug info for first 5 points
+            if idx == 0:
+                # print("[plotly debug] fit.res_freq (Hz):", res_freq)
+                # print("[plotly debug] fit.rr_min_response_good (Hz):", rr_detune[:5])
+                # print("[plotly debug] fit.power (dBm):", fit_ds.power.values[:5])
+                # print("[plotly debug] mask:", mask[:5])
+                # print("[plotly debug] overlay_freqs (GHz):", overlay_freqs[:5])
+                # print("[plotly debug] p_fit_vals (dBm):", p_fit_vals[:5])
+                pass
+            fig.add_trace(
+                go.Scatter(
+                    x=overlay_freqs,
+                    y=p_fit_vals,
+                    mode="markers",
+                    marker=dict(symbol="x", color="red", size=8),
+                    name="Good Fit",
+                    showlegend=False,
+                    hovertemplate=(
+                        "Freq [GHz]: %{x:.3f}<br>"
+                        "Power [dBm]: %{y:.2f}<br>"
+                        "<extra></extra>"
+                    ),
+                ),
+                row=row, col=col
+            )
         if "outcome" in fit_ds.coords and fit_ds.outcome == "successful":
             res_GHz = float(fit_ds.res_freq.values) / 1e9
             fig.add_trace(
@@ -307,7 +318,7 @@ def plotly_plot_raw_data_with_fit(
                     x=[res_GHz, res_GHz],
                     y=[power_vals.min(), power_vals.max()],
                     mode="lines",
-                    line=dict(color="magenta", width=2, dash="dash"),
+                    line=dict(color="blue", width=2, dash="dash"),
                     showlegend=False,
                     hoverinfo="skip"
                 ),
@@ -319,7 +330,7 @@ def plotly_plot_raw_data_with_fit(
                     x=[freq_vals.min(), freq_vals.max()],
                     y=[opt_pwr, opt_pwr],
                     mode="lines",
-                    line=dict(color="cyan", width=2, dash="dot"),
+                    line=dict(color="magenta", width=2),
                     showlegend=False,
                     hoverinfo="skip"
                 ),
@@ -513,7 +524,7 @@ def plotly_plot_raw_data(
                 colorscale    = "Viridis",
                 zmin          = zmin_i,
                 zmax          = zmax_i,
-                showscale     = True,
+                showscale     = False,
                 colorbar      = dict(
                     x         = 1.0,      # placeholder, will be overwritten
                     y         = 0.5,

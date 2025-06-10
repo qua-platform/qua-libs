@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, Tuple
 
 import numpy as np
+import scipy.stats
 import xarray as xr
 from qualibration_libs.analysis import peaks_dips
 from qualibration_libs.analysis.models import lorentzian_dip
@@ -172,7 +173,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         flatness_first_n.append(flatness_val)
         # --- Low power resonance center std ---
         low_power_centers = smoothed[:noise_power_points]
-        low_power_center_std = float(np.nanstd(low_power_centers))
+        # Only calculate std if we have at least 2 valid points
+        valid_centers = low_power_centers[~np.isnan(low_power_centers)]
+        low_power_center_std = float(np.nanstd(low_power_centers)) if len(valid_centers) >= 2 else 0.0
         low_power_center_stds.append(low_power_center_std)
         # Find optimal power as before, but only among good fits
         derivative = np.gradient(smoothed)
@@ -221,7 +224,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     for q in node.namespace["qubits"]:
         freq_shift.append(float(_select_optimal_power(ds_fit, q.name).position.data))
     ds_fit = ds_fit.assign_coords({"freq_shift": (["qubit"], freq_shift)})
-    fit_dataset, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
+    fit_dataset, fit_results = _extract_relevant_fit_parameters(ds_fit, node, ds)
     return fit_dataset, fit_results
 
 
@@ -237,28 +240,61 @@ def get_fit_outcome(
     power_values: np.ndarray = None,
     low_power_center_std: float = None,
     low_power_center_std_thresh: float = 1e6,  # 1 MHz in Hz
+    iq_abs: np.ndarray = None,
+    detuning: np.ndarray = None,
+    n_low_powers: int = 8,
+    min_gs_count: int = 5,
+    gs_window: int = 2,
 ) -> str:
     """
-    Returns the outcome string for a given fit result, now with robust low power variability logic.
+    Returns the outcome string for a given fit result, with GS detection as the primary check.
     """
+    gs_seen = True
+    if iq_abs is not None and detuning is not None:
+        n_powers, n_detuning = iq_abs.shape
+        M = n_low_powers
+        K = min_gs_count
+        window = gs_window
+        binary_map = np.zeros((n_powers, n_detuning), dtype=int)
+        min_indices = np.argmin(iq_abs, axis=1)
+        for i, idx in enumerate(min_indices):
+            binary_map[i, idx] = 1
+        low_power_indices = np.arange(min(M, n_powers))
+        dip_indices = [np.argmax(binary_map[i]) if np.any(binary_map[i]) else None for i in low_power_indices]
+        dip_indices = [idx for idx in dip_indices if idx is not None]
+        if len(dip_indices) >= K:
+            mode_idx = scipy.stats.mode(dip_indices, keepdims=True)[0][0]
+            close_to_mode = [abs(idx - mode_idx) <= window for idx in dip_indices]
+            if sum(close_to_mode) >= K:
+                gs_seen = True
+            else:
+                gs_seen = False
+        else:
+            gs_seen = False
+
     snr_low = snr is not None and snr < snr_min
+
+    if not gs_seen and snr_low:
+        return "The SNR is low and the power range is too small, consider increasing it"
+    if not gs_seen:
+        return "The power range is too small, consider increasing it"
+    
+    # --- legacy logic ---
     if low_power_center_std is not None and low_power_center_std > low_power_center_std_thresh:
         if snr_low:
             return "The SNR is low and the power is not large enough to observe the punch-out, consider increasing the maximum readout power and the number of shots"
         else:
             return "The power range is not large enough to observe the punch-out, consider increasing the number of shots"
-    if snr_low:
+    if snr_low or np.isnan(freq_shift) or np.isnan(optimal_power):
         return "The SNR isn't large enough, consider increasing the number of shots"
-    if np.isnan(freq_shift) or np.isnan(optimal_power):
-        return "NaN values detected in frequency shift or optimal power"
     if np.abs(freq_shift) >= frequency_span_in_mhz * 1e6:
         return f"Frequency shift {1e-6 * freq_shift:.0f} MHz exceeds span {frequency_span_in_mhz} MHz"
     if num_lines > 1:
-        return "Several lines were detected, consider reducing the power range or improving the experiment setup."
+        return "Several lines were detected..."
     return "successful"
 
 
-def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
+def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, ds_raw: xr.Dataset):
     """Add metadata to the fit dataset and fit result dictionary."""
 
     # Get the fitted resonator frequency
@@ -279,6 +315,10 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
         max_power_dbm = node.parameters.max_power_dbm if hasattr(node.parameters, "max_power_dbm") else None
         power_values = fit.power.values if "power" in fit.dims or "power" in fit.coords else None
         low_power_center_std = fit.low_power_center_std.sel(qubit=q).data if "low_power_center_std" in fit.data_vars else None
+        iq_abs_arr = ds_raw.IQ_abs.sel(qubit=q).values
+        # Ensure shape is (power, detuning)
+        if iq_abs_arr.shape[0] != len(fit.power.values):
+            iq_abs_arr = iq_abs_arr.T
         outcome = get_fit_outcome(
             freq_shift=freq_shift,
             optimal_power=optimal_power,
@@ -289,6 +329,11 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             max_power_dbm=max_power_dbm,
             power_values=power_values,
             low_power_center_std=low_power_center_std,
+            iq_abs=iq_abs_arr,
+            detuning=fit.detuning.values,
+            n_low_powers=8,
+            min_gs_count=5,
+            gs_window=2,
         )
         outcomes.append(outcome)
         fit_results[q] = FitParameters(
