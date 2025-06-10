@@ -1,3 +1,4 @@
+import logging
 from typing import Any, List, Tuple
 
 import numpy as np
@@ -66,12 +67,14 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
         ax=ax2, add_colorbar=False, x="detuning_MHz", y="power", robust=True
     )
     ax2.set_xlabel("Detuning [MHz]")
+    """
     # Overlay red 'x' markers for good fits only
     if hasattr(fit, "fit_quality_mask") and hasattr(fit, "rr_min_response_good"):
         mask = fit.fit_quality_mask.values.astype(bool)
         xvals = fit.rr_min_response_good.values * 1e-6  # MHz
         yvals = fit.power.values
         ax2.scatter(xvals[mask], yvals[mask], color="red", marker="x", label="Good fit", zorder=10)
+    """
     # Plot where the optimum readout power was found
     if getattr(fit, "outcome", None) == "successful":
         ax2.axhline(
@@ -120,6 +123,8 @@ def plotly_plot_raw_data_with_fit(
          • "success"         (qubit,) boolean
       - The code will do `fit_ds = fits.sel(qubit=qubit_id)`.
     """
+    logger = logging.getLogger("plotly_plot_raw_data_with_fit")
+    logger.setLevel(logging.DEBUG)
 
     # ----------------------------------------------------
     # 1) Transpose ds_raw so that its dims become (qubit, detuning, power)
@@ -136,9 +141,9 @@ def plotly_plot_raw_data_with_fit(
     else:
         raise KeyError("After transpose, dataset must have 'full_freq' or 'freq_full'.")
 
-    if "IQ_abs" not in ds2:
-        raise KeyError("After transpose, dataset must have 'IQ_abs' (n_qubits, n_freqs, n_powers).")
-    IQ_array = ds2["IQ_abs"].values            # (n_qubits, n_freqs, n_powers)
+    if "IQ_abs_norm" not in ds2:
+        raise KeyError("After transpose, dataset must have 'IQ_abs_norm' (n_qubits, n_freqs, n_powers).")
+    IQ_array = ds2["IQ_abs_norm"].values            # (n_qubits, n_freqs, n_powers)
 
     # Pick the power axis:
     if "power" in ds2.coords:
@@ -189,8 +194,9 @@ def plotly_plot_raw_data_with_fit(
             z_mat = z_mat.T
         if np.all(np.isnan(z_mat)):
             z_mat = np.zeros_like(z_mat)
-        per_zmin.append(float(np.nanmin(z_mat)))
-        per_zmax.append(float(np.nanmax(z_mat)))
+        # Use robust percentiles for color scaling, flattening the matrix
+        per_zmin.append(float(np.nanpercentile(z_mat.flatten(), 2)))
+        per_zmax.append(float(np.nanpercentile(z_mat.flatten(), 98)))
 
     # ----------------------------------------------------
     # 6) Loop over each subplot = one qubit.  Add Heatmap + overlays
@@ -267,34 +273,33 @@ def plotly_plot_raw_data_with_fit(
 
         # (f) Overlay the fit if success=True:
         fit_ds = fits.sel(qubit=qubit_id)
-        if "fit_quality_mask" in fit_ds and "rr_min_response_good" in fit_ds:
+        if "fit_quality_mask" in fit_ds and "rr_min_response_good" in fit_ds and "res_freq" in fit_ds:
             mask = fit_ds.fit_quality_mask.values.astype(bool)
             rr_detune = fit_ds.rr_min_response_good.values  # (n_powers,) in Hz
-            center_Hz = float(fit_ds.res_freq.values)
-            abs_rr_Hz = center_Hz + rr_detune
-            overlay_freqs = []
-            for d in rr_detune:
-                idx = np.argmin(np.abs(detuning_array - d))
-                overlay_freqs.append(freq_array[q_idx][idx])
-            overlay_freqs = np.array(overlay_freqs) / 1e9  # to GHz
-            p_fit_vals = fit_ds.power.values
-            # Only plot where mask is True
-            fig.add_trace(
-                go.Scatter(
-                    x=overlay_freqs[mask],
-                    y=p_fit_vals[mask],
-                    mode="markers",
-                    marker=dict(symbol="x", color="red", size=8),
-                    name="Good Fit",
-                    showlegend=False,
-                    hovertemplate=(
-                        "Freq [GHz]: %{x:.3f}<br>"
-                        "Power [dBm]: %{y:.2f}<br>"
-                        "<extra></extra>"
-                    ),
-                ),
-                row=row, col=col
-            )
+            res_freq = float(fit_ds.res_freq.values)        # in Hz
+
+            # Only plot valid, non-NaN, in-mask values
+            valid = np.isfinite(rr_detune) & mask
+
+            overlay_freqs = (res_freq + rr_detune[valid]) / 1e9  # GHz
+            p_fit_vals = fit_ds.power.values[valid]
+            # Commenting out the red crosses overlay
+            # fig.add_trace(
+            #     go.Scatter(
+            #         x=overlay_freqs,
+            #         y=p_fit_vals,
+            #         mode="markers",
+            #         marker=dict(symbol="x", color="red", size=8),
+            #         name="Good Fit",
+            #         showlegend=False,
+            #         hovertemplate=(
+            #             "Freq [GHz]: %{x:.3f}<br>"
+            #             "Power [dBm]: %{y:.2f}<br>"
+            #             "<extra></extra>"
+            #         ),
+            #     ),
+            #     row=row, col=col
+            # )
         if "outcome" in fit_ds.coords and fit_ds.outcome == "successful":
             res_GHz = float(fit_ds.res_freq.values) / 1e9
             fig.add_trace(
@@ -384,7 +389,7 @@ def plotly_plot_raw_data(
 
     Requirements (ds):
       - Must have "full_freq" or "freq_full" (Hz) as a DataArray of shape (n_qubits, n_freqs).
-      - Must have "IQ_abs" (n_qubits × n_freqs × n_powers).
+      - Must have "IQ_abs_norm" (n_qubits × n_freqs × n_powers).
       - Must have a coordinate "power" or "power_dbm" (length n_powers, in dBm).
       - Must have a coordinate "detuning" (length n_freqs, in Hz).
     qubits:
@@ -403,9 +408,9 @@ def plotly_plot_raw_data(
     else:
         raise KeyError("Dataset must have 'full_freq' or 'freq_full' (Hz).")
 
-    if "IQ_abs" not in ds:
-        raise KeyError("Dataset must have 'IQ_abs' (n_qubits × n_freqs × n_powers).")
-    IQ_array = ds["IQ_abs"].values            # shape = (n_qubits, n_freqs, n_powers)
+    if "IQ_abs_norm" not in ds:
+        raise KeyError("Dataset must have 'IQ_abs_norm' (n_qubits × n_freqs × n_powers).")
+    IQ_array = ds["IQ_abs_norm"].values            # shape = (n_qubits, n_freqs, n_powers)
 
     # Pick power coordinate:
     if "power" in ds.coords:
@@ -457,8 +462,9 @@ def plotly_plot_raw_data(
             z_mat = z_mat.T
         if np.all(np.isnan(z_mat)):
             z_mat = np.zeros_like(z_mat)
-        per_zmin.append(float(np.nanmin(z_mat)))
-        per_zmax.append(float(np.nanmax(z_mat)))
+        # Use robust percentiles for color scaling, flattening the matrix
+        per_zmin.append(float(np.nanpercentile(z_mat.flatten(), 2)))
+        per_zmax.append(float(np.nanpercentile(z_mat.flatten(), 98)))
 
     # ----------------------------------------------------
     # 5) Loop over each subplot and add a Heatmap + correctly positioned colorbar
