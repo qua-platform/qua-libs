@@ -1,9 +1,10 @@
 """
 QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
 """
-
+import os
 from pathlib import Path
 import numpy as np
+from qm.octave import QmOctaveConfig
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
@@ -19,6 +20,21 @@ pio.renderers.default = "browser"
 # AUXILIARY FUNCTIONS #
 #######################
 u = unit(coerce_to_integer=True)
+
+
+def IQ_imbalance(g, phi):
+    """
+    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
+    be seen here:
+    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
+
+    :param g: relative gain imbalance between the I & Q ports (unit-less). Set to 0 for no gain imbalance.
+    :param phi: relative phase imbalance between the I & Q ports (radians). Set to 0 for no phase imbalance.
+    """
+    c = np.cos(phi)
+    s = np.sin(phi)
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
+    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
 ######################
@@ -44,10 +60,15 @@ default_additional_files = {
 # OPX configuration #
 #####################
 con = "con1"
-mw_fem = 1  # This should be the index of the LF-FEM module, e.g., 1
-lf_fem = 5  # This should be the index of the LF-FEM module, e.g., 1
-# Set octave_config to None if no octave are present
-octave_config = None
+fem = 1  # This should be the index of the LF-FEM module, e.g., 1
+############################
+# Set octave configuration #
+############################
+octave_ip = qop_ip  # Write the Octave IP address
+octave_port = 11050  # 11xxx, where xxx are the last three digits of the Octave IP address
+octave_config = QmOctaveConfig()
+octave_config.set_calibration_db(os.getcwd())
+octave_config.add_device_info("octave1", octave_ip, octave_port)
 
 sampling_rate = int(1e9)  # or, int(2e9)
 # Frequencies
@@ -56,9 +77,10 @@ ensemble_IF = -30 * u.MHz  # in Hz
 
 mixer_ensemble_g = 0.0
 mixer_ensemble_phi = 0.0
-ensemble_LO_freq = 2.8 * u.GHz  # in Hz
 
-ensemble_power = 4  # power in dBm at waveform amp = 1
+# LOs are used in plots. They can also be used marking mixer elements in the config.
+# On top of that they can also be used for setting LO sources (this make sure that everything is in sync)
+ensemble_LO = 2.8 * u.GHz  # in Hz
 
 # Readout parameters
 const_amp = 0.1  # in V
@@ -124,7 +146,7 @@ config = {
         con: {
             "type": "opx1000",
             "fems": {
-                lf_fem: {
+                fem: {
                     "type": "LF",
                     "analog_outputs": {
                         # Ensemble MW Control, I-Quadrature
@@ -174,41 +196,12 @@ config = {
                         2: {"offset": 0.0, "gain_db": 0},  # Q from down conversion
                     },
                 },
-                mw_fem: {
-                    # The keyword "band" refers to the following frequency bands:
-                    #   1: (50 MHz - 5.5 GHz)
-                    #   2: (4.5 GHz - 7.5 GHz)
-                    #   3: (6.5 GHz - 10.5 GHz)
-                    # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, and O8 & I2
-                    # must be in the same band.
-                    # MW-FEM outputs are delayed with respect to the LF-FEM outputs by 141ns for bands 1 and 3 and 161ns for band 2.
-                    # The keyword "full_scale_power_dbm" is the maximum power of
-                    # normalized pulse waveforms in [-1,1]. To convert to voltage,
-                    #   power_mw = 10**(full_scale_power_dbm / 10)
-                    #   max_voltage_amp = np.sqrt(2 * power_mw * 50 / 1000)
-                    #   amp_in_volts = waveform * max_voltage_amp
-                    #   ^ equivalent to OPX+ amp
-                    # Its range is -11dBm to +16dBm with 3dBm steps.
-                    "type": "MW",
-                    "analog_outputs": {
-                        1: {
-                            "band": 1,
-                            "full_scale_power_dbm": ensemble_power,
-                            "upconverters": {1: {"frequency": ensemble_LO_freq}},
-                        },  # resonator
-                    },
-                    "digital_outputs": {},
-                    "analog_inputs": {},
-                },
             },
         }
     },
     "elements": {
         "ensemble": {
-            "MWInput": {
-                "port": (con, mw_fem, 1),
-                "upconverter": 1,
-            },
+            "RF_inputs": {"port": ("octave1", 1)},
             "intermediate_frequency": ensemble_IF,
             "operations": {
                 "const": "const_pulse",
@@ -225,7 +218,7 @@ config = {
             },
         },
         "resonator": {
-            "singleInput": {"port": (con, lf_fem, 3)},
+            "singleInput": {"port": (con, fem, 3)},
             "intermediate_frequency": resonator_IF,
             "operations": {
                 "short_readout": "short_readout_pulse",
@@ -234,7 +227,7 @@ config = {
             },
             "digitalInputs": {
                 "laser": {
-                    "port": (con, lf_fem, 8),
+                    "port": (con, fem, 8),
                     "delay": 0,
                     "buffer": 0,
                 },
@@ -242,14 +235,14 @@ config = {
             "time_of_flight": time_of_flight,
             "smearing": 0,
             "outputs": {
-                "out1": (con, lf_fem, 1),
-                "out2": (con, lf_fem, 2),
+                "out1": (con, fem, 1),
+                "out2": (con, fem, 2),
             },
         },
         "green_laser": {
             "digitalInputs": {
                 "laser": {
-                    "port": (con, lf_fem, 4),
+                    "port": (con, fem, 4),
                     "delay": 0,
                     "buffer": 0,
                     # 'delay': 136,
@@ -263,7 +256,7 @@ config = {
         "switch_1": {
             "digitalInputs": {
                 "activate": {
-                    "port": (con, lf_fem, 1),
+                    "port": (con, fem, 1),
                     # 'delay': 136,
                     # 'buffer': 50,
                     "delay": 0,
@@ -279,7 +272,7 @@ config = {
         "switch_2": {
             "digitalInputs": {
                 "activate": {
-                    "port": (con, lf_fem, 2),
+                    "port": (con, fem, 2),
                     # 'delay': 136,
                     # 'buffer': 50,
                     "delay": 0,
@@ -295,7 +288,7 @@ config = {
         "switch_receiver": {
             "digitalInputs": {
                 "activate": {
-                    "port": (con, lf_fem, 3),
+                    "port": (con, fem, 3),
                     "delay": 0,
                     "buffer": 0,
                     # 'delay': 136,
@@ -307,6 +300,20 @@ config = {
                 "activate_resonator": "activate_resonator_pulse",
             },
         },
+    },
+    "octaves": {
+        "octave1": {
+            "RF_outputs": {
+                1: {
+                    "LO_frequency": ensemble_LO,
+                    "LO_source": "internal",  # can be external or internal. internal is the default
+                    "output_mode": "always_on",
+                    # can be: "always_on" / "always_off"/ "triggered" / "triggered_reversed". "always_off" is the default
+                    "gain": 0,  # can be in the range [-20 : 0.5 : 20]dB
+                },
+            },
+            "connectivity": (con, fem),
+        }
     },
     "pulses": {
         "initialization_pulse": {

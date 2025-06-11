@@ -1,9 +1,7 @@
-"""
-QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
-"""
-
+import os
 from pathlib import Path
 import numpy as np
+from qm.octave import QmOctaveConfig
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
@@ -14,18 +12,19 @@ import plotly.io as pio
 
 pio.renderers.default = "browser"
 
-
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
 u = unit(coerce_to_integer=True)
+# Used to correct for IQ mixer imbalances
 
 
 ######################
 # Network parameters #
 ######################
+# IP address of the Quantum Orchestration Platform
 qop_ip = "127.0.0.1"
-cluster_name = "my_cluster"
+cluster_name = None
 qop_port = None
 
 #############
@@ -40,25 +39,25 @@ default_additional_files = {
     "optimal_weights.npz": "optimal_weights.npz",
 }
 
-#####################
-# OPX configuration #
-#####################
-con = "con1"
-mw_fem = 1  # This should be the index of the LF-FEM module, e.g., 1
-lf_fem = 5  # This should be the index of the LF-FEM module, e.g., 1
-# Set octave_config to None if no octave are present
-octave_config = None
+############################
+# Set octave configuration #
+############################
+octave_ip = qop_ip  # Write the Octave IP address
+octave_port = 11050  # 11xxx, where xxx are the last three digits of the Octave IP address
+octave_config = QmOctaveConfig()
+octave_config.set_calibration_db(os.getcwd())
+octave_config.add_device_info("octave1", octave_ip, octave_port)
 
-sampling_rate = int(1e9)  # or, int(2e9)
 # Frequencies
 resonator_IF = -30 * u.MHz  # in Hz
 ensemble_IF = -30 * u.MHz  # in Hz
 
 mixer_ensemble_g = 0.0
 mixer_ensemble_phi = 0.0
-ensemble_LO_freq = 2.8 * u.GHz  # in Hz
 
-ensemble_power = 4  # power in dBm at waveform amp = 1
+# LOs are used in plots. They can also be used marking mixer elements in the config.
+# On top of that they can also be used for setting LO sources (this make sure that everything is in sync)
+ensemble_LO = 2.8 * u.GHz  # in Hz
 
 # Readout parameters
 const_amp = 0.1  # in V
@@ -84,27 +83,27 @@ saturation_len = 50 * u.us  # Needs to be several T1 so that the final state is 
 pi_len = 320  # in units of ns
 pi_amp = 0.3  # in units of volts
 pi_wf, pi_der_wf = drag_gaussian_pulse_waveforms(
-    pi_amp, pi_len, pi_len / 5, alpha=0, anharmonicity=1, detuning=0, subtracted=True
+    pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, anharmonicity=0, detuning=0, subtracted=True
 )
 minus_pi_wf, minus_pi_der_wf = drag_gaussian_pulse_waveforms(
-    -pi_amp, pi_len, pi_len / 5, alpha=0, anharmonicity=1, detuning=0, subtracted=True
+    -pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, anharmonicity=0, detuning=0, subtracted=True
 )
 
 # Pi_half pulse parameters
 pi_half_len = int(pi_len / 2)  # in units of ns
 pi_half_amp = pi_amp  # in units of volts
 pi_half_wf, pi_half_der_wf = drag_gaussian_pulse_waveforms(
-    pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, anharmonicity=1, detuning=0, subtracted=True
+    pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, anharmonicity=0, delta=1, detuning=0, subtracted=True
 )
 minus_pi_half_wf, minus_pi_half_der_wf = drag_gaussian_pulse_waveforms(
-    -pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, anharmonicity=1, detuning=0, subtracted=True
+    -pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, anharmonicity=0, delta=1, detuning=0, subtracted=True
 )
 
 # Subtracted Gaussian pulse parameters
 gauss_amp = 0.3  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_len = 20  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_wf, gauss_der_wf = drag_gaussian_pulse_waveforms(
-    gauss_amp, gauss_len, gauss_len / 5, alpha=0, anharmonicity=1, detuning=0, subtracted=True
+    gauss_amp, gauss_len, gauss_len / 5, alpha=0, anharmonicity=0, delta=1, detuning=0, subtracted=True
 )
 # Note: a subtracted Gaussian pulse has a more narrow spectral density than a regular gaussian
 # it becomes useful in short pulses to reduce leakage to higher energy states
@@ -121,94 +120,30 @@ activation_len = 320  # in ns
 config = {
     "version": 1,
     "controllers": {
-        con: {
-            "type": "opx1000",
-            "fems": {
-                lf_fem: {
-                    "type": "LF",
-                    "analog_outputs": {
-                        # Ensemble MW Control, I-Quadrature
-                        1: {
-                            "offset": 0.0,
-                            # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
-                            #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
-                            #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
-                            # Note, 'offset' takes absolute values, e.g., if in amplified mode and want to output 2.0 V, then set "offset": 2.0
-                            "output_mode": "direct",
-                            # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
-                            #   1 GS/s: uses one core per output (default)
-                            #   2 GS/s: uses two cores per output
-                            # NOTE: duration parameterization of arb. waveforms, sticky elements and chirping
-                            #       aren't yet supported in 2 GS/s.
-                            "sampling_rate": sampling_rate,
-                            # At 1 GS/s, use the "upsampling_mode" to optimize output for
-                            #   modulated pulses (optimized for modulated pulses):      "mw"    (default)
-                            #   unmodulated pulses (optimized for clean step response): "pulse"
-                            "upsampling_mode": "mw",
-                        },
-                        # Ensemble MW Control, Q-Quadrature
-                        2: {
-                            "offset": 0.0,
-                            "output_mode": "direct",
-                            "sampling_rate": sampling_rate,
-                            "upsampling_mode": "mw",
-                        },
-                        # Resonator Baseband Control
-                        3: {
-                            "offset": 0.0,
-                            "output_mode": "direct",
-                            "sampling_rate": sampling_rate,
-                            "upsampling_mode": "mw",
-                        },
-                    },
-                    "digital_outputs": {
-                        1: {},
-                        2: {},
-                        3: {},
-                        4: {},
-                        5: {},
-                        8: {},
-                    },
-                    "analog_inputs": {
-                        1: {"offset": 0.0, "gain_db": 0},  # I from down conversion
-                        2: {"offset": 0.0, "gain_db": 0},  # Q from down conversion
-                    },
-                },
-                mw_fem: {
-                    # The keyword "band" refers to the following frequency bands:
-                    #   1: (50 MHz - 5.5 GHz)
-                    #   2: (4.5 GHz - 7.5 GHz)
-                    #   3: (6.5 GHz - 10.5 GHz)
-                    # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, and O8 & I2
-                    # must be in the same band.
-                    # MW-FEM outputs are delayed with respect to the LF-FEM outputs by 141ns for bands 1 and 3 and 161ns for band 2.
-                    # The keyword "full_scale_power_dbm" is the maximum power of
-                    # normalized pulse waveforms in [-1,1]. To convert to voltage,
-                    #   power_mw = 10**(full_scale_power_dbm / 10)
-                    #   max_voltage_amp = np.sqrt(2 * power_mw * 50 / 1000)
-                    #   amp_in_volts = waveform * max_voltage_amp
-                    #   ^ equivalent to OPX+ amp
-                    # Its range is -11dBm to +16dBm with 3dBm steps.
-                    "type": "MW",
-                    "analog_outputs": {
-                        1: {
-                            "band": 1,
-                            "full_scale_power_dbm": ensemble_power,
-                            "upconverters": {1: {"frequency": ensemble_LO_freq}},
-                        },  # resonator
-                    },
-                    "digital_outputs": {},
-                    "analog_inputs": {},
-                },
+        "con1": {
+            "type": "opx1",
+            "analog_outputs": {
+                1: {"offset": +0.0},
+                2: {"offset": +0.0},
+                3: {"offset": +0.0},
             },
-        }
+            "digital_outputs": {
+                1: {},
+                2: {},
+                3: {},
+                4: {},
+                5: {},
+                10: {},
+            },
+            "analog_inputs": {
+                1: {"offset": 0.0, "gain_db": 0},  # I from down conversion
+                2: {"offset": 0.0, "gain_db": 0},  # Q from down conversion
+            },
+        },
     },
     "elements": {
         "ensemble": {
-            "MWInput": {
-                "port": (con, mw_fem, 1),
-                "upconverter": 1,
-            },
+            "RF_inputs": {"port": ("octave1", 1)},
             "intermediate_frequency": ensemble_IF,
             "operations": {
                 "const": "const_pulse",
@@ -225,7 +160,7 @@ config = {
             },
         },
         "resonator": {
-            "singleInput": {"port": (con, lf_fem, 3)},
+            "singleInput": {"port": ("con1", 3)},
             "intermediate_frequency": resonator_IF,
             "operations": {
                 "short_readout": "short_readout_pulse",
@@ -234,7 +169,7 @@ config = {
             },
             "digitalInputs": {
                 "laser": {
-                    "port": (con, lf_fem, 8),
+                    "port": ("con1", 10),
                     "delay": 0,
                     "buffer": 0,
                 },
@@ -242,14 +177,14 @@ config = {
             "time_of_flight": time_of_flight,
             "smearing": 0,
             "outputs": {
-                "out1": (con, lf_fem, 1),
-                "out2": (con, lf_fem, 2),
+                "out1": ("con1", 1),
+                "out2": ("con1", 2),
             },
         },
         "green_laser": {
             "digitalInputs": {
                 "laser": {
-                    "port": (con, lf_fem, 4),
+                    "port": ("con1", 4),
                     "delay": 0,
                     "buffer": 0,
                     # 'delay': 136,
@@ -263,7 +198,7 @@ config = {
         "switch_1": {
             "digitalInputs": {
                 "activate": {
-                    "port": (con, lf_fem, 1),
+                    "port": ("con1", 1),
                     # 'delay': 136,
                     # 'buffer': 50,
                     "delay": 0,
@@ -279,7 +214,7 @@ config = {
         "switch_2": {
             "digitalInputs": {
                 "activate": {
-                    "port": (con, lf_fem, 2),
+                    "port": ("con1", 2),
                     # 'delay': 136,
                     # 'buffer': 50,
                     "delay": 0,
@@ -295,7 +230,7 @@ config = {
         "switch_receiver": {
             "digitalInputs": {
                 "activate": {
-                    "port": (con, lf_fem, 3),
+                    "port": ("con1", 3),
                     "delay": 0,
                     "buffer": 0,
                     # 'delay': 136,
@@ -307,6 +242,20 @@ config = {
                 "activate_resonator": "activate_resonator_pulse",
             },
         },
+    },
+    "octaves": {
+        "octave1": {
+            "RF_outputs": {
+                1: {
+                    "LO_frequency": ensemble_LO,
+                    "LO_source": "internal",  # can be external or internal. internal is the default
+                    "output_mode": "always_on",
+                    # can be: "always_on" / "always_off"/ "triggered" / "triggered_reversed". "always_off" is the default
+                    "gain": 0,  # can be in the range [-20 : 0.5 : 20]dB
+                },
+            },
+            "connectivity": "con1",
+        }
     },
     "pulses": {
         "initialization_pulse": {
