@@ -6,7 +6,7 @@ import time
 from qm import SimulationConfig, LoopbackInterface
 from qm.qua import *
 from qm import QuantumMachinesManager
-from configuration import *
+from configuration_with_lf_fem_and_mw_fem import *
 
 ###################
 # The QUA program #

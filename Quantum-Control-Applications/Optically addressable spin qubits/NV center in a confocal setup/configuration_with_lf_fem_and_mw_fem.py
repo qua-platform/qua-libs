@@ -171,7 +171,7 @@ config = {
                             "band": 1,
                             "full_scale_power_dbm": NV_power,
                             "upconverters": {1: {"frequency": NV_LO_freq}},
-                        },  # resonator
+                        },  # NV
                     },
                     "digital_outputs": {},
                     "analog_inputs": {},

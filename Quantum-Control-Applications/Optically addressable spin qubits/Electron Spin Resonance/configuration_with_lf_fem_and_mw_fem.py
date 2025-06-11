@@ -195,7 +195,7 @@ config = {
                             "band": 1,
                             "full_scale_power_dbm": ensemble_power,
                             "upconverters": {1: {"frequency": ensemble_LO_freq}},
-                        },  # resonator
+                        },  # ensemble
                     },
                     "digital_outputs": {},
                     "analog_inputs": {},
