@@ -21,11 +21,10 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-# qop_ip = "127.0.0.1"
-# cluster_name = "my_cluster"
+qop_ip = "127.0.0.1"
+cluster_name = "my_cluster"
 qop_port = None
-qop_ip = "172.16.33.115"
-cluster_name = "CS_3"
+
 #############
 # Save Path #
 #############
