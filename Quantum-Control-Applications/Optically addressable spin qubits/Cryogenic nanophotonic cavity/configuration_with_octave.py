@@ -1,5 +1,7 @@
+import os
 from pathlib import Path
 import numpy as np
+from qm.octave import QmOctaveConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
@@ -13,28 +15,13 @@ pio.renderers.default = "browser"
 u = unit(coerce_to_integer=True)
 
 
-# IQ imbalance matrix
-def IQ_imbalance(g, phi):
-    """
-    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
-    be seen here:
-    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
-
-    :param g: relative gain imbalance between the I & Q ports (unit-less). Set to 0 for no gain imbalance.
-    :param phi: relative phase imbalance between the I & Q ports (radians). Set to 0 for no phase imbalance.
-    """
-    c = np.cos(phi)
-    s = np.sin(phi)
-    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
-    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
-
-
 ######################
 # Network parameters #
 ######################
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+
 
 #############
 # Save Path #
@@ -48,11 +35,14 @@ default_additional_files = {
     "optimal_weights.npz": "optimal_weights.npz",
 }
 
-#####################
-# OPX configuration #
-#####################
-# Set octave_config to None if no octave are present
-octave_config = None
+############################
+# Set octave configuration #
+############################
+octave_ip = qop_ip  # Write the Octave IP address
+octave_port = 11050  # 11xxx, where xxx are the last three digits of the Octave IP address
+octave_config = QmOctaveConfig()
+octave_config.set_calibration_db(os.getcwd())
+octave_config.add_device_info("octave1", octave_ip, octave_port)
 
 # Frequencies
 Yb_IF_freq = 40e6  # in units of Hz
@@ -115,7 +105,7 @@ config = {
     },
     "elements": {
         "Yb": {
-            "mixInputs": {"I": ("con1", 1), "Q": ("con1", 2), "lo_frequency": Yb_LO_freq, "mixer": "mixer_Yb"},
+            "RF_inputs": {"port": ("octave1", 1)},
             "intermediate_frequency": Yb_IF_freq,
             "digitalInputs": {
                 "switch0": {
@@ -241,6 +231,20 @@ config = {
             "smearing": 0,
         },
     },
+    "octaves": {
+        "octave1": {
+            "RF_outputs": {
+                1: {
+                    "LO_frequency": Yb_LO_freq,
+                    "LO_source": "internal",  # can be external or internal. internal is the default
+                    "output_mode": "always_on",
+                    # can be: "always_on" / "always_off"/ "triggered" / "triggered_reversed". "always_off" is the default
+                    "gain": 0,  # can be in the range [-20 : 0.5 : 20]dB
+                },
+            },
+            "connectivity": "con1",
+        }
+    },
     "pulses": {
         "const_pulse": {
             "operation": "control",
@@ -344,10 +348,5 @@ config = {
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},  # [(on/off, ns)]
         "OFF": {"samples": [(0, 0)]},  # [(on/off, ns)]
-    },
-    "mixers": {
-        "mixer_Yb": [
-            {"intermediate_frequency": Yb_IF_freq, "lo_frequency": Yb_LO_freq, "correction": IQ_imbalance(0.0, 0.0)},
-        ],
     },
 }

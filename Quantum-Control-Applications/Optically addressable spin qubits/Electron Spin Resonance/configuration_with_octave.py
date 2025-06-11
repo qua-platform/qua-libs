@@ -1,5 +1,7 @@
+import os
 from pathlib import Path
 import numpy as np
+from qm.octave import QmOctaveConfig
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
@@ -15,13 +17,6 @@ pio.renderers.default = "browser"
 #######################
 u = unit(coerce_to_integer=True)
 # Used to correct for IQ mixer imbalances
-
-
-def IQ_imbalance(g, phi):
-    c = np.cos(phi)
-    s = np.sin(phi)
-    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
-    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
 ######################
@@ -44,11 +39,14 @@ default_additional_files = {
     "optimal_weights.npz": "optimal_weights.npz",
 }
 
-#####################
-# OPX configuration #
-#####################
-# Set octave_config to None if no octave are present
-octave_config = None
+############################
+# Set octave configuration #
+############################
+octave_ip = qop_ip  # Write the Octave IP address
+octave_port = 11050  # 11xxx, where xxx are the last three digits of the Octave IP address
+octave_config = QmOctaveConfig()
+octave_config.set_calibration_db(os.getcwd())
+octave_config.add_device_info("octave1", octave_ip, octave_port)
 
 # Frequencies
 resonator_IF = -30 * u.MHz  # in Hz
@@ -105,7 +103,7 @@ minus_pi_half_wf, minus_pi_half_der_wf = drag_gaussian_pulse_waveforms(
 gauss_amp = 0.3  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_len = 20  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_wf, gauss_der_wf = drag_gaussian_pulse_waveforms(
-    gauss_amp, gauss_len, gauss_len / 5, alpha=0, delta=1, anharmonicity=0, detuning=0, subtracted=True
+    gauss_amp, gauss_len, gauss_len / 5, alpha=0, anharmonicity=0, delta=1, detuning=0, subtracted=True
 )
 # Note: a subtracted Gaussian pulse has a more narrow spectral density than a regular gaussian
 # it becomes useful in short pulses to reduce leakage to higher energy states
@@ -145,12 +143,7 @@ config = {
     },
     "elements": {
         "ensemble": {
-            "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
-                "lo_frequency": ensemble_LO,
-                "mixer": "mixer_ensemble",
-            },
+            "RF_inputs": {"port": ("octave1", 1)},
             "intermediate_frequency": ensemble_IF,
             "operations": {
                 "const": "const_pulse",
@@ -249,6 +242,20 @@ config = {
                 "activate_resonator": "activate_resonator_pulse",
             },
         },
+    },
+    "octaves": {
+        "octave1": {
+            "RF_outputs": {
+                1: {
+                    "LO_frequency": ensemble_LO,
+                    "LO_source": "internal",  # can be external or internal. internal is the default
+                    "output_mode": "always_on",
+                    # can be: "always_on" / "always_off"/ "triggered" / "triggered_reversed". "always_off" is the default
+                    "gain": 0,  # can be in the range [-20 : 0.5 : 20]dB
+                },
+            },
+            "connectivity": "con1",
+        }
     },
     "pulses": {
         "initialization_pulse": {
@@ -455,14 +462,5 @@ config = {
             "cosine": [(0.0, long_readout_len)],
             "sine": [(-1.0, long_readout_len)],
         },
-    },
-    "mixers": {
-        "mixer_ensemble": [
-            {
-                "intermediate_frequency": ensemble_IF,
-                "lo_frequency": ensemble_LO,
-                "correction": IQ_imbalance(mixer_ensemble_g, mixer_ensemble_phi),
-            },
-        ],
     },
 }
