@@ -261,10 +261,10 @@ config = {
                 "chirp": "chirp_pulse",
                 "x180": "x180_pulse",
                 "x90": "x90_pulse",
-                "-x90": "minus_x90_pulse",
+                "-x90": "-x90_pulse",
                 "y180": "y180_pulse",
                 "y90": "y90_pulse",
-                "-y90": "minus_y90_pulse",
+                "-y90": "-y90_pulse",
             },
         },
         "tank_circuit": {
@@ -403,7 +403,7 @@ config = {
                 "Q": "x90_Q_wf",
             },
         },
-        "minus_x90_pulse": {
+        "-x90_pulse": {
             "operation": "control",
             "length": x90_len,
             "waveforms": {
@@ -427,7 +427,7 @@ config = {
                 "Q": "y90_Q_wf",
             },
         },
-        "minus_y90_pulse": {
+        "-y90_pulse": {
             "operation": "control",
             "length": y90_len,
             "waveforms": {
