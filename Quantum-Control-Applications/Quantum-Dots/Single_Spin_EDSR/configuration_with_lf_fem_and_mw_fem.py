@@ -102,14 +102,23 @@ qubit_power = 1  # power in dBm at waveform amp = 1 (steps of 3 dB)
 
 # Note: amplitudes can be -1..1 and are scaled up to `qubit_power` at amp=1
 # x180 pulse
-x180_amp = 0.7  # in arb.
-x180_length = 32  # in ns
+x180_amp = 0.25  # in V
+x180_len = 32  # in ns
+# y180 pulse
+y180_amp = x180_amp  # in V
+y180_len = x180_len  # in ns
 # x90 pulse
-x90_amp = 0.7  # in arb.
-x90_length = 16  # in ns
+x90_amp = x180_amp/2  # in V
+x90_len = x180_len  # in ns
 # -x90 pulse
 minus_x90_amp = -x90_amp  # in V
-minus_x90_length = x90_length  # in ns
+minus_x90_len = x180_len  # in ns
+# y90 pulse
+y90_amp = y180_amp/2  # in V
+y90_len = y180_len  # in ns
+# -y90 pulse
+minus_y90_amp = -y90_amp  # in V
+minus_y90_len = y180_len  # in ns
 # Gaussian pulse
 gaussian_amp = 0.3  # in arb.
 gaussian_length = 20 * int(sampling_rate // 1e9)  # in units of [1/sampling_rate]
@@ -303,8 +312,11 @@ config = {
             "operations": {
                 "cw": "cw_pulse",
                 "x180": "x180_pulse",
+                "y180": "y180_pulse",
                 "x90": "x90_pulse",
                 "-x90": "-x90_pulse",
+                "y90": "y90_pulse",
+                "-y90": "-y90_pulse",
                 "gauss": "gaussian_pulse",
             },
         },
@@ -383,15 +395,23 @@ config = {
         },
         "x180_pulse": {
             "operation": "control",
-            "length": x180_length,
+            "length": x180_len,
             "waveforms": {
                 "I": "x180_wf",
                 "Q": "zero_wf",
             },
         },
+        "y180_pulse": {
+            "operation": "control",
+            "length": y180_len,
+            "waveforms": {
+                "I": "zero_wf",
+                "Q": "y180_wf",
+            },
+        },
         "x90_pulse": {
             "operation": "control",
-            "length": x90_length,
+            "length": x90_len,
             "waveforms": {
                 "I": "x90_wf",
                 "Q": "zero_wf",
@@ -399,10 +419,26 @@ config = {
         },
         "-x90_pulse": {
             "operation": "control",
-            "length": minus_x90_length,
+            "length": minus_x90_len,
             "waveforms": {
                 "I": "minus_x90_wf",
                 "Q": "zero_wf",
+            },
+        },
+        "y90_pulse": {
+            "operation": "control",
+            "length": y90_len,
+            "waveforms": {
+                "I": "zero_wf",
+                "Q": "y90_wf",
+            },
+        },
+        "-y90_pulse": {
+            "operation": "control",
+            "length": minus_y90_len,
+            "waveforms": {
+                "I": "zero_wf",
+                "Q": "minus_y90_wf",
             },
         },
         "reflectometry_readout_pulse": {
@@ -434,8 +470,11 @@ config = {
         "P2_step_wf": {"type": "constant", "sample": P2_step_amp},
         "charge_sensor_step_wf": {"type": "constant", "sample": charge_sensor_amp},
         "x180_wf": {"type": "constant", "sample": x180_amp},
+        "y180_wf": {"type": "constant", "sample": y180_amp},
         "x90_wf": {"type": "constant", "sample": x90_amp},
         "minus_x90_wf": {"type": "constant", "sample": minus_x90_amp},
+        "y90_wf": {"type": "constant", "sample": y90_amp},
+        "minus_y90_wf": {"type": "constant", "sample": minus_y90_amp},
         "gaussian_wf": {
             "type": "arbitrary",
             "samples": list(gaussian_amp * gaussian(gaussian_length, gaussian_length / 5)),
