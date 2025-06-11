@@ -85,10 +85,10 @@ saturation_len = 50 * u.us  # Needs to be several T1 so that the final state is 
 pi_len = 320  # in units of ns
 pi_amp = 0.3  # in units of volts
 pi_wf, pi_der_wf = drag_gaussian_pulse_waveforms(
-    pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, anharmonicity=0,  detuning=0, subtracted=True
+    pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, anharmonicity=0, detuning=0, subtracted=True
 )
 minus_pi_wf, minus_pi_der_wf = drag_gaussian_pulse_waveforms(
-    -pi_amp, pi_len, pi_len / 5, alpha=0, delta=1,anharmonicity=0, detuning=0, subtracted=True
+    -pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, anharmonicity=0, detuning=0, subtracted=True
 )
 
 # Pi_half pulse parameters
