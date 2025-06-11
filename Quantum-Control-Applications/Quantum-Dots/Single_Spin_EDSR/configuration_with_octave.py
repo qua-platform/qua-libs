@@ -107,12 +107,15 @@ qubit_IF = 100 * u.MHz
 # Octave gain in dB
 octave_gain = 0
 
-# Pi pulse
-pi_amp = 0.25  # in V
-pi_length = 32  # in ns
-# Pi half
-pi_half_amp = 0.25  # in V
-pi_half_length = 16  # in ns
+# x180 pulse
+x180_amp = 0.25  # in V
+x180_length = 32  # in ns
+# x90 half
+x90_amp = 0.25  # in V
+x90_length = 16  # in ns
+# -x90 half
+minus_x90_amp = 0.25  # in V
+minus_x90_length = 16  # in ns
 # Gaussian pulse
 gaussian_amp = 0.1  # in V
 gaussian_length = 20  # in ns
@@ -227,8 +230,9 @@ config = {
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "cw_pulse",
-                "pi": "pi_pulse",
-                "pi_half": "pi_half_pulse",
+                "x180": "x180_pulse",
+                "x90": "x90_pulse",
+                "-x90": "minus_x90_pulse",
                 "gauss": "gaussian_pulse",
             },
         },
@@ -318,19 +322,27 @@ config = {
                 "Q": "zero_wf",
             },
         },
-        "pi_pulse": {
+        "x180_pulse": {
             "operation": "control",
-            "length": pi_length,
+            "length": x180_length,
             "waveforms": {
-                "I": "pi_wf",
+                "I": "x180_wf",
                 "Q": "zero_wf",
             },
         },
-        "pi_half_pulse": {
+        "x90_pulse": {
             "operation": "control",
-            "length": pi_half_length,
+            "length": x90_length,
             "waveforms": {
-                "I": "pi_half_wf",
+                "I": "x90_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "-x90_pulse": {
+            "operation": "control",
+            "length": minus_x90_length,
+            "waveforms": {
+                "I": "minus_x90_wf",
                 "Q": "zero_wf",
             },
         },
@@ -362,8 +374,9 @@ config = {
         "P1_step_wf": {"type": "constant", "sample": P1_step_amp},
         "P2_step_wf": {"type": "constant", "sample": P2_step_amp},
         "charge_sensor_step_wf": {"type": "constant", "sample": charge_sensor_amp},
-        "pi_wf": {"type": "constant", "sample": pi_amp},
-        "pi_half_wf": {"type": "constant", "sample": pi_half_amp},
+        "x180_wf": {"type": "constant", "sample": x180_amp},
+        "x90_wf": {"type": "constant", "sample": x90_amp},
+        "minus_x90_wf": {"type": "constant", "sample": minus_x90_amp},
         "gaussian_wf": {
             "type": "arbitrary",
             "samples": list(gaussian_amp * gaussian(gaussian_length, gaussian_length / 5)),
