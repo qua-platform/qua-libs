@@ -4,7 +4,7 @@ Author: Michal Goldenshtein - Quantum Machines
 Created: 17/05/2022
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt

@@ -15,20 +15,31 @@ Prerequisites:
 Next steps before going to the next node:
     - Update the pi pulse duration, labeled as "mw_len_NV", in the configuration.
 """
-from qm.QuantumMachinesManager import QuantumMachinesManager
+
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+from qualang_tools.results.data_handler import DataHandler
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+t_vec = np.arange(4, 400, 1)  # Pulse durations in clock cycles (4ns)
+n_avg = 1_000_000  # Number of averaging loops
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "t_vec": t_vec,
+    "config": config,
+}
 
 ###################
 # The QUA program #
 ###################
-
-t_vec = np.arange(4, 400, 1)  # Pulse durations in clock cycles (4ns)
-n_avg = 1_000_000  # Number of averaging loops
-
 with program() as time_rabi:
     counts = declare(int)  # variable for number of counts
     counts_st = declare_stream()  # stream for counts
@@ -77,7 +88,7 @@ with program() as time_rabi:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 #######################
 # Simulate or execute #
@@ -87,8 +98,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, time_rabi, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -114,3 +135,11 @@ else:
         plt.title("Time Rabi")
         plt.legend()
         plt.pause(0.1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"counts_data": counts})
+    save_data_dict.update({"counts_dark_data": counts_dark})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

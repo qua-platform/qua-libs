@@ -1,6 +1,6 @@
 from qm.qua import *
 from configuration import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.loops import from_array
@@ -34,13 +34,11 @@ with program() as drag2:
     with for_(n, 0, n < n_avg, n + 1):
         # Notice it's + da/2 to include a_max (This is only for fixed!)
         with for_(*from_array(a, amps)):
-            measure("readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g))
+            measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_g))
             # To prepare the ground state we used -0.0003 which is a more strict threshold (3 sigma)
             # to guarantee higher ground state fidelity
             with while_(I_g > -0.0003):
-                measure(
-                    "readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g)
-                )
+                measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_g))
             align()
             wait(resonator_cooldown)
             play("x180" * amp(1, 0, 0, a), "qubit")
@@ -50,8 +48,8 @@ with program() as drag2:
                 "readout",
                 "resonator",
                 None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+                dual_demod.full("rotated_cos", "rotated_sin", I),
+                dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
             )
             save(I, I_st)
             save(Q, Q_st)
@@ -61,11 +59,9 @@ with program() as drag2:
 
             align()
 
-            measure("readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g))
+            measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_g))
             with while_(I_g > -0.0003):
-                measure(
-                    "readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g)
-                )
+                measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_g))
             align()
             wait(resonator_cooldown)
 
@@ -76,8 +72,8 @@ with program() as drag2:
                 "readout",
                 "resonator",
                 None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+                dual_demod.full("rotated_cos", "rotated_sin", I),
+                dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
             )
             save(I, I_st)
             save(Q, Q_st)

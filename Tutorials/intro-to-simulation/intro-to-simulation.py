@@ -5,7 +5,7 @@ Created: 26/06/2022
 """
 
 import numpy as np
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from qm import LoopbackInterface
 from qm.qua import *

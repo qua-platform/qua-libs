@@ -3,7 +3,7 @@ octave_introduction.py: shows the basic commands to control the octave's clock, 
 down-converters and calibration
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.octave import *
 from qm.octave.octave_manager import ClockMode
 from qm.qua import *

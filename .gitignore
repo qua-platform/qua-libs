@@ -1,3 +1,11 @@
 .idea
 __pycache__
 .pytest_cache/
+**.egg-info
+**/build
+**/data
+assets
+.venv*
+tempCodeRunnerFile.python
+**/calibration_data
+**/quam_config/quam_state

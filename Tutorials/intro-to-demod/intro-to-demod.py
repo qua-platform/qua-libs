@@ -6,7 +6,7 @@ Revised by Tomer Feld - Quantum Machines
 Revision date: 24/04/2022
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig, LoopbackInterface
 from configuration import *
@@ -88,7 +88,7 @@ ax2.set_xlabel("slice number")
 
 plt.figure()
 plt.plot(res.raw_input.fetch_all() / 2**12)
-plt.xlabel("t[nS]")
+plt.xlabel("t[ns]")
 plt.ylabel("output [V]")
 plt.title("Raw output")
 

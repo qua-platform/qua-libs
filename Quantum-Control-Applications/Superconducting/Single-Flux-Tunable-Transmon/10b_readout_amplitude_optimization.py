@@ -15,20 +15,20 @@ Next steps before going to the next node:
     - Update the readout amplitude (readout_amp) in the configuration.
 """
 
-
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.analysis import two_state_discriminator
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_runs = 1000
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 a_min = 0.5
@@ -36,6 +36,16 @@ a_max = 1.5
 da = 0.01
 amplitudes = np.arange(a_min, a_max + da / 2, da)  # The amplitude vector +da/2 to add a_max to the scan
 
+# Data to save
+save_data_dict = {
+    "n_runs": n_runs,
+    "amplitudes": amplitudes,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as ro_amp_opt:
     n = declare(int)  # QUA variable for the number of runs
     counter = declare(int, value=0)  # Counter for the progress bar
@@ -57,8 +67,8 @@ with program() as ro_amp_opt:
                 "readout" * amp(a),
                 "resonator",
                 None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g),
-                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_g),
+                dual_demod.full("rotated_cos", "rotated_sin", I_g),
+                dual_demod.full("rotated_minus_sin", "rotated_cos", Q_g),
             )
             # Wait for the qubit to decay to the ground state
             wait(thermalization_time * u.ns, "resonator")
@@ -76,8 +86,8 @@ with program() as ro_amp_opt:
                 "readout" * amp(a),
                 "resonator",
                 None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_e),
-                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_e),
+                dual_demod.full("rotated_cos", "rotated_sin", I_e),
+                dual_demod.full("rotated_minus_sin", "rotated_cos", Q_e),
             )
             # Wait for the qubit to decay to the ground state
             wait(thermalization_time * u.ns, "resonator")
@@ -108,9 +118,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, ro_amp_opt, simulation_config)
-    job.get_simulated_samples().con1.plot()
-
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -131,26 +150,43 @@ else:
 
     # Process the data
     fidelity_vec = []
+    ground_fidelity_vec = []
     for i in range(len(amplitudes)):
         angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
             I_g[i], Q_g[i], I_e[i], Q_e[i], b_print=False, b_plot=False
         )
         fidelity_vec.append(fidelity)
+        ground_fidelity_vec.append(gg)
 
     # Plot the data
-    plt.figure()
-    plt.plot(amplitudes * readout_amp, fidelity_vec, ".-")
+    fig = plt.figure()
+    plt.plot(amplitudes * readout_amp, fidelity_vec, "b.-", label="averaged fidelity")
+    plt.plot(amplitudes * readout_amp, ground_fidelity_vec, "r.-", label="ground fidelity")
     plt.title("Readout amplitude optimization")
     plt.xlabel("Readout amplitude [V]")
     plt.ylabel("Readout fidelity [%]")
     plt.legend(
         (
-            f"readout_amp = {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV, for {max(fidelity_vec):.1f}% fidelity",
+            f"readout_amp = {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV, for {max(fidelity_vec):.1f}% averaged fidelity",
+            f"readout_amp = {readout_amp * amplitudes[np.argmax(ground_fidelity_vec)] / u.mV:.3f} mV, for {max(ground_fidelity_vec):.1f}% ground fidelity",
         )
     )
     print(
-        f"The optimal readout amplitude is {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV (Fidelity={max(fidelity_vec):.1f}%)"
+        f"The optimal readout amplitude is {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV (Averaged fidelity={max(fidelity_vec):.1f}%)"
+    )
+    print(
+        f"The optimal readout amplitude is {readout_amp * amplitudes[np.argmax(ground_fidelity_vec)] / u.mV:.3f} mV (Ground fidelity={max(ground_fidelity_vec):.1f}%)"
     )
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"Ig_data": I_g})
+    save_data_dict.update({"Qg_data": Q_g})
+    save_data_dict.update({"Ie_data": I_e})
+    save_data_dict.update({"Qe_data": Q_e})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

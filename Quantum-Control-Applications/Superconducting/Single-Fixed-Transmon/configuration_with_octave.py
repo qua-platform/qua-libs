@@ -1,13 +1,16 @@
 """
-Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
+QUA-Config supporting OPX+ & Octave
 """
 
 from pathlib import Path
+
 import numpy as np
-from set_octave import OctaveUnit, octave_declaration
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
+from set_octave import OctaveUnit, octave_declaration
 
+pio.renderers.default = "browser"
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
@@ -20,17 +23,32 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+#############
+# Save Path #
+#############
 # Path to save data
-save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 ############################
 # Set octave configuration #
 ############################
+con = "con1"
 
 # The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
 # the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
-octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")
-# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1")
+octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con=con)
+# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con=con)
+
+# If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
+# or directly to the Octave (without QM the router), use the local octave IP and port 80.
+# octave_ip = "192.168.88.X"
+# octave_1 = OctaveUnit("octave1", octave_ip, port=80, con=con)
 
 # Add the octaves
 octaves = [octave_1]
@@ -147,27 +165,26 @@ resonator_IF = 60 * u.MHz
 readout_len = 5000
 readout_amp = 0.2
 
-time_of_flight = 24
+time_of_flight = 28
 depletion_time = 2 * u.us
 
 opt_weights = False
 if opt_weights:
-    from qualang_tools.config.integration_weights_tools import convert_integration_weights
-
     weights = np.load("optimal_weights.npz")
-    opt_weights_real = convert_integration_weights(weights["weights_real"])
-    opt_weights_minus_imag = convert_integration_weights(weights["weights_minus_imag"])
-    opt_weights_imag = convert_integration_weights(weights["weights_imag"])
-    opt_weights_minus_real = convert_integration_weights(weights["weights_minus_real"])
+    opt_weights_real = [(x, weights["division_length"] * 4) for x in weights["weights_real"]]
+    opt_weights_minus_imag = [(x, weights["division_length"] * 4) for x in weights["weights_minus_imag"]]
+    opt_weights_imag = [(x, weights["division_length"] * 4) for x in weights["weights_imag"]]
+    opt_weights_minus_real = [(x, weights["division_length"] * 4) for x in weights["weights_minus_real"]]
 else:
     opt_weights_real = [(1.0, readout_len)]
-    opt_weights_minus_imag = [(1.0, readout_len)]
-    opt_weights_imag = [(1.0, readout_len)]
-    opt_weights_minus_real = [(1.0, readout_len)]
+    opt_weights_minus_imag = [(0.0, readout_len)]
+    opt_weights_imag = [(0.0, readout_len)]
+    opt_weights_minus_real = [(-1.0, readout_len)]
 
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi
 ge_threshold = 0.0
+
 
 #############################################
 #                  Config                   #
@@ -175,7 +192,7 @@ ge_threshold = 0.0
 config = {
     "version": 1,
     "controllers": {
-        "con1": {
+        con: {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I resonator
                 2: {"offset": 0.0},  # Q resonator
@@ -187,7 +204,7 @@ config = {
                 1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
                 2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
             },
-        },
+        }
     },
     "elements": {
         "qubit": {

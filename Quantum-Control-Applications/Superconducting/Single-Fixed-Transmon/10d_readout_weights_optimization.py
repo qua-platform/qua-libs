@@ -23,11 +23,12 @@ Next steps before going to the next node:
 """
 
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
 
 ####################
@@ -94,9 +95,10 @@ def update_readout_length(new_readout_length, ringdown_length):
     }
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # number of averages
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = 5 * u.us  # Readout pulse duration
@@ -111,6 +113,19 @@ print("The readout has been sliced in the following number of divisions", number
 # Time axis for the plots at the end
 x_plot = np.arange(division_length * 4, readout_len + ringdown_len + 1, division_length * 4)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "readout_len": readout_len,
+    "ringdown_len": ringdown_len,
+    "division_length": division_length,
+    "number_of_divisions": number_of_divisions,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as opt_weights:
     n = declare(int)
     ind = declare(int)
@@ -187,8 +202,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, opt_weights, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -222,10 +247,10 @@ else:
     # Plot the results
     plot_three_complex_arrays(x_plot, ground_trace, excited_trace, norm_subtracted_trace)
     # Reshape the optimal integration weights to match the configuration
-    weights_real = list(norm_subtracted_trace.real)
-    weights_minus_imag = list((-1) * norm_subtracted_trace.imag)
-    weights_imag = list(norm_subtracted_trace.imag)
-    weights_minus_real = list((-1) * norm_subtracted_trace.real)
+    weights_real = norm_subtracted_trace.real
+    weights_minus_imag = -norm_subtracted_trace.imag
+    weights_imag = norm_subtracted_trace.imag
+    weights_minus_real = -norm_subtracted_trace.real
     # Save the weights for later use in the config
     np.savez(
         "optimal_weights",
@@ -233,8 +258,8 @@ else:
         weights_minus_imag=weights_minus_imag,
         weights_imag=weights_imag,
         weights_minus_real=weights_minus_real,
+        division_length=division_length,
     )
-
     # After obtaining the optimal weights, you need to load them to the 'integration_weights' dictionary in the config.
     # For this, you can just copy and paste the following lines into the "integration_weights" section:
     # "opt_cosine_weights": {
@@ -272,3 +297,12 @@ else:
     #     opt_weights_minus_imag = [(1.0, readout_len)]
     #     opt_weights_imag = [(1.0, readout_len)]
     #     opt_weights_minus_real = [(1.0, readout_len)]
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"Ig_data": Ig})
+    save_data_dict.update({"Qg_data": Qg})
+    save_data_dict.update({"Ie_data": Ie})
+    save_data_dict.update({"Qe_data": Qe})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

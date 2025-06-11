@@ -48,8 +48,8 @@ To replicate the figure presented below, refer to the protocol in red_sideband_c
                     "readout",
                     "resonator1",
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                    dual_demod.full("cos", "sin",  I),
+                    dual_demod.full("minus_sin", "cos",  Q),
                 )
                 save(I, I_st)
                 save(Q, Q_st)
@@ -80,8 +80,8 @@ To replicate the figure presented below, refer to the protocol in blue_sideband_
                     "readout",
                     "resonator1",
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                    dual_demod.full("cos", "sin",  I),
+                    dual_demod.full("minus_sin", "cos",  Q),
                 )
                 save(I, I_st)
                 save(Q, Q_st)

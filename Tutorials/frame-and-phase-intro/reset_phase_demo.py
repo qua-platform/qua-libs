@@ -7,7 +7,7 @@ Revision date: 04/04/2022
 """
 
 import matplotlib.pyplot as plt
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import numpy as np

@@ -2,7 +2,7 @@ import numpy as np
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 from qm.simulate.credentials import create_credentials

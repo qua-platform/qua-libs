@@ -117,8 +117,8 @@ def ge_calibration(n_avg_cal):
         # Ground state calibration
         align('qubit', 'resonator')
         measure("short_readout", "resonator", None,
-                dual_demod.full("cos", "out1", "sin", "out2", Ical),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Qcal))
+                dual_demod.full("cos", "sin",  Ical),
+                dual_demod.full("minus_sin", "cos",  Qcal))
         wait(cooldown_time, "resonator", 'qubit')
         save(Ical, Igcal_st)
         save(Qcal, Qgcal_st)
@@ -128,8 +128,8 @@ def ge_calibration(n_avg_cal):
         play('pi', 'qubit')
         align('qubit', 'resonator')
         measure("short_readout", "resonator", None,
-                dual_demod.full("cos", "out1", "sin", "out2", Ical),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Qcal))
+                dual_demod.full("cos", "sin",  Ical),
+                dual_demod.full("minus_sin", "cos",  Qcal))
         wait(cooldown_time, "resonator", 'qubit')
         save(Ical, Iecal_st)
         save(Qcal, Qecal_st)
@@ -172,8 +172,8 @@ with for_(n, 0, n < n_avg, n + 1):
 			# Measure resonator state after the sequence
 			wait(int(const_len * 2 + const_flux_len) // 4, 'resonator')
 			measure("short_readout", "resonator", None,
-					dual_demod.full("cos", "out1", "sin", "out2", I),
-					dual_demod.full("minus_sin", "out1", "cos", "out2", Q))
+					dual_demod.full("cos", "sin",  I),
+					dual_demod.full("minus_sin", "cos",  Q))
 			# Wait cooldown time and save the results
 			wait(cooldown_time, "resonator",'qubit')
 			save(I, I_st)

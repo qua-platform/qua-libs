@@ -22,7 +22,7 @@ Prerequisites:
 """
 
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
@@ -31,15 +31,16 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from macros import readout_macro
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-
-#############################################
-# Program dependent variables and functions #
-#############################################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 num_of_sequences = 50  # Number of random sequences
 n_avg = 20  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
-delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
+delta_clifford = 10  # Play each sequence with a depth step equals to 'delta_clifford - Must be > 0
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 seed = 345324  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
@@ -51,6 +52,12 @@ inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 #  0: identity |  1: x180 |  2: y180
 # 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
 interleaved_gate_index = 2
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 
 
 ###################################
@@ -202,14 +209,14 @@ with program() as rb:
         # Generates the RB sequence with a gate interleaved after each Clifford
         sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
         # Depth_target is used to always play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
-        assign(depth_target, 0)
+        assign(depth_target, 2)
         with for_(depth, 1, depth <= 2 * max_circuit_depth, depth + 1):
             # Replacing the last gate in the sequence with the sequence's inverse gate
             # The original gate is saved in 'saved_gate' and is being restored at the end
             assign(saved_gate, sequence_list[depth])
             assign(sequence_list[depth], inv_gate_list[depth - 1])
             # Only played the depth corresponding to target_depth
-            with if_((depth == 2) | (depth == depth_target)):
+            with if_(depth == depth_target):
                 with for_(n, 0, n < n_avg, n + 1):  # Averaging loop
                     # Can be replaced by active reset
                     wait(thermalization_time * u.ns, "resonator")
@@ -243,26 +250,25 @@ with program() as rb:
         if state_discrimination:
             # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
             state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford + 1
+                max_circuit_depth / delta_clifford
             ).buffer(num_of_sequences).save("state")
             # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
             state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford + 1
+                max_circuit_depth / delta_clifford
             ).average().save("state_avg")
         else:
-            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
+            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).buffer(
                 num_of_sequences
             ).save("I")
-            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
+            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).buffer(
                 num_of_sequences
             ).save("Q")
-            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
+            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).average().save(
                 "I_avg"
             )
-            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
+            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).average().save(
                 "Q_avg"
             )
-
 
 #####################################
 #  Open Communication with the QOP  #
@@ -277,8 +283,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, rb, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
 else:
     # Open the quantum machine
@@ -294,8 +310,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     # data analysis
-    x = np.arange(0, 2 * max_circuit_depth + 0.1, 2 * delta_clifford)
-    x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
+    x = np.arange(2, 2 * max_circuit_depth + 0.1, 2 * delta_clifford)
     while results.is_processing():
         # data analysis
         if state_discrimination:
@@ -370,3 +385,14 @@ else:
     # np.savez("rb_values", value)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    if state_discrimination:
+        save_data_dict.update({"state_avg_data": state})
+    else:
+        save_data_dict.update({"I_data": I})
+        save_data_dict.update({"Q_data": Q})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

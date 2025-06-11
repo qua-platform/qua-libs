@@ -1,8 +1,11 @@
 from pathlib import Path
+
 import numpy as np
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
+pio.renderers.default = "browser"
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -32,8 +35,17 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+#############
+# Save Path #
+#############
 # Path to save data
-save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 #####################
 # OPX configuration #
@@ -44,7 +56,7 @@ octave_config = None
 #############################################
 #                  Qubits                   #
 #############################################
-qubit_LO = 7.4 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+qubit_LO = 7.4 * u.GHz
 qubit_IF = 110 * u.MHz
 mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
@@ -143,7 +155,7 @@ minus_y90_Q_wf = minus_y90_wf
 #############################################
 #                Resonators                 #
 #############################################
-resonator_LO = 4.8 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+resonator_LO = 4.8 * u.GHz
 resonator_IF = 60 * u.MHz
 mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
@@ -151,23 +163,21 @@ mixer_resonator_phi = 0.0
 readout_len = 5000
 readout_amp = 0.2
 
-time_of_flight = 24
+time_of_flight = 28
 depletion_time = 2 * u.us
 
 opt_weights = False
 if opt_weights:
-    from qualang_tools.config.integration_weights_tools import convert_integration_weights
-
     weights = np.load("optimal_weights.npz")
-    opt_weights_real = convert_integration_weights(weights["weights_real"])
-    opt_weights_minus_imag = convert_integration_weights(weights["weights_minus_imag"])
-    opt_weights_imag = convert_integration_weights(weights["weights_imag"])
-    opt_weights_minus_real = convert_integration_weights(weights["weights_minus_real"])
+    opt_weights_real = [(x, weights["division_length"] * 4) for x in weights["weights_real"]]
+    opt_weights_minus_imag = [(x, weights["division_length"] * 4) for x in weights["weights_minus_imag"]]
+    opt_weights_imag = [(x, weights["division_length"] * 4) for x in weights["weights_imag"]]
+    opt_weights_minus_real = [(x, weights["division_length"] * 4) for x in weights["weights_minus_real"]]
 else:
     opt_weights_real = [(1.0, readout_len)]
-    opt_weights_minus_imag = [(1.0, readout_len)]
-    opt_weights_imag = [(1.0, readout_len)]
-    opt_weights_minus_real = [(1.0, readout_len)]
+    opt_weights_minus_imag = [(0.0, readout_len)]
+    opt_weights_imag = [(0.0, readout_len)]
+    opt_weights_minus_real = [(-1.0, readout_len)]
 
 ##########################################
 #               Flux line                #

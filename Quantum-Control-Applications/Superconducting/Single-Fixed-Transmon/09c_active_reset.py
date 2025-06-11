@@ -19,18 +19,18 @@ Prerequisites:
 """
 
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
 from configuration import *
 from qualang_tools.analysis.discriminator import two_state_discriminator
-
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-##############################
-# Program-specific variables #
-##############################
-# "thermalization", "active_reset_one_threshold", "active_reset_two_thresholds", "active_reset_fast"
-initialization_method = "active_reset_one_threshold"
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+initialization_method = "active_reset_one_threshold"  # "thermalization", "active_reset_one_threshold", "active_reset_two_thresholds", "active_reset_fast"
 n_shot = 10000  # Number of acquired shots
 # The thresholds ar calibrated with the IQ_blobs.py script:
 # If I > threshold_e, then the qubit is assumed to be in |e> and a pi pulse is played to reset it.
@@ -41,7 +41,16 @@ ge_threshold_e = ge_threshold
 # Maximum number of tries for active reset
 max_tries = 2
 
+# Data to save
+save_data_dict = {
+    "n_shot": n_shot,
+    "config": config,
+}
 
+
+###################################
+# Helper functions and QUA macros #
+###################################
 def qubit_initialization(method: str = "thermalization"):
     """
     Allows to switch between several initialization methods.
@@ -80,7 +89,7 @@ def active_reset_one_threshold(threshold_g: float, max_tries: int):
     align("resonator", "qubit")
     with while_((I_reset > threshold_g) & (counter < max_tries)):
         # Measure the state of the resonator
-        measure("readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_reset))
+        measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_reset))
         align("resonator", "qubit")
         # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "qubit")
@@ -111,7 +120,7 @@ def active_reset_two_thresholds(threshold_g: float, threshold_e: float, max_trie
     align("resonator", "qubit")
     with while_((I_reset > threshold_g) & (counter < max_tries)):
         # Measure the state of the resonator
-        measure("readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_reset))
+        measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_reset))
         align("resonator", "qubit")
         # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "qubit")
@@ -135,7 +144,7 @@ def active_reset_fast(threshold_g: float):
     I_reset = declare(fixed)
     align("resonator", "qubit")
     # Measure the state of the resonator
-    measure("readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_reset))
+    measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_reset))
     align("resonator", "qubit")
     # Wait for the resonator to deplete
     wait(depletion_time * u.ns, "qubit")
@@ -147,7 +156,6 @@ def active_reset_fast(threshold_g: float):
 ###################
 # The QUA program #
 ###################
-
 with program() as active_reset_prog:
     n = declare(int)  # Averaging index
     I = declare(fixed)
@@ -175,8 +183,8 @@ with program() as active_reset_prog:
             "readout",
             "resonator",
             None,
-            dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g),
-            dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_g),
+            dual_demod.full("rotated_cos", "rotated_sin", I_g),
+            dual_demod.full("rotated_minus_sin", "rotated_cos", Q_g),
         )
         # Save the 'I' & 'Q' quadratures to their respective streams for the ground state
         save(I_g, I_g_st)
@@ -197,8 +205,8 @@ with program() as active_reset_prog:
             "readout",
             "resonator",
             None,
-            dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_e),
-            dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_e),
+            dual_demod.full("rotated_cos", "rotated_sin", I_e),
+            dual_demod.full("rotated_minus_sin", "rotated_cos", Q_e),
         )
         # Save the 'I' & 'Q' quadratures to their respective streams for the excited state
         save(I_e, I_e_st)
@@ -225,8 +233,19 @@ if simulation:
     simulation_config = SimulationConfig(
         duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
     )
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, active_reset_prog, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
+
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(active_reset_prog)
@@ -245,3 +264,13 @@ else:
     angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(Ig, Qg, Ie, Qe, b_print=True, b_plot=True)
     plt.suptitle(f"{average_tries=}")
     print(f"{average_tries=}")
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"Ig_data": Ig})
+    save_data_dict.update({"Qg_data": Qg})
+    save_data_dict.update({"Ie_data": Ie})
+    save_data_dict.update({"Qe_data": Qe})
+    save_data_dict.update({"two_state_discriminator": [angle, threshold, fidelity, gg, ge, eg, ee]})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
