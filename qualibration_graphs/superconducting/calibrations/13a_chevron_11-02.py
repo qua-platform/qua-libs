@@ -74,101 +74,106 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
 
+
 # %% {Create_QUA_program}
-# @node.run_action(skip_if=node.parameters.load_data_id is not None)
-# def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-#     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+@node.run_action(skip_if=node.parameters.load_data_id is not None)
+def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 
-u = unit(coerce_to_integer=True)
-qubit_pairs = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
-# define the amplitudes for the flux pulses
-pulse_amplitudes = {}
-for qp in qubit_pairs:
-    detuning = qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency - qp.qubit_target.anharmonicity
-    pulse_amplitudes[qp.name] = float(np.sqrt(-detuning / qp.qubit_control.freq_vs_flux_01_quad_term))
+    u = unit(coerce_to_integer=True)
+    qubit_pairs = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
+    # define the amplitudes for the flux pulses
+    pulse_amplitudes = {}
+    for qp in qubit_pairs:
+        detuning = qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency - qp.qubit_target.anharmonicity
+        pulse_amplitudes[qp.name] = float(np.sqrt(-detuning / qp.qubit_control.freq_vs_flux_01_quad_term))
 
-node.namespace["qubits"] = qubits = [qp.qubit_control for qp in qubit_pairs] + [qp.qubit_target for qp in qubit_pairs]
-num_qubits = len(qubits)
-num_qubit_pairs = len(qubit_pairs)
-n_avg = node.parameters.num_shots  # The number of averages
+    node.namespace["qubits"] = qubits = [qp.qubit_control for qp in qubit_pairs] + [
+        qp.qubit_target for qp in qubit_pairs
+    ]
+    num_qubits = len(qubits)
+    num_qubit_pairs = len(qubit_pairs)
+    n_avg = node.parameters.num_shots  # The number of averages
 
-# Loop parameters
-amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
-times_cycles = np.arange(4, node.parameters.max_time_in_ns // 4)
+    # Loop parameters
+    amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
+    times_cycles = np.arange(4, node.parameters.max_time_in_ns // 4)
 
-node.namespace["sweep_axes"] = {
-    "qubit_pair": xr.DataArray([pair.id for pair in qubit_pairs], attrs={"long_name": "qubit pairs"}),
-    "amplitude": xr.DataArray(amplitudes, attrs={"long_name": "amplitudes of the flux pulse"}),
-    "time": xr.DataArray(times_cycles * 4, attrs={"long_name": "pulse duration", "units": "ns"}),
-}
+    node.namespace["sweep_axes"] = {
+        "qubit_pair": xr.DataArray([pair.id for pair in qubit_pairs], attrs={"long_name": "qubit pairs"}),
+        "amplitude": xr.DataArray(amplitudes, attrs={"long_name": "amplitudes of the flux pulse"}),
+        "time": xr.DataArray(times_cycles * 4, attrs={"long_name": "pulse duration", "units": "ns"}),
+    }
 
-with program() as node.namespace["qua_program"]:
-    t = declare(int)  # QUA variable for the flux pulse segment indexz
-    idx = declare(int)
-    amp = declare(fixed)
-    n = declare(int)
-    n_st = declare_stream()
-    I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
-    if node.parameters.use_state_discrimination:
-        state = [declare(int) for _ in range(num_qubits)]
-        state_st = [declare_stream() for _ in range(num_qubits)]
+    with program() as node.namespace["qua_program"]:
+        t = declare(int)  # QUA variable for the flux pulse segment indexz
+        idx = declare(int)
+        amp = declare(fixed)
+        n = declare(int)
+        n_st = declare_stream()
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
+        if node.parameters.use_state_discrimination:
+            state = [declare(int) for _ in range(num_qubits)]
+            state_st = [declare_stream() for _ in range(num_qubits)]
 
-    for qubit in node.machine.active_qubits:
-        node.machine.initialize_qpu(target=qubit)
-        align()
+        for qubit in node.machine.active_qubits:
+            node.machine.initialize_qpu(target=qubit)
+            align()
 
-    for ii, qp in enumerate(qubit_pairs):
-        with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st)
-            with for_(*from_array(amp, amplitudes)):
-                # rest of the pulse
-                with for_(*from_array(t, times_cycles)):
-                    # Qubit initialization
-                    qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
-                    qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
-                    align()
-                    # set both qubits to the excited state
-                    qp.qubit_control.xy.play("x180")
-                    qp.qubit_target.xy.play("x180")
+        for ii, qp in enumerate(qubit_pairs):
+            with for_(n, 0, n < n_avg, n + 1):
+                save(n, n_st)
+                with for_(*from_array(amp, amplitudes)):
+                    # rest of the pulse
+                    with for_(*from_array(t, times_cycles)):
+                        # Qubit initialization
+                        qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
+                        qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
+                        align()
+                        # set both qubits to the excited state
+                        qp.qubit_control.xy.play("x180")
+                        qp.qubit_target.xy.play("x180")
 
-                    align()
+                        align()
 
-                    # play the flux pulse
+                        # play the flux pulse
 
-                    qp.qubit_control.z.play(
-                        "const",
-                        duration=t,
-                        amplitude_scale=pulse_amplitudes[qp.name]
-                        / qp.qubit_control.z.operations["const"].amplitude
-                        * amp,
+                        qp.qubit_control.z.play(
+                            "const",
+                            duration=t,
+                            amplitude_scale=pulse_amplitudes[qp.name]
+                            / qp.qubit_control.z.operations["const"].amplitude
+                            * amp,
+                        )
+
+                        align()
+
+                        if node.parameters.use_state_discrimination:
+                            qp.qubit_control.readout_state(state[ii])
+                            qp.qubit_target.readout_state(state[ii + 1])
+                            save(state[ii], state_st[ii])
+                            save(state[ii + 1], state_st[ii + 1])
+                        else:
+                            qp.qubit_control.resonator.measure("readout", qua_vars=(I[ii], Q[ii]))
+                            qp.qubit_target.resonator.measure("readout", qua_vars=(I[ii + 1], Q[ii + 1]))
+                            save(I[ii], I_st[ii])
+                            save(Q[ii], Q_st[ii])
+                            save(I[ii + 1], I_st[ii + 1])
+                            save(Q[ii + 1], Q_st[ii + 1])
+
+        with stream_processing():
+            n_st.save("n")
+            for i in range(num_qubit_pairs):
+                if node.parameters.use_state_discrimination:
+                    state_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"state_control{i}")
+                    state_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(
+                        f"state_target{i+1}"
                     )
-
-                    align()
-
-                    if node.parameters.use_state_discrimination:
-                        qp.qubit_control.readout_state(state[ii])
-                        qp.qubit_target.readout_state(state[ii + 1])
-                        save(state[ii], state_st[ii])
-                        save(state[ii + 1], state_st[ii + 1])
-                    else:
-                        qp.qubit_control.resonator.measure("readout", qua_vars=(I[ii], Q[ii]))
-                        qp.qubit_target.resonator.measure("readout", qua_vars=(I[ii + 1], Q[ii + 1]))
-                        save(I[ii], I_st[ii])
-                        save(Q[ii], Q_st[ii])
-                        save(I[ii + 1], I_st[ii + 1])
-                        save(Q[ii + 1], Q_st[ii + 1])
-
-    with stream_processing():
-        n_st.save("n")
-        for i in range(num_qubit_pairs):
-            if node.parameters.use_state_discrimination:
-                state_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"state_control{i}")
-                state_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"state_target{i+1}")
-            else:
-                I_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"I_control{i}")
-                Q_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"Q_control{i}")
-                I_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"I_target{i+1}")
-                Q_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"Q_target{i+1}")
+                else:
+                    I_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"I_control{i}")
+                    Q_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"Q_control{i}")
+                    I_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"I_target{i+1}")
+                    Q_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"Q_target{i+1}")
 
 
 # %% {Simulate}

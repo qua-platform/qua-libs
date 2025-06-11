@@ -1,8 +1,9 @@
 from typing import List
+
+import matplotlib.pyplot as plt
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-
 from qualang_tools.units import unit
 from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
@@ -10,7 +11,7 @@ from quam_builder.architecture.superconducting.qubit import AnyTransmon
 u = unit(coerce_to_integer=True)
 
 
-def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+def plot_raw_data_with_fit(ds: xr.Dataset, qubit_pairs: List[AnyTransmon], fits: xr.Dataset):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
 
@@ -33,17 +34,19 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     - The function creates a grid of subplots, one for each qubit.
     - Each subplot contains the raw data and the fitted curve.
     """
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        plot_individual_data_with(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+    fig, axs = plt.subplots(nrows=len(qubit_pairs), ncols=1, figsize=(15, 9))
+    for ii, qp in enumerate(qubit_pairs):
+        ax = axs[ii] if len(qubit_pairs) > 1 else axs
+        plot_individual_data_with(ax, ds, qp.id, fits.sel(qubit_pair=qp.id))
 
-    grid.fig.suptitle("Rabi chevron")
-    grid.fig.set_size_inches(15, 9)
-    grid.fig.tight_layout()
-    return grid.fig
+    fig.suptitle("CZ Chevron")
+    fig.set_size_inches(15, 9)
+    fig.tight_layout()
+
+    return fig
 
 
-def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit_pair: str, fit: xr.Dataset = None):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -63,22 +66,12 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], f
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    if hasattr(ds, "I"):
-        data = "I"
-    elif hasattr(ds, "state"):
-        data = "state"
-    else:
-        raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
+    # if hasattr(ds, "I"):
+    #     data = "I"
+    # elif hasattr(ds, "state"):
+    #     data = "state"
+    # else:
+    #     raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
 
-    # Create a first x-axis for full_freq_GHz
-    (fit.assign_coords(full_freq_GHz=fit.full_freq / u.GHz)[data] / u.mV).plot(
-        ax=ax, y="pulse_duration", x="full_freq_GHz", add_colorbar=False
-    )
-    ax.set_xlabel("RF frequency [GHz]")
-    ax.set_ylabel("Pulse duration [ns]")
-    # Create a second x-axis for detuning_MHz
-    ax2 = ax.twiny()
-    (fit.assign_coords(detuning_MHz=fit.detuning / u.MHz)[data] / u.mV).plot(
-        ax=ax2, y="pulse_duration", x="detuning_MHz", add_colorbar=False
-    )
-    ax2.set_xlabel("Detuning [MHz]")
+    ds.state_target.sel(qubit_pair=qubit_pair).plot(y="amp_full", ax=ax)
+    ax.scatter(fit.cz_len, fit.cz_amp, color="red", label="Fitted", marker="*", s=100)
