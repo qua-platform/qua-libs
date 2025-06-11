@@ -113,13 +113,13 @@ x180_len = 32  # in ns
 y180_amp = x180_amp  # in V
 y180_len = x180_len  # in ns
 # x90 pulse
-x90_amp = x180_amp/2  # in V
+x90_amp = x180_amp / 2  # in V
 x90_len = x180_len  # in ns
 # -x90 pulse
 minus_x90_amp = -x90_amp  # in V
 minus_x90_len = x180_len  # in ns
 # y90 pulse
-y90_amp = y180_amp/2  # in V
+y90_amp = y180_amp / 2  # in V
 y90_len = y180_len  # in ns
 # -y90 pulse
 minus_y90_amp = -y90_amp  # in V
