@@ -36,8 +36,8 @@ Prerequisites:
     - Having calibrated the qubit anharmonicity.
 
 State update:
-    - The qubit pulse amplitude corresponding to the x180_ef operation
-    (qubit.xy.operations["x180_ef"].amplitude).
+    - The qubit pulse amplitude corresponding to the EF_x180 operation
+    (qubit.xy.operations["EF_x180"].amplitude).
 """
 
 
@@ -93,11 +93,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
     for qubit in qubits:
         # Check if the qubit has the required operations
-        if hasattr(qubit.xy.operations, "x180_ef"):
+        if hasattr(qubit.xy.operations, "EF_x180"):
             continue
         else:
             x180 = qubit.xy.operations["x180"]
-            qubit.xy.operations["x180_ef"] = dataclasses.replace(x180, alpha=0.0)
+            qubit.xy.operations["EF_x180"] = dataclasses.replace(x180, alpha=0.0)
 
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
@@ -131,7 +131,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         for i, qubit in multiplexed_qubits.items():
                             # Loop for error amplification (perform many qubit pulses)
                             with for_(count, 0, count < npi, count + 1):
-                                qubit.xy.play("x180_ef", amplitude_scale=a)
+                                qubit.xy.play("EF_x180", amplitude_scale=a)
                         align()
 
                         # Qubit readout
@@ -207,6 +207,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
+    node.namespace["Rabi_ef"] = True
+
 
 
 # %% {Analyse_data}
@@ -246,7 +248,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.outcomes[q.name] == "failed":
                 continue
             else:
-                operation = q.xy.operations["x180_ef"]
+                operation = q.xy.operations["EF_x180"]
                 operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
 
 

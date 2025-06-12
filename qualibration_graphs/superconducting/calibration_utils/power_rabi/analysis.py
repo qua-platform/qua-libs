@@ -49,7 +49,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
         ds = convert_IQ_to_V(ds, node.namespace["qubits"])
 
     if node.namespace["Rabi_ef"] is not None:
-        full_amp = np.array([ds.amp_prefactor * q.xy.operations["x180_ef"].amplitude for q in node.namespace["qubits"]])
+        full_amp = np.array([ds.amp_prefactor * q.xy.operations["EF_x180"].amplitude for q in node.namespace["qubits"]])
     else:
         full_amp = np.array([ds.amp_prefactor * q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]])
     ds = ds.assign_coords(full_amp=(["qubit", "amp_prefactor"], full_amp))
@@ -115,7 +115,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
         }
         if node.namespace["Rabi_ef"] is not None:
             current_amps = xr.DataArray(
-                [q.xy.operations["x180_ef"].amplitude for q in node.namespace["qubits"]],
+                [q.xy.operations["EF_x180"].amplitude for q in node.namespace["qubits"]],
                 coords=dict(qubit=fit.qubit.data),
             )
         else:
