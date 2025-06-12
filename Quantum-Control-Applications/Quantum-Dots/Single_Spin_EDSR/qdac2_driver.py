@@ -106,11 +106,11 @@ def set_QDAC_voltage(
         voltage: float,
 ):
     """
-    Configure a QDAC2 channel to play a specicif voltage, using pyvisa commands.
+    Configure a QDAC2 channel to play a specific voltage, using pyvisa commands.
 
     :param qdac: the QDAC2 object.
-    :param channel: the QDAC2 channel that will output the voltage from the voltage list.
-    :param voltage: the desired voltage to output from the QDAC channel.
+    :param channel: the QDAC2 channel that will output the desired voltage.
+    :param voltage: the desired voltage to output from the QDAC channel in units of Volts.
     :return:
     """
     qdac.write(f"sour{channel}:dc:mode FIX")
