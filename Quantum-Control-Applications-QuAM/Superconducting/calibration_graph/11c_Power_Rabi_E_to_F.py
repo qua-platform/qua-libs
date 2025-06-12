@@ -44,7 +44,7 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 200
-    operation: str = "x180"
+    operation: str = "EF_x180"
     min_amp_factor: float = 0.0
     max_amp_factor: float = 2.0
     amp_factor_step: float = 0.02
@@ -75,8 +75,22 @@ else:
 num_qubits = len(qubits)
 
 
+for q in qubits:
+    if "EF_x180" not in q.xy.operations:
+        print("Creating EF_x180 operation")
+        ef_operation = pulses.DragCosinePulse(
+                    amplitude=0.025,
+                    alpha=q.xy.operations["x180"].alpha,
+                    anharmonicity=q.xy.operations["x180"].anharmonicity,
+                    length=q.xy.operations["x180"].length,
+                    axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
+                    digital_marker=q.xy.operations["x180"].digital_marker,
+                )
+        
+        q.xy.operations["EF_x180"] = ef_operation
+
 # %% {QUA_program}
-operation = node.parameters.operation  # The qubit operation to play
+operation = node.parameters.operation  # The qubit operation to play 
 n_avg = node.parameters.num_averages  # The number of averages
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 
@@ -108,11 +122,8 @@ with program() as power_rabi:
             wait(1000, qb.z.name)
 
         align()
-
-        with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st)
-            with for_(*from_array(a, amps)):
-                update_frequency(
+        
+        update_frequency(
                     qubit.resonator.name,
                     qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift,
                     keep_phase=True
@@ -125,9 +136,9 @@ with program() as power_rabi:
                 update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
                 # Drive the qubit to the excited state
                 qubit.align()
-                qubit.xy.play(operation)
-                # Update the qubit frequency to scan around the expected f_12
+                qubit.xy.play("x180")
                 qubit.align()
+                # Update the qubit frequency to scan around the expected f_12
                 update_frequency(
                     qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity
                 )
@@ -240,19 +251,6 @@ if not node.parameters.simulate:
  
 # %% {Update_state}
 if not node.parameters.simulate: 
-    for q in qubits:
-        if "EF_x180" not in q.xy.operations:
-            print("Creating EF_x180 operation")
-            ef_operation_value = pulses.DragCosinePulse(
-                        amplitude=0.0,
-                        alpha=q.xy.operations[operation].alpha,
-                        anharmonicity=q.xy.operations[operation].anharmonicity,
-                        length=q.xy.operations[operation].length,
-                        axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
-                        digital_marker=q.xy.operations[operation].digital_marker,
-                    )
-            
-            q.xy.operations["EF_x180"] = ef_operation_value
     for q in qubits:
         with node.record_state_updates():
             q.xy.operations["EF_x180"].amplitude = fit_results[q.name]["Pi_amplitude"]

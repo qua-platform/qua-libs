@@ -128,7 +128,7 @@ with program() as multi_res_spec_vs_flux:
                     # readout the resonator
                     rr.measure("readout", qua_vars=(I[i], Q[i]))
                     # wait for the resonator to relax
-                    rr.wait(machine.depletion_time * u.ns)
+                    rr.wait(qubit.resonator.depletion_time * u.ns)
                     # save data
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])

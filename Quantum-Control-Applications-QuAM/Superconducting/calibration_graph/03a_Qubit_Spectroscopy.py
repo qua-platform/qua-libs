@@ -155,7 +155,7 @@ with program() as qubit_spec:
                 # readout the resonator
                 qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                 # Wait for the qubit to decay to the ground state
-                qubit.resonator.wait(machine.depletion_time * u.ns)
+                qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
                 # save data
                 save(I[i], I_st[i])
                 save(Q[i], Q_st[i])

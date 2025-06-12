@@ -4,11 +4,10 @@ import numpy as np
 from quam.components.macro import QubitMacro, QubitPairMacro
 from quam.components.pulses import ReadoutPulse, Pulse
 from quam.core import quam_dataclass
-from .transmon import Transmon
-from .tunable_coupler import TunableCoupler
-from .readout_resonator import ReadoutResonatorIQ
-from qm.qua import declare, assign, fixed
-from quam.utils.qua_types import QuaVariableBool
+from quam_libs.components.transmon import Transmon
+from quam_libs.components.readout_resonator import ReadoutResonatorIQ
+from qm.qua import declare, assign, while_, Cast, broadcast, fixed
+from quam.utils.qua_types import QuaVariableBool, QuaVariableFloat, QuaVariableInt
 
 __all__ = ["MeasureMacro", "ResetMacro", "VirtualZMacro", "CZMacro", "DelayMacro", "IdMacro"]
 
@@ -99,7 +98,7 @@ class CZMacro(QubitPairMacro):
     phase_shift_target: float = 0.0
     
     @property
-    def coupler(self) -> TunableCoupler:
+    def coupler(self) : # -> "TunableCoupler":
         return self.qubit_pair.coupler
     
     @property
@@ -165,7 +164,6 @@ class CZFixedMacro(QubitPairMacro):
         **kwargs,
     ) -> None:
         self.qubit_control.wait(1000//4)
-
 
 @quam_dataclass
 class DelayMacro(QubitMacro):
