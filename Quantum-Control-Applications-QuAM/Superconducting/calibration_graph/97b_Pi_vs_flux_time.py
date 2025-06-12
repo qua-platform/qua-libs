@@ -42,14 +42,14 @@ start = time.time()
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['qC5']
-    num_averages: int = 50
+    qubits: Optional[List[str]] = None
+    num_averages: int = 10
     operation: str = "x180_Gaussian"
     operation_amplitude_factor: Optional[float] = 1
     duration_in_ns: Optional[int] = 700
     frequency_span_in_mhz: float = 400
     frequency_step_in_mhz: float = 0.5
-    flux_amp : float = 0.2
+    flux_amp : float = 0.05
     update_lo: bool = True
     fit_single_exponential: bool = True
     update_state: bool = False
