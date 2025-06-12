@@ -101,9 +101,9 @@ def load_voltage_list(
 
 # set the QDAC voltage to a specific value
 def set_QDAC_voltage(
-        qdac,
-        channel: int,
-        voltage: float,
+    qdac,
+    channel: int,
+    voltage: float,
 ):
     """
     Configure a QDAC2 channel to play a specicif voltage, using pyvisa commands.
