@@ -20,6 +20,7 @@ class FitParameters:
     opt_amp: float
     operation: str
     outcome: str
+    fit_quality: float = None
 
 
 def compute_snr(signal: np.ndarray) -> float:
@@ -152,7 +153,7 @@ def get_fit_outcome(
     opt_amp: float,
     max_amplitude: float,
     fit_quality: float = None,
-    min_fit_quality: float = 0.8,
+    min_fit_quality: float = 0.5,
     min_amplitude: float = 0.01,
     max_amp_prefactor: float = 10.0,
     amp_prefactor: float = None,
@@ -168,22 +169,19 @@ def get_fit_outcome(
 
     if not nan_success:
         return "Fit parameters are invalid (NaN values detected)"
+
+    # Only apply noise check for 1D datasets
+    if is_1d_dataset and opt_amp < min_amplitude:
+        if fit_quality is not None and fit_quality < min_fit_quality:
+            return f"Poor fit quality (R² = {fit_quality:.3f} < {min_fit_quality}). There is too much noise in the data, consider increasing averaging or shot count"
+        else:
+            return f"There is too much noise in the data, consider increasing averaging or shot count"
     
     if not has_structure and not is_1d_dataset:
-        return "No chevron modulation detected. Likely off-resonant drive or flat amplitude sweep."
-    
-    if fit_quality is not None and fit_quality < min_fit_quality:
-            return f"Poor fit quality (R² = {fit_quality:.3f} < {min_fit_quality})"
+        return "No chevron modulation detected. Please check the drive frequency and amplitude sweep range"
         
     if snr is not None and snr < snr_min:
         return f"SNR too low (SNR = {snr:.2f} < {snr_min})"
-    
-    if fit_quality is not None and fit_quality < min_fit_quality:
-        return f"Poor fit quality (R² = {fit_quality:.3f} < {min_fit_quality})"
-    
-    # Only apply noise check for 1D datasets
-    if is_1d_dataset and opt_amp < min_amplitude:
-        return f"There is too much noise in the data, consider increasing averaging or shot count"
     
     if not amp_success:
         detuning_direction = _determine_detuning_direction(fit, qubit, node=node) if fit is not None and qubit is not None else ""
@@ -195,6 +193,18 @@ def get_fit_outcome(
 
     if not should_fit and is_1d_dataset:
         return "There is too much noise in the data, consider increasing averaging or shot count"
+
+    # Check fit quality first
+    if fit_quality is not None and fit_quality < min_fit_quality:
+        # For 1D datasets, check if the poor fit quality is due to too many oscillations
+        if is_1d_dataset and fit is not None and qubit is not None and 'fit' in fit and hasattr(fit.fit, 'sel'):
+            try:
+                freq = float(fit.fit.sel(qubit=qubit, fit_vals='f').values)
+                if freq > 1.0:
+                    return "Fit quality poor due to large pulse amplitude range, consider a smaller range"
+            except (ValueError, KeyError, AttributeError):
+                pass
+        return f"Poor fit quality (R² = {fit_quality:.3f} < {min_fit_quality})"
     
     return "successful"
 
@@ -220,6 +230,9 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
             s_qubit += " SUCCESS!\n"
         else:
             s_qubit += f" FAIL! Reason: {fit_results[q]['outcome']}\n"
+        # Add fit quality information if available
+        if fit_results[q].get('fit_quality') is not None:
+            s_qubit += f"Fit quality (R²): {fit_results[q]['fit_quality']:.3f}\n"
         log_callable(s_qubit + s_amp)
 
 
@@ -332,8 +345,9 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     outcomes = []
     for i, q in enumerate(fit.qubit.values):
         fit_quality = None
-        if 'fit' in fit and 'r_squared' in fit.fit.attrs:
-            fit_quality = float(fit.fit.attrs['r_squared'])
+        if 'fit' in fit and hasattr(fit.fit, 'attrs'):
+            if 'r_squared' in fit.fit.attrs:
+                fit_quality = float(fit.fit.attrs['r_squared'])
             
         # Check for chevron modulation in 2D case
         has_structure = True
@@ -371,6 +385,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             opt_amp=fit.sel(qubit=q).opt_amp.values.__float__(),
             operation=node.parameters.operation,
             outcome=fit.sel(qubit=q).outcome.values.__str__(),
+            fit_quality=fit_quality if fit_quality is not None else None,
         )
         for q in fit.qubit.values
     }
