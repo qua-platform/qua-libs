@@ -1,5 +1,11 @@
+"""
+QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
+"""
+
+import os
 from pathlib import Path
 import numpy as np
+from qm.octave import QmOctaveConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
@@ -7,34 +13,19 @@ import plotly.io as pio
 
 pio.renderers.default = "browser"
 
+
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
 u = unit(coerce_to_integer=True)
 
 
-# IQ imbalance matrix
-def IQ_imbalance(g, phi):
-    """
-    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
-    be seen here:
-    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
-
-    :param g: relative gain imbalance between the I & Q ports (unit-less). Set to 0 for no gain imbalance.
-    :param phi: relative phase imbalance between the I & Q ports (radians). Set to 0 for no phase imbalance.
-    """
-    c = np.cos(phi)
-    s = np.sin(phi)
-    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
-    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
-
-
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"  # Write the QM router IP address
-cluster_name = None  # Write your cluster_name if version >= QOP220
-qop_port = None  # Write the QOP port if version < QOP220
+qop_ip = "127.0.0.1"
+cluster_name = "my_cluster"
+qop_port = None
 
 #############
 # Save Path #
@@ -51,8 +42,19 @@ default_additional_files = {
 #####################
 # OPX configuration #
 #####################
-# Set octave_config to None if no octave are present
-octave_config = None
+con = "con1"
+fem = 1  # This should be the index of the LF-FEM module, e.g., 1
+############################
+# Set octave configuration #
+############################
+octave_ip = qop_ip  # Write the Octave IP address
+octave_port = 11050  # 11xxx, where xxx are the last three digits of the Octave IP address
+octave_config = QmOctaveConfig()
+octave_config.set_calibration_db(os.getcwd())
+octave_config.add_device_info("octave1", octave_ip, octave_port)
+
+
+sampling_rate = int(1e9)  # or, int(2e9)
 
 # Frequencies
 Yb_IF_freq = 40e6  # in units of Hz
@@ -89,42 +91,80 @@ laser_delay = 0
 config = {
     "version": 1,
     "controllers": {
-        "con1": {
-            "type": "opx1",
-            "analog_outputs": {
-                1: {"offset": 0.0, "delay": mw_delay},  # Yb I microwave
-                2: {"offset": 0.0, "delay": mw_delay},  # Yb Q microwave
-                3: {"offset": 0.0, "delay": mw_delay},  # B^{RF}
-                9: {"offset": 0.0, "delay": mw_delay},  # photon_source
-            },
-            "digital_outputs": {
-                1: {},  # A-transition AOM0
-                2: {},  # A-transition AOM1
-                3: {},  # F-transition AOM0
-                4: {},  # F-transition AOM1
-                5: {},  # excited state mw switch0
-                6: {},  # excited state mw switch1
-                7: {},  # SNSPD shutter AOM
-                8: {},  # Yb mw switch0
-                9: {},  # Yb mw switch1
-            },
-            "analog_inputs": {
-                1: {"offset": 0, "gain_db": 0},  # SPCM
+        con: {
+            "type": "opx1000",
+            "fems": {
+                fem: {
+                    "type": "LF",
+                    "analog_outputs": {
+                        # Yb I microwave
+                        1: {
+                            "offset": 0.0,
+                            "delay": mw_delay,
+                            # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
+                            #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
+                            #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
+                            # Note, 'offset' takes absolute values, e.g., if in amplified mode and want to output 2.0 V, then set "offset": 2.0
+                            "output_mode": "direct",
+                            # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
+                            #   1 GS/s: uses one core per output (default)
+                            #   2 GS/s: uses two cores per output
+                            # NOTE: duration parameterization of arb. waveforms, sticky elements and chirping
+                            #       aren't yet supported in 2 GS/s.
+                            "sampling_rate": sampling_rate,
+                            # At 1 GS/s, use the "upsampling_mode" to optimize output for
+                            #   modulated pulses (optimized for modulated pulses):      "mw"    (default)
+                            #   unmodulated pulses (optimized for clean step response): "pulse"
+                            "upsampling_mode": "mw",
+                        },
+                        # Yb Q microwave
+                        2: {
+                            "offset": 0.0,
+                            "delay": mw_delay,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
+                        # B^{RF}
+                        3: {
+                            "offset": 0.0,
+                            "delay": mw_delay,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
+                        # Photon Source
+                        8: {"delay": mw_delay, "offset": 0.0},
+                    },
+                    "digital_outputs": {
+                        1: {},  # A-transition AOM0
+                        2: {},  # A-transition AOM1
+                        3: {},  # F-transition AOM0
+                        4: {},  # F-transition AOM1
+                        5: {},  # excited state mw switch0
+                        6: {},  # excited state mw switch1
+                        7: {},  # Yb mw switch0
+                        8: {},  # Yb mw switch1
+                    },
+                    "analog_inputs": {
+                        1: {"offset": 0, "gain_db": 0, "sampling_rate": sampling_rate},  # SPCM
+                    },
+                }
             },
         }
     },
     "elements": {
         "Yb": {
-            "mixInputs": {"I": ("con1", 1), "Q": ("con1", 2), "lo_frequency": Yb_LO_freq, "mixer": "mixer_Yb"},
+            "RF_inputs": {"port": ("octave1", 1)},
             "intermediate_frequency": Yb_IF_freq,
             "digitalInputs": {
                 "switch0": {
-                    "port": ("con1", 8),
+                    "port": (con, fem, 7),
                     "delay": 136,
                     "buffer": 0,
                 },
                 "switch1": {
-                    "port": ("con1", 9),
+                    "port": (con, fem, 8),
                     "delay": 136,
                     "buffer": 0,
                 },
@@ -146,7 +186,7 @@ config = {
         "AOM": {
             "digitalInputs": {
                 "marker": {
-                    "port": ("con1", 1),
+                    "port": (con, fem, 1),
                     "delay": laser_delay,
                     "buffer": 0,
                 },
@@ -156,16 +196,16 @@ config = {
             },
         },
         "A_transition": {
-            "singleInput": {"port": ("con1", 1)},
+            "singleInput": {"port": (con, fem, 1)},
             "intermediate_frequency": optical_transition_IF,
             "digitalInputs": {
                 "marker0": {
-                    "port": ("con1", 1),
+                    "port": (con, fem, 1),
                     "delay": laser_delay,
                     "buffer": 0,
                 },
                 "marker1": {
-                    "port": ("con1", 2),
+                    "port": (con, fem, 2),
                     "delay": laser_delay,
                     "buffer": 0,
                 },
@@ -175,7 +215,7 @@ config = {
             },
         },
         "B_RF": {
-            "singleInput": {"port": ("con1", 3)},
+            "singleInput": {"port": (con, fem, 3)},
             "intermediate_frequency": optical_transition_IF,
             "operations": {
                 "+cw": "+const_pulse",
@@ -185,12 +225,12 @@ config = {
         "F_transition": {
             "digitalInputs": {
                 "marker0": {
-                    "port": ("con1", 3),
+                    "port": (con, fem, 3),
                     "delay": laser_delay,
                     "buffer": 0,
                 },
                 "marker1": {
-                    "port": ("con1", 4),
+                    "port": (con, fem, 4),
                     "delay": laser_delay,
                     "buffer": 0,
                 },
@@ -202,12 +242,12 @@ config = {
         "excited_state_mw": {
             "digitalInputs": {
                 "switch0": {
-                    "port": ("con1", 5),
+                    "port": (con, fem, 5),
                     "delay": laser_delay,
                     "buffer": 0,
                 },
                 "switch1": {
-                    "port": ("con1", 6),
+                    "port": (con, fem, 6),
                     "delay": laser_delay,
                     "buffer": 0,
                 },
@@ -217,11 +257,11 @@ config = {
             },
         },
         "SNSPD": {
-            # "singleInput": {"port": ("con1", 1)},  # not used
+            # "singleInput": {"port": (con, fem, 1)},  # not used
             "intermediate_frequency": Yb_IF_freq,
             "digitalInputs": {
                 "marker": {
-                    "port": ("con1", 2),
+                    "port": (con, fem, 2),
                     "delay": detection_delay,
                     "buffer": 0,
                 },
@@ -230,7 +270,7 @@ config = {
                 "readout": "readout_pulse",
                 "long_readout": "long_readout_pulse",
             },
-            "outputs": {"out1": ("con1", 1)},
+            "outputs": {"out1": (con, fem, 1)},
             "outputPulseParameters": {
                 "signalThreshold": signal_threshold,
                 "signalPolarity": "Ascending",
@@ -240,6 +280,20 @@ config = {
             "time_of_flight": detection_delay,
             "smearing": 0,
         },
+    },
+    "octaves": {
+        "octave1": {
+            "RF_outputs": {
+                1: {
+                    "LO_frequency": Yb_LO_freq,
+                    "LO_source": "internal",  # can be external or internal. internal is the default
+                    "output_mode": "always_on",
+                    # can be: "always_on" / "always_off"/ "triggered" / "triggered_reversed". "always_off" is the default
+                    "gain": 0,  # can be in the range [-20 : 0.5 : 20]dB
+                },
+            },
+            "connectivity": (con, fem),
+        }
     },
     "pulses": {
         "const_pulse": {
@@ -344,10 +398,5 @@ config = {
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},  # [(on/off, ns)]
         "OFF": {"samples": [(0, 0)]},  # [(on/off, ns)]
-    },
-    "mixers": {
-        "mixer_Yb": [
-            {"intermediate_frequency": Yb_IF_freq, "lo_frequency": Yb_LO_freq, "correction": IQ_imbalance(0.0, 0.0)},
-        ],
     },
 }
