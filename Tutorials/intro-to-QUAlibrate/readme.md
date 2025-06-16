@@ -62,7 +62,7 @@ Once you have the code locally:
 
 ### Initial Setup (QUAlibrate Configuration)
 
-The QUAlibrate framework needs some initial configuration to know where to find calibration scripts, store data, and manage the system state (QUAM).
+The QUAlibrate framework needs some initial configuration to know where to find calibration scripts and store the data.
 
 **Run the Configuration Script:** Execute the provided script from within the `Superconducting` directory:
 
