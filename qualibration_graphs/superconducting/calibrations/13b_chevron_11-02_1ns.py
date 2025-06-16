@@ -62,11 +62,11 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubit_pairs = ["qD1-qD3"]  # List of qubit pairs to calibrate
+    node.parameters.qubit_pairs = ["qD2-qD4"]  # List of qubit pairs to calibrate
     node.parameters.reset_type = "active"
     node.parameters.num_shots = 100
     node.parameters.max_time_in_ns = 160
-    node.parameters.amp_range = 0.2
+    node.parameters.amp_range = 0.3
     node.parameters.amp_step = 0.005
     node.parameters.use_state_discrimination = True
     # node.parameters.load_data_id = 1414
@@ -200,7 +200,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
 
                         if node.parameters.use_state_discrimination:
-                            qp.qubit_control.readout_state(state[ii])
+                            # qp.qubit_control.readout_state(state[ii])
+                            qp.qubit_control.readout_state_gef(state[ii])
                             qp.qubit_target.readout_state(state[ii + 1])
                             save(state[ii], state_st[ii])
                             save(state[ii + 1], state_st[ii + 1])
@@ -265,7 +266,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
-
 
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
