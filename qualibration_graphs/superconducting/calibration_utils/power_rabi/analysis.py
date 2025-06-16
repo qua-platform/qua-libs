@@ -104,6 +104,48 @@ def has_chevron_modulation(sig_2d: np.ndarray, threshold: float = 0.4) -> bool:
     return (modulation_range / (avg_ptp + 1e-12)) > threshold
 
 
+def _determine_detuning_direction(fit: xr.Dataset, qubit: str, node=None) -> str:
+    """
+    Determines whether the detuning is positive or negative based on the drive and qubit frequencies if available,
+    otherwise falls back to fit-based logic.
+    Returns 'positive' or 'negative' detuning direction.
+    """
+    try:
+        drive_freq = None
+        qubit_freq = None
+        # Try to use drive and qubit frequencies from node if available
+        if node is not None and hasattr(node, "namespace") and "qubits" in node.namespace:
+            qubits_dict = node.namespace["qubits"]
+            q_obj = None
+            # Always search by id
+            for v in (qubits_dict.values() if isinstance(qubits_dict, dict) else qubits_dict):
+                if hasattr(v, 'id') and getattr(v, 'id', None) == qubit:
+                    q_obj = v
+                    break
+            if q_obj is not None:
+                drive_freq = getattr(q_obj.xy, "RF_frequency", None)
+                qubit_freq = getattr(q_obj, "f_01", None)
+        if drive_freq is not None and qubit_freq is not None:
+            detuning = drive_freq - qubit_freq
+            direction = "positive" if detuning > 0 else "negative"
+            return direction
+        # Fallback: use fit-based logic
+        fit_params = fit.fit.sel(qubit=qubit).values
+        fit_vals = fit.fit.sel(qubit=qubit, fit_vals=slice(None)).coords['fit_vals'].values
+        fit_dict = {k: v for k, v in zip(fit_vals, fit_params)}
+        phase = float(fit_dict.get('phi', float('nan')))
+        freq = float(fit_dict.get('f', float('nan')))
+        amp = float(fit_dict.get('a', float('nan')))
+        phase_norm = (phase + np.pi) % (2 * np.pi) - np.pi
+        if abs(phase_norm) < (np.pi / 2):
+            direction = "positive" if freq > 0 else "negative"
+        else:
+            direction = "positive" if phase_norm < 0 else "negative"
+        return direction
+    except (AttributeError, KeyError, ValueError):
+        return ""
+
+
 def get_fit_outcome(
     nan_success: bool,
     amp_success: bool,
@@ -119,6 +161,9 @@ def get_fit_outcome(
     should_fit: bool = True,
     is_1d_dataset: bool = True,
     has_structure: bool = True,
+    fit: xr.Dataset = None,
+    qubit: str = None,
+    node: object = None,
 ) -> str:
 
     if not nan_success:
@@ -141,7 +186,9 @@ def get_fit_outcome(
         return f"There is too much noise in the data, consider increasing averaging or shot count"
     
     if not amp_success:
-        return f"The drive frequency is off-resonant with high detuning, please adjust the drive frequency"
+        detuning_direction = _determine_detuning_direction(fit, qubit, node=node) if fit is not None and qubit is not None else ""
+        direction_str = f"{detuning_direction} detuning" if detuning_direction else ""
+        return f"The drive frequency is off-resonant with high {direction_str}, please adjust the drive frequency"
     
     if amp_prefactor is not None and abs(amp_prefactor) > max_amp_prefactor:
         return f"Amplitude prefactor too large (|{amp_prefactor:.2f}| > {max_amp_prefactor})"
@@ -310,6 +357,9 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             should_fit=fit_flags[q],
             is_1d_dataset=node.parameters.max_number_pulses_per_sweep == 1,
             has_structure=has_structure,
+            fit=fit,
+            qubit=q,
+            node=node,
         )
         outcomes.append(outcome)
     fit = fit.assign_coords(outcome=("qubit", outcomes))
