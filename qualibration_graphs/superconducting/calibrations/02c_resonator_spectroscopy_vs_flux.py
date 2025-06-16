@@ -215,7 +215,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     plt.show()
 
     plot_fit = plotly_plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    plot_fit.show()
     plot_raw = plotly_plot_raw_data(node.results["ds_raw"], node.namespace["qubits"])
+    plot_raw.show()
 
     # Store the generated figures
     node.results["figures"] = {

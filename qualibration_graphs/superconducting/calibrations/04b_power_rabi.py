@@ -15,12 +15,11 @@ from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
+from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
-
-from qualibrate import QualibrationNode
 
 # %% {Description}
 description = """
@@ -222,7 +221,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
-        qubit_name: ("successful" if fit_result["success"] else "failed")
+        qubit_name: ("successful" if fit_result["outcome"] == "successful" else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()
     }
 
