@@ -31,8 +31,8 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ['qC1']    
-    num_averages: int = 5000
+    qubits: Optional[List[str]] = ['qD2']    
+    num_averages: int = 500
     amplitude_factor: float = 0.4
     cryoscope_len: int = 80
     num_frames: int = 17
@@ -40,8 +40,7 @@ class Parameters(NodeParameters):
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
     timeout: int = 100
-    reset_filters: bool = False
-    only_FIR: bool = True
+    only_FIR: bool = False
     load_data_id: Optional[int] = None
     
 node = QualibrationNode(
@@ -63,15 +62,6 @@ if node.parameters.qubits is None:
     qubits = machine.active_qubits
 else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
-    
-if node.parameters.reset_filters:
-    # for qubit in qubits:  # QOP <3.3
-    #     qubit.z.opx_output.feedforward_filter = [1.0, 0.0]
-    #     qubit.z.opx_output.feedback_filter = [0.0, 0.0]
-    for qubit in qubits:
-        # QOP >= 3.3
-        qubit.z.opx_output.exponential_filter = [(0,50)]
-
               
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
@@ -159,7 +149,7 @@ with program() as cryoscope:
                 align()
                 # Delay between x90 and the flux pulse
                 # NOTE: it can be made larger than 16 nanoseconds it could be benefitial
-                wait(16 // 4)
+                wait(50)
                 align()
                 # with switch_(idx):
                 #     for j in range(16):
@@ -168,7 +158,7 @@ with program() as cryoscope:
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
                 # pulse arrives after the longest flux pulse
                 for qubit in qubits:
-                    qubit.xy.wait((cryoscope_len + 16) // 4)
+                    qubit.xy.wait((cryoscope_len + 160) // 4)
                     # Play second X/2
                     frame_rotation_2pi(frame, qubit.xy.name)
                     qubit.xy.play("x90")
@@ -178,7 +168,6 @@ with program() as cryoscope:
                 qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                 assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
                 save(state[i], state_st[i])
-
 
         # The first 16-32 nanoseconds
         with for_(idx, 0, idx<16, idx+1):
@@ -191,11 +180,11 @@ with program() as cryoscope:
                 align()
                 # Play first X/2
                 for qubit in qubits:
-                    qubit.xy.play("x180", amplitude_scale = 0.5)
+                    qubit.xy.play("x90")
                 align()
                 # Delay between x90 and the flux pulse
                 # NOTE: it can be made larger than 16 nanoseconds it could be benefitial
-                wait(16 // 4)
+                wait(50)
                 align()
                 with switch_(idx):
                     for j in range(16):
@@ -204,7 +193,7 @@ with program() as cryoscope:
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
                 # pulse arrives after the longest flux pulse
                 for qubit in qubits:
-                    qubit.xy.wait((cryoscope_len + 16) // 4)
+                    qubit.xy.wait((cryoscope_len + 160) // 4)
                     # Play second X/2
                     frame_rotation_2pi(frame, qubit.xy.name)
                     qubit.xy.play("x90")
@@ -231,7 +220,7 @@ with program() as cryoscope:
                         qubit.xy.play("x90")
                     align()
                     # Delay between x90 and the flux pulse
-                    wait(16 // 4)
+                    wait(50)
                     align()
                     with switch_(idx):
                         for j in range(16):
@@ -242,7 +231,7 @@ with program() as cryoscope:
                     # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
                     # pulse arrives after the longest flux pulse
                     for qubit in qubits:
-                        qubit.xy.wait((cryoscope_len + 16) // 4)
+                        qubit.xy.wait((cryoscope_len + 160) // 4)
                         # Play second X/2
                         frame_rotation_2pi(frame, qubit.xy.name)
                         qubit.xy.play("x90")
@@ -356,33 +345,12 @@ node.results['figure'] = plt.gcf()
 plt.show()
 
 # %%
-
-
-# %%
-# if not node.parameters.simulate:
-#     if plot_process:
-#         ds.state.sel(qubit= qubits[0].name).plot(hue = 'axis')
-#         plt.show()
-
-#     sg_order = 2
-#     sg_range = 3
-#     qubit = qubits[0]
-#     da = ds.state.sel(qubit= qubit.name)
-
-#     flux_cryoscope_q = cryoscope_frequency(da, 
-#                                            quad_term=qubit.freq_vs_flux_01_quad_term,
-#                                            stable_time_indices=(20, cryoscope_len-20),  
-#                                            sg_order=sg_order,
-#                                            sg_range=sg_range, plot=plot_process)
-#     plt.show()
-
-# %%
 if not node.parameters.simulate:
         # extract the rising part of the data for analysis
     flux_cryoscope_q = ds.flux.sel(qubit = qubit.name)
     threshold = flux_cryoscope_q.max().values*0.6 # Set the threshold value
     rise_index = np.argmax(flux_cryoscope_q.values > threshold) + 1
-    drop_index =  len(flux_cryoscope_q) - 4
+    drop_index =  len(flux_cryoscope_q) - 0
     flux_cryoscope_tp = flux_cryoscope_q.sel(time=slice(rise_index,drop_index ))
     flux_cryoscope_tp = flux_cryoscope_tp.assign_coords(
         time=flux_cryoscope_tp.time - rise_index + 1)
@@ -415,31 +383,15 @@ if not node.parameters.simulate and not node.parameters.only_FIR: # exponential 
     except:
         fit = p0
         print('single exp fit failed')
-    try:
-        p0 = [fit[0], fit[1], 5, fit[1], 100]
-        fit2, _ = curve_fit(two_expdecay, filtered_flux_cryoscope_q.time[4:], filtered_flux_cryoscope_q[4:],
-                p0 = p0)
-    except:
-        fit2 = p0
-        print('two exp fit failed')
         
     if plot_process:
         da.plot(marker = '.')
         # plt.plot(filtered_flux_cryoscope_q.time, filtered_flux_cryoscope_q, label = 'filtered')
         plt.plot(da.time, expdecay(da.time, *fit), label = 'fit single exp')
-        if fit2 is not None:
-            plt.plot(da.time, two_expdecay(da.time, *fit2), label = 'fit two exp')
+        fit_text = f's={fit[0]:.6f}\na={fit[1]:.6f}\nt={fit[2]:.6f}'
+        plt.text(0.02, 0.98, fit_text, transform=plt.gca().transAxes, verticalalignment='top', fontsize=8)
         plt.legend()
         plt.show()
-
-    # Print fit2 parameters nicely (two_expdecay function)
-    if fit2 is not None:
-        print("Fit2 parameters (two_expdecay function):")
-        print(f"s: {fit2[0]:.6f}")
-        print(f"a: {fit2[1]:.6f}")
-        print(f"t: {fit2[2]:.6f}")
-        print(f"a2: {fit2[3]:.6f}")
-        print(f"t2: {fit2[4]:.6f}")
 
     # Print fit parameters nicely (expdecay function)
     print("\nFit parameters (expdecay function):")
@@ -450,21 +402,16 @@ if not node.parameters.simulate and not node.parameters.only_FIR: # exponential 
     from qualang_tools.digital_filters import exponential_decay, single_exponential_correction, bounce_and_delay_correction, calc_filter_taps
 
     feedforward_taps_1exp, feedback_tap_1exp = calc_filter_taps(exponential=list(zip([fit[1]*1.0],[fit[2]])))
-    feedforward_taps_2exp, feedback_tap_2exp = calc_filter_taps(exponential=list(zip([fit2[1],fit2[3]],[fit2[2],fit2[4]])))
-
+    
     FIR_1exp = feedforward_taps_1exp
-    FIR_2exp = feedforward_taps_2exp
     IIR_1exp = [1,-feedback_tap_1exp[0]]
-    IIR_2exp = convolve([1,-feedback_tap_2exp[0]],[1,-feedback_tap_2exp[1]], mode='full')
     flux_cryoscope_q[0] = 0
     filtered_response_long_1exp = lfilter(FIR_1exp,IIR_1exp, flux_cryoscope_q)
-    filtered_response_long_2exp = lfilter(FIR_2exp,IIR_2exp, flux_cryoscope_q)
-
+    
     if plot_process:
         f,ax = plt.subplots()
         ax.plot(flux_cryoscope_q.time,flux_cryoscope_q,label = 'data')
         ax.plot(flux_cryoscope_q.time,filtered_response_long_1exp,label = 'filtered long time 1exp')
-        ax.plot(flux_cryoscope_q.time,filtered_response_long_2exp,label = 'filtered long time 2exp')
         ax.set_ylim([final_vals*0.9,final_vals*1.05])
         ax.legend()
         plt.show()
@@ -475,20 +422,14 @@ if not node.parameters.simulate and not node.parameters.only_FIR: # exponential 
 if not node.parameters.simulate:
     ####  FIR filter for the response
     if node.parameters.only_FIR:
-        filtered_response_long = flux_cryoscope_q
+        response_long = flux_cryoscope_q
     else:
-        fitting_approach = '1exp'
-        if fitting_approach == '1exp':
-            filtered_response_long = filtered_response_long_1exp
-            long_FIR = FIR_1exp
-            long_IIR = IIR_1exp
-        elif fitting_approach == '2exp':
-            filtered_response_long = filtered_response_long_2exp
-            long_FIR = FIR_2exp
-            long_IIR = IIR_2exp
+        response_long = filtered_response_long_1exp
+        long_FIR = FIR_1exp
+        long_IIR = IIR_1exp
     
     flux_q = flux_cryoscope_q.copy()
-    flux_q.values = filtered_response_long
+    flux_q.values = response_long
     flux_q_tp = flux_q.sel(time=slice(rise_index, 200)) # calculate the FIR only based on the first 200 nS
     flux_q_tp = flux_q_tp.assign_coords(
         time=flux_q_tp.time - rise_index)
@@ -496,13 +437,11 @@ if not node.parameters.simulate:
     step = np.ones(len(flux_q)+100)*final_vals
     fir_est = estimate_fir_coefficients(step, flux_q_tp.values, 24)
 
-    FIR_new = fir_est
-
     if node.parameters.only_FIR:
         convolved_fir = fir_est
         long_IIR = [1]
     else:
-        convolved_fir = convolve(long_FIR,FIR_new, mode='full')
+        convolved_fir = convolve(long_FIR,fir_est, mode='full')
 
     filtered_response_Full = lfilter(convolved_fir,long_IIR, flux_cryoscope_q)
 
@@ -526,10 +465,11 @@ if not node.parameters.simulate:
             plt.plot(filterd_y)
         return diffs
 
-    result = minimize(find_diff, x0=FIR_new, args = (filtered_response_long[:100],np.mean(filtered_response_long[rise_index+50:drop_index])),
-                      bounds = [(-3,3)]*len(FIR_new))
+    result = minimize(find_diff, x0=fir_est, args = (response_long[:100],np.mean(response_long[rise_index+50:drop_index])),
+                      bounds = [(-3,3)]*len(fir_est))
 
-    convolved_fir = convolve(long_FIR,result.x, mode='full')
+    optimized_fir = result.x
+    convolved_fir = convolve(long_FIR,optimized_fir, mode='full')
     if np.abs(np.max(convolved_fir)) > 2:
         convolved_fir=1.99*convolved_fir/np.max(np.abs(convolved_fir))
     filtered_response_Full = lfilter(convolved_fir,long_IIR, flux_cryoscope_q)
@@ -573,12 +513,9 @@ if not node.parameters.simulate:
     node.results['fit_results'] = {}
     for q in qubits:
         node.results['fit_results'][q.name] = {}
-        node.results['fit_results'][q.name]['fir'] = convolved_fir.tolist()
+        node.results['fit_results'][q.name]['fir'] = optimized_fir.tolist()
         if not node.parameters.only_FIR:
-            if fitting_approach == '1exp':
-                node.results['fit_results'][q.name]['iir'] = feedback_tap_1exp
-            elif fitting_approach == '2exp':
-                node.results['fit_results'][q.name]['iir']  = feedback_tap_2exp  
+            node.results['fit_results'][q.name]['iir'] = feedback_tap_1exp
 
 # %%
 convert_to_2GSPS = True
@@ -586,19 +523,16 @@ if not node.parameters.simulate:
     with node.record_state_updates():
         for qubit in qubits:
             if convert_to_2GSPS:
-                fir_list = convolved_fir.tolist()
+                fir_list = optimized_fir.tolist()
                 fir_list = [element for item in fir_list for element in (item, item)]
             else:
-                fir_list = convolved_fir.tolist() 
+                fir_list = optimized_fir.tolist() 
             qubit.z.opx_output.feedforward_filter = fir_list
             if not node.parameters.only_FIR:
-                if fitting_approach == '1exp':
-                    qubit.z.opx_output.feedback_filter = feedback_tap_1exp
-                elif fitting_approach == '2exp':
-                    qubit.z.opx_output.feedback_filter = feedback_tap_2exp
+                qubit.z.opx_output.feedback_filter = [*qubit.z.opx_output.feedback_filter, feedback_tap_1exp]
 
 # %%
 node.results['initial_parameters'] = node.parameters.model_dump()
 node.machine = machine
-save_node(node)
+# save_node(node)
 # %%
