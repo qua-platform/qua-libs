@@ -40,14 +40,14 @@ import numpy as np
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ["qubitC1"]
+    qubits: Optional[List[str]] = ["qC5"]
     num_averages: int = 100
     frequency_detuning_in_mhz: float = 4.0
     min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 150000
+    max_wait_time_in_ns: int = 75000
     wait_time_step_in_ns: int = 2000
-    flux_span: float = 0.05
-    flux_step: float = 0.002
+    flux_span: float = 0.15
+    flux_step: float = 0.001
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500
@@ -122,7 +122,7 @@ with program() as ramsey:
                     qubit.align()
                     with strict_timing_():
                         qubit.xy.play("x180")
-                        qubit.z.wait(duration=qubit.xy.operations["x180"].length)
+                        qubit.z.wait(duration=qubit.xy.operations["x180"].length+50)
                         
                         qubit.xy.wait(t+1)
                         qubit.z.play("const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t)

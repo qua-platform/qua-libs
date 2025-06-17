@@ -38,7 +38,6 @@ import xarray as xr
 from scipy.optimize import curve_fit
 import time
 start = time.time()
-
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
@@ -46,12 +45,15 @@ class Parameters(NodeParameters):
     num_averages: int = 10
     operation: str = "x180_Gaussian"
     operation_amplitude_factor: Optional[float] = 1
-    duration_in_ns: Optional[int] = 700
-    frequency_span_in_mhz: float = 400
+    duration_in_ns: Optional[int] = 5000
+    time_axis: Literal["linear", "log"] = "linear"
+    time_step_in_ns: Optional[int] = 48 # for linear time axis
+    time_step_num: Optional[int] = 200 # for log time axis
+    frequency_span_in_mhz: float = 150
     frequency_step_in_mhz: float = 0.5
-    flux_amp : float = 0.05
+    flux_amp : float = 0.07
     update_lo: bool = True
-    fit_single_exponential: bool = True
+    fit_single_exponential: bool = False
     update_state: bool = False
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
@@ -114,10 +116,15 @@ else:
 # Qubit detuning sweep with respect to their resonance frequencies
 span = node.parameters.frequency_span_in_mhz * u.MHz
 step = node.parameters.frequency_step_in_mhz * u.MHz
-dfs = np.arange(-span // 2, span // 2, step, dtype=np.int32)
+dfs = np.arange(-span // 2, span // 5, step, dtype=np.int32)
 # Flux bias sweep
-times = np.arange(4, node.parameters.duration_in_ns // 4, 12, dtype=np.int32)
-# times = np.logspace(np.log10(4), np.log10(node.parameters.duration_in_ns // 4), 30, dtype=np.int32)
+if node.parameters.time_axis == "linear":
+    times = np.arange(4, node.parameters.duration_in_ns // 4, node.parameters.time_step_in_ns // 4, dtype=np.int32)
+elif node.parameters.time_axis == "log":
+    times = np.logspace(np.log10(4), np.log10(node.parameters.duration_in_ns // 4), node.parameters.time_step_num, dtype=np.int32)
+    # Remove repetitions from times
+    times = np.unique(times)
+
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 detuning = [q.freq_vs_flux_01_quad_term * node.parameters.flux_amp**2 for q in qubits]
 
@@ -376,6 +383,7 @@ for ax, qubit in grid_iter(grid):
     ax.set_ylabel("Freq (GHz)")
     ax.set_xlabel("Time (ns)")
     ax.set_title(qubit["qubit"])
+    # ax.set_xscale('log')
 grid.fig.suptitle(f"Qubit frequency shift vs time after flux pulse \n {date_time} #{node_id}")
 
 plt.tight_layout()
@@ -409,6 +417,7 @@ for ax, qubit in grid_iter(grid):
     ax.set_ylabel("Flux (V)")
     ax.set_xlabel("Time (ns)")
     ax.set_title(qubit["qubit"])
+    # ax.set_xscale('log')
 grid.fig.suptitle(f"Flux response vs time \n {date_time} #{node_id}")
 
 plt.tight_layout()
