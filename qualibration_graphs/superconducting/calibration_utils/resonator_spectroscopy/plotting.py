@@ -16,6 +16,17 @@ from quam_builder.architecture.superconducting.qubit import AnyTransmon
 u = unit(coerce_to_integer=True)
 
 
+# --- Constants ---
+MATPLOTLIB_FIG_WIDTH = 15
+MATPLOTLIB_FIG_HEIGHT = 9
+PLOTLY_FIG_HEIGHT = 900
+PLOTLY_FIG_WIDTH = 1500
+RAW_DATA_COLOR = "#1f77b4"
+FIT_COLOR = "#FF0000"  # Red
+FIT_LINE_STYLE = "dash"
+PLOTLY_AXIS_OFFSET = 100
+
+
 def plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> Figure:
     """
     Plots the raw phase data for the given qubits.
@@ -48,7 +59,7 @@ def plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> Figure:
         ds.assign_coords(detuning_MHz=ds.detuning / u.MHz).loc[qubit].phase.plot(ax=ax2, x="detuning_MHz")
         ax2.set_xlabel("Detuning [MHz]")
     grid.fig.suptitle("Resonator spectroscopy (phase)")
-    grid.fig.set_size_inches(15, 9)
+    grid.fig.set_size_inches(MATPLOTLIB_FIG_WIDTH, MATPLOTLIB_FIG_HEIGHT)
     grid.fig.tight_layout()
 
     return grid.fig
@@ -82,7 +93,7 @@ def plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits:
         plot_individual_amplitude_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
 
     grid.fig.suptitle("Resonator spectroscopy (amplitude + fit)")
-    grid.fig.set_size_inches(15, 9)
+    grid.fig.set_size_inches(MATPLOTLIB_FIG_WIDTH, MATPLOTLIB_FIG_HEIGHT)
     grid.fig.tight_layout()
     return grid.fig
 
@@ -127,7 +138,7 @@ def plot_individual_amplitude_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str
     ax2.set_xlabel("Detuning [MHz]")
     # Plot the fitted data
     if fitted_data is not None:
-        ax2.plot(ds.detuning / u.MHz, fitted_data / u.mV, "r--")
+        ax2.plot(ds.detuning / u.MHz, fitted_data / u.mV, color=FIT_COLOR, linestyle="--")
 
 def plotly_plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> PlotlyFigure:
     """
@@ -155,7 +166,7 @@ def plotly_plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> PlotlyFi
                 y=freq_data.phase,
                 name=f"Qubit {qubit_id}",
                 showlegend=False,
-                line=dict(color="#1f77b4"),
+                line=dict(color=RAW_DATA_COLOR),
                 customdata=np.stack([detuning_data.detuning_MHz], axis=-1),
                 hovertemplate="RF freq: %{x:.6f} GHz<br>Detuning: %{customdata[0]:.2f} MHz<br>Phase: %{y:.3f} rad<extra></extra>",
             ),
@@ -170,7 +181,7 @@ def plotly_plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> PlotlyFi
             col = j + 1
             subplot_index = i * grid.n_cols + j + 1  # 1-based indexing for Plotly axis names
             main_xaxis = f"x{subplot_index}"  # Always use the full axis name
-            top_xaxis_layout = f"xaxis{subplot_index + 100}"
+            top_xaxis_layout = f"xaxis{subplot_index + PLOTLY_AXIS_OFFSET}"
             # Get detuning values for this subplot
             detuning_vals = detuning_axes[subplot_index - 1] if subplot_index - 1 < len(detuning_axes) else None
             if detuning_vals is not None and len(detuning_vals) > 1:
@@ -196,8 +207,8 @@ def plotly_plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> PlotlyFi
             fig.update_yaxes(title_text="phase [rad]", row=row, col=col)
     fig.update_layout(
         title="Resonator spectroscopy (phase)",
-        height=900,
-        width=1500,
+        height=PLOTLY_FIG_HEIGHT,
+        width=PLOTLY_FIG_WIDTH,
         showlegend=False,
     )
     return fig
@@ -232,7 +243,7 @@ def plotly_plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon]
                 y=y_raw,
                 name=f"Qubit {qubit_id}",
                 showlegend=False,
-                line=dict(color="#1f77b4"),
+                line=dict(color=RAW_DATA_COLOR),
                 customdata=np.stack([detuning_vals], axis=-1),
                 hovertemplate="RF freq: %{x:.6f} GHz<br>Detuning: %{customdata[0]:.2f} MHz<br>R: %{y:.3f} mV<extra></extra>",
             ),
@@ -253,7 +264,7 @@ def plotly_plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon]
                     x=x_raw,
                     y=fitted_data / u.mV,
                     name=f"Qubit {qubit_id} - Fit",
-                    line=dict(dash="dash", color="red"),
+                    line=dict(dash=FIT_LINE_STYLE, color=FIT_COLOR),
                     showlegend=False,
                 ),
                 row=row,
@@ -267,7 +278,7 @@ def plotly_plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon]
             col = j + 1
             subplot_index = i * grid.n_cols + j + 1
             main_xaxis = f"x{subplot_index}"  # Always use the full axis name
-            top_xaxis_layout = f"xaxis{subplot_index + 100}"
+            top_xaxis_layout = f"xaxis{subplot_index + PLOTLY_AXIS_OFFSET}"
             detuning_vals = detuning_axes[subplot_index - 1] if subplot_index - 1 < len(detuning_axes) else None
             if detuning_vals is not None and len(detuning_vals) > 1:
                 fig['layout'][top_xaxis_layout] = dict(
@@ -292,8 +303,8 @@ def plotly_plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon]
             fig.update_yaxes(title_text=r"<i>R</i> = √(I² + Q²) [mV]", row=row, col=col)
     fig.update_layout(
         title="Resonator spectroscopy (amplitude + fit)",
-        height=900,
-        width=1500,
+        height=PLOTLY_FIG_HEIGHT,
+        width=PLOTLY_FIG_WIDTH,
         showlegend=False,
     )
     return fig

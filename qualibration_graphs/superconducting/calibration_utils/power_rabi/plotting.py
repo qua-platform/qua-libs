@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 import numpy as np
@@ -13,6 +14,22 @@ from qualibration_libs.plotting import (PlotlyQubitGrid, QubitGrid, grid_iter,
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
+
+
+# --- Constants ---
+MV_PER_V = 1e3
+RAW_DATA_COLOR = "#1f77b4"
+FIT_COLOR = "#FF0000"  # Red
+FIT_LINE_STYLE = "dash"
+FIT_LINE_WIDTH = 2
+RAW_DATA_ALPHA = 0.5
+MATPLOTLIB_FIG_WIDTH = 15
+MATPLOTLIB_FIG_HEIGHT = 9
+PLOTLY_FIG_HEIGHT = 900
+PLOTLY_FIG_WIDTH = 1500
+PLOTLY_COLORSACLE = "Viridis"
+# For overlaying axes in plotly
+PLOTLY_AXIS_OFFSET = 100
 
 
 def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
@@ -46,7 +63,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
             plot_individual_data_with_fit_2D(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
 
     grid.fig.suptitle("Power Rabi")
-    grid.fig.set_size_inches(15, 9)
+    grid.fig.set_size_inches(MATPLOTLIB_FIG_WIDTH, MATPLOTLIB_FIG_HEIGHT)
     grid.fig.tight_layout()
     return grid.fig
 
@@ -93,13 +110,17 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
         else:
             raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
 
-        (ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit] * 1e3)[data].plot(ax=ax, x="amp_mV", alpha=0.5)
+        (ds.assign_coords(amp_mV=ds.full_amp * MV_PER_V).loc[qubit] * MV_PER_V)[data].plot(
+            ax=ax, x="amp_mV", alpha=RAW_DATA_ALPHA
+        )
         if plot_fit:
-            ax.plot(fit.full_amp * 1e3, 1e3 * fitted_data, linewidth=2, color="red")
+            ax.plot(fit.full_amp * MV_PER_V, MV_PER_V * fitted_data, linewidth=FIT_LINE_WIDTH, color=FIT_COLOR)
         ax.set_ylabel(label)
         ax.set_xlabel("Pulse amplitude [mV]")
         ax2 = ax.twiny()
-        (ds.assign_coords(amp_mV=ds.amp_prefactor).loc[qubit] * 1e3)[data].plot(ax=ax2, x="amp_mV", alpha=0.5)
+        (ds.assign_coords(amp_mV=ds.amp_prefactor).loc[qubit] * MV_PER_V)[data].plot(
+            ax=ax2, x="amp_mV", alpha=RAW_DATA_ALPHA
+        )
         ax2.set_xlabel("amplitude prefactor")
 
 
@@ -129,7 +150,7 @@ def plot_individual_data_with_fit_2D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
         data = "state"
     else:
         raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
-    (ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit])[data].plot(
+    (ds.assign_coords(amp_mV=ds.full_amp * MV_PER_V).loc[qubit])[data].plot(
         ax=ax, add_colorbar=False, x="amp_mV", y="nb_of_pulses", robust=True
     )
     ax.set_ylabel(f"Number of pulses")
@@ -142,9 +163,9 @@ def plot_individual_data_with_fit_2D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
     if fit.outcome.values == "successful":
         ax2.axvline(
             x=fit.opt_amp_prefactor,
-            color="red",
+            color=FIT_COLOR,
             linestyle="-",
-            linewidth=2,
+            linewidth=FIT_LINE_WIDTH,
         )
 
 
@@ -194,13 +215,15 @@ def plotly_plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fit
 
     fig.update_layout(
         title="Power Rabi",
-        height=900,
-        width=1500,
+        height=PLOTLY_FIG_HEIGHT,
+        width=PLOTLY_FIG_WIDTH,
         showlegend=False,
     )
     return fig
 
-def plotly_plot_individual_data_with_fit_1D(fig: go.Figure, ds: xr.Dataset, qubit: str, fit: xr.Dataset = None, row: int = 1, col: int = 1, n_cols: int = 1):
+def plotly_plot_individual_data_with_fit_1D(
+    fig: go.Figure, ds: xr.Dataset, qubit: str, fit: xr.Dataset = None, row: int = 1, col: int = 1, n_cols: int = 1
+):
     if hasattr(ds, "I"):
         data = "I"
         label = "Rotated I quadrature [mV]"
@@ -211,14 +234,14 @@ def plotly_plot_individual_data_with_fit_1D(fig: go.Figure, ds: xr.Dataset, qubi
         raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
     # Select correct 1D slice for qubit and pulse
     ds_qubit = ds.sel(qubit=qubit)
-    if 'nb_of_pulses' in ds_qubit.dims and ds_qubit.sizes['nb_of_pulses'] == 1:
+    if "nb_of_pulses" in ds_qubit.dims and ds_qubit.sizes["nb_of_pulses"] == 1:
         ds_qubit = ds_qubit.isel(nb_of_pulses=0)
-    amp_mV = ds_qubit['full_amp'].values * 1e3
-    amp_prefactor = ds_qubit['amp_prefactor'].values
-    y_data = ds_qubit[data].values * 1e3
+    amp_mV = ds_qubit["full_amp"].values * MV_PER_V
+    amp_prefactor = ds_qubit["amp_prefactor"].values
+    y_data = ds_qubit[data].values * MV_PER_V
     y_err = ds_qubit.get(f"{data}_std", None)
     if y_err is not None:
-        y_err = y_err.values * 1e3
+        y_err = y_err.values * MV_PER_V
     fig.add_trace(
         go.Scatter(
             x=amp_mV,
@@ -227,7 +250,8 @@ def plotly_plot_individual_data_with_fit_1D(fig: go.Figure, ds: xr.Dataset, qubi
             name=f"Qubit {qubit} Raw",
             showlegend=False,
             mode="lines+markers",
-            line=dict(color="#1f77b4"),
+            line=dict(color=RAW_DATA_COLOR),
+            opacity=RAW_DATA_ALPHA,
             customdata=np.stack([amp_prefactor], axis=-1),
             hovertemplate="Amplitude: %{x:.3f} mV<br>Prefactor: %{customdata[0]:.3f}<br>%{y:.3f} mV<extra></extra>",
         ),
@@ -244,10 +268,10 @@ def plotly_plot_individual_data_with_fit_1D(fig: go.Figure, ds: xr.Dataset, qubi
         )
         fig.add_trace(
             go.Scatter(
-                x=fit.full_amp * 1e3,
-                y=1e3 * fitted_data,
+                x=fit.full_amp * MV_PER_V,
+                y=MV_PER_V * fitted_data,
                 name=f"Qubit {qubit} - Fit",
-                line=dict(dash="dash", color="red"),
+                line=dict(color=FIT_COLOR, width=FIT_LINE_WIDTH),
                 showlegend=False,
             ),
             row=row,
@@ -257,13 +281,13 @@ def plotly_plot_individual_data_with_fit_1D(fig: go.Figure, ds: xr.Dataset, qubi
     fig.update_yaxes(title_text=label, row=row, col=col)
     subplot_index = (row - 1) * n_cols + col
     main_xaxis = f"x{subplot_index}"
-    top_xaxis_layout = f"xaxis{subplot_index + 100}"
-    fig['layout'][top_xaxis_layout] = dict(
+    top_xaxis_layout = f"xaxis{subplot_index + PLOTLY_AXIS_OFFSET}"
+    fig["layout"][top_xaxis_layout] = dict(
         overlaying=main_xaxis,
-        side='top',
+        side="top",
         title="Amplitude prefactor",
         showgrid=False,
-        tickmode='array',
+        tickmode="array",
         tickvals=list(amp_mV),
         ticktext=[f"{v:.2f}" for v in amp_prefactor],
         range=[float(np.min(amp_prefactor)), float(np.max(amp_prefactor))],
@@ -278,7 +302,7 @@ def plotly_plot_individual_data_with_fit_2D(fig: go.Figure, ds: xr.Dataset, qubi
     else:
         raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
     ds_qubit = ds.sel(qubit=qubit)
-    amp_mV = ds_qubit['full_amp'].values * 1e3
+    amp_mV = ds_qubit['full_amp'].values * MV_PER_V
     amp_prefactor = ds_qubit['amp_prefactor'].values
     nb_of_pulses = ds_qubit['nb_of_pulses'].values
     z_data = ds_qubit[data].values
@@ -295,7 +319,7 @@ def plotly_plot_individual_data_with_fit_2D(fig: go.Figure, ds: xr.Dataset, qubi
         z=z_plot,
         x=amp_mV,
         y=nb_of_pulses,
-        colorscale="Viridis",
+        colorscale=PLOTLY_COLORSACLE,
         showscale=False,
         colorbar=dict(
             title="|IQ|",
@@ -311,15 +335,20 @@ def plotly_plot_individual_data_with_fit_2D(fig: go.Figure, ds: xr.Dataset, qubi
     if fit is not None and hasattr(fit, "outcome") and getattr(fit.outcome, "values", None) == "successful":
         # Find amplitude in mV corresponding to fit.opt_amp_prefactor
         try:
-            opt_amp_mV = float(ds_qubit['full_amp'].sel(amp_prefactor=fit.opt_amp_prefactor, method='nearest').values) * 1e3
-        except Exception:
+            opt_amp_mV = (
+                float(ds_qubit["full_amp"].sel(amp_prefactor=fit.opt_amp_prefactor, method="nearest").values) * MV_PER_V
+            )
+        except Exception as e:
+            logging.warning(
+                f"Could not select optimal amplitude for qubit {qubit} using xarray, falling back to numpy. Error: {e}"
+            )
             opt_amp_mV = float(amp_mV[np.argmin(np.abs(amp_prefactor - fit.opt_amp_prefactor))])
         fig.add_trace(
             go.Scatter(
                 x=[opt_amp_mV, opt_amp_mV],
                 y=[nb_of_pulses.min(), nb_of_pulses.max()],
                 mode="lines",
-                line=dict(color="red", width=2),
+                line=dict(color=FIT_COLOR, width=FIT_LINE_WIDTH),
                 showlegend=False,
                 hoverinfo="skip",
             ),
@@ -330,7 +359,7 @@ def plotly_plot_individual_data_with_fit_2D(fig: go.Figure, ds: xr.Dataset, qubi
     fig.update_yaxes(title_text="Number of pulses", row=row, col=col)
     subplot_index = (row - 1) * n_cols + col
     main_xaxis = f"x{subplot_index}"
-    top_xaxis_layout = f"xaxis{subplot_index + 100}"
+    top_xaxis_layout = f"xaxis{subplot_index + PLOTLY_AXIS_OFFSET}"
     fig['layout'][top_xaxis_layout] = dict(
         overlaying=main_xaxis,
         side='top',
