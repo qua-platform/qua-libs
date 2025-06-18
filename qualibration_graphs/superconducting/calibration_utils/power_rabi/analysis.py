@@ -13,6 +13,15 @@ from scipy.signal import correlate
 
 from qualibrate import QualibrationNode
 
+# --- Analysis Constants ---
+MIN_FIT_QUALITY = 0.5
+MIN_AMPLITUDE = 0.01
+MAX_AMP_PREFACTOR = 10.0
+SNR_MIN = 2.5
+AUTOCORRELATION_R1_THRESHOLD = 0.8
+AUTOCORRELATION_R2_THRESHOLD = 0.5
+CHEVRON_MODULATION_THRESHOLD = 0.4
+
 
 @dataclass
 class FitParameters:
@@ -222,12 +231,12 @@ def _get_fit_outcome(
     opt_amp: float,
     max_amplitude: float,
     fit_quality: float = None,
-    min_fit_quality: float = 0.5,
-    min_amplitude: float = 0.01,
-    max_amp_prefactor: float = 10.0,
+    min_fit_quality: float = MIN_FIT_QUALITY,
+    min_amplitude: float = MIN_AMPLITUDE,
+    max_amp_prefactor: float = MAX_AMP_PREFACTOR,
     amp_prefactor: float = None,
     snr: float = None,
-    snr_min: float = 2.5,
+    snr_min: float = SNR_MIN,
     should_fit: bool = True,
     is_1d_dataset: bool = True,
     has_structure: bool = True,
@@ -332,7 +341,7 @@ def _should_fit_qubits(ds: xr.Dataset, signal_key: str = "state") -> dict[str, b
             # Check lag-1 and lag-2 autocorrelation
             r1, r2 = ac[1], ac[2]
 
-            result[q] = r1 > 0.8 and r2 > 0.5
+            result[q] = r1 > AUTOCORRELATION_R1_THRESHOLD and r2 > AUTOCORRELATION_R2_THRESHOLD
 
         except Exception:
             result[q] = False
@@ -340,7 +349,7 @@ def _should_fit_qubits(ds: xr.Dataset, signal_key: str = "state") -> dict[str, b
     return result
 
 
-def _has_chevron_modulation(sig_2d: np.ndarray, threshold: float = 0.4) -> bool:
+def _has_chevron_modulation(sig_2d: np.ndarray, threshold: float = CHEVRON_MODULATION_THRESHOLD) -> bool:
     """
     Determines whether the signal exhibits chevron-like modulation.
     This is detected via variation in peak-to-peak amplitude across the amplitude axis.

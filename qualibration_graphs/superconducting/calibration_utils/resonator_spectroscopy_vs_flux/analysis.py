@@ -16,6 +16,20 @@ from scipy.signal import argrelextrema
 
 from qualibrate import QualibrationNode
 
+# --- Analysis Constants ---
+NAN_FRACTION_THRESHOLD = 0.8
+FLAT_STD_REL_THRESHOLD = 1e-6
+AMP_REL_THRESHOLD = 0.01
+SNR_MIN = 2.0
+RESONATOR_TRACE_SMOOTH_SIGMA = 1.5
+RESONATOR_TRACE_DIP_THRESHOLD = 0.01
+RESONATOR_TRACE_GRADIENT_THRESHOLD = 0.001
+MIN_FLUX_MODULATION_HZ = 1e6
+FLUX_MODULATION_SMOOTH_SIGMA = 1.5
+RESONANCE_CORRECTION_CONFIDENCE_THRESHOLD = -0.6
+RESONANCE_CORRECTION_WINDOW = 5
+EPSILON = 1e-9
+
 
 @dataclass
 class FitParameters:
@@ -96,9 +110,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
     outcomes = {}
     fit_results_da = None
     # Device-agnostic thresholds
-    nan_frac_thresh = 0.8  # If >80% NaN, call it 'no peaks'
-    flat_std_rel_thresh = 1e-6  # If std < 1e-6 * mean, call it 'no peaks'
-    amp_rel_thresh = 0.01  # If fit amplitude < 1% of median freq, call it 'no oscillations'
+    nan_frac_thresh = NAN_FRACTION_THRESHOLD  # If >80% NaN, call it 'no peaks'
+    flat_std_rel_thresh = FLAT_STD_REL_THRESHOLD  # If std < 1e-6 * mean, call it 'no peaks'
+    amp_rel_thresh = AMP_REL_THRESHOLD  # If fit amplitude < 1% of median freq, call it 'no oscillations'
     # For each qubit, check peak_freq quality
     qubit_outcomes = {}
     for q in ds.qubit.values:
@@ -199,7 +213,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qu
         # --- Confidence metric for resonance at idle flux ---
         idx_idle = np.argmin(np.abs(flux_biases - fitted_flux_idle))
         freq_at_idle = freq_vals[idx_idle]
-        window = 5  # number of points on each side
+        window = RESONANCE_CORRECTION_WINDOW  # number of points on each side
         start = max(0, idx_idle - window)
         end = min(len(freq_vals), idx_idle + window + 1)
         local_min = np.min(freq_vals[start:end])
@@ -213,7 +227,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qu
         sweet_spot_freq_val = float(freq_shift.sel(qubit=q).values) + full_freq[q_index]
 
         # Correct frequency if confidence is low
-        if confidence < -0.6:
+        if confidence < RESONANCE_CORRECTION_CONFIDENCE_THRESHOLD:
             corrected_freq = _correct_resonator_frequency(
                 ds_raw=node.results["ds_raw"],
                 qubit=q,
@@ -256,7 +270,7 @@ def _get_fit_outcome(
     flux_idle: float,
     frequency_span_in_mhz: float,
     snr: float = None,
-    snr_min: float = 2,
+    snr_min: float = SNR_MIN,
     has_oscillations: bool = True,
     has_anticrossings: bool = False,
 ) -> str:
@@ -315,9 +329,9 @@ def _has_resonator_trace(
     var_name: str = "IQ_abs",
     freq_dim: str = "detuning",
     flux_dim: str = "flux_bias",
-    smooth_sigma: float = 1.5,
-    dip_threshold: float = 0.01,
-    gradient_threshold: float = 0.001,
+    smooth_sigma: float = RESONATOR_TRACE_SMOOTH_SIGMA,
+    dip_threshold: float = RESONATOR_TRACE_DIP_THRESHOLD,
+    gradient_threshold: float = RESONATOR_TRACE_GRADIENT_THRESHOLD,
 ) -> bool:
     """
     Improved detector for whether a resonator-like frequency trace exists.
@@ -348,7 +362,7 @@ def _has_resonator_trace(
     """
     # Extract and normalize
     da = ds[var_name].sel(qubit=qubit)
-    da_norm = da / da.mean(dim=freq_dim)
+    da_norm = da / (da.mean(dim=freq_dim) + EPSILON)
 
     # Get min trace across frequency sweep
     min_trace = da_norm.min(dim=freq_dim).values
@@ -364,7 +378,7 @@ def _has_resonator_trace(
 
 
 def _has_insufficient_flux_modulation(
-    ds: xr.Dataset, qubit: str, min_modulation_hz: float = 1e6, smooth_sigma: float = 1.5
+    ds: xr.Dataset, qubit: str, min_modulation_hz: float = MIN_FLUX_MODULATION_HZ, smooth_sigma: float = FLUX_MODULATION_SMOOTH_SIGMA
 ) -> bool:
     """
     Detects whether the flux modulation of the resonator is too small to extract meaningful flux dependence.

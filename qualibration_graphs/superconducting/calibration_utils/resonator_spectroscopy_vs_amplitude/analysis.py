@@ -15,6 +15,24 @@ from sklearn.cluster import KMeans
 
 from qualibrate import QualibrationNode
 
+# --- Analysis Constants ---
+SNR_THRESHOLD = 2.0
+FLATNESS_N_POINTS = 5
+NOISE_N_POINTS = 5
+SNR_MIN = 2.0
+LOW_POWER_CENTER_STD_THRESHOLD_HZ = 1e6
+GS_DETECTION_N_LOW_POWERS = 8
+GS_DETECTION_MIN_COUNT = 5
+GS_DETECTION_WINDOW = 2
+OPTIMAL_POWER_N_CLUSTERS = 2
+OPTIMAL_POWER_MARGIN_DB = 3.0
+SAVGOL_BASELINE_WINDOW = 51
+SAVGOL_SMOOTH_WINDOW = 21
+SAVGOL_POLYORDER = 3
+PEAK_PROMINENCE_STD_FACTOR = 3.0
+PEAK_DISTANCE = 10
+PEAK_WIDTH = 3
+
 
 @dataclass
 class FitParameters:
@@ -81,9 +99,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
     low_power_center_stds = []
     fit_quality_masks = []
     rr_tracked_filtered = []
-    flatness_n = 5
-    noise_power_points = 5
-    snr_threshold = 2.0
+    flatness_n = FLATNESS_N_POINTS
+    noise_power_points = NOISE_N_POINTS
+    snr_threshold = SNR_THRESHOLD
 
     # Use clustering-based power assignment
     optimal_power_dict = _assign_optimal_power(ds, qubits)
@@ -96,11 +114,17 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
         filtered_centers = []
         for i, p in enumerate(ds.power.values):
             y = iq_abs.sel(power=p).values
-            baseline = savgol_filter(y, window_length=min(51, len(y) // 2 * 2 + 1), polyorder=3)
+            baseline = savgol_filter(
+                y, window_length=min(SAVGOL_BASELINE_WINDOW, len(y) // 2 * 2 + 1), polyorder=SAVGOL_POLYORDER
+            )
             y_bc = y - baseline
-            smoothed = savgol_filter(y_bc, window_length=min(21, len(y_bc) // 2 * 2 + 1), polyorder=3)
+            smoothed = savgol_filter(
+                y_bc, window_length=min(SAVGOL_SMOOTH_WINDOW, len(y_bc) // 2 * 2 + 1), polyorder=SAVGOL_POLYORDER
+            )
             noise = np.std(y_bc - smoothed)
-            peaks, properties = find_peaks(smoothed, prominence=3 * noise, distance=10, width=3)
+            peaks, properties = find_peaks(
+                smoothed, prominence=PEAK_PROMINENCE_STD_FACTOR * noise, distance=PEAK_DISTANCE, width=PEAK_WIDTH
+            )
             if len(peaks) >= 2:
                 prominences = properties["prominences"]
                 idx1, idx2 = peaks[np.argsort(prominences)[-2:]]
@@ -263,17 +287,17 @@ def _get_fit_outcome(
     frequency_span_in_mhz: float,
     snr: float = None,
     num_lines: int = 1,
-    snr_min: float = 2,
+    snr_min: float = SNR_MIN,
     min_power_dbm: float = None,
     max_power_dbm: float = None,
     power_values: np.ndarray = None,
     low_power_center_std: float = None,
-    low_power_center_std_thresh: float = 1e6,  # 1 MHz in Hz
+    low_power_center_std_thresh: float = LOW_POWER_CENTER_STD_THRESHOLD_HZ,  # 1 MHz in Hz
     iq_abs: np.ndarray = None,
     detuning: np.ndarray = None,
-    n_low_powers: int = 8,
-    min_gs_count: int = 5,
-    gs_window: int = 2,
+    n_low_powers: int = GS_DETECTION_N_LOW_POWERS,
+    min_gs_count: int = GS_DETECTION_MIN_COUNT,
+    gs_window: int = GS_DETECTION_WINDOW,
 ) -> str:
     """
     Returns the outcome string for a given fit result, with GS detection as the primary check.
@@ -327,7 +351,7 @@ def _get_fit_outcome(
 
 
 def _assign_optimal_power(
-    ds: xr.Dataset, qubits: list[AnyTransmon], n_clusters: int = 2, power_margin_db: float = 3.0
+    ds: xr.Dataset, qubits: list[AnyTransmon], n_clusters: int = OPTIMAL_POWER_N_CLUSTERS, power_margin_db: float = OPTIMAL_POWER_MARGIN_DB
 ) -> dict[str, float]:
     """
     Assign optimal readout power using KMeans clustering on minimum IQ_abs,

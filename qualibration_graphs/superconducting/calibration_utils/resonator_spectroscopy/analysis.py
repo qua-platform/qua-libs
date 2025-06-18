@@ -11,6 +11,16 @@ from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 
 from qualibrate import QualibrationNode
 
+# --- Analysis Constants ---
+SNR_MIN = 2.5
+SNR_DISTORTED = 5.0
+ASYMMETRY_MIN = 0.4
+ASYMMETRY_MAX = 2.5
+SKEWNESS_MAX = 1.5
+DISTORTED_FRACTION_LOW_SNR = 0.2
+DISTORTED_FRACTION_HIGH_SNR = 0.3
+FWHM_ABSOLUTE_THRESHOLD_HZ = 1e6
+
 
 @dataclass
 class FitParameters:
@@ -140,14 +150,14 @@ def _get_fit_outcome(
     asymmetry: float,
     skewness: float,
     opx_bandwidth_artifact: bool,
-    snr_min: float = 2.5,
-    snr_distorted: float = 5.0,
-    asymmetry_min: float = 0.4,
-    asymmetry_max: float = 2.5,
-    skewness_max: float = 1.5,
-    distorted_fraction_low_snr: float = 0.2,
-    distorted_fraction_high_snr: float = 0.3,
-    fwhm_absolute_threshold: float = 1e6,
+    snr_min: float = SNR_MIN,
+    snr_distorted: float = SNR_DISTORTED,
+    asymmetry_min: float = ASYMMETRY_MIN,
+    asymmetry_max: float = ASYMMETRY_MAX,
+    skewness_max: float = SKEWNESS_MAX,
+    distorted_fraction_low_snr: float = DISTORTED_FRACTION_LOW_SNR,
+    distorted_fraction_high_snr: float = DISTORTED_FRACTION_HIGH_SNR,
+    fwhm_absolute_threshold: float = FWHM_ABSOLUTE_THRESHOLD_HZ,
 ) -> str:
     """
     Returns the outcome string for a given fit result.
