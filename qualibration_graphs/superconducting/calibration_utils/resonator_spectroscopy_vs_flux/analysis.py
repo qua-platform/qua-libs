@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import warnings
 from dataclasses import dataclass
@@ -29,7 +31,7 @@ class FitParameters:
     outcome: str
 
 
-def log_fitted_results(fit_results: Dict, log_callable=None):
+def log_fitted_results(fit_results: dict, log_callable=None):
     """
     Logs the node-specific fitted results for all qubits from the fit results
 
@@ -37,22 +39,22 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     -----------
     fit_results : dict
         Dictionary containing the fitted results for all qubits.
-    logger : logging.Logger, optional
+    log_callable : callable, optional
         Logger for logging the fitted results. If None, a default logger is used.
 
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
-    for q in fit_results.keys():
+    for q, results in fit_results.items():
         s_qubit = f"Results for qubit {q}: "
-        s_idle_offset = f"\tidle offset: {fit_results[q]['idle_offset'] * 1e3:.0f} mV | "
-        s_min_offset = f"min offset: {fit_results[q]['min_offset'] * 1e3:.0f} mV | "
-        s_freq = f"Resonator frequency: {1e-9 * fit_results[q]['resonator_frequency']:.3f} GHz | "
-        s_shift = f"(shift of {1e-6 * fit_results[q]['frequency_shift']:.0f} MHz)\n"
-        if fit_results[q]["outcome"] == "successful":
+        s_idle_offset = f"\tidle offset: {results['idle_offset'] * 1e3:.0f} mV | "
+        s_min_offset = f"min offset: {results['min_offset'] * 1e3:.0f} mV | "
+        s_freq = f"Resonator frequency: {1e-9 * results['resonator_frequency']:.3f} GHz | "
+        s_shift = f"(shift of {1e-6 * results['frequency_shift']:.0f} MHz)\n"
+        if results["outcome"] == "successful":
             s_qubit += " SUCCESS!\n"
         else:
-            s_qubit += f" FAIL! Reason: {fit_results[q]['outcome']}\n"
+            s_qubit += f" FAIL! Reason: {results['outcome']}\n"
         log_callable(s_qubit + s_idle_offset + s_min_offset + s_freq + s_shift)
 
 
@@ -81,108 +83,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     return ds
 
 
-def has_resonator_trace(
-    ds: xr.Dataset,
-    qubit: str,
-    var_name: str = "IQ_abs",
-    freq_dim: str = "detuning",
-    flux_dim: str = "flux_bias",
-    smooth_sigma: float = 1.5,
-    dip_threshold: float = 0.01,
-    gradient_threshold: float = 0.001
-) -> bool:
-    """
-    Improved detector for whether a resonator-like frequency trace exists.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset containing spectroscopy data.
-    qubit : str
-        Qubit to test.
-    var_name : str
-        Data variable to use (e.g. IQ_abs).
-    freq_dim : str
-        Frequency axis name.
-    flux_dim : str
-        Flux bias axis name.
-    smooth_sigma : float
-        Gaussian smoothing factor (in index units).
-    dip_threshold : float
-        Minimum depth of the min trace across flux to qualify as a resonance.
-    gradient_threshold : float
-        Minimum slope variation to confirm feature isn't flat.
-
-    Returns
-    -------
-    bool
-        True if resonator trace is detected, else False.
-    """
-    # Extract and normalize
-    da = ds[var_name].sel(qubit=qubit)
-    da_norm = da / da.mean(dim=freq_dim)
-
-    # Get min trace across frequency sweep
-    min_trace = da_norm.min(dim=freq_dim).values
-
-    # Smooth to suppress noise
-    min_trace_smooth = gaussian_filter1d(min_trace, sigma=smooth_sigma)
-
-    # Calculate peak-to-peak dip depth and variation
-    dip_depth = np.max(min_trace_smooth) - np.min(min_trace_smooth)
-    gradient = np.max(np.abs(np.gradient(min_trace_smooth)))
-
-    return (dip_depth > dip_threshold) and (gradient > gradient_threshold)
-
-def has_insufficient_flux_modulation(
-    ds: xr.Dataset,
-    qubit: str,
-    min_modulation_hz: float = 1e6,
-    smooth_sigma: float = 1.5
-) -> bool:
-    """
-    Detects whether the flux modulation of the resonator is too small to extract meaningful flux dependence.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset containing spectroscopy data.
-    qubit : str
-        Qubit to evaluate.
-    min_modulation_hz : float
-        Minimum required frequency shift across flux bias range to be considered sufficient.
-    smooth_sigma : float
-        Gaussian smoothing (in flux index units) to suppress noise.
-
-    Returns
-    -------
-    bool
-        True if flux modulation is too small, else False.
-    """
-    # Calculate peak frequency from IQ_abs minimum
-    peak_idx = ds.IQ_abs.argmin(dim="detuning")
-    peak_freq = ds.full_freq.isel(detuning=peak_idx)
-    peak_freq = peak_freq.transpose("qubit", "flux_bias")  # shape: (qubit, flux_bias)
-
-    pf = peak_freq.sel(qubit=qubit)
-    if pf.isnull().all():
-        return True
-
-    freq_vals = pf.values
-    freq_vals = freq_vals[~np.isnan(freq_vals)]
-
-    if freq_vals.size < 2:
-        return True
-
-    smoothed = gaussian_filter1d(freq_vals, sigma=smooth_sigma)
-    modulation_range = np.max(smoothed) - np.min(smoothed)
-
-    return modulation_range < min_modulation_hz
-
-def lorentzian(x, a, x0, gamma, c):
-    return a / (1 + ((x - x0) / gamma) ** 2) + c
-
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Robustly fit the resonance for each qubit as a function of flux.
     Outcome logic:
@@ -202,15 +103,15 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     qubit_outcomes = {}
     for q in ds.qubit.values:
         # First check if there's a resonator trace
-        if not has_resonator_trace(ds, q):
+        if not _has_resonator_trace(ds, q):
             qubit_outcomes[q] = "no_peaks"
             continue
 
         # Check for insufficient flux modulation
-        if has_insufficient_flux_modulation(ds, q):
+        if _has_insufficient_flux_modulation(ds, q):
             qubit_outcomes[q] = "no_oscillations"
             continue
-            
+
         pf = peak_freq.sel(qubit=q)
         pf_vals = pf.values
         n_nan = np.sum(np.isnan(pf_vals))
@@ -232,100 +133,6 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     # Pass outcomes to _extract_relevant_fit_parameters
     fit_dataset, fit_results = _extract_relevant_fit_parameters(fit_results_ds, node, qubit_outcomes, amp_rel_thresh)
     return fit_dataset, fit_results
-
-
-def get_fit_outcome(
-    freq_shift: float,
-    flux_min: float,
-    flux_idle: float,
-    frequency_span_in_mhz: float,
-    snr: float = None,
-    snr_min: float = 2,
-    has_oscillations: bool = True,
-    has_anticrossings: bool = False,
-) -> str:
-    """
-    Returns the outcome string for a given fit result.
-
-    Parameters
-    ----------
-    freq_shift : float
-        Frequency shift in Hz
-    flux_min : float
-        Minimum flux offset in V
-    flux_idle : float
-        Idle flux offset in V
-    frequency_span_in_mhz : float
-        Maximum allowed frequency span in MHz
-    snr : float, optional
-        Signal to noise ratio
-    snr_min : float, default=2
-        Minimum required SNR
-    has_oscillations : bool, default=True
-        Whether oscillations were detected
-    has_anticrossings : bool, default=False
-        Whether anti-crossings were detected
-
-    Returns
-    -------
-    str
-        Outcome string describing the fit result
-    """
-    if not has_oscillations:
-        return "No oscillations were detected, consider checking that the flux line is connected or increase the flux range"
-    
-    if has_anticrossings:
-        return "Anti-crossings were detected, consider adjusting the flux range or checking the device setup"
-    
-    snr_low = snr is not None and snr < snr_min
-    if snr_low:
-        return "The SNR isn't large enough, consider increasing the number of shots"
-    
-    if np.isnan(freq_shift) or np.isnan(flux_min) or np.isnan(flux_idle):
-        return "No peaks were detected, consider changing the frequency range"
-    
-    if np.abs(freq_shift) >= frequency_span_in_mhz * 1e6:
-        return f"Frequency shift {1e-6 * freq_shift:.0f} MHz exceeds span {frequency_span_in_mhz} MHz"
-    
-    return "successful"
-
-
-def correct_resonator_frequency(ds_raw: xr.Dataset, qubit: str, ds_fit: xr.Dataset) -> float:
-    """
-    Computes the corrected resonator frequency using the |IQ| minimum
-    at the flux value closest to the fitted idle flux.
-
-    Parameters
-    ----------
-    ds_raw : xr.Dataset
-        The raw dataset
-    qubit : str
-        Qubit name
-    ds_fit : xr.Dataset
-        The fit dataset
-
-    Returns
-    -------
-    float
-        Resonance frequency in Hz
-    """
-    # --- Extract Data ---
-    IQ_abs = ds_raw["IQ_abs"].sel(qubit=qubit)  # shape: (flux_bias, detuning)
-    flux_vals = ds_raw["flux_bias"].values      # (n_flux,)
-    freq_vals = ds_raw["full_freq"].sel(qubit=qubit).values / 1e9  # (n_detuning,) in GHz
-    IQ_img = IQ_abs.transpose("detuning", "flux_bias").values      # shape: (n_detuning, n_flux)
-
-    # --- Fit parameters from fit dataset ---
-    idle_flux = float(ds_fit.sel(qubit=qubit)["idle_offset"].values)
-    min_flux = float(ds_fit.sel(qubit=qubit)["flux_min"].values)
-
-    # --- Empirical resonance estimate ---
-    nearest_flux = flux_vals[np.argmin(np.abs(flux_vals - idle_flux))]
-    trace = ds_raw["IQ_abs"].sel(qubit=qubit, flux_bias=nearest_flux)
-    smoothed = gaussian_filter1d(trace.values, sigma=2)
-    min_idx = np.argmin(smoothed)
-    corrected_freq = freq_vals[min_idx]* 1e9  # Hz
-    return corrected_freq
 
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qubit_outcomes: dict, amp_rel_thresh: float):
@@ -371,7 +178,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qu
         if qubit_outcomes.get(q) == "no_peaks":
             outcome = "No peaks were detected, consider changing the frequency range"
             amp = np.nan
-        if qubit_outcomes.get(q) == "no_oscillations":
+        elif qubit_outcomes.get(q) == "no_oscillations":
             outcome = "No oscillations were detected, consider checking that the flux line is connected or increase the flux range"
             amp = np.nan
         else:
@@ -407,7 +214,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qu
 
         # Correct frequency if confidence is low
         if confidence < -0.6:
-            corrected_freq = correct_resonator_frequency(
+            corrected_freq = _correct_resonator_frequency(
                 ds_raw=node.results["ds_raw"],
                 qubit=q,
                 ds_fit=fit,
@@ -426,10 +233,212 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qu
             min_offset=flux_min_val,
             idle_offset=flux_idle_val,
             dv_phi0=1 / fit.sel(fit_vals="f", qubit=q).fit_results.data if outcome == "successful" else np.nan,
-            phi0_current=1 / fit.sel(fit_vals="f", qubit=q).fit_results.data * node.parameters.input_line_impedance_in_ohm * attenuation_factor if outcome == "successful" else np.nan,
+            phi0_current=(
+                1
+                / fit.sel(fit_vals="f", qubit=q).fit_results.data
+                * node.parameters.input_line_impedance_in_ohm
+                * attenuation_factor
+                if outcome == "successful"
+                else np.nan
+            ),
             m_pH=m_pH.sel(qubit=q).fit_results.data if outcome == "successful" else np.nan,
             outcome=outcome,
         )
         outcomes.append(outcome)
     fit = fit.assign_coords(outcome=("qubit", outcomes))
     return fit, fit_results
+
+
+# Helper Functions
+def _get_fit_outcome(
+    freq_shift: float,
+    flux_min: float,
+    flux_idle: float,
+    frequency_span_in_mhz: float,
+    snr: float = None,
+    snr_min: float = 2,
+    has_oscillations: bool = True,
+    has_anticrossings: bool = False,
+) -> str:
+    """
+    Returns the outcome string for a given fit result.
+
+    Parameters
+    ----------
+    freq_shift : float
+        Frequency shift in Hz
+    flux_min : float
+        Minimum flux offset in V
+    flux_idle : float
+        Idle flux offset in V
+    frequency_span_in_mhz : float
+        Maximum allowed frequency span in MHz
+    snr : float, optional
+        Signal to noise ratio
+    snr_min : float, default=2
+        Minimum required SNR
+    has_oscillations : bool, default=True
+        Whether oscillations were detected
+    has_anticrossings : bool, default=False
+        Whether anti-crossings were detected
+
+    Returns
+    -------
+    str
+        Outcome string describing the fit result
+    """
+    if not has_oscillations:
+        return (
+            "No oscillations were detected, "
+            "consider checking that the flux line is connected or increase the flux range"
+        )
+
+    if has_anticrossings:
+        return "Anti-crossings were detected, consider adjusting the flux range or checking the device setup"
+
+    snr_low = snr is not None and snr < snr_min
+    if snr_low:
+        return "The SNR isn't large enough, consider increasing the number of shots"
+
+    if np.isnan(freq_shift) or np.isnan(flux_min) or np.isnan(flux_idle):
+        return "No peaks were detected, consider changing the frequency range"
+
+    if np.abs(freq_shift) >= frequency_span_in_mhz * 1e6:
+        return f"Frequency shift {1e-6 * freq_shift:.0f} MHz exceeds span {frequency_span_in_mhz} MHz"
+
+    return "successful"
+
+
+def _has_resonator_trace(
+    ds: xr.Dataset,
+    qubit: str,
+    var_name: str = "IQ_abs",
+    freq_dim: str = "detuning",
+    flux_dim: str = "flux_bias",
+    smooth_sigma: float = 1.5,
+    dip_threshold: float = 0.01,
+    gradient_threshold: float = 0.001,
+) -> bool:
+    """
+    Improved detector for whether a resonator-like frequency trace exists.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset containing spectroscopy data.
+    qubit : str
+        Qubit to test.
+    var_name : str
+        Data variable to use (e.g. IQ_abs).
+    freq_dim : str
+        Frequency axis name.
+    flux_dim : str
+        Flux bias axis name.
+    smooth_sigma : float
+        Gaussian smoothing factor (in index units).
+    dip_threshold : float
+        Minimum depth of the min trace across flux to qualify as a resonance.
+    gradient_threshold : float
+        Minimum slope variation to confirm feature isn't flat.
+
+    Returns
+    -------
+    bool
+        True if resonator trace is detected, else False.
+    """
+    # Extract and normalize
+    da = ds[var_name].sel(qubit=qubit)
+    da_norm = da / da.mean(dim=freq_dim)
+
+    # Get min trace across frequency sweep
+    min_trace = da_norm.min(dim=freq_dim).values
+
+    # Smooth to suppress noise
+    min_trace_smooth = gaussian_filter1d(min_trace, sigma=smooth_sigma)
+
+    # Calculate peak-to-peak dip depth and variation
+    dip_depth = np.max(min_trace_smooth) - np.min(min_trace_smooth)
+    gradient = np.max(np.abs(np.gradient(min_trace_smooth)))
+
+    return (dip_depth > dip_threshold) and (gradient > gradient_threshold)
+
+
+def _has_insufficient_flux_modulation(
+    ds: xr.Dataset, qubit: str, min_modulation_hz: float = 1e6, smooth_sigma: float = 1.5
+) -> bool:
+    """
+    Detects whether the flux modulation of the resonator is too small to extract meaningful flux dependence.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset containing spectroscopy data.
+    qubit : str
+        Qubit to evaluate.
+    min_modulation_hz : float
+        Minimum required frequency shift across flux bias range to be considered sufficient.
+    smooth_sigma : float
+        Gaussian smoothing (in flux index units) to suppress noise.
+
+    Returns
+    -------
+    bool
+        True if flux modulation is too small, else False.
+    """
+    # Calculate peak frequency from IQ_abs minimum
+    peak_idx = ds.IQ_abs.argmin(dim="detuning")
+    peak_freq = ds.full_freq.isel(detuning=peak_idx)
+    peak_freq = peak_freq.transpose("qubit", "flux_bias")  # shape: (qubit, flux_bias)
+
+    pf = peak_freq.sel(qubit=qubit)
+    if pf.isnull().all():
+        return True
+
+    freq_vals = pf.values
+    freq_vals = freq_vals[~np.isnan(freq_vals)]
+
+    if freq_vals.size < 2:
+        return True
+
+    smoothed = gaussian_filter1d(freq_vals, sigma=smooth_sigma)
+    modulation_range = np.max(smoothed) - np.min(smoothed)
+
+    return modulation_range < min_modulation_hz
+
+
+def _correct_resonator_frequency(ds_raw: xr.Dataset, qubit: str, ds_fit: xr.Dataset) -> float:
+    """
+    Computes the corrected resonator frequency using the |IQ| minimum
+    at the flux value closest to the fitted idle flux.
+
+    Parameters
+    ----------
+    ds_raw : xr.Dataset
+        The raw dataset
+    qubit : str
+        Qubit name
+    ds_fit : xr.Dataset
+        The fit dataset
+
+    Returns
+    -------
+    float
+        Resonance frequency in Hz
+    """
+    # --- Extract Data ---
+    IQ_abs = ds_raw["IQ_abs"].sel(qubit=qubit)  # shape: (flux_bias, detuning)
+    flux_vals = ds_raw["flux_bias"].values  # (n_flux,)
+    freq_vals = ds_raw["full_freq"].sel(qubit=qubit).values / 1e9  # (n_detuning,) in GHz
+    IQ_img = IQ_abs.transpose("detuning", "flux_bias").values  # shape: (n_detuning, n_flux)
+
+    # --- Fit parameters from fit dataset ---
+    idle_flux = float(ds_fit.sel(qubit=qubit)["idle_offset"].values)
+    min_flux = float(ds_fit.sel(qubit=qubit)["flux_min"].values)
+
+    # --- Empirical resonance estimate ---
+    nearest_flux = flux_vals[np.argmin(np.abs(flux_vals - idle_flux))]
+    trace = ds_raw["IQ_abs"].sel(qubit=qubit, flux_bias=nearest_flux)
+    smoothed = gaussian_filter1d(trace.values, sigma=2)
+    min_idx = np.argmin(smoothed)
+    corrected_freq = freq_vals[min_idx] * 1e9  # Hz
+    return corrected_freq
