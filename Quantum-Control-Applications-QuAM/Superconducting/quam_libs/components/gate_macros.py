@@ -198,8 +198,8 @@ class HadamardGate(QubitMacro):
 class XGate(QubitMacro):
     def apply(self):
         #U3(π, π / 2, 0).
-        _u3(self.qubit, np.pi, np.pi/2, 0)
-        #self.qubit.xy.play('x180')
+        #_u3(self.qubit, np.pi, np.pi/2, 0)
+        self.qubit.xy.play('x180')
 
 
 @quam_dataclass
