@@ -107,7 +107,7 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
             fit.fit_results.idle_offset.values,
             fit.fit_results.sweet_spot_frequency.values * 1e-9,
             "r*",
-            markersize=10,
+            markersize=20,
         )
     ax.set_title(qubit["qubit"])
     ax.set_xlabel("Flux (V)")
@@ -126,7 +126,7 @@ def plotly_plot_raw_data_with_fit(
       - hover shows (Flux [V], Current [A], Freq [GHz], Detuning [MHz], |IQ|)
     If fit_results.success is True, overlay:
       • Red dashed vertical line at idle_offset (V)
-      • Orange dashed vertical line at flux_min (V)
+      • Purple dashed vertical line at flux_min (V)
       • Magenta "×" marker at (idle_offset, sweet_spot_frequency/1e9)
 
     Requirements (ds_raw):
@@ -342,13 +342,13 @@ def plotly_plot_raw_data_with_fit(
             subplot_overlay_x_flux.append([flux_offset, flux_offset])
             subplot_overlay_x_current.append([flux_offset_current, flux_offset_current])
             subplot_overlay_types.append({'type': 'line'})
-            # —— ORANGE dashed vertical line at flux_min
+            # —— Purple dashed vertical line at flux_min
             fig.add_trace(
                 go.Scatter(
                     x          = [min_offset, min_offset],
                     y          = [freq_vals.min(), freq_vals.max()],
                     mode       = "lines",
-                    line       = dict(color="orange", width=2, dash="dash"),
+                    line       = dict(color="purple", width=2, dash="dash"),
                     showlegend = False,
                     hoverinfo  = "skip"
                 ),

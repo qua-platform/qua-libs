@@ -1,12 +1,16 @@
 import logging
+import warnings
 from dataclasses import dataclass
 from typing import Dict, Tuple
 
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from qualibration_libs.analysis import fit_oscillation
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 from scipy.ndimage import gaussian_filter1d
+from scipy.optimize import curve_fit
+from scipy.signal import argrelextrema
 
 from qualibrate import QualibrationNode
 
@@ -175,6 +179,9 @@ def has_insufficient_flux_modulation(
 
     return modulation_range < min_modulation_hz
 
+def lorentzian(x, a, x0, gamma, c):
+    return a / (1 + ((x - x0) / gamma) ** 2) + c
+
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Robustly fit the resonance for each qubit as a function of flux.
@@ -283,6 +290,44 @@ def get_fit_outcome(
     return "successful"
 
 
+def correct_resonator_frequency(ds_raw: xr.Dataset, qubit: str, ds_fit: xr.Dataset) -> float:
+    """
+    Computes the corrected resonator frequency using the |IQ| minimum
+    at the flux value closest to the fitted idle flux.
+
+    Parameters
+    ----------
+    ds_raw : xr.Dataset
+        The raw dataset
+    qubit : str
+        Qubit name
+    ds_fit : xr.Dataset
+        The fit dataset
+
+    Returns
+    -------
+    float
+        Resonance frequency in Hz
+    """
+    # --- Extract Data ---
+    IQ_abs = ds_raw["IQ_abs"].sel(qubit=qubit)  # shape: (flux_bias, detuning)
+    flux_vals = ds_raw["flux_bias"].values      # (n_flux,)
+    freq_vals = ds_raw["full_freq"].sel(qubit=qubit).values / 1e9  # (n_detuning,) in GHz
+    IQ_img = IQ_abs.transpose("detuning", "flux_bias").values      # shape: (n_detuning, n_flux)
+
+    # --- Fit parameters from fit dataset ---
+    idle_flux = float(ds_fit.sel(qubit=qubit)["idle_offset"].values)
+    min_flux = float(ds_fit.sel(qubit=qubit)["flux_min"].values)
+
+    # --- Empirical resonance estimate ---
+    nearest_flux = flux_vals[np.argmin(np.abs(flux_vals - idle_flux))]
+    trace = ds_raw["IQ_abs"].sel(qubit=qubit, flux_bias=nearest_flux)
+    smoothed = gaussian_filter1d(trace.values, sigma=2)
+    min_idx = np.argmin(smoothed)
+    corrected_freq = freq_vals[min_idx]* 1e9  # Hz
+    return corrected_freq
+
+
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qubit_outcomes: dict, amp_rel_thresh: float):
     """Add metadata to the fit dataset and fit result dictionary, using robust outcome logic."""
     # Ensure that the phase is between -pi and pi
@@ -320,6 +365,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qu
     outcomes = []
     fit_results = {}
     for q in fit.qubit.values:
+        q_index = list(fit.qubit.values).index(q)
         # Default outcome
         outcome = "successful"
         if qubit_outcomes.get(q) == "no_peaks":
@@ -336,11 +382,46 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qu
             pf_median = np.median(np.abs(pf_valid)) if pf_valid.size > 0 else 1.0
             if np.abs(amp) < amp_rel_thresh * pf_median:
                 outcome = "No oscillations were detected, consider checking that the flux line is connected or increase the flux range"
-        freq_shift_val = float(freq_shift.sel(qubit=q).values) if outcome == "successful" else np.nan
+        # Get fitted idle flux
+        fitted_flux_idle = float(flux_idle.sel(qubit=q).fit_results.data)
+        # Find the true minimum in the data
+        peak_freq_vs_flux = fit.peak_freq.sel(qubit=q)
+        flux_biases = peak_freq_vs_flux.coords["flux_bias"].values
+        freq_vals = peak_freq_vs_flux.values
+
+        # --- Confidence metric for resonance at idle flux ---
+        idx_idle = np.argmin(np.abs(flux_biases - fitted_flux_idle))
+        freq_at_idle = freq_vals[idx_idle]
+        window = 5  # number of points on each side
+        start = max(0, idx_idle - window)
+        end = min(len(freq_vals), idx_idle + window + 1)
+        local_min = np.min(freq_vals[start:end])
+        local_mean = np.mean(freq_vals[start:end])
+        global_min = np.min(freq_vals)
+        global_max = np.max(freq_vals)
+        confidence = (local_mean - freq_at_idle) / (global_max - global_min + 1e-12)
+
+        # Always assign these before using them
+        freq_shift_val = float(freq_shift.sel(qubit=q).values)
+        sweet_spot_freq_val = float(freq_shift.sel(qubit=q).values) + full_freq[q_index]
+
+        # Correct frequency if confidence is low
+        if confidence < -0.6:
+            corrected_freq = correct_resonator_frequency(
+                ds_raw=node.results["ds_raw"],
+                qubit=q,
+                ds_fit=fit,
+            )
+            sweet_spot_freq_val = corrected_freq
+            freq_shift_val = corrected_freq - full_freq[q_index]
+            # Update the fit xarray dataset in-place for this qubit
+            fit["sweet_spot_frequency"].loc[dict(qubit=q)] = corrected_freq
+            fit["freq_shift"].loc[dict(qubit=q)] = corrected_freq - full_freq[q_index]
+
         flux_min_val = float(flux_min.sel(qubit=q).fit_results.data) if outcome == "successful" else np.nan
         flux_idle_val = float(flux_idle.sel(qubit=q).fit_results.data) if outcome == "successful" else np.nan
         fit_results[q] = FitParameters(
-            resonator_frequency=float(fit.sweet_spot_frequency.sel(qubit=q).values) if outcome == "successful" else np.nan,
+            resonator_frequency=sweet_spot_freq_val if outcome == "successful" else np.nan,
             frequency_shift=freq_shift_val,
             min_offset=flux_min_val,
             idle_offset=flux_idle_val,
