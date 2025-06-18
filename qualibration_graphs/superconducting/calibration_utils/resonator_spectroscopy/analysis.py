@@ -7,6 +7,7 @@ from typing import Dict, Tuple
 import numpy as np
 import xarray as xr
 from qualibration_libs.analysis import peaks_dips
+from qualibration_libs.analysis.fitting import lorentzian_dip
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 
 from qualibrate import QualibrationNode
@@ -83,12 +84,12 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
     # Fit the resonator line
     fit_dataset = peaks_dips(ds.IQ_abs, "detuning")
     # Extract the relevant fitted parameters
-    fit_data, fit_results = _extract_relevant_fit_parameters(fit_dataset, node)
+    fit_data, fit_results = _extract_relevant_fit_parameters(fit_dataset, node, ds)
     return fit_data, fit_results
 
 
 def _extract_relevant_fit_parameters(
-    fit: xr.Dataset, node: QualibrationNode
+    fit: xr.Dataset, node: QualibrationNode, ds: xr.Dataset
 ) -> tuple[xr.Dataset, dict[str, FitParameters]]:
     """Add metadata to the dataset and fit results."""
     # Add metadata to fit results
@@ -138,6 +139,29 @@ def _extract_relevant_fit_parameters(
     # Add outcomes to the fit dataset
     fit = fit.assign_coords(outcome=("qubit", outcomes))
     fit.outcome.attrs = {"long_name": "fit outcome", "units": ""}
+
+    # Add the fitted curve data for plotting
+    all_fitted_curves = []
+    for q in fit.qubit.values:
+        qubit_fit = fit.sel(qubit=q)
+        if qubit_fit.outcome.values == "successful":
+            fitted_curve = lorentzian_dip(
+                ds.detuning.values,
+                float(qubit_fit.amplitude.values),
+                float(qubit_fit.position.values),
+                float(qubit_fit.width.values) / 2,
+                float(qubit_fit.base_line.mean().values),
+            )
+        else:
+            fitted_curve = np.full_like(ds.detuning.values, np.nan)
+        all_fitted_curves.append(fitted_curve)
+
+    fit["fitted_curve"] = xr.DataArray(
+        np.array(all_fitted_curves),
+        dims=("qubit", "detuning"),
+        coords={"qubit": fit.qubit.values, "detuning": ds.detuning.values},
+    )
+    fit["fitted_curve"].attrs = {"long_name": "Fitted Lorentzian", "units": "V"}
 
     return fit, fit_results
 
