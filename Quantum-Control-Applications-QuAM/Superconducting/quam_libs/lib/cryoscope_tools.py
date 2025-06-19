@@ -5,6 +5,7 @@ from quam_libs.lib.qua_datasets import apply_angle
 from scipy.signal import savgol_filter
 from scipy.signal import deconvolve
 from scipy.optimize import minimize
+from scipy.optimize import curve_fit
 
 
 def transform_to_circle(x, y):
@@ -189,3 +190,270 @@ def estimate_fir_coefficients(convolved_signal, step_response, num_coefficients)
         )
 
     return estimated_coefficients
+
+
+def gaussian(x, a, x0, sigma, offset):
+    """Gaussian function for fitting spectroscopy peaks.
+    
+    Args:
+        x (array): X-axis values
+        a (float): Amplitude
+        x0 (float): Center position
+        sigma (float): Width parameter
+        offset (float): Vertical offset
+    
+    Returns:
+        array: Gaussian values
+    """
+    return a * np.exp(-(x - x0)**2 / (2 * sigma**2)) + offset
+
+
+def fit_gaussian(freqs, states):
+    """Fit Gaussian to spectroscopy data and return center frequency.
+    
+    Args:
+        freqs (array): Frequency points
+        states (array): Measured states
+        
+    Returns:
+        float: Center frequency or np.nan if fit fails
+    """
+    p0 = [
+        np.max(states) - np.min(states),   # amplitude
+        freqs[np.argmax(states)],          # center
+        (freqs[-1] - freqs[0]) / 10,        # width
+        np.min(states)                     # offset
+    ]
+    try:
+        popt, _ = curve_fit(gaussian, freqs, states, p0=p0)
+        return popt[1]  # center frequency
+    except RuntimeError:
+        return np.nan
+
+
+def fit_two_exponentials(t_data: np.ndarray, y_data: np.ndarray, fit_single_exponential: bool):
+    """Fit experimental data to single or double exponential decay models.
+    
+    The function first attempts to fit a single exponential. If double exponential
+    fitting is requested and single exponential fit succeeds, it uses those parameters
+    to initialize a double exponential fit.
+    
+    Args:
+        t_data (np.ndarray): Time points
+        y_data (np.ndarray): Measured values
+        fit_single_exponential (bool): If True, only perform single exponential fit
+    
+    Returns:
+        dict: Dictionary containing fit results:
+            '1exp': Results for single exponential fit
+            '2exp': Results for double exponential fit (if requested)
+            Each contains:
+                'fit_successful' (bool): Whether fit converged
+                'params' (array): Fitted parameters if successful
+                'covariance' (array): Parameter covariances if successful
+    """
+    fit_results = {}
+    try:
+        # Fit single exponential with constraints
+        popt, pcov = curve_fit(
+            f=expdecay, 
+            xdata=t_data, 
+            ydata=y_data, 
+            p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 300],
+            bounds=([0, -np.inf, 0], [np.inf, np.inf, 300])  # Constrain time constant
+        )
+        fit_results['1exp'] = {"fit_successful": True, "params": popt, "covariance": pcov}
+    except RuntimeError:
+        print("failed to fit the first exponential")
+        fit_results['1exp'] = {"fit_successful": False, "params": None, "covariance": None}
+        if not fit_single_exponential:
+            fit_results['2exp'] = {"fit_successful": False, "params": None, "covariance": None}
+        return fit_results
+    
+    if not fit_single_exponential:
+        # Use the first fit to initialize the second fit
+        a0_0 = popt[0]  # Baseline from single exp fit
+        a1_0 = a2_0 = popt[1] / 2  # Split amplitude between two exponentials
+        t1_0 = popt[-1]  # First time constant from single exp fit
+        t2_0 = t1_0 / 10  # Initial guess for second time constant
+
+        try:
+            popt, pcov = curve_fit(
+                f=two_expdecay, 
+                xdata=t_data, 
+                ydata=y_data, 
+                p0=[a0_0, a1_0, t1_0, a2_0, t2_0]
+            )
+            fit_results['2exp'] = {"fit_successful": True, "params": popt, "covariance": pcov}
+        except RuntimeError:
+            print("failed to fit the second exponential")
+            fit_results['2exp'] = {"fit_successful": False, "params": None, "covariance": None}
+            return fit_results
+    
+    return fit_results
+
+
+def single_exp_decay(t, amp, tau):
+    """Single exponential decay without offset
+    
+    Args:
+        t (array): Time points
+        amp (float): Amplitude of the decay
+        tau (float): Time constant of the decay
+        
+    Returns:
+        array: Exponential decay values
+    """
+    return amp * np.exp(-t/tau)
+
+
+def sequential_exp_fit(t, y, start_fractions, verbose=True):
+    """
+    Fit multiple exponentials sequentially by:
+    1. First fit a constant term from the tail of the data
+    2. Fit the longest time constant using the latter part of the data
+    3. Subtract the fit
+    4. Repeat for faster components
+    
+    Args:
+        t (array): Time points in nanoseconds
+        y (array): Data points (normalized amplitude)
+        start_fractions (list): List of fractions (0 to 1) indicating where to start fitting each component
+        verbose (bool): Whether to print detailed fitting information
+        
+    Returns:
+        tuple: (components, a_dc, residual) where:
+            - components: List of (amplitude, tau) pairs for each fitted component
+            - a_dc: Fitted constant term
+            - residual: Residual after subtracting all components
+    """
+    components = []  # List to store (amplitude, tau) pairs
+    t_offset = t - t[0]  # Make time start at 0
+    
+    # Find the flat region in the tail by looking at local variance
+    window = len(y) // 20  # Window size by dividing signal into 20 equal pieces
+    rolling_var = np.array([np.var(y[i:i+window]) for i in range(len(y)-window)])
+    # Find where variance drops below threshold, indicating flat region
+    var_threshold = np.mean(rolling_var) * 0.1  # 10% of mean variance
+    flat_start = np.where(rolling_var < var_threshold)[0][-1]
+    # Use the flat region to estimate constant term
+    a_dc = np.mean(y[flat_start:])
+    if verbose:
+        print(f"\nFitted constant term: {a_dc:.3e}")
+    
+    y_residual = y.copy() - a_dc
+    
+    for i, start_frac in enumerate(start_fractions):
+        # Calculate start index for this component
+        start_idx = int(len(t) * start_frac)
+        if verbose:
+            print(f"\nFitting component {i+1} using data from t = {t[start_idx]:.1f} ns (fraction: {start_frac:.3f})")
+        
+        # Fit current component
+        try:
+            # Initial guess for parameters
+            p0 = [
+                y_residual[start_idx],  # amplitude
+                t_offset[start_idx] / 3  # tau
+            ]
+            
+            # Set bounds for the fit
+            bounds = (
+                [-np.inf, 0],  # lower bounds: amplitude can be negative, tau must be positive
+                [np.inf, np.inf]  # upper bounds
+            )
+            
+            # Perform the fit on the current interval
+            t_fit = t_offset[start_idx:]
+            y_fit = y_residual[start_idx:]
+            popt, _ = curve_fit(single_exp_decay, t_fit, y_fit, p0=p0, bounds=bounds)
+            
+            # Store the components
+            amp, tau = popt
+            components.append((amp, tau))
+            if verbose:
+                print(f"Found component: amplitude = {amp:.3e}, tau = {tau:.3f} ns")
+            
+            # Subtract this component from the entire signal
+            y_residual -= amp * np.exp(-t_offset/tau)
+            
+        except RuntimeError as e:
+            if verbose:
+                print(f"Warning: Fitting failed for component {i+1}: {e}")
+            break
+    
+    return components, a_dc, y_residual
+
+
+def optimize_start_fractions(t, y, base_fractions, bounds_scale=0.5):
+    """
+    Optimize the start_fractions by minimizing the RMS between the data and the fitted sum 
+    of exponentials using scipy.optimize.minimize.
+    
+    Args:
+        t (array): Time points in nanoseconds
+        y (array): Data points (normalized amplitude)
+        base_fractions (list): Initial guess for start fractions
+        bounds_scale (float): Scale factor for bounds around base fractions (0.5 means ±50%)
+        
+    Returns:
+        tuple: (best_fractions, best_components, best_dc, best_rms)
+    """
+    
+    def objective(x):
+        """
+        Objective function to minimize: RMS between the data and the fitted sum of 
+        exponentials.
+        """
+        # Ensure fractions are ordered in descending order
+        if not np.all(np.diff(x) < 0):
+            return 1e6  # Return large value if constraint is violated
+        
+        try:
+            # Try this combination of fractions
+            _, _, residual = sequential_exp_fit(t, y, x, verbose=False)
+            current_rms = np.sqrt(np.mean(residual**2))
+            
+            return current_rms
+        
+        except RuntimeError:
+            return 1e6  # Return large value if fit fails
+    
+    # Define bounds for optimization
+    bounds = []
+    for base in base_fractions:
+        min_val = base * (1 - bounds_scale)
+        max_val = base * (1 + bounds_scale)
+        bounds.append((min_val, max_val))
+    
+    print("\nOptimizing start_fractions using scipy.optimize.minimize...")
+    print(f"Initial values: {[f'{f:.5f}' for f in base_fractions]}")
+    print(f"Bounds: ±{bounds_scale*100}% around initial values")
+    
+    # Run optimization
+    result = minimize(
+        objective,
+        x0=base_fractions,
+        bounds=bounds,
+        method='Nelder-Mead',  # This method works well for non-smooth functions
+        options={'disp': True, 'maxiter': 200}
+    )
+    
+    # Get final results
+    if result.success:
+        best_fractions = result.x
+        components, a_dc, best_residual = sequential_exp_fit(t, y, best_fractions, verbose=False)
+        best_rms = np.sqrt(np.mean(best_residual**2))
+        
+        print("\nOptimization successful!")
+        print(f"Initial fractions: {[f'{f:.5f}' for f in base_fractions]}")
+        print(f"Optimized fractions: {[f'{f:.5f}' for f in best_fractions]}")
+        print(f"Final RMS: {best_rms:.3e}")
+        print(f"Number of iterations: {result.nit}")
+    else:
+        print("\nOptimization failed. Using initial values.")
+        best_fractions = base_fractions
+        components, a_dc, best_residual = sequential_exp_fit(t, y, best_fractions)
+        best_rms = np.sqrt(np.mean(best_residual**2))
+    
+    return result.success, best_fractions, components, a_dc, best_rms
