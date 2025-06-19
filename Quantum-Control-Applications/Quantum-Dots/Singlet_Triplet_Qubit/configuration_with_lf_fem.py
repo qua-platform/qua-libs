@@ -332,7 +332,7 @@ config = {
                 "single": "P2_step_wf",
             },
         },
-"P1_coulomb_step_pulse": {
+        "P1_coulomb_step_pulse": {
             "operation": "control",
             "length": coulomb_step_length,
             "waveforms": {
