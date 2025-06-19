@@ -4,10 +4,10 @@ Node parameter definitions for the time-of-flight experiment.
 This module defines the configurable parameters used in the node.
 """
 
-from typing import Optional, List
+from typing import List
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonNodeParameters
+from qualibration_libs.parameters import CommonNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -24,7 +24,7 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 100
     depletion_time: int = 10000
-    simulate: bool = False
+    simulate: bool = True
     resonators: List[str] = ["q1_resonator"]
     multiplexed: bool = True
 
@@ -33,6 +33,5 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    # QubitsExperimentNodeParameters,
 ):
     pass

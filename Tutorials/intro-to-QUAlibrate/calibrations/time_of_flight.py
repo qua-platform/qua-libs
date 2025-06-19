@@ -1,12 +1,8 @@
 # %% {Imports}
 from qm import QuantumMachinesManager
 from qm.qua import *
-
-from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter, fetching_tool
-
 from qualibrate import QualibrationNode
-
 from calibration_utils.time_of_flight import (
     Parameters,
     process_raw_data,
@@ -15,34 +11,28 @@ from calibration_utils.time_of_flight import (
     plot_averaged_run_with_fit,
 )
 from qualibration_libs.runtime import simulate_and_plot
-
-from qualang_tools.units import unit
 from configuration.configuration_with_lf_fem_and_mw_fem import *
 
 
 description = """
-This script shows the time of flight (using a MWW FEM) experiment as an example on how to use the QUAlibrate framework for running protocols. 
-
+        TIME OF FLIGHT
 This sequence involves sending a readout pulse and capturing the raw ADC traces.
 The data undergoes post-processing to calibrate three distinct parameters:
-    - Time of Flight: This represents the internal processing time and the propagation
-      delay of the readout pulse. Its value can be adjusted in the configuration under
-      "time_of_flight". This value is utilized to offset the acquisition window relative
-      to when the readout pulse is dispatched.
+    - Time of Flight: This represents the internal processing time and the propagation delay of the readout pulse.
+    Its value can be adjusted in the configuration under "time_of_flight".
+    This value is utilized to offset the acquisition window relative to when the readout pulse is dispatched.
 
-    - Analog Inputs Gain: If a signal is constrained by digitization or if it saturates
-      the ADC, the variable gain of the OPX analog input, ranging from -12 dB to 20 dB,
-      can be modified to fit the signal within the ADC range of +/-0.5V.
-      
-Prerequisites:
-    - Having a configuration dictionary.
+    - Analog Inputs Offset: Due to minor impedance mismatches, the signals captured by the OPX might exhibit slight offsets.
+    These can be rectified in the configuration at: config/controllers/"con1"/analog_inputs, enhancing the demodulation process.
 
+    - Analog Inputs Gain: If a signal is constrained by digitization or if it saturates the ADC,
+    the variable gain of the OPX analog input can be modified to fit the signal within the ADC range of +/-0.5V.
+    This gain, ranging from -12 dB to 20 dB, can also be adjusted in the configuration at: config/controllers/"con1"/analog_inputs.
 """
 
 
 node = QualibrationNode[Parameters, None](name="time_of_flight", description=description, parameters=Parameters())
-# Class containing tools to help handle units and conversions.
-u = unit(coerce_to_integer=True)
+
 
 
 # Any parameters that should change for debugging purposes only should go in here

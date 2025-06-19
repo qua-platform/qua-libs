@@ -1,110 +1,63 @@
 # Intro to QUAlibrate
-This folder contains a complete implementation of a Time of Flight (TOF) calibration protocol using the QUAlibrate framework. It includes all the necessary components to execute, analyze, and visualize a TOF measurement.
 
-## Overview
-The QUAlibrate framework is a flexible and modular calibration framework built on top of QUA, designed to automate and manage calibration workflows for quantum systems. It enables scalable, repeatable, and structured calibrations across a variety of quantum hardware platforms.
+Welcome to your **QUAlibrate** introductory tutorial! This example demonstrates how to convert a standard QUA calibration protocol into a structured, modular **QualibrationNode**. We use `time_of_flight.py` protocol as a practical example.
 
-This tutorial introduces the core concepts of QUAlibrate, shows how to configure and run calibrations, and provides an example using its node structure.
-See the [QUAlibrate Documentation](https://qua-platform.github.io/qualibrate/) for more information.
+This tutorial is ideal for users who are familiar with QUA and want to learn how to build reusable, automatable calibration nodes using the [QUAlibrate](https://qua-platform.github.io/qualibrate/) framework.
 
+
+
+## 🎯 What You’ll Learn
+
+- What QUAlibrate is and how it can simplify calibration workflows
+- How to wrap an existing QUA protocol in a `QualibrationNode`
+- How to run and test nodes through:
+  - The QUAlibrate Web UI, or
+  - Python scripts using the `Workflow` interface
+
+---
 
 ## Table of Contents
 
-1.  [Prerequisites](#prerequisites)
-2.  [Getting Started](#getting-started)
-    - [Downloading the Library](#downloading-the-library)
-    - [Installation](#installation)
-    - [Initial Setup (QUAlibrate Configuration)](#initial-setup-qualibrate-configuration)
-    - [Verify Setup](#verify-setup)
-3. [Calibration Nodes](calibration-nodes)
-4. [Project Structure](#project-structure)
-5. [Example Code - Time of Flight Node](#example-code---time-of-flight-node)
-6. [Contributing](#contributing)
-7. [License](#license)
+1. [What is QUAlibrate?](#what-is-qualibrate) 
+2. [Installation Guide](#installation guide)
+3. [Project Structure](#project structure)
+4. [How to convert your QUA program to a QUAlibration Node?](#how-to-convert-a-qua-program-to-a-qualibration-node)
 
-## Prerequisites
+---
 
-Follow [this link](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs/superconducting#prerequisites) for system requirements.
+## 1. 🧠 What is QUAlibrate?
 
-## Getting Started
+[QUAlibrate](https://github.com/qua-platform/qualibrate) is a node-based framework that simplifies the design, execution, and automation of calibration and characterization workflows in QUA.
 
-### Downloading the Library
+Using QUAlibrate, you can:
 
-You have a few options to get the code:
+- Create QUAlibration Nodes that encapsulate calibration routines, which can be executed directly through Python or the QUAlibrate Web Interface
 
-1.  **Customer Repository:** If provided as part of a customer installation, use the dedicated user repository.
-2.  **Fork (Recommended for Staying Updated):** Forking the `qua-libs` repository on GitHub to your account (see GitHub's guide on [how to fork a repo](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)) and then cloning your fork is the recommended way to stay periodically in sync with updates from the main repository.
-    It also allows you to contribute changes back via pull requests.**Git Clone (Direct):** Clone the repository directly using Git.
-    This allows you to pull updates but requires managing potential merge conflicts manually if you make local changes without forking.
-    ```bash
-    git clone https://github.com/qua-platform/qua-libs.git
-    ```
-4.  **Direct Download:** Navigate to the `qua-libs` repository on GitHub, download the ZIP file, and unzip it.
-    This method doesn't require Git but makes updating and contributing harder.
+- Combine multiple nodes into calibration graphs that define dependencies and automate complex multi-step calibrations
 
-### Installation
+This tutorial focuses on the first step: converting a QUA protocol into a structured, reusable QualibrationNode. We will not cover building calibration graphs in this guide.
 
-Once you have the code locally:
+📚 For a detailed explanation of calibration graphs, see  the [Calibration Graphs documentation](https://qua-platform.github.io/qualibrate/#calibration-graphs).
+📦 For a full example of calibration nodes and a calibration graph for superconducting qubits, see the  [qualibration_graphs/superconducting](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs/superconducting) repository.
 
-1.  **Navigate to the Directory:** Open a terminal or command prompt and change into the `intro-to-QUAlibrate` directory within the downloaded/cloned repository.
-2.  **Activate Virtual Environment:** Ensure your dedicated Python virtual environment (see [Prerequisites](#prerequisites)) is activated.
-3.  **Install the Package:** Run the following command to install the library and its dependencies in editable mode (`-e`), which means changes you make to the source code will be reflected immediately without reinstalling:
+---
+## 2. 🛠 Installation Guide
 
-    ```bash
-    pip install -e .
-    ```
+To install QUAlibrate and prepare your environment, follow the official instructions:  
+👉 [QUAlibrate Installation Guide](https://qua-platform.github.io/qualibrate/installation/)
 
-    _Note for `uv` users:_ If you are using `uv` instead of `pip`, you might need to allow pre-releases depending on the dependencies:
+---
+## 3. 📁 Project Structure
 
-    ```bash
-    uv pip install -e . --prerelease=allow
-    ```
-
-### Initial Setup (QUAlibrate Configuration)
-
-The QUAlibrate framework needs some initial configuration to know where to find calibration scripts and store the data.
-
-**Run the Configuration Script:** Execute the provided script from within the `Superconducting` directory:
-
-    ```bash
-    setup-qualibrate-config
-    ```
-
-If this command does not work, you may need to first restart your terminal or IDE.
-
-    You can press `Enter` or type `y` to accept the defaults, or `n` to provide custom paths. 
-
-Take a look [here](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs/superconducting#initial-setup-qualibrate-configuration) for more information about the custom options. 
-
-
-### Verify Setup
-
-To ensure QUAlibrate is installed and configured correctly:
-
-1.  **Launch the Web Interface:** Run the following command in your terminal:
-
-    ```bash
-    qualibrate start
-    ```
-
-2.  **Open in Browser:** Navigate to [http://127.0.0.1:8001](http://127.0.0.1:8001).
-
-You should see the QUAlibrate web UI, listing the calibration nodes found in your configured `calibrations` directory.
-
-## Calibration Nodes
-
-The scripts in the calibrations directory provide modular routines for performing specific quantum measurements, such as Resonator Spectroscopy, Rabi Oscillations, or T1 measurements. Each script is focused on a single task and can be executed directly using the QUAlibrate framework or run independently from your preferred Python development environment (e.g., PyCharm, VS Code).
-
-## Project Structure
-
-The library is organized into the following main directories:
+To make the code more modular, reusable, and easier to maintain, we suggest organizing the tutorial files into the following structure:
 
 ```
 intro-to-QUAlibrate/
 ├── calibrations/      # Individual calibration scripts (nodes) runnable by QUAlibrate.
+│   ├── Convert_QUA_program_to_QUAlibartionNode_Guide.md # Guide to convert your QUA program to QUAlibartionNode
 │   ├── time_of_flight.py
-│   └── ... (many calibration routines)
-│
+│   └── ... (other calibration routines)
+
 ├── data/                   # Default location for storing experiment results.
 │   └── {project_name}/     # Data organized by project name.
 │       └── YYYY-MM-DD/     # Data organized by date.
@@ -114,76 +67,45 @@ intro-to-QUAlibrate/
 │               ├── figures.png     # Generated figures.
 │               └── node.json       # Metadat about the node used by QUAlibrate.
 
-│
 │── calibration_utils/  # Specific experiment implementations (e.g.,time_of_flight, Spectroscopy, T1, Ramsey).
 │   └── time_of_flight/
 │   │   ├── analysis.py     # Contains all the analysis functions.
 │   │   ├── parameters.py   # Contains node-specific parameters.
 │   │   └── plotting.py     # Contains all the plotting functions.
 │   └── ...
+
 ├── configuration/          # configuration files.
-│   ├── configuration_with_lf_fem_and_mw_fem/    # Example configuration for lf and mw FEM..
+│   ├── configuration_with_lf_fem_and_mw_fem/    # Example configuration for LF and MW FEM..
 │   └── ...
-│ 
+
 ├── README.md               # This file.
 └── pyproject.toml # Installation configuration for the package.
 ```
 
-**calibrations**  
-The `calibrations/` folder contains individual Python scripts, each representing a calibration "node".
-These scripts typically import functionality from **calibration_utils**, define parameters, run a QUA program, analyze results, and save the measurement result.
+💡 Why use this structure?
+While you can start with everything in a single file, this layout offers several advantages:
 
-**data**  
-The `data/` folder is the default output directory where QUAlibrate saves results (plots, raw data) from calibration runs, organized by project, date, and run index/name.
+- **Clarity** – Separates calibration logic, parameters, configuration, and results.
 
-**calibration_utils**  
-`calibration_utils/` contains the calibration-specific helper functions, such as specific fitting routines, parameter classes, and plotting functionality
+- **Reusability** – Enables shared analysis or plotting code across multiple nodes.
 
-## Example Code - Time of Flight Node
-    
-This example contains a complete implementation of a Time of Flight (ToF) calibration protocol using the QUAlibrate framework. It is built for use with the OPX quantum control platform and includes all the necessary components to execute, analyze, and visualize a ToF measurement.
+- **Scalability** – Makes it easier to add new calibrations or expand functionality.
 
-### Scripts Overview
+- **Compatibility** – Aligns with how QUAlibrate discovers nodes and manages output.
 
-1. **Main Script**
+This structure is recommended for clarity and scalability, feel free to adapt it to your needs.
 
-| File                                      | Description                                             |
-| ----------------------------------------- |---------------------------------------------------------|
-| `main_time_of_flight.py`                  | sets up node, executes QUA, analyzes and saves results  |
-| `parameters.py`                           | Defines node parameters (`num_shots`, `simulate`, etc.) |
-| `analysis.py`                             | Computes analysis                                       |
-| `plotting.py`                             | Plots the data                                          |
-| `configuration_with_lf_fem_and_mw_fem.py` | Hardware config for the OPX system                      |
+---
+## 4. 🔁 How to Convert Your QUA Program to a QUAlibration Node?
+
+QUAlibrate makes it easy to transform a QUA-based calibration protocol into a structured `QualibrationNode`. A typical node includes:
+
+- A `Parameters` class to expose user-configurable inputs
+
+- A `QUA program` that uses those parameters
+
+- Simulation or execution, followed by analysis, plotting, and result storage
 
 
-
-
-### Running the node from the QUAlibrate GUI
-
-Once your configuration file and node script are in place, you can launch the QUAlibrate GUI
-
-    ```bash
-    setup-qualibrate-config
-    ```
-Open http://127.0.0.1:8001 and locate the time_of_flight node.
-
-
-![Web Interface](Web_interface.JPG)
-
-What can be seen in the figure?
-- **Node Library**: Lists calibration scripts under `calibrations/`
-  
-- **Parameters**: Editable fields defined in `parameters.py`
-
-- **Run Status**: Start time, run duration and parameters used.
-
-- **Results**: The measured data, fit results and the plots. 
-
-
-## Contributing
-
-We welcome contributions! Please follow the standard fork-and-pull-request workflow. Ensure your code adheres to existing style conventions and includes appropriate tests and documentation.
-
-## License
-
-This project is licensed under the BSD-3 license.
+📘 **Step-by-step guide**: A detailed walk-through of this conversion process is provided in
+[Convert_QUA_program_to_QualibrationNode_Guide.md](#/calibrations/Convert_QUA_program_to_QualibrationNode_Guide.md).
