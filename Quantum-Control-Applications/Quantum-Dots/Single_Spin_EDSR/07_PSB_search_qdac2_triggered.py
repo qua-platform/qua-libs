@@ -113,7 +113,7 @@ with program() as PSB_search_prog:
                 # Wait at each iteration in order to ensure that the data will not be transferred faster than 1 sample
                 # per µs to the stream processing. Otherwise, the processor will receive the samples faster than it can
                 # process them which can cause the OPX to crash.
-                wait(1_000 * u.ns)  # in ns
+                wait(1_000 * u.ns, "tank_circuit")
                 # Ramp the voltage down to zero at the end of the triangle (needed with sticky elements)
                 seq.ramp_to_zero()
         # Save the LO iteration to get the progress bar
