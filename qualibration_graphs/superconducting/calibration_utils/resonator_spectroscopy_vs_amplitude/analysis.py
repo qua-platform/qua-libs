@@ -34,6 +34,24 @@ PEAK_DISTANCE = 10
 PEAK_WIDTH = 3
 
 
+def _get_savgol_window_length(data_length: int, window_size: int, polyorder: int) -> int:
+    """Safely determine the window length for savgol_filter."""
+    # Ensure window_length is odd and smaller than data_length
+    window_length = min(window_size, data_length)
+    if window_length % 2 == 0:
+        window_length -= 1
+    # Ensure window_length is greater than polyorder
+    if window_length <= polyorder:
+        # If not possible, find the smallest valid window_length
+        if data_length > polyorder:
+            window_length = polyorder + 1 if (polyorder + 1) % 2 != 0 else polyorder + 2
+            if window_length > data_length:
+                return -1  # Not possible to find a valid window
+        else:
+            return -1  # Not possible to find a valid window
+    return window_length
+
+
 @dataclass
 class FitParameters:
     """Stores the relevant node-specific fitted parameters used to update the state at the end of the node."""
@@ -114,13 +132,25 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
         filtered_centers = []
         for i, p in enumerate(ds.power.values):
             y = iq_abs.sel(power=p).values
-            baseline = savgol_filter(
-                y, window_length=min(SAVGOL_BASELINE_WINDOW, len(y) // 2 * 2 + 1), polyorder=SAVGOL_POLYORDER
-            )
+            
+            baseline_window = _get_savgol_window_length(len(y), SAVGOL_BASELINE_WINDOW, SAVGOL_POLYORDER)
+            if baseline_window > 0:
+                baseline = savgol_filter(
+                    y, window_length=baseline_window, polyorder=SAVGOL_POLYORDER
+                )
+            else:
+                baseline = np.mean(y)
+
             y_bc = y - baseline
-            smoothed = savgol_filter(
-                y_bc, window_length=min(SAVGOL_SMOOTH_WINDOW, len(y_bc) // 2 * 2 + 1), polyorder=SAVGOL_POLYORDER
-            )
+            
+            smooth_window = _get_savgol_window_length(len(y_bc), SAVGOL_SMOOTH_WINDOW, SAVGOL_POLYORDER)
+            if smooth_window > 0:
+                smoothed = savgol_filter(
+                    y_bc, window_length=smooth_window, polyorder=SAVGOL_POLYORDER
+                )
+            else:
+                smoothed = y_bc
+
             noise = np.std(y_bc - smoothed)
             peaks, properties = find_peaks(
                 smoothed, prominence=PEAK_PROMINENCE_STD_FACTOR * noise, distance=PEAK_DISTANCE, width=PEAK_WIDTH
