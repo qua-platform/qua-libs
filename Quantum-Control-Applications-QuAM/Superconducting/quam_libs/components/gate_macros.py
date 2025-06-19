@@ -63,13 +63,13 @@ class ResetMacro(QubitMacro):
         super().__post_init__()
         assert self.max_attempts > 0, "max_attempts must be greater than 0"
 
-    def apply(self) -> None:
+    def apply(self, **kwargs) -> None:
         self.qubit.reset(self.reset_type)
 
 
 @quam_dataclass
 class VirtualZMacro(QubitMacro):
-    def apply(self, angle: float) -> None:
+    def apply(self, angle: float, **kwargs) -> None:
         self.qubit.xy.frame_rotation(angle)
 
 
@@ -168,7 +168,7 @@ class CXMacro(CZMacro):
 @quam_dataclass
 class DelayMacro(QubitMacro):
 
-    def apply(self, duration) -> None:
+    def apply(self, duration, **kwargs) -> None:
         qubit: Transmon = self.qubit
         qubit.wait(duration)
 
@@ -190,13 +190,13 @@ class HadamardGate(QubitMacro):
 
     """
 
-    def apply(self):
+    def apply(self, **kwargs):
         _u3(self.qubit, np.pi/2, 0, np.pi)
 
 
 @quam_dataclass
 class XGate(QubitMacro):
-    def apply(self):
+    def apply(self, **kwargs):
         #U3(π, π / 2, 0).
         #_u3(self.qubit, np.pi, np.pi/2, 0)
         self.qubit.xy.play('x180')
@@ -204,33 +204,28 @@ class XGate(QubitMacro):
 
 @quam_dataclass
 class YGate(QubitMacro):
-    def apply(self):
+    def apply(self, **kwargs):
         self.qubit.xy.play('y180')
 
 
 @quam_dataclass
 class SXGate(QubitMacro):
-    def apply(self):
+    def apply(self, **kwargs):
         self.qubit.xy.play('x90')
 
 
 @quam_dataclass
 class UGate(QubitMacro):
     # implementation based on https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.U3Gate
-    def apply(self, theta, phi, lambda_):
+    def apply(self, theta, phi, lambda_, **kwargs):
         _u3(self.qubit, theta, phi, lambda_)
 
 
 @quam_dataclass
 class U1Gate(QubitMacro):
     # UGate.apply(0, 0, lambda_)
-    def apply(self, lambda_):
+    def apply(self, lambda_, **kwargs):
         _u3(self.qubit, 0, 0, lambda_)
-
-
-@quam_dataclass
-class U3Gate(UGate):
-    pass
 
 
 @quam_dataclass
@@ -246,32 +241,32 @@ class R1Gate(U1Gate):
 
 @quam_dataclass
 class RxGate(QubitMacro):
-    def apply(self, angle):
+    def apply(self, angle, **kwargs):
         _u3(self.qubit, angle, 0, 0)
 
 
 @quam_dataclass
 class RyGate(QubitMacro):
-    def apply(self, angle):
+    def apply(self, angle, **kwargs):
         #U3(θ, π/2, 0)
         _u3(self.qubit, angle, np.pi/2, 0)
 
 
 @quam_dataclass
 class RzGate(QubitMacro):
-    def apply(self, angle):
+    def apply(self, angle, **kwargs):
         _rz(self.qubit, angle)
 
 
 @quam_dataclass
 class TGate(QubitMacro):
-    def apply(self):
+    def apply(self, **kwargs):
         #U3(π/2, 0, π/2)
         _u3(self.qubit, np.pi/2, 0, np.pi/2)
 
 
 @quam_dataclass
 class SGate(QubitMacro):
-    def apply(self):
+    def apply(self, **kwargs):
         #U3(0, 0, π/2)
         _u3(self.qubit, 0, 0, np.pi/2)
