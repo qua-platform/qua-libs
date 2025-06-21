@@ -189,7 +189,7 @@ def save_results(node):
     node.save()
 
 ```
-> 💾 This saves:
+💾 This saves:
 
 - All parameters and metadata
 
