@@ -19,15 +19,15 @@ This tutorial is ideal for users who are familiar with QUA and want to learn how
 ## Table of Contents
 
 1. [What is QUAlibrate?](#what-is-qualibrate) 
-2. [Installation Guide](#installation guide)
-3. [Project Structure](#project structure)
+2. [Installation Guide](#installation-guide)
+3. [Project Structure](#project-structure)
 4. [How to convert your QUA program to a QUAlibration Node?](#how-to-convert-a-qua-program-to-a-qualibration-node)
 
 ---
 
 ## 1. 🧠 What is QUAlibrate?
 
-[QUAlibrate](https://github.com/qua-platform/qualibrate) is a node-based framework that simplifies the design, execution, and automation of calibration and characterization workflows in QUA.
+[QUAlibrate](https://qua-platform.github.io/qualibrate/#what-is-qualibrate) is a node-based framework that simplifies the design, execution, and automation of calibration and characterization workflows in QUA.
 
 Using QUAlibrate, you can:
 
@@ -37,7 +37,6 @@ Using QUAlibrate, you can:
 
 This tutorial focuses on the first step: converting a QUA protocol into a structured, reusable QualibrationNode. We will not cover building calibration graphs in this guide.
 
-📚 For a detailed explanation of calibration graphs, see  the [Calibration Graphs documentation](https://qua-platform.github.io/qualibrate/#calibration-graphs).
 📦 For a full example of calibration nodes and a calibration graph for superconducting qubits, see the  [qualibration_graphs/superconducting](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs/superconducting) repository.
 
 ---
@@ -108,4 +107,4 @@ QUAlibrate makes it easy to transform a QUA-based calibration protocol into a st
 
 
 📘 **Step-by-step guide**: A detailed walk-through of this conversion process is provided in
-[Convert_QUA_program_to_QualibrationNode_Guide.md](#/calibrations/Convert_QUA_program_to_QualibrationNode_Guide.md).
+[Convert_QUA_program_to_QualibrationNode_Guide.md](#../calibrations/Convert_QUA_program_to_QualibrationNode_Guide.md).
