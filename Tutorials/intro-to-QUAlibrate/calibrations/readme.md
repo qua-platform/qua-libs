@@ -177,11 +177,11 @@ def save_results(node):
 - Analysis results and plots
 
 ---
-## 3. 🔍Node Anatomy Explained
+## 3. 🔍 Node Anatomy Explained
 
 For a detailed breakdown of the internal structure of a typical calibration node, please refer to the [Anatomy of a QualibrationNode](./node_anatomy.ipynb) document. It dissects the `time_of_flights.py` node section by section, explaining the purpose of the common components like imports, initialization, run actions (`@node.run_action`), QUA program creation, data handling, analysis, and saving.
 
-## 4. 🚀Extending the Calibration Library
+## 4. 🚀 Extending the Calibration Library
 
 You can easily extend this library by adding your own custom calibration nodes. To ensure compatibility and maintainability, new nodes should follow the same standardized structure and conventions outlined in the "Resonator Spectroscopy Node Explained" document. This includes:
 
@@ -194,7 +194,7 @@ You can easily extend this library by adding your own custom calibration nodes. 
 
 ---
 
-## 5. ⚡Running Calibration Nodes
+## 5. ⚡ Running Calibration Nodes
 
 There are two primary ways to execute calibration nodes:
 
