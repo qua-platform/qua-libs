@@ -160,6 +160,7 @@ def plot_data(node: QualibrationNode[Parameters, None]):
     }
     plt.show()
 
+
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, None]):

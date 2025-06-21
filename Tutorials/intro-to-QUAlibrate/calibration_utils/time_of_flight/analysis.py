@@ -29,7 +29,6 @@ def process_raw_data(fetched_data: dict):
             fetched_data[key] = u.raw2volts(value)
 
 
-
 def fit_raw_data(fetched_data: dict, node: QualibrationNode):
     """
     Analyze raw ADC data to extract features like mean and pulse arrival delay.
