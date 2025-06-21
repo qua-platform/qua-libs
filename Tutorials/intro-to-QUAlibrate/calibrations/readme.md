@@ -8,7 +8,7 @@ This guide walks you through converting the [`03_time_of_flight.py`](https://git
 
 1. [What is a QualibrationNode?](#1--what-is-a-qualibrationnode)
 2. [Step-by-Step: Converting the QUA Program](#2--step-by-step-converting-the-qua-program)
-3. [Node Anatomy Overview](#3--node-anatomy-overview)
+3. [Understanding a QualibrationNode](#3--understanding-a-qualibrationnode)
 4. [Extending the Calibration Library](#4--extending-the-calibration-library)
 5. [Running Calibration Nodes](#5--running-calibration-nodes)
 
@@ -177,7 +177,7 @@ def save_results(node):
 - Analysis results and plots
 
 ---
-## 3. 🔍 Node Anatomy Explained
+## 3. 🔍 Understanding a QualibrationNode
 
 For a detailed breakdown of the internal structure of a typical calibration node, please refer to the [Anatomy of a QualibrationNode](./node_anatomy.ipynb) document. It dissects the `time_of_flights.py` node section by section, explaining the purpose of the common components like imports, initialization, run actions (`@node.run_action`), QUA program creation, data handling, analysis, and saving.
 
