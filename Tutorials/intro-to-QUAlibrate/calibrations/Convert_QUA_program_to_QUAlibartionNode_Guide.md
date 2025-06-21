@@ -223,4 +223,4 @@ The QUAlibrate frontend (web UI) is designed for running stable, well-tested cal
 3. Change the input parameters to your liking
 4. Press "Run"
 Once the program is done, you will see the results and plots:
-   ![Web interface](../Web_interface.JPG)
+   ![Web interface](Web_interface.png)
