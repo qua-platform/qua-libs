@@ -33,16 +33,16 @@ Nodes can be executed individually (via Python or the Web UI), saved, visualized
 This guide walks you through converting the [`03_time_of_flight.py`](https://github.com/qua-platform/qua-libs/blob/main/Quantum-Control-Applications/Superconducting/Single-Fixed-Transmon/03_time_of_flight.py) QUA protocol into a modular `QualibrationNode` using QUAlibrate. The resulting node can be run via Python or through the QUAlibrate Web Interface.
 
 🧭 Substeps Overview
-   - [1️⃣ Imports](#1-imports)
-   - [2️⃣ Create the Node](#2-create-the-node)
-   - [3️⃣ Move Constants to custom_param()](#3-move-constants-to-custom_param)
-   - [4️⃣ Refactor the QUA Program](#4-refactor-the-qua-program)
-   - [5️⃣ Simulate the Program](#5-simulate-the-program)
-   - [6️⃣ Execute the Program](#6-execute-the-program)
-   - [7️⃣ Data Loading](#7-data-loading)
-   - [8️⃣ Data Analysis](#8-data-analysis)
-   - [9️⃣ Data Plotting](#9-data-plotting)
-   - [🔟 Save Results](#-save-results)
+   - [1️⃣ Imports](#imports)
+   - [2️⃣ Create the Node](#create-the-node)
+   - [3️⃣ Move Constants to custom_param()](#move-constants-to-custom_param)
+   - [4️⃣ Refactor the QUA Program](#refactor-the-qua-program)
+   - [5️⃣ Simulate the Program](#simulate-the-program)
+   - [6️⃣ Execute the Program](#execute-the-program)
+   - [7️⃣ Data Loading](#data-loading)
+   - [8️⃣ Data Analysis](#data-analysis)
+   - [9️⃣ Data Plotting](#data-plotting)
+   - [🔟 Save Results](#save-results)
 ---
 ### 1️⃣ Imports
 
