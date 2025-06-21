@@ -21,7 +21,7 @@ This tutorial is ideal for users who are familiar with QUA and want to learn how
 1. [What is QUAlibrate?](#1--what-is-qualibrate) 
 2. [Installation Guide](#2--installation-guide)
 3. [Project Structure](#3--project-structure)
-4. [How to convert your QUA program to a QUAlibration Node?](#4--how-to-convert-a-qua-program-to-a-qualibration-node)
+4. [How to convert your QUA program to a QUAlibration Node?](#4--how-to-convert-your-qua-program-into-a-qualibration-node)
 
 ---
 
@@ -95,7 +95,7 @@ While you can start with everything in a single file, this layout offers several
 This structure is recommended for clarity and scalability, feel free to adapt it to your needs.
 
 ---
-## 4. 🔁 How to Convert Your QUA Program to a QUAlibration Node?
+## 4. 🔁 How to Convert Your QUA Program into a QUAlibration Node?
 
 QUAlibrate makes it easy to transform a QUA-based calibration protocol into a structured `QualibrationNode`. A typical node includes:
 
