@@ -59,7 +59,7 @@ from calibration_utils.time_of_flight import (
 )
 from qualibration_libs.runtime import simulate_and_plot
 ```
----
+
 ### 2️⃣ Create the Node
 
 Add a detailed description to explain the calibration's purpose. Then create the `QUAlibrationNode`:
@@ -71,7 +71,7 @@ node = QualibrationNode[Parameters, None](
     parameters=Parameters()
 )
 ```
----
+
 ### 3️⃣ Move Constants to custom_param()
 
 Instead of hardcoding parameters, add a custom_param() action:
@@ -85,7 +85,7 @@ def custom_param(node):
     node.parameters.num_shots = 10
     node.parameters.depletion_time = 10 * u.us
 ```
----
+
 ### 4️⃣ Refactor the QUA Program
 Extract your measurement sequence into a run action called `create_qua_program()`, and replace all constants with values from `node.parameters`.
 
@@ -103,9 +103,9 @@ def create_qua_program(node):
 ```
 Replace ["q1_resonator"] → node.parameters.resonators, 10 shots → node.parameters.num_shots, and so on. 
 
-🔍 This is a key section: convert your QUA logic into parameterized form using node.parameters instead of hardcoded values.
+> 🔍 This is a key section: convert your QUA logic into parameterized form using node.parameters instead of hardcoded values.
 
----
+
 ### 5️⃣ Simulate the Program 
 
 Move your `qmm.simulate(...)` logic into a dedicated run action. You can either keep your original simulation and plotting code, or optionally use the `simulate_and_plot()` utility from qualibration_libs.runtime for convenience.
@@ -121,9 +121,9 @@ def simulate_qua_program(node):
     }
 
 ```
-📥 This step connects to the OPX, simulates the program, shows the simulated output and stores results in node.results.
+> 📥 This step connects to the OPX, simulates the program, shows the simulated output and stores results in node.results.
 
----
+
 ### 6️⃣ Execute the Program
 
 Move your qm.execute(...) logic into a dedicated run action:
@@ -143,9 +143,9 @@ def execute_qua_program(node):
     for key, value in zip(keys, values):
         node.results[key] = value
 ```
-📥 This step connects to the OPX, runs the program, fetches the data, and stores results in node.results.
+> 📥 This step connects to the OPX, runs the program, fetches the data, and stores results in node.results.
 
----
+
 ### 7️⃣ Data Loading 
 If reusing saved results:
 ```python 
@@ -155,7 +155,7 @@ def load_data(node):
 ```
 📁 Useful for loading previously saved datasets during debugging or reanalysis.
 
----
+
 ### 8️⃣ Data Analysis 
 Wrap your analysis logic inside a dedicated run action. 
 
@@ -167,7 +167,7 @@ def analyse_data(node):
 ```
 🧠 This step processes the data.
 
----
+
 ### 9️⃣ Data Plotting
 Wrap your plotting logic inside a dedicated run action. 
 As with the analysis step, you can optionally move your plotting functions into `calibration_utils/time_of_flight/plotting.py` for reuse and cleaner code organization. However, it’s equally valid to define plotting code directly inside `plot_data()` function.
@@ -176,9 +176,9 @@ As with the analysis step, you can optionally move your plotting functions into 
 def plot_data(node):
     ...
 ```
-📊 These figures will show up in  Python or in the QUAlibrate Web UI automatically.
+> 📊 These figures will show up in  Python or in the QUAlibrate Web UI automatically.
 
----
+
 ### 🔟 Save Results
 
 At the end of the node workflow, you should always include a @node.run_action() that calls node.save(). This ensures that the node’s parameters, results, figures, and metadata are properly stored and made available for later use.
