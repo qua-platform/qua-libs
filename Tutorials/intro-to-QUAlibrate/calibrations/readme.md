@@ -42,7 +42,7 @@ This guide walks you through converting the [`03_time_of_flight.py`](https://git
 - [7️⃣ Data Loading](#7️⃣-data-loading)
 - [8️⃣ Data Analysis](#8️⃣-data-analysis)
 - [9️⃣ Data Plotting](#9️⃣-data-plotting)
-- [🔟 Save Results](#🔟-save-results)
+- [🔟 Save Results](#-save-results)
 ---
 ### 1️⃣ Imports
 
