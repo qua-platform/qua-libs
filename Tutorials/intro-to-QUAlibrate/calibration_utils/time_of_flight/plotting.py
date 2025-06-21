@@ -38,7 +38,7 @@ def plot_single_run_with_fit(num_resonators, data: dict):
         delay = data[f"delay{q}"]
 
         ax = axs1[i] if num_resonators > 1 else axs1
-        ax.set_title(f"Qubit {q} - Single Run")
+        ax.set_title(f"Resonator {q} - Single Run")
         ax.plot(adcI, "b", label="I")
         ax.plot(adcQ, "r", label="Q")
         ax.axhline(0.5, color="gray", linestyle="-")
@@ -89,7 +89,7 @@ def plot_averaged_run_with_fit(num_resonators, data: dict):
         delay = data[f"delay{q}"]
 
         ax = axs2[i] if num_resonators > 1 else axs2
-        ax.set_title(f"Qubit {q} - Averaged Run")
+        ax.set_title(f"Resonator {q} - Averaged Run")
         ax.plot(adcI, "b", label="I")
         ax.plot(adcQ, "r", label="Q")
         xl = ax.get_xlim()

@@ -211,18 +211,16 @@ This workflow is ideal for development and debugging:
 
 ### Running via QUAlibrate Frontend
 
-The QUAlibrate frontend (web UI) is designed for running stable, well-tested calibration nodes and graphs, particularly when you primarily need to adjust input parameters rather than modify the code itself.
+The QUAlibrate frontend (web UI) is designed for running stable, well-tested calibration nodes, particularly when you primarily need to adjust input parameters rather than modify the code itself.
 
 - **Automatic Discovery:** Any calibration node script placed within the `calibrations` folder that follows the standard structure (including `QualibrationNode` instantiation) will automatically be discovered and made available in the QUAlibrate UI.
 - **Launching the UI:** Start the QUAlibrate web application by running the command `qualibrate start` in your terminal within the correct environment. This launches a local web server.
-- **Accessing Nodes/Graphs:** Open the provided URL (usually `http://localhost:8001` or similar) in your browser. The UI will list all discovered calibration nodes and saved calibration graphs.
-- **Execution:** Select the desired node or graph, modify its input parameters through the UI form, and click "Run" to execute it. The UI will display progress, results, plots, and any proposed state updates for review.
+- **Accessing Nodes:** Open the provided URL (usually `http://localhost:8001` or similar) in your browser. The UI will list all discovered calibration nodes.
+- **Execution:** Select the desired node, modify its input parameters through the UI form, and click "Run" to execute it. The UI will display progress, results and plots.
 
-3. Open http://localhost:8001/ on your browser:
-   ![browser window](../.img/qualibrate_1.png)
-4. Select the node you would like to run:
-   ![select node](../.img/qualibrate_2.png)
-5. Change the input parameters to your liking:
-   ![change parameters](../.img/qualibrate_3.png)
-6. Press "Run":
-   ![change parameters](../.img/qualibrate_4.png)
+1. Open http://localhost:8001/ on your browser
+2. Select the node you would like to run
+3. Change the input parameters to your liking
+4. Press "Run"
+Once the program is done, you will see the results and plots:
+   ![Web interface](../Web_interface.JPG)
