@@ -53,11 +53,13 @@ from qualibration_libs.runtime import simulate_and_plot
 
 Add a detailed description to explain the calibration's purpose. Then create the `QUAlibrationNode`:
 
+```python
 node = QualibrationNode[Parameters, None](
     name="time_of_flight",
     description=description,
     parameters=Parameters()
 )
+```
 
 ### 3️⃣ Move Constants to custom_param()
 
@@ -182,6 +184,7 @@ def save_results(node):
 ## 3. 🔍 Understanding a QualibrationNode
 
 For a detailed breakdown of the internal structure of a typical calibration node, please refer to the [Anatomy of a QualibrationNode](./node_anatomy.ipynb) document. It dissects the `time_of_flights.py` node section by section, explaining the purpose of the common components like imports, initialization, run actions (`@node.run_action`), QUA program creation, data handling, analysis, and saving.
+
 ---
 
 ## 4. 🚀 Extending the Calibration Library
