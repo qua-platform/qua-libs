@@ -106,5 +106,5 @@ QUAlibrate makes it easy to transform a QUA-based calibration protocol into a st
 - Simulation or execution, followed by analysis, plotting, and result storage
 
 
-📘 **Step-by-step guide**: A detailed walk-through of this conversion process is provided in
-[this guide](./calibrations/readme.md).
+📘 **Step-by-step guide**: A detailed walk-through of this conversion process is provided
+[here](./calibrations/readme.md).
