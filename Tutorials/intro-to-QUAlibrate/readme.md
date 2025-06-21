@@ -107,4 +107,4 @@ QUAlibrate makes it easy to transform a QUA-based calibration protocol into a st
 
 
 📘 **Step-by-step guide**: A detailed walk-through of this conversion process is provided in
-[Convert_QUA_program_into_QualibrationNode_Guide.md](./calibrations/readme.md).
+[this guide](./calibrations/readme.md).
