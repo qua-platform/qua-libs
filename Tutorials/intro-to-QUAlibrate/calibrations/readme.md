@@ -104,6 +104,7 @@ def create_qua_program(node):
 Replace ["q1_resonator"] → node.parameters.resonators, 10 shots → node.parameters.num_shots, and so on. 
 
 🔍 This is a key section: convert your QUA logic into parameterized form using node.parameters instead of hardcoded values.
+
 ---
 ### 5️⃣ Simulate the Program 
 
@@ -121,6 +122,7 @@ def simulate_qua_program(node):
 
 ```
 📥 This step connects to the OPX, simulates the program, shows the simulated output and stores results in node.results.
+
 ---
 ### 6️⃣ Execute the Program
 
@@ -142,6 +144,7 @@ def execute_qua_program(node):
         node.results[key] = value
 ```
 📥 This step connects to the OPX, runs the program, fetches the data, and stores results in node.results.
+
 ---
 ### 7️⃣ Data Loading 
 If reusing saved results:
@@ -151,6 +154,7 @@ def load_data(node):
      node.load_from_id(node.parameters.load_data_id)
 ```
 📁 Useful for loading previously saved datasets during debugging or reanalysis.
+
 ---
 ### 8️⃣ Data Analysis 
 Wrap your analysis logic inside a dedicated run action. 
@@ -162,6 +166,7 @@ def analyse_data(node):
     ...
 ```
 🧠 This step processes the data.
+
 ---
 ### 9️⃣ Data Plotting
 Wrap your plotting logic inside a dedicated run action. 
@@ -172,6 +177,7 @@ def plot_data(node):
     ...
 ```
 📊 These figures will show up in  Python or in the QUAlibrate Web UI automatically.
+
 ---
 ### 🔟 Save Results
 
