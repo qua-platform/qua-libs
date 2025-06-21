@@ -8,6 +8,16 @@ This guide walks you through converting the [`03_time_of_flight.py`](https://git
 
 1. [What is a QualibrationNode?](#1--what-is-a-qualibrationnode)
 2. [Step-by-Step: Converting the QUA Program](#2--step-by-step-converting-the-qua-program)
+   - [1️⃣ Imports](#1-imports)
+   - [2️⃣ Create the Node](#2-create-the-node)
+   - [3️⃣ Move Constants to custom_param()](#3-move-constants-to-custom_param)
+   - [4️⃣ Refactor the QUA Program](#4-refactor-the-qua-program)
+   - [5️⃣ Simulate the Program](#5-simulate-the-program)
+   - [6️⃣ Execute the Program](#6-execute-the-program)
+   - [7️⃣ Data Loading](#7-data-loading)
+   - [8️⃣ Data Analysis](#8-data-analysis)
+   - [9️⃣ Data Plotting](#9-data-plotting)
+   - [🔟 Save Results](#-save-results)
 3. [Understanding a QualibrationNode](#3--understanding-a-qualibrationnode)
 4. [Extending the Calibration Library](#4--extending-the-calibration-library)
 5. [Running Calibration Nodes](#5--running-calibration-nodes)
@@ -31,8 +41,7 @@ Nodes can be executed individually (via Python or the Web UI), saved, visualized
 ## 2. 🛠 Step-by-Step: Converting the QUA Program
 
 This guide walks you through converting the [`03_time_of_flight.py`](https://github.com/qua-platform/qua-libs/blob/main/Quantum-Control-Applications/Superconducting/Single-Fixed-Transmon/03_time_of_flight.py) QUA protocol into a modular `QualibrationNode` using QUAlibrate. The resulting node can be run via Python or through the QUAlibrate Web Interface.
-
-
+---
 ### 1️⃣ Imports
 
 Add the relevant imports for the QUAlibrateNode, such as:
@@ -48,7 +57,7 @@ from calibration_utils.time_of_flight import (
 )
 from qualibration_libs.runtime import simulate_and_plot
 ```
-
+---
 ### 2️⃣ Create the Node
 
 Add a detailed description to explain the calibration's purpose. Then create the `QUAlibrationNode`:
@@ -60,7 +69,7 @@ node = QualibrationNode[Parameters, None](
     parameters=Parameters()
 )
 ```
-
+---
 ### 3️⃣ Move Constants to custom_param()
 
 Instead of hardcoding parameters, add a custom_param() action:
@@ -74,7 +83,7 @@ def custom_param(node):
     node.parameters.num_shots = 10
     node.parameters.depletion_time = 10 * u.us
 ```
-
+---
 ### 4️⃣ Refactor the QUA Program
 Extract your measurement sequence into a run action called `create_qua_program()`, and replace all constants with values from `node.parameters`.
 
@@ -93,7 +102,7 @@ def create_qua_program(node):
 Replace ["q1_resonator"] → node.parameters.resonators, 10 shots → node.parameters.num_shots, and so on. 
 
 🔍 This is a key section: convert your QUA logic into parameterized form using node.parameters instead of hardcoded values.
-
+---
 ### 5️⃣ Simulate the Program 
 
 Move your `qmm.simulate(...)` logic into a dedicated run action. You can either keep your original simulation and plotting code, or optionally use the `simulate_and_plot()` utility from qualibration_libs.runtime for convenience.
@@ -110,7 +119,7 @@ def simulate_qua_program(node):
 
 ```
 📥 This step connects to the OPX, simulates the program, shows the simulated output and stores results in node.results.
-
+---
 ### 6️⃣ Execute the Program
 
 Move your qm.execute(...) logic into a dedicated run action:
@@ -131,7 +140,7 @@ def execute_qua_program(node):
         node.results[key] = value
 ```
 📥 This step connects to the OPX, runs the program, fetches the data, and stores results in node.results.
-
+---
 ### 7️⃣ Data Loading 
 If reusing saved results:
 ```python 
@@ -140,7 +149,7 @@ def load_data(node):
      node.load_from_id(node.parameters.load_data_id)
 ```
 📁 Useful for loading previously saved datasets during debugging or reanalysis.
-
+---
 ### 8️⃣ Data Analysis 
 Wrap your analysis logic inside a dedicated run action. 
 
@@ -151,8 +160,7 @@ def analyse_data(node):
     ...
 ```
 🧠 This step processes the data.
-
-
+---
 ### 9️⃣ Data Plotting
 Wrap your plotting logic inside a dedicated run action. 
 As with the analysis step, you can optionally move your plotting functions into `calibration_utils/time_of_flight/plotting.py` for reuse and cleaner code organization. However, it’s equally valid to define plotting code directly inside `plot_data()` function.
@@ -162,7 +170,7 @@ def plot_data(node):
     ...
 ```
 📊 These figures will show up in  Python or in the QUAlibrate Web UI automatically.
-
+---
 ### 🔟 Save Results
 
 At the end of the node workflow, you should always include a @node.run_action() that calls node.save(). This ensures that the node’s parameters, results, figures, and metadata are properly stored and made available for later use.
