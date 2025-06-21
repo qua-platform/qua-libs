@@ -27,6 +27,7 @@ A `QualibrationNode` is the core abstraction in QUAlibrate. It represents a **se
 Nodes can be executed individually (via Python or the Web UI), saved, visualized, and reused across experiments or workflows.
 
 ---
+
 ## 2. 🛠 Step-by-Step: Converting the QUA Program
 
 This guide walks you through converting the [`03_time_of_flight.py`](https://github.com/qua-platform/qua-libs/blob/main/Quantum-Control-Applications/Superconducting/Single-Fixed-Transmon/03_time_of_flight.py) QUA protocol into a modular `QualibrationNode` using QUAlibrate. The resulting node can be run via Python or through the QUAlibrate Web Interface.
@@ -177,9 +178,11 @@ def save_results(node):
 - Analysis results and plots
 
 ---
+
 ## 3. 🔍 Understanding a QualibrationNode
 
 For a detailed breakdown of the internal structure of a typical calibration node, please refer to the [Anatomy of a QualibrationNode](./node_anatomy.ipynb) document. It dissects the `time_of_flights.py` node section by section, explaining the purpose of the common components like imports, initialization, run actions (`@node.run_action`), QUA program creation, data handling, analysis, and saving.
+---
 
 ## 4. 🚀 Extending the Calibration Library
 

@@ -40,12 +40,14 @@ This tutorial focuses on the first step: converting a QUA protocol into a struct
 📦 For a full example of calibration nodes and a calibration graph for superconducting qubits, see the  [qualibration_graphs/superconducting](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs/superconducting) repository.
 
 ---
+
 ## 2. 🛠 Installation Guide
 
 To install QUAlibrate and prepare your environment, follow the official instructions:  
 👉 [QUAlibrate Installation Guide](https://qua-platform.github.io/qualibrate/installation/)
 
 ---
+
 ## 3. 📁 Project Structure
 
 To make the code more modular, reusable, and easier to maintain, we suggest organizing the tutorial files into the following structure:
@@ -95,6 +97,7 @@ While you can start with everything in a single file, this layout offers several
 This structure is recommended for clarity and scalability, feel free to adapt it to your needs.
 
 ---
+
 ## 4. 🔁 How to Convert Your QUA Program into a QUAlibration Node?
 
 QUAlibrate makes it easy to transform a QUA-based calibration protocol into a structured `QualibrationNode`. A typical node includes:
