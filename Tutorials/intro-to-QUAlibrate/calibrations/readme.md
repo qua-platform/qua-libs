@@ -176,7 +176,7 @@ As with the analysis step, you can optionally move your plotting functions into 
 def plot_data(node):
     ...
 ```
-> 📊 These figures will show up in  Python or in the QUAlibrate Web UI automatically.
+> 📊 These figures will show up in Python or in the QUAlibrate Web UI automatically.
 
 
 ### 🔟 Save Results
@@ -189,7 +189,7 @@ def save_results(node):
     node.save()
 
 ```
-💾 This saves:
+> 💾 This saves:
 
 - All parameters and metadata
 
