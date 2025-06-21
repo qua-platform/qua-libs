@@ -6,11 +6,11 @@ This guide walks you through converting the [`03_time_of_flight.py`](https://git
 
 ## 📚 Table of Contents
 
-1. [What is a QualibrationNode?](#what-is-a-qualibrationnode)
-2. [Step-by-Step: Converting the QUA Program](#step-by-step-converting-the-qua-program)
-3. [Node Anatomy Overview](#node-anatomy-overview)
-4. [Extending the Calibration Library](#extending-the-calibration-library)
-5. [Running Calibration Nodes](#running-calibration-nodes)
+1. [What is a QualibrationNode?](#1--what-is-a-qualibrationnode)
+2. [Step-by-Step: Converting the QUA Program](#2--step-by-step-converting-the-qua-program)
+3. [Node Anatomy Overview](#3--node-anatomy-overview)
+4. [Extending the Calibration Library](#4--extending-the-calibration-library)
+5. [Running Calibration Nodes](#5--running-calibration-nodes)
 
 ---
 
