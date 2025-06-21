@@ -189,11 +189,11 @@ def save_results(node):
     node.save()
 
 ```
+
 > 💾 This saves:
-
-    - All parameters and metadata
-
-    - Analysis results and plots
+> 
+> - All parameters and metadata  
+> - Analysis results and plots
 
 ---
 
