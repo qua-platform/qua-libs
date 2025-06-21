@@ -153,7 +153,7 @@ If reusing saved results:
 def load_data(node):
      node.load_from_id(node.parameters.load_data_id)
 ```
-📁 Useful for loading previously saved datasets during debugging or reanalysis.
+> 📁 Useful for loading previously saved datasets during debugging or reanalysis.
 
 
 ### 8️⃣ Data Analysis 
@@ -165,7 +165,7 @@ You can optionally move your processing and fitting functions to `calibration_ut
 def analyse_data(node):
     ...
 ```
-🧠 This step processes the data.
+> 🧠 This step processes the data.
 
 
 ### 9️⃣ Data Plotting
@@ -189,11 +189,11 @@ def save_results(node):
     node.save()
 
 ```
-💾 This saves:
+> 💾 This saves:
 
-- All parameters and metadata
+    - All parameters and metadata
 
-- Analysis results and plots
+    - Analysis results and plots
 
 ---
 
