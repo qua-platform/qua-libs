@@ -1,9 +1,13 @@
 # %% {Imports}
-from qm import QuantumMachinesManager
-from qm.qua import *
+import matplotlib.pyplot as plt
+
 from configuration.configuration_with_lf_fem_and_mw_fem import *
 
+from qm import QuantumMachinesManager
+from qm.qua import *
+
 from qualang_tools.results import progress_counter, fetching_tool
+
 from qualibrate import QualibrationNode
 from calibration_utils.time_of_flight import (
     Parameters,
@@ -14,7 +18,7 @@ from calibration_utils.time_of_flight import (
 )
 from qualibration_libs.runtime import simulate_and_plot
 
-
+# %% {Initialisation}
 description = """
         TIME OF FLIGHT
 This sequence involves sending a readout pulse and capturing the raw ADC traces.
@@ -34,8 +38,10 @@ The data undergoes post-processing to calibrate three distinct parameters:
 
 node = QualibrationNode[Parameters, None](name="time_of_flight", description=description, parameters=Parameters())
 
+
+# %% {Node_parameters}
 # Any parameters that should change for debugging purposes only should go in here
-# These parameters are ignored when run through the GUI or as part of a graph
+# These parameters are ignored when run through the GUI
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, None]):
     # You can get type hinting in your IDE by typing node.parameters.
@@ -52,9 +58,6 @@ def create_qua_program(node: QualibrationNode[Parameters, None]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Get the active qubits from the node and organize them by batches
     resonators = node.parameters.resonators
-    node.namespace["sweep_axes"] = {
-        "resonator": resonators,
-    }
     with program() as node.namespace["qua_program"]:
         n = declare(int)  # QUA variable for the averaging loop
         n_st = declare_stream()
@@ -139,7 +142,7 @@ def load_data(node: QualibrationNode[Parameters, None]):
 # %% {Data_analysis}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, None]):
-    """Analyse the raw data and store the fitted data in another node.results."""
+    """Analyse the raw data and store the fitted data in node.results."""
     process_raw_data(node.results)
     fit_raw_data(node.results, node)
 
@@ -155,7 +158,7 @@ def plot_data(node: QualibrationNode[Parameters, None]):
         "single_run": fig_single_run_fit,
         "averaged_run": fig_averaged_run_fit,
     }
-
+    plt.show()
 
 # %% {Save_results}
 @node.run_action()

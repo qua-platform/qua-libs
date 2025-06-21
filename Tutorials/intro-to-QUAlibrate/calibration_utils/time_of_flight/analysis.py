@@ -5,7 +5,6 @@ Signal processing utilities for Qualibrate nodes.
 from scipy.signal import savgol_filter
 import numpy as np
 
-
 from qualibrate import QualibrationNode
 
 from qualang_tools.units import unit
@@ -28,6 +27,7 @@ def process_raw_data(fetched_data: dict):
     for key, value in fetched_data.items():
         if isinstance(value, np.ndarray):
             fetched_data[key] = u.raw2volts(value)
+
 
 
 def fit_raw_data(fetched_data: dict, node: QualibrationNode):
