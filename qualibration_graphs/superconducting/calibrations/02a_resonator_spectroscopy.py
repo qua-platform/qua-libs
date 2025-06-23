@@ -203,6 +203,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     plotly_amplitude = plotly_plot_raw_amplitude_with_fit(
         node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
     )
+    plotly_amplitude.show()
+    plotly_phase.show()
 
     # Store both static and interactive figure links
     node.results["figures"] = {
