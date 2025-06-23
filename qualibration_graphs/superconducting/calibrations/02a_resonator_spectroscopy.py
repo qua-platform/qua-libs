@@ -222,6 +222,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         plot_configs=[amplitude_vs_freq_config],
         ds_fit=node.results["ds_fit"],
     )
+    plotly_amplitude.show()
+    plotly_phase.show()
 
     plotly_phase.show()
     plotly_amplitude.show()
