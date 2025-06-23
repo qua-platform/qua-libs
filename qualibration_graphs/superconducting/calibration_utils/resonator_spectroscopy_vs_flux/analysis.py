@@ -145,11 +145,75 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
     fit_results_da = fit_oscillation(peak_freq.dropna(dim="flux_bias"), "flux_bias")
     fit_results_ds = xr.merge([fit_results_da.rename("fit_results"), peak_freq.rename("peak_freq")])
     # Pass outcomes to _extract_relevant_fit_parameters
-    fit_dataset, fit_results = _extract_relevant_fit_parameters(fit_results_ds, node, qubit_outcomes, amp_rel_thresh)
+    fit_dataset, fit_results = _extract_relevant_fit_parameters(fit_results_ds, node, qubit_outcomes)
     return fit_dataset, fit_results
 
 
-def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qubit_outcomes: dict, amp_rel_thresh: float):
+def _has_oscillations_in_fit(
+    fit: xr.Dataset,
+    qubit: str,
+    qubit_outcomes: dict,
+    amp_rel_thresh: float = AMP_REL_THRESHOLD,
+) -> bool:
+    """
+    Determines if oscillations were detected in the fit for a given qubit.
+
+    Parameters
+    ----------
+    fit : xr.Dataset
+        The fit dataset containing fit results
+    qubit : str
+        Qubit name
+    qubit_outcomes : dict
+        Dictionary of initial qubit outcome assessments
+    amp_rel_thresh : float
+        Relative amplitude threshold for oscillation detection
+
+    Returns
+    -------
+    bool
+        True if oscillations were detected, False otherwise
+    """
+    if qubit_outcomes.get(qubit) in ["no_peaks", "no_oscillations"]:
+        return False
+
+    # Extract fit amplitude
+    try:
+        amp = float(fit.sel(fit_vals="a", qubit=qubit).fit_results.data)
+        pf_valid = fit.peak_freq.sel(qubit=qubit).values
+        pf_valid = pf_valid[~np.isnan(pf_valid)]
+        pf_median = np.median(np.abs(pf_valid)) if pf_valid.size > 0 else 1.0
+        return np.abs(amp) >= amp_rel_thresh * pf_median
+    except:
+        return False
+
+
+def _calculate_snr(ds: xr.Dataset, qubit: str) -> float:
+    """
+    Calculate signal-to-noise ratio for a qubit's spectroscopy data.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset containing spectroscopy data
+    qubit : str
+        Qubit name
+
+    Returns
+    -------
+    float
+        Signal-to-noise ratio
+    """
+    try:
+        data = ds.IQ_abs.sel(qubit=qubit)
+        signal = np.ptp(data.values)  # peak-to-peak as signal measure
+        noise = np.std(data.values)   # standard deviation as noise measure
+        return signal / (noise + EPSILON) if noise > 0 else np.inf
+    except:
+        return np.nan
+
+
+def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qubit_outcomes: dict):
     """Add metadata to the fit dataset and fit result dictionary, using robust outcome logic."""
     # Ensure that the phase is between -pi and pi
     flux_idle = -fit.sel(fit_vals="phi")
@@ -182,29 +246,41 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qu
         / node.parameters.input_line_impedance_in_ohm
         * attenuation_factor
     )
-    # Calculate outcomes for each qubit
+    # Calculate outcomes for each qubit using _get_fit_outcome
     outcomes = []
     fit_results = {}
     for q in fit.qubit.values:
         q_index = list(fit.qubit.values).index(q)
-        # Default outcome
-        outcome = "successful"
-        if qubit_outcomes.get(q) == "no_peaks":
-            outcome = "No peaks were detected, consider changing the frequency range"
-            amp = np.nan
-        elif qubit_outcomes.get(q) == "no_oscillations":
-            outcome = "No oscillations were detected, consider checking that the flux line is connected or increase the flux range"
-            amp = np.nan
-        else:
-            # Extract fit amplitude
-            amp = float(fit.sel(fit_vals="a", qubit=q).fit_results.data)
-            pf_valid = fit.peak_freq.sel(qubit=q).values
-            pf_valid = pf_valid[~np.isnan(pf_valid)]
-            pf_median = np.median(np.abs(pf_valid)) if pf_valid.size > 0 else 1.0
-            if np.abs(amp) < amp_rel_thresh * pf_median:
-                outcome = "No oscillations were detected, consider checking that the flux line is connected or increase the flux range"
+        
+        # Extract parameters for _get_fit_outcome
+        flux_idle_val = float(flux_idle.sel(qubit=q).fit_results.data) if not np.isnan(flux_idle.sel(qubit=q).fit_results.data) else np.nan
+        flux_min_val = float(flux_min.sel(qubit=q).fit_results.data) if not np.isnan(flux_min.sel(qubit=q).fit_results.data) else np.nan
+        freq_shift_val = float(freq_shift.sel(qubit=q).values) if not np.isnan(freq_shift.sel(qubit=q).values) else np.nan
+        
+        # Get frequency span from node parameters
+        frequency_span_in_mhz = node.parameters.frequency_span_in_mhz
+        
+        # Calculate SNR
+        snr = _calculate_snr(node.results["ds_raw"], q)
+        
+        # Determine if oscillations were detected
+        has_oscillations = _has_oscillations_in_fit(fit, q, qubit_outcomes)
+        
+        # Use _get_fit_outcome to determine the outcome
+        outcome = _get_fit_outcome(
+            freq_shift=freq_shift_val,
+            flux_min=flux_min_val,
+            flux_idle=flux_idle_val,
+            frequency_span_in_mhz=frequency_span_in_mhz,
+            snr=snr,
+            snr_min=SNR_MIN,
+            has_oscillations=has_oscillations,
+            has_anticrossings=False,  # Not currently detected in this implementation
+        )
+
         # Get fitted idle flux
-        fitted_flux_idle = float(flux_idle.sel(qubit=q).fit_results.data)
+        fitted_flux_idle = flux_idle_val
+
         # Find the true minimum in the data
         peak_freq_vs_flux = fit.peak_freq.sel(qubit=q)
         flux_biases = peak_freq_vs_flux.coords["flux_bias"].values
@@ -223,7 +299,6 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qu
         confidence = (local_mean - freq_at_idle) / (global_max - global_min + 1e-12)
 
         # Always assign these before using them
-        freq_shift_val = float(freq_shift.sel(qubit=q).values)
         sweet_spot_freq_val = float(freq_shift.sel(qubit=q).values) + full_freq[q_index]
 
         # Correct frequency if confidence is low
@@ -239,8 +314,6 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, qu
             fit["sweet_spot_frequency"].loc[dict(qubit=q)] = corrected_freq
             fit["freq_shift"].loc[dict(qubit=q)] = corrected_freq - full_freq[q_index]
 
-        flux_min_val = float(flux_min.sel(qubit=q).fit_results.data) if outcome == "successful" else np.nan
-        flux_idle_val = float(flux_idle.sel(qubit=q).fit_results.data) if outcome == "successful" else np.nan
         fit_results[q] = FitParameters(
             resonator_frequency=sweet_spot_freq_val if outcome == "successful" else np.nan,
             frequency_shift=freq_shift_val,
