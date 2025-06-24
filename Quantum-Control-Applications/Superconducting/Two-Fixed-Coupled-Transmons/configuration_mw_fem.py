@@ -4,22 +4,24 @@ Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
 """
 
 from pathlib import Path
+
 import numpy as np
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
+pio.renderers.default = "browser"
 
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
 u = unit(coerce_to_integer=True)
 
-
 ######################
 # Network parameters #
 ######################
-qop_ip = "172.16.33.116"  # Write the QM router IP address
-cluster_name = "Beta_8"  # Write your cluster_name if version >= QOP220
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 octave_config = None
 
@@ -27,16 +29,17 @@ octave_config = None
 #############
 # Save Path #
 #############
-
 # Path to save data
-save_dir = Path().absolute() / "Data"
+save_dir = Path(__file__).parent.resolve() / "Data"
 save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
-    "configuration_mw_fem.py": "configuration_mw_fem.py",
+    Path(__file__).name: Path(__file__).name,
     "optimal_weights.npz": "optimal_weights.npz",
 }
-
+#####################
+# OPX configuration #
+#####################
 
 #############################################
 #                  Qubits                   #
@@ -249,7 +252,7 @@ readout_amp_q1 = 0.1
 readout_amp_q2 = 0.1
 
 # TOF and depletion time
-time_of_flight = 24  # must be a multiple of 4
+time_of_flight = 28  # must be a multiple of 4
 depletion_time = 2 * u.us
 
 opt_weights = False

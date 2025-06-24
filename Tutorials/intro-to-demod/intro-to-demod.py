@@ -88,7 +88,7 @@ ax2.set_xlabel("slice number")
 
 plt.figure()
 plt.plot(res.raw_input.fetch_all() / 2**12)
-plt.xlabel("t[nS]")
+plt.xlabel("t[ns]")
 plt.ylabel("output [V]")
 plt.title("Raw output")
 

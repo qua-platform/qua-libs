@@ -3,10 +3,18 @@ QUA-Config supporting OPX1000 w/ LF-FEM + MW-FEM
 """
 
 from pathlib import Path
+
 import numpy as np
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
+pio.renderers.default = "browser"
+
+#######################
+# AUXILIARY FUNCTIONS #
+#######################
+u = unit(coerce_to_integer=True)
 
 ######################
 # Network parameters #
@@ -15,24 +23,30 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+#############
+# Save Path #
+#############
 # Path to save data
-save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 #####################
 # OPX configuration #
 #####################
 con = "con1"
-lf_fem = 1
-mw_fem = 5
-
+lf_fem = 5
+mw_fem = 1
 # Set octave_config to None if no octave are present
 octave_config = None
 
 #############################################
 #                  Qubits                   #
 #############################################
-u = unit(coerce_to_integer=True)
-
 sampling_rate = int(1e9)  # or, int(2e9)
 
 qubit_LO_q1 = 3.95 * u.GHz
@@ -251,7 +265,7 @@ readout_amp_q1 = 0.35
 readout_amp_q2 = 0.35
 
 # TOF and depletion time
-time_of_flight = 24  # must be a multiple of 4
+time_of_flight = 28  # must be a multiple of 4
 depletion_time = 2 * u.us
 
 opt_weights = False
@@ -299,27 +313,40 @@ config = {
                     #   1: (50 MHz - 5.5 GHz)
                     #   2: (4.5 GHz - 7.5 GHz)
                     #   3: (6.5 GHz - 10.5 GHz)
-                    # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, O8 & O1
-                    # must be in the same band, or in bands 1 & 3.
+                    # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, and O8 & I2
+                    # must be in the same band.
+                    # MW-FEM outputs are delayed with respect to the LF-FEM outputs by 141ns for bands 1 and 3 and 161ns for band 2.
                     # The keyword "full_scale_power_dbm" is the maximum power of
                     # normalized pulse waveforms in [-1,1]. To convert to voltage,
                     #   power_mw = 10**(full_scale_power_dbm / 10)
                     #   max_voltage_amp = np.sqrt(2 * power_mw * 50 / 1000)
                     #   amp_in_volts = waveform * max_voltage_amp
                     #   ^ equivalent to OPX+ amp
-                    # Its range is -41dBm to +10dBm with 3dBm steps.
+                    # Its range is -11dBm to +16dBm with 3dBm steps.
                     "type": "MW",
                     "analog_outputs": {
                         # Resonator XY
-                        1: {"full_scale_power_dbm": resonator_power, "band": 2, "upconverter_frequency": resonator_LO},
+                        1: {
+                            "band": 2,
+                            "full_scale_power_dbm": resonator_power,
+                            "upconverters": {1: {"frequency": resonator_LO}},
+                        },
                         # Qubit 1 XY
-                        2: {"full_scale_power_dbm": qubit_power, "band": 1, "upconverter_frequency": qubit_LO_q1},
+                        2: {
+                            "band": 1,
+                            "full_scale_power_dbm": qubit_power,
+                            "upconverters": {1: {"frequency": qubit_LO_q1}},
+                        },
                         # Qubit 2 XY
-                        3: {"full_scale_power_dbm": qubit_power, "band": 1, "upconverter_frequency": qubit_LO_q2},
+                        3: {
+                            "band": 1,
+                            "full_scale_power_dbm": qubit_power,
+                            "upconverters": {1: {"frequency": qubit_LO_q2}},
+                        },
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
-                        1: {"band": 2, "downconverter_frequency": resonator_LO},  # I from down-conversion
+                        1: {"band": 2, "downconverter_frequency": resonator_LO},  # for down-conversion
                     },
                 },
                 lf_fem: {
@@ -343,6 +370,9 @@ config = {
                             #   modulated pulses (optimized for modulated pulses):      "mw"    (default)
                             #   unmodulated pulses (optimized for clean step response): "pulse"
                             "upsampling_mode": "pulse",
+                            # Synchronization of the LF-FEM outputs with the MW-FEM outputs
+                            # 141ns delay (band 1 and 3) or 161ns delay (band 2)
+                            "delay": 141 * u.ns,
                         },
                         # Q2 flux line
                         2: {
@@ -363,6 +393,7 @@ config = {
         "rr1": {
             "MWInput": {
                 "port": (con, mw_fem, 1),
+                "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF_q1,  # frequency at offset ch7
             "operations": {
@@ -378,6 +409,7 @@ config = {
         "rr2": {
             "MWInput": {
                 "port": (con, mw_fem, 1),
+                "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF_q2,  # frequency at offset ch8
             "operations": {
@@ -393,6 +425,7 @@ config = {
         "q1_xy": {
             "MWInput": {
                 "port": (con, mw_fem, 2),
+                "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
             "operations": {
@@ -409,6 +442,7 @@ config = {
         "q2_xy": {
             "MWInput": {
                 "port": (con, mw_fem, 3),
+                "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
             "operations": {

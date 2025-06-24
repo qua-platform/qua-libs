@@ -24,15 +24,26 @@ import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter
 from macros import multiplexed_readout, qua_declaration
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 4000
 # The frequency sweep around the resonators' frequency "resonator_IF_q"
 dfs = np.arange(-10e6, 10e6, 0.1e6)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "dfs": dfs,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as ro_freq_opt:
     Ig, Ig_st, Qg, Qg_st, n, n_st = qua_declaration(nb_of_qubits=2)
     Ie, Ie_st, Qe, Qe_st, _, _ = qua_declaration(nb_of_qubits=2)
@@ -100,9 +111,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, ro_freq_opt, simulation_config)
-    job.get_simulated_samples().con1.plot()
-
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -158,6 +178,7 @@ else:
     var2 = (Ig2_var + Qg2_var + Ie2_var + Qe2_var) / 4
     SNR2 = ((np.abs(Z2)) ** 2) / (2 * var2)
     # Plot results
+    fig = plt.figure()
     plt.suptitle("Readout frequency optimization")
     plt.subplot(121)
     plt.cla()
@@ -178,3 +199,15 @@ else:
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"Z1_data": Z1})
+    save_data_dict.update({"var1_data": var1})
+    save_data_dict.update({"SNR1_data": SNR1})
+    save_data_dict.update({"Z2_data": Z2})
+    save_data_dict.update({"var2_data": var2})
+    save_data_dict.update({"SNR2_data": SNR2})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

@@ -22,15 +22,25 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
+from qualang_tools.results.data_handler import DataHandler
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+a_vec = np.arange(0.1, 1, 0.02)  # The amplitude pre-factor vector
+n_avg = 1_000_000  # number of iterations
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "a_vec": a_vec,
+    "config": config,
+}
 
 ###################
 # The QUA program #
 ###################
-
-a_vec = np.arange(0.1, 1, 0.02)  # The amplitude pre-factor vector
-n_avg = 1_000_000  # number of iterations
-
 with program() as power_rabi:
     counts = declare(int)  # variable for number of counts
     times = declare(int, size=100)  # QUA vector for storing the time-tags
@@ -89,8 +99,18 @@ simulate = True
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, power_rabi, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -109,10 +129,18 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(a_vec * pi_amp_NV, counts / 1000 / (meas_len_1 * 1e-9), label="photon counts")
-        plt.plot(a_vec * pi_amp_NV, counts_dark / 1000 / (meas_len_1 * 1e-9), label="dark_counts")
+        plt.plot(a_vec * x180_amp_NV, counts / 1000 / (meas_len_1 * 1e-9), label="photon counts")
+        plt.plot(a_vec * x180_amp_NV, counts_dark / 1000 / (meas_len_1 * 1e-9), label="dark_counts")
         plt.xlabel("Rabi pulse amplitude [V]")
         plt.ylabel("Intensity [kcps]")
         plt.title("Power Rabi")
         plt.legend()
         plt.pause(0.1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"counts_data": counts})
+    save_data_dict.update({"counts_dark_data": counts_dark})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

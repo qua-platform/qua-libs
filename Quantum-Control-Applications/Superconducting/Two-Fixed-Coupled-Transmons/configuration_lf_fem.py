@@ -3,10 +3,13 @@ Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
 """
 
 from pathlib import Path
+
 import numpy as np
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
+pio.renderers.default = "browser"
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -32,37 +35,35 @@ def IQ_imbalance(g, phi):
 ######################
 # Network parameters #
 ######################
-qop_ip = "172.16.33.116"  # Write the QM router IP address
-cluster_name = "Beta_8"  # Write your cluster_name if version >= QOP220
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
-octave_config = None
+
+#############
+# Save Path #
+#############
+# Path to save data
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 #####################
 # OPX configuration #
 #####################
 con = "con1"
 fem = 5  # Should be the LF-FEM index, e.g., 1
-
 # Set octave_config to None if no octave are present
 octave_config = None
 
-
 sampling_rate = int(1e9)  # or, int(2e9)
 
-#############
-# Save Path #
-#############
-
-# Path to save data
-save_dir = Path().absolute() / "Data"
-save_dir.mkdir(exist_ok=True)
-
-default_additional_files = {
-    "configuration_mw_fem.py": "configuration_mw_fem.py",
-    "optimal_weights.npz": "optimal_weights.npz",
-}
-
-
+#####################
+# OPX configuration #
+#####################
 #############################################
 #                  Qubits                   #
 #############################################
@@ -261,7 +262,7 @@ readout_amp_q1 = 0.1
 readout_amp_q2 = 0.1
 
 # TOF and depletion time
-time_of_flight = 24  # must be a multiple of 4
+time_of_flight = 28  # must be a multiple of 4
 depletion_time = 2 * u.us
 
 # Mixer parameters
@@ -483,8 +484,13 @@ config = {
         },
         "cr_cancel_c1t2": {
             "mixInputs": {
+<<<<<<< HEAD
                 "I": (con, fem, 7),
                 "Q": (con, fem, 8),
+=======
+                "I": (con, fem, 3),
+                "Q": (con, fem, 4),
+>>>>>>> main
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
@@ -497,8 +503,8 @@ config = {
         },
         "cr_cancel_c2t1": {
             "mixInputs": {
-                "I": (con, fem, 3),
-                "Q": (con, fem, 4),
+                "I": (con, fem, 1),
+                "Q": (con, fem, 2),
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },

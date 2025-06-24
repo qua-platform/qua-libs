@@ -20,7 +20,6 @@ from configuration import *
 ###################
 # The QUA program #
 ###################
-
 with program() as cw_output:
     with infinite_loop_():
         play("cw" * amp(0), "NV")

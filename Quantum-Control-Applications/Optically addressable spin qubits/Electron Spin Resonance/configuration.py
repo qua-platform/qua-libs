@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
@@ -5,9 +6,17 @@ from qualang_tools.units import unit
 # These packages are imported here so that we don't have to import them in all the other files
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
+import plotly.io as pio
 
+pio.renderers.default = "browser"
 
+#######################
+# AUXILIARY FUNCTIONS #
+#######################
+u = unit(coerce_to_integer=True)
 # Used to correct for IQ mixer imbalances
+
+
 def IQ_imbalance(g, phi):
     c = np.cos(phi)
     s = np.sin(phi)
@@ -15,15 +24,30 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-#############
-# VARIABLES #
-#############
-# API allowing the use of unit and data conversion
-u = unit()
+######################
+# Network parameters #
+######################
 # IP address of the Quantum Orchestration Platform
 qop_ip = "127.0.0.1"
 cluster_name = None
 qop_port = None
+
+#############
+# Save Path #
+#############
+# Path to save data
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
+
+#####################
+# OPX configuration #
+#####################
+# Set octave_config to None if no octave are present
 octave_config = None
 
 # Frequencies
@@ -61,27 +85,27 @@ saturation_len = 50 * u.us  # Needs to be several T1 so that the final state is 
 pi_len = 320  # in units of ns
 pi_amp = 0.3  # in units of volts
 pi_wf, pi_der_wf = drag_gaussian_pulse_waveforms(
-    pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+    pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, anharmonicity=0, detuning=0, subtracted=True
 )
 minus_pi_wf, minus_pi_der_wf = drag_gaussian_pulse_waveforms(
-    -pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+    -pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, anharmonicity=0, detuning=0, subtracted=True
 )
 
 # Pi_half pulse parameters
 pi_half_len = int(pi_len / 2)  # in units of ns
 pi_half_amp = pi_amp  # in units of volts
 pi_half_wf, pi_half_der_wf = drag_gaussian_pulse_waveforms(
-    pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+    pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, anharmonicity=0, delta=1, detuning=0, subtracted=True
 )
 minus_pi_half_wf, minus_pi_half_der_wf = drag_gaussian_pulse_waveforms(
-    -pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+    -pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, anharmonicity=0, delta=1, detuning=0, subtracted=True
 )
 
 # Subtracted Gaussian pulse parameters
 gauss_amp = 0.3  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_len = 20  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_wf, gauss_der_wf = drag_gaussian_pulse_waveforms(
-    gauss_amp, gauss_len, gauss_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+    gauss_amp, gauss_len, gauss_len / 5, alpha=0, delta=1, anharmonicity=0, detuning=0, subtracted=True
 )
 # Note: a subtracted Gaussian pulse has a more narrow spectral density than a regular gaussian
 # it becomes useful in short pulses to reduce leakage to higher energy states

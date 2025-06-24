@@ -23,20 +23,29 @@ from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000
 tau_min = 4  # in clock cycles
 tau_max = 10_000  # in clock cycles
 d_tau = 20  # in clock cycles
 t_delay = np.arange(tau_min, tau_max + 0.1, d_tau)  # Linear sweep
-t_delay = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
+# t_delay = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "t_delay": t_delay,
+    "config": config,
+}
 
-# QUA program
+###################
+# The QUA program #
+###################
 with program() as T1:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the wait time
@@ -83,9 +92,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, T1, simulation_config)
-    job.get_simulated_samples().con1.plot()
-    plt.show()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -158,3 +176,13 @@ else:
         plt.tight_layout()
     except (Exception,):
         pass
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"I1_data": I1})
+    save_data_dict.update({"Q1_data": Q1})
+    save_data_dict.update({"I2_data": I2})
+    save_data_dict.update({"Q2_data": Q2})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

@@ -25,11 +25,12 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from macros import readout_macro
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100
 
 # Scan the DRAG coefficient pre-factor
@@ -47,6 +48,17 @@ iters = np.arange(iter_min, iter_max + 0.1, d)
 # Check that the DRAG coefficient is not 0
 assert drag_coef != 0, "The DRAG coefficient 'drag_coef' must be different from 0 in the config."
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "amps": amps,
+    "iters": iters,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as drag:
     n = declare(int)  # QUA variable for the averaging loop
     a = declare(fixed)  # QUA variable for the DRAG coefficient pre-factor
@@ -100,8 +112,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, drag, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
 else:
     # Open the quantum machine
@@ -147,3 +169,12 @@ else:
         plt.tight_layout()
         plt.pause(0.1)
     print(f"Optimal drag_coef = {drag_coef * amps[np.argmin(np.sum(I, axis=1))]:.3f}")
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"I_data": I})
+    save_data_dict.update({"Q_data": Q})
+    save_data_dict.update({"state_data": state})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

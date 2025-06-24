@@ -26,10 +26,12 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros
+from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000  # The number of averages
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 100 * u.us  # In ns
@@ -37,13 +39,26 @@ saturation_amp = 0.005  # Pre-factor to the value defined in the config - restri
 # Adjust the pulse amplitude and frequency to the storage cavity
 off_saturation_amp = 1  # Pre-factor to the value defined in the config - restricted to [-2; 2)
 detuning = 20 * u.MHz  # Detuning frequency of the storage off pump pulse
-# Qubit detuning sweep
+
 center = 100 * u.MHz
 span = 2 * u.MHz
 df = 1 * u.kHz
-dfs = np.arange(-span, +span + 0.1, df)
+dfs = np.arange(-span, +span + 0.1, df)  # Qubit detuning sweep
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "readout_len": readout_len,
+    "saturation_amp": saturation_amp,
+    "center_frequency": center,
+    "dfs": dfs,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as qubit_AC_stark_shift:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the qubit frequency
@@ -100,9 +115,18 @@ simulate = True
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, qubit_AC_stark_shift, simulation_config)
-    job.get_simulated_samples().con1.plot()
-    plt.show()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -143,3 +167,13 @@ else:
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("Qubit intermediate frequency [MHz]")
         ax2.set_ylim(0, 1)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"I_data": I})
+    save_data_dict.update({"Q_data": Q})
+    save_data_dict.update({"state_data": state})
+    save_data_dict.update({"fig1_live": fig1})
+    save_data_dict.update({"fig2_live": fig2})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

@@ -27,12 +27,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 division_length = 10  # in clock cycles
 number_of_divisions = int(readout_len / (4 * division_length))
 print("Integration weights chunk-size length in clock cycles:", division_length)
@@ -40,6 +40,17 @@ print("The readout has been sliced in the following number of divisions", number
 
 n_avg = 1e4  # number of averages
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "division_length": division_length,
+    "number_of_divisions": number_of_divisions,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as ro_weights_opt:
     n = declare(int)  # QUA variable for the averaging loop
     ind = declare(int)  # QUA variable for the index used to save each element in the 'I' & 'Q' vectors
@@ -150,8 +161,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, ro_weights_opt, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -272,3 +293,25 @@ else:
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"Ig_avg_data": Ig_avg_q1})
+    save_data_dict.update({"Qg_avg_data": Qg_avg_q1})
+    save_data_dict.update({"Ie_avg_data": Ie_avg_q1})
+    save_data_dict.update({"Qe_avg_data": Qe_avg_q1})
+    save_data_dict.update({"Ig_var_data": Ig_var_q1})
+    save_data_dict.update({"Qg_var_data": Qg_var_q1})
+    save_data_dict.update({"Ie_var_data": Ie_var_q1})
+    save_data_dict.update({"Qe_var_data": Qe_var_q1})
+    save_data_dict.update({"Ig_avg_data": Ig_avg_q2})
+    save_data_dict.update({"Qg_avg_data": Qg_avg_q2})
+    save_data_dict.update({"Ie_avg_data": Ie_avg_q2})
+    save_data_dict.update({"Qe_avg_data": Qe_avg_q2})
+    save_data_dict.update({"Ig_var_data": Ig_var_q2})
+    save_data_dict.update({"Qg_var_data": Qg_var_q2})
+    save_data_dict.update({"Ie_var_data": Ie_var_q2})
+    save_data_dict.update({"Qe_var_data": Qe_var_q2})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

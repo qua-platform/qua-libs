@@ -9,9 +9,10 @@ from configuration import *
 import matplotlib.pyplot as plt
 from qm import generate_qua_script
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 level_init = [0.1, -0.1]
 level_manip = [0.2, -0.2]
 level_readout = [0.1, -0.1]
@@ -20,11 +21,14 @@ duration_manip = 800
 duration_readout = 500
 
 # Add the relevant voltage points describing the "slow" sequence (no qubit pulse)
-seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])
+seq = VoltageGateSequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
 seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, duration_readout)
 
+###################
+# The QUA program #
+###################
 with program() as hello_qua:
     t = declare(int, value=16)
     a = declare(fixed, value=0.2)
@@ -53,8 +57,16 @@ if simulate:
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, hello_qua, simulation_config)
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
     # Plot the simulated samples
-    job.get_simulated_samples().con1.plot()
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)

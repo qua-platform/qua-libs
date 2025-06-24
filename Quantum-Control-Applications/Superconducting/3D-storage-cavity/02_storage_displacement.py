@@ -39,20 +39,31 @@ import macros as macros
 import numpy as np
 import scipy.special as sp
 import scipy.optimize as spo
+from qualang_tools.results.data_handler import DataHandler
+
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+n_avg = 500  # The number of averages
+
+t_min = 16 // 4
+t_max = 200 // 4
+dt = 4 // 4
+durations = np.arange(t_min, t_max, dt)  # Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
+
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "durations": durations,
+    "config": config,
+}
 
 ###################
 # The QUA program #
 ###################
-n_avg = 500  # The number of averages
-
-
-# Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
-t_min = 16 // 4
-t_max = 200 // 4
-dt = 4 // 4
-durations = np.arange(t_min, t_max, dt)
-
-
 with program() as storage_displacement:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the qubit pulse duration
@@ -105,10 +116,18 @@ simulate = True
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, storage_displacement, simulation_config)
-    job.get_simulated_samples().con1.plot()
-    plt.show()
-
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -178,3 +197,13 @@ else:
     ax4.set_ylabel(r"$P_e$")
     ax4.set_xlabel(r"$|\alpha|$")
     plt.show()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"I_data": I})
+    save_data_dict.update({"Q_data": Q})
+    save_data_dict.update({"state_data": state})
+    save_data_dict.update({"fig1_live": fig1})
+    save_data_dict.update({"fig2_live": fig2})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

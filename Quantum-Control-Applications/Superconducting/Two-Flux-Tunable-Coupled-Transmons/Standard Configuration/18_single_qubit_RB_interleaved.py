@@ -32,11 +32,12 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from macros import multiplexed_readout
+from qualang_tools.results.data_handler import DataHandler
 
-
-#############################################
-# Program dependent variables and functions #
-#############################################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 qubit = 1
 
 if qubit == 1:
@@ -61,6 +62,12 @@ inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 #  0: identity |  1: x180 |  2: y180
 # 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
 interleaved_gate_index = 2
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 
 
 ###################################
@@ -190,6 +197,12 @@ def play_sequence(sequence_list, depth, qubit):
 ###################
 # The QUA program #
 ###################
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
+
 with program() as rb:
     depth = declare(int)  # QUA variable for the varying depth
     depth_target = declare(int)  # QUA variable for the the current depth (changes in steps of delta_clifford)
@@ -286,9 +299,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, rb, simulation_config)
-    job.get_simulated_samples().con1.plot()
-
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -375,7 +397,16 @@ else:
     plt.ylabel("Sequence Fidelity")
     plt.title(f"Single qubit interleaved RB {get_interleaved_gate(interleaved_gate_index)}")
 
-    # np.savez("rb_values", value)
-
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    if state_discrimination:
+        save_data_dict.update({"state_avg_data": state})
+    else:
+        save_data_dict.update({"I_data": I})
+        save_data_dict.update({"Q_data": Q})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

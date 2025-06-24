@@ -2,15 +2,22 @@
 QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
 """
 
+from pathlib import Path
 import numpy as np
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
+import plotly.io as pio
+
+pio.renderers.default = "browser"
 
 
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
+u = unit(coerce_to_integer=True)
+
+
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
     """
@@ -27,19 +34,34 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-#############
-# VARIABLES #
-#############
-con = "con1"
-fem = 1  # This should be the index of the LF-FEM module, e.g., 1
-
-sampling_rate = int(1e9)  # or, int(2e9)
-
-u = unit()
+######################
+# Network parameters #
+######################
 qop_ip = "127.0.0.1"
 cluster_name = "my_cluster"
 qop_port = None
+
+#############
+# Save Path #
+#############
+# Path to save data
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
+
+#####################
+# OPX configuration #
+#####################
+con = "con1"
+fem = 1  # This should be the index of the LF-FEM module, e.g., 1
+# Set octave_config to None if no octave are present
 octave_config = None
+
+sampling_rate = int(1e9)  # or, int(2e9)
 
 # Frequencies
 Yb_IF_freq = 40e6  # in units of Hz

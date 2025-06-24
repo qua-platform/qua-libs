@@ -3,11 +3,14 @@ Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
 """
 
 from pathlib import Path
+
 import numpy as np
-from set_octave import OctaveUnit, octave_declaration
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
+from set_octave import OctaveUnit, octave_declaration
 
+pio.renderers.default = "browser"
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -21,13 +24,21 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+#############
+# Save Path #
+#############
 # Path to save data
-save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 ############################
 # Set octave configuration #
 ############################
-
 # The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
 # the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
 octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")
@@ -153,7 +164,7 @@ resonator_IF = 60 * u.MHz
 readout_len = 5000
 readout_amp = 0.2
 
-time_of_flight = 24
+time_of_flight = 28
 depletion_time = 2 * u.us
 
 opt_weights = False

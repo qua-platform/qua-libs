@@ -21,12 +21,12 @@ from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
-
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # The number of averages
 # The intermediate frequency sweep parameters
 f_min = 1 * u.MHz
@@ -43,6 +43,18 @@ df_lo = f_max - f_min
 LOs = np.arange(f_min_lo, f_max_lo + 0.1, df_lo)
 frequency = np.array(np.concatenate([IFs + LOs[i] for i in range(len(LOs))]))
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "IF_frequencies": IFs,
+    "LO_frequencies": LOs,
+    "frequencies": frequency,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
     i = declare(int)  # QUA variable for the LO frequency sweep
@@ -173,3 +185,11 @@ plt.xlabel("qubit frequency [MHz]")
 plt.ylabel("Phase [rad]")
 plt.pause(0.1)
 plt.tight_layout()
+# Save results
+script_name = Path(__file__).name
+data_handler = DataHandler(root_data_folder=save_dir)
+save_data_dict.update({"I_data": I})
+save_data_dict.update({"Q_data": Q})
+save_data_dict.update({"fig_live": fig})
+data_handler.additional_files = {script_name: script_name, **default_additional_files}
+data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

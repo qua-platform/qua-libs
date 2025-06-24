@@ -10,19 +10,22 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
-# Total duration of the measurement
-total_integration_time = int(100 * u.ms)  # 100ms
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+total_integration_time = int(100 * u.ms)  # Total duration of the measurement
 # Duration of a single chunk. Needed because the OPX cannot measure for more than ~1ms
 single_integration_time_ns = int(500 * u.us)  # 500us
 single_integration_time_cycles = single_integration_time_ns // 4
 # Number of chunks to get the total measurement time
 n_count = int(total_integration_time / single_integration_time_ns)
 
+###################
+# The QUA program #
+###################
 with program() as counter:
     times = declare(int, size=1000)  # QUA vector for storing the time-tags
     counts = declare(int)  # variable for number of counts of a single chunk
@@ -60,9 +63,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job_sim = qmm.simulate(config, counter, simulation_config)
     # Simulate blocks python until the simulation is done
-    job_sim.get_simulated_samples().con1.plot()
+    job = qmm.simulate(config, counter, simulation_config)
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     qm = qmm.open_qm(config)
 

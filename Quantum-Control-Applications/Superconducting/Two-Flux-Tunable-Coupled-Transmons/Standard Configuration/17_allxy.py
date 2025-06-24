@@ -24,14 +24,25 @@ from qm import SimulationConfig
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
+from qualang_tools.results.data_handler import DataHandler
 
-##############################
-# Program-specific variables #
-##############################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 qb = "q1_xy"  # The qubit under study
 res = "rr1"  # The resonator to measure the qubit defined above
 n_avg = 1000  # The number of averages
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
+
+###################################
+# Helper functions and QUA macros #
+###################################
 # All XY sequences. The sequence names must match corresponding operation in the config
 sequence = [
     ("I", "I"),
@@ -144,14 +155,23 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Run or Simulate Program #
 ###########################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, ALL_XY, simulation_config)
-    job.get_simulated_samples().con1.plot()
-
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -176,14 +196,14 @@ else:
         plt.subplot(211)
         plt.cla()
         plt.plot(I, "bx", label="Experimental data")
-        plt.plot([np.max(I)] * 5 + [(np.mean(I))] * 12 + [np.min(I)] * 4, "r-", label="Expected value")
+        plt.plot([np.max(I)] * 5 + [np.mean(I)] * 12 + [np.min(I)] * 4, "r-", label="Expected value")
         plt.ylabel("I quadrature [a.u.]")
         plt.xticks(ticks=range(len(sequence)), labels=["" for _ in sequence], rotation=45)
         plt.legend()
         plt.subplot(212)
         plt.cla()
         plt.plot(Q, "bx", label="Experimental data")
-        plt.plot([np.max(Q)] * 5 + [(np.mean(Q))] * 12 + [np.min(Q)] * 4, "r-", label="Expected value")
+        plt.plot([np.max(Q)] * 5 + [np.mean(Q)] * 12 + [np.min(Q)] * 4, "r-", label="Expected value")
         plt.ylabel("Q quadrature [a.u.]")
         plt.xticks(ticks=range(len(sequence)), labels=[str(el) for el in sequence], rotation=45)
         plt.legend()
@@ -192,3 +212,11 @@ else:
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"I_data": I})
+    save_data_dict.update({"Q_data": Q})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

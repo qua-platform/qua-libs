@@ -3,9 +3,18 @@ QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
 """
 
 from pathlib import Path
+
 import numpy as np
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
+
+pio.renderers.default = "browser"
+
+#######################
+# AUXILIARY FUNCTIONS #
+#######################
+u = unit(coerce_to_integer=True)
 
 
 # IQ imbalance matrix
@@ -30,23 +39,29 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+#############
+# Save Path #
+#############
 # Path to save data
-save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 #####################
 # OPX configuration #
 #####################
 con = "con1"
 fem = 1  # Should be the LF-FEM index, e.g., 1
-
 # Set octave_config to None if no octave are present
 octave_config = None
 
 #############################################
 #                  Qubits                   #
 #############################################
-u = unit(coerce_to_integer=True)
-
 sampling_rate = int(1e9)  # or, int(2e9)
 
 qubit_LO_q1 = 3.95 * u.GHz
@@ -273,7 +288,7 @@ readout_amp_q1 = 0.125
 readout_amp_q2 = 0.125
 
 # TOF and depletion time
-time_of_flight = 24  # must be a multiple of 4
+time_of_flight = 28  # must be a multiple of 4
 depletion_time = 2 * u.us
 
 opt_weights = False

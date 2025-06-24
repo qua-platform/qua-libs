@@ -4,10 +4,13 @@ Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
 """
 
 from pathlib import Path
+
 import numpy as np
+import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
+pio.renderers.default = "browser"
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -33,25 +36,26 @@ def IQ_imbalance(g, phi):
 ######################
 # Network parameters #
 ######################
-qop_ip = "172.16.33.101"  # Write the QM router IP address
-cluster_name = "Cluster_83"  # Write your cluster_name if version >= QOP220
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 octave_config = None
-
 
 #############
 # Save Path #
 #############
-
 # Path to save data
-save_dir = Path().absolute() / "Data"
+save_dir = Path(__file__).parent.resolve() / "Data"
 save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
-    "configuration_mw_fem.py": "configuration_mw_fem.py",
+    Path(__file__).name: Path(__file__).name,
     "optimal_weights.npz": "optimal_weights.npz",
 }
 
+#####################
+# OPX configuration #
+#####################
 
 #############################################
 #                  Qubits                   #
@@ -251,7 +255,7 @@ readout_amp_q1 = 0.1
 readout_amp_q2 = 0.1
 
 # TOF and depletion time
-time_of_flight = 24  # must be a multiple of 4
+time_of_flight = 28  # must be a multiple of 4
 depletion_time = 2 * u.us
 
 # Mixer parameters
@@ -419,8 +423,13 @@ config = {
         },
         "cr_cancel_c1t2": {
             "mixInputs": {
+<<<<<<< HEAD
                 "I": ("con1", 7),
                 "Q": ("con1", 8),
+=======
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
+>>>>>>> main
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
@@ -433,8 +442,8 @@ config = {
         },
         "cr_cancel_c2t1": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": ("con1", 1),
+                "Q": ("con1", 2),
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },

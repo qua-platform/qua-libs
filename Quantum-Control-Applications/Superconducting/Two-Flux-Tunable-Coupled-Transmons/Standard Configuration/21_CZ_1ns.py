@@ -35,6 +35,7 @@ from qualang_tools.results import progress_counter
 import numpy as np
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.bakery import baking
+from qualang_tools.results.data_handler import DataHandler
 
 
 ##########
@@ -56,9 +57,10 @@ def baked_waveform(waveform, pulse_duration, flux_qubit):
     return pulse_segments
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 qubit_in_e = 2  # Qubit number to put in |e> at the beginning of the sequence
 qubit_to_flux_tune = 1  # Qubit number to flux-tune
 
@@ -76,6 +78,18 @@ flux_bias = config["controllers"]["con1"]["analog_outputs"][
 ]["offset"]
 xplot = np.arange(0, const_flux_len + 0.1, 1)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "amps": amps,
+    "flux_waveform": flux_waveform,
+    "flux_bias": flux_bias,
+    "config": config,
+}
+
+###################
+# The QUA program #
+###################
 with program() as cz:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     a = declare(fixed)  # QUA variable for the flux pulse amplitude pre-factor.
@@ -133,8 +147,18 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, cz, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -181,4 +205,13 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
-    # np.savez(save_dir/'cz', I1=I1, Q1=Q1, I2=I2, Q2=Q2, ts=ts, amps=amps)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"I1_data": I1})
+    save_data_dict.update({"Q1_data": Q1})
+    save_data_dict.update({"I2_data": I2})
+    save_data_dict.update({"Q2_data": Q2})
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
