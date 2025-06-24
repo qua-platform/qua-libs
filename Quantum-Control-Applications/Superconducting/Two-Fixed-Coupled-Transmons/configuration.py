@@ -423,13 +423,8 @@ config = {
         },
         "cr_cancel_c1t2": {
             "mixInputs": {
-<<<<<<< HEAD
                 "I": ("con1", 7),
                 "Q": ("con1", 8),
-=======
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
->>>>>>> main
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
