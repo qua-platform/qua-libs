@@ -6,6 +6,10 @@ import xarray as xr
 from calibration_utils.resonator_spectroscopy import (Parameters, fit_raw_data,
                                                       log_fitted_results,
                                                       process_raw_dataset)
+from calibration_utils.resonator_spectroscopy.plot_configs import (
+    amplitude_vs_freq_config, phase_vs_freq_config)
+from calibration_utils.resonator_spectroscopy.preparators import \
+    prepare_resonator_spectroscopy_data
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -13,6 +17,8 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
+from qualibration_libs.plotting.standard_plotter import (
+    create_matplotlib_figure, create_plotly_figure)
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
@@ -172,66 +178,60 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-    # --- Add new fields for standardized plotting ---
-    u = unit()
-    # Add to raw dataset
-    ds_raw = node.results["ds_raw"]
-    ds_raw["full_freq_ghz"] = ds_raw.full_freq / 1e9
-    ds_raw["detuning_mhz"] = ds_raw.detuning / 1e6
-    ds_raw["iq_abs_mv"] = ds_raw.IQ_abs * 1e3
-
-    # Add to fit dataset
-    ds_fit = node.results["ds_fit"]
-    if "fitted_curve" in ds_fit:
-        ds_fit["fitted_curve_mv"] = ds_fit.fitted_curve * 1e3
-        # The fit dataset needs the frequency coordinates for plotting
-        ds_fit["full_freq_ghz"] = ds_raw.full_freq_ghz
-
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
-    try:
-        node.outcomes = {
-            qubit_name: ("successful" if fit_result["outcome"] == "successful" else "failed")
-            for qubit_name, fit_result in node.results["fit_results"].items()
-        }
-    except:
-        node.outcomes = {
-            qubit_name: ("successful" if fit_result["success"] else "failed")
-            for qubit_name, fit_result in node.results["fit_results"].items()
-        }
-
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["outcome"] == "successful" else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    from calibration_utils.resonator_spectroscopy.plot_configs import (
-        amplitude_vs_freq_config, phase_vs_freq_config)
-    from qualibration_libs.plotting.standard_plotter import \
-        create_plotly_figure
 
-    # Generate figures using the standardized plotter
-    plotly_phase = create_plotly_figure(
+    # 1. Prepare datasets by adding fields needed for plotting
+    ds_raw, ds_fit = prepare_resonator_spectroscopy_data(
         ds_raw=node.results["ds_raw"],
+        ds_fit=node.results.get("ds_fit")
+    )
+
+    # 2. Generate figures using the standardized plotter
+    plotly_phase = create_plotly_figure(
+        ds_raw=ds_raw,
         qubits=node.namespace["qubits"],
         plot_configs=[phase_vs_freq_config],
+        ds_fit=ds_fit,
     )
     plotly_amplitude = create_plotly_figure(
-        ds_raw=node.results["ds_raw"],
+        ds_raw=ds_raw,
         qubits=node.namespace["qubits"],
         plot_configs=[amplitude_vs_freq_config],
-        ds_fit=node.results["ds_fit"],
+        ds_fit=ds_fit,
     )
     plotly_amplitude.show()
     plotly_phase.show()
 
-    plotly_phase.show()
-    plotly_amplitude.show()
+    # 3. Generate static matplotlib figures
+    static_phase_fig = create_matplotlib_figure(
+        ds_raw=ds_raw,
+        qubits=node.namespace["qubits"],
+        plot_configs=[phase_vs_freq_config],
+        ds_fit=ds_fit,
+    )
+    static_amplitude_fig = create_matplotlib_figure(
+        ds_raw=ds_raw,
+        qubits=node.namespace["qubits"],
+        plot_configs=[amplitude_vs_freq_config],
+        ds_fit=ds_fit,
+    )
 
-    # Store interactive figure links
+    # Store interactive and static figures
     node.results["figures"] = {
         "phase_plotly": plotly_phase,
         "amplitude_plotly": plotly_amplitude,
+        "phase": static_phase_fig,
+        "amplitude": static_amplitude_fig,
     }
 
 
