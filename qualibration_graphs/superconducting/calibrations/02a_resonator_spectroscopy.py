@@ -1,29 +1,28 @@
 # %% {Imports}
-import matplotlib.pyplot as plt
-import numpy as np
-import xarray as xr
 from dataclasses import asdict
 
+import numpy as np
+import xarray as xr
+from calibration_utils.resonator_spectroscopy import (Parameters, fit_raw_data,
+                                                      log_fitted_results,
+                                                      process_raw_dataset)
+from calibration_utils.resonator_spectroscopy.plot_configs import (
+    amplitude_vs_freq_config, phase_vs_freq_config)
+from calibration_utils.resonator_spectroscopy.preparators import \
+    prepare_resonator_spectroscopy_data
 from qm.qua import *
-
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
+from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.parameters import get_qubits
+from qualibration_libs.plotting.standard_plotter import (
+    create_matplotlib_figure, create_plotly_figure)
+from qualibration_libs.runtime import simulate_and_plot
+from quam_config import Quam
 
 from qualibrate import QualibrationNode
-from quam_config import Quam
-from calibration_utils.resonator_spectroscopy import (
-    Parameters,
-    process_raw_dataset,
-    fit_raw_data,
-    log_fitted_results,
-    plot_raw_amplitude_with_fit,
-    plot_raw_phase,
-)
-from qualibration_libs.parameters import get_qubits
-from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher
 
 # %% {Initialisation}
 description = """
@@ -182,24 +181,57 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
-        qubit_name: ("successful" if fit_result["success"] else "failed")
+        qubit_name: ("successful" if fit_result["outcome"] == "successful" else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()
     }
-
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["qubits"])
-    fig_fit_amplitude = plot_raw_amplitude_with_fit(
-        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+
+    # 1. Prepare datasets by adding fields needed for plotting
+    ds_raw, ds_fit = prepare_resonator_spectroscopy_data(
+        ds_raw=node.results["ds_raw"],
+        ds_fit=node.results.get("ds_fit")
     )
-    plt.show()
-    # Store the generated figures
+
+    # 2. Generate figures using the standardized plotter
+    plotly_phase = create_plotly_figure(
+        ds_raw=ds_raw,
+        qubits=node.namespace["qubits"],
+        plot_configs=[phase_vs_freq_config],
+        ds_fit=ds_fit,
+    )
+    plotly_amplitude = create_plotly_figure(
+        ds_raw=ds_raw,
+        qubits=node.namespace["qubits"],
+        plot_configs=[amplitude_vs_freq_config],
+        ds_fit=ds_fit,
+    )
+    plotly_amplitude.show()
+    plotly_phase.show()
+
+    # 3. Generate static matplotlib figures
+    static_phase_fig = create_matplotlib_figure(
+        ds_raw=ds_raw,
+        qubits=node.namespace["qubits"],
+        plot_configs=[phase_vs_freq_config],
+        ds_fit=ds_fit,
+    )
+    static_amplitude_fig = create_matplotlib_figure(
+        ds_raw=ds_raw,
+        qubits=node.namespace["qubits"],
+        plot_configs=[amplitude_vs_freq_config],
+        ds_fit=ds_fit,
+    )
+
+    # Store interactive and static figures
     node.results["figures"] = {
-        "phase": fig_raw_phase,
-        "amplitude": fig_fit_amplitude,
+        "phase_plotly": plotly_phase,
+        "amplitude_plotly": plotly_amplitude,
+        "phase": static_phase_fig,
+        "amplitude": static_amplitude_fig,
     }
 
 
