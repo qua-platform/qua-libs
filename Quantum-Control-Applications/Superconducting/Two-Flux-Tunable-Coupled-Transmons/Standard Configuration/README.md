@@ -1,7 +1,5 @@
 # Two flux tunable transmons with the standard configuration
 
-<img align="right" src="Two Flux Tunable Transmon Setup.PNG" alt="drawing" width="400"/>
-
 ## Experimental setup and context
 
 These files showcase various experiments that can be done on Two flux tunable transmons with individual qubit drive lines 

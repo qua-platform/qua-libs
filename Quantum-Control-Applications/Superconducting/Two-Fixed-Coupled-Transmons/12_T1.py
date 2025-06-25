@@ -57,7 +57,6 @@ with program() as PROGRAM:
         save(n, n_st)
 
         with for_each_(t, t_delays.tolist()):
-
             play("x180", "q1_xy")
             play("x180", "q2_xy")
 

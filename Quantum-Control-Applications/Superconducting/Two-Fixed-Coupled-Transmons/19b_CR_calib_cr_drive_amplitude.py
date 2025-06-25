@@ -1,6 +1,10 @@
 """
-                                 CR_calib_cr_drive_amplitude
+        CR_calib_cr_drive_amplitude
 
+<<<<<<< HEAD:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/18b_CR_calib_cr_drive_amplitude.py
+This script is to calibrate the amplitude of CR drive, corresponding to Fig. 2(b) of the referenced paper.
+CR drive (cancellation) pulse is applied to the control(target) qubit at the target qubit frequency.
+=======
 The CR_calib scripts are designed for calibrating cross-resonance (CR) gates involving a system
 with a control qubit and a target qubit. These scripts help estimate the parameters of a Hamiltonian,
 which is represented as:
@@ -17,12 +21,17 @@ For the calibration sequences, we employ echoed CR drive.
             Readout(fR): _____________________ _________|  RR  |__
 
 This script is to calibrate the amplitude of CR drive.
+>>>>>>> main:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/19b_CR_calib_cr_drive_amplitude.py
 Each sequence, which varies in the duration and amplitude of the CR drive, ends with
 state tomography of the target state (across X, Y, and Z bases).
 This process is repeated with the control state in both |0> and |1> states.
 We fit the two sets of CR duration versus tomography data to a theoretical model,
 yielding two sets of three parameters: delta, omega_x, and omega_y.
 Using these parameters, we estimate the interaction coefficients of the Hamiltonian.
+(a_X, a_Y, a_Z, b_X, b_Y, b_Z described in the 18a_CR_calib_unit_hamiltonian_tomography.py)
+
+For the calibration sequences, one needs to choose one of the following CR drive configurations:
+cr_type = "direct," "direct + echo," "direct + cancel," or "direct + cancel + echo."
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
@@ -30,9 +39,10 @@ Prerequisites:
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
 
 Next steps before going to the next node:
-    - Pick an amplitude for cr_c1t2_square_positive_amp.
+    - Pick an amplitude for cr_drive_square_amp_c1t2.
+      Set cr_drive_square_amp_c1t2 in the configuration file. 
       In the end, we want to make the CR gate as short short as possible with highest fidelity.
-      Thus, we want to pick a large enough amplitude for the CR drive however without causing too much of AC Stark shift.
+      Thus, we want to pick a large enough amplitude for the CR drive however without causing too much of leakage and AC Stark shift.
 
 Reference: Sarah Sheldon, Easwar Magesan, Jerry M. Chow, and Jay M. Gambetta Phys. Rev. A 93, 060302(R) (2016)
 """

@@ -439,7 +439,7 @@ config = {
         },
         "cr_cancel_c1t2": {
             "MWInput": {
-                "port": ("con1", 1, 2),
+                "port": ("con1", 1, 3),
                 "upconverter": 2,
             },
             "intermediate_frequency": cr_cancel_IF_c1t2,  # in Hz
@@ -451,7 +451,7 @@ config = {
         },
         "cr_cancel_c2t1": {
             "MWInput": {
-                "port": ("con1", 1, 3),
+                "port": ("con1", 1, 2),
                 "upconverter": 2,
             },
             "intermediate_frequency": cr_cancel_IF_c2t1,  # in Hz
