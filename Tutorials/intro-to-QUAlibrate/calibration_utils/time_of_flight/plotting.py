@@ -31,8 +31,8 @@ def plot_single_run_with_fit(num_resonators, data: dict):
 
     for i in range(num_resonators):
         q = i + 1
-        adcI = data['raw_data'][f"adc_single_runI{q}"]
-        adcQ = data['raw_data'][f"adc_single_runQ{q}"]
+        adcI = data["raw_data"][f"adc_single_runI{q}"]
+        adcQ = data["raw_data"][f"adc_single_runQ{q}"]
         adcI_mean = data["mean_values"][f"adcI{q}"]
         adcQ_mean = data["mean_values"][f"adcQ{q}"]
         delay = data[f"delay{q}"]
@@ -82,8 +82,8 @@ def plot_averaged_run_with_fit(num_resonators, data: dict):
 
     for i in range(num_resonators):
         q = i + 1
-        adcI = data['raw_data'][f"adcI{q}"]
-        adcQ = data['raw_data'][f"adcQ{q}"]
+        adcI = data["raw_data"][f"adcI{q}"]
+        adcQ = data["raw_data"][f"adcQ{q}"]
         adcI_mean = data["mean_values"][f"adcI{q}"]
         adcQ_mean = data["mean_values"][f"adcQ{q}"]
         delay = data[f"delay{q}"]
