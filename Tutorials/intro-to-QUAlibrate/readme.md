@@ -50,7 +50,7 @@ To install QUAlibrate and prepare your environment, follow the official instruct
 
 ## 3. 📁 Project Structure
 
-To make the code more modular, reusable, and easier to maintain, we suggest organizing the tutorial files into the following structure:
+To make the code more modular, reusable, and easier to maintain, we suggest organizing your project according to the following structure:
 
 ```
 intro-to-QUAlibrate/
