@@ -102,7 +102,7 @@ This structure is recommended for clarity and scalability, feel free to adapt it
 
 QUAlibrate makes it easy to transform a QUA-based calibration protocol into a structured `QualibrationNode`. A typical node includes:
 
-- A `Parameters` class to expose user-configurable inputs
+- A `Parameters` class that defines user-configurable inputs, which are exposed in the QUAlibrate Web Interface—allowing parameters to be modified directly from the interface.
 
 - A `QUA program` that uses those parameters
 

@@ -80,7 +80,6 @@ def create_qua_program(node: QualibrationNode[Parameters, None]):
                 wait(node.parameters.depletion_time * u.ns, resonator)
                 if not node.parameters.multiplexed:
                     align()
-            align()
 
         with stream_processing():
             n_st.save("n")
@@ -124,9 +123,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, None]):
     values = data_fetcher.fetch_all()
     # Display the execution report to expose possible runtime errors
     node.log(job.execution_report())
-    # # Register the raw dataset
+    # Register the raw dataset
+    node.results["raw_data"] = {}
     for key, value in zip(keys, values):
-        node.results[key] = value
+        node.results["raw_data"][key] = value
 
 
 # %% {Data_loading_and_dataset_creation}

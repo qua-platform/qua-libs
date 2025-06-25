@@ -1,6 +1,6 @@
 # 🔧 Convert a QUA Program into a QualibrationNode
 
-This guide walks you through converting the [`03_time_of_flight.py`](https://github.com/qua-platform/qua-libs/blob/main/Quantum-Control-Applications/Superconducting/Single-Fixed-Transmon/03_time_of_flight.py) QUA protocol into a modular `QualibrationNode` using QUAlibrate. The resulting node can be run via Python or through the QUAlibrate Web Interface.
+This guide walks you through converting the [`time_of_flight.py`](https://github.com/qua-platform/qua-libs/blob/main/Quantum-Control-Applications/Superconducting/Single-Fixed-Transmon/03_time_of_flight_mw_fem.py) QUA protocol into a `QualibrationNode` using QUAlibrate. The [resulting node](./time_of_flight.py) can be run via Python or through the QUAlibrate Web Interface.
 
 ---
 
@@ -66,15 +66,15 @@ Add a detailed description to explain the calibration's purpose. Then create the
 
 ```python
 node = QualibrationNode[Parameters, None](
-    name="time_of_flight",
-    description=description,
-    parameters=Parameters()
+    name="time_of_flight", 
+    description=description, # Describe what the node is doing, which is also reflected in the QUAlibrate GUI 
+    parameters=Parameters() # Node parameters defined under calibration_utils/node_name/parameters
 )
 ```
 
 ### 3️⃣ Move Constants to custom_param()
 
-Instead of hardcoding parameters, add a custom_param() action:
+Since hardcoded parameters are only effective when executing the node through a Python IDE (such as during debugging) and are bypassed in the QUAlibrate Web Interface, you should define them in a dedicated `custom_param()` action:
 
 ```python
 @node.run_action(skip_if=node.modes.external)
@@ -85,6 +85,16 @@ def custom_param(node):
     node.parameters.num_shots = 10
     node.parameters.depletion_time = 10 * u.us
 ```
+> 💡 **Note**  
+> The `@node.run_action` decorator is a feature of QUAlibrate that simplifies how calibration logic is organized and executed.  
+> 
+> - The `@` symbol is Python syntax for a *decorator*, which modifies or wraps the function immediately below it. In this case, it registers that function as part of the node's workflow.
+> - When the script runs, the decorated function is **automatically executed**, unless its `skip_if` condition evaluates to `True`.
+> - This enables a **flat and modular structure** for your calibration code—each logical step (e.g., parameter definition, program creation, execution, analysis) lives in its own clearly defined function.  
+> - You no longer need nested `if/else` statements scattered throughout your code; conditional behavior is handled cleanly via the `skip_if` argument.
+> - For example, in `custom_param()`, the action is skipped when `node.modes.external` is `True`, meaning that the node is being run from the Web Interface and parameters should be taken from the GUI instead of being hardcoded.
+>
+By organizing logic into clearly defined actions, this model enhances readability, facilitates debugging, and makes nodes more adaptable to various use cases.
 
 ### 4️⃣ Refactor the QUA Program
 Extract your measurement sequence into a run action called `create_qua_program()`, and replace all constants with values from `node.parameters`.
@@ -93,7 +103,6 @@ Extract your measurement sequence into a run action called `create_qua_program()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node):
     resonators = node.parameters.resonators
-    node.namespace["sweep_axes"] = {"resonator": resonators}
     with program() as node.namespace["qua_program"]:
         ...
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
@@ -121,7 +130,7 @@ def simulate_qua_program(node):
     }
 
 ```
-> 📥 This step connects to the OPX, simulates the program, shows the simulated output and stores results in node.results.
+> 📥 This step connects to the OPX, simulates the program, shows the simulated output and stores the outputs of the simulation (figure, report, samples) in the `node.results` dictionary under the key "simulation".
 
 
 ### 6️⃣ Execute the Program
@@ -136,12 +145,13 @@ def execute_qua_program(node):
     job = qm.execute(node.namespace["qua_program"])
     node.namespace["job"] = job
 
-    keys = [...]
+    keys = [...] # List of variable names to retrieve from the QUA program
     data_fetcher = fetching_tool(job, data_list=keys, mode="wait_for_all")
     values = data_fetcher.fetch_all()
 
+    node.results["raw_data"] = {}
     for key, value in zip(keys, values):
-        node.results[key] = value
+        node.results["raw_data"][key] = value
 ```
 > 📥 This step connects to the OPX, runs the program, fetches the data, and stores results in node.results.
 
@@ -175,8 +185,12 @@ As with the analysis step, you can optionally move your plotting functions into 
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node):
     ...
+    node.results["figures"] = {
+        "single_run": fig_single_run_fit,
+        "averaged_run": fig_averaged_run_fit,
+    }
 ```
-> 📊 These figures will show up in Python or in the QUAlibrate Web UI automatically.
+> 📊 These figures will show up in Python or in the QUAlibrate Web Interface automatically.
 
 
 ### 🔟 Save Results
@@ -205,12 +219,13 @@ For a detailed breakdown of the internal structure of a typical calibration node
 
 ## 4. 🚀 Extending the Calibration Library
 
-You can easily extend this library by adding your own custom calibration nodes. To ensure compatibility and maintainability, new nodes should follow the same standardized structure and conventions outlined in the "Resonator Spectroscopy Node Explained" document. This includes:
+You can easily extend this library by adding your own custom calibration nodes. To ensure compatibility and maintainability, new nodes should follow the same standardized structure and conventions outlined in the [Node Anatomy](./node_anatomy.ipynb) document. This includes:
 
-- Using the `# %%` separators for code cells.
-- Defining parameters in a separate `Parameters` class (usually imported).
+- Using the `# %%` separators for code cells. This  enables interactive execution in supported IDEs like Jupyter, VS Code, or the professional edition of PyCharm. While helpful during development, is it optional and not required for functionality.
+- Defining parameters in a separate `Parameters` class. This class is usually imported, for example:
+`from calibration_utils.time_of_flight import Parameters`.
 - Structuring the workflow using functions decorated with `@node.run_action`.  
-  It is recommended to implement the same actions as those defined in the other calibration nodes
+  It is recommended to implement the same actions as those defined in [time_of_flight.py](./time_of_flight.py).
 - Using `node.results`, for storing outputs.
 - Calling `node.save()` at the end.
 
