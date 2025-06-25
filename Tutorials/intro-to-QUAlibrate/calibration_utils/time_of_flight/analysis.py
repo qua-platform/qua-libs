@@ -64,7 +64,9 @@ def fit_raw_data(fetched_data: dict, node: QualibrationNode):
 
     # Filter the data to get the pulse arrival time
     for i in range(len(node.parameters.resonators)):
-        signal = savgol_filter(np.abs(fetched_data["raw_data"][f"adcI{i + 1}"] + 1j * fetched_data["raw_data"][f"adcQ{i + 1}"]), 11, 3)
+        signal = savgol_filter(
+            np.abs(fetched_data["raw_data"][f"adcI{i + 1}"] + 1j * fetched_data["raw_data"][f"adcQ{i + 1}"]), 11, 3
+        )
         # Detect the arrival of the readout signal
         th = (np.mean(signal[:100]) + np.mean(signal[:-100])) / 2
         delay = np.where(signal > th)[0][0]
