@@ -45,10 +45,11 @@ class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
     use_state_discrimination: bool = True
     use_strict_timing: bool = False
-    num_random_sequences: int = 2000  # Number of random sequences
+    num_random_sequences: int = 500  # Number of random sequences
     num_averages: int = 1
-    max_circuit_depth: int = 1000  # Maximum circuit depth
+    max_circuit_depth: int = 1024  # Maximum circuit depth
     delta_clifford: int = 20
+    log_scale: bool = True  # If True, use log scale depths: 1,2,4,8,16,32... up to max_circuit_depth
     seed: int = 345324
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
@@ -56,7 +57,7 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = False
+    multiplexed: bool = True # False unstalbe. do not use. 
 
 node = QualibrationNode(name="10a_Single_Qubit_Randomized_Benchmarking", parameters=Parameters())
 node_id = get_node_id()
@@ -91,8 +92,23 @@ if node.parameters.delta_clifford < 1:
 delta_clifford = node.parameters.delta_clifford
 flux_point = node.parameters.flux_point_joint_or_independent
 reset_type = node.parameters.reset_type_thermal_or_active
-assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
-num_depths = max_circuit_depth // delta_clifford + 1
+
+# Generate depth list based on log_scale parameter
+if node.parameters.log_scale:
+    # Log scale: 1, 2, 4, 8, 16, 32, ... up to max_circuit_depth
+    depths = [1]  # Start with depth 1
+    current_depth = 2
+    while current_depth <= max_circuit_depth:
+        depths.append(current_depth)
+        current_depth *= 2
+    depths = np.array(depths)
+else:
+    # Linear scale using delta_clifford
+    assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+    depths = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
+    depths[0] = 1  # Ensure we start with depth 1
+
+num_depths = len(depths)
 seed = node.parameters.seed  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
 state_discrimination = node.parameters.use_state_discrimination
@@ -201,11 +217,10 @@ def play_sequence(sequence_list, depth, qubit: Transmon):
                 qubit.xy.play("-x90")
 
 
+
 # %% {QUA_program}
 with program() as randomized_benchmarking_individual:
     depth = declare(int)  # QUA variable for the varying depth
-    # QUA variable for the current depth (changes in steps of delta_clifford)
-    depth_target = declare(int)
     # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
     saved_gate = declare(int)
     m = declare(int)  # QUA variable for the loop over random sequences
@@ -213,11 +228,9 @@ with program() as randomized_benchmarking_individual:
     state = [declare(int) for _ in range(num_qubits)]
     # The relevant streams
     m_st = declare_stream()
-    # state_st = declare_stream()
     state_st = [declare_stream() for _ in range(num_qubits)]
 
     for i, qubit in enumerate(qubits):
-
         # Bring the active qubits to the desired frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
@@ -225,41 +238,36 @@ with program() as randomized_benchmarking_individual:
     with for_(m, 0, m < num_of_sequences, m + 1):
         # Generate the random sequence of length max_circuit_depth
         sequence_list, inv_gate_list = generate_sequence()
-        assign(depth_target, 0)  # Initialize the current depth to 0
         
-        with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
+        with for_each_(depth, depths):
             # Replacing the last gate in the sequence with the sequence's inverse gate
             # The original gate is saved in 'saved_gate' and is being restored at the end
             assign(saved_gate, sequence_list[depth])
             assign(sequence_list[depth], inv_gate_list[depth - 1])
-            # Only played the depth corresponding to target_depth
-            with if_((depth == 1) | (depth == depth_target)):
-                with for_(n, 0, n < n_avg, n + 1):
-                    for i, qubit in enumerate(qubits):
-                        # Initialize the qubits
-                        if reset_type == "active":
-                            active_reset(qubit, "readout")
-                        else:
-                            qubit.resonator.wait(qubit.thermalization_time * u.ns)
-                        # Align the two elements to play the sequence after qubit initialization
-                        qubit.align()
-                        # The strict_timing ensures that the sequence will be played without gaps
-                        if strict_timing:
-                            with strict_timing_():
-                                # Play the random sequence of desired depth
-                                play_sequence(sequence_list, depth, qubit)
-                        else:
+            
+            with for_(n, 0, n < n_avg, n + 1):
+                for i, qubit in enumerate(qubits):
+                    # Initialize the qubits
+                    if reset_type == "active":
+                        active_reset(qubit, "readout")
+                    else:
+                        qubit.resonator.wait(qubit.thermalization_time * u.ns)
+                    # Align the two elements to play the sequence after qubit initialization
+                    qubit.align()
+                    # The strict_timing ensures that the sequence will be played without gaps
+                    if strict_timing:
+                        with strict_timing_():
+                            # Play the random sequence of desired depth
                             play_sequence(sequence_list, depth, qubit)
-                        # Align the two elements to measure after playing the circuit.
-                        qubit.align()
-                        readout_state(qubit, state[i])
-
-                        save(state[i], state_st[i])
-                        
-                        align()
-
-                # Go to the next depth
-                assign(depth_target, depth_target + delta_clifford)
+                    else:
+                        play_sequence(sequence_list, depth, qubit)
+                    # Align the two elements to measure after playing the circuit.
+                    qubit.align()
+                    readout_state(qubit, state[i])
+                    save(state[i], state_st[i])
+                    
+                    align()
+            
             # Reset the last gate of the sequence back to the original Clifford gate
             # (that was replaced by the recovery gate at the beginning)
             assign(sequence_list[depth], saved_gate)
@@ -276,8 +284,6 @@ with program() as randomized_benchmarking_individual:
 
 with program() as randomized_benchmarking_multiplexed:
     depth = declare(int)  # QUA variable for the varying depth
-    # QUA variable for the current depth (changes in steps of delta_clifford)
-    depth_target = declare(int)
     # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
     saved_gate = declare(int)
     m = declare(int)  # QUA variable for the loop over random sequences
@@ -285,11 +291,9 @@ with program() as randomized_benchmarking_multiplexed:
     state = [declare(int) for _ in range(num_qubits)]
     # The relevant streams
     m_st = declare_stream()
-    # state_st = declare_stream()
     state_st = [declare_stream() for _ in range(num_qubits)]
 
     for i, qubit in enumerate(qubits):
-
         # Bring the active qubits to the desired frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
@@ -297,50 +301,40 @@ with program() as randomized_benchmarking_multiplexed:
     with for_(m, 0, m < num_of_sequences, m + 1):
         # Generate the random sequence of length max_circuit_depth
         sequence_list, inv_gate_list = generate_sequence()
-        assign(depth_target, 0)  # Initialize the current depth to 0
         
-        with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
+        with for_each_(depth, depths):
             # Replacing the last gate in the sequence with the sequence's inverse gate
             # The original gate is saved in 'saved_gate' and is being restored at the end
             assign(saved_gate, sequence_list[depth])
             assign(sequence_list[depth], inv_gate_list[depth - 1])
-            # Only played the depth corresponding to target_depth
-            with if_((depth == 1) | (depth == depth_target)):
 
-                with for_(n, 0, n < n_avg, n + 1):
+            with for_(n, 0, n < n_avg, n + 1):
+                for i, qubit in enumerate(qubits):
+                    # Initialize the qubits
+                    if reset_type == "active":
+                        active_reset(qubit, "readout")
+                    else:
+                        qubit.resonator.wait(qubit.thermalization_time * u.ns)
+                    # Align the two elements to play the sequence after qubit initialization
 
-                    for i, qubit in enumerate(qubits):
+                qubit.align()
 
-                        # Initialize the qubits
-                        if reset_type == "active":
-                            active_reset(qubit, "readout")
-                        else:
-                            qubit.resonator.wait(qubit.thermalization_time * u.ns)
-                        # Align the two elements to play the sequence after qubit initialization
-
-                    qubit.align()
-
-                    for i, qubit in enumerate(qubits):
-
-                        # The strict_timing ensures that the sequence will be played without gaps
-                        if strict_timing:
-                            with strict_timing_():
-                                # Play the random sequence of desired depth
-                                play_sequence(sequence_list, depth, qubit)
-                        else:
+                for i, qubit in enumerate(qubits):
+                    # The strict_timing ensures that the sequence will be played without gaps
+                    if strict_timing:
+                        with strict_timing_():
+                            # Play the random sequence of desired depth
                             play_sequence(sequence_list, depth, qubit)
+                    else:
+                        play_sequence(sequence_list, depth, qubit)
 
-                    qubit.align()
+                qubit.align()
 
-                    # Align the two elements to measure after playing the circuit.
-                    for i, qubit in enumerate(qubits):
+                # Align the two elements to measure after playing the circuit.
+                for i, qubit in enumerate(qubits):
+                    readout_state(qubit, state[i])
+                    save(state[i], state_st[i])
 
-                        readout_state(qubit, state[i])
-
-                        save(state[i], state_st[i])
-
-                # Go to the next depth
-                assign(depth_target, depth_target + delta_clifford)
             # Reset the last gate of the sequence back to the original Clifford gate
             # (that was replaced by the recovery gate at the beginning)
             assign(sequence_list[depth], saved_gate)
@@ -388,8 +382,6 @@ elif node.parameters.load_data_id is None:
 
     # %% {Data_fetching_and_dataset_creation}
     if node.parameters.load_data_id is None:
-        depths = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
-        depths[0] = 1
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(
         job.result_handles,
@@ -405,6 +397,8 @@ elif node.parameters.load_data_id is None:
     da_state = 1 - ds["state"].mean(dim="sequence")
     da_state: xr.DataArray
     da_state.attrs = {"long_name": "p(0)"}
+    # For RB, we want to plot against the number of Cliffords (depth - 1)
+    # since the recovery gate doesn't count towards the sequence length
     da_state = da_state.assign_coords(depths=da_state.depths - 1)
     da_state = da_state.rename(depths="m")
     da_state.m.attrs = {"long_name": "no. of Cliffords"}
