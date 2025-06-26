@@ -219,10 +219,15 @@ if not node.parameters.simulate:
     node.results["fit_results"] = fit_results
 
     # %% {Plotting}
+    
+    qubit_names_to_qubits = {q.name: q for q in qubits}
+    
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
+    for i, (ax, qubit) in enumerate(grid_iter(grid)):
         ds.loc[qubit].state.plot(ax=ax, x="alpha", y="N")
-        ax.axvline(fit_results[qubit["qubit"]]["alpha"], color="r")
+        ax.axvline(fit_results[qubit["qubit"]]["alpha"], color="r", label="fitted")
+        ax.axvline(qubit_names_to_qubits[qubit["qubit"]].xy.operations[operation].alpha, color="magenta", label="current")
+        ax.legend(loc="upper right", fontsize=6)
         ax.set_ylabel("num. of pulses")
         ax.set_xlabel(r"DRAG coeff $\alpha$")
         ax.set_title(qubit["qubit"])
