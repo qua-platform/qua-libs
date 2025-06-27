@@ -90,8 +90,8 @@ with program() as charge_stability_prog:
             # ____|    |____|    |____|    |____|    |...
             with for_(counter, 0, counter < N, counter + 1):
                 # The Coulomb pulse
-                play("step" * amp(Coulomb_amp / P1_step_amp), "P1")
-                play("step" * amp(-Coulomb_amp / P1_step_amp), "P1")
+                play("coulomb_step" * amp(Coulomb_amp / P1_step_amp), "P1")
+                play("coulomb_step" * amp(-Coulomb_amp / P1_step_amp), "P1")
 
             with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
                 # RF reflectometry: the voltage measured by the analog input 2 is recorded, demodulated at the readout
@@ -103,7 +103,7 @@ with program() as charge_stability_prog:
                 # Wait at each iteration in order to ensure that the data will not be transferred faster than 1 sample
                 # per µs to the stream processing. Otherwise, the processor will receive the samples faster than it can
                 # process them which can cause the OPX to crash.
-                wait(1_000 * u.ns)  # in ns
+                wait(1_000 * u.ns, "tank_circuit")
         # Save the LO iteration to get the progress bar
         save(i, n_st)
 
