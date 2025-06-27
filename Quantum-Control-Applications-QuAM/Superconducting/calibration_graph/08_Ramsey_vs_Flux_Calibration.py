@@ -120,15 +120,14 @@ with program() as ramsey:
                     # TODO: this has gaps and the Z rotation is not derived properly, is it okay still?
                     # Ramsey sequence
                     qubit.align()
-                    # with strict_timing_():
-                    qubit.xy.play("x90")
-                    qubit.xy.frame_rotation_2pi(phi)
-                    qubit.z.wait(duration=qubit.xy.operations["x90"].length)
-                    
-                    qubit.xy.wait(t+1)
-                    qubit.z.play("const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t)
-                    
-                    qubit.xy.play("x90")
+                    with strict_timing_():
+                        qubit.xy.play("x90")
+                        qubit.z.wait(duration=qubit.xy.operations["x90"].length // 4)
+                        
+                        qubit.xy.wait(t+10)
+                        qubit.z.play("const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t)
+                        qubit.xy.frame_rotation_2pi(phi)
+                        qubit.xy.play("x90")
 
                     qubit.align()
                     # Measure the state of the resonators
