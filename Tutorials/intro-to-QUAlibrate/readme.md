@@ -90,9 +90,8 @@ While you can start with everything in a single file, this layout offers several
 
 - **Reusability** – Enables shared analysis or plotting code across multiple nodes.
 
-- **Scalability** – Makes it easier to add new calibrations or expand functionality.
+- **Scalability** – Makes it easier to add new calibrations.
 
-- **Compatibility** – Aligns with how QUAlibrate discovers nodes and manages output.
 
 This structure is recommended for clarity and scalability, feel free to adapt it to your needs.
 

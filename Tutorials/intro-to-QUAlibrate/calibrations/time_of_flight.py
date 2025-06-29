@@ -16,6 +16,7 @@ from calibration_utils.time_of_flight import (
     plot_single_run_with_fit,
     plot_averaged_run_with_fit,
 )
+
 from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Initialisation}
