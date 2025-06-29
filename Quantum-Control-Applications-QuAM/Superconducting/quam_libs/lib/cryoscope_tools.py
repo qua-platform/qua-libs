@@ -335,9 +335,14 @@ def sequential_exp_fit(t, y, start_fractions, verbose=True):
     rolling_var = np.array([np.var(y[i:i+window]) for i in range(len(y)-window)])
     # Find where variance drops below threshold, indicating flat region
     var_threshold = np.mean(rolling_var) * 0.1  # 10% of mean variance
-    flat_start = np.where(rolling_var < var_threshold)[0][-1]
-    # Use the flat region to estimate constant term
-    a_dc = np.mean(y[flat_start:])
+    try:
+        flat_start = np.where(rolling_var < var_threshold)[0][-1]
+        # Use the flat region to estimate constant term
+        a_dc = np.mean(y[flat_start:])
+    except IndexError:
+        print("No flat region found, using last point of the signal as constant term")
+        a_dc = y[-1]
+
     if verbose:
         print(f"\nFitted constant term: {a_dc:.3e}")
     
@@ -359,7 +364,7 @@ def sequential_exp_fit(t, y, start_fractions, verbose=True):
             
             # Set bounds for the fit
             bounds = (
-                [-np.inf, 0],  # lower bounds: amplitude can be negative, tau must be positive
+                [-np.inf, 0.1],  # lower bounds: amplitude can be negative, tau must be positive (0.1 ns is arbitrary)
                 [np.inf, np.inf]  # upper bounds
             )
             
@@ -377,7 +382,7 @@ def sequential_exp_fit(t, y, start_fractions, verbose=True):
             # Subtract this component from the entire signal
             y_residual -= amp * np.exp(-t_offset/tau)
             
-        except RuntimeError as e:
+        except (RuntimeError, ValueError) as e:
             if verbose:
                 print(f"Warning: Fitting failed for component {i+1}: {e}")
             break
@@ -385,7 +390,7 @@ def sequential_exp_fit(t, y, start_fractions, verbose=True):
     return components, a_dc, y_residual
 
 
-def optimize_start_fractions(t, y, base_fractions, bounds_scale=0.5):
+def optimize_start_fractions(t, y, base_fractions, bounds_scale=0.5, verbose=True):
     """
     Optimize the start_fractions by minimizing the RMS between the data and the fitted sum 
     of exponentials using scipy.optimize.minimize.
@@ -408,16 +413,14 @@ def optimize_start_fractions(t, y, base_fractions, bounds_scale=0.5):
         # Ensure fractions are ordered in descending order
         if not np.all(np.diff(x) < 0):
             return 1e6  # Return large value if constraint is violated
-        
-        try:
-            # Try this combination of fractions
-            _, _, residual = sequential_exp_fit(t, y, x, verbose=False)
+                
+        components, _, residual = sequential_exp_fit(t, y, x, verbose=verbose)
+        if len(components) == len(base_fractions):
             current_rms = np.sqrt(np.mean(residual**2))
+        else:
+            current_rms = 1e6 # Return large value if fitting fails
             
-            return current_rms
-        
-        except RuntimeError:
-            return 1e6  # Return large value if fit fails
+        return current_rms
     
     # Define bounds for optimization
     bounds = []
@@ -453,7 +456,7 @@ def optimize_start_fractions(t, y, base_fractions, bounds_scale=0.5):
     else:
         print("\nOptimization failed. Using initial values.")
         best_fractions = base_fractions
-        components, a_dc, best_residual = sequential_exp_fit(t, y, best_fractions)
+        components, a_dc, best_residual = sequential_exp_fit(t, y, best_fractions, verbose=False)
         best_rms = np.sqrt(np.mean(best_residual**2))
     
     return result.success, best_fractions, components, a_dc, best_rms

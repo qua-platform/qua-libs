@@ -33,7 +33,6 @@ from quam_libs.macros import qua_declaration, active_reset, readout_state
 from quam_libs.trackable_object import tracked_updates
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, save_node
-from quam_libs.lib.fit import peaks_dips
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -44,7 +43,6 @@ from typing import Any, Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from scipy.optimize import curve_fit
 import time
 import quam_libs.lib.cryoscope_tools as cryoscope_tools
 start = time.time()
@@ -82,10 +80,10 @@ class Parameters(NodeParameters):
     time_step_in_ns: Optional[int] = 48 # for linear time axis
     time_step_num: Optional[int] = 200 # for log time axis
     frequency_span_in_mhz: float = 150
-    frequency_step_in_mhz: float = 0.5
-    flux_amp : float = 0.08
+    frequency_step_in_mhz: float = 0.45
+    flux_amp : float = 0.06
     update_lo: bool = True
-    fitting_base_fractions: List[float] = [0.4, 0.1, 0.005] # fraction of times from which to fit each exponential
+    fitting_base_fractions: List[float] = [0.4, 0.15, 0.07] # fraction of times from which to fit each exponential
     update_state: bool = False
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
@@ -148,7 +146,7 @@ else:
 # Qubit detuning sweep with respect to their resonance frequencies
 span = node.parameters.frequency_span_in_mhz * u.MHz
 step = node.parameters.frequency_step_in_mhz * u.MHz
-dfs = np.arange(-span // 2, span // 5, step, dtype=np.int32)
+dfs = np.arange(-span // 2, span // 2, step, dtype=np.int32)
 # Flux bias sweep
 if node.parameters.time_axis == "linear":
     times = np.arange(4, node.parameters.duration_in_ns // 4, node.parameters.time_step_in_ns // 4, dtype=np.int32)
@@ -195,8 +193,9 @@ with program() as multi_qubit_spec_vs_flux:
                         operation,
                         amplitude_scale=operation_amp
                     )
-                    qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
+                    # qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
                     qubit.align()
+                    qubit.wait(200)
                     # QUA macro to read the state of the active resonators
                     readout_state(qubit, state[i])
                     save(state[i], state_st[i])
@@ -211,8 +210,6 @@ with program() as multi_qubit_spec_vs_flux:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            # I_st[i].buffer(len(dcs)).buffer(len(dfs)).average().save(f"I{i + 1}")
-            # Q_st[i].buffer(len(dcs)).buffer(len(dfs)).average().save(f"Q{i + 1}")
             state_st[i].buffer(len(times)).buffer(len(dfs)).average().save(f"state{i + 1}")
 
 # %% {Simulate_or_execute}
@@ -371,9 +368,9 @@ grid = QubitGrid(ds, [q.grid_location for q in qubits])
 for ax, qubit in grid_iter(grid):
     # Plot measured flux response
     ds.loc[qubit].flux_response.plot(ax=ax)
-    # flux_response_norm = ds.loc[qubit].flux_response / ds.loc[qubit].flux_response.max()
+    # flux_response_norm = ds.loc[qubit].flux_response / ds.loc[qubit].flux_response.values[-1]
     # flux_response_norm.plot(ax=ax)
-
+    
     # Plot fitted curves and parameters if fits were successful    
     if fit_results[qubit["qubit"]]["fit_successful"]:
         best_a_dc = fit_results[qubit["qubit"]]["best_a_dc"]
@@ -388,7 +385,7 @@ for ax, qubit in grid_iter(grid):
         ax.text(0.02, 0.98, fit_text, transform=ax.transAxes, 
                 verticalalignment='top', fontsize=8)
 
-    ax.set_ylabel("Normalized flux")
+    ax.set_ylabel("Flux (V)")
     ax.set_xlabel("Time (ns)")
     ax.set_title(qubit["qubit"])
     # ax.set_xscale('log')
