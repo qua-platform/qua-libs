@@ -6,7 +6,7 @@ from configuration.configuration_with_lf_fem_and_mw_fem import *
 from qm import QuantumMachinesManager
 from qm.qua import *
 
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import fetching_tool
 
 from qualibrate import QualibrationNode
 from calibration_utils.time_of_flight import (
