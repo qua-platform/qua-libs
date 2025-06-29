@@ -18,7 +18,7 @@ qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 IF = 50e6
 LO = 6e9
 con = "con1"
-octave = "octave1"
+octave = "oct1"
 config = {
     "version": 1,
     "controllers": {

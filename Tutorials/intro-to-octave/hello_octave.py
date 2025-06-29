@@ -14,7 +14,7 @@ from qm import SimulationConfig
 ###################################
 # Open Communication with the QOP #
 ###################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave_calibration_db_path=os.getcwd())
+qmm = QuantumMachinesManager(**qmm_settings)
 
 ###################
 # The QUA program #
