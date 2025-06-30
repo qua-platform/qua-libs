@@ -3,7 +3,7 @@ from typing import Dict, Any
 from dataclasses import field
 from copy import copy
 
-from qm.qua import align, declare, fixed, frame_rotation_2pi
+from qm.qua import align, declare, fixed, frame_rotation_2pi, if_
 
 from quam.components.pulses import Pulse
 from quam.core import quam_dataclass, QuamComponent
@@ -86,7 +86,8 @@ class CZGate(TwoQubitGate):
 
         return f"{self.gate_label}{str_ref.DELIMITER}{pulse_label}"
 
-    def execute(self, amplitude_scale=None):        
+    def execute(self, amplitude_scale=None, additional_control_phase_shift: fixed = 0, additional_target_phase_shift: fixed = 0):
+            
         self.transmon_pair.align()
         
         # self.qubit_control.xy.wait(self.pre_wait)
@@ -104,9 +105,12 @@ class CZGate(TwoQubitGate):
                 validate=False
             )
         
+        phase_shift_control = declare(fixed, value=self.phase_shift_control)
+        phase_shift_target = declare(fixed, value=self.phase_shift_target)
+        
         self.transmon_pair.align()
-        frame_rotation_2pi(self.phase_shift_control, self.qubit_control.xy.name)
-        frame_rotation_2pi(self.phase_shift_target, self.qubit_target.xy.name)
+        frame_rotation_2pi(phase_shift_control + additional_control_phase_shift, self.qubit_control.xy.name)
+        frame_rotation_2pi(phase_shift_target + additional_target_phase_shift, self.qubit_target.xy.name)
         self.qubit_control.xy.play("x180", amplitude_scale=0.0, duration=4)
         self.qubit_target.xy.play("x180", amplitude_scale=0.0, duration=4)
         self.transmon_pair.align()

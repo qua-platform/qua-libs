@@ -27,11 +27,12 @@ Outcomes:
 """
 
 # %% {Imports}
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, save_node
+from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id, load_dataset, save_node
 from quam_libs.lib.fit import fit_oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -70,6 +71,7 @@ class Parameters(NodeParameters):
 node = QualibrationNode(
     name="30b_02_11_oscillations_1nS", parameters=Parameters()
 )
+node_id = get_node_id()
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
 # %% {Initialize_QuAM_and_QOP}
@@ -256,6 +258,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout ) as qm:
         job = qm.execute(CPhase_Oscillations)
 
@@ -315,7 +318,7 @@ if not node.parameters.simulate:
             ds_qp.state_target.isel(amp=flux_amp_idx), "time")
         flux_time = int(1/fit_data.sel(fit_vals='f'))
 
-        print(f"parameters for {qp.name}: amp={flux_amp}, time={flux_time}")
+        print(f"parameters for {qp.name}: flux amp={flux_amp}, time={flux_time} \n old flux amp={qp.gates['Cz'].flux_pulse_control.amplitude}, old time={qp.gates['Cz'].flux_pulse_control.length}")
         amplitudes[qp.name] =  flux_amp
         detunings[qp.name] = -flux_amp ** 2 * qp.qubit_control.freq_vs_flux_01_quad_term
         lengths[qp.name] = flux_time-flux_time%4+4
@@ -381,7 +384,8 @@ if not node.parameters.simulate:
         ax2.set_ylabel('Flux amplitude [V]')
         ax.set_ylabel('Detuning [MHz]')
         
-    plt.suptitle('control qubit state')
+    plt.suptitle(f'control qubit state \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type}')
+    plt.tight_layout()
     plt.show()
     node.results["figure_control"] = grid.fig
     
@@ -411,7 +415,8 @@ if not node.parameters.simulate:
         ax2.set_ylabel('Flux amplitude [V]')
         ax.set_ylabel('Detuning [MHz]')
         
-    plt.suptitle('target qubit state')
+    plt.suptitle(f'target qubit state \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type}')
+    plt.tight_layout()
     plt.show()
     node.results["figure_target"] = grid.fig
 

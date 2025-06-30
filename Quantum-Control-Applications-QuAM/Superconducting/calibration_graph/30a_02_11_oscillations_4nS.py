@@ -135,6 +135,7 @@ flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or
 # define the amplitudes for the flux pulses
 pulse_amplitudes = {}
 for qp in qubit_pairs:
+    # this is the detuning required to move the control qubit to the CZ working point
     detuning = qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency - qp.qubit_target.anharmonicity
     pulse_amplitudes[qp.name] = float(np.sqrt(-detuning/qp.qubit_control.freq_vs_flux_01_quad_term))
 
@@ -371,9 +372,12 @@ if not node.parameters.simulate:
 # %% {Update_state}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
+        cz_gate_objects = []
+        for qp in qubit_pairs:
+            cz_gate_objects.append(CZGate(flux_pulse_control = FluxPulse(length=lengths[qp.name], amplitude=amplitudes[qp.name], zero_padding=zero_paddings[qp.name], id = 'flux_pulse_control_' + qp.qubit_target.name)))
         with node.record_state_updates():
-            for qp in qubit_pairs:
-                qp.gates['Cz_unipolar'] = CZGate(flux_pulse_control = FluxPulse(length=lengths[qp.name], amplitude=amplitudes[qp.name], zero_padding=zero_paddings[qp.name], id = 'flux_pulse_control_' + qp.qubit_target.name))
+            for i, qp in enumerate(qubit_pairs):
+                qp.gates['Cz_unipolar'] = cz_gate_objects[i]
                 qp.gates['Cz'] = f"#./Cz_unipolar"
                 
                 qp.J2 = Js[qp.name]

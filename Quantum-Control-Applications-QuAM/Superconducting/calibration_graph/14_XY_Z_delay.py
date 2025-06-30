@@ -2,6 +2,7 @@
 """
     XY-Z delay as describe in page 108 at https://web.physics.ucsb.edu/~martinisgroup/theses/Chen2018.pdf
 """
+from datetime import datetime, timezone, timedelta
 import warnings
 
 from qualang_tools.multi_user import qm_session
@@ -12,7 +13,7 @@ from typing import Optional, Literal
 from scipy.optimize import curve_fit
 
 from quam_libs.trackable_object import tracked_updates
-from quam_libs.lib.save_utils import save_node
+from quam_libs.lib.save_utils import save_node, get_node_id
 
 class Parameters(NodeParameters):
     qubits: Optional[str] = None
@@ -25,10 +26,8 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode(
-    name="14_XY_Z_delay",
-    parameters=Parameters()
-)
+node = QualibrationNode(name="14_XY_Z_delay", parameters=Parameters())
+node_id = get_node_id()
 
 from qm.qua import *
 from qm import SimulationConfig
@@ -118,8 +117,10 @@ def baked_waveform(waveform, qb):
 delay_segments = {}
 # Baked flux pulse segments with 1ns resolution
 
+# TODO: this part is slow for many qubits, we should find a way to speed it up
 for i, qubit in enumerate(qubits):
     delay_segments[qubit.xy.name] = baked_waveform(flux_waveform_list[qubit.xy.name], qubit)
+    print(f"Baked waveform for {qubit.xy.name}")
 
 relative_time = np.arange(-node.parameters.zeros_before_after_pulse, node.parameters.zeros_before_after_pulse,
                           1)  # x-axis for plotting - Must be in ns.
@@ -202,6 +203,7 @@ if simulate:
     node.save()
     quit()
 else:
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(xy_z_delay_calibration)
         results = fetching_tool(job, ["n"], mode="live")
@@ -211,11 +213,9 @@ else:
             # progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
-# %%
+# %% {Data fetching}
 handles = job.result_handles
 ds = fetch_results_as_xarray(handles, qubits, {"relative_time": relative_time, "sequence": [0, 1]})
-
-# %%
 
 ds = ds.assign_coords({'relative_time': (['relative_time'], relative_time)})
 ds.relative_time.attrs['long_name'] = 'timing_delay'
@@ -223,7 +223,7 @@ ds.relative_time.attrs['units'] = 'nS'
 node.results = {}
 node.results['ds'] = ds
 
-# %%
+# %% {Data analysis}
 # Define a smooth model for each line
 def smooth_model(x, a, b, c, d):
     return a / (1 + np.exp(-b * (x - c))) + d
@@ -242,7 +242,7 @@ def find_transition_boundary(params, x_range, threshold=0.0001):
         if sigmoid_derivative(x, a, b, c, d) > threshold:
             return x
     return None  # If no boundary is found in the range
-# %%
+# %% {Plotting}
 grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
 
@@ -275,12 +275,12 @@ for ax, qubit in grid_iter(grid):
         ax.plot(extended_x, smooth_model(extended_x, *params2), color="red", linestyle="--")
 
         if flux_delay is not None:
-            ax.axvline(crossing_point, color="black", linestyle="--", alpha=0.5)
+            ax.axvline(crossing_point, color="black", linestyle="--", alpha=0.5, label="Crossing Point")
             ax.axvline(flux_delay, color="green", linestyle="-", alpha=0.5, label="Delay")
 
         ax.set_xlabel("Relative Time")
         ax.set_ylabel("State")
-        ax.set_title(f"{qubit}")
+        ax.set_title(f"{qubit} \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type_thermal_or_active}")
 
         margin = 2
         ax.set_xlim(flux_delay - margin, max(x) + margin)
@@ -290,13 +290,29 @@ for ax, qubit in grid_iter(grid):
         warnings.warn(f"Fitting for qubit {qubit} failed with error: {e}")
         flux_delays.append(None)
 
-grid.fig.suptitle('XY Z Delay Fitting')
-plt.tight_layout()
-plt.show()
+    plt.tight_layout()
+    plt.show()
+
+    # Create a separate figure for raw state data
+    raw_state_fig, raw_state_ax = plt.subplots(figsize=(10, 6))
+    
+    # Plot the raw state data with hue set to "sequence"
+    ds.sel(qubit=qubit).state.plot(hue="sequence", ax=raw_state_ax)
+
+    # Add title, axis labels, and legend
+    raw_state_ax.set_title(f"Raw State Data for {qubit} \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type_thermal_or_active}")
+    raw_state_ax.set_xlabel("Index")
+    raw_state_ax.set_ylabel("State")
+    raw_state_ax.legend(title="Sequence")
+    
+    
+    plt.tight_layout()
+    plt.show()
 
 node.results['figure'] = grid.fig
 
-# %%
+
+# %% {Update state}
 for qubit in tracked_qubits:
     qubit.revert_changes()
 
@@ -305,7 +321,7 @@ with node.record_state_updates():
         if flux_delays[i] is not None:
             q.z.opx_output.delay += round(flux_delays[i])
 
-# %%
+# %% {Save results}
 node.results['initial_parameters'] = node.parameters.model_dump()
 node.machine = machine
 save_node(node)

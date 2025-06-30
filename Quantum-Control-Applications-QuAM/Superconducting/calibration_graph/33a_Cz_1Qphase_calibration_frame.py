@@ -32,11 +32,12 @@ Outcomes:
 """
 
 # %% {Imports}
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, save_node
+from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id, load_dataset, save_node
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -72,6 +73,8 @@ class Parameters(NodeParameters):
 node = QualibrationNode(
     name="33a_Cz_1Qphase_calibration_frame", parameters=Parameters()
 )
+node_id = get_node_id()
+
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
 # %% {Initialize_QuAM_and_QOP}
@@ -145,17 +148,18 @@ with program() as CPhase_Oscillations:
                             qp.align()
                     else:
                         wait(qp.qubit_control.thermalization_time * u.ns)
+                      
                     qp.align()
                     # setting both qubits ot the initial state
                     qubit.xy.play("x90")
                     qp.align()
-
-                    #play the CZ gate
-                    qp.gates['Cz'].execute()
                     
-                    #rotate the frame
-                    frame_rotation_2pi(frame, qubit.xy.name)
-                    
+                    if qubit.name == qp.qubit_control.name:
+                        #play the CZ gate
+                        qp.gates['Cz'].execute(additional_control_phase_shift=frame)
+                    else:
+                        #play the CZ gate
+                        qp.gates['Cz'].execute(additional_target_phase_shift=frame)
                     # return the target qubit before measurement
                     qubit.xy.play("x90")              
                     
@@ -182,6 +186,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout ) as qm:
         job = qm.execute(CPhase_Oscillations)
 
@@ -235,7 +240,7 @@ for qp in qubit_pairs:
     phases_target[qp.name] = phase_target
     phases_control[qp.name] = phase_control
     
-    print(f'measured phase offsets for {qp.name } are target: {phase_target:.3f}, control: {phase_control:.3f}')
+    print(f'measured phase offsets for {qp.name } are target: {phase_target:.3f}, control: {phase_control:.3f} \n old flux amp={qp.gates['Cz'].flux_pulse_control.amplitude}, old phases - target: {qp.gates['Cz'].phase_shift_target}, control: {qp.gates['Cz'].phase_shift_control}')
     
 # %%
 if not node.parameters.simulate:
@@ -251,7 +256,7 @@ if not node.parameters.simulate:
         ax.axvline(x = 1-phases_target[qubit_pair['qubit']], color = 'C0', linestyle = '--')
         ax.axvline(x = 1-phases_control[qubit_pair['qubit']], color = 'C1', linestyle = '--')
         ax.legend()
-    plt.suptitle('Cz single qubit phase calibration')
+    plt.suptitle(f'Cz single qubit phase calibration \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type}')
     plt.tight_layout()
     plt.show()
     node.results["figure_phase"] = grid.fig

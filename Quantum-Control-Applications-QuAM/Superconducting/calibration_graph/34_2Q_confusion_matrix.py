@@ -33,11 +33,12 @@ Outcomes:
 """
 
 # %% {Imports}
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, save_node
+from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id, load_dataset, save_node
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -72,6 +73,8 @@ class Parameters(NodeParameters):
 node = QualibrationNode(
     name="34_2Q_confusion_matrix", parameters=Parameters()
 )
+node_id = get_node_id()
+
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
 # %% {Initialize_QuAM_and_QOP}
@@ -177,6 +180,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout ) as qm:
         job = qm.execute(CPhase_Oscillations)
 
@@ -228,7 +232,7 @@ if not node.parameters.simulate:
                     ax.text(i, j, f"{100 * conf[i][j]:.1f}%", ha="center", va="center", color="w")
         ax.set_ylabel('prepared')
         ax.set_xlabel('measured')
-        ax.set_title(qubit_pair['qubit'])
+        ax.set_title(f"Confusion matrix {qubit_pair['qubit']} \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type}")
     plt.show()
     node.results["figure_confusion"] = grid.fig
 # %%

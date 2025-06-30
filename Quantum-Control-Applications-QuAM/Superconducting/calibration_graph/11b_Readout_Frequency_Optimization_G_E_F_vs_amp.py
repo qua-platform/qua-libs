@@ -22,7 +22,7 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id
+from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id, save_node, get_node_id
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -41,6 +41,9 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 100
+    amp_min: float = 0.1
+    amp_max: float = 1.5
+    amp_step: float = 0.05
     frequency_span_in_mhz: float = 7
     frequency_step_in_mhz: float = 0.2
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -83,9 +86,9 @@ n_avg = node.parameters.num_averages  # The number of averages
 span = node.parameters.frequency_span_in_mhz * u.MHz
 step = node.parameters.frequency_step_in_mhz * u.MHz
 dfs = np.arange(-span / 2, +span / 2, step)
-amp_max = 1.5
-amp_min = 0.1
-amp_step = 0.05
+amp_max = node.parameters.amp_max
+amp_min = node.parameters.amp_min
+amp_step = node.parameters.amp_step
 amps = np.arange(amp_min, amp_max, amp_step)
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 
@@ -341,42 +344,35 @@ if not node.parameters.simulate:
 # %% {Update_state}
 if not node.parameters.simulate:
     for q in qubits:
-        with node.record_state_updates():
-            q.resonator.GEF_frequency_shift = int(fit_results[q.name]["GEF_detuning"])
             
-            EF_x180_amp = q.xy.operations[operation].amplitude * fit_results[q.name]["GEF_amp"]
-
-            if operation == "x180":
-                # Create the |e> -> |f> operation
-                q.xy.operations["EF_x180"] = pulses.DragCosinePulse(
-                    amplitude=q.xy.operations[operation].amplitude * fit_results[q.name]["GEF_amp"],
-                    alpha=q.xy.operations[operation].alpha,
-                    anharmonicity=q.xy.operations[operation].anharmonicity,
-                    length=q.xy.operations[operation].length,
-                    axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
-                    digital_marker=q.xy.operations[operation].digital_marker,
-                )
-            else:
-                # set the new amplitude for the EF operation
-                q.xy.operations["EF_x180"].amplitude *= fit_results[q.name]["GEF_amp"]
-            
-            q.xy.operations["EF_x90"] = pulses.DragCosinePulse(
-                amplitude=EF_x180_amp / 2,
+        EF_x180_amp = q.xy.operations[operation].amplitude * fit_results[q.name]["GEF_amp"]
+        
+        if operation == "x180":
+            # Create the |e> -> |f> operation
+            op_EF_x180 = pulses.DragCosinePulse(
+                amplitude=q.xy.operations[operation].amplitude * fit_results[q.name]["GEF_amp"],
                 alpha=q.xy.operations[operation].alpha,
                 anharmonicity=q.xy.operations[operation].anharmonicity,
                 length=q.xy.operations[operation].length,
                 axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
                 digital_marker=q.xy.operations[operation].digital_marker,
             )
+        
+        with node.record_state_updates():
+            
+            q.resonator.GEF_frequency_shift = int(fit_results[q.name]["GEF_detuning"])
+            
+            if operation == "x180":
+                # Create the |e> -> |f> operation
+                q.xy.operations["EF_x180"] = op_EF_x180
+                
+            else:
+                # set the new amplitude for the EF operation
+                q.xy.operations["EF_x180"].amplitude *= fit_results[q.name]["GEF_amp"]
+            
+            # q.xy.operations["EF_x90"] = op_EF_x90
 
-            q.xy.operations["EF_y90"] = pulses.DragCosinePulse(
-                amplitude=EF_x180_amp / 2,
-                alpha=q.xy.operations[operation].alpha,
-                anharmonicity=q.xy.operations[operation].anharmonicity,
-                length=q.xy.operations[operation].length,
-                axis_angle=np.pi/2,  # TODO: to check that the rotation does not overwrite y-pulses
-                digital_marker=q.xy.operations[operation].digital_marker,
-            )
+            # q.xy.operations["EF_y90"] = op_EF_y90
 
             
 

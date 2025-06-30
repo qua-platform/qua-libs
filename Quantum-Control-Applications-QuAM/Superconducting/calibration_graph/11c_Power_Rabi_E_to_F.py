@@ -80,7 +80,7 @@ for q in qubits:
         print("Creating EF_x180 operation")
         ef_operation = pulses.DragCosinePulse(
                     amplitude=0.025,
-                    alpha=q.xy.operations["x180"].alpha,
+                    alpha=0,
                     anharmonicity=q.xy.operations["x180"].anharmonicity,
                     length=q.xy.operations["x180"].length,
                     axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
@@ -126,7 +126,7 @@ with program() as power_rabi:
         update_frequency(
                     qubit.resonator.name,
                     qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift,
-                    keep_phase=True
+                    # keep_phase=True
                 )
 
         with for_(n, 0, n < n_avg, n + 1):
@@ -244,7 +244,7 @@ if not node.parameters.simulate:
         ax.set_ylabel("Trans. amp. I [mV]")
         ax.set_xlabel("Amplitude [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"EF Rabi : I vs. amplitude \n {date_time} GMT+3 #{node_id}")
+    grid.fig.suptitle(f"EF Rabi : sqrt(I^2 + Q^2) vs. amplitude \n {date_time} GMT+3 #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
