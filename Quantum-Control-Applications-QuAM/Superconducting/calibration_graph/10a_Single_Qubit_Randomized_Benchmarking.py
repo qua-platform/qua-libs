@@ -57,7 +57,7 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True # False unstalbe. do not use. 
+    multiplexed: bool = True # False unstable. do not use. To be fixed.
 
 node = QualibrationNode(name="10a_Single_Qubit_Randomized_Benchmarking", parameters=Parameters())
 node_id = get_node_id()

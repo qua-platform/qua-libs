@@ -513,40 +513,40 @@ if not node.parameters.simulate:
 
 
 # %% {data analysis - optimize FIR filter}
-print('\033[1m\033[32m OPTIMIZE FIR FILTER \033[0m')
+# print('\033[1m\033[32m OPTIMIZE FIR FILTER \033[0m')
 
-if not node.parameters.simulate:
-    def find_diff(x, y, y0, plot = False):
-        filterd_y  = lfilter(x,[1,0], y)
-        diffs = np.sum(np.abs(filterd_y - y0))
-        if plot:
-            plt.plot(filterd_y)
-        return diffs
+# if not node.parameters.simulate:
+#     def find_diff(x, y, y0, plot = False):
+#         filterd_y  = lfilter(x,[1,0], y)
+#         diffs = np.sum(np.abs(filterd_y - y0))
+#         if plot:
+#             plt.plot(filterd_y)
+#         return diffs
 
-    result = minimize(find_diff, x0=fir_est, args = (response_long[:100],np.mean(response_long[rise_index+50:drop_index])),
-                      bounds = [(-3,3)]*len(fir_est))
+#     result = minimize(find_diff, x0=fir_est, args = (response_long[:100],np.mean(response_long[rise_index+50:drop_index])),
+#                       bounds = [(-3,3)]*len(fir_est))
 
-    optimized_fir = result.x
-    convolved_fir = convolve(long_FIR,optimized_fir, mode='full')
-    if np.abs(np.max(convolved_fir)) > 2:
-        convolved_fir=1.99*convolved_fir/np.max(np.abs(convolved_fir))
-    filtered_response_Full = lfilter(convolved_fir,long_IIR, flux_cryoscope_q[1:])
+#     optimized_fir = result.x
+#     convolved_fir = convolve(long_FIR,optimized_fir, mode='full')
+#     if np.abs(np.max(convolved_fir)) > 2:
+#         convolved_fir=1.99*convolved_fir/np.max(np.abs(convolved_fir))
+#     filtered_response_Full = lfilter(convolved_fir,long_IIR, flux_cryoscope_q[1:])
     
     
-    if plot_process:
-        t = np.array(flux_cryoscope_q.time)
-        plt.figure()
-        plt.plot(t,flux_cryoscope_q.data,label =  'data')
-        plt.plot(flux_cryoscope_q.time[1:],filtered_response_long_1exp[1:], label = 'filtered long time')
-        plt.plot(flux_cryoscope_q.time[1:],filtered_response_Full, label = 'filtered full, fitted')
-        plt.axhline(final_vals*1.001, color = 'k')
-        plt.axhline(final_vals*0.999, color = 'k')
-        plt.xlabel('time (ns)')
-        plt.ylabel('flux')
-        plt.ylim([final_vals*0.95,final_vals*1.05])
-        plt.title(f'Optimized FIR Filter - {qubit.name} \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type_active_or_thermal}')
-        plt.legend()
-        plt.show()
+#     if plot_process:
+#         t = np.array(flux_cryoscope_q.time)
+#         plt.figure()
+#         plt.plot(t,flux_cryoscope_q.data,label =  'data')
+#         plt.plot(flux_cryoscope_q.time[1:],filtered_response_long_1exp[1:], label = 'filtered long time')
+#         plt.plot(flux_cryoscope_q.time[1:],filtered_response_Full, label = 'filtered full, fitted')
+#         plt.axhline(final_vals*1.001, color = 'k')
+#         plt.axhline(final_vals*0.999, color = 'k')
+#         plt.xlabel('time (ns)')
+#         plt.ylabel('flux')
+#         plt.ylim([final_vals*0.95,final_vals*1.05])
+#         plt.title(f'Optimized FIR Filter - {qubit.name} \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type_active_or_thermal}')
+#         plt.legend()
+#         plt.show()
 
 # %% {plot final results}
 print('\033[1m\033[32m PLOT FINAL RESULTS \033[0m')

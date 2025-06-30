@@ -139,7 +139,7 @@ with program() as ro_freq_opt:
                 # Play the x180 gate to put the qubits in the excited state
                 qubit.xy.play("x180")
                 # Align the elements to measure after playing the qubit pulses.
-                align()
+                qubit.align()
                 # Measure the state of the resonators
                 qubit.resonator.measure("readout", qua_vars=(I_e[i], Q_e[i]))
                 # wait(1000)
@@ -154,7 +154,7 @@ with program() as ro_freq_opt:
                 update_frequency(
                     qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity
                 )
-                wait(10) # we need a wait here otherwise we will not get good separation between E and F resonances  
+                qubit.wait(10) # we need a wait here otherwise we will not get good separation between E and F resonances  
                 qubit.xy.play(operation)
                 qubit.align()
                 update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)

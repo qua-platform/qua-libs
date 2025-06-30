@@ -32,6 +32,7 @@ Outcomes:
 """
 
 # %% {Imports}
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
@@ -147,24 +148,18 @@ with program() as CPhase_Oscillations:
                             qp.align()
                     else:
                         wait(qp.qubit_control.thermalization_time * u.ns)
-                    
-                    reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
-                    
+                      
                     qp.align()
                     # setting both qubits ot the initial state
                     qubit.xy.play("x90")
-                    # qp.align()
+                    qp.align()
                     
                     if qubit.name == qp.qubit_control.name:
                         #play the CZ gate
-                        qp.gates['Cz'].execute(additional_control_phase_shift=frame, repetitions=node.parameters.num_repetitions)
+                        qp.gates['Cz'].execute(additional_control_phase_shift=frame)
                     else:
                         #play the CZ gate
-                        qp.gates['Cz'].execute(additional_target_phase_shift=frame, repetitions=node.parameters.num_repetitions)
-                    
-                    # # rotate the frame
-                    # frame_rotation_2pi(frame, qubit.xy.name)
-                    # qp.align()
+                        qp.gates['Cz'].execute(additional_target_phase_shift=frame)
                     # return the target qubit before measurement
                     qubit.xy.play("x90")              
                     
@@ -261,7 +256,7 @@ if not node.parameters.simulate:
         ax.axvline(x = 1-phases_target[qubit_pair['qubit']], color = 'C0', linestyle = '--')
         ax.axvline(x = 1-phases_control[qubit_pair['qubit']], color = 'C1', linestyle = '--')
         ax.legend()
-    plt.suptitle('Cz single qubit phase calibration')
+    plt.suptitle(f'Cz single qubit phase calibration \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type}')
     plt.tight_layout()
     plt.show()
     node.results["figure_phase"] = grid.fig

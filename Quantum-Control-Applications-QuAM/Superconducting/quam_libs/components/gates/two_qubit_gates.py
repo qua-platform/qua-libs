@@ -86,36 +86,34 @@ class CZGate(TwoQubitGate):
 
         return f"{self.gate_label}{str_ref.DELIMITER}{pulse_label}"
 
-    def execute(self, amplitude_scale=None, additional_control_phase_shift: fixed = 0, additional_target_phase_shift: fixed = 0, repetitions: int = 1):        
+    def execute(self, amplitude_scale=None, additional_control_phase_shift: fixed = 0, additional_target_phase_shift: fixed = 0):
+            
+        self.transmon_pair.align()
         
-        for _ in range(repetitions):
-            
-            self.transmon_pair.align()
-            
-            # self.qubit_control.xy.wait(self.pre_wait)
-            # self.qubit_target.xy.wait(self.pre_wait)
-            
-            self.qubit_control.z.play(
-                self.flux_pulse_control_label,
-                validate=False,
-                amplitude_scale=amplitude_scale,
+        # self.qubit_control.xy.wait(self.pre_wait)
+        # self.qubit_target.xy.wait(self.pre_wait)
+        
+        self.qubit_control.z.play(
+            self.flux_pulse_control_label,
+            validate=False,
+            amplitude_scale=amplitude_scale,
+        )
+        
+        if self.coupler_flux_pulse is not None:
+            self.coupler.play(
+                self.coupler_flux_pulse_label,
+                validate=False
             )
-            
-            if self.coupler_flux_pulse is not None:
-                self.coupler.play(
-                    self.coupler_flux_pulse_label,
-                    validate=False
-                )
-            
-            phase_shift_control = declare(fixed, value=self.phase_shift_control)
-            phase_shift_target = declare(fixed, value=self.phase_shift_target)
-            
-            self.transmon_pair.align()
-            frame_rotation_2pi(phase_shift_control + additional_control_phase_shift, self.qubit_control.xy.name)
-            frame_rotation_2pi(phase_shift_target + additional_target_phase_shift, self.qubit_target.xy.name)
-            self.qubit_control.xy.play("x180", amplitude_scale=0.0, duration=4)
-            self.qubit_target.xy.play("x180", amplitude_scale=0.0, duration=4)
-            self.transmon_pair.align()
+        
+        phase_shift_control = declare(fixed, value=self.phase_shift_control)
+        phase_shift_target = declare(fixed, value=self.phase_shift_target)
+        
+        self.transmon_pair.align()
+        frame_rotation_2pi(phase_shift_control + additional_control_phase_shift, self.qubit_control.xy.name)
+        frame_rotation_2pi(phase_shift_target + additional_target_phase_shift, self.qubit_target.xy.name)
+        self.qubit_control.xy.play("x180", amplitude_scale=0.0, duration=4)
+        self.qubit_target.xy.play("x180", amplitude_scale=0.0, duration=4)
+        self.transmon_pair.align()
 
     @property
     def config_settings(self):
