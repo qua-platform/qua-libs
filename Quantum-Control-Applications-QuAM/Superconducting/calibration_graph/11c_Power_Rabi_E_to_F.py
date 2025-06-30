@@ -80,7 +80,7 @@ for q in qubits:
         print("Creating EF_x180 operation")
         ef_operation = pulses.DragCosinePulse(
                     amplitude=0.025,
-                    alpha=q.xy.operations["x180"].alpha,
+                    alpha=0,
                     anharmonicity=q.xy.operations["x180"].anharmonicity,
                     length=q.xy.operations["x180"].length,
                     axis_angle=0,  # TODO: to check that the rotation does not overwrite y-pulses
@@ -126,7 +126,7 @@ with program() as power_rabi:
         update_frequency(
                     qubit.resonator.name,
                     qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift,
-                    keep_phase=True
+                    # keep_phase=True
                 )
 
         with for_(n, 0, n < n_avg, n + 1):
@@ -199,7 +199,7 @@ if not node.parameters.simulate:
 # %% {Data_analysis}
 if not node.parameters.simulate:
     # Fit the power Rabi oscillations
-    fit = fit_oscillation(ds.IQ_abs, "amp")
+    fit = fit_oscillation(ds.Q, "amp")
     
     # Save fitting results
     fit_results = {}
@@ -237,14 +237,14 @@ if not node.parameters.simulate:
 if not node.parameters.simulate:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        (ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].IQ_abs * 1e3).plot(
+        (ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].Q * 1e3).plot(
             ax=ax, x="amp_mV"
         )
         ax.plot(ds.abs_amp.loc[qubit] * 1e3, 1e3 * fit_evals.loc[qubit])
-        ax.set_ylabel("Trans. amp. I [mV]")
+        ax.set_ylabel("Trans. amp. Q [mV]")
         ax.set_xlabel("Amplitude [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"EF Rabi : I vs. amplitude \n {date_time} GMT+3 #{node_id}")
+    grid.fig.suptitle(f"EF Rabi : Q vs. amplitude \n {date_time} GMT+3 #{node_id}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig

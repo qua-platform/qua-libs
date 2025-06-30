@@ -33,11 +33,12 @@ Outcomes:
 """
 
 # %% {Imports}
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, save_node
+from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id, load_dataset, save_node
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -70,6 +71,7 @@ class Parameters(NodeParameters):
 node = QualibrationNode(
     name="40b_Bell_state_tomography", parameters=Parameters()
 )
+node_id = get_node_id()
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
 # %% {Initialize_QuAM_and_QOP}
@@ -349,6 +351,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout ) as qm:
         job = qm.execute(CPhase_Oscillations)
 
@@ -468,7 +471,10 @@ if not node.parameters.simulate:
         ax.set_yticks(range(4), ['00', '01', '10', '11'])
         ax.set_xticklabels(['00', '01', '10', '11'], rotation=45, ha='right')
         ax.set_yticklabels(['00', '01', '10', '11'])
-    grid.fig.suptitle(f"Bell state tomography (real part)")
+    grid.fig.suptitle(f"Bell state tomography (real part) \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type}")
+    grid.fig.tight_layout()
+    grid.fig.show()
+    
     node.results["figure_rho_real"] = grid.fig
         
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
@@ -490,9 +496,12 @@ if not node.parameters.simulate:
         ax.set_yticks(range(4), ['00', '01', '10', '11'])
         ax.set_xticklabels(['00', '01', '10', '11'], rotation=45, ha='right')
         ax.set_yticklabels(['00', '01', '10', '11'])
-    grid.fig.suptitle(f"Bell state tomography (imaginary part)")
+    grid.fig.suptitle(f"Bell state tomography (imaginary part) \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type}")
     node.results["figure_rho_imag"] = grid.fig
 
+    grid.fig.tight_layout()
+    grid.fig.show()
+    
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
     grid = QubitPairGrid(grid_names, qubit_pair_names)
     for ax, qubit_pair in grid_iter(grid):
@@ -517,8 +526,8 @@ if not node.parameters.simulate:
                     ha='center', va='bottom')
 
 # Adjust layout and display the plot
-    plt.tight_layout()
-    plt.show()
+    grid.fig.tight_layout()
+    grid.fig.show()
     node.results["figure_paulis"] = grid.fig
 # %%
 

@@ -331,7 +331,7 @@ def sequential_exp_fit(t, y, start_fractions, verbose=True):
     t_offset = t - t[0]  # Make time start at 0
     
     # Find the flat region in the tail by looking at local variance
-    window = len(y) // 20  # Window size by dividing signal into 20 equal pieces
+    window = max(5, len(y) // 20)  # Window size by dividing signal into 20 equal pieces or at least 5 points
     rolling_var = np.array([np.var(y[i:i+window]) for i in range(len(y)-window)])
     # Find where variance drops below threshold, indicating flat region
     var_threshold = np.mean(rolling_var) * 0.1  # 10% of mean variance

@@ -32,11 +32,12 @@ Outcomes:
 """
 
 # %% {Imports}
+from datetime import datetime, timezone, timedelta
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, save_node
+from quam_libs.lib.save_utils import fetch_results_as_xarray, get_node_id, load_dataset, save_node
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -74,6 +75,8 @@ class Parameters(NodeParameters):
 node = QualibrationNode(
     name="32a_Cz_phase_calibration_frame", parameters=Parameters()
 )
+node_id = get_node_id()
+
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
 # %% {Initialize_QuAM_and_QOP}
@@ -193,6 +196,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 elif node.parameters.load_data_id is None:
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout ) as qm:
         job = qm.execute(CPhase_Oscillations)
 
@@ -266,7 +270,7 @@ if not node.parameters.simulate:
         phase_diffs[qp.name] = phase_diff
         optimal_amps[qp.name] = optimal_amp * qp.gates['Cz'].flux_pulse_control.amplitude
         
-        print(f"parameters for {qp.name}: amp={optimal_amps[qp.name]}")
+        print(f"parameters for {qp.name}: amp={optimal_amps[qp.name]}, old amp={qp.gates['Cz'].flux_pulse_control.amplitude}")
         
         if node.parameters.measure_leak:
             all_counts = (ds_qp.state_control < 3).sum(dim = 'N').sel(control_axis = 1).sum(dim = 'frame')
@@ -297,7 +301,7 @@ if not node.parameters.simulate:
         ax.set_xlabel('Amplitude (V)')
         ax.set_ylabel('Phase difference')
         
-    plt.suptitle('Cz phase calibration', y=0.95)
+    plt.suptitle(f'Cz phase calibration \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type}', y=0.95)
     plt.tight_layout()
     plt.show()
     node.results["figure_phase"] = grid.fig

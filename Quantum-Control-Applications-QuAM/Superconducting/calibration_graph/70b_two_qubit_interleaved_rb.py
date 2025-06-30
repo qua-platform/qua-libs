@@ -33,14 +33,10 @@ Prerequisites:
 
 # %%
 
-import dataclasses
 from datetime import datetime, timezone, timedelta
 from typing import List, Literal, Optional
 from more_itertools import flatten
-import numpy as np
-import matplotlib.pyplot as plt
 from quam_libs.experiments.rb.data_utils import RBResult
-from scipy.optimize import curve_fit
 import xarray as xr
 
 
@@ -67,14 +63,14 @@ from quam_libs.experiments.rb.plot_utils import gate_mapping
 # %% {Node_parameters}
 
 class Parameters(NodeParameters):
-    qubit_pairs: Optional[List[str]] = ["qC1-qC2"]
-    circuit_lengths: tuple[int] = (0,1,2,4,8,16,32,48) # in number of cliffords
-    num_circuits_per_length: int = 20
+    qubit_pairs: Optional[List[str]] = ["qD1-qD2"]
+    circuit_lengths: tuple[int] = (0,1,2,4,8,16) # in number of cliffords
+    num_circuits_per_length: int = 15
     num_averages: int = 15
-    target_gate: str = "idle_2q" # "idle_2q" or "cz" supported 
+    target_gate: str = "cz" # "idle_2q" or "cz" supported 
     basis_gates: list[str] = ['rz', 'sx', 'x', 'cz'] 
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     reduce_to_1q_cliffords: bool = True
     use_input_stream: bool = False
     simulate: bool = False
@@ -231,14 +227,15 @@ probs_00 = probs_00.astype(int)
 ds_transposed = ds.rename({"shots": "average", "sequence": "repeat", "depths": "circuit_depth"})
 ds_transposed = ds_transposed.transpose("qubit", "repeat", "circuit_depth", "average")
 
+for qp in qubit_pairs:
 
-rb_result = RBResult(
-    circuit_depths=list(node.parameters.circuit_lengths),
-    num_repeats=node.parameters.num_circuits_per_length,
-    num_averages=node.parameters.num_averages,
-    state=ds_transposed.sel(qubit="qC1-qC2").state.data
-)
+    rb_result = RBResult(
+        circuit_depths=list(node.parameters.circuit_lengths),
+        num_repeats=node.parameters.num_circuits_per_length,
+        num_averages=node.parameters.num_averages,
+        state=ds_transposed.sel(qubit=qp.name).state.data
+    )
 
-rb_result.plot_with_fidelity()
+    rb_result.plot_with_fidelity()
 
 # %%
