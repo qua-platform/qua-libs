@@ -1,0 +1,100 @@
+{
+    "created_at": "2025-06-30T19:11:24-07:00",
+    "metadata": {
+        "description": "\n        TIME OF FLIGHT\nThis sequence involves sending a readout pulse and capturing the raw ADC traces.\nThe data undergoes post-processing to calibrate three distinct parameters:\n    - Time of Flight: This represents the internal processing time and the propagation delay of the readout pulse.\n    Its value can be adjusted in the configuration under \"time_of_flight\".\n    This value is utilized to offset the acquisition window relative to when the readout pulse is dispatched.\n\n    - Analog Inputs Offset: Due to minor impedance mismatches, the signals captured by the OPX might exhibit slight offsets.\n    These can be rectified in the configuration at: config/controllers/\"con1\"/analog_inputs, enhancing the demodulation process.\n\n    - Analog Inputs Gain: If a signal is constrained by digitization or if it saturates the ADC,\n    the variable gain of the OPX analog input can be modified to fit the signal within the ADC range of +/-0.5V.\n    This gain, ranging from -12 dB to 20 dB, can also be adjusted in the configuration at: config/controllers/\"con1\"/analog_inputs.\n",
+        "run_start": "2025-06-30T19:11:04.880-07:00",
+        "run_end": "2025-06-30T19:11:24.414-07:00",
+        "name": "time_of_flight",
+        "data_path": "2025-06-30/#1_time_of_flight_191124"
+    },
+    "data": {
+        "parameters": {
+            "model": {
+                "num_shots": 10,
+                "depletion_time": 10000,
+                "simulate": false,
+                "resonators": [
+                    "q1_resonator",
+                    "q2_resonator"
+                ],
+                "multiplexed": true,
+                "simulation_duration_ns": 50000,
+                "use_waveform_report": true,
+                "timeout": 120,
+                "load_data_id": null
+            },
+            "schema": {
+                "additionalProperties": false,
+                "properties": {
+                    "num_shots": {
+                        "default": 100,
+                        "title": "Num Shots",
+                        "type": "integer"
+                    },
+                    "depletion_time": {
+                        "default": 10000,
+                        "title": "Depletion Time",
+                        "type": "integer"
+                    },
+                    "simulate": {
+                        "default": false,
+                        "description": "Simulate the waveforms on the OPX instead of executing the program. Default is False.",
+                        "title": "Simulate",
+                        "type": "boolean"
+                    },
+                    "resonators": {
+                        "default": [
+                            "q1_resonator"
+                        ],
+                        "items": {
+                            "type": "string"
+                        },
+                        "title": "Resonators",
+                        "type": "array"
+                    },
+                    "multiplexed": {
+                        "default": true,
+                        "title": "Multiplexed",
+                        "type": "boolean"
+                    },
+                    "simulation_duration_ns": {
+                        "default": 50000,
+                        "description": "Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns.",
+                        "title": "Simulation Duration Ns",
+                        "type": "integer"
+                    },
+                    "use_waveform_report": {
+                        "default": true,
+                        "description": "Whether to use the interactive waveform report in simulation. Default is True.",
+                        "title": "Use Waveform Report",
+                        "type": "boolean"
+                    },
+                    "timeout": {
+                        "default": 120,
+                        "description": "Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s.",
+                        "title": "Timeout",
+                        "type": "integer"
+                    },
+                    "load_data_id": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Optional QUAlibrate node run index for loading historical data. Default is None.",
+                        "title": "Load Data Id"
+                    }
+                },
+                "title": "Parameters",
+                "type": "object"
+            }
+        },
+        "outcomes": {}
+    },
+    "id": 1,
+    "parents": []
+}
