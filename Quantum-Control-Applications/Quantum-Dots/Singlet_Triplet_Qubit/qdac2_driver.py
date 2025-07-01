@@ -100,7 +100,7 @@ def load_voltage_list(
 
 
 # set the QDAC voltage to a specific value
-def set_QDAC_voltage(
+def set_qdac_voltage(
     qdac,
     channel: int,
     voltage: float,
