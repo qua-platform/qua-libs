@@ -31,6 +31,7 @@ def process_raw_data(raw_data: dict) -> dict:
 
     return processed_data
 
+
 def fit_raw_data(processed_data: dict, num_resonators: int) -> dict:
     """
     Analyze raw ADC data to extract features like mean and pulse arrival delay.

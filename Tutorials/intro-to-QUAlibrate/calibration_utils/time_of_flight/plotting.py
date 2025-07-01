@@ -89,7 +89,6 @@ def plot_averaged_run_with_fit(data: dict, num_resonators: int):
         Q_mean = data["fitted_data"]["mean_values"][f"adcQ{q}"]
         delay = data["fitted_data"][f"delay{q}"]
 
-
         ax = axs2[i] if num_resonators > 1 else axs2
         ax.set_title(f"Resonator {q} - Averaged Run")
         ax.plot(I, "b", label="I")
