@@ -18,16 +18,10 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"  # Write the QM router IP address
-cluster_name = None  # Write your cluster_name if version >= QOP220
+# qop_ip = "127.0.0.1"  # Write the QM router IP address
+qop_ip = "172.16.33.115"  # Write the QM router IP address
+cluster_name = "CS_3"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
-
-#############
-# Save Path #
-#############
-# Path to save data
-save_dir = Path(__file__).parent.resolve() / "Data"
-save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
     Path(__file__).name: Path(__file__).name,

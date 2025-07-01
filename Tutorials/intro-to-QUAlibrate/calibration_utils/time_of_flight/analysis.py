@@ -13,23 +13,25 @@ from qualang_tools.units import unit
 u = unit(coerce_to_integer=True)
 
 
-def process_raw_data(fetched_data: dict):
+def process_raw_data(raw_data: dict) -> dict:
     """
     Convert raw ADC traces into volts.
 
     Args:
-        fetched_data (dict): Dictionary of raw results (typically from the execution node).
+        raw_data (dict): Dictionary of raw results.
 
-    Modifies:
-        fetched_data (in-place): All NumPy array values are converted to volts using unit conversions.
+    Returns:
+        processed_data (dict): Same keys as raw_data, but every NumPy array converted to volts.
     """
+    processed_data = {}
     # Convert raw ADC traces into volts
-    for key, value in fetched_data["raw_data"].items():
+    for key, value in raw_data.items():
         if isinstance(value, np.ndarray):
-            fetched_data[key] = u.raw2volts(value)
+            processed_data[key] = u.raw2volts(value) if isinstance(value, np.ndarray) else value
 
+    return processed_data
 
-def fit_raw_data(fetched_data: dict, node: QualibrationNode):
+def fit_raw_data(processed_data: dict, num_resonators: int) -> dict:
     """
     Analyze raw ADC data to extract features like mean and pulse arrival delay.
 
@@ -39,35 +41,44 @@ def fit_raw_data(fetched_data: dict, node: QualibrationNode):
     - Detects pulse arrival time via Savitzky-Golay filter + threshold.
 
     Args:
-        fetched_data (dict): Dictionary of preprocessed results (in volts).
-        node (QualibrationNode): Node containing metadata (especially `node.parameters.resonators`).
+        processed_data (dict): Dictionary of preprocessed results (in volts).
+        num_resonators (int): Number of resonators (or qubits).
 
-    Modifies:
-        fetched_data (in-place):
-            - Adds "mean_values" dict
-            - Adds "delay{i}" entries for each resonator
+    Returns:
+        ds_fit (dict): A dictionary with the following keys:
+            - 'mean_values': Per-signal mean offset (used for centering).
+            - 'processed_data_without_mean': Mean-centered ADC traces.
+            - 'delay{i}': Extracted pulse arrival delay (in ns) for each resonator.
+
     """
+    ds_fit = {}
+
     # Derive the average values
     mean_values = {}
-    for key, value in fetched_data["raw_data"].items():
+    for key, value in processed_data.items():
         if isinstance(value, np.ndarray):
             mean_values[key] = value.mean()
         elif isinstance(value, (int, float)):
             mean_values[key] = value
     # Save the average values
-    fetched_data["mean_values"] = mean_values
+    ds_fit["mean_values"] = mean_values
 
     # Remove the average values
-    for key, value in fetched_data["raw_data"].items():
+    ds_fit["processed_data_without_mean"] = {}
+    for key, value in processed_data.items():
         if isinstance(value, np.ndarray):
-            fetched_data[key] = value - mean_values[key]
+            ds_fit["processed_data_without_mean"][key] = value - ds_fit["mean_values"][key]
+        elif isinstance(value, (int, float)):
+            ds_fit["processed_data_without_mean"][key] = value
 
     # Filter the data to get the pulse arrival time
-    for i in range(len(node.parameters.resonators)):
-        signal = savgol_filter(
-            np.abs(fetched_data["raw_data"][f"adcI{i + 1}"] + 1j * fetched_data["raw_data"][f"adcQ{i + 1}"]), 11, 3
-        )
+    for i in range(num_resonators):
+        I = ds_fit["processed_data_without_mean"][f"adcI{i + 1}"]
+        Q = ds_fit["processed_data_without_mean"][f"adcQ{i + 1}"]
+        signal = savgol_filter(np.abs(I + 1j * Q), 11, 3)
         # Detect the arrival of the readout signal
         th = (np.mean(signal[:100]) + np.mean(signal[:-100])) / 2
         delay = np.where(signal > th)[0][0]
-        fetched_data[f"delay{i + 1}"] = np.round(delay / 4) * 4  # Find the closest multiple integer of 4ns
+        ds_fit[f"delay{i + 1}"] = int(np.round(delay / 4) * 4)  # Find the closest multiple integer of 4ns
+
+    return ds_fit

@@ -144,8 +144,9 @@ def load_data(node: QualibrationNode[Parameters, None]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, None]):
     """Analyse the raw data and store the fitted data in node.results."""
-    process_raw_data(node.results)
-    fit_raw_data(node.results, node)
+    num_resonators = len(node.parameters.resonators)
+    node.results["processed_data"] = process_raw_data(node.results["raw_data"])
+    node.results["fitted_data"] = fit_raw_data(node.results["processed_data"], num_resonators)
 
 
 # %% {Plotting}
@@ -153,8 +154,8 @@ def analyse_data(node: QualibrationNode[Parameters, None]):
 def plot_data(node: QualibrationNode[Parameters, None]):
     """Plot the raw and fitted data."""
     num_resonators = len(node.parameters.resonators)
-    fig_single_run_fit = plot_single_run_with_fit(num_resonators, node.results)
-    fig_averaged_run_fit = plot_averaged_run_with_fit(num_resonators, node.results)
+    fig_single_run_fit = plot_single_run_with_fit(node.results, num_resonators)
+    fig_averaged_run_fit = plot_averaged_run_with_fit(node.results, num_resonators)
     node.results["figures"] = {
         "single_run": fig_single_run_fit,
         "averaged_run": fig_averaged_run_fit,
