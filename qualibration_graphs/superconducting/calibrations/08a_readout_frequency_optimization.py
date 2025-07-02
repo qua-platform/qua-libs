@@ -25,7 +25,7 @@ from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-# %% {Initialisation}
+# %% {Node initialisation}
 description = """
         READOUT OPTIMISATION: FREQUENCY
 The sequence consists in measuring the state of the resonator after thermalization (qubit in |g>) and after
@@ -185,7 +185,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 
-# %% {Load_data}
+# %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""

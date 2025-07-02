@@ -19,7 +19,7 @@ from calibration_utils.time_of_flight import (
 
 from qualibration_libs.runtime import simulate_and_plot
 
-# %% {Initialisation}
+# %% {Node initialisation}
 description = """
         TIME OF FLIGHT
 This sequence involves sending a readout pulse and capturing the raw ADC traces.
