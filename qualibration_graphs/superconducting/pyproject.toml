@@ -25,6 +25,7 @@ dependencies = [
     "qiskit-experiments>=0.9.0",
     "tqdm>=4.67.1",
     "qiskit<2.0",
+    "nbformat>=4.2",
 ]
 
 [tool.black]
