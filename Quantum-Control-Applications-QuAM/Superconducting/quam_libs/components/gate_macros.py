@@ -86,6 +86,10 @@ class VirtualZMacro(QubitMacro):
     def apply(self, angle: float) -> None:
         self.qubit.xy.frame_rotation(angle)
 
+    def __post_init__(self) -> None:
+        self.duration = 0  # Virtual Z gates do not have a duration
+        self.fidelity = 1.0  # Virtual Z gates are perfect, so fidelity is 1.0
+
 
 @quam_dataclass
 class CZMacro(QubitPairMacro):
@@ -183,3 +187,7 @@ class IdMacro(QubitMacro):
     def apply(self, **kwargs) -> None:
         # No operation is performed
         self.qubit.align()
+
+    def __post_init__(self) -> None:
+        self.duration = 0  # Identity gates do not have a duration
+        self.fidelity = 1.0  # Identity gates are perfect, so fidelity is 1.0

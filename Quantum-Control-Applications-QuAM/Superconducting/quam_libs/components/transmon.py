@@ -149,7 +149,7 @@ class Transmon(Qubit):
         if self is other:
             raise ValueError("Cannot create a qubit pair with same qubit (q1 @ q1), where q1={self}")
 
-        for qubit_pair in self._root.qubit_pairs.values():
+        for qubit_pair in self.get_root().qubit_pairs.values():
             if qubit_pair.qubit_control is self and qubit_pair.qubit_target is other:
                 return qubit_pair
         else:
