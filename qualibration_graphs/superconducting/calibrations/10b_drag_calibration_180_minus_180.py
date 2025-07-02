@@ -26,7 +26,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
 
 
-# %% {Initialisation}
+# %% {Node initialisation}
 description = """
         DRAG PULSE CALIBRATION (GOOGLE METHOD)
 The sequence consists in applying an increasing number of x180 and -x180 pulses
@@ -216,7 +216,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 
-# %% {Load_data}
+# %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
