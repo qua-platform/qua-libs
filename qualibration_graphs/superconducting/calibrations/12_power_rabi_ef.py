@@ -1,59 +1,57 @@
 # %% {Imports}
+import dataclasses
+from dataclasses import asdict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
-
+from calibration_utils.power_rabi import (
+    Parameters,
+    fit_raw_data,
+    get_number_of_pulses,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+    process_raw_dataset,
+)
 from qm.qua import *
-
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-
 from qualibrate import QualibrationNode
-from quam_config import Quam
-from calibration_utils.power_rabi import (
-    Parameters,
-    get_number_of_pulses,
-    process_raw_dataset,
-    fit_raw_data,
-    log_fitted_results,
-    plot_raw_data_with_fit,
-)
+from qualibration_libs import data
+from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher
-
+from quam_config import Quam
 
 # %% {Description}
 description = """
-        POWER RABI WITH ERROR AMPLIFICATION
-This sequence involves repeatedly executing the qubit pulse (such as x180) 'N' times and
-measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
-By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
-amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
-
+        EF POWER RABI CALIBRATION
+This node calibrates the pi pulse operation between the |e> and |f> states of a superconducting qubit
+by populating the |e> state with a previously calibrated pi pulse and applying a varying amplitude detuned pulse at the |e> -> |f> transition frequency.
 Prerequisites:
-    - Having calibrated the mixer or the Octave (nodes 01a or 01b).
-    - Having calibrated the qubit frequency (node 03a_qubit_spectroscopy.py).
-    - Having set the qubit gates duration (qubit.xy.operations["x180"].length).
-    - Having specified the desired flux point if relevant (qubit.z.flux_point).
+    - Having calibrated a pi pulse operation between the |g> and |e> states of the qubit (x180). (04_power_rabi.py)
+    - Having calibrated the readout resonator dispersive shift (chi). (08a_readout_frequency_optimization.py)
+    - Having calibrated the qubit anharmonicity.
 
 State update:
-    - The qubit pulse amplitude corresponding to the specified operation (x180, x90...)
-    (qubit.xy.operations[operation].amplitude).
+    - The qubit pulse amplitude corresponding to the EF_x180 operation
+    (qubit.xy.operations["EF_x180"].amplitude).
 """
 
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="04b_power_rabi",  # Name should be unique
+    name="12_power_rabi_ef",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
 
-node.namespace["Rabi_ef"] = None
+node.namespace["Rabi_ef"] = True
+node.parameters.operation = "x180"
+node.parameters.max_number_pulses_per_sweep = 1
+
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
@@ -61,11 +59,6 @@ node.namespace["Rabi_ef"] = None
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1", "q2"]
-    # node.parameters.max_number_pulses_per_sweep = 100
-    # node.parameters.min_amp_factor = 0.8
-    # node.parameters.max_amp_factor = 1.2
-    # node.parameters.amp_factor_step = 0.01
     pass
 
 
@@ -84,7 +77,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num_qubits = len(qubits)
 
     n_avg = node.parameters.num_shots  # The number of averages
-    operation = node.parameters.operation  # The qubit operation to play
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
     amps = np.arange(
         node.parameters.min_amp_factor,
@@ -99,6 +91,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "nb_of_pulses": xr.DataArray(N_pi_vec, attrs={"long_name": "number of pulses"}),
         "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "pulse amplitude prefactor"}),
     }
+    for qubit in qubits:
+        # Check if the qubit has the required operations
+        if hasattr(qubit.xy.operations, "EF_x180"):
+            continue
+        else:
+            x180 = qubit.xy.operations["x180"]
+            qubit.xy.operations["EF_x180"] = dataclasses.replace(x180, alpha=0.0)
 
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
@@ -113,6 +112,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
+                qubit.resonator.update_frequency(qubit.resonator.intermediate_frequency + qubit.chi)
             align()
 
             with for_(n, 0, n < n_avg, n + 1):
@@ -122,13 +122,16 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
                             qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                            qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
                         align()
-
-                        # Qubit manipulation
+                        for i, qubit in multiplexed_qubits.items():
+                            qubit.xy.play("x180")
+                            qubit.xy.update_frequency(qubit.xy.intermediate_frequency - qubit.anharmonicity)
+                        align()
                         for i, qubit in multiplexed_qubits.items():
                             # Loop for error amplification (perform many qubit pulses)
                             with for_(count, 0, count < npi, count + 1):
-                                qubit.xy.play(operation, amplitude_scale=a)
+                                qubit.xy.play("EF_x180", amplitude_scale=a)
                         align()
 
                         # Qubit readout
@@ -145,23 +148,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for i, qubit in enumerate(qubits):
-                if operation == "x180":
-                    if node.parameters.use_state_discrimination:
-                        state_st[i].buffer(len(amps)).buffer(
-                            np.ceil(node.parameters.max_number_pulses_per_sweep / 2)
-                        ).average().save(f"state{i + 1}")
-                    else:
-                        I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")
-                        Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")
-
-                elif operation in ["x90", "-x90", "y90", "-y90"]:
-                    if node.parameters.use_state_discrimination:
-                        state_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"state{i + 1}")
-                    else:
-                        I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")
-                        Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")
+                if node.parameters.use_state_discrimination:
+                    state_st[i].buffer(len(amps)).buffer(
+                        np.ceil(node.parameters.max_number_pulses_per_sweep / 2)
+                    ).average().save(f"state{i + 1}")
                 else:
-                    raise ValueError(f"Unrecognized operation {operation}.")
+                    I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")
+                    Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate}
@@ -214,6 +207,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
+    node.namespace["Rabi_ef"] = True
+
 
 
 # %% {Analyse_data}
@@ -252,14 +247,15 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-
-            operation = q.xy.operations[node.parameters.operation]
-            operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
-            if node.parameters.operation == "x180":
-                q.xy.operations["x90"].amplitude = node.results["fit_results"][q.name]["opt_amp"] / 2
+            else:
+                operation = q.xy.operations["EF_x180"]
+                operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
+
+# %%
