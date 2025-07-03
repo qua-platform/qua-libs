@@ -34,7 +34,7 @@ def prepare_resonator_spectroscopy_data(
 
         # --- Logic to generate curves from S21 models ---
         if s21_models:
-            print("S21 models found. Generating fit curves for plotting.")
+            # print("S21 models found. Generating fit curves for plotting.")
             
             # Create empty DataArrays to hold the new fit data
             all_mag_curves = xr.DataArray(np.nan, coords=ds_raw.IQ_abs.coords, dims=ds_raw.IQ_abs.dims)

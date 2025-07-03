@@ -18,10 +18,10 @@ SNR_MIN: float = 2.5
 SNR_DISTORTED: float = 5.0
 ASYMMETRY_MIN: float = 0.4
 ASYMMETRY_MAX: float = 2.5
-SKEWNESS_MAX: float = 1.5
-DISTORTED_FRACTION_LOW_SNR: float = 0.2
-DISTORTED_FRACTION_HIGH_SNR: float = 0.3
-FWHM_ABSOLUTE_THRESHOLD_HZ: float = 1e6
+SKEWNESS_MAX: float = 1.1  
+DISTORTED_FRACTION_LOW_SNR: float = 0.15  
+DISTORTED_FRACTION_HIGH_SNR: float = 0.25  
+FWHM_ABSOLUTE_THRESHOLD_HZ: float = 3e6  
 NRMSE_THRESHOLD: float = 0.14
 R_SQUARED_THRESHOLD: float = 0.90
 
@@ -344,6 +344,7 @@ def _determine_resonator_outcome(
         else:
             return "Distorted peak detected"
     
+    # All other checks passed, consider fit successful
     return "successful"
 
 

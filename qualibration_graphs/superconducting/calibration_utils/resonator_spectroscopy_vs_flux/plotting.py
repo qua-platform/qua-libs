@@ -216,7 +216,7 @@ def plotly_plot_raw_data_with_fit(
     grid = PlotlyQubitGrid(ds2, [q.grid_location for q in qubits])
     ncols = grid.n_cols
     nrows = grid.n_rows
-    subplot_titles = [f"Qubit {list(nd.values())[0]}" for nd in grid.name_dicts]
+    subplot_titles = grid.get_subplot_titles()
 
     # 4) Create subplots with extra spacing
     fig = make_subplots(
@@ -260,9 +260,9 @@ def plotly_plot_raw_data_with_fit(
     overlay_types = []
     overlay_trace_idxs = []
 
-    for idx, name_dict in enumerate(grid.name_dicts):
-        row      = (idx // ncols) + 1
-        col      = (idx % ncols)  + 1
+    for idx, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+        row = grid_row + 1  # Convert to 1-based indexing for Plotly
+        col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
 
         # find integer index of qubit_id in ds2.qubit.values
@@ -518,7 +518,7 @@ def plotly_plot_raw_data(
     grid = PlotlyQubitGrid(ds, [q.grid_location for q in qubits])
     ncols = grid.n_cols
     nrows = grid.n_rows
-    subplot_titles = [f"Qubit {list(nd.values())[0]}" for nd in grid.name_dicts]
+    subplot_titles = grid.get_subplot_titles()
 
     # 3) Create subplots with extra spacing
     fig = make_subplots(
@@ -553,9 +553,9 @@ def plotly_plot_raw_data(
     y_vals_list = []
     z_mats_list = []
     customdatas_list = []
-    for idx, name_dict in enumerate(grid.name_dicts):
-        row      = (idx // ncols) + 1
-        col      = (idx % ncols)  + 1
+    for idx, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+        row = grid_row + 1  # Convert to 1-based indexing for Plotly
+        col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
 
         q_labels = list(ds.qubit.values)

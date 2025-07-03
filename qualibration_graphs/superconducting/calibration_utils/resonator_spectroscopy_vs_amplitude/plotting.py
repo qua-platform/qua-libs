@@ -206,7 +206,7 @@ def plotly_plot_raw_data_with_fit(
     grid = PlotlyQubitGrid(ds2, [q.grid_location for q in qubits])
     ncols = grid.n_cols
     nrows = grid.n_rows
-    subplot_titles = [f"Qubit {list(nd.values())[0]}" for nd in grid.name_dicts]
+    subplot_titles = grid.get_subplot_titles()
 
     # ----------------------------------------------------
     # 4) Create subplots with EXTRA spacing (exactly as raw_data uses)
@@ -244,9 +244,9 @@ def plotly_plot_raw_data_with_fit(
     q_labels = list(ds2.qubit.values)  # e.g. ["qC1", "qC2", "qC3"]
     heatmap_info: List[Tuple[int, int, int]] = []
 
-    for idx, name_dict in enumerate(grid.name_dicts):
-        row = (idx // ncols) + 1
-        col = (idx % ncols) + 1
+    for idx, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+        row = grid_row + 1  # Convert to 1-based indexing for Plotly
+        col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
         # Only print debug for the first qubit
         if idx == 0:
@@ -452,7 +452,7 @@ def plotly_plot_raw_data(ds: xr.Dataset, qubits: List[AnyTransmon]) -> go.Figure
     grid = PlotlyQubitGrid(ds, [q.grid_location for q in qubits])
     ncols = grid.n_cols
     nrows = grid.n_rows
-    subplot_titles = [f"Qubit {list(nd.values())[0]}" for nd in grid.name_dicts]
+    subplot_titles = grid.get_subplot_titles()
 
     # ----------------------------------------------------
     # 3) Create subplots (with extra spacing so nothing overlaps)
@@ -488,9 +488,9 @@ def plotly_plot_raw_data(ds: xr.Dataset, qubits: List[AnyTransmon]) -> go.Figure
     # ----------------------------------------------------
     # 5) Loop over each subplot and add a Heatmap + correctly positioned colorbar
     # ----------------------------------------------------
-    for idx, name_dict in enumerate(grid.name_dicts):
-        row = (idx // ncols) + 1
-        col = (idx % ncols) + 1
+    for idx, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+        row = grid_row + 1  # Convert to 1-based indexing for Plotly
+        col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
 
         # We assume qubits in ds.qubit.values are in the same order as freq_array's first axis:

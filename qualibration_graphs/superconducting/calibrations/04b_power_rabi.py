@@ -7,9 +7,11 @@ import xarray as xr
 from calibration_utils.power_rabi import (Parameters, fit_raw_data,
                                           get_number_of_pulses,
                                           log_fitted_results,
-                                          plot_raw_data_with_fit,
-                                          plotly_plot_raw_data_with_fit,
                                           process_raw_dataset)
+from calibration_utils.power_rabi.plot_configs import (
+    power_rabi_config)
+from calibration_utils.power_rabi.preparators import (
+    prepare_power_rabi_data, create_matplotlib_figure, create_plotly_figure)
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -230,15 +232,36 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
-    plt.show()
-    plot_raw_fit = plotly_plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
-    plot_raw_fit.show()
-    # Store the generated figures
+    """Plot the raw and fitted data using standardized plotting framework."""
+
+    # 1. Prepare datasets by adding fields needed for plotting
+    ds_raw, ds_fit = prepare_power_rabi_data(
+        ds_raw=node.results["ds_raw"],
+        ds_fit=node.results.get("ds_fit"),
+        qubits=node.namespace["qubits"]
+    )
+
+    # 2. Generate figures using the standardized plotter
+    plotly_rabi = create_plotly_figure(
+        ds_raw=ds_raw,
+        qubits=node.namespace["qubits"],
+        plot_configs=[power_rabi_config],
+        ds_fit=ds_fit,
+    )
+    plotly_rabi.show()
+
+    # 3. Generate static matplotlib figures
+    static_rabi_fig = create_matplotlib_figure(
+        ds_raw=ds_raw,
+        qubits=node.namespace["qubits"],
+        plot_configs=[power_rabi_config],
+        ds_fit=ds_fit,
+    )
+
+    # Store interactive and static figures
     node.results["figures"] = {
-        "amplitude": fig_raw_fit,
-        "amplitude_plotly": plot_raw_fit,
+        "rabi_plotly": plotly_rabi,
+        "rabi": static_rabi_fig,
     }
 
 

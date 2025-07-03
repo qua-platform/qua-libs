@@ -198,14 +198,14 @@ def plotly_plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fit
     fig = make_subplots(
         rows=grid.n_rows,
         cols=grid.n_cols,
-        subplot_titles=[f"Qubit {list(nd.values())[0]}" for nd in grid.name_dicts],
+        subplot_titles=grid.get_subplot_titles(),
         shared_xaxes=False,
         shared_yaxes=False,
     )
     colorbar_traces = []
-    for i, name_dict in plotly_grid_iter(grid):
-        row = i // grid.n_cols + 1
-        col = i % grid.n_cols + 1
+    for (grid_row, grid_col), name_dict in plotly_grid_iter(grid):
+        row = grid_row + 1  # Convert to 1-based indexing for Plotly
+        col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
         fit = fits.sel(qubit=qubit_id)
         if len(ds.nb_of_pulses) == 1:

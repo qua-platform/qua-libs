@@ -149,14 +149,14 @@ def plotly_plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> PlotlyFi
     fig = make_subplots(
         rows=grid.n_rows,
         cols=grid.n_cols,
-        subplot_titles=[f"Qubit {list(nd.values())[0]}" for nd in grid.name_dicts],
+        subplot_titles=grid.get_subplot_titles(),
         shared_xaxes=False,
         shared_yaxes=False,
     )
     detuning_axes = []
-    for i, name_dict in plotly_grid_iter(grid):
-        row = i // grid.n_cols + 1
-        col = i % grid.n_cols + 1
+    for (grid_row, grid_col), name_dict in plotly_grid_iter(grid):
+        row = grid_row + 1  # Convert to 1-based indexing for Plotly
+        col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
         freq_data = ds.assign_coords(full_freq_GHz=ds.full_freq / u.GHz).loc[name_dict]
         detuning_data = ds.assign_coords(detuning_MHz=ds.detuning / u.MHz).loc[name_dict]
@@ -174,37 +174,37 @@ def plotly_plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> PlotlyFi
             col=col,
         )
         detuning_axes.append(detuning_data.detuning_MHz.values)
-    # Add visible detuning axis (top x-axis) for each subplot, no dummy trace
-    for i in range(grid.n_rows):
-        for j in range(grid.n_cols):
-            row = i + 1
-            col = j + 1
-            subplot_index = i * grid.n_cols + j + 1  # 1-based indexing for Plotly axis names
-            main_xaxis = f"x{subplot_index}"  # Always use the full axis name
-            top_xaxis_layout = f"xaxis{subplot_index + PLOTLY_AXIS_OFFSET}"
-            # Get detuning values for this subplot
-            detuning_vals = detuning_axes[subplot_index - 1] if subplot_index - 1 < len(detuning_axes) else None
-            if detuning_vals is not None and len(detuning_vals) > 1:
-                fig['layout'][top_xaxis_layout] = dict(
-                    overlaying=main_xaxis,
-                    side='top',
-                    title="Detuning [MHz]",
-                    showgrid=False,
-                    tickmode='array',
-                    tickvals=list(detuning_vals),
-                    ticktext=[f"{v:.2f}" for v in detuning_vals],
-                    range=[float(np.min(detuning_vals)), float(np.max(detuning_vals))],
-                )
-            else:
-                fig['layout'][top_xaxis_layout] = dict(
-                    overlaying=main_xaxis,
-                    side='top',
-                    title="Detuning [MHz]",
-                    showgrid=False,
-                    tickmode='auto',
-                )
-            fig.update_xaxes(title_text="RF frequency [GHz]", row=row, col=col)
-            fig.update_yaxes(title_text="phase [rad]", row=row, col=col)
+    
+    # Add visible detuning axis (top x-axis) for each subplot that has data
+    for i, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+        row = grid_row + 1  # Convert to 1-based indexing for Plotly
+        col = grid_col + 1  # Convert to 1-based indexing for Plotly
+        subplot_index = grid_row * grid.n_cols + grid_col + 1
+        main_xaxis = f"x{subplot_index}"  # Always use the full axis name
+        top_xaxis_layout = f"xaxis{subplot_index + PLOTLY_AXIS_OFFSET}"
+        detuning_vals = detuning_axes[i]  # Use the corresponding detuning data
+        
+        if detuning_vals is not None and len(detuning_vals) > 1:
+            fig['layout'][top_xaxis_layout] = dict(
+                overlaying=main_xaxis,
+                side='top',
+                title="Detuning [MHz]",
+                showgrid=False,
+                tickmode='array',
+                tickvals=list(detuning_vals),
+                ticktext=[f"{v:.2f}" for v in detuning_vals],
+                range=[float(np.min(detuning_vals)), float(np.max(detuning_vals))],
+            )
+        else:
+            fig['layout'][top_xaxis_layout] = dict(
+                overlaying=main_xaxis,
+                side='top',
+                title="Detuning [MHz]",
+                showgrid=False,
+                tickmode='auto',
+            )
+        fig.update_xaxes(title_text="RF frequency [GHz]", row=row, col=col)
+        fig.update_yaxes(title_text="phase [rad]", row=row, col=col)
     fig.update_layout(
         title="Resonator spectroscopy (phase)",
         height=PLOTLY_FIG_HEIGHT,
@@ -222,14 +222,14 @@ def plotly_plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon]
     fig = make_subplots(
         rows=grid.n_rows,
         cols=grid.n_cols,
-        subplot_titles=[f"Qubit {list(nd.values())[0]}" for nd in grid.name_dicts],
+        subplot_titles=grid.get_subplot_titles(),
         shared_xaxes=False,
         shared_yaxes=False,
     )
     detuning_axes = []
-    for i, name_dict in plotly_grid_iter(grid):
-        row = i // grid.n_cols + 1
-        col = i % grid.n_cols + 1
+    for (grid_row, grid_col), name_dict in plotly_grid_iter(grid):
+        row = grid_row + 1  # Convert to 1-based indexing for Plotly
+        col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
         fit = fits.sel(qubit=qubit_id)
         freq_data = ds.assign_coords(full_freq_GHz=ds.full_freq / u.GHz).loc[name_dict]
@@ -271,36 +271,37 @@ def plotly_plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon]
                 col=col,
             )
         detuning_axes.append(detuning_vals)
-    # Add visible detuning axis (top x-axis) for each subplot, no dummy trace
-    for i in range(grid.n_rows):
-        for j in range(grid.n_cols):
-            row = i + 1
-            col = j + 1
-            subplot_index = i * grid.n_cols + j + 1
-            main_xaxis = f"x{subplot_index}"  # Always use the full axis name
-            top_xaxis_layout = f"xaxis{subplot_index + PLOTLY_AXIS_OFFSET}"
-            detuning_vals = detuning_axes[subplot_index - 1] if subplot_index - 1 < len(detuning_axes) else None
-            if detuning_vals is not None and len(detuning_vals) > 1:
-                fig['layout'][top_xaxis_layout] = dict(
-                    overlaying=main_xaxis,
-                    side='top',
-                    title="Detuning [MHz]",
-                    showgrid=False,
-                    tickmode='array',
-                    tickvals=list(detuning_vals),
-                    ticktext=[f"{v:.2f}" for v in detuning_vals],
-                    range=[float(np.min(detuning_vals)), float(np.max(detuning_vals))],
-                )
-            else:
-                fig['layout'][top_xaxis_layout] = dict(
-                    overlaying=main_xaxis,
-                    side='top',
-                    title="Detuning [MHz]",
-                    showgrid=False,
-                    tickmode='auto',
-                )
-            fig.update_xaxes(title_text="RF frequency [GHz]", row=row, col=col)
-            fig.update_yaxes(title_text=r"<i>R</i> = √(I² + Q²) [mV]", row=row, col=col)
+    
+    # Add visible detuning axis (top x-axis) for each subplot that has data
+    for i, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+        row = grid_row + 1  # Convert to 1-based indexing for Plotly
+        col = grid_col + 1  # Convert to 1-based indexing for Plotly
+        subplot_index = grid_row * grid.n_cols + grid_col + 1
+        main_xaxis = f"x{subplot_index}"  # Always use the full axis name
+        top_xaxis_layout = f"xaxis{subplot_index + PLOTLY_AXIS_OFFSET}"
+        detuning_vals = detuning_axes[i]  # Use the corresponding detuning data
+        
+        if detuning_vals is not None and len(detuning_vals) > 1:
+            fig['layout'][top_xaxis_layout] = dict(
+                overlaying=main_xaxis,
+                side='top',
+                title="Detuning [MHz]",
+                showgrid=False,
+                tickmode='array',
+                tickvals=list(detuning_vals),
+                ticktext=[f"{v:.2f}" for v in detuning_vals],
+                range=[float(np.min(detuning_vals)), float(np.max(detuning_vals))],
+            )
+        else:
+            fig['layout'][top_xaxis_layout] = dict(
+                overlaying=main_xaxis,
+                side='top',
+                title="Detuning [MHz]",
+                showgrid=False,
+                tickmode='auto',
+            )
+        fig.update_xaxes(title_text="RF frequency [GHz]", row=row, col=col)
+        fig.update_yaxes(title_text=r"<i>R</i> = √(I² + Q²) [mV]", row=row, col=col)
     fig.update_layout(
         title="Resonator spectroscopy (amplitude + fit)",
         height=PLOTLY_FIG_HEIGHT,
