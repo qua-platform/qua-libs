@@ -7,8 +7,7 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 import xarray as xr
 from qualibration_libs.analysis import peaks_dips
-from qualibration_libs.analysis.fitting import circle_fit_s21_resonator_model
-from qualibration_libs.analysis.models import S21Resonator
+from qualibration_libs.analysis.models import lorentzian_dip
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 
 from qualibrate import QualibrationNode
@@ -22,8 +21,7 @@ SKEWNESS_MAX: float = 1.1
 DISTORTED_FRACTION_LOW_SNR: float = 0.15  
 DISTORTED_FRACTION_HIGH_SNR: float = 0.25  
 FWHM_ABSOLUTE_THRESHOLD_HZ: float = 3e6  
-NRMSE_THRESHOLD: float = 0.14
-R_SQUARED_THRESHOLD: float = 0.90
+NRMSE_THRESHOLD: float = 0.3  # More lenient threshold, R-squared removed as it's too aggressive
 
 @dataclass
 class FitParameters:
@@ -134,7 +132,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
 
 
 def _extract_and_validate_fit_parameters(
-    ds: xr.Dataset, 
+    ds: xr.Dataset,
     fit: xr.Dataset, 
     node: QualibrationNode
 ) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
@@ -143,7 +141,8 @@ def _extract_and_validate_fit_parameters(
     
     Parameters
     ----------
-    ds: xr.Dataset, 
+    ds : xr.Dataset
+        Raw dataset containing IQ data
     fit : xr.Dataset
         Dataset containing fit results from peak detection
     node : QualibrationNode
@@ -155,7 +154,7 @@ def _extract_and_validate_fit_parameters(
         Validated fit data and results dictionary
     """
     # Calculate resonator frequencies and FWHM
-    fit, fitters = _calculate_resonator_parameters(ds, fit, node)
+    fit = _calculate_resonator_parameters(fit, node)
     
     # Evaluate fit quality for each qubit and determine outcomes
     fit_results = {}
@@ -163,7 +162,7 @@ def _extract_and_validate_fit_parameters(
     
     for qubit_name in fit.qubit.values:
         # Extract fit metrics for this qubit
-        fit_metrics = _extract_qubit_fit_metrics(fit, fitters, qubit_name)
+        fit_metrics = _extract_qubit_fit_metrics(ds, fit, qubit_name)
         
         # Determine outcome based on quality checks
         outcome = _determine_resonator_outcome(fit_metrics)
@@ -183,13 +182,12 @@ def _extract_and_validate_fit_parameters(
     return fit, fit_results
 
 
-def _calculate_resonator_parameters(ds: xr.Dataset, fit: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, S21Resonator]]:
+def _calculate_resonator_parameters(fit: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """
     Calculate resonator frequency and FWHM from fit results.
     
     Parameters
     ----------
-    ds: xr.Dataset, 
     fit : xr.Dataset
         Dataset with peak detection results
     node : QualibrationNode
@@ -199,30 +197,32 @@ def _calculate_resonator_parameters(ds: xr.Dataset, fit: xr.Dataset, node: Quali
     -------
     xr.Dataset
         Dataset with resonator parameters added
-    Dict[str, FitParameters]
-        Dictionary mapping qubit names to S21Resonator objects
     """
     # Add metadata to fit results
     fit.attrs = {"long_name": "frequency", "units": "Hz"}
     
-    # Use circle fit to calculate resonator frequency and FWHM
-    fit_results, fitters = circle_fit_s21_resonator_model(ds)
-    fit = fit.assign_coords(res_freq=("qubit", [fit_results[qubit]["frequency"] for qubit in fit_results]))
+    # Calculate fitted resonator frequency
+    rf_frequencies = np.array([q.resonator.RF_frequency for q in node.namespace["qubits"]])
+    res_freq = fit.position + rf_frequencies
+    fit = fit.assign_coords(res_freq=("qubit", res_freq.data))
     fit.res_freq.attrs = {"long_name": "resonator frequency", "units": "Hz"}
-    fit = fit.assign_coords(fwhm=("qubit", [fit_results[qubit]["fwhm"] for qubit in fit_results]))
+    
+    # Calculate FWHM
+    fwhm = np.abs(fit.width)
+    fit = fit.assign_coords(fwhm=("qubit", fwhm.data))
     fit.fwhm.attrs = {"long_name": "resonator fwhm", "units": "Hz"}
 
-    fit.attrs["s21_models"] = fitters
-
-    return fit, fitters
+    return fit
 
 
-def _extract_qubit_fit_metrics(fit: xr.Dataset, fitters: Dict[str, S21Resonator], qubit_name: str) -> Dict[str, float]:
+def _extract_qubit_fit_metrics(ds_raw: xr.Dataset, fit: xr.Dataset, qubit_name: str) -> Dict[str, float]:
     """
     Extract all relevant fit metrics for a single qubit.
     
     Parameters
     ----------
+    ds_raw : xr.Dataset
+        The raw dataset containing IQ data
     fit : xr.Dataset
         Dataset containing fit results
     qubit_name : str
@@ -234,7 +234,6 @@ def _extract_qubit_fit_metrics(fit: xr.Dataset, fitters: Dict[str, S21Resonator]
         Dictionary containing all fit metrics for the qubit
     """
     qubit_data = fit.sel(qubit=qubit_name)
-    fitter = fitters[qubit_name]
 
     # Calculate sweep span for relative comparisons
     if "detuning" in fit.dims:
@@ -244,6 +243,36 @@ def _extract_qubit_fit_metrics(fit: xr.Dataset, fitters: Dict[str, S21Resonator]
     else:
         sweep_span = 0.0
     
+    # Get raw data for quality metrics
+    raw_data = ds_raw.IQ_abs.sel(qubit=qubit_name).values
+    detuning_values = ds_raw.detuning.values
+    
+    # Generate the Lorentzian fit
+    fitted_data = lorentzian_dip(
+        detuning_values,
+        float(qubit_data.amplitude.values),
+        float(qubit_data.position.values),
+        float(qubit_data.width.values) / 2,  # Convert to half-width at half-max
+        float(qubit_data.base_line.mean().values)
+    )
+    
+    # Calculate residuals and quality metrics
+    residuals = raw_data - fitted_data
+    rmse = np.sqrt(np.mean(residuals**2))
+    
+    # NRMSE (normalized by peak-to-peak range)
+    data_range = np.ptp(raw_data)
+    nrmse = rmse / data_range if data_range > 0 else np.inf
+    
+    # R-squared (coefficient of determination)
+    ss_res = np.sum(residuals**2)
+    ss_tot = np.sum((raw_data - np.mean(raw_data))**2)
+    r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+    
+    # Ensure R-squared is valid
+    if r_squared < 0 or r_squared > 1:
+        r_squared = 0  # Invalid fit
+    
     return {
         "num_peaks": int(qubit_data.num_peaks.values),
         "snr": float(qubit_data.snr.values),
@@ -252,8 +281,9 @@ def _extract_qubit_fit_metrics(fit: xr.Dataset, fitters: Dict[str, S21Resonator]
         "asymmetry": float(qubit_data.asymmetry.values),
         "skewness": float(qubit_data.skewness.values),
         "opx_bandwidth_artifact": not bool(qubit_data.opx_bandwidth_artifact.values),
-        "nrmse": fitter.quality_metrics["nrmse"],
-        "r_squared": fitter.quality_metrics["r_squared"],
+        "rmse": rmse,
+        "nrmse": nrmse,
+        "r_squared": r_squared,
     }
 
 
@@ -304,12 +334,11 @@ def _determine_resonator_outcome(
     asymmetry = metrics["asymmetry"]
     skewness = metrics["skewness"]
     opx_bandwidth_artifact = metrics["opx_bandwidth_artifact"]
-    nrmse = metrics["nrmse"]
-    r_squared = metrics["r_squared"]
-
-    # Check if the fit is good with the circle fit model
-    if r_squared > R_SQUARED_THRESHOLD and nrmse < NRMSE_THRESHOLD:
-        return "successful"
+    nrmse = metrics.get("nrmse", np.inf)
+    r_squared = metrics.get("r_squared", 0)
+    
+    # Log metrics for debugging
+    print(f"Metrics - SNR: {snr:.2f}, R²: {r_squared:.4f}, NRMSE: {nrmse:.4f}, Asymmetry: {asymmetry:.2f}, Skewness: {skewness:.2f}")
 
     # Check SNR first
     if snr < snr_min:
@@ -344,7 +373,11 @@ def _determine_resonator_outcome(
         else:
             return "Distorted peak detected"
     
-    # All other checks passed, consider fit successful
+    # Final check on NRMSE only (R-squared can be misleading for resonator fits)
+    if nrmse > NRMSE_THRESHOLD:
+        return f"High fitting error (NRMSE = {nrmse:.3f} > {NRMSE_THRESHOLD})"
+    
+    # All checks passed
     return "successful"
 
 
