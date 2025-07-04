@@ -10,7 +10,6 @@ from plotly.subplots import make_subplots
 from qualang_tools.units import unit
 from qualibration_libs.analysis import lorentzian_dip
 from qualibration_libs.plotting import QubitGrid, grid_iter
-from qualibration_libs.plotting.grids import PlotlyQubitGrid, plotly_grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
@@ -145,7 +144,7 @@ def plotly_plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> PlotlyFi
     Robust Plotly version: only plot RF frequency trace, add detuning as a hover label for each point.
     Adds a visible detuning axis (top x-axis) to each subplot, with ticks/range matching detuning data.
     """
-    grid = PlotlyQubitGrid(ds, [q.grid_location for q in qubits])
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     fig = make_subplots(
         rows=grid.n_rows,
         cols=grid.n_cols,
@@ -154,7 +153,7 @@ def plotly_plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> PlotlyFi
         shared_yaxes=False,
     )
     detuning_axes = []
-    for (grid_row, grid_col), name_dict in plotly_grid_iter(grid):
+    for (grid_row, grid_col), name_dict in grid.plotly_grid_iter():
         row = grid_row + 1  # Convert to 1-based indexing for Plotly
         col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
@@ -176,7 +175,7 @@ def plotly_plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> PlotlyFi
         detuning_axes.append(detuning_data.detuning_MHz.values)
     
     # Add visible detuning axis (top x-axis) for each subplot that has data
-    for i, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+    for i, ((grid_row, grid_col), name_dict) in enumerate(grid.plotly_grid_iter()):
         row = grid_row + 1  # Convert to 1-based indexing for Plotly
         col = grid_col + 1  # Convert to 1-based indexing for Plotly
         subplot_index = grid_row * grid.n_cols + grid_col + 1
@@ -218,7 +217,7 @@ def plotly_plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon]
     Robust Plotly version: only plot RF frequency trace, add detuning as a hover label for each point. Overlay fit if present.
     Adds a visible detuning axis (top x-axis) to each subplot, with ticks/range matching detuning data.
     """
-    grid = PlotlyQubitGrid(ds, [q.grid_location for q in qubits])
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     fig = make_subplots(
         rows=grid.n_rows,
         cols=grid.n_cols,
@@ -227,7 +226,7 @@ def plotly_plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon]
         shared_yaxes=False,
     )
     detuning_axes = []
-    for (grid_row, grid_col), name_dict in plotly_grid_iter(grid):
+    for (grid_row, grid_col), name_dict in grid.plotly_grid_iter():
         row = grid_row + 1  # Convert to 1-based indexing for Plotly
         col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
@@ -273,7 +272,7 @@ def plotly_plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon]
         detuning_axes.append(detuning_vals)
     
     # Add visible detuning axis (top x-axis) for each subplot that has data
-    for i, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+    for i, ((grid_row, grid_col), name_dict) in enumerate(grid.plotly_grid_iter()):
         row = grid_row + 1  # Convert to 1-based indexing for Plotly
         col = grid_col + 1  # Convert to 1-based indexing for Plotly
         subplot_index = grid_row * grid.n_cols + grid_col + 1

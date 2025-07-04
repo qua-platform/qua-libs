@@ -252,6 +252,4 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save the results to the database."""
-    # Remove the s21_models attribute from the ds_fit dataset to make it serializable
-    del node.results["ds_fit"].attrs["s21_models"]
     node.save()

@@ -215,10 +215,71 @@ def _calculate_resonator_parameters(fit: xr.Dataset, node: QualibrationNode) -> 
     return fit
 
 
-def _extract_qubit_fit_metrics(ds_raw: xr.Dataset, fit: xr.Dataset, qubit_name: str) -> Dict[str, float]:
+def _calculate_sweep_span(fit: xr.Dataset) -> float:
+    """Calculate sweep span for relative comparisons."""
+    if "detuning" in fit.dims:
+        return float(fit.coords["detuning"].max() - fit.coords["detuning"].min())
+    if "full_freq" in fit.dims:
+        return float(fit.coords["full_freq"].max() - fit.coords["full_freq"].min())
+    return 0.0
+
+
+def _generate_lorentzian_fit(
+    qubit_data: xr.Dataset, detuning_values: np.ndarray
+) -> np.ndarray:
+    """Generate the Lorentzian fit from qubit data."""
+    return lorentzian_dip(
+        detuning_values,
+        float(qubit_data.amplitude.values),
+        float(qubit_data.position.values),
+        float(qubit_data.width.values) / 2,  # Convert to half-width at half-max
+        float(qubit_data.base_line.mean().values),
+    )
+
+
+def _calculate_quality_metrics(
+    raw_data: np.ndarray, fitted_data: np.ndarray
+) -> Dict[str, float]:
+    """
+    Calculate fit quality metrics: RMSE, NRMSE, and R-squared.
+
+    Parameters
+    ----------
+    raw_data : np.ndarray
+        The raw measurement data.
+    fitted_data : np.ndarray
+        The data from the Lorentzian fit.
+
+    Returns
+    -------
+    Dict[str, float]
+        A dictionary containing 'rmse', 'nrmse', and 'r_squared'.
+    """
+    residuals = raw_data - fitted_data
+    rmse = np.sqrt(np.mean(residuals**2))
+
+    # NRMSE (normalized by peak-to-peak range)
+    data_range = np.ptp(raw_data)
+    nrmse = rmse / data_range if data_range > 0 else np.inf
+
+    # R-squared (coefficient of determination)
+    ss_res = np.sum(residuals**2)
+    ss_tot = np.sum((raw_data - np.mean(raw_data)) ** 2)
+    r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+
+    # Ensure R-squared is valid
+    if not (0 <= r_squared <= 1):
+        r_squared = 0  # Invalid fit
+
+    return {"rmse": rmse, "nrmse": nrmse, "r_squared": r_squared}
+
+
+def _extract_qubit_fit_metrics(
+    ds_raw: xr.Dataset, fit: xr.Dataset, qubit_name: str
+) -> Dict[str, float]:
     """
     Extract all relevant fit metrics for a single qubit.
-    
+
     Parameters
     ----------
     ds_raw : xr.Dataset
@@ -227,52 +288,23 @@ def _extract_qubit_fit_metrics(ds_raw: xr.Dataset, fit: xr.Dataset, qubit_name: 
         Dataset containing fit results
     qubit_name : str
         Name of the qubit to extract metrics for
-        
+
     Returns
     -------
     Dict[str, float]
         Dictionary containing all fit metrics for the qubit
     """
     qubit_data = fit.sel(qubit=qubit_name)
+    sweep_span = _calculate_sweep_span(fit)
 
-    # Calculate sweep span for relative comparisons
-    if "detuning" in fit.dims:
-        sweep_span = float(fit.coords["detuning"].max() - fit.coords["detuning"].min())
-    elif "full_freq" in fit.dims:
-        sweep_span = float(fit.coords["full_freq"].max() - fit.coords["full_freq"].min())
-    else:
-        sweep_span = 0.0
-    
     # Get raw data for quality metrics
     raw_data = ds_raw.IQ_abs.sel(qubit=qubit_name).values
     detuning_values = ds_raw.detuning.values
-    
-    # Generate the Lorentzian fit
-    fitted_data = lorentzian_dip(
-        detuning_values,
-        float(qubit_data.amplitude.values),
-        float(qubit_data.position.values),
-        float(qubit_data.width.values) / 2,  # Convert to half-width at half-max
-        float(qubit_data.base_line.mean().values)
-    )
-    
-    # Calculate residuals and quality metrics
-    residuals = raw_data - fitted_data
-    rmse = np.sqrt(np.mean(residuals**2))
-    
-    # NRMSE (normalized by peak-to-peak range)
-    data_range = np.ptp(raw_data)
-    nrmse = rmse / data_range if data_range > 0 else np.inf
-    
-    # R-squared (coefficient of determination)
-    ss_res = np.sum(residuals**2)
-    ss_tot = np.sum((raw_data - np.mean(raw_data))**2)
-    r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
-    
-    # Ensure R-squared is valid
-    if r_squared < 0 or r_squared > 1:
-        r_squared = 0  # Invalid fit
-    
+
+    # Generate the Lorentzian fit and calculate quality metrics
+    fitted_data = _generate_lorentzian_fit(qubit_data, detuning_values)
+    quality_metrics = _calculate_quality_metrics(raw_data, fitted_data)
+
     return {
         "num_peaks": int(qubit_data.num_peaks.values),
         "snr": float(qubit_data.snr.values),
@@ -281,9 +313,7 @@ def _extract_qubit_fit_metrics(ds_raw: xr.Dataset, fit: xr.Dataset, qubit_name: 
         "asymmetry": float(qubit_data.asymmetry.values),
         "skewness": float(qubit_data.skewness.values),
         "opx_bandwidth_artifact": not bool(qubit_data.opx_bandwidth_artifact.values),
-        "rmse": rmse,
-        "nrmse": nrmse,
-        "r_squared": r_squared,
+        **quality_metrics,
     }
 
 
@@ -336,9 +366,6 @@ def _determine_resonator_outcome(
     opx_bandwidth_artifact = metrics["opx_bandwidth_artifact"]
     nrmse = metrics.get("nrmse", np.inf)
     r_squared = metrics.get("r_squared", 0)
-    
-    # Log metrics for debugging
-    print(f"Metrics - SNR: {snr:.2f}, R²: {r_squared:.4f}, NRMSE: {nrmse:.4f}, Asymmetry: {asymmetry:.2f}, Skewness: {skewness:.2f}")
 
     # Check SNR first
     if snr < snr_min:
@@ -361,7 +388,7 @@ def _determine_resonator_outcome(
         return "No peaks were detected, consider changing the frequency range"
     
     # Check peak shape quality
-    if _is_peak_shape_distorted(asymmetry, skewness, asymmetry_min, asymmetry_max, skewness_max):
+    if _is_peak_shape_distorted(asymmetry, skewness, asymmetry_min, asymmetry_max, skewness_max, nrmse):
         return "The peak shape is distorted"
     
     # Check for peak width issues
@@ -373,9 +400,6 @@ def _determine_resonator_outcome(
         else:
             return "Distorted peak detected"
     
-    # Final check on NRMSE only (R-squared can be misleading for resonator fits)
-    if nrmse > NRMSE_THRESHOLD:
-        return f"High fitting error (NRMSE = {nrmse:.3f} > {NRMSE_THRESHOLD})"
     
     # All checks passed
     return "successful"
@@ -386,7 +410,9 @@ def _is_peak_shape_distorted(
     skewness: float,
     asymmetry_min: float,
     asymmetry_max: float,
-    skewness_max: float
+    skewness_max: float,
+    nrmse: float,
+    nrmse_threshold: float = NRMSE_THRESHOLD
 ) -> bool:
     """
     Check if peak shape indicates distortion based on asymmetry and skewness.
@@ -412,8 +438,9 @@ def _is_peak_shape_distorted(
     asymmetry_bad = (asymmetry is not None and 
                     (asymmetry < asymmetry_min or asymmetry > asymmetry_max))
     skewness_bad = (skewness is not None and abs(skewness) > skewness_max)
-    
-    return asymmetry_bad or skewness_bad
+    poor_geom_fit = nrmse > NRMSE_THRESHOLD
+
+    return asymmetry_bad or skewness_bad or poor_geom_fit
 
 
 def _is_peak_too_wide(

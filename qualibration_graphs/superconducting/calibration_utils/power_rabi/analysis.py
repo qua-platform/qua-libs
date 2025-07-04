@@ -22,7 +22,6 @@ AUTOCORRELATION_R1_THRESHOLD: float = 0.8
 AUTOCORRELATION_R2_THRESHOLD: float = 0.5
 CHEVRON_MODULATION_THRESHOLD: float = 0.4
 
-
 @dataclass
 class FitParameters:
     """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit."""
@@ -161,7 +160,7 @@ def _fit_single_pulse_experiment(ds: xr.Dataset, node: QualibrationNode) -> xr.D
     
     # Choose signal based on discrimination method
     signal_data = ds_fit.state if node.parameters.use_state_discrimination else ds_fit.I
-    fit_vals = fit_oscillation(signal_data, "amp_prefactor")
+    fit_vals = fit_oscillation(da=signal_data, dim="amp_prefactor", method="fft_based")
 
     return xr.merge([ds, fit_vals.rename("fit")])
 
@@ -625,6 +624,7 @@ def _determine_qubit_outcome(
     str
         Outcome description
     """
+
     # Check for invalid fit parameters
     if not nan_success:
         return "Fit parameters are invalid (NaN values detected)"
@@ -633,8 +633,8 @@ def _determine_qubit_outcome(
     if is_1d_dataset and opt_amp < min_amplitude:
         if fit_quality is not None and fit_quality < min_fit_quality:
             return (
+                "There is too much noise in the data, consider increasing averaging or shot count. "
                 f"Poor fit quality (R² = {fit_quality:.3f} < {min_fit_quality}). "
-                "There is too much noise in the data, consider increasing averaging or shot count"
             )
         else:
             return "There is too much noise in the data, consider increasing averaging or shot count"

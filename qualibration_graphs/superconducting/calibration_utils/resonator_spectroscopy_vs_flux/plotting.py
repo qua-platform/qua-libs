@@ -8,8 +8,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from plotly.subplots import make_subplots
 from qualang_tools.units import unit
-from qualibration_libs.plotting import (PlotlyQubitGrid, QubitGrid, grid_iter,
-                                        plotly_grid_iter)
+from qualibration_libs.plotting import (QubitGrid, grid_iter)
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
@@ -212,8 +211,8 @@ def plotly_plot_raw_data_with_fit(
 
     n_qubits, n_freqs, n_flux = IQ_array.shape
 
-    # 3) Build PlotlyQubitGrid → get nrows, ncols, name_dicts
-    grid = PlotlyQubitGrid(ds2, [q.grid_location for q in qubits])
+    # 3) Build QubitGrid → get nrows, ncols, name_dicts
+    grid = QubitGrid(ds2, [q.grid_location for q in qubits], create_figure=False)
     ncols = grid.n_cols
     nrows = grid.n_rows
     subplot_titles = grid.get_subplot_titles()
@@ -260,7 +259,7 @@ def plotly_plot_raw_data_with_fit(
     overlay_types = []
     overlay_trace_idxs = []
 
-    for idx, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+    for idx, ((grid_row, grid_col), name_dict) in enumerate(grid.plotly_grid_iter()):
         row = grid_row + 1  # Convert to 1-based indexing for Plotly
         col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
@@ -514,8 +513,8 @@ def plotly_plot_raw_data(
 
     n_qubits, n_freqs, n_flux = IQ_array.shape
 
-    # 2) Build PlotlyQubitGrid for arrangement
-    grid = PlotlyQubitGrid(ds, [q.grid_location for q in qubits])
+    # 2) Build QubitGrid for arrangement
+    grid = QubitGrid(ds, [q.grid_location for q in qubits], create_figure=False)
     ncols = grid.n_cols
     nrows = grid.n_rows
     subplot_titles = grid.get_subplot_titles()
@@ -553,7 +552,7 @@ def plotly_plot_raw_data(
     y_vals_list = []
     z_mats_list = []
     customdatas_list = []
-    for idx, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+    for idx, ((grid_row, grid_col), name_dict) in enumerate(grid.plotly_grid_iter()):
         row = grid_row + 1  # Convert to 1-based indexing for Plotly
         col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
