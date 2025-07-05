@@ -7,20 +7,16 @@ from typing import Dict, Optional, Tuple, Union
 import numpy as np
 import xarray as xr
 from qualibration_libs.analysis import fit_oscillation
+from qualibration_libs.analysis.parameters import analysis_config_manager
 from qualibration_libs.data import convert_IQ_to_V
 from quam_config.instrument_limits import instrument_limits
 from scipy.signal import correlate
 
 from qualibrate import QualibrationNode
 
-# Analysis Constants
-MIN_FIT_QUALITY: float = 0.5
-MIN_AMPLITUDE: float = 0.01
-MAX_AMP_PREFACTOR: float = 10.0
-SNR_MIN: float = 2.5
-AUTOCORRELATION_R1_THRESHOLD: float = 0.8
-AUTOCORRELATION_R2_THRESHOLD: float = 0.5
-CHEVRON_MODULATION_THRESHOLD: float = 0.4
+# Access parameter groups from the config manager
+qc_params = analysis_config_manager.get("power_rabi_qc")
+
 
 @dataclass
 class FitParameters:
@@ -469,8 +465,8 @@ def _evaluate_signal_fit_worthiness(ds: xr.Dataset, signal_key: str = "state") -
 
             # Check autocorrelation at lag-1 and lag-2
             r1, r2 = autocorr[1], autocorr[2]
-            result[q] = (r1 > AUTOCORRELATION_R1_THRESHOLD and 
-                        r2 > AUTOCORRELATION_R2_THRESHOLD)
+            result[q] = (r1 > qc_params.autocorrelation_r1_threshold.value and 
+                        r2 > qc_params.autocorrelation_r2_threshold.value)
 
         except Exception:
             result[q] = False
@@ -478,7 +474,7 @@ def _evaluate_signal_fit_worthiness(ds: xr.Dataset, signal_key: str = "state") -
     return result
 
 
-def _detect_chevron_modulation(signal_2d: np.ndarray, threshold: float = CHEVRON_MODULATION_THRESHOLD) -> bool:
+def _detect_chevron_modulation(signal_2d: np.ndarray, threshold: float = qc_params.chevron_modulation_threshold.value) -> bool:
     """
     Detect chevron-like modulation in 2D signal data.
     
@@ -566,12 +562,8 @@ def _determine_qubit_outcome(
     opt_amp: float,
     max_amplitude: float,
     fit_quality: Optional[float] = None,
-    min_fit_quality: float = MIN_FIT_QUALITY,
-    min_amplitude: float = MIN_AMPLITUDE,
-    max_amp_prefactor: float = MAX_AMP_PREFACTOR,
     amp_prefactor: Optional[float] = None,
     snr: Optional[float] = None,
-    snr_min: float = SNR_MIN,
     should_fit: bool = True,
     is_1d_dataset: bool = True,
     has_structure: bool = True,
@@ -594,18 +586,10 @@ def _determine_qubit_outcome(
         Maximum allowed amplitude
     fit_quality : float, optional
         R² value of the fit
-    min_fit_quality : float
-        Minimum acceptable fit quality
-    min_amplitude : float
-        Minimum amplitude threshold
-    max_amp_prefactor : float
-        Maximum amplitude prefactor
     amp_prefactor : float, optional
         Amplitude prefactor value
     snr : float, optional
         Signal-to-noise ratio
-    snr_min : float
-        Minimum SNR threshold
     should_fit : bool
         Whether data quality is sufficient for fitting
     is_1d_dataset : bool
@@ -630,11 +614,11 @@ def _determine_qubit_outcome(
         return "Fit parameters are invalid (NaN values detected)"
 
     # Check for low amplitude with poor fit quality (1D only)
-    if is_1d_dataset and opt_amp < min_amplitude:
-        if fit_quality is not None and fit_quality < min_fit_quality:
+    if is_1d_dataset and opt_amp < qc_params.min_amplitude.value:
+        if fit_quality is not None and fit_quality < qc_params.min_fit_quality.value:
             return (
                 "There is too much noise in the data, consider increasing averaging or shot count. "
-                f"Poor fit quality (R² = {fit_quality:.3f} < {min_fit_quality}). "
+                f"Poor fit quality (R² = {fit_quality:.3f} < {qc_params.min_fit_quality.value}). "
             )
         else:
             return "There is too much noise in the data, consider increasing averaging or shot count"
@@ -644,8 +628,8 @@ def _determine_qubit_outcome(
         return "No chevron modulation detected. Please check the drive frequency and amplitude sweep range"
 
     # Check signal-to-noise ratio
-    if snr is not None and snr < snr_min:
-        return f"SNR too low (SNR = {snr:.2f} < {snr_min})"
+    if snr is not None and snr < qc_params.snr_min.value:
+        return f"SNR too low (SNR = {snr:.2f} < {qc_params.snr_min.value})"
 
     # Check amplitude hardware limits
     if not amp_success:
@@ -657,15 +641,15 @@ def _determine_qubit_outcome(
         return f"The drive frequency is off-resonant with high {direction_str}, please adjust the drive frequency"
 
     # Check amplitude prefactor bounds
-    if amp_prefactor is not None and abs(amp_prefactor) > max_amp_prefactor:
-        return f"Amplitude prefactor too large (|{amp_prefactor:.2f}| > {max_amp_prefactor})"
+    if amp_prefactor is not None and abs(amp_prefactor) > qc_params.max_amp_prefactor.value:
+        return f"Amplitude prefactor too large (|{amp_prefactor:.2f}| > {qc_params.max_amp_prefactor.value})"
 
     # Check if signal should be fit (1D only)
     if not should_fit and is_1d_dataset:
         return "There is too much noise in the data, consider increasing averaging or shot count"
 
     # Check fit quality
-    if fit_quality is not None and fit_quality < min_fit_quality:
+    if fit_quality is not None and fit_quality < qc_params.min_fit_quality.value:
         # Special check for 1D datasets with too many oscillations
         if (is_1d_dataset and fit is not None and qubit is not None and 
             "fit" in fit and hasattr(fit.fit, "sel")):
@@ -676,6 +660,6 @@ def _determine_qubit_outcome(
             except (ValueError, KeyError, AttributeError):
                 pass
         
-        return f"Poor fit quality (R² = {fit_quality:.3f} < {min_fit_quality})"
+        return f"Poor fit quality (R² = {fit_quality:.3f} < {qc_params.min_fit_quality.value})"
 
     return "successful"

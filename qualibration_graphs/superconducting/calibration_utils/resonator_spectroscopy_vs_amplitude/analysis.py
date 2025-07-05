@@ -8,6 +8,7 @@ import numpy as np
 import scipy.stats
 import xarray as xr
 from qualibration_libs.analysis import peaks_dips
+from qualibration_libs.analysis.parameters import analysis_config_manager
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from scipy.signal import find_peaks, savgol_filter
@@ -15,23 +16,9 @@ from sklearn.cluster import KMeans
 
 from qualibrate import QualibrationNode
 
-# Analysis Constants
-SNR_THRESHOLD: float = 2.0
-FLATNESS_N_POINTS: int = 5
-NOISE_N_POINTS: int = 5
-SNR_MIN: float = 2.0
-LOW_POWER_CENTER_STD_THRESHOLD_HZ: float = 1e6
-GS_DETECTION_N_LOW_POWERS: int = 8
-GS_DETECTION_MIN_COUNT: int = 5
-GS_DETECTION_WINDOW: int = 2
-OPTIMAL_POWER_N_CLUSTERS: int = 2
-OPTIMAL_POWER_MARGIN_DB: float = 3.0
-SAVGOL_BASELINE_WINDOW: int = 51
-SAVGOL_SMOOTH_WINDOW: int = 21
-SAVGOL_POLYORDER: int = 3
-PEAK_PROMINENCE_STD_FACTOR: float = 3.0
-PEAK_DISTANCE: int = 10
-PEAK_WIDTH: int = 3
+# Access parameter groups from the config manager
+qc_params = analysis_config_manager.get("resonator_spectroscopy_vs_power_qc")
+sp_params = analysis_config_manager.get("common_signal_processing")
 
 
 @dataclass
@@ -255,18 +242,18 @@ def _analyze_signal_for_resonance(signal: np.ndarray, detuning: np.ndarray) -> T
         Resonance center, SNR value, and quality flag
     """
     # Baseline correction
-    baseline_window = _get_safe_savgol_window_length(len(signal), SAVGOL_BASELINE_WINDOW, SAVGOL_POLYORDER)
+    baseline_window = _get_safe_savgol_window_length(len(signal), sp_params.baseline_window_size.value, sp_params.polyorder.value)
     if baseline_window > 0:
-        baseline = savgol_filter(signal, window_length=baseline_window, polyorder=SAVGOL_POLYORDER)
+        baseline = savgol_filter(signal, window_length=baseline_window, polyorder=sp_params.polyorder.value)
     else:
         baseline = np.mean(signal)
 
     signal_corrected = signal - baseline
     
     # Smoothing
-    smooth_window = _get_safe_savgol_window_length(len(signal_corrected), SAVGOL_SMOOTH_WINDOW, SAVGOL_POLYORDER)
+    smooth_window = _get_safe_savgol_window_length(len(signal_corrected), sp_params.smooth_window_size.value, sp_params.polyorder.value)
     if smooth_window > 0:
-        smoothed = savgol_filter(signal_corrected, window_length=smooth_window, polyorder=SAVGOL_POLYORDER)
+        smoothed = savgol_filter(signal_corrected, window_length=smooth_window, polyorder=sp_params.polyorder.value)
     else:
         smoothed = signal_corrected
 
@@ -276,9 +263,9 @@ def _analyze_signal_for_resonance(signal: np.ndarray, detuning: np.ndarray) -> T
     # Peak detection
     peaks, properties = find_peaks(
         smoothed, 
-        prominence=PEAK_PROMINENCE_STD_FACTOR * noise, 
-        distance=PEAK_DISTANCE, 
-        width=PEAK_WIDTH
+        prominence=sp_params.noise_prominence_factor.value * noise, 
+        distance=sp_params.peak_distance.value, 
+        width=sp_params.peak_width.value
     )
     
     # Determine resonance center and quality
@@ -295,7 +282,7 @@ def _analyze_signal_for_resonance(signal: np.ndarray, detuning: np.ndarray) -> T
         center = np.nan
         snr_val = 0.0
     
-    is_good = (snr_val > SNR_THRESHOLD) and (not np.isnan(center))
+    is_good = (snr_val > qc_params.snr_threshold.value) and (not np.isnan(center))
     
     return center, snr_val, is_good
 
@@ -347,8 +334,8 @@ def _smooth_resonance_centers(filtered_centers: np.ndarray, fit_mask: np.ndarray
 def _assign_optimal_power_clustering(
     ds: xr.Dataset, 
     qubits: list, 
-    n_clusters: int = OPTIMAL_POWER_N_CLUSTERS, 
-    power_margin_db: float = OPTIMAL_POWER_MARGIN_DB
+    n_clusters: int = None, 
+    power_margin_db: float = None
 ) -> Dict[str, float]:
     """
     Assign optimal readout power using KMeans clustering.
@@ -369,6 +356,11 @@ def _assign_optimal_power_clustering(
     Dict[str, float]
         Mapping from qubit name to optimal power
     """
+    if n_clusters is None:
+        n_clusters = qc_params.optimal_power_n_clusters.value
+    if power_margin_db is None:
+        power_margin_db = qc_params.optimal_power_margin_db.value
+
     power_vals = ds.power.values
     numeric_power_vals = _convert_power_strings_to_numeric(power_vals)
     min_power = np.min(numeric_power_vals)
@@ -487,18 +479,18 @@ def _calculate_comprehensive_fit_metrics(
         
         # Calculate flatness in first N points
         flatness_val = (
-            np.nanmax(smoothed_centers[:FLATNESS_N_POINTS]) - np.nanmin(smoothed_centers[:FLATNESS_N_POINTS])
-            if np.sum(fit_mask[:FLATNESS_N_POINTS]) > 0 else np.nan
+            np.nanmax(smoothed_centers[:qc_params.flatness_n_points.value]) - np.nanmin(smoothed_centers[:qc_params.flatness_n_points.value])
+            if np.sum(fit_mask[:qc_params.flatness_n_points.value]) > 0 else np.nan
         )
         
         # Calculate low power center standard deviation
-        valid_centers = smoothed_centers[:NOISE_N_POINTS][~np.isnan(smoothed_centers[:NOISE_N_POINTS])]
-        low_power_center_std = float(np.nanstd(smoothed_centers[:NOISE_N_POINTS])) if len(valid_centers) >= 2 else 0.0
+        valid_centers = smoothed_centers[:qc_params.noise_n_points.value][~np.isnan(smoothed_centers[:qc_params.noise_n_points.value])]
+        low_power_center_std = float(np.nanstd(smoothed_centers[:qc_params.noise_n_points.value])) if len(valid_centers) >= 2 else 0.0
         
         # Calculate noise metric
         iq_low = np.concatenate([
             ds.IQ_abs.sel(qubit=qubit_name, power=p).values 
-            for p in ds.power.values[:NOISE_N_POINTS]
+            for p in ds.power.values[:qc_params.noise_n_points.value]
         ])
         noise_metric = float(np.std(iq_low))
         
@@ -724,11 +716,6 @@ def _get_safe_savgol_window_length(data_length: int, window_size: int, polyorder
 
 def _determine_amplitude_outcome(
     params: Dict[str, any],
-    snr_min: float = SNR_MIN,
-    low_power_center_std_thresh: float = LOW_POWER_CENTER_STD_THRESHOLD_HZ,
-    n_low_powers: int = GS_DETECTION_N_LOW_POWERS,
-    min_gs_count: int = GS_DETECTION_MIN_COUNT,
-    gs_window: int = GS_DETECTION_WINDOW,
 ) -> str:
     """
     Determine the outcome for amplitude spectroscopy based on parameters.
@@ -737,16 +724,6 @@ def _determine_amplitude_outcome(
     ----------
     params : Dict[str, any]
         Dictionary containing all outcome parameters
-    snr_min : float
-        Minimum acceptable SNR
-    low_power_center_std_thresh : float
-        Threshold for low power center standard deviation
-    n_low_powers : int
-        Number of low powers to check for ground state
-    min_gs_count : int
-        Minimum count for ground state detection
-    gs_window : int
-        Window size for ground state detection
         
     Returns
     -------
@@ -765,9 +742,14 @@ def _determine_amplitude_outcome(
     # Check for ground state detection using dip analysis
     gs_seen = True
     if iq_abs is not None and detuning is not None:
-        gs_seen = _detect_ground_state_presence(iq_abs, n_low_powers, min_gs_count, gs_window)
+        gs_seen = _detect_ground_state_presence(
+            iq_abs, 
+            qc_params.gs_detection_n_low_powers.value, 
+            qc_params.gs_detection_min_count.value, 
+            qc_params.gs_detection_window.value
+        )
 
-    snr_low = snr is not None and snr < snr_min
+    snr_low = snr is not None and snr < qc_params.snr_min.value
 
     # Primary checks based on ground state detection
     if not gs_seen and snr_low:
@@ -776,7 +758,7 @@ def _determine_amplitude_outcome(
         return "The power range is too small, consider increasing it"
 
     # Legacy logic for compatibility
-    if low_power_center_std is not None and low_power_center_std > low_power_center_std_thresh:
+    if low_power_center_std is not None and low_power_center_std > qc_params.low_power_center_std_threshold_hz.value:
         if snr_low:
             return (
                 "The SNR is low and the power is not large enough to observe the punch-out, "

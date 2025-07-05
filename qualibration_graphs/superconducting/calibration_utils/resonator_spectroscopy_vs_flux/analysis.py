@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from qualibration_libs.analysis import fit_oscillation
+from qualibration_libs.analysis.parameters import analysis_config_manager
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import curve_fit
@@ -16,19 +17,9 @@ from scipy.signal import argrelextrema
 
 from qualibrate import QualibrationNode
 
-# Analysis Constants
-NAN_FRACTION_THRESHOLD: float = 0.8
-FLAT_STD_REL_THRESHOLD: float = 1e-6
-AMP_REL_THRESHOLD: float = 0.01
-SNR_MIN: float = 2.0
-RESONATOR_TRACE_SMOOTH_SIGMA: float = 1.5
-RESONATOR_TRACE_DIP_THRESHOLD: float = 0.01
-RESONATOR_TRACE_GRADIENT_THRESHOLD: float = 0.001
-MIN_FLUX_MODULATION_HZ: float = 1e6
-FLUX_MODULATION_SMOOTH_SIGMA: float = 1.5
-RESONANCE_CORRECTION_CONFIDENCE_THRESHOLD: float = -0.6
-RESONANCE_CORRECTION_WINDOW: int = 5
-EPSILON: float = 1e-9
+# Access parameter groups from the config manager
+qc_params = analysis_config_manager.get("resonator_spectroscopy_vs_flux_qc")
+sp_params = analysis_config_manager.get("common_signal_processing")
 
 
 @dataclass
@@ -214,12 +205,12 @@ def _evaluate_qubit_data_quality(ds: xr.Dataset, peak_freq: xr.Dataset) -> Dict[
         frac_nan = n_nan / pf_vals.size
         pf_valid = pf_vals[~np.isnan(pf_vals)]
         
-        if pf_valid.size == 0 or frac_nan > NAN_FRACTION_THRESHOLD:
+        if pf_valid.size == 0 or frac_nan > qc_params.nan_fraction_threshold.value:
             qubit_outcomes[q] = "no_peaks"
         else:
             pf_std = np.nanstd(pf_valid)
             pf_mean = np.nanmean(np.abs(pf_valid))
-            if pf_mean == 0 or pf_std < FLAT_STD_REL_THRESHOLD * pf_mean:
+            if pf_mean == 0 or pf_std < qc_params.flat_std_rel_threshold.value * pf_mean:
                 qubit_outcomes[q] = "no_peaks"
             else:
                 qubit_outcomes[q] = "fit"
@@ -418,7 +409,7 @@ def _apply_frequency_correction_if_needed(
     # Check confidence around idle flux
     idx_idle = np.argmin(np.abs(flux_biases - fitted_flux_idle))
     freq_at_idle = freq_vals[idx_idle]
-    window = RESONANCE_CORRECTION_WINDOW
+    window = qc_params.resonance_correction_window.value
     start = max(0, idx_idle - window)
     end = min(len(freq_vals), idx_idle + window + 1)
     local_min = np.min(freq_vals[start:end])
@@ -428,7 +419,7 @@ def _apply_frequency_correction_if_needed(
     confidence = (local_mean - freq_at_idle) / (global_max - global_min + 1e-12)
 
     # Correct frequency if confidence is low
-    if confidence < RESONANCE_CORRECTION_CONFIDENCE_THRESHOLD:
+    if confidence < qc_params.resonance_correction_confidence_threshold.value:
         corrected_freq = _correct_resonator_frequency(
             ds_raw=node.results["ds_raw"],
             qubit=qubit,
@@ -482,7 +473,6 @@ def _has_oscillations_in_fit(
     fit: xr.Dataset,
     qubit: str,
     qubit_outcomes: Dict[str, str],
-    amp_rel_thresh: float = AMP_REL_THRESHOLD,
 ) -> bool:
     """Determine if oscillations were detected in the fit for a given qubit."""
     if qubit_outcomes.get(qubit) in ["no_peaks", "no_oscillations"]:
@@ -494,7 +484,7 @@ def _has_oscillations_in_fit(
         pf_valid = fit.peak_freq.sel(qubit=qubit).values
         pf_valid = pf_valid[~np.isnan(pf_valid)]
         pf_median = np.median(np.abs(pf_valid)) if pf_valid.size > 0 else 1.0
-        return np.abs(amp) >= amp_rel_thresh * pf_median
+        return np.abs(amp) >= qc_params.amp_rel_threshold.value * pf_median
     except:
         return False
 
@@ -505,7 +495,7 @@ def _calculate_snr(ds: xr.Dataset, qubit: str) -> float:
         data = ds.IQ_abs.sel(qubit=qubit)
         signal = np.ptp(data.values)  # peak-to-peak as signal measure
         noise = np.std(data.values)   # standard deviation as noise measure
-        return signal / (noise + EPSILON) if noise > 0 else np.inf
+        return signal / (noise + sp_params.epsilon.value) if noise > 0 else np.inf
     except:
         return np.nan
 
@@ -513,7 +503,6 @@ def _calculate_snr(ds: xr.Dataset, qubit: str) -> float:
 def _determine_flux_outcome(
     params: Dict[str, float],
     initial_outcome: str,
-    snr_min: float = SNR_MIN,
 ) -> str:
     """Determine the outcome for flux spectroscopy based on parameters."""
     freq_shift = params["freq_shift"]
@@ -533,7 +522,7 @@ def _determine_flux_outcome(
     if has_anticrossings:
         return "Anti-crossings were detected, consider adjusting the flux range or checking the device setup"
 
-    snr_low = snr is not None and snr < snr_min
+    snr_low = snr is not None and snr < qc_params.snr_min.value
     if snr_low:
         return "The SNR isn't large enough, consider increasing the number of shots"
 
@@ -552,27 +541,24 @@ def _has_resonator_trace(
     var_name: str = "IQ_abs",
     freq_dim: str = "detuning",
     flux_dim: str = "flux_bias",
-    smooth_sigma: float = RESONATOR_TRACE_SMOOTH_SIGMA,
-    dip_threshold: float = RESONATOR_TRACE_DIP_THRESHOLD,
-    gradient_threshold: float = RESONATOR_TRACE_GRADIENT_THRESHOLD,
 ) -> bool:
     """Detect whether a resonator-like frequency trace exists."""
     try:
         # Extract and normalize data
         da = ds[var_name].sel(qubit=qubit)
-        da_norm = da / (da.mean(dim=freq_dim) + EPSILON)
+        da_norm = da / (da.mean(dim=freq_dim) + sp_params.epsilon.value)
 
         # Get minimum trace across frequency sweep
         min_trace = da_norm.min(dim=freq_dim).values
 
         # Smooth to suppress noise
-        min_trace_smooth = gaussian_filter1d(min_trace, sigma=smooth_sigma)
+        min_trace_smooth = gaussian_filter1d(min_trace, sigma=qc_params.resonator_trace_smooth_sigma.value)
 
         # Calculate peak-to-peak dip depth and variation
         dip_depth = np.max(min_trace_smooth) - np.min(min_trace_smooth)
         gradient = np.max(np.abs(np.gradient(min_trace_smooth)))
 
-        return (dip_depth > dip_threshold) and (gradient > gradient_threshold)
+        return (dip_depth > qc_params.resonator_trace_dip_threshold.value) and (gradient > qc_params.resonator_trace_gradient_threshold.value)
     except:
         return False
 
@@ -580,8 +566,6 @@ def _has_resonator_trace(
 def _has_insufficient_flux_modulation(
     ds: xr.Dataset, 
     qubit: str, 
-    min_modulation_hz: float = MIN_FLUX_MODULATION_HZ, 
-    smooth_sigma: float = FLUX_MODULATION_SMOOTH_SIGMA
 ) -> bool:
     """Detect whether the flux modulation of the resonator is too small."""
     try:
@@ -600,10 +584,10 @@ def _has_insufficient_flux_modulation(
         if freq_vals.size < 2:
             return True
 
-        smoothed = gaussian_filter1d(freq_vals, sigma=smooth_sigma)
+        smoothed = gaussian_filter1d(freq_vals, sigma=qc_params.flux_modulation_smooth_sigma.value)
         modulation_range = np.max(smoothed) - np.min(smoothed)
 
-        return modulation_range < min_modulation_hz
+        return modulation_range < qc_params.min_flux_modulation_hz.value
     except:
         return True
 

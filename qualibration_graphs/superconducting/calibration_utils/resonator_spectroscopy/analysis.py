@@ -8,20 +8,14 @@ import numpy as np
 import xarray as xr
 from qualibration_libs.analysis import peaks_dips
 from qualibration_libs.analysis.models import lorentzian_dip
+from qualibration_libs.analysis.parameters import analysis_config_manager
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 
 from qualibrate import QualibrationNode
 
-# Analysis Constants
-SNR_MIN: float = 2.5
-SNR_DISTORTED: float = 5.0
-ASYMMETRY_MIN: float = 0.4
-ASYMMETRY_MAX: float = 2.5
-SKEWNESS_MAX: float = 1.1  
-DISTORTED_FRACTION_LOW_SNR: float = 0.15  
-DISTORTED_FRACTION_HIGH_SNR: float = 0.25  
-FWHM_ABSOLUTE_THRESHOLD_HZ: float = 3e6  
-NRMSE_THRESHOLD: float = 0.3  # More lenient threshold, R-squared removed as it's too aggressive
+# Access quality check parameters from the config object
+qc_params = analysis_config_manager.get("resonator_spectroscopy_qc")
+
 
 @dataclass
 class FitParameters:
@@ -319,14 +313,6 @@ def _extract_qubit_fit_metrics(
 
 def _determine_resonator_outcome(
     metrics: Dict[str, float],
-    snr_min: float = SNR_MIN,
-    snr_distorted: float = SNR_DISTORTED,
-    asymmetry_min: float = ASYMMETRY_MIN,
-    asymmetry_max: float = ASYMMETRY_MAX,
-    skewness_max: float = SKEWNESS_MAX,
-    distorted_fraction_low_snr: float = DISTORTED_FRACTION_LOW_SNR,
-    distorted_fraction_high_snr: float = DISTORTED_FRACTION_HIGH_SNR,
-    fwhm_absolute_threshold: float = FWHM_ABSOLUTE_THRESHOLD_HZ,
 ) -> str:
     """
     Determine the outcome for resonator spectroscopy based on fit metrics.
@@ -335,22 +321,6 @@ def _determine_resonator_outcome(
     ----------
     metrics : Dict[str, float]
         Dictionary containing fit metrics
-    snr_min : float
-        Minimum acceptable SNR
-    snr_distorted : float
-        SNR threshold for distortion detection
-    asymmetry_min : float
-        Minimum acceptable asymmetry
-    asymmetry_max : float
-        Maximum acceptable asymmetry
-    skewness_max : float
-        Maximum acceptable skewness
-    distorted_fraction_low_snr : float
-        Maximum distortion fraction for low SNR
-    distorted_fraction_high_snr : float
-        Maximum distortion fraction for high SNR
-    fwhm_absolute_threshold : float
-        Absolute FWHM threshold
         
     Returns
     -------
@@ -368,7 +338,7 @@ def _determine_resonator_outcome(
     r_squared = metrics.get("r_squared", 0)
 
     # Check SNR first
-    if snr < snr_min:
+    if snr < qc_params.min_snr.value:
         return "The SNR isn't large enough, consider increasing the number of shots"
     
     # Check for OPX bandwidth artifacts
@@ -380,7 +350,7 @@ def _determine_resonator_outcome(
         return "Several peaks were detected"
     
     if num_peaks == 0:
-        if snr < snr_min:
+        if snr < qc_params.min_snr.value:
             return (
                 "The SNR isn't large enough, consider increasing the number of shots "
                 "and ensure you are looking at the correct frequency range"
@@ -388,14 +358,12 @@ def _determine_resonator_outcome(
         return "No peaks were detected, consider changing the frequency range"
     
     # Check peak shape quality
-    if _is_peak_shape_distorted(asymmetry, skewness, asymmetry_min, asymmetry_max, skewness_max, nrmse):
+    if _is_peak_shape_distorted(asymmetry, skewness, nrmse):
         return "The peak shape is distorted"
     
     # Check for peak width issues
-    if _is_peak_too_wide(fwhm, sweep_span, snr, snr_distorted, 
-                        distorted_fraction_low_snr, distorted_fraction_high_snr, 
-                        fwhm_absolute_threshold):
-        if snr < snr_distorted:
+    if _is_peak_too_wide(fwhm, sweep_span, snr):
+        if snr < qc_params.snr_for_distortion.value:
             return "The SNR isn't large enough and the peak shape is distorted"
         else:
             return "Distorted peak detected"
@@ -408,11 +376,7 @@ def _determine_resonator_outcome(
 def _is_peak_shape_distorted(
     asymmetry: float, 
     skewness: float,
-    asymmetry_min: float,
-    asymmetry_max: float,
-    skewness_max: float,
     nrmse: float,
-    nrmse_threshold: float = NRMSE_THRESHOLD
 ) -> bool:
     """
     Check if peak shape indicates distortion based on asymmetry and skewness.
@@ -423,12 +387,8 @@ def _is_peak_shape_distorted(
         Peak asymmetry value
     skewness : float
         Peak skewness value
-    asymmetry_min : float
-        Minimum acceptable asymmetry
-    asymmetry_max : float
-        Maximum acceptable asymmetry
-    skewness_max : float
-        Maximum acceptable skewness
+    nrmse : float
+        Normalized Root Mean Square Error
         
     Returns
     -------
@@ -436,9 +396,9 @@ def _is_peak_shape_distorted(
         True if peak shape is distorted
     """
     asymmetry_bad = (asymmetry is not None and 
-                    (asymmetry < asymmetry_min or asymmetry > asymmetry_max))
-    skewness_bad = (skewness is not None and abs(skewness) > skewness_max)
-    poor_geom_fit = nrmse > NRMSE_THRESHOLD
+                    (asymmetry < qc_params.min_asymmetry.value or asymmetry > qc_params.max_asymmetry.value))
+    skewness_bad = (skewness is not None and abs(skewness) > qc_params.max_skewness.value)
+    poor_geom_fit = nrmse > qc_params.nrmse_threshold.value
 
     return asymmetry_bad or skewness_bad or poor_geom_fit
 
@@ -447,10 +407,6 @@ def _is_peak_too_wide(
     fwhm: float,
     sweep_span: float,
     snr: float,
-    snr_distorted: float,
-    distorted_fraction_low_snr: float,
-    distorted_fraction_high_snr: float,
-    fwhm_absolute_threshold: float
 ) -> bool:
     """
     Check if peak is too wide relative to sweep or absolutely.
@@ -463,14 +419,6 @@ def _is_peak_too_wide(
         Total sweep span
     snr : float
         Signal-to-noise ratio
-    snr_distorted : float
-        SNR threshold for distortion classification
-    distorted_fraction_low_snr : float
-        Maximum acceptable fraction for low SNR
-    distorted_fraction_high_snr : float
-        Maximum acceptable fraction for high SNR
-    fwhm_absolute_threshold : float
-        Absolute FWHM threshold
         
     Returns
     -------
@@ -478,12 +426,16 @@ def _is_peak_too_wide(
         True if peak is too wide
     """
     # Determine distortion threshold based on SNR
-    distorted_fraction = distorted_fraction_low_snr if snr < snr_distorted else distorted_fraction_high_snr
+    distorted_fraction = (
+        qc_params.distorted_fraction_low_snr.value
+        if snr < qc_params.snr_for_distortion.value
+        else qc_params.distorted_fraction_high_snr.value
+    )
     
     # Check relative width
     relative_width_bad = (sweep_span > 0 and (fwhm / sweep_span > distorted_fraction))
     
     # Check absolute width
-    absolute_width_bad = (fwhm > fwhm_absolute_threshold)
+    absolute_width_bad = (fwhm > qc_params.fwhm_absolute_threshold_hz.value)
     
     return relative_width_bad or absolute_width_bad
