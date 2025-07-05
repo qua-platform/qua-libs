@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import xarray as xr
 from qualibration_libs.analysis import peaks_dips
+from qualibration_libs.analysis.fitting import calculate_quality_metrics
 from qualibration_libs.analysis.models import lorentzian_dip
 from qualibration_libs.analysis.parameters import analysis_config_manager
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
@@ -23,6 +24,7 @@ class FitParameters:
     frequency: float
     fwhm: float
     outcome: str
+    fit_metrics: Optional[Dict[str, Any]] = None
 
 
 def log_fitted_results(fit_results: Dict[str, FitParameters], log_callable=None) -> None:
@@ -167,6 +169,7 @@ def _extract_and_validate_fit_parameters(
             frequency=fit.sel(qubit=qubit_name).res_freq.values.item(),
             fwhm=fit.sel(qubit=qubit_name).fwhm.values.item(),
             outcome=outcome,
+            fit_metrics=fit_metrics,
         )
     
     # Add outcomes to the fit dataset
@@ -231,43 +234,6 @@ def _generate_lorentzian_fit(
     )
 
 
-def _calculate_quality_metrics(
-    raw_data: np.ndarray, fitted_data: np.ndarray
-) -> Dict[str, float]:
-    """
-    Calculate fit quality metrics: RMSE, NRMSE, and R-squared.
-
-    Parameters
-    ----------
-    raw_data : np.ndarray
-        The raw measurement data.
-    fitted_data : np.ndarray
-        The data from the Lorentzian fit.
-
-    Returns
-    -------
-    Dict[str, float]
-        A dictionary containing 'rmse', 'nrmse', and 'r_squared'.
-    """
-    residuals = raw_data - fitted_data
-    rmse = np.sqrt(np.mean(residuals**2))
-
-    # NRMSE (normalized by peak-to-peak range)
-    data_range = np.ptp(raw_data)
-    nrmse = rmse / data_range if data_range > 0 else np.inf
-
-    # R-squared (coefficient of determination)
-    ss_res = np.sum(residuals**2)
-    ss_tot = np.sum((raw_data - np.mean(raw_data)) ** 2)
-    r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
-
-    # Ensure R-squared is valid
-    if not (0 <= r_squared <= 1):
-        r_squared = 0  # Invalid fit
-
-    return {"rmse": rmse, "nrmse": nrmse, "r_squared": r_squared}
-
-
 def _extract_qubit_fit_metrics(
     ds_raw: xr.Dataset, fit: xr.Dataset, qubit_name: str
 ) -> Dict[str, float]:
@@ -297,7 +263,7 @@ def _extract_qubit_fit_metrics(
 
     # Generate the Lorentzian fit and calculate quality metrics
     fitted_data = _generate_lorentzian_fit(qubit_data, detuning_values)
-    quality_metrics = _calculate_quality_metrics(raw_data, fitted_data)
+    quality_metrics = calculate_quality_metrics(raw_data, fitted_data)
 
     return {
         "num_peaks": int(qubit_data.num_peaks.values),
@@ -343,7 +309,7 @@ def _determine_resonator_outcome(
     
     # Check for OPX bandwidth artifacts
     if opx_bandwidth_artifact:
-        return "OPX bandwidth artifact detected, check your experiment bandwidth settings"
+        return "OPX bandwidth artifact detected, consider shifting the LO frequency by ~20MHz"
     
     # Check number of peaks
     if num_peaks > 1:

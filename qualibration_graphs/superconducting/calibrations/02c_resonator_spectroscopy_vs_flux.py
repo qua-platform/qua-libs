@@ -7,10 +7,10 @@ import numpy as np
 import xarray as xr
 from calibration_utils.resonator_spectroscopy_vs_flux import (
     Parameters, fit_raw_data, log_fitted_results, process_raw_dataset)
-from calibration_utils.resonator_spectroscopy_vs_flux.plot_configs import \
-    flux_vs_frequency_config
+from calibration_utils.resonator_spectroscopy_vs_flux.plot_configs import (
+    flux_vs_frequency_config)
 from calibration_utils.resonator_spectroscopy_vs_flux.preparators import (
-    create_matplotlib_figure, create_plotly_figure, prepare_flux_sweep_data)
+    prepare_flux_sweep_data, create_matplotlib_figure, create_plotly_figure)
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -18,7 +18,6 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
-from qualibration_libs.plotting import create_figures
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
@@ -214,7 +213,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data using the unified plotting architecture."""
+    """Plot the raw and fitted data using standardized plotting framework."""
 
     # 1. Prepare datasets by adding fields needed for plotting
     ds_raw, ds_fit = prepare_flux_sweep_data(
@@ -223,21 +222,27 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         qubits=node.namespace["qubits"]
     )
 
-    # 2. Generate figures using the unified adaptive architecture
-    figures = create_figures(
+    # 2. Generate figures using the standardized plotter
+    plotly_flux = create_plotly_figure(
         ds_raw=ds_raw,
         qubits=node.namespace["qubits"],
-        experiment_type="resonator_spectroscopy_vs_flux",
+        plot_configs=[flux_vs_frequency_config],
         ds_fit=ds_fit,
     )
-    
-    # Show interactive plots
-    figures["plotly"].show()
+    plotly_flux.show()
 
-    # Store all figures with backward-compatible names
+    # 3. Generate static matplotlib figures
+    static_flux_fig = create_matplotlib_figure(
+        ds_raw=ds_raw,
+        qubits=node.namespace["qubits"],
+        plot_configs=[flux_vs_frequency_config],
+        ds_fit=ds_fit,
+    )
+
+    # Store interactive and static figures
     node.results["figures"] = {
-        "flux_plotly": figures["plotly"],
-        "flux": figures["matplotlib"],
+        "flux_plotly": plotly_flux,
+        "flux": static_flux_fig,
     }
 
 

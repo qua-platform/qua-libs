@@ -8,6 +8,7 @@ import numpy as np
 import xarray as xr
 from qualibration_libs.analysis import fit_oscillation
 from qualibration_libs.analysis.parameters import analysis_config_manager
+from qualibration_libs.analysis.signal import compute_signal_to_noise_ratio
 from qualibration_libs.data import convert_IQ_to_V
 from quam_config.instrument_limits import instrument_limits
 from scipy.signal import correlate
@@ -28,14 +29,15 @@ class FitParameters:
     fit_quality: Optional[float] = None
 
 
-def log_fitted_results(fit_results: Dict[str, FitParameters], log_callable=None) -> None:
+def log_fitted_results(fit_results: Dict[str, Union[FitParameters, dict]], log_callable=None) -> None:
     """
     Logs the node-specific fitted results for all qubits from the fit results.
+    It handles both FitParameters objects and dictionaries to support loaded data from older versions.
 
     Parameters
     ----------
-    fit_results : Dict[str, FitParameters]
-        Dictionary containing the fitted results for all qubits.
+    fit_results : Dict[str, Union[FitParameters, dict]]
+        Dictionary containing the fitted results for all qubits. Can be objects or dicts.
     log_callable : callable, optional
         Logger for logging the fitted results. If None, a default logger is used.
     """
@@ -43,36 +45,32 @@ def log_fitted_results(fit_results: Dict[str, FitParameters], log_callable=None)
         log_callable = logging.getLogger(__name__).info
     
     for qubit_name, results in fit_results.items():
+        if isinstance(results, dict):
+            # Convert dict to FitParameters object for consistent handling
+            results = FitParameters(
+                outcome=results.get('outcome', 'unknown'),
+                opt_amp=results.get('opt_amp', 0.0),
+                opt_amp_prefactor=results.get('opt_amp_prefactor', 1.0),
+                operation=results.get('operation', 'x180'),
+                fit_quality=results.get('fit_quality', None)
+            )
+
         status_line = f"Results for qubit {qubit_name}: "
         
-        # Handle both FitParameters objects and dictionaries
-        if hasattr(results, 'outcome'):
-            outcome = results.outcome
-            opt_amp = results.opt_amp
-            opt_amp_prefactor = results.opt_amp_prefactor
-            operation = results.operation
-            fit_quality = results.fit_quality
-        else:
-            outcome = results.get('outcome', 'unknown')
-            opt_amp = results.get('opt_amp', 0.0)
-            opt_amp_prefactor = results.get('opt_amp_prefactor', 1.0)
-            operation = results.get('operation', 'x180')
-            fit_quality = results.get('fit_quality', None)
-        
-        if outcome == "successful":
+        if results.outcome == "successful":
             status_line += " SUCCESS!\n"
         else:
-            status_line += f" FAIL! Reason: {outcome}\n"
+            status_line += f" FAIL! Reason: {results.outcome}\n"
         
         # Format amplitude with appropriate units
-        amp_mV = opt_amp * 1e3
-        amp_str = f"The calibrated {operation} amplitude: {amp_mV:.2f} mV "
-        prefactor_str = f"(x{opt_amp_prefactor:.2f})\n"
+        amp_mV = results.opt_amp * 1e3
+        amp_str = f"The calibrated {results.operation} amplitude: {amp_mV:.2f} mV "
+        prefactor_str = f"(x{results.opt_amp_prefactor:.2f})\n"
         
         # Add fit quality information if available
         quality_str = ""
-        if fit_quality is not None:
-            quality_str = f"Fit quality (R²): {fit_quality:.3f}\n"
+        if results.fit_quality is not None:
+            quality_str = f"Fit quality (R²): {results.fit_quality:.3f}\n"
         
         log_callable(status_line + amp_str + prefactor_str + quality_str)
 
@@ -292,9 +290,12 @@ def _calculate_signal_quality_metrics(fit: xr.Dataset) -> xr.Dataset:
         elif hasattr(fit, "state") and hasattr(fit.state, "sel"):
             signal = fit.state.sel(qubit=q).values
         else:
+            logging.warning(
+                f"Could not find 'I' or 'state' data for qubit {q}. Returning zeros."
+            )
             signal = np.zeros(2)
         
-        snrs.append(_compute_signal_to_noise_ratio(signal))
+        snrs.append(compute_signal_to_noise_ratio(signal))
     
     fit = fit.assign_coords(snr=("qubit", snrs))
     fit.snr.attrs = {"long_name": "signal-to-noise ratio", "units": ""}
@@ -365,46 +366,6 @@ def _create_fit_results_dictionary(fit: xr.Dataset, node: QualibrationNode) -> D
 
 
 # Helper Functions for Signal Analysis
-
-def _compute_signal_to_noise_ratio(signal: np.ndarray) -> float:
-    """
-    Compute signal-to-noise ratio for a 1D signal array.
-    
-    Parameters
-    ----------
-    signal : np.ndarray
-        1D array of signal values
-        
-    Returns
-    -------
-    float
-        Signal-to-noise ratio
-    """
-    if signal.size < 2:
-        return 0.0
-    
-    try:
-        from scipy.ndimage import uniform_filter1d
-
-        # Smooth signal to estimate underlying trend
-        smooth = uniform_filter1d(signal, size=max(3, signal.size // 10))
-        # Estimate noise as residual
-        noise = signal - smooth
-        noise_std = np.std(noise)
-        
-        if noise_std == 0:
-            return np.inf
-        
-        # Signal strength as peak-to-peak range
-        signal_strength = np.ptp(signal)
-        return signal_strength / noise_std
-        
-    except ImportError:
-        # Fallback if scipy not available
-        signal_std = np.std(signal)
-        return np.ptp(signal) / signal_std if signal_std > 0 else np.inf
-
-
 def _extract_fit_quality(fit: xr.Dataset) -> Optional[float]:
     """Safely extract R² fit quality from dataset."""
     try:
@@ -422,6 +383,9 @@ def _extract_qubit_signal(fit: xr.Dataset, qubit: str) -> np.ndarray:
     elif hasattr(fit, "state") and hasattr(fit.state, "sel"):
         return fit.state.sel(qubit=qubit).values
     else:
+        logging.warning(
+            f"Could not find 'I' or 'state' data for qubit {qubit}. Returning zeros."
+        )
         return np.zeros((2, 2))
 
 

@@ -9,7 +9,8 @@ from matplotlib.figure import Figure
 from plotly.subplots import make_subplots
 from qualang_tools.units import unit
 from qualibration_libs.analysis import oscillation
-from qualibration_libs.plotting import (QubitGrid, grid_iter)
+from qualibration_libs.plotting import (PlotlyQubitGrid, QubitGrid, grid_iter,
+                                        plotly_grid_iter)
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
@@ -193,7 +194,7 @@ def plotly_plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fit
     - For 1D data: shows amplitude in mV and prefactor
     - For 2D data: shows heatmap with number of pulses vs amplitude
     """
-    grid = QubitGrid(ds, [q.grid_location for q in qubits], create_figure=False)
+    grid = PlotlyQubitGrid(ds, [q.grid_location for q in qubits])
     fig = make_subplots(
         rows=grid.n_rows,
         cols=grid.n_cols,
@@ -202,7 +203,7 @@ def plotly_plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fit
         shared_yaxes=False,
     )
     colorbar_traces = []
-    for (grid_row, grid_col), name_dict in grid.plotly_grid_iter():
+    for (grid_row, grid_col), name_dict in plotly_grid_iter(grid):
         row = grid_row + 1  # Convert to 1-based indexing for Plotly
         col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]

@@ -8,7 +8,10 @@ from calibration_utils.power_rabi import (Parameters, fit_raw_data,
                                           get_number_of_pulses,
                                           log_fitted_results,
                                           process_raw_dataset)
-from calibration_utils.power_rabi.preparators import prepare_power_rabi_data
+from calibration_utils.power_rabi.plot_configs import power_rabi_config
+from calibration_utils.power_rabi.preparators import (create_matplotlib_figure,
+                                                      create_plotly_figure,
+                                                      prepare_power_rabi_data)
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -16,7 +19,6 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
-from qualibration_libs.plotting import create_figures
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
@@ -217,12 +219,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+    node.results["fit_results"] = fit_results
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
-        qubit_name: ("successful" if fit_result["outcome"] == "successful" else "failed")
+        qubit_name: ("successful" if fit_result.outcome == "successful" else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()
     }
 
@@ -230,7 +232,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data using the unified plotting architecture."""
+    """Plot the raw and fitted data using standardized plotting framework."""
 
     # 1. Prepare datasets by adding fields needed for plotting
     ds_raw, ds_fit = prepare_power_rabi_data(
@@ -239,20 +241,27 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         qubits=node.namespace["qubits"]
     )
 
-    figures = create_figures(
+    # 2. Generate figures using the standardized plotter
+    plotly_rabi = create_plotly_figure(
         ds_raw=ds_raw,
         qubits=node.namespace["qubits"],
-        experiment_type="power_rabi",
+        plot_configs=[power_rabi_config],
         ds_fit=ds_fit,
     )
-    
-    # Show interactive plots
-    figures["plotly"].show()
+    plotly_rabi.show()
 
-    # Store all figures with backward-compatible names
+    # 3. Generate static matplotlib figures
+    static_rabi_fig = create_matplotlib_figure(
+        ds_raw=ds_raw,
+        qubits=node.namespace["qubits"],
+        plot_configs=[power_rabi_config],
+        ds_fit=ds_fit,
+    )
+
+    # Store interactive and static figures
     node.results["figures"] = {
-        "rabi_plotly": figures["plotly"],
-        "rabi": figures["matplotlib"],
+        "rabi_plotly": plotly_rabi,
+        "rabi": static_rabi_fig,
     }
 
 
@@ -266,9 +275,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             operation = q.xy.operations[node.parameters.operation]
-            operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
+            fit_result = node.results["fit_results"][q.name]
+            operation.amplitude = fit_result.opt_amp
             if node.parameters.operation == "x180":
-                q.xy.operations["x90"].amplitude = node.results["fit_results"][q.name]["opt_amp"] / 2
+                q.xy.operations["x90"].amplitude = fit_result.opt_amp / 2
 
 
 # %% {Save_results}

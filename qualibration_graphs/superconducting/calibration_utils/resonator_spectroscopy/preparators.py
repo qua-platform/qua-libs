@@ -1,8 +1,49 @@
-from typing import Optional
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 import xarray as xr
 from qualibration_libs.analysis import lorentzian_dip
+from quam_builder.architecture.superconducting.qubit import AnyTransmon
+
+from .plotting import (plot_raw_amplitude_with_fit, plot_raw_phase,
+                       plotly_plot_raw_amplitude_with_fit,
+                       plotly_plot_raw_phase)
+
+
+def create_plotly_figure(
+    ds_raw: xr.Dataset,
+    qubits: List[AnyTransmon],
+    plot_configs: List[Any],
+    ds_fit: Optional[xr.Dataset] = None,
+) -> Any:
+    """
+    Create plotly figure using the original plotting logic to maintain exact visual output.
+    """
+    config = plot_configs[0]
+    if "Phase" in config.layout.title:
+        return plotly_plot_raw_phase(ds_raw, qubits)
+    elif "Amplitude" in config.layout.title:
+        return plotly_plot_raw_amplitude_with_fit(ds_raw, qubits, ds_fit)
+    else:
+        raise ValueError("Unknown plot config")
+
+
+def create_matplotlib_figure(
+    ds_raw: xr.Dataset,
+    qubits: List[AnyTransmon],
+    plot_configs: List[Any],
+    ds_fit: Optional[xr.Dataset] = None,
+) -> Any:
+    """
+    Create matplotlib figure using the original plotting logic to maintain exact visual output.
+    """
+    config = plot_configs[0]
+    if "Phase" in config.layout.title:
+        return plot_raw_phase(ds_raw, qubits)
+    elif "Amplitude" in config.layout.title:
+        return plot_raw_amplitude_with_fit(ds_raw, qubits, ds_fit)
+    else:
+        raise ValueError("Unknown plot config")
 
 
 def prepare_resonator_spectroscopy_data(

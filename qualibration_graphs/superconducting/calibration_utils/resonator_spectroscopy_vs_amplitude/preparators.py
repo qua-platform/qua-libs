@@ -58,12 +58,6 @@ def prepare_amplitude_sweep_data(
             ds_fit_prepared = ds_fit_prepared.assign_coords(
                 freq_GHz=ds_fit_prepared[freq_coord_name] * GHZ_PER_HZ
             )
-            
-        # Add res_freq_GHz for overlay plotting (convert from Hz to GHz)
-        if "res_freq" in ds_fit_prepared.coords:
-            ds_fit_prepared = ds_fit_prepared.assign_coords(
-                res_freq_GHz=ds_fit_prepared.coords["res_freq"] * GHZ_PER_HZ
-            )
     
     return ds_prepared, ds_fit_prepared
 

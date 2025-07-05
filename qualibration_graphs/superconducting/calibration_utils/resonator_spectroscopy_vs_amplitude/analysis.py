@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
@@ -9,6 +10,9 @@ import scipy.stats
 import xarray as xr
 from qualibration_libs.analysis import peaks_dips
 from qualibration_libs.analysis.parameters import analysis_config_manager
+from qualibration_libs.analysis.processing import \
+    convert_power_strings_to_numeric
+from qualibration_libs.analysis.signal import get_safe_savgol_window_length
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from scipy.signal import find_peaks, savgol_filter
@@ -218,10 +222,14 @@ def _track_single_qubit_response(ds: xr.Dataset, qubit_name: str) -> Dict[str, n
     smoothed_centers = _smooth_resonance_centers(filtered_centers, fit_mask)
     
     return {
+        # Raw resonance frequency centers for each power level
         "raw_centers": np.array(centers),
+        # Resonance centers, with poor quality fits replaced by NaN
         "filtered_centers": np.array(filtered_centers),
+        # Smoothed and interpolated resonance centers
         "smoothed_centers": smoothed_centers,
-        "fit_mask": np.array(fit_mask)
+        # Boolean mask indicating if fit quality was good for each power level
+        "fit_mask": np.array(fit_mask),
     }
 
 
@@ -242,7 +250,7 @@ def _analyze_signal_for_resonance(signal: np.ndarray, detuning: np.ndarray) -> T
         Resonance center, SNR value, and quality flag
     """
     # Baseline correction
-    baseline_window = _get_safe_savgol_window_length(len(signal), sp_params.baseline_window_size.value, sp_params.polyorder.value)
+    baseline_window = get_safe_savgol_window_length(len(signal), sp_params.baseline_window_size.value, sp_params.polyorder.value)
     if baseline_window > 0:
         baseline = savgol_filter(signal, window_length=baseline_window, polyorder=sp_params.polyorder.value)
     else:
@@ -251,7 +259,7 @@ def _analyze_signal_for_resonance(signal: np.ndarray, detuning: np.ndarray) -> T
     signal_corrected = signal - baseline
     
     # Smoothing
-    smooth_window = _get_safe_savgol_window_length(len(signal_corrected), sp_params.smooth_window_size.value, sp_params.polyorder.value)
+    smooth_window = get_safe_savgol_window_length(len(signal_corrected), sp_params.smooth_window_size.value, sp_params.polyorder.value)
     if smooth_window > 0:
         smoothed = savgol_filter(signal_corrected, window_length=smooth_window, polyorder=sp_params.polyorder.value)
     else:
@@ -362,7 +370,7 @@ def _assign_optimal_power_clustering(
         power_margin_db = qc_params.optimal_power_margin_db.value
 
     power_vals = ds.power.values
-    numeric_power_vals = _convert_power_strings_to_numeric(power_vals)
+    numeric_power_vals = convert_power_strings_to_numeric(power_vals)
     min_power = np.min(numeric_power_vals)
     
     results = {}
@@ -446,7 +454,7 @@ def _calculate_comprehensive_fit_metrics(
     
     # Get numeric power values from the dataset
     power_values = ds.power.values
-    numeric_power_values = _convert_power_strings_to_numeric(power_values)
+    numeric_power_values = convert_power_strings_to_numeric(power_values)
     
     for i, q in enumerate(qubits):
         qubit_name = q.name
@@ -534,7 +542,7 @@ def _add_metrics_to_dataset(
     
     # Handle None values in optimal_power_dict
     power_values = ds_fit.power.values
-    numeric_power_values = _convert_power_strings_to_numeric(power_values)
+    numeric_power_values = convert_power_strings_to_numeric(power_values)
     fallback_power = float(numeric_power_values[len(numeric_power_values) // 2])
     
     optimal_powers = [
@@ -578,7 +586,7 @@ def _calculate_frequency_shifts_at_optimal_power(ds_fit: xr.Dataset, node: Quali
     
     # Get numeric power values from the dataset
     power_values = ds_fit.power.values
-    numeric_power_values = _convert_power_strings_to_numeric(power_values)
+    numeric_power_values = convert_power_strings_to_numeric(power_values)
     
     for q in node.namespace["qubits"]:
         optimal_power = ds_fit["optimal_power"].sel(qubit=q.name).item()
@@ -669,8 +677,10 @@ def _extract_amplitude_outcome_parameters(
     low_power_center_std = fit.low_power_center_std.sel(qubit=qubit_name).data if "low_power_center_std" in fit.data_vars else None
     
     # Get experiment parameters
-    min_power_dbm = getattr(node.parameters, "min_power_dbm", None)
-    max_power_dbm = getattr(node.parameters, "max_power_dbm", None)
+    # min_power_dbm = getattr(node.parameters, "min_power_dbm", None)
+    # max_power_dbm = getattr(node.parameters, "max_power_dbm", None)
+    min_power_dbm = node.parameters.min_power_dbm
+    max_power_dbm = node.parameters.max_power_dbm
     power_values = fit.power.values if "power" in fit.dims or "power" in fit.coords else None
     
     # Get IQ_abs array with correct shape
@@ -694,25 +704,6 @@ def _extract_amplitude_outcome_parameters(
 
 
 # Helper Functions
-
-def _get_safe_savgol_window_length(data_length: int, window_size: int, polyorder: int) -> int:
-    """Safely determine the window length for savgol_filter."""
-    # Ensure window_length is odd and smaller than data_length
-    window_length = min(window_size, data_length)
-    if window_length % 2 == 0:
-        window_length -= 1
-    
-    # Ensure window_length is greater than polyorder
-    if window_length <= polyorder:
-        if data_length > polyorder:
-            window_length = polyorder + 1 if (polyorder + 1) % 2 != 0 else polyorder + 2
-            if window_length > data_length:
-                return -1  # Not possible to find a valid window
-        else:
-            return -1  # Not possible to find a valid window
-    
-    return window_length
-
 
 def _determine_amplitude_outcome(
     params: Dict[str, any],
@@ -832,33 +823,3 @@ def _detect_ground_state_presence(
             
     except Exception:
         return False
-
-
-def _convert_power_strings_to_numeric(power_values):
-    """Convert power string values to numeric values."""
-    if len(power_values) == 0:
-        return np.array([])
-    
-    if not isinstance(power_values[0], str):
-        return np.array(power_values, dtype=float)
-    
-    try:
-        import re
-        numeric_powers = []
-        for p in power_values:
-            # Use regex to extract number (including negative sign and decimal point)
-            match = re.search(r'-?\d+\.?\d*', str(p))
-            if match:
-                numeric_powers.append(float(match.group()))
-            else:
-                # Fallback: try to extract any numeric characters
-                numeric_part = ''.join(c for c in str(p) if c.isdigit() or c in '.-')
-                if numeric_part and numeric_part != '.' and numeric_part != '-':
-                    numeric_powers.append(float(numeric_part))
-                else:
-                    # Last resort: use index
-                    numeric_powers.append(float(len(numeric_powers)))
-        return np.array(numeric_powers)
-    except (ValueError, TypeError, ImportError):
-        # Fallback: use indices
-        return np.arange(len(power_values), dtype=float)
