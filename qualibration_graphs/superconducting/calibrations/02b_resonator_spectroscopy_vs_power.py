@@ -6,10 +6,8 @@ import numpy as np
 import xarray as xr
 from calibration_utils.resonator_spectroscopy_vs_amplitude import (
     Parameters, fit_raw_data, log_fitted_results, process_raw_dataset)
-from calibration_utils.resonator_spectroscopy_vs_amplitude.plot_configs import (
-    amplitude_vs_power_config)
-from calibration_utils.resonator_spectroscopy_vs_amplitude.preparators import (
-    prepare_amplitude_sweep_data, create_matplotlib_figure, create_plotly_figure)
+from calibration_utils.resonator_spectroscopy_vs_amplitude.preparators import \
+    prepare_amplitude_sweep_data
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -20,6 +18,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.hardware.power_tools import \
     calculate_voltage_scaling_factor
 from qualibration_libs.parameters import get_qubits
+from qualibration_libs.plotting import create_figures
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
@@ -221,7 +220,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data using standardized plotting framework."""
+    """Plot the raw and fitted data using the unified plotting architecture."""
 
     # 1. Prepare datasets by adding fields needed for plotting
     ds_raw, ds_fit = prepare_amplitude_sweep_data(
@@ -230,27 +229,22 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         qubits=node.namespace["qubits"]
     )
 
-    # 2. Generate figures using the standardized plotter
-    plotly_amplitude = create_plotly_figure(
+    # 2. Generate figures using the unified adaptive architecture
+    
+    figures = create_figures(
         ds_raw=ds_raw,
         qubits=node.namespace["qubits"],
-        plot_configs=[amplitude_vs_power_config],
+        experiment_type="resonator_spectroscopy_vs_amplitude",
         ds_fit=ds_fit,
     )
-    plotly_amplitude.show()
+    
+    # Show interactive plots
+    figures["plotly"].show()
 
-    # 3. Generate static matplotlib figures
-    static_amplitude_fig = create_matplotlib_figure(
-        ds_raw=ds_raw,
-        qubits=node.namespace["qubits"],
-        plot_configs=[amplitude_vs_power_config],
-        ds_fit=ds_fit,
-    )
-
-    # Store interactive and static figures
+    # Store all figures with backward-compatible names
     node.results["figures"] = {
-        "amplitude_plotly": plotly_amplitude,
-        "amplitude": static_amplitude_fig,
+        "power_plotly": figures["plotly"],
+        "power": figures["matplotlib"],
     }
 
 

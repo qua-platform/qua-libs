@@ -17,11 +17,11 @@ def prepare_resonator_spectroscopy_data(
     # --- Raw Data Preparation ---
     ds_raw_processed = ds_raw.copy()
     if "full_freq" in ds_raw_processed:
-        ds_raw_processed["full_freq_ghz"] = ds_raw_processed.full_freq / 1e9
+        ds_raw_processed["full_freq_GHz"] = ds_raw_processed.full_freq / 1e9
     if "detuning" in ds_raw_processed.dims:
-        ds_raw_processed.coords["detuning_mhz"] = ("detuning", ds_raw_processed.detuning.values / 1e6)
+        ds_raw_processed.coords["detuning_MHz"] = ("detuning", ds_raw_processed.detuning.values / 1e6)
     if "IQ_abs" in ds_raw_processed:
-        ds_raw_processed["iq_abs_mv"] = ds_raw_processed.IQ_abs * 1e3
+        ds_raw_processed["IQ_abs_mV"] = ds_raw_processed.IQ_abs * 1e3
     if "phase" in ds_raw_processed:
         ds_raw_processed["phase"] = ds_raw_processed.phase
 
@@ -56,8 +56,8 @@ def prepare_resonator_spectroscopy_data(
         if "full_freq" not in ds_fit_processed and "full_freq" in ds_raw_processed:
             ds_fit_processed["full_freq"] = ds_raw_processed.full_freq
         if "full_freq" in ds_fit_processed:
-            ds_fit_processed["full_freq_ghz"] = ds_fit_processed.full_freq / 1e9
+            ds_fit_processed["full_freq_GHz"] = ds_fit_processed.full_freq / 1e9
         if "fitted_curve" in ds_fit_processed:
-            ds_fit_processed["fitted_curve_mv"] = ds_fit_processed.fitted_curve * 1e3
+            ds_fit_processed["fitted_data_mV"] = ds_fit_processed.fitted_curve * 1e3
 
     return ds_raw_processed, ds_fit_processed 
