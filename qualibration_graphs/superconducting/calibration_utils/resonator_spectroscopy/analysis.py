@@ -6,13 +6,12 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import xarray as xr
+from qualibrate import QualibrationNode
 from qualibration_libs.analysis import peaks_dips
 from qualibration_libs.analysis.fitting import calculate_quality_metrics
 from qualibration_libs.analysis.models import lorentzian_dip
 from qualibration_libs.analysis.parameters import analysis_config_manager
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
-
-from qualibrate import QualibrationNode
 
 # Access quality check parameters from the config object
 qc_params = analysis_config_manager.get("resonator_spectroscopy_qc")
@@ -267,6 +266,7 @@ def _extract_qubit_fit_metrics(
 
     return {
         "num_peaks": int(qubit_data.num_peaks.values),
+        "raw_num_peaks": int(qubit_data.raw_num_peaks.values),
         "snr": float(qubit_data.snr.values),
         "fwhm": float(qubit_data.fwhm.values),
         "sweep_span": sweep_span,
@@ -294,6 +294,7 @@ def _determine_resonator_outcome(
         Outcome description
     """
     num_peaks = metrics["num_peaks"]
+    raw_num_peaks = metrics["raw_num_peaks"]
     snr = metrics["snr"]
     fwhm = metrics["fwhm"]
     sweep_span = metrics["sweep_span"]
@@ -307,12 +308,9 @@ def _determine_resonator_outcome(
     if snr < qc_params.min_snr.value:
         return "The SNR isn't large enough, consider increasing the number of shots"
     
-    # Check for OPX bandwidth artifacts
-    if opx_bandwidth_artifact:
-        return "OPX bandwidth artifact detected, consider shifting the LO frequency by ~20MHz"
     
     # Check number of peaks
-    if num_peaks > 1:
+    if raw_num_peaks > 1:
         return "Several peaks were detected"
     
     if num_peaks == 0:
@@ -325,6 +323,10 @@ def _determine_resonator_outcome(
     
     # Check peak shape quality
     if _is_peak_shape_distorted(asymmetry, skewness, nrmse):
+        # Check for OPX bandwidth artifacts
+        # if opx_bandwidth_artifact:
+            # return "OPX bandwidth artifact detected, consider shifting the LO frequency by ~20MHz"
+        # else:
         return "The peak shape is distorted"
     
     # Check for peak width issues
