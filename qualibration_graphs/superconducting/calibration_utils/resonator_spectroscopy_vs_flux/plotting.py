@@ -6,11 +6,11 @@ import plotly.graph_objects as go
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from plotly.subplots import make_subplots
 from qualang_tools.units import unit
 from qualibration_libs.plotting import (QubitGrid,
                                         ResonatorSpectroscopyVsFluxPreparator,
                                         grid_iter)
+from qualibration_libs.plotting.base import BasePlotter
 from qualibration_libs.plotting.configs import PlotStyling
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
@@ -23,632 +23,262 @@ GHZ_PER_HZ = 1e-9
 MHZ_PER_HZ = 1e-6
 
 
-def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: Optional[xr.Dataset] = None):
-    """
-    Plots the raw data with fitted curves for the given qubits.
+class ResonatorSpectroscopyVsFluxPlotter(BasePlotter):
+    """Plotter for resonator spectroscopy vs flux experiments."""
 
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing the quadrature data.
-    qubits : list of AnyTransmon
-        A list of qubits to plot.
-    fits : xr.Dataset, optional
-        The dataset containing the fit parameters (default is None).
+    def __init__(
+        self,
+        ds_raw: xr.Dataset,
+        qubits: List[AnyTransmon],
+        ds_fit: Optional[xr.Dataset] = None,
+    ):
+        super().__init__(ds_raw, qubits, ds_fit)
+        # Precompute z-limits for consistent color scaling across subplots
+        self.per_zmin = []
+        self.per_zmax = []
+        for qubit in self.qubits:
+            qubit_id = qubit.name
+            z_mat = self.ds_raw["IQ_abs"].sel(qubit=qubit_id).values
+            if z_mat.ndim == 1:
+                z_mat = z_mat[np.newaxis, :]
+            if np.all(np.isnan(z_mat)):
+                z_mat = np.zeros_like(z_mat)
+            self.per_zmin.append(float(np.nanmin(z_mat)))
+            self.per_zmax.append(float(np.nanmax(z_mat)))
 
-    Returns
-    -------
-    Figure
-        The matplotlib figure object containing the plots.
+    def get_plot_title(self) -> str:
+        return "Resonator Spectroscopy: Flux vs Frequency (with fits)"
 
-    Notes
-    -----
-    - The function creates a grid of subplots, one for each qubit.
-    - Each subplot contains the raw data and the fitted curve.
-    """
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        fit_sel = fits.sel(qubit=qubit["qubit"]) if fits is not None else None
-        plot_individual_raw_data_with_fit(ax, ds, qubit, fit_sel)
+    def _get_make_subplots_kwargs(self) -> dict:
+        return {
+            "shared_xaxes": False,
+            "shared_yaxes": False,
+            "horizontal_spacing": styling.plotly_horizontal_spacing,
+            "vertical_spacing": styling.plotly_vertical_spacing,
+        }
 
-    grid.fig.suptitle("Resonator spectroscopy vs flux")
-    grid.fig.set_size_inches(styling.matplotlib_fig_width, styling.matplotlib_fig_height)
-    grid.fig.tight_layout()
-    return grid.fig
+    def _get_final_layout_updates(self) -> dict:
+        return {
+            "width": max(styling.plotly_min_width, styling.plotly_subplot_width * self.grid.n_cols),
+            "height": styling.plotly_subplot_height * self.grid.n_rows,
+            "margin": styling.plotly_margin,
+            "showlegend": False,
+        }
 
-
-def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
-    """
-    Plots individual qubit data on a given axis with optional fit.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The axis on which to plot the data.
-    ds : xr.Dataset
-        The dataset containing the quadrature data.
-    qubit : dict[str, str]
-        mapping to the qubit to plot.
-    fit : xr.Dataset, optional
-        The dataset containing the fit parameters (default is None).
-
-    Notes
-    -----
-    - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
-    """
-
-    ax2 = ax.twiny()
-    # Plot using the attenuated current x-axis
-    (ds.assign_coords(freq_GHz=ds.full_freq * GHZ_PER_HZ).loc[qubit].IQ_abs).plot(
-        ax=ax2,
-        add_colorbar=False,
-        x="attenuated_current",
-        y="freq_GHz",
-        robust=True,
-    )
-    ax2.set_xlabel("Current (A)")
-    ax2.set_ylabel("Freq (GHz)")
-    ax2.set_title("")
-    # Move ax2 behind ax
-    ax2.set_zorder(ax.get_zorder() - 1)
-    ax.patch.set_visible(False)
-    # Plot using the flux x-axis
-    (ds.assign_coords(freq_GHz=ds.full_freq * GHZ_PER_HZ).loc[qubit].IQ_abs).plot(
-        ax=ax, add_colorbar=False, x="flux_bias", y="freq_GHz", robust=True
-    )
-    if fit is not None and hasattr(fit, "outcome") and fit.outcome.values == "successful":
-        ax.axvline(
-            fit.fit_results.idle_offset,
-            linestyle=styling.matplotlib_idle_offset_linestyle,
-            linewidth=styling.matplotlib_idle_offset_linewidth,
-            color=styling.idle_offset_color,
-            label="idle offset",
+    def _plot_matplotlib_subplot(self, ax: Axes, qubit_dict: dict, fit_data: Optional[xr.Dataset]):
+        ax2 = ax.twiny()
+        # Plot using the attenuated current x-axis
+        (self.ds_raw.assign_coords(freq_GHz=self.ds_raw.full_freq * GHZ_PER_HZ).loc[qubit_dict].IQ_abs).plot(
+            ax=ax2,
+            add_colorbar=False,
+            x="attenuated_current",
+            y="freq_GHz",
+            robust=True,
         )
-        ax.axvline(
-            fit.fit_results.flux_min,
-            linestyle=styling.matplotlib_idle_offset_linestyle,
-            linewidth=styling.matplotlib_idle_offset_linewidth,
-            color=styling.min_offset_color,
-            label="min offset",
+        ax2.set_xlabel("Current (A)")
+        ax2.set_ylabel("Freq (GHz)")
+        ax2.set_title("")
+        # Move ax2 behind ax
+        ax2.set_zorder(ax.get_zorder() - 1)
+        ax.patch.set_visible(False)
+        # Plot using the flux x-axis
+        (self.ds_raw.assign_coords(freq_GHz=self.ds_raw.full_freq * GHZ_PER_HZ).loc[qubit_dict].IQ_abs).plot(
+            ax=ax, add_colorbar=False, x="flux_bias", y="freq_GHz", robust=True
         )
-        # Location of the current resonator frequency
-        ax.plot(
-            fit.fit_results.idle_offset.values,
-            fit.fit_results.sweet_spot_frequency.values * GHZ_PER_HZ,
-            marker=styling.matplotlib_sweet_spot_marker,
-            color=styling.sweet_spot_color,
-            markersize=styling.matplotlib_sweet_spot_markersize,
-            linestyle="None",
-        )
-    ax.set_title(qubit["qubit"])
-    ax.set_xlabel("Flux (V)")
+        if fit_data is not None and hasattr(fit_data, "outcome") and fit_data.outcome.values == "successful":
+            ax.axvline(
+                fit_data.fit_results.idle_offset,
+                linestyle=styling.matplotlib_idle_offset_linestyle,
+                linewidth=styling.matplotlib_idle_offset_linewidth,
+                color=styling.idle_offset_color,
+                label="idle offset",
+            )
+            ax.axvline(
+                fit_data.fit_results.flux_min,
+                linestyle=styling.matplotlib_idle_offset_linestyle,
+                linewidth=styling.matplotlib_idle_offset_linewidth,
+                color=styling.min_offset_color,
+                label="min offset",
+            )
+            # Location of the current resonator frequency
+            ax.plot(
+                fit_data.fit_results.idle_offset.values,
+                fit_data.fit_results.sweet_spot_frequency.values * GHZ_PER_HZ,
+                marker=styling.matplotlib_sweet_spot_marker,
+                color=styling.sweet_spot_color,
+                markersize=styling.matplotlib_sweet_spot_markersize,
+                linestyle="None",
+            )
+        ax.set_title(qubit_dict["qubit"])
+        ax.set_xlabel("Flux (V)")
 
-
-def plotly_plot_raw_data_with_fit(
-    ds_raw: xr.Dataset,
-    qubits:  List[AnyTransmon],
-    fits:    Optional[xr.Dataset] = None
-) -> go.Figure:
-    """
-    Plotly version of resonator spectroscopy vs flux (with fits).  Each subplot:
-      - x = flux_bias [V]
-      - y = RF frequency [GHz]
-      - color = |IQ| (Viridis)
-      - hover shows (Flux [V], Current [A], Freq [GHz], Detuning [MHz], |IQ|)
-    If fit_results.success is True, overlay:
-      • Red dashed vertical line at idle_offset (V)
-      • Purple dashed vertical line at flux_min (V)
-      • Magenta "×" marker at (idle_offset, sweet_spot_frequency/1e9)
-
-    Requirements (ds_raw):
-      - dims = (qubit, detuning, flux_bias)
-      - DataArray "full_freq" or "freq_full" with shape (n_qubits, n_freqs), in Hz
-      - DataArray "IQ_abs" with shape (n_qubits, n_freqs, n_flux)
-      - coord "flux_bias"   (n_flux,) in V
-      - coord "detuning"    (n_freqs,) in Hz
-      - coord "attenuated_current" (n_flux,) in A
-
-    Requirements (fits):
-      - dims = (qubit,)
-      - under fits.fit_results:
-          • idle_offset             (qubit,) in V
-          • flux_min                (qubit,) in V
-          • sweet_spot_frequency    (qubit,) in Hz
-          • success                 (qubit,) boolean
-    """
-    # 1) Transpose so dims = (qubit, detuning, flux_bias)
-    ds2 = ds_raw.transpose("qubit", "detuning", "flux_bias")
-
-    # 2) Pull out raw numpy arrays
-    if "full_freq" in ds2:
-        freq_array = ds2["full_freq"].values   # (n_qubits, n_freqs)
-    elif "freq_full" in ds2:
-        freq_array = ds2["freq_full"].values
-    else:
-        raise KeyError("After transpose, dataset must have 'full_freq' or 'freq_full'.")
-
-    if "IQ_abs" not in ds2:
-        raise KeyError("After transpose, dataset must have 'IQ_abs' (n_qubits, n_freqs, n_flux).")
-    IQ_array = ds2["IQ_abs"].values            # (n_qubits, n_freqs, n_flux)
-
-    if "flux_bias" not in ds2.coords:
-        raise KeyError("After transpose, dataset must have coord 'flux_bias' (V).")
-    flux_array = ds2["flux_bias"].values       # (n_flux,) in V
-
-    if "attenuated_current" not in ds2.coords:
-        raise KeyError("After transpose, dataset must have coord 'attenuated_current' (A).")
-    current_array = ds2["attenuated_current"].values  # (n_flux,) in A
-
-    if "detuning" not in ds2.coords:
-        raise KeyError("After transpose, dataset must have coord 'detuning' (Hz).")
-    detuning_array = ds2["detuning"].values    # (n_freqs,) in Hz
-
-    n_qubits, n_freqs, n_flux = IQ_array.shape
-
-    # 3) Build PlotlyQubitGrid → get nrows, ncols, name_dicts
-    grid = QubitGrid(ds2, [q.grid_location for q in qubits], create_figure=False)
-    ncols = grid.n_cols
-    nrows = grid.n_rows
-    subplot_titles = grid.get_subplot_titles()
-
-    # 4) Create subplots with extra spacing
-    fig = make_subplots(
-        rows               = nrows,
-        cols               = ncols,
-        subplot_titles     = subplot_titles,
-        horizontal_spacing = styling.plotly_horizontal_spacing,
-        vertical_spacing   = styling.plotly_vertical_spacing,
-        shared_xaxes       = False,
-        shared_yaxes       = False
-    )
-
-    # 5) Precompute per-subplot zmin/zmax (each heatmap gets its own color scale)
-    per_zmin = []
-    per_zmax = []
-    for q_idx in range(n_qubits):
-        # reshape so that z_mat has shape (n_freqs, n_flux)
-        z_mat = IQ_array[q_idx]  # (n_freqs, n_flux)
-        if z_mat.ndim == 1:
-            z_mat = z_mat[np.newaxis, :]
-        if z_mat.shape != (n_freqs, n_flux):
-            # fallback: transpose if necessary
-            z_mat = z_mat.T
-        if np.all(np.isnan(z_mat)):
-            z_mat = np.zeros_like(z_mat)
-        per_zmin.append(float(np.nanmin(z_mat)))
-        per_zmax.append(float(np.nanmax(z_mat)))
-
-    # 6) Loop over each subplot = one qubit. Add Heatmap + overlays
-    q_labels = list(ds2.qubit.values)  # e.g. ["qC1","qC2","qC3"]
-    heatmap_info: List[Tuple[int,int,int]] = []
-    x_flux_list = []
-    x_current_list = []
-    hovertemplate_flux_list = []
-    hovertemplate_current_list = []
-    y_vals_list = []
-    z_mats_list = []
-    customdatas_list = []
-    overlay_x_flux = []
-    overlay_x_current = []
-    overlay_types = []
-    overlay_trace_idxs = []
-
-    for idx, ((grid_row, grid_col), name_dict) in enumerate(grid.plotly_grid_iter()):
-        row = grid_row + 1  # Convert to 1-based indexing for Plotly
-        col = grid_col + 1  # Convert to 1-based indexing for Plotly
-        qubit_id = list(name_dict.values())[0]
-
-        # find integer index of qubit_id in ds2.qubit.values
-        try:
-            q_idx = q_labels.index(qubit_id)
-        except ValueError:
-            raise ValueError(f"Could not find qubit '{qubit_id}' in {q_labels}")
+    def _plot_plotly_subplot(self, fig: go.Figure, qubit_id: str, row: int, col: int, fit_data: Optional[xr.Dataset]):
+        q_idx = self.ds_raw.qubit.values.tolist().index(qubit_id)
 
         # (a) Build x = flux [V], y = freq [GHz]
-        freq_vals = freq_array[q_idx] * GHZ_PER_HZ  # (n_freqs,) in GHz
-        flux_vals = flux_array               # (n_flux,) in V
-        current_vals = current_array         # (n_flux,) in A
+        freq_vals = self.ds_raw["full_freq"].sel(qubit=qubit_id).values * GHZ_PER_HZ
+        flux_vals = self.ds_raw["flux_bias"].values
+        current_vals = self.ds_raw["attenuated_current"].values
 
         # (b) Form 2D z-matrix = |IQ| shaped (n_freqs, n_flux)
-        z_mat = IQ_array[q_idx]  # (n_freqs, n_flux)
+        z_mat = self.ds_raw["IQ_abs"].sel(qubit=qubit_id).values.T
         if z_mat.ndim == 1:
             z_mat = z_mat[np.newaxis, :]
-        if z_mat.shape != (n_freqs, n_flux):
-            # fallback: transpose if needed
-            z_mat = z_mat.T
         if np.all(np.isnan(z_mat)):
             z_mat = np.zeros_like(z_mat)
 
-        # (c) Build a 2D "detuning_MHz" array for hover (shape = (n_freqs, n_flux))
-        detuning_MHz = (detuning_array * MHZ_PER_HZ).astype(float)  # (n_freqs,) in MHz
-        det2d        = np.tile(detuning_MHz[:, None], (1, n_flux))  # shape = (n_freqs, n_flux)
+        # (c) Build a 2D "detuning_MHz" array for hover
+        detuning_MHz = (self.ds_raw["detuning"].values * MHZ_PER_HZ).astype(float)
+        det2d = np.tile(detuning_MHz[:, None], (1, len(flux_vals)))
 
-        # (d) Build a 2D "current" array for hover (shape = (n_freqs, n_flux))
-        current2d    = np.tile(current_array[np.newaxis, :], (n_freqs, 1))  # shape = (n_freqs, n_flux)
+        # (d) Build a 2D "current" array for hover
+        current2d = np.tile(current_vals[np.newaxis, :], (len(freq_vals), 1))
 
         # (e) Stack them so that customdata[...,0] = detuning_MHz, customdata[...,1] = current
-        customdata = np.stack([det2d, current2d], axis=-1)  # shape = (n_freqs, n_flux, 2)
+        customdata = np.stack([det2d, current2d], axis=-1)
 
         # (f) Grab local zmin/zmax
-        zmin_i = per_zmin[q_idx]
-        zmax_i = per_zmax[q_idx]
+        zmin_i = self.per_zmin[q_idx]
+        zmax_i = self.per_zmax[q_idx]
 
-        # (g) Add the Viridis heatmap with a "placeholder" colorbar
         fig.add_trace(
             go.Heatmap(
-                z             = z_mat,
-                x             = flux_vals,
-                y             = freq_vals,
-                customdata    = customdata,
-                colorscale    = styling.heatmap_colorscale,
-                zmin          = zmin_i,
-                zmax          = zmax_i,
-                showscale     = True,
-                colorbar      = dict(
-                    x         = 1.0,
-                    y         = 0.5,
-                    len       = 1.0,
-                    thickness = styling.plotly_colorbar_thickness,
-                    xanchor   = "left",
-                    yanchor   = "middle",
-                    ticks     = "outside",
-                    ticklabelposition = "outside",
-                    title     = "|IQ|"
+                z=z_mat,
+                x=flux_vals,
+                y=freq_vals,
+                customdata=customdata,
+                colorscale=styling.heatmap_colorscale,
+                zmin=zmin_i,
+                zmax=zmax_i,
+                showscale=True,
+                colorbar=dict(
+                    x=1.0,
+                    y=0.5,
+                    len=1.0,
+                    thickness=styling.plotly_colorbar_thickness,
+                    xanchor="left",
+                    yanchor="middle",
+                    ticks="outside",
+                    ticklabelposition="outside",
+                    title="|IQ|",
                 ),
-                hovertemplate = (
+                hovertemplate=(
                     "Flux [V]: %{x:.3f}<br>"
                     "Current [A]: %{customdata[1]:.6f}<br>"
                     "Freq [GHz]: %{y:.3f}<br>"
                     "Detuning [MHz]: %{customdata[0]:.2f}<br>"
                     "|IQ|: %{z:.3f}<extra>Qubit " + qubit_id + "</extra>"
                 ),
-                name          = f"Qubit {qubit_id}"
+                name=f"Qubit {qubit_id}",
             ),
-            row = row, col = col
+            row=row,
+            col=col,
         )
-        heatmap_idx = len(fig.data) - 1
-        heatmap_info.append((heatmap_idx, row, col))
 
-        # (h) Overlay the fit if success=True
-        fit_ds = fits.sel(qubit=qubit_id) if fits is not None else None
-        if fit_ds is not None and "outcome" in fit_ds.coords and fit_ds.outcome.values == "successful":
-            # pull from fit_results
-            flux_offset = float(fit_ds.fit_results.idle_offset.values)
-            min_offset = float(fit_ds.fit_results.flux_min.values)
-            sweet_spot = float(fit_ds.fit_results.sweet_spot_frequency.values) * GHZ_PER_HZ
+        if fit_data is not None and "outcome" in fit_data.coords and fit_data.outcome.values == "successful":
+            flux_offset = float(fit_data.fit_results.idle_offset.values)
+            min_offset = float(fit_data.fit_results.flux_min.values)
+            sweet_spot = float(fit_data.fit_results.sweet_spot_frequency.values) * GHZ_PER_HZ
 
-            # Find corresponding current values for overlays
-            # Use np.interp to map flux to current
-            flux_to_current = lambda f: np.interp(f, flux_vals, current_vals)
-            flux_offset_current = flux_to_current(flux_offset)
-            min_offset_current = flux_to_current(min_offset)
-
-            # —— Magenta "×" at (idle_offset, sweet_spot_freq)
             fig.add_trace(
                 go.Scatter(
-                    x          = [flux_offset],
-                    y          = [sweet_spot],
-                    mode       = "markers",
-                    marker     = dict(
+                    x=[flux_offset],
+                    y=[sweet_spot],
+                    mode="markers",
+                    marker=dict(
                         symbol=styling.plotly_sweet_spot_marker_symbol,
                         color=styling.sweet_spot_color,
                         size=styling.plotly_sweet_spot_marker_size,
                     ),
-                    showlegend = False,
-                    hoverinfo  = "skip"
+                    showlegend=False,
+                    hoverinfo="skip",
                 ),
-                row = row, col = col
+                row=row,
+                col=col,
             )
-            subplot_overlay_x_flux = [flux_offset]
-            subplot_overlay_x_current = [flux_offset_current]
-            subplot_overlay_types = [{'type': 'marker'}]
-            # —— RED dashed vertical line at idle_offset
             fig.add_trace(
                 go.Scatter(
-                    x          = [flux_offset, flux_offset],
-                    y          = [freq_vals.min(), freq_vals.max()],
-                    mode       = "lines",
-                    line       = dict(
-                        color=styling.idle_offset_color, width=styling.plotly_fit_linewidth, dash=styling.plotly_fit_linestyle
+                    x=[flux_offset, flux_offset],
+                    y=[freq_vals.min(), freq_vals.max()],
+                    mode="lines",
+                    line=dict(
+                        color=styling.idle_offset_color,
+                        width=styling.plotly_fit_linewidth,
+                        dash=styling.plotly_fit_linestyle,
                     ),
-                    showlegend = False,
-                    hoverinfo  = "skip"
+                    showlegend=False,
+                    hoverinfo="skip",
                 ),
-                row = row, col = col
+                row=row,
+                col=col,
             )
-            subplot_overlay_x_flux.append([flux_offset, flux_offset])
-            subplot_overlay_x_current.append([flux_offset_current, flux_offset_current])
-            subplot_overlay_types.append({'type': 'line'})
-            # —— Purple dashed vertical line at flux_min
             fig.add_trace(
                 go.Scatter(
-                    x          = [min_offset, min_offset],
-                    y          = [freq_vals.min(), freq_vals.max()],
-                    mode       = "lines",
-                    line       = dict(
-                        color=styling.min_offset_color, width=styling.plotly_fit_linewidth, dash=styling.plotly_fit_linestyle
+                    x=[min_offset, min_offset],
+                    y=[freq_vals.min(), freq_vals.max()],
+                    mode="lines",
+                    line=dict(
+                        color=styling.min_offset_color,
+                        width=styling.plotly_fit_linewidth,
+                        dash=styling.plotly_fit_linestyle,
                     ),
-                    showlegend = False,
-                    hoverinfo  = "skip"
+                    showlegend=False,
+                    hoverinfo="skip",
                 ),
-                row = row, col = col
+                row=row,
+                col=col,
             )
-            subplot_overlay_x_flux.append([min_offset, min_offset])
-            subplot_overlay_x_current.append([min_offset_current, min_offset_current])
-            subplot_overlay_types.append({'type': 'line'})
-        else:
-            subplot_overlay_x_flux = []
-            subplot_overlay_x_current = []
-            subplot_overlay_types = []
 
-        # (i) Tidy axis titles & annotation font
-        fig.update_xaxes(title_text="Flux bias [V]",        row=row, col=col)
-        fig.update_yaxes(title_text="RF frequency [GHz]",    row=row, col=col)
-        fig.layout.annotations[idx]["font"] = dict(size=styling.plotly_annotation_font_size)
+        fig.update_xaxes(title_text="Flux bias [V]", row=row, col=col)
+        fig.update_yaxes(title_text="RF frequency [GHz]", row=row, col=col)
+        current_annotation_index = (row - 1) * self.grid.n_cols + (col - 1)
+        if current_annotation_index < len(fig.layout.annotations):
+            fig.layout.annotations[current_annotation_index]["font"] = dict(
+                size=styling.plotly_annotation_font_size
+            )
 
-        # Save for toggling
-        x_flux_list.append(flux_vals)
-        x_current_list.append(current_vals)
-        y_vals_list.append(freq_vals)
-        z_mats_list.append(z_mat)
-        customdatas_list.append(customdata)
-        hovertemplate_flux = (
-            "Flux [V]: %{x:.3f}<br>"
-            "Current [A]: %{customdata[1]:.6f}<br>"
-            "Freq [GHz]: %{y:.3f}<br>"
-            "Detuning [MHz]: %{customdata[0]:.2f}<br>"
-            "|IQ|: %{z:.3f}<extra>Qubit " + qubit_id + "</extra>"
-        )
-        hovertemplate_flux_list.append(hovertemplate_flux)
+    def _after_plotly_plotting_loop(self, fig: go.Figure):
+        trace_counter = 0
+        for i, ((grid_row, grid_col), name_dict) in enumerate(self.grid.plotly_grid_iter()):
+            row = grid_row + 1
+            col = grid_col + 1
+            
+            # This logic assumes the first trace for a subplot is always the heatmap
+            hm_trace = fig.data[trace_counter]
+            
+            qubit_id = list(name_dict.values())[0]
+            fit_ds = self.ds_fit.sel(qubit=qubit_id) if self.ds_fit is not None else None
+            num_traces_per_subplot = 1
+            if fit_ds is not None and "outcome" in fit_ds.coords and fit_ds.outcome.values == "successful":
+                num_traces_per_subplot += 3 # Heatmap + 3 fit traces
 
-    # 7) Reposition & shrink each colorbar so it sits to the right of its subplot
-    for (hm_idx, row, col) in heatmap_info:
-        axis_num  = (row - 1)*ncols + col
-        xaxis_key = f"xaxis{axis_num}"
-        yaxis_key = f"yaxis{axis_num}"
+            axis_num  = (row - 1)*self.grid.n_cols + col
+            xaxis_key = f"xaxis{axis_num}" if axis_num > 1 else "xaxis"
+            yaxis_key = f"yaxis{axis_num}" if axis_num > 1 else "yaxis"
 
-        x_dom = fig.layout[xaxis_key].domain
-        y_dom = fig.layout[yaxis_key].domain
+            if xaxis_key in fig.layout and yaxis_key in fig.layout:
+                x_dom = fig.layout[xaxis_key].domain
+                y_dom = fig.layout[yaxis_key].domain
 
-        x0_cb        = x_dom[1] + styling.plotly_colorbar_x_offset
-        x1_cb        = x0_cb + styling.plotly_colorbar_width  # bar width = 2% of figure width
-        y0           = y_dom[0]
-        y1           = y_dom[1]
-        bar_len      = (y1 - y0) * styling.plotly_colorbar_height_ratio  # 90% of subplot height
-        bar_center_y = (y0 + y1) / 2
+                x0_cb = x_dom[1] + styling.plotly_colorbar_x_offset
+                y0 = y_dom[0]
+                y1 = y_dom[1]
+                bar_len = (y1 - y0) * styling.plotly_colorbar_height_ratio
+                bar_center_y = (y0 + y1) / 2
 
-        hm_trace = fig.data[hm_idx]
-        hm_trace.colorbar.update({
-            "x"                   : x0_cb,
-            "y"                   : bar_center_y,
-            "len"                 : bar_len,
-            "thickness"           : styling.plotly_colorbar_thickness,
-            "xanchor"             : "left",
-            "yanchor"             : "middle",
-            "ticks"               : "outside",
-            "ticklabelposition"   : "outside"
-        })
-
-    # 8) Final layout tweaks: size & margins
-    fig.update_layout(
-        width       = max(styling.plotly_min_width, styling.plotly_subplot_width * ncols),
-        height      = styling.plotly_subplot_height * nrows,
-        margin      = styling.plotly_margin,
-        title_text  = "Resonator Spectroscopy: Flux vs Frequency (with fits)",
-        showlegend  = False
-    )
-
-    return fig
-
-
-def plotly_plot_raw_data(
-    ds: xr.Dataset,
-    qubits: List[AnyTransmon]
-) -> go.Figure:
-    """
-    Plotly version: one heatmap per qubit, each with its own colorbar,
-    with 'Detuning [MHz]' included in the hover tooltip.  Subplots do not overlap.
-
-    Requirements (ds):
-      - Must have "full_freq" or "freq_full" (Hz) as a DataArray of shape (n_qubits, n_freqs).
-      - Must have "IQ_abs" (n_qubits × n_freqs × n_flux).
-      - Must have a coordinate "flux_bias" (length n_flux, in V).
-      - Must have a coordinate "detuning" (length n_freqs, in Hz).
-    qubits:
-      - List of qubit objects; we read q.grid_location to position subplots.
-    Returns:
-      - fig : go.Figure (Plotly) with one heatmap/subplot per qubit.
-    """
-
-    # 1) Pull out raw NumPy arrays from ds
-    if "full_freq" in ds:
-        freq_array = ds["full_freq"].values    # (n_qubits, n_freqs)
-    elif "freq_full" in ds:
-        freq_array = ds["freq_full"].values
-    else:
-        raise KeyError("Dataset must have 'full_freq' or 'freq_full' (Hz).")
-
-    if "IQ_abs" not in ds:
-        raise KeyError("Dataset must have 'IQ_abs' (n_qubits × n_freqs × n_flux).")
-    IQ_array = ds["IQ_abs"].values            # (n_qubits, n_freqs, n_flux)
-
-    if "flux_bias" not in ds.coords:
-        raise KeyError("Dataset must have a coordinate 'flux_bias' (V).")
-    flux_array = ds["flux_bias"].values       # (n_flux,) in V
-
-    if "detuning" not in ds.coords:
-        raise KeyError("Dataset must have a coordinate 'detuning' (Hz).")
-    detuning_array = ds["detuning"].values    # (n_freqs,) in Hz
-
-    if "attenuated_current" not in ds.coords:
-        raise KeyError("Dataset must have coord 'attenuated_current' (A).")
-    current_array = ds["attenuated_current"].values  # (n_flux,) in A
-
-
-    n_qubits, n_freqs, n_flux = IQ_array.shape
-
-    # 2) Build PlotlyQubitGrid for arrangement
-    grid = QubitGrid(ds, [q.grid_location for q in qubits], create_figure=False)
-    ncols = grid.n_cols
-    nrows = grid.n_rows
-    subplot_titles = grid.get_subplot_titles()
-
-    # 3) Create subplots with extra spacing
-    fig = make_subplots(
-        rows               = nrows,
-        cols               = ncols,
-        subplot_titles     = subplot_titles,
-        horizontal_spacing = styling.plotly_horizontal_spacing,
-        vertical_spacing   = styling.plotly_vertical_spacing,
-        shared_xaxes       = False,
-        shared_yaxes       = False
-    )
-
-    # 4) Precompute per‐subplot zmin/zmax
-    per_zmin = []
-    per_zmax = []
-    for q_idx in range(n_qubits):
-        z_mat = IQ_array[q_idx].T
-        if z_mat.ndim == 1:
-            z_mat = z_mat[np.newaxis, :]
-        if z_mat.shape[0] != n_flux:
-            z_mat = z_mat.T
-        if np.all(np.isnan(z_mat)):
-            z_mat = np.zeros_like(z_mat)
-        per_zmin.append(float(np.nanmin(z_mat)))
-        per_zmax.append(float(np.nanmax(z_mat)))
-
-    # 5) Add heatmaps
-    x_flux_list = []
-    x_current_list = []
-    hovertemplate_flux_list = []
-    hovertemplate_current_list = []
-    y_vals_list = []
-    z_mats_list = []
-    customdatas_list = []
-    for idx, ((grid_row, grid_col), name_dict) in enumerate(grid.plotly_grid_iter()):
-        row = grid_row + 1  # Convert to 1-based indexing for Plotly
-        col = grid_col + 1  # Convert to 1-based indexing for Plotly
-        qubit_id = list(name_dict.values())[0]
-
-        q_labels = list(ds.qubit.values)
-        try:
-            q_idx = q_labels.index(qubit_id)
-        except ValueError:
-            raise ValueError(f"Could not find qubit '{qubit_id}' in ds.qubit.values = {q_labels}")
-
-        freq_vals = freq_array[q_idx] * GHZ_PER_HZ  # (n_freqs,) in GHz
-        flux_vals = flux_array               # (n_flux,) in V
-        current_vals = current_array         # (n_flux,) in A
-
-        z_mat = IQ_array[q_idx].T
-        if z_mat.ndim == 1:
-            z_mat = z_mat[np.newaxis, :]
-        if z_mat.shape[0] != n_flux:
-            z_mat = z_mat.T
-        if np.all(np.isnan(z_mat)):
-            z_mat = np.zeros_like(z_mat)
-
-        detuning_MHz = (detuning_array * MHZ_PER_HZ).astype(float)
-        det2d = np.tile(detuning_MHz[np.newaxis, :], (n_flux, 1))
-
-        current2d = np.tile(current_array[np.newaxis, :], (n_flux, 1))
-
-        zmin_i = per_zmin[q_idx]
-        zmax_i = per_zmax[q_idx]
-
-        fig.add_trace(
-            go.Heatmap(
-                z             = z_mat,
-                x             = freq_vals,
-                y             = flux_vals,
-                customdata    = current2d,
-                colorscale    = styling.heatmap_colorscale,
-                zmin          = zmin_i,
-                zmax          = zmax_i,
-                showscale     = True,
-                colorbar      = dict(
-                    x         = 1.0,
-                    y         = 0.5,
-                    len       = 1.0,
-                    thickness = styling.plotly_colorbar_thickness,
-                    xanchor   = "left",
-                    yanchor   = "middle",
-                    ticks     = "outside",
-                    ticklabelposition = "outside",
-                    title     = "|IQ|"
-                ),
-                hovertemplate = (
-                    "Freq [GHz]: %{x:.3f}<br>"
-                    "Flux [V]: %{y:.3f}<br>"
-                    "Current [A]: %{customdata:.6f}<br>"
-                    "|IQ|: %{z:.3f}<extra>Qubit " + qubit_id + "</extra>"
-                ),
-                name          = f"Qubit {qubit_id}"
-            ),
-            row = row, col = col
-        )
-
-        fig.update_xaxes(title_text="RF frequency [GHz]", row=row, col=col)
-        fig.update_yaxes(title_text="Flux bias [V]",       row=row, col=col)
-        fig.layout.annotations[idx]["font"] = dict(size=styling.plotly_annotation_font_size)
-
-        # Save for toggling
-        x_flux_list.append(flux_vals)
-        x_current_list.append(current_vals)
-        y_vals_list.append(freq_vals)
-        z_mats_list.append(z_mat)
-        customdatas_list.append(current2d)
-        hovertemplate_flux = (
-            "Freq [GHz]: %{x:.3f}<br>"
-            "Flux [V]: %{y:.3f}<br>"
-            "Current [A]: %{customdata:.6f}<br>"
-            "|IQ|: %{z:.3f}<extra>Qubit " + qubit_id + "</extra>"
-        )
-        hovertemplate_flux_list.append(hovertemplate_flux)
-
-    # 6) Reposition each colorbar
-    for idx in range(n_qubits):
-        axis_num  = idx + 1
-        xaxis_key = f"xaxis{axis_num}"
-        yaxis_key = f"yaxis{axis_num}"
-
-        x_dom = fig.layout[xaxis_key].domain
-        y_dom = fig.layout[yaxis_key].domain
-
-        x0_cb        = x_dom[1] + styling.plotly_colorbar_x_offset
-        x1_cb        = x0_cb + styling.plotly_colorbar_width
-        y0           = y_dom[0]
-        y1           = y_dom[1]
-        bar_len      = (y1 - y0) * styling.plotly_colorbar_height_ratio
-        bar_center_y = (y0 + y1) / 2
-
-        hm_trace = fig.data[idx]
-        hm_trace.colorbar.update({
-            "x"                   : x0_cb,
-            "y"                   : bar_center_y,
-            "len"                 : bar_len,
-            "thickness"           : styling.plotly_colorbar_thickness,
-            "xanchor"             : "left",
-            "yanchor"             : "middle",
-            "ticks"               : "outside",
-            "ticklabelposition"   : "outside"
-        })
-
-    # 7) Final layout tweaks
-    fig.update_layout(
-        width       = max(styling.plotly_min_width, styling.plotly_subplot_width * ncols),
-        height      = styling.plotly_subplot_height * nrows,
-        margin      = styling.plotly_margin,
-        title_text  = "Resonator Spectroscopy: Flux vs Frequency",
-        showlegend  = False
-    )
-
-    return fig
-
-# -----------------------------------------------------------------------------
-# Public wrapper functions expected by the refactor
-# -----------------------------------------------------------------------------
+                hm_trace.colorbar.update(
+                    {
+                        "x": x0_cb,
+                        "y": bar_center_y,
+                        "len": bar_len,
+                        "thickness": styling.plotly_colorbar_thickness,
+                        "xanchor": "left",
+                        "yanchor": "middle",
+                        "ticks": "outside",
+                        "ticklabelposition": "outside",
+                    }
+                )
+            trace_counter += num_traces_per_subplot
 
 
 def create_matplotlib_plot(
@@ -657,7 +287,8 @@ def create_matplotlib_plot(
     ds_fit_prep: Optional[xr.Dataset] = None,
 ) -> Figure:
     """Return a Matplotlib figure for a Resonator-Spectroscopy-vs-Flux dataset (raw + optional fit)."""
-    return plot_raw_data_with_fit(ds_raw_prep, qubits, ds_fit_prep)
+    plotter = ResonatorSpectroscopyVsFluxPlotter(ds_raw_prep, qubits, ds_fit_prep)
+    return plotter.create_matplotlib_plot()
 
 
 def create_plotly_plot(
@@ -666,8 +297,8 @@ def create_plotly_plot(
     ds_fit_prep: Optional[xr.Dataset] = None,
 ) -> go.Figure:
     """Return a Plotly figure for a Resonator-Spectroscopy-vs-Flux dataset (raw + optional fit)."""
-
-    return plotly_plot_raw_data_with_fit(ds_raw_prep, qubits, ds_fit_prep)
+    plotter = ResonatorSpectroscopyVsFluxPlotter(ds_raw_prep, qubits, ds_fit_prep)
+    return plotter.create_plotly_plot()
 
 
 def create_plots(
@@ -676,8 +307,6 @@ def create_plots(
     ds_fit: Optional[xr.Dataset] = None,
 ) -> tuple[go.Figure, Figure]:
     """Convenience helper that returns (plotly_fig, matplotlib_fig)."""
-
     ds_raw_prep, ds_fit_prep = ResonatorSpectroscopyVsFluxPreparator(ds_raw, ds_fit, qubits=qubits).prepare()
-    plotly_fig = plotly_plot_raw_data_with_fit(ds_raw_prep, qubits, ds_fit_prep)
-    matplotlib_fig = plot_raw_data_with_fit(ds_raw_prep, qubits, ds_fit_prep)
-    return plotly_fig, matplotlib_fig
+    plotter = ResonatorSpectroscopyVsFluxPlotter(ds_raw_prep, qubits, ds_fit_prep)
+    return plotter.plot()
