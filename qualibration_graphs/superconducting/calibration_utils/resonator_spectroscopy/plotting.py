@@ -8,28 +8,44 @@ from matplotlib.figure import Figure
 from plotly.graph_objs import Figure as PlotlyFigure
 from qualang_tools.units import unit
 from qualibration_libs.analysis import lorentzian_dip
-from qualibration_libs.plotting import (QubitGrid,
-                                        ResonatorSpectroscopyPreparator,
-                                        grid_iter)
-from qualibration_libs.plotting.base import BasePlotter
+from qualibration_libs.plotting import ResonatorSpectroscopyPreparator
 from qualibration_libs.plotting.configs import PlotStyling
-from qualibration_libs.plotting.helpers import add_plotly_top_axis
+from qualibration_libs.plotting.plotters import \
+    BaseResonatorSpectroscopyPlotter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
 styling = PlotStyling()
 
-
-class ResonatorSpectroscopyAmplitudePlotter(BasePlotter):
+class ResonatorSpectroscopyAmplitudePlotter(BaseResonatorSpectroscopyPlotter):
     """Plotter for the amplitude part of a resonator spectroscopy experiment."""
 
     def get_plot_title(self) -> str:
         return "Resonator spectroscopy (amplitude + fit)"
 
-    def _plot_matplotlib_subplot(
-        self, ax: Axes, qubit_dict: dict, fit_data: Optional[xr.Dataset]
+    def get_yaxis_title(self) -> str:
+        return r"$R=\sqrt{I^2 + Q^2}$ [mV]"
+
+    def _plot_matplotlib_data(
+        self, ax: Axes, ax2: Axes, qubit_dict: dict, fit_data: Optional[xr.Dataset]
     ):
-        """Plots individual qubit data on a given axis with optional fit."""
+        # Plot raw data on main axis
+        (
+            self.ds_raw.assign_coords(full_freq_GHz=self.ds_raw.full_freq / u.GHz)
+            .loc[qubit_dict]
+            .IQ_abs
+            / u.mV
+        ).plot(ax=ax, x="full_freq_GHz")
+
+        # Plot raw data on secondary axis
+        (
+            self.ds_raw.assign_coords(detuning_MHz=self.ds_raw.detuning / u.MHz)
+            .loc[qubit_dict]
+            .IQ_abs
+            / u.mV
+        ).plot(ax=ax2, x="detuning_MHz")
+
+        # Plot fit on secondary axis
         if fit_data and fit_data.outcome.values == "successful":
             fitted_data = lorentzian_dip(
                 self.ds_raw.detuning,
@@ -38,29 +54,6 @@ class ResonatorSpectroscopyAmplitudePlotter(BasePlotter):
                 float(fit_data.width.values) / 2,
                 float(fit_data.base_line.mean().values),
             )
-        else:
-            fitted_data = None
-
-        # Create a first x-axis for full_freq_GHz
-        (
-            self.ds_raw.assign_coords(full_freq_GHz=self.ds_raw.full_freq / u.GHz)
-            .loc[qubit_dict]
-            .IQ_abs
-            / u.mV
-        ).plot(ax=ax, x="full_freq_GHz")
-        ax.set_xlabel("RF frequency [GHz]")
-        ax.set_ylabel(r"$R=\sqrt{I^2 + Q^2}$ [mV]")
-        # Create a second x-axis for detuning_MHz
-        ax2 = ax.twiny()
-        (
-            self.ds_raw.assign_coords(detuning_MHz=self.ds_raw.detuning / u.MHz)
-            .loc[qubit_dict]
-            .IQ_abs
-            / u.mV
-        ).plot(ax=ax2, x="detuning_MHz")
-        ax2.set_xlabel("Detuning [MHz]")
-        # Plot the fitted data
-        if fitted_data is not None:
             ax2.plot(
                 self.ds_raw.detuning / u.MHz,
                 fitted_data / u.mV,
@@ -68,7 +61,7 @@ class ResonatorSpectroscopyAmplitudePlotter(BasePlotter):
                 linestyle="--",
             )
 
-    def _plot_plotly_subplot(
+    def _plot_plotly_data(
         self,
         fig: go.Figure,
         qubit_id: str,
@@ -76,16 +69,11 @@ class ResonatorSpectroscopyAmplitudePlotter(BasePlotter):
         col: int,
         fit_data: Optional[xr.Dataset],
     ):
-        """Plots individual qubit data on a given Plotly subplot with optional fit."""
-        freq_data = self.ds_raw.assign_coords(
-            full_freq_GHz=self.ds_raw.full_freq / u.GHz
-        ).loc[{"qubit": qubit_id}]
-        detuning_data = self.ds_raw.assign_coords(
-            detuning_MHz=self.ds_raw.detuning / u.MHz
-        ).loc[{"qubit": qubit_id}]
-        y_raw = (freq_data.IQ_abs / u.mV).values
-        x_raw = freq_data.full_freq_GHz.values
-        detuning_vals = detuning_data.detuning_MHz.values
+        y_raw = (self.ds_raw.loc[{"qubit": qubit_id}].IQ_abs / u.mV).values
+        x_raw = self.get_raw_x_values(qubit_id)
+        detuning_vals = self.get_secondary_x_values(qubit_id)
+
+        # Plot raw data
         fig.add_trace(
             go.Scatter(
                 x=x_raw,
@@ -99,7 +87,7 @@ class ResonatorSpectroscopyAmplitudePlotter(BasePlotter):
             row=row,
             col=col,
         )
-        # Fit (overlay, same x as raw, on RF frequency axis)
+        # Plot fit
         if fit_data is not None and fit_data.outcome.values == "successful":
             fitted_data = lorentzian_dip(
                 self.ds_raw.detuning.values,
@@ -122,43 +110,30 @@ class ResonatorSpectroscopyAmplitudePlotter(BasePlotter):
                 col=col,
             )
 
-        add_plotly_top_axis(
-            fig,
-            row,
-            col,
-            self.grid.n_cols,
-            freq_data.full_freq_GHz.values,
-            detuning_data.detuning_MHz.values,
-            "Detuning [MHz]",
-        )
-        fig.update_xaxes(title_text="RF frequency [GHz]", row=row, col=col)
-        fig.update_yaxes(title_text=r"<i>R</i> = √(I² + Q²) [mV]", row=row, col=col)
 
-
-class ResonatorSpectroscopyPhasePlotter(BasePlotter):
+class ResonatorSpectroscopyPhasePlotter(BaseResonatorSpectroscopyPlotter):
     """Plotter for the phase part of a resonator spectroscopy experiment."""
 
     def get_plot_title(self) -> str:
         return "Resonator spectroscopy (phase)"
 
-    def _plot_matplotlib_subplot(
-        self, ax: Axes, qubit_dict: dict, fit_data: Optional[xr.Dataset]
+    def get_yaxis_title(self) -> str:
+        return "phase [rad]"
+
+    def _plot_matplotlib_data(
+        self, ax: Axes, ax2: Axes, qubit_dict: dict, fit_data: Optional[xr.Dataset]
     ):
-        """Plots the raw phase data for the given qubit."""
-        # Create a first x-axis for full_freq_GHz
+        # Plot raw data on main axis
         self.ds_raw.assign_coords(full_freq_GHz=self.ds_raw.full_freq / u.GHz).loc[
             qubit_dict
         ].phase.plot(ax=ax, x="full_freq_GHz")
-        ax.set_xlabel("RF frequency [GHz]")
-        ax.set_ylabel("phase [rad]")
-        # Create a second x-axis for detuning_MHz
-        ax2 = ax.twiny()
+
+        # Plot raw data on secondary axis
         self.ds_raw.assign_coords(detuning_MHz=self.ds_raw.detuning / u.MHz).loc[
             qubit_dict
         ].phase.plot(ax=ax2, x="detuning_MHz")
-        ax2.set_xlabel("Detuning [MHz]")
 
-    def _plot_plotly_subplot(
+    def _plot_plotly_data(
         self,
         fig: go.Figure,
         qubit_id: str,
@@ -166,39 +141,23 @@ class ResonatorSpectroscopyPhasePlotter(BasePlotter):
         col: int,
         fit_data: Optional[xr.Dataset],
     ):
-        """Plots the raw phase data for the given qubit."""
-        freq_data = self.ds_raw.assign_coords(
-            full_freq_GHz=self.ds_raw.full_freq / u.GHz
-        ).loc[{"qubit": qubit_id}]
-        detuning_data = self.ds_raw.assign_coords(
-            detuning_MHz=self.ds_raw.detuning / u.MHz
-        ).loc[{"qubit": qubit_id}]
+        ds_qubit = self.ds_raw.loc[{"qubit": qubit_id}]
+        x_raw = self.get_raw_x_values(qubit_id)
+        detuning_vals = self.get_secondary_x_values(qubit_id)
+
         fig.add_trace(
             go.Scatter(
-                x=freq_data.full_freq_GHz,
-                y=freq_data.phase,
+                x=x_raw,
+                y=ds_qubit.phase,
                 name=f"Qubit {qubit_id}",
                 showlegend=False,
                 line=dict(color=styling.raw_data_color),
-                customdata=np.stack([detuning_data.detuning_MHz], axis=-1),
+                customdata=np.stack([detuning_vals], axis=-1),
                 hovertemplate="RF freq: %{x:.6f} GHz<br>Detuning: %{customdata[0]:.2f} MHz<br>Phase: %{y:.3f} rad<extra></extra>",
             ),
             row=row,
             col=col,
         )
-
-        add_plotly_top_axis(
-            fig,
-            row,
-            col,
-            self.grid.n_cols,
-            freq_data.full_freq_GHz.values,
-            detuning_data.detuning_MHz.values,
-            "Detuning [MHz]",
-        )
-
-        fig.update_xaxes(title_text="RF frequency [GHz]", row=row, col=col)
-        fig.update_yaxes(title_text="phase [rad]", row=row, col=col)
 
 
 # -----------------------------------------------------------------------------
