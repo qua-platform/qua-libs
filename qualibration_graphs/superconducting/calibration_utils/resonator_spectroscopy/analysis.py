@@ -2,28 +2,20 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import xarray as xr
+from qualibrate import QualibrationNode
 from qualibration_libs.analysis import peaks_dips
-from qualibration_libs.analysis.fitting import circle_fit_s21_resonator_model
-from qualibration_libs.analysis.models import S21Resonator
+from qualibration_libs.analysis.fitting import calculate_quality_metrics
+from qualibration_libs.analysis.models import lorentzian_dip
+from qualibration_libs.analysis.parameters import analysis_config_manager
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 
-from qualibrate import QualibrationNode
+# Access quality check parameters from the config object
+qc_params = analysis_config_manager.get("resonator_spectroscopy_qc")
 
-# Analysis Constants
-SNR_MIN: float = 2.5
-SNR_DISTORTED: float = 5.0
-ASYMMETRY_MIN: float = 0.4
-ASYMMETRY_MAX: float = 2.5
-SKEWNESS_MAX: float = 1.5
-DISTORTED_FRACTION_LOW_SNR: float = 0.2
-DISTORTED_FRACTION_HIGH_SNR: float = 0.3
-FWHM_ABSOLUTE_THRESHOLD_HZ: float = 1e6
-NRMSE_THRESHOLD: float = 0.14
-R_SQUARED_THRESHOLD: float = 0.90
 
 @dataclass
 class FitParameters:
@@ -31,6 +23,7 @@ class FitParameters:
     frequency: float
     fwhm: float
     outcome: str
+    fit_metrics: Optional[Dict[str, Any]] = None
 
 
 def log_fitted_results(fit_results: Dict[str, FitParameters], log_callable=None) -> None:
@@ -134,7 +127,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
 
 
 def _extract_and_validate_fit_parameters(
-    ds: xr.Dataset, 
+    ds: xr.Dataset,
     fit: xr.Dataset, 
     node: QualibrationNode
 ) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
@@ -143,7 +136,8 @@ def _extract_and_validate_fit_parameters(
     
     Parameters
     ----------
-    ds: xr.Dataset, 
+    ds : xr.Dataset
+        Raw dataset containing IQ data
     fit : xr.Dataset
         Dataset containing fit results from peak detection
     node : QualibrationNode
@@ -155,7 +149,7 @@ def _extract_and_validate_fit_parameters(
         Validated fit data and results dictionary
     """
     # Calculate resonator frequencies and FWHM
-    fit, fitters = _calculate_resonator_parameters(ds, fit, node)
+    fit = _calculate_resonator_parameters(fit, node)
     
     # Evaluate fit quality for each qubit and determine outcomes
     fit_results = {}
@@ -163,7 +157,7 @@ def _extract_and_validate_fit_parameters(
     
     for qubit_name in fit.qubit.values:
         # Extract fit metrics for this qubit
-        fit_metrics = _extract_qubit_fit_metrics(fit, fitters, qubit_name)
+        fit_metrics = _extract_qubit_fit_metrics(ds, fit, qubit_name)
         
         # Determine outcome based on quality checks
         outcome = _determine_resonator_outcome(fit_metrics)
@@ -174,6 +168,7 @@ def _extract_and_validate_fit_parameters(
             frequency=fit.sel(qubit=qubit_name).res_freq.values.item(),
             fwhm=fit.sel(qubit=qubit_name).fwhm.values.item(),
             outcome=outcome,
+            fit_metrics=fit_metrics,
         )
     
     # Add outcomes to the fit dataset
@@ -183,13 +178,12 @@ def _extract_and_validate_fit_parameters(
     return fit, fit_results
 
 
-def _calculate_resonator_parameters(ds: xr.Dataset, fit: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, S21Resonator]]:
+def _calculate_resonator_parameters(fit: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """
     Calculate resonator frequency and FWHM from fit results.
     
     Parameters
     ----------
-    ds: xr.Dataset, 
     fit : xr.Dataset
         Dataset with peak detection results
     node : QualibrationNode
@@ -199,74 +193,92 @@ def _calculate_resonator_parameters(ds: xr.Dataset, fit: xr.Dataset, node: Quali
     -------
     xr.Dataset
         Dataset with resonator parameters added
-    Dict[str, FitParameters]
-        Dictionary mapping qubit names to S21Resonator objects
     """
     # Add metadata to fit results
     fit.attrs = {"long_name": "frequency", "units": "Hz"}
     
-    # Use circle fit to calculate resonator frequency and FWHM
-    fit_results, fitters = circle_fit_s21_resonator_model(ds)
-    fit = fit.assign_coords(res_freq=("qubit", [fit_results[qubit]["frequency"] for qubit in fit_results]))
+    # Calculate fitted resonator frequency
+    rf_frequencies = np.array([q.resonator.RF_frequency for q in node.namespace["qubits"]])
+    res_freq = fit.position + rf_frequencies
+    fit = fit.assign_coords(res_freq=("qubit", res_freq.data))
     fit.res_freq.attrs = {"long_name": "resonator frequency", "units": "Hz"}
-    fit = fit.assign_coords(fwhm=("qubit", [fit_results[qubit]["fwhm"] for qubit in fit_results]))
+    
+    # Calculate FWHM
+    fwhm = np.abs(fit.width)
+    fit = fit.assign_coords(fwhm=("qubit", fwhm.data))
     fit.fwhm.attrs = {"long_name": "resonator fwhm", "units": "Hz"}
 
-    fit.attrs["s21_models"] = fitters
-
-    return fit, fitters
+    return fit
 
 
-def _extract_qubit_fit_metrics(fit: xr.Dataset, fitters: Dict[str, S21Resonator], qubit_name: str) -> Dict[str, float]:
+def _calculate_sweep_span(fit: xr.Dataset) -> float:
+    """Calculate sweep span for relative comparisons."""
+    if "detuning" in fit.dims:
+        return float(fit.coords["detuning"].max() - fit.coords["detuning"].min())
+    if "full_freq" in fit.dims:
+        return float(fit.coords["full_freq"].max() - fit.coords["full_freq"].min())
+    return 0.0
+
+
+def _generate_lorentzian_fit(
+    qubit_data: xr.Dataset, detuning_values: np.ndarray
+) -> np.ndarray:
+    """Generate the Lorentzian fit from qubit data."""
+    return lorentzian_dip(
+        detuning_values,
+        float(qubit_data.amplitude.values),
+        float(qubit_data.position.values),
+        float(qubit_data.width.values) / 2,  # Convert to half-width at half-max
+        float(qubit_data.base_line.mean().values),
+    )
+
+
+def _extract_qubit_fit_metrics(
+    ds_raw: xr.Dataset, fit: xr.Dataset, qubit_name: str
+) -> Dict[str, float]:
     """
     Extract all relevant fit metrics for a single qubit.
-    
+
     Parameters
     ----------
+    ds_raw : xr.Dataset
+        The raw dataset containing IQ data
     fit : xr.Dataset
         Dataset containing fit results
     qubit_name : str
         Name of the qubit to extract metrics for
-        
+
     Returns
     -------
     Dict[str, float]
         Dictionary containing all fit metrics for the qubit
     """
     qubit_data = fit.sel(qubit=qubit_name)
-    fitter = fitters[qubit_name]
+    sweep_span = _calculate_sweep_span(fit)
 
-    # Calculate sweep span for relative comparisons
-    if "detuning" in fit.dims:
-        sweep_span = float(fit.coords["detuning"].max() - fit.coords["detuning"].min())
-    elif "full_freq" in fit.dims:
-        sweep_span = float(fit.coords["full_freq"].max() - fit.coords["full_freq"].min())
-    else:
-        sweep_span = 0.0
-    
+    # Get raw data for quality metrics
+    raw_data = ds_raw.IQ_abs.sel(qubit=qubit_name).values
+    detuning_values = ds_raw.detuning.values
+
+    # Generate the Lorentzian fit and calculate quality metrics
+    fitted_data = _generate_lorentzian_fit(qubit_data, detuning_values)
+    quality_metrics = calculate_quality_metrics(raw_data, fitted_data)
+
     return {
         "num_peaks": int(qubit_data.num_peaks.values),
+        "raw_num_peaks": int(qubit_data.raw_num_peaks.values),
         "snr": float(qubit_data.snr.values),
         "fwhm": float(qubit_data.fwhm.values),
         "sweep_span": sweep_span,
         "asymmetry": float(qubit_data.asymmetry.values),
         "skewness": float(qubit_data.skewness.values),
         "opx_bandwidth_artifact": not bool(qubit_data.opx_bandwidth_artifact.values),
-        "nrmse": fitter.quality_metrics["nrmse"],
-        "r_squared": fitter.quality_metrics["r_squared"],
+        **quality_metrics,
     }
 
 
 def _determine_resonator_outcome(
     metrics: Dict[str, float],
-    snr_min: float = SNR_MIN,
-    snr_distorted: float = SNR_DISTORTED,
-    asymmetry_min: float = ASYMMETRY_MIN,
-    asymmetry_max: float = ASYMMETRY_MAX,
-    skewness_max: float = SKEWNESS_MAX,
-    distorted_fraction_low_snr: float = DISTORTED_FRACTION_LOW_SNR,
-    distorted_fraction_high_snr: float = DISTORTED_FRACTION_HIGH_SNR,
-    fwhm_absolute_threshold: float = FWHM_ABSOLUTE_THRESHOLD_HZ,
 ) -> str:
     """
     Determine the outcome for resonator spectroscopy based on fit metrics.
@@ -275,22 +287,6 @@ def _determine_resonator_outcome(
     ----------
     metrics : Dict[str, float]
         Dictionary containing fit metrics
-    snr_min : float
-        Minimum acceptable SNR
-    snr_distorted : float
-        SNR threshold for distortion detection
-    asymmetry_min : float
-        Minimum acceptable asymmetry
-    asymmetry_max : float
-        Maximum acceptable asymmetry
-    skewness_max : float
-        Maximum acceptable skewness
-    distorted_fraction_low_snr : float
-        Maximum distortion fraction for low SNR
-    distorted_fraction_high_snr : float
-        Maximum distortion fraction for high SNR
-    fwhm_absolute_threshold : float
-        Absolute FWHM threshold
         
     Returns
     -------
@@ -298,33 +294,27 @@ def _determine_resonator_outcome(
         Outcome description
     """
     num_peaks = metrics["num_peaks"]
+    raw_num_peaks = metrics["raw_num_peaks"]
     snr = metrics["snr"]
     fwhm = metrics["fwhm"]
     sweep_span = metrics["sweep_span"]
     asymmetry = metrics["asymmetry"]
     skewness = metrics["skewness"]
     opx_bandwidth_artifact = metrics["opx_bandwidth_artifact"]
-    nrmse = metrics["nrmse"]
-    r_squared = metrics["r_squared"]
-
-    # Check if the fit is good with the circle fit model
-    if r_squared > R_SQUARED_THRESHOLD and nrmse < NRMSE_THRESHOLD:
-        return "successful"
+    nrmse = metrics.get("nrmse", np.inf)
+    r_squared = metrics.get("r_squared", 0)
 
     # Check SNR first
-    if snr < snr_min:
+    if snr < qc_params.min_snr.value:
         return "The SNR isn't large enough, consider increasing the number of shots"
     
-    # Check for OPX bandwidth artifacts
-    if opx_bandwidth_artifact:
-        return "OPX bandwidth artifact detected, check your experiment bandwidth settings"
     
     # Check number of peaks
-    if num_peaks > 1:
+    if raw_num_peaks > 1:
         return "Several peaks were detected"
     
     if num_peaks == 0:
-        if snr < snr_min:
+        if snr < qc_params.min_snr.value:
             return (
                 "The SNR isn't large enough, consider increasing the number of shots "
                 "and ensure you are looking at the correct frequency range"
@@ -332,27 +322,29 @@ def _determine_resonator_outcome(
         return "No peaks were detected, consider changing the frequency range"
     
     # Check peak shape quality
-    if _is_peak_shape_distorted(asymmetry, skewness, asymmetry_min, asymmetry_max, skewness_max):
+    if _is_peak_shape_distorted(asymmetry, skewness, nrmse):
+        # Check for OPX bandwidth artifacts
+        # if opx_bandwidth_artifact:
+            # return "OPX bandwidth artifact detected, consider shifting the LO frequency by ~20MHz"
+        # else:
         return "The peak shape is distorted"
     
     # Check for peak width issues
-    if _is_peak_too_wide(fwhm, sweep_span, snr, snr_distorted, 
-                        distorted_fraction_low_snr, distorted_fraction_high_snr, 
-                        fwhm_absolute_threshold):
-        if snr < snr_distorted:
+    if _is_peak_too_wide(fwhm, sweep_span, snr):
+        if snr < qc_params.snr_for_distortion.value:
             return "The SNR isn't large enough and the peak shape is distorted"
         else:
             return "Distorted peak detected"
     
+    
+    # All checks passed
     return "successful"
 
 
 def _is_peak_shape_distorted(
     asymmetry: float, 
     skewness: float,
-    asymmetry_min: float,
-    asymmetry_max: float,
-    skewness_max: float
+    nrmse: float,
 ) -> bool:
     """
     Check if peak shape indicates distortion based on asymmetry and skewness.
@@ -363,12 +355,8 @@ def _is_peak_shape_distorted(
         Peak asymmetry value
     skewness : float
         Peak skewness value
-    asymmetry_min : float
-        Minimum acceptable asymmetry
-    asymmetry_max : float
-        Maximum acceptable asymmetry
-    skewness_max : float
-        Maximum acceptable skewness
+    nrmse : float
+        Normalized Root Mean Square Error
         
     Returns
     -------
@@ -376,20 +364,17 @@ def _is_peak_shape_distorted(
         True if peak shape is distorted
     """
     asymmetry_bad = (asymmetry is not None and 
-                    (asymmetry < asymmetry_min or asymmetry > asymmetry_max))
-    skewness_bad = (skewness is not None and abs(skewness) > skewness_max)
-    
-    return asymmetry_bad or skewness_bad
+                    (asymmetry < qc_params.min_asymmetry.value or asymmetry > qc_params.max_asymmetry.value))
+    skewness_bad = (skewness is not None and abs(skewness) > qc_params.max_skewness.value)
+    poor_geom_fit = nrmse > qc_params.nrmse_threshold.value
+
+    return asymmetry_bad or skewness_bad or poor_geom_fit
 
 
 def _is_peak_too_wide(
     fwhm: float,
     sweep_span: float,
     snr: float,
-    snr_distorted: float,
-    distorted_fraction_low_snr: float,
-    distorted_fraction_high_snr: float,
-    fwhm_absolute_threshold: float
 ) -> bool:
     """
     Check if peak is too wide relative to sweep or absolutely.
@@ -402,14 +387,6 @@ def _is_peak_too_wide(
         Total sweep span
     snr : float
         Signal-to-noise ratio
-    snr_distorted : float
-        SNR threshold for distortion classification
-    distorted_fraction_low_snr : float
-        Maximum acceptable fraction for low SNR
-    distorted_fraction_high_snr : float
-        Maximum acceptable fraction for high SNR
-    fwhm_absolute_threshold : float
-        Absolute FWHM threshold
         
     Returns
     -------
@@ -417,12 +394,16 @@ def _is_peak_too_wide(
         True if peak is too wide
     """
     # Determine distortion threshold based on SNR
-    distorted_fraction = distorted_fraction_low_snr if snr < snr_distorted else distorted_fraction_high_snr
+    distorted_fraction = (
+        qc_params.distorted_fraction_low_snr.value
+        if snr < qc_params.snr_for_distortion.value
+        else qc_params.distorted_fraction_high_snr.value
+    )
     
     # Check relative width
     relative_width_bad = (sweep_span > 0 and (fwhm / sweep_span > distorted_fraction))
     
     # Check absolute width
-    absolute_width_bad = (fwhm > fwhm_absolute_threshold)
+    absolute_width_bad = (fwhm > qc_params.fwhm_absolute_threshold_hz.value)
     
     return relative_width_bad or absolute_width_bad

@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from calibration_utils.resonator_spectroscopy_vs_amplitude import (
-    Parameters, fit_raw_data, log_fitted_results, plot_raw_data_with_fit,
-    plotly_plot_raw_data, plotly_plot_raw_data_with_fit, process_raw_dataset)
+    Parameters, fit_raw_data, log_fitted_results, process_raw_dataset)
+from calibration_utils.resonator_spectroscopy_vs_amplitude.plotting import \
+    create_plots
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -218,20 +219,19 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
-    plt.show()
+    """Plot the raw and fitted data using standardized plotting framework."""
 
-    plot_fit = plotly_plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
-    plot_raw = plotly_plot_raw_data(node.results["ds_raw"], node.namespace["qubits"])
-    plot_fit.show()
-    plot_raw.show()
+    plotly_amplitude, static_amplitude_fig = create_plots(
+        ds_raw=node.results["ds_raw"],
+        qubits=node.namespace["qubits"],
+        ds_fit=node.results.get("ds_fit"),
+    )
+    plotly_amplitude.show()
 
-    # Store the generated figures
+    # Store interactive and static figures
     node.results["figures"] = {
-        "amplitude": fig_raw_fit,
-        "plotly_raw_data": plot_raw,
-        "plotly_amplitude": plot_fit
+        "amplitude_plotly": plotly_amplitude,
+        "amplitude": static_amplitude_fig,
     }
 
 

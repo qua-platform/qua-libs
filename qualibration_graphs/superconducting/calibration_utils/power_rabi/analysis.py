@@ -7,20 +7,16 @@ from typing import Dict, Optional, Tuple, Union
 import numpy as np
 import xarray as xr
 from qualibration_libs.analysis import fit_oscillation
+from qualibration_libs.analysis.parameters import analysis_config_manager
+from qualibration_libs.analysis.signal import compute_signal_to_noise_ratio
 from qualibration_libs.data import convert_IQ_to_V
 from quam_config.instrument_limits import instrument_limits
 from scipy.signal import correlate
 
 from qualibrate import QualibrationNode
 
-# Analysis Constants
-MIN_FIT_QUALITY: float = 0.5
-MIN_AMPLITUDE: float = 0.01
-MAX_AMP_PREFACTOR: float = 10.0
-SNR_MIN: float = 2.5
-AUTOCORRELATION_R1_THRESHOLD: float = 0.8
-AUTOCORRELATION_R2_THRESHOLD: float = 0.5
-CHEVRON_MODULATION_THRESHOLD: float = 0.4
+# Access parameter groups from the config manager
+qc_params = analysis_config_manager.get("power_rabi_qc")
 
 
 @dataclass
@@ -33,14 +29,15 @@ class FitParameters:
     fit_quality: Optional[float] = None
 
 
-def log_fitted_results(fit_results: Dict[str, FitParameters], log_callable=None) -> None:
+def log_fitted_results(fit_results: Dict[str, Union[FitParameters, dict]], log_callable=None) -> None:
     """
     Logs the node-specific fitted results for all qubits from the fit results.
+    It handles both FitParameters objects and dictionaries to support loaded data from older versions.
 
     Parameters
     ----------
-    fit_results : Dict[str, FitParameters]
-        Dictionary containing the fitted results for all qubits.
+    fit_results : Dict[str, Union[FitParameters, dict]]
+        Dictionary containing the fitted results for all qubits. Can be objects or dicts.
     log_callable : callable, optional
         Logger for logging the fitted results. If None, a default logger is used.
     """
@@ -48,36 +45,32 @@ def log_fitted_results(fit_results: Dict[str, FitParameters], log_callable=None)
         log_callable = logging.getLogger(__name__).info
     
     for qubit_name, results in fit_results.items():
+        if isinstance(results, dict):
+            # Convert dict to FitParameters object for consistent handling
+            results = FitParameters(
+                outcome=results.get('outcome', 'unknown'),
+                opt_amp=results.get('opt_amp', 0.0),
+                opt_amp_prefactor=results.get('opt_amp_prefactor', 1.0),
+                operation=results.get('operation', 'x180'),
+                fit_quality=results.get('fit_quality', None)
+            )
+
         status_line = f"Results for qubit {qubit_name}: "
         
-        # Handle both FitParameters objects and dictionaries
-        if hasattr(results, 'outcome'):
-            outcome = results.outcome
-            opt_amp = results.opt_amp
-            opt_amp_prefactor = results.opt_amp_prefactor
-            operation = results.operation
-            fit_quality = results.fit_quality
-        else:
-            outcome = results.get('outcome', 'unknown')
-            opt_amp = results.get('opt_amp', 0.0)
-            opt_amp_prefactor = results.get('opt_amp_prefactor', 1.0)
-            operation = results.get('operation', 'x180')
-            fit_quality = results.get('fit_quality', None)
-        
-        if outcome == "successful":
+        if results.outcome == "successful":
             status_line += " SUCCESS!\n"
         else:
-            status_line += f" FAIL! Reason: {outcome}\n"
+            status_line += f" FAIL! Reason: {results.outcome}\n"
         
         # Format amplitude with appropriate units
-        amp_mV = opt_amp * 1e3
-        amp_str = f"The calibrated {operation} amplitude: {amp_mV:.2f} mV "
-        prefactor_str = f"(x{opt_amp_prefactor:.2f})\n"
+        amp_mV = results.opt_amp * 1e3
+        amp_str = f"The calibrated {results.operation} amplitude: {amp_mV:.2f} mV "
+        prefactor_str = f"(x{results.opt_amp_prefactor:.2f})\n"
         
         # Add fit quality information if available
         quality_str = ""
-        if fit_quality is not None:
-            quality_str = f"Fit quality (R²): {fit_quality:.3f}\n"
+        if results.fit_quality is not None:
+            quality_str = f"Fit quality (R²): {results.fit_quality:.3f}\n"
         
         log_callable(status_line + amp_str + prefactor_str + quality_str)
 
@@ -161,7 +154,7 @@ def _fit_single_pulse_experiment(ds: xr.Dataset, node: QualibrationNode) -> xr.D
     
     # Choose signal based on discrimination method
     signal_data = ds_fit.state if node.parameters.use_state_discrimination else ds_fit.I
-    fit_vals = fit_oscillation(signal_data, "amp_prefactor")
+    fit_vals = fit_oscillation(da=signal_data, dim="amp_prefactor", method="fft_based")
 
     return xr.merge([ds, fit_vals.rename("fit")])
 
@@ -297,9 +290,12 @@ def _calculate_signal_quality_metrics(fit: xr.Dataset) -> xr.Dataset:
         elif hasattr(fit, "state") and hasattr(fit.state, "sel"):
             signal = fit.state.sel(qubit=q).values
         else:
+            logging.warning(
+                f"Could not find 'I' or 'state' data for qubit {q}. Returning zeros."
+            )
             signal = np.zeros(2)
         
-        snrs.append(_compute_signal_to_noise_ratio(signal))
+        snrs.append(compute_signal_to_noise_ratio(signal))
     
     fit = fit.assign_coords(snr=("qubit", snrs))
     fit.snr.attrs = {"long_name": "signal-to-noise ratio", "units": ""}
@@ -370,46 +366,6 @@ def _create_fit_results_dictionary(fit: xr.Dataset, node: QualibrationNode) -> D
 
 
 # Helper Functions for Signal Analysis
-
-def _compute_signal_to_noise_ratio(signal: np.ndarray) -> float:
-    """
-    Compute signal-to-noise ratio for a 1D signal array.
-    
-    Parameters
-    ----------
-    signal : np.ndarray
-        1D array of signal values
-        
-    Returns
-    -------
-    float
-        Signal-to-noise ratio
-    """
-    if signal.size < 2:
-        return 0.0
-    
-    try:
-        from scipy.ndimage import uniform_filter1d
-
-        # Smooth signal to estimate underlying trend
-        smooth = uniform_filter1d(signal, size=max(3, signal.size // 10))
-        # Estimate noise as residual
-        noise = signal - smooth
-        noise_std = np.std(noise)
-        
-        if noise_std == 0:
-            return np.inf
-        
-        # Signal strength as peak-to-peak range
-        signal_strength = np.ptp(signal)
-        return signal_strength / noise_std
-        
-    except ImportError:
-        # Fallback if scipy not available
-        signal_std = np.std(signal)
-        return np.ptp(signal) / signal_std if signal_std > 0 else np.inf
-
-
 def _extract_fit_quality(fit: xr.Dataset) -> Optional[float]:
     """Safely extract R² fit quality from dataset."""
     try:
@@ -427,6 +383,9 @@ def _extract_qubit_signal(fit: xr.Dataset, qubit: str) -> np.ndarray:
     elif hasattr(fit, "state") and hasattr(fit.state, "sel"):
         return fit.state.sel(qubit=qubit).values
     else:
+        logging.warning(
+            f"Could not find 'I' or 'state' data for qubit {qubit}. Returning zeros."
+        )
         return np.zeros((2, 2))
 
 
@@ -470,8 +429,8 @@ def _evaluate_signal_fit_worthiness(ds: xr.Dataset, signal_key: str = "state") -
 
             # Check autocorrelation at lag-1 and lag-2
             r1, r2 = autocorr[1], autocorr[2]
-            result[q] = (r1 > AUTOCORRELATION_R1_THRESHOLD and 
-                        r2 > AUTOCORRELATION_R2_THRESHOLD)
+            result[q] = (r1 > qc_params.autocorrelation_r1_threshold.value and 
+                        r2 > qc_params.autocorrelation_r2_threshold.value)
 
         except Exception:
             result[q] = False
@@ -479,7 +438,7 @@ def _evaluate_signal_fit_worthiness(ds: xr.Dataset, signal_key: str = "state") -
     return result
 
 
-def _detect_chevron_modulation(signal_2d: np.ndarray, threshold: float = CHEVRON_MODULATION_THRESHOLD) -> bool:
+def _detect_chevron_modulation(signal_2d: np.ndarray, threshold: float = qc_params.chevron_modulation_threshold.value) -> bool:
     """
     Detect chevron-like modulation in 2D signal data.
     
@@ -567,12 +526,8 @@ def _determine_qubit_outcome(
     opt_amp: float,
     max_amplitude: float,
     fit_quality: Optional[float] = None,
-    min_fit_quality: float = MIN_FIT_QUALITY,
-    min_amplitude: float = MIN_AMPLITUDE,
-    max_amp_prefactor: float = MAX_AMP_PREFACTOR,
     amp_prefactor: Optional[float] = None,
     snr: Optional[float] = None,
-    snr_min: float = SNR_MIN,
     should_fit: bool = True,
     is_1d_dataset: bool = True,
     has_structure: bool = True,
@@ -595,18 +550,10 @@ def _determine_qubit_outcome(
         Maximum allowed amplitude
     fit_quality : float, optional
         R² value of the fit
-    min_fit_quality : float
-        Minimum acceptable fit quality
-    min_amplitude : float
-        Minimum amplitude threshold
-    max_amp_prefactor : float
-        Maximum amplitude prefactor
     amp_prefactor : float, optional
         Amplitude prefactor value
     snr : float, optional
         Signal-to-noise ratio
-    snr_min : float
-        Minimum SNR threshold
     should_fit : bool
         Whether data quality is sufficient for fitting
     is_1d_dataset : bool
@@ -625,16 +572,17 @@ def _determine_qubit_outcome(
     str
         Outcome description
     """
+
     # Check for invalid fit parameters
     if not nan_success:
         return "Fit parameters are invalid (NaN values detected)"
 
     # Check for low amplitude with poor fit quality (1D only)
-    if is_1d_dataset and opt_amp < min_amplitude:
-        if fit_quality is not None and fit_quality < min_fit_quality:
+    if is_1d_dataset and opt_amp < qc_params.min_amplitude.value:
+        if fit_quality is not None and fit_quality < qc_params.min_fit_quality.value:
             return (
-                f"Poor fit quality (R² = {fit_quality:.3f} < {min_fit_quality}). "
-                "There is too much noise in the data, consider increasing averaging or shot count"
+                "There is too much noise in the data, consider increasing averaging or shot count. "
+                f"Poor fit quality (R² = {fit_quality:.3f} < {qc_params.min_fit_quality.value}). "
             )
         else:
             return "There is too much noise in the data, consider increasing averaging or shot count"
@@ -644,8 +592,8 @@ def _determine_qubit_outcome(
         return "No chevron modulation detected. Please check the drive frequency and amplitude sweep range"
 
     # Check signal-to-noise ratio
-    if snr is not None and snr < snr_min:
-        return f"SNR too low (SNR = {snr:.2f} < {snr_min})"
+    if snr is not None and snr < qc_params.snr_min.value:
+        return f"SNR too low (SNR = {snr:.2f} < {qc_params.snr_min.value})"
 
     # Check amplitude hardware limits
     if not amp_success:
@@ -657,15 +605,15 @@ def _determine_qubit_outcome(
         return f"The drive frequency is off-resonant with high {direction_str}, please adjust the drive frequency"
 
     # Check amplitude prefactor bounds
-    if amp_prefactor is not None and abs(amp_prefactor) > max_amp_prefactor:
-        return f"Amplitude prefactor too large (|{amp_prefactor:.2f}| > {max_amp_prefactor})"
+    if amp_prefactor is not None and abs(amp_prefactor) > qc_params.max_amp_prefactor.value:
+        return f"Amplitude prefactor too large (|{amp_prefactor:.2f}| > {qc_params.max_amp_prefactor.value})"
 
     # Check if signal should be fit (1D only)
     if not should_fit and is_1d_dataset:
         return "There is too much noise in the data, consider increasing averaging or shot count"
 
     # Check fit quality
-    if fit_quality is not None and fit_quality < min_fit_quality:
+    if fit_quality is not None and fit_quality < qc_params.min_fit_quality.value:
         # Special check for 1D datasets with too many oscillations
         if (is_1d_dataset and fit is not None and qubit is not None and 
             "fit" in fit and hasattr(fit.fit, "sel")):
@@ -676,6 +624,6 @@ def _determine_qubit_outcome(
             except (ValueError, KeyError, AttributeError):
                 pass
         
-        return f"Poor fit quality (R² = {fit_quality:.3f} < {min_fit_quality})"
+        return f"Poor fit quality (R² = {fit_quality:.3f} < {qc_params.min_fit_quality.value})"
 
     return "successful"

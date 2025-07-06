@@ -6,10 +6,7 @@ import xarray as xr
 from calibration_utils.resonator_spectroscopy import (Parameters, fit_raw_data,
                                                       log_fitted_results,
                                                       process_raw_dataset)
-from calibration_utils.resonator_spectroscopy.plot_configs import (
-    amplitude_vs_freq_config, phase_vs_freq_config)
-from calibration_utils.resonator_spectroscopy.preparators import \
-    prepare_resonator_spectroscopy_data
+from calibration_utils.resonator_spectroscopy.plotting import create_plots
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -17,8 +14,6 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
-from qualibration_libs.plotting.standard_plotter import (
-    create_matplotlib_figure, create_plotly_figure)
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
@@ -190,48 +185,24 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
 
-    # 1. Prepare datasets by adding fields needed for plotting
-    ds_raw, ds_fit = prepare_resonator_spectroscopy_data(
+    # 1. Generate figures using the standardized plotter.
+    # Data preparation and plotting for both phase and amplitude are handled within create_plots.
+    plotly_figs, static_figs = create_plots(
         ds_raw=node.results["ds_raw"],
-        ds_fit=node.results.get("ds_fit")
-    )
-
-    # 2. Generate figures using the standardized plotter
-    plotly_phase = create_plotly_figure(
-        ds_raw=ds_raw,
         qubits=node.namespace["qubits"],
-        plot_configs=[phase_vs_freq_config],
-        ds_fit=ds_fit,
+        ds_fit=node.results.get("ds_fit"),
     )
-    plotly_amplitude = create_plotly_figure(
-        ds_raw=ds_raw,
-        qubits=node.namespace["qubits"],
-        plot_configs=[amplitude_vs_freq_config],
-        ds_fit=ds_fit,
-    )
-    plotly_amplitude.show()
-    plotly_phase.show()
-
-    # 3. Generate static matplotlib figures
-    static_phase_fig = create_matplotlib_figure(
-        ds_raw=ds_raw,
-        qubits=node.namespace["qubits"],
-        plot_configs=[phase_vs_freq_config],
-        ds_fit=ds_fit,
-    )
-    static_amplitude_fig = create_matplotlib_figure(
-        ds_raw=ds_raw,
-        qubits=node.namespace["qubits"],
-        plot_configs=[amplitude_vs_freq_config],
-        ds_fit=ds_fit,
-    )
+    
+    # Show interactive plots
+    plotly_figs["amplitude"].show()
+    plotly_figs["phase"].show()
 
     # Store interactive and static figures
     node.results["figures"] = {
-        "phase_plotly": plotly_phase,
-        "amplitude_plotly": plotly_amplitude,
-        "phase": static_phase_fig,
-        "amplitude": static_amplitude_fig,
+        "phase_plotly": plotly_figs["phase"],
+        "amplitude_plotly": plotly_figs["amplitude"],
+        "phase": static_figs["phase"],
+        "amplitude": static_figs["amplitude"],
     }
 
 
@@ -252,6 +223,4 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save the results to the database."""
-    # Remove the s21_models attribute from the ds_fit dataset to make it serializable
-    del node.results["ds_fit"].attrs["s21_models"]
     node.save()
