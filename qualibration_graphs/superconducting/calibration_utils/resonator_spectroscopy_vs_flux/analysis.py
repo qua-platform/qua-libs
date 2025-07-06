@@ -8,14 +8,13 @@ from typing import Dict, Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from qualibrate import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation
 from qualibration_libs.analysis.parameters import analysis_config_manager
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import curve_fit
 from scipy.signal import argrelextrema
-
-from qualibrate import QualibrationNode
 
 # Access parameter groups from the config manager
 qc_params = analysis_config_manager.get("resonator_spectroscopy_vs_flux_qc")
@@ -218,6 +217,87 @@ def _evaluate_qubit_data_quality(ds: xr.Dataset, peak_freq: xr.Dataset) -> Dict[
     return qubit_outcomes
 
 
+def _refine_min_offset(fit: xr.Dataset) -> xr.Dataset:
+    """
+    Refines the minimum frequency flux offset by finding the center of the
+    sweet spot in the data near the fitted value. This corrects for
+    deviations of the data from a perfect cosine shape and is robust to noise.
+    """
+    if "flux_min" not in fit.coords or "peak_freq" not in fit.data_vars:
+        return fit
+
+    refined_flux_min_values = fit.flux_min.copy(deep=True)
+
+    for q_name in fit.qubit.values:
+        if q_name not in refined_flux_min_values.qubit.values:
+            continue
+
+        initial_flux_min = fit.flux_min.sel(qubit=q_name).item()
+        if np.isnan(initial_flux_min):
+            continue
+
+        peak_freq_data = fit.peak_freq.sel(qubit=q_name).dropna(dim="flux_bias")
+        flux_axis = peak_freq_data.flux_bias.values
+        freq_values = peak_freq_data.values
+
+        if len(flux_axis) == 0:
+            continue
+
+        # Define a search window around the initial fitted minimum.
+        # The window is taken as 1/4 of the flux period on either side.
+        period = 1.0 / fit.sel(qubit=q_name, fit_vals="f").fit_results.item()
+        window_half_width = period / 4.0
+        
+        min_flux_in_data = flux_axis.min()
+        max_flux_in_data = flux_axis.max()
+        
+        search_mask = (flux_axis >= max(initial_flux_min - window_half_width, min_flux_in_data)) & \
+                      (flux_axis <= min(initial_flux_min + window_half_width, max_flux_in_data))
+
+        # If the window is empty for some reason, fall back to the closest point
+        if not np.any(search_mask):
+            closest_idx = np.argmin(np.abs(flux_axis - initial_flux_min))
+            search_mask = np.zeros_like(flux_axis, dtype=bool)
+            search_mask[closest_idx] = True
+
+        windowed_flux_axis = flux_axis[search_mask]
+        windowed_freq_values = freq_values[search_mask]
+
+        if len(windowed_freq_values) == 0:
+            # This should not happen if the fallback is working, but as a safeguard.
+            continue
+
+        # Find the minimum frequency in the window and define a threshold
+        # to identify the entire sweet spot region.
+        min_freq_in_window = np.min(windowed_freq_values)
+        fit_amplitude = fit.sel(qubit=q_name, fit_vals="a").fit_results.item()
+        
+        # The threshold is a small fraction of the total oscillation amplitude
+        # above the minimum, capturing the "flat" part of the curve.
+        freq_threshold = min_freq_in_window + (
+            qc_params.sweet_spot_threshold_fraction.value * np.abs(fit_amplitude)
+        )
+
+        # Find all points within this sweet spot threshold
+        sweet_spot_mask = windowed_freq_values <= freq_threshold
+        sweet_spot_fluxes = windowed_flux_axis[sweet_spot_mask]
+
+        if len(sweet_spot_fluxes) == 0:
+            # Fallback for very sharp "V" shapes where no other points fall
+            # within the threshold. In this case, the minimum is the best estimate.
+            refined_flux_min = windowed_flux_axis[np.argmin(windowed_freq_values)]
+        else:
+            # The refined offset is the mean of the flux values in the flat region,
+            # which gives the center of the sweet spot and is robust to noise.
+            refined_flux_min = np.mean(sweet_spot_fluxes)
+
+        # Update the value in our new DataArray
+        refined_flux_min_values.loc[dict(qubit=q_name)] = refined_flux_min
+
+    fit = fit.assign_coords(flux_min=refined_flux_min_values)
+    return fit
+
+
 def _extract_and_validate_flux_parameters(
     fit: xr.Dataset, 
     node: QualibrationNode, 
@@ -243,6 +323,7 @@ def _extract_and_validate_flux_parameters(
     # Calculate flux bias parameters only for qubits that have fit_results
     if "fit_results" in fit.data_vars:
         fit = _calculate_flux_bias_parameters(fit)
+        fit = _refine_min_offset(fit)
         fit = _calculate_flux_frequency_parameters(fit, node)
     
     # Evaluate outcomes and create results for ALL qubits

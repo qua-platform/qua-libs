@@ -130,7 +130,7 @@ class ResonatorSpectroscopyVsFluxPlotter(HeatmapPlotter):
                 colorscale=styling.heatmap_colorscale,
                 zmin=zmin_i,
                 zmax=zmax_i,
-                showscale=True,
+                showscale=False,
                 colorbar=dict(
                     thickness=styling.plotly_colorbar_thickness,
                     title="|IQ|",
