@@ -6,10 +6,8 @@ import numpy as np
 import xarray as xr
 from calibration_utils.resonator_spectroscopy_vs_amplitude import (
     Parameters, fit_raw_data, log_fitted_results, process_raw_dataset)
-from calibration_utils.resonator_spectroscopy_vs_amplitude.plot_configs import (
-    amplitude_vs_power_config)
-from calibration_utils.resonator_spectroscopy_vs_amplitude.preparators import (
-    prepare_amplitude_sweep_data, create_matplotlib_figure, create_plotly_figure)
+from calibration_utils.resonator_spectroscopy_vs_amplitude.plotting import \
+    create_plots
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -223,29 +221,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data using standardized plotting framework."""
 
-    # 1. Prepare datasets by adding fields needed for plotting
-    ds_raw, ds_fit = prepare_amplitude_sweep_data(
+    plotly_amplitude, static_amplitude_fig = create_plots(
         ds_raw=node.results["ds_raw"],
-        ds_fit=node.results.get("ds_fit"),
-        qubits=node.namespace["qubits"]
-    )
-
-    # 2. Generate figures using the standardized plotter
-    plotly_amplitude = create_plotly_figure(
-        ds_raw=ds_raw,
         qubits=node.namespace["qubits"],
-        plot_configs=[amplitude_vs_power_config],
-        ds_fit=ds_fit,
+        ds_fit=node.results.get("ds_fit"),
     )
     plotly_amplitude.show()
-
-    # 3. Generate static matplotlib figures
-    static_amplitude_fig = create_matplotlib_figure(
-        ds_raw=ds_raw,
-        qubits=node.namespace["qubits"],
-        plot_configs=[amplitude_vs_power_config],
-        ds_fit=ds_fit,
-    )
 
     # Store interactive and static figures
     node.results["figures"] = {

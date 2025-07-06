@@ -8,10 +8,7 @@ from calibration_utils.power_rabi import (Parameters, fit_raw_data,
                                           get_number_of_pulses,
                                           log_fitted_results,
                                           process_raw_dataset)
-from calibration_utils.power_rabi.plot_configs import power_rabi_config
-from calibration_utils.power_rabi.preparators import (create_matplotlib_figure,
-                                                      create_plotly_figure,
-                                                      prepare_power_rabi_data)
+from calibration_utils.power_rabi.plotting import create_plots
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -233,37 +230,18 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data using standardized plotting framework."""
+    ds_raw = node.results["ds_raw"]
+    ds_fit = node.results.get("ds_fit")
+    qubits = node.namespace["qubits"]
 
-    # 1. Prepare datasets by adding fields needed for plotting
-    ds_raw, ds_fit = prepare_power_rabi_data(
-        ds_raw=node.results["ds_raw"],
-        ds_fit=node.results.get("ds_fit"),
-        qubits=node.namespace["qubits"]
-    )
-
-    # 2. Generate figures using the standardized plotter
-    plotly_rabi = create_plotly_figure(
-        ds_raw=ds_raw,
-        qubits=node.namespace["qubits"],
-        plot_configs=[power_rabi_config],
-        ds_fit=ds_fit,
-    )
+    plotly_rabi, static_rabi_fig = create_plots(ds_raw, qubits, ds_fit)
     plotly_rabi.show()
-
-    # 3. Generate static matplotlib figures
-    static_rabi_fig = create_matplotlib_figure(
-        ds_raw=ds_raw,
-        qubits=node.namespace["qubits"],
-        plot_configs=[power_rabi_config],
-        ds_fit=ds_fit,
-    )
 
     # Store interactive and static figures
     node.results["figures"] = {
         "rabi_plotly": plotly_rabi,
         "rabi": static_rabi_fig,
     }
-
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)

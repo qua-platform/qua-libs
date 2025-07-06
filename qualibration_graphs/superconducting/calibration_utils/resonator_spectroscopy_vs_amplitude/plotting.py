@@ -1,5 +1,5 @@
 import logging
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,61 +10,21 @@ from matplotlib.figure import Figure
 from plotly.graph_objs import Figure as PlotlyFigure
 from plotly.subplots import make_subplots
 from qualang_tools.units import unit
-from qualibration_libs.plotting import (PlotlyQubitGrid, QubitGrid, grid_iter,
-                                        plotly_grid_iter)
+from qualibration_libs.plotting import (
+    QubitGrid, ResonatorSpectroscopyVsAmplitudePreparator, grid_iter)
+from qualibration_libs.plotting.configs import PlotStyling
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
+styling = PlotStyling()
 
 
 # --- Constants ---
 GHZ_PER_HZ = 1e-9
 MHZ_PER_HZ = 1e-6
 
-# --- Styling ---
-# Shared
-GOOD_FIT_COLOR = "#FF0000"  # Red
-OPTIMAL_POWER_COLOR = "#FF00FF"  # Magenta
-RESONATOR_FREQ_COLOR = "#FF0000"  # Red, for freq_shift/res_freq overlays
 
-# Matplotlib
-MATPLOTLIB_FIG_WIDTH = 15
-MATPLOTLIB_FIG_HEIGHT = 9
-MATPLOTLIB_LINEWIDTH = 2
-GOOD_FIT_MARKER = "x"
-OPTIMAL_POWER_LINESTYLE = "-"
-MATPLOTLIB_RESONATOR_FREQ_LINESTYLE = "--"
-
-# Plotly
-PLOTLY_HORIZONTAL_SPACING = 0.15
-PLOTLY_VERTICAL_SPACING = 0.12
-PLOTLY_COLORSACLE = "Viridis"
-PLOTLY_COLORBAR_THICKNESS = 14
-GOOD_FIT_MARKER_SYMBOL = "x"
-GOOD_FIT_MARKER_SIZE = 8
-RESONATOR_FREQ_LINEWIDTH = 2
-PLOTLY_RESONATOR_FREQ_LINESTYLE = "dash"
-OPTIMAL_POWER_LINEWIDTH = 2
-PLOTLY_ANNOTATION_FONT_SIZE = 16
-PLOTLY_SUBPLOT_WIDTH = 400
-PLOTLY_SUBPLOT_HEIGHT = 400
-PLOTLY_MIN_WIDTH = 1000
-PLOTLY_MARGIN = {"l": 60, "r": 60, "t": 80, "b": 60}
-
-# Plotly colorbar positioning
-COLORBAR_X_OFFSET = 0.01
-COLORBAR_WIDTH = 0.02
-COLORBAR_HEIGHT_RATIO = 0.90
-
-# --- Algorithm specific ---
-# For plot_binary_resonator_dips
-BINARY_DIP_LOW_POWER_COUNT = 8
-BINARY_DIP_MIN_DIPS = 5
-BINARY_DIP_WINDOW = 2
-BINARY_DIP_CMAP = "binary"
-
-
-def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: Optional[xr.Dataset] = None):
     """
     Plots the raw data with fitted curves for the given qubits.
 
@@ -74,7 +34,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
         The dataset containing the quadrature data.
     qubits : list of AnyTransmon
         A list of qubits to plot.
-    fits : xr.Dataset
+    fits : xr.Dataset, optional
         The dataset containing the fit parameters.
 
     Returns
@@ -89,10 +49,11 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     """
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        plot_individual_raw_data_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+        fit_sel = fits.sel(qubit=qubit["qubit"]) if fits is not None else None
+        plot_individual_raw_data_with_fit(ax, ds, qubit, fit_sel)
 
     grid.fig.suptitle("Resonator spectroscopy vs power")
-    grid.fig.set_size_inches(MATPLOTLIB_FIG_WIDTH, MATPLOTLIB_FIG_HEIGHT)
+    grid.fig.set_size_inches(styling.matplotlib_fig_width, styling.matplotlib_fig_height)
     grid.fig.tight_layout()
     return grid.fig
 
@@ -106,7 +67,7 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
         add_colorbar=False,
         x="freq_GHz",
         y="power",
-        linewidth=MATPLOTLIB_LINEWIDTH,
+        linewidth=styling.matplotlib_fit_linewidth,
         zorder=1,
     )
     ax.set_xlabel("Frequency (GHz)")
@@ -122,15 +83,15 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
     if getattr(fit, "outcome", None) == "successful":
         ax2.axhline(
             y=fit.optimal_power,
-            color=OPTIMAL_POWER_COLOR,
-            linestyle=OPTIMAL_POWER_LINESTYLE,
-            linewidth=MATPLOTLIB_LINEWIDTH,
+            color=styling.optimal_power_color,
+            linestyle=styling.matplotlib_optimal_power_linestyle,
+            linewidth=styling.matplotlib_fit_linewidth,
         )
         ax2.axvline(
             x=fit.freq_shift * MHZ_PER_HZ,
-            color=RESONATOR_FREQ_COLOR,
-            linestyle=MATPLOTLIB_RESONATOR_FREQ_LINESTYLE,
-            linewidth=MATPLOTLIB_LINEWIDTH,
+            color=styling.resonator_freq_color,
+            linestyle=styling.matplotlib_resonator_freq_linestyle,
+            linewidth=styling.matplotlib_fit_linewidth,
         )
     # ax3 = ax.twinx()
     # ds.assign_coords(readout_amp=ds.detuning / u.MHz).loc[qubit].IQ_abs_norm.plot(
@@ -140,7 +101,7 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
 
 
 def plotly_plot_raw_data_with_fit(
-    ds_raw: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset
+    ds_raw: xr.Dataset, qubits: List[AnyTransmon], fits: Optional[xr.Dataset] = None
 ) -> go.Figure:
     """
     Plotly version of resonator spectroscopy vs power: one (n_powers×n_freqs) heatmap
@@ -203,7 +164,7 @@ def plotly_plot_raw_data_with_fit(
     # ----------------------------------------------------
     # 3) Build PlotlyQubitGrid to get nrows, ncols, name_dicts
     # ----------------------------------------------------
-    grid = PlotlyQubitGrid(ds2, [q.grid_location for q in qubits])
+    grid = QubitGrid(ds2, [q.grid_location for q in qubits], create_figure=False)
     ncols = grid.n_cols
     nrows = grid.n_rows
     subplot_titles = grid.get_subplot_titles()
@@ -215,8 +176,8 @@ def plotly_plot_raw_data_with_fit(
         rows=nrows,
         cols=ncols,
         subplot_titles=subplot_titles,
-        horizontal_spacing=PLOTLY_HORIZONTAL_SPACING,
-        vertical_spacing=PLOTLY_VERTICAL_SPACING,
+        horizontal_spacing=styling.plotly_horizontal_spacing,
+        vertical_spacing=styling.plotly_vertical_spacing,
         shared_xaxes=False,
         shared_yaxes=False,
     )
@@ -244,7 +205,7 @@ def plotly_plot_raw_data_with_fit(
     q_labels = list(ds2.qubit.values)  # e.g. ["qC1", "qC2", "qC3"]
     heatmap_info: List[Tuple[int, int, int]] = []
 
-    for idx, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+    for idx, ((grid_row, grid_col), name_dict) in enumerate(grid.plotly_grid_iter()):
         row = grid_row + 1  # Convert to 1-based indexing for Plotly
         col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
@@ -286,7 +247,7 @@ def plotly_plot_raw_data_with_fit(
                 x=freq_vals,
                 y=power_vals,
                 customdata=det2d,
-                colorscale=PLOTLY_COLORSACLE,
+                colorscale=styling.heatmap_colorscale,
                 zmin=zmin_i,
                 zmax=zmax_i,
                 showscale=False,
@@ -294,7 +255,7 @@ def plotly_plot_raw_data_with_fit(
                     x=1.0,  # placeholder (we'll move below)
                     y=0.5,
                     len=1.0,
-                    thickness=PLOTLY_COLORBAR_THICKNESS,
+                    thickness=styling.plotly_colorbar_thickness,
                     xanchor="left",
                     yanchor="middle",
                     ticks="outside",
@@ -316,8 +277,8 @@ def plotly_plot_raw_data_with_fit(
         heatmap_info.append((heatmap_idx, row, col))
 
         # (f) Overlay the fit if success=True:
-        fit_ds = fits.sel(qubit=qubit_id)
-        if "outcome" in fit_ds.coords and fit_ds.outcome == "successful":
+        fit_ds = fits.sel(qubit=qubit_id) if fits is not None else None
+        if fit_ds is not None and "outcome" in fit_ds.coords and fit_ds.outcome == "successful":
             res_GHz = float(fit_ds.res_freq.values) * GHZ_PER_HZ
             fig.add_trace(
                 go.Scatter(
@@ -325,7 +286,7 @@ def plotly_plot_raw_data_with_fit(
                     y=[power_vals.min(), power_vals.max()],
                     mode="lines",
                     line=dict(
-                        color=RESONATOR_FREQ_COLOR, width=RESONATOR_FREQ_LINEWIDTH, dash=PLOTLY_RESONATOR_FREQ_LINESTYLE
+                        color=styling.resonator_freq_color, width=styling.plotly_resonator_freq_linewidth, dash=styling.plotly_resonator_freq_linestyle
                     ),
                     showlegend=False,
                     hoverinfo="skip",
@@ -339,7 +300,7 @@ def plotly_plot_raw_data_with_fit(
                     x=[freq_vals.min(), freq_vals.max()],
                     y=[opt_pwr, opt_pwr],
                     mode="lines",
-                    line=dict(color=OPTIMAL_POWER_COLOR, width=OPTIMAL_POWER_LINEWIDTH),
+                    line=dict(color=styling.optimal_power_color, width=styling.plotly_optimal_power_linewidth),
                     showlegend=False,
                     hoverinfo="skip",
                 ),
@@ -351,7 +312,7 @@ def plotly_plot_raw_data_with_fit(
         fig.update_xaxes(title_text="Frequency (GHz)", row=row, col=col)
         fig.update_yaxes(title_text="Power (dBm)", row=row, col=col)
         if idx < len(fig.layout.annotations):
-            fig.layout.annotations[idx]["font"] = dict(size=PLOTLY_ANNOTATION_FONT_SIZE)
+            fig.layout.annotations[idx]["font"] = dict(size=styling.plotly_annotation_font_size)
 
     # ----------------------------------------------------
     # 7) Reposition each colorbar so it doesn't overlap
@@ -365,11 +326,11 @@ def plotly_plot_raw_data_with_fit(
         y_dom = fig.layout[yaxis_key].domain
 
         # Move bar right by +0.03, width = 0.02, height = 90% of subplot
-        x0_cb = x_dom[1] + COLORBAR_X_OFFSET
-        x1_cb = x0_cb + COLORBAR_WIDTH
+        x0_cb = x_dom[1] + styling.plotly_colorbar_x_offset
+        x1_cb = x0_cb + styling.plotly_colorbar_width
         y0 = y_dom[0]
         y1 = y_dom[1]
-        bar_len = (y1 - y0) * COLORBAR_HEIGHT_RATIO
+        bar_len = (y1 - y0) * styling.plotly_colorbar_height_ratio
         bar_center_y = (y0 + y1) / 2
 
         hm_trace = fig.data[hm_idx]
@@ -378,7 +339,7 @@ def plotly_plot_raw_data_with_fit(
                 "x": x0_cb,
                 "y": bar_center_y,
                 "len": bar_len,
-                "thickness": PLOTLY_COLORBAR_THICKNESS,
+                "thickness": styling.plotly_colorbar_thickness,
                 "xanchor": "left",
                 "yanchor": "middle",
                 "ticks": "outside",
@@ -391,9 +352,9 @@ def plotly_plot_raw_data_with_fit(
     # 8) Final layout tweaks: set size & margins
     # ----------------------------------------------------
     fig.update_layout(
-        width=max(PLOTLY_MIN_WIDTH, PLOTLY_SUBPLOT_WIDTH * ncols),
-        height=PLOTLY_SUBPLOT_HEIGHT * nrows,
-        margin=PLOTLY_MARGIN,
+        width=max(styling.plotly_min_width, styling.plotly_subplot_width * ncols),
+        height=styling.plotly_subplot_height * nrows,
+        margin=styling.plotly_margin,
         title_text="Resonator Spectroscopy: Power vs Frequency (with fits)",
         showlegend=False,
     )
@@ -449,7 +410,7 @@ def plotly_plot_raw_data(ds: xr.Dataset, qubits: List[AnyTransmon]) -> go.Figure
     # ----------------------------------------------------
     # 2) Build PlotlyQubitGrid to figure out grid shape & ordering
     # ----------------------------------------------------
-    grid = PlotlyQubitGrid(ds, [q.grid_location for q in qubits])
+    grid = QubitGrid(ds, [q.grid_location for q in qubits], create_figure=False)
     ncols = grid.n_cols
     nrows = grid.n_rows
     subplot_titles = grid.get_subplot_titles()
@@ -461,8 +422,8 @@ def plotly_plot_raw_data(ds: xr.Dataset, qubits: List[AnyTransmon]) -> go.Figure
         rows=nrows,
         cols=ncols,
         subplot_titles=subplot_titles,
-        horizontal_spacing=PLOTLY_HORIZONTAL_SPACING,
-        vertical_spacing=PLOTLY_VERTICAL_SPACING,
+        horizontal_spacing=styling.plotly_horizontal_spacing,
+        vertical_spacing=styling.plotly_vertical_spacing,
         shared_xaxes=False,
         shared_yaxes=False,
     )
@@ -488,7 +449,7 @@ def plotly_plot_raw_data(ds: xr.Dataset, qubits: List[AnyTransmon]) -> go.Figure
     # ----------------------------------------------------
     # 5) Loop over each subplot and add a Heatmap + correctly positioned colorbar
     # ----------------------------------------------------
-    for idx, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+    for idx, ((grid_row, grid_col), name_dict) in enumerate(grid.plotly_grid_iter()):
         row = grid_row + 1  # Convert to 1-based indexing for Plotly
         col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
@@ -529,7 +490,7 @@ def plotly_plot_raw_data(ds: xr.Dataset, qubits: List[AnyTransmon]) -> go.Figure
                 x=freq_vals,
                 y=power_vals,
                 customdata=det2d,
-                colorscale=PLOTLY_COLORSACLE,
+                colorscale=styling.heatmap_colorscale,
                 zmin=zmin_i,
                 zmax=zmax_i,
                 showscale=False,
@@ -537,7 +498,7 @@ def plotly_plot_raw_data(ds: xr.Dataset, qubits: List[AnyTransmon]) -> go.Figure
                     x=1.0,  # placeholder, will be overwritten
                     y=0.5,
                     len=1.0,
-                    thickness=PLOTLY_COLORBAR_THICKNESS,
+                    thickness=styling.plotly_colorbar_thickness,
                     xanchor="left",
                     yanchor="middle",
                     ticks="outside",
@@ -562,7 +523,7 @@ def plotly_plot_raw_data(ds: xr.Dataset, qubits: List[AnyTransmon]) -> go.Figure
         fig.update_xaxes(title_text="Frequency (GHz)", row=row, col=col)
         fig.update_yaxes(title_text="Power (dBm)", row=row, col=col)
         if idx < len(fig.layout.annotations):
-            fig.layout.annotations[idx]["font"] = dict(size=PLOTLY_ANNOTATION_FONT_SIZE)
+            fig.layout.annotations[idx]["font"] = dict(size=styling.plotly_annotation_font_size)
 
     # ----------------------------------------------------
     # 6) Reposition each colorbar so it sits to the right of its subplot
@@ -578,11 +539,11 @@ def plotly_plot_raw_data(ds: xr.Dataset, qubits: List[AnyTransmon]) -> go.Figure
         y_dom = fig.layout[yaxis_key].domain  # [y_start, y_end]
 
         # Place the colorbar just to the right of x_end by +0.03 of the figure's width
-        x0_cb = x_dom[1] + COLORBAR_X_OFFSET
-        x1_cb = x0_cb + COLORBAR_WIDTH  # bar width = 2% of figure width
+        x0_cb = x_dom[1] + styling.plotly_colorbar_x_offset
+        x1_cb = x0_cb + styling.plotly_colorbar_width  # bar width = 2% of figure width
         y0 = y_dom[0]
         y1 = y_dom[1]
-        bar_len = (y1 - y0) * COLORBAR_HEIGHT_RATIO  # 90% of subplot's vertical span
+        bar_len = (y1 - y0) * styling.plotly_colorbar_height_ratio  # 90% of subplot's vertical span
         bar_center_y = (y0 + y1) / 2
 
         hm_trace = fig.data[idx]  # this subplot's heatmap trace
@@ -591,7 +552,7 @@ def plotly_plot_raw_data(ds: xr.Dataset, qubits: List[AnyTransmon]) -> go.Figure
                 "x": x0_cb,
                 "y": bar_center_y,
                 "len": bar_len,
-                "thickness": PLOTLY_COLORBAR_THICKNESS,
+                "thickness": styling.plotly_colorbar_thickness,
                 "xanchor": "left",
                 "yanchor": "middle",
                 "ticks": "outside",
@@ -603,11 +564,49 @@ def plotly_plot_raw_data(ds: xr.Dataset, qubits: List[AnyTransmon]) -> go.Figure
     # 7) Final layout tweaks: set figure size & margins
     # ----------------------------------------------------
     fig.update_layout(
-        width=max(PLOTLY_MIN_WIDTH, PLOTLY_SUBPLOT_WIDTH * ncols),  # ensure at least 1000px wide
-        height=PLOTLY_SUBPLOT_HEIGHT * nrows,  # 400px per row
-        margin=PLOTLY_MARGIN,
+        width=max(styling.plotly_min_width, styling.plotly_subplot_width * ncols),  # ensure at least 1000px wide
+        height=styling.plotly_subplot_height * nrows,  # 400px per row
+        margin=styling.plotly_margin,
         title_text="Resonator Spectroscopy: Power vs Frequency",
         showlegend=False,
     )
 
     return fig
+
+
+# -----------------------------------------------------------------------------
+# Public wrapper functions expected by the refactor
+# -----------------------------------------------------------------------------
+
+
+def create_matplotlib_plot(
+    ds_raw_prep: xr.Dataset,
+    qubits: List[AnyTransmon],
+    ds_fit_prep: Optional[xr.Dataset] = None,
+) -> Figure:
+    """Return a Matplotlib figure for a Resonator-Spectroscopy-vs-Amplitude dataset (raw + optional fit)."""
+
+    return plot_raw_data_with_fit(ds_raw_prep, qubits, ds_fit_prep)
+
+
+def create_plotly_plot(
+    ds_raw_prep: xr.Dataset,
+    qubits: List[AnyTransmon],
+    ds_fit_prep: Optional[xr.Dataset] = None,
+) -> go.Figure:
+    """Return a Plotly figure for a Resonator-Spectroscopy-vs-Amplitude dataset (raw + optional fit)."""
+
+    return plotly_plot_raw_data_with_fit(ds_raw_prep, qubits, ds_fit_prep)
+
+
+def create_plots(
+    ds_raw: xr.Dataset,
+    qubits: List[AnyTransmon],
+    ds_fit: Optional[xr.Dataset] = None,
+) -> tuple[go.Figure, Figure]:
+    """Convenience helper that returns (plotly_fig, matplotlib_fig)."""
+
+    ds_raw_prep, ds_fit_prep = ResonatorSpectroscopyVsAmplitudePreparator(ds_raw, ds_fit, qubits=qubits).prepare()
+    plotly_fig = plotly_plot_raw_data_with_fit(ds_raw_prep, qubits, ds_fit_prep)
+    matplotlib_fig = plot_raw_data_with_fit(ds_raw_prep, qubits, ds_fit_prep)
+    return plotly_fig, matplotlib_fig

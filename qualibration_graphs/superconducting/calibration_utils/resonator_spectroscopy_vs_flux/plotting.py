@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,50 +8,22 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from plotly.subplots import make_subplots
 from qualang_tools.units import unit
-from qualibration_libs.plotting import (PlotlyQubitGrid, QubitGrid, grid_iter,
-                                        plotly_grid_iter)
+from qualibration_libs.plotting import (QubitGrid,
+                                        ResonatorSpectroscopyVsFluxPreparator,
+                                        grid_iter)
+from qualibration_libs.plotting.configs import PlotStyling
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
+styling = PlotStyling()
 
 
 # --- Constants ---
 GHZ_PER_HZ = 1e-9
 MHZ_PER_HZ = 1e-6
 
-# Matplotlib styling
-MATPLOTLIB_FIG_WIDTH = 15
-MATPLOTLIB_FIG_HEIGHT = 9
-IDLE_OFFSET_COLOR = "#FF0000"  # Red
-IDLE_OFFSET_LINESTYLE = "dashed"
-IDLE_OFFSET_LINEWIDTH = 2.5
-MIN_OFFSET_COLOR = "#800080"  # Purple
-SWEET_SPOT_MARKER = "*"
-SWEET_SPOT_COLOR = "#FF00FF"  # Magenta
-SWEET_SPOT_MARKERSIZE = 18
 
-# Plotly styling
-PLOTLY_HORIZONTAL_SPACING = 0.25
-PLOTLY_VERTICAL_SPACING = 0.12
-PLOTLY_COLORSACLE = "Viridis"
-PLOTLY_COLORBAR_THICKNESS = 14
-PLOTLY_FIT_LINE_WIDTH = 2.5
-PLOTLY_FIT_LINE_STYLE = "dash"
-PLOTLY_SWEET_SPOT_MARKER_SYMBOL = "x"
-PLOTLY_SWEET_SPOT_MARKER_SIZE = 15
-PLOTLY_ANNOTATION_FONT_SIZE = 16
-PLOTLY_SUBPLOT_WIDTH = 400
-PLOTLY_SUBPLOT_HEIGHT = 400
-PLOTLY_MIN_WIDTH = 1000
-PLOTLY_MARGIN = {"l": 60, "r": 60, "t": 80, "b": 60}
-
-# Plotly colorbar positioning
-COLORBAR_X_OFFSET = 0.03
-COLORBAR_WIDTH = 0.02
-COLORBAR_HEIGHT_RATIO = 0.90
-
-
-def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: Optional[xr.Dataset] = None):
     """
     Plots the raw data with fitted curves for the given qubits.
 
@@ -61,8 +33,8 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
         The dataset containing the quadrature data.
     qubits : list of AnyTransmon
         A list of qubits to plot.
-    fits : xr.Dataset
-        The dataset containing the fit parameters.
+    fits : xr.Dataset, optional
+        The dataset containing the fit parameters (default is None).
 
     Returns
     -------
@@ -76,10 +48,11 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     """
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        plot_individual_raw_data_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+        fit_sel = fits.sel(qubit=qubit["qubit"]) if fits is not None else None
+        plot_individual_raw_data_with_fit(ax, ds, qubit, fit_sel)
 
     grid.fig.suptitle("Resonator spectroscopy vs flux")
-    grid.fig.set_size_inches(MATPLOTLIB_FIG_WIDTH, MATPLOTLIB_FIG_HEIGHT)
+    grid.fig.set_size_inches(styling.matplotlib_fig_width, styling.matplotlib_fig_height)
     grid.fig.tight_layout()
     return grid.fig
 
@@ -123,28 +96,28 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
     (ds.assign_coords(freq_GHz=ds.full_freq * GHZ_PER_HZ).loc[qubit].IQ_abs).plot(
         ax=ax, add_colorbar=False, x="flux_bias", y="freq_GHz", robust=True
     )
-    if hasattr(fit, "outcome") and fit.outcome.values == "successful":
+    if fit is not None and hasattr(fit, "outcome") and fit.outcome.values == "successful":
         ax.axvline(
             fit.fit_results.idle_offset,
-            linestyle=IDLE_OFFSET_LINESTYLE,
-            linewidth=IDLE_OFFSET_LINEWIDTH,
-            color=IDLE_OFFSET_COLOR,
+            linestyle=styling.matplotlib_idle_offset_linestyle,
+            linewidth=styling.matplotlib_idle_offset_linewidth,
+            color=styling.idle_offset_color,
             label="idle offset",
         )
         ax.axvline(
             fit.fit_results.flux_min,
-            linestyle=IDLE_OFFSET_LINESTYLE,
-            linewidth=IDLE_OFFSET_LINEWIDTH,
-            color=MIN_OFFSET_COLOR,
+            linestyle=styling.matplotlib_idle_offset_linestyle,
+            linewidth=styling.matplotlib_idle_offset_linewidth,
+            color=styling.min_offset_color,
             label="min offset",
         )
         # Location of the current resonator frequency
         ax.plot(
             fit.fit_results.idle_offset.values,
             fit.fit_results.sweet_spot_frequency.values * GHZ_PER_HZ,
-            marker=SWEET_SPOT_MARKER,
-            color=SWEET_SPOT_COLOR,
-            markersize=SWEET_SPOT_MARKERSIZE,
+            marker=styling.matplotlib_sweet_spot_marker,
+            color=styling.sweet_spot_color,
+            markersize=styling.matplotlib_sweet_spot_markersize,
             linestyle="None",
         )
     ax.set_title(qubit["qubit"])
@@ -154,7 +127,7 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
 def plotly_plot_raw_data_with_fit(
     ds_raw: xr.Dataset,
     qubits:  List[AnyTransmon],
-    fits:    xr.Dataset
+    fits:    Optional[xr.Dataset] = None
 ) -> go.Figure:
     """
     Plotly version of resonator spectroscopy vs flux (with fits).  Each subplot:
@@ -213,7 +186,7 @@ def plotly_plot_raw_data_with_fit(
     n_qubits, n_freqs, n_flux = IQ_array.shape
 
     # 3) Build PlotlyQubitGrid → get nrows, ncols, name_dicts
-    grid = PlotlyQubitGrid(ds2, [q.grid_location for q in qubits])
+    grid = QubitGrid(ds2, [q.grid_location for q in qubits], create_figure=False)
     ncols = grid.n_cols
     nrows = grid.n_rows
     subplot_titles = grid.get_subplot_titles()
@@ -223,8 +196,8 @@ def plotly_plot_raw_data_with_fit(
         rows               = nrows,
         cols               = ncols,
         subplot_titles     = subplot_titles,
-        horizontal_spacing = PLOTLY_HORIZONTAL_SPACING,  # ~15% for colorbars/overlays
-        vertical_spacing   = PLOTLY_VERTICAL_SPACING,  # ~12% gap between rows
+        horizontal_spacing = styling.plotly_horizontal_spacing,
+        vertical_spacing   = styling.plotly_vertical_spacing,
         shared_xaxes       = False,
         shared_yaxes       = False
     )
@@ -260,7 +233,7 @@ def plotly_plot_raw_data_with_fit(
     overlay_types = []
     overlay_trace_idxs = []
 
-    for idx, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+    for idx, ((grid_row, grid_col), name_dict) in enumerate(grid.plotly_grid_iter()):
         row = grid_row + 1  # Convert to 1-based indexing for Plotly
         col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
@@ -307,7 +280,7 @@ def plotly_plot_raw_data_with_fit(
                 x             = flux_vals,
                 y             = freq_vals,
                 customdata    = customdata,
-                colorscale    = PLOTLY_COLORSACLE,
+                colorscale    = styling.heatmap_colorscale,
                 zmin          = zmin_i,
                 zmax          = zmax_i,
                 showscale     = True,
@@ -315,7 +288,7 @@ def plotly_plot_raw_data_with_fit(
                     x         = 1.0,
                     y         = 0.5,
                     len       = 1.0,
-                    thickness = PLOTLY_COLORBAR_THICKNESS,
+                    thickness = styling.plotly_colorbar_thickness,
                     xanchor   = "left",
                     yanchor   = "middle",
                     ticks     = "outside",
@@ -337,8 +310,8 @@ def plotly_plot_raw_data_with_fit(
         heatmap_info.append((heatmap_idx, row, col))
 
         # (h) Overlay the fit if success=True
-        fit_ds = fits.sel(qubit=qubit_id)
-        if "outcome" in fit_ds.coords and fit_ds.outcome.values == "successful":
+        fit_ds = fits.sel(qubit=qubit_id) if fits is not None else None
+        if fit_ds is not None and "outcome" in fit_ds.coords and fit_ds.outcome.values == "successful":
             # pull from fit_results
             flux_offset = float(fit_ds.fit_results.idle_offset.values)
             min_offset = float(fit_ds.fit_results.flux_min.values)
@@ -357,9 +330,9 @@ def plotly_plot_raw_data_with_fit(
                     y          = [sweet_spot],
                     mode       = "markers",
                     marker     = dict(
-                        symbol=PLOTLY_SWEET_SPOT_MARKER_SYMBOL,
-                        color=SWEET_SPOT_COLOR,
-                        size=PLOTLY_SWEET_SPOT_MARKER_SIZE,
+                        symbol=styling.plotly_sweet_spot_marker_symbol,
+                        color=styling.sweet_spot_color,
+                        size=styling.plotly_sweet_spot_marker_size,
                     ),
                     showlegend = False,
                     hoverinfo  = "skip"
@@ -376,7 +349,7 @@ def plotly_plot_raw_data_with_fit(
                     y          = [freq_vals.min(), freq_vals.max()],
                     mode       = "lines",
                     line       = dict(
-                        color=IDLE_OFFSET_COLOR, width=PLOTLY_FIT_LINE_WIDTH, dash=PLOTLY_FIT_LINE_STYLE
+                        color=styling.idle_offset_color, width=styling.plotly_fit_linewidth, dash=styling.plotly_fit_linestyle
                     ),
                     showlegend = False,
                     hoverinfo  = "skip"
@@ -393,7 +366,7 @@ def plotly_plot_raw_data_with_fit(
                     y          = [freq_vals.min(), freq_vals.max()],
                     mode       = "lines",
                     line       = dict(
-                        color=MIN_OFFSET_COLOR, width=PLOTLY_FIT_LINE_WIDTH, dash=PLOTLY_FIT_LINE_STYLE
+                        color=styling.min_offset_color, width=styling.plotly_fit_linewidth, dash=styling.plotly_fit_linestyle
                     ),
                     showlegend = False,
                     hoverinfo  = "skip"
@@ -411,7 +384,7 @@ def plotly_plot_raw_data_with_fit(
         # (i) Tidy axis titles & annotation font
         fig.update_xaxes(title_text="Flux bias [V]",        row=row, col=col)
         fig.update_yaxes(title_text="RF frequency [GHz]",    row=row, col=col)
-        fig.layout.annotations[idx]["font"] = dict(size=PLOTLY_ANNOTATION_FONT_SIZE)
+        fig.layout.annotations[idx]["font"] = dict(size=styling.plotly_annotation_font_size)
 
         # Save for toggling
         x_flux_list.append(flux_vals)
@@ -437,11 +410,11 @@ def plotly_plot_raw_data_with_fit(
         x_dom = fig.layout[xaxis_key].domain
         y_dom = fig.layout[yaxis_key].domain
 
-        x0_cb        = x_dom[1] + COLORBAR_X_OFFSET
-        x1_cb        = x0_cb + COLORBAR_WIDTH  # bar width = 2% of figure width
+        x0_cb        = x_dom[1] + styling.plotly_colorbar_x_offset
+        x1_cb        = x0_cb + styling.plotly_colorbar_width  # bar width = 2% of figure width
         y0           = y_dom[0]
         y1           = y_dom[1]
-        bar_len      = (y1 - y0) * COLORBAR_HEIGHT_RATIO  # 90% of subplot height
+        bar_len      = (y1 - y0) * styling.plotly_colorbar_height_ratio  # 90% of subplot height
         bar_center_y = (y0 + y1) / 2
 
         hm_trace = fig.data[hm_idx]
@@ -449,7 +422,7 @@ def plotly_plot_raw_data_with_fit(
             "x"                   : x0_cb,
             "y"                   : bar_center_y,
             "len"                 : bar_len,
-            "thickness"           : PLOTLY_COLORBAR_THICKNESS,
+            "thickness"           : styling.plotly_colorbar_thickness,
             "xanchor"             : "left",
             "yanchor"             : "middle",
             "ticks"               : "outside",
@@ -458,9 +431,9 @@ def plotly_plot_raw_data_with_fit(
 
     # 8) Final layout tweaks: size & margins
     fig.update_layout(
-        width       = max(PLOTLY_MIN_WIDTH, PLOTLY_SUBPLOT_WIDTH * ncols),
-        height      = PLOTLY_SUBPLOT_HEIGHT * nrows,
-        margin      = PLOTLY_MARGIN,
+        width       = max(styling.plotly_min_width, styling.plotly_subplot_width * ncols),
+        height      = styling.plotly_subplot_height * nrows,
+        margin      = styling.plotly_margin,
         title_text  = "Resonator Spectroscopy: Flux vs Frequency (with fits)",
         showlegend  = False
     )
@@ -515,7 +488,7 @@ def plotly_plot_raw_data(
     n_qubits, n_freqs, n_flux = IQ_array.shape
 
     # 2) Build PlotlyQubitGrid for arrangement
-    grid = PlotlyQubitGrid(ds, [q.grid_location for q in qubits])
+    grid = QubitGrid(ds, [q.grid_location for q in qubits], create_figure=False)
     ncols = grid.n_cols
     nrows = grid.n_rows
     subplot_titles = grid.get_subplot_titles()
@@ -525,8 +498,8 @@ def plotly_plot_raw_data(
         rows               = nrows,
         cols               = ncols,
         subplot_titles     = subplot_titles,
-        horizontal_spacing = PLOTLY_HORIZONTAL_SPACING,
-        vertical_spacing   = PLOTLY_VERTICAL_SPACING,
+        horizontal_spacing = styling.plotly_horizontal_spacing,
+        vertical_spacing   = styling.plotly_vertical_spacing,
         shared_xaxes       = False,
         shared_yaxes       = False
     )
@@ -553,7 +526,7 @@ def plotly_plot_raw_data(
     y_vals_list = []
     z_mats_list = []
     customdatas_list = []
-    for idx, ((grid_row, grid_col), name_dict) in enumerate(plotly_grid_iter(grid)):
+    for idx, ((grid_row, grid_col), name_dict) in enumerate(grid.plotly_grid_iter()):
         row = grid_row + 1  # Convert to 1-based indexing for Plotly
         col = grid_col + 1  # Convert to 1-based indexing for Plotly
         qubit_id = list(name_dict.values())[0]
@@ -590,7 +563,7 @@ def plotly_plot_raw_data(
                 x             = freq_vals,
                 y             = flux_vals,
                 customdata    = current2d,
-                colorscale    = PLOTLY_COLORSACLE,
+                colorscale    = styling.heatmap_colorscale,
                 zmin          = zmin_i,
                 zmax          = zmax_i,
                 showscale     = True,
@@ -598,7 +571,7 @@ def plotly_plot_raw_data(
                     x         = 1.0,
                     y         = 0.5,
                     len       = 1.0,
-                    thickness = PLOTLY_COLORBAR_THICKNESS,
+                    thickness = styling.plotly_colorbar_thickness,
                     xanchor   = "left",
                     yanchor   = "middle",
                     ticks     = "outside",
@@ -618,7 +591,7 @@ def plotly_plot_raw_data(
 
         fig.update_xaxes(title_text="RF frequency [GHz]", row=row, col=col)
         fig.update_yaxes(title_text="Flux bias [V]",       row=row, col=col)
-        fig.layout.annotations[idx]["font"] = dict(size=PLOTLY_ANNOTATION_FONT_SIZE)
+        fig.layout.annotations[idx]["font"] = dict(size=styling.plotly_annotation_font_size)
 
         # Save for toggling
         x_flux_list.append(flux_vals)
@@ -643,11 +616,11 @@ def plotly_plot_raw_data(
         x_dom = fig.layout[xaxis_key].domain
         y_dom = fig.layout[yaxis_key].domain
 
-        x0_cb        = x_dom[1] + COLORBAR_X_OFFSET
-        x1_cb        = x0_cb + COLORBAR_WIDTH
+        x0_cb        = x_dom[1] + styling.plotly_colorbar_x_offset
+        x1_cb        = x0_cb + styling.plotly_colorbar_width
         y0           = y_dom[0]
         y1           = y_dom[1]
-        bar_len      = (y1 - y0) * COLORBAR_HEIGHT_RATIO
+        bar_len      = (y1 - y0) * styling.plotly_colorbar_height_ratio
         bar_center_y = (y0 + y1) / 2
 
         hm_trace = fig.data[idx]
@@ -655,7 +628,7 @@ def plotly_plot_raw_data(
             "x"                   : x0_cb,
             "y"                   : bar_center_y,
             "len"                 : bar_len,
-            "thickness"           : PLOTLY_COLORBAR_THICKNESS,
+            "thickness"           : styling.plotly_colorbar_thickness,
             "xanchor"             : "left",
             "yanchor"             : "middle",
             "ticks"               : "outside",
@@ -664,11 +637,47 @@ def plotly_plot_raw_data(
 
     # 7) Final layout tweaks
     fig.update_layout(
-        width       = max(PLOTLY_MIN_WIDTH, PLOTLY_SUBPLOT_WIDTH * ncols),
-        height      = PLOTLY_SUBPLOT_HEIGHT * nrows,
-        margin      = PLOTLY_MARGIN,
+        width       = max(styling.plotly_min_width, styling.plotly_subplot_width * ncols),
+        height      = styling.plotly_subplot_height * nrows,
+        margin      = styling.plotly_margin,
         title_text  = "Resonator Spectroscopy: Flux vs Frequency",
         showlegend  = False
     )
 
     return fig
+
+# -----------------------------------------------------------------------------
+# Public wrapper functions expected by the refactor
+# -----------------------------------------------------------------------------
+
+
+def create_matplotlib_plot(
+    ds_raw_prep: xr.Dataset,
+    qubits: List[AnyTransmon],
+    ds_fit_prep: Optional[xr.Dataset] = None,
+) -> Figure:
+    """Return a Matplotlib figure for a Resonator-Spectroscopy-vs-Flux dataset (raw + optional fit)."""
+    return plot_raw_data_with_fit(ds_raw_prep, qubits, ds_fit_prep)
+
+
+def create_plotly_plot(
+    ds_raw_prep: xr.Dataset,
+    qubits: List[AnyTransmon],
+    ds_fit_prep: Optional[xr.Dataset] = None,
+) -> go.Figure:
+    """Return a Plotly figure for a Resonator-Spectroscopy-vs-Flux dataset (raw + optional fit)."""
+
+    return plotly_plot_raw_data_with_fit(ds_raw_prep, qubits, ds_fit_prep)
+
+
+def create_plots(
+    ds_raw: xr.Dataset,
+    qubits: List[AnyTransmon],
+    ds_fit: Optional[xr.Dataset] = None,
+) -> tuple[go.Figure, Figure]:
+    """Convenience helper that returns (plotly_fig, matplotlib_fig)."""
+
+    ds_raw_prep, ds_fit_prep = ResonatorSpectroscopyVsFluxPreparator(ds_raw, ds_fit, qubits=qubits).prepare()
+    plotly_fig = plotly_plot_raw_data_with_fit(ds_raw_prep, qubits, ds_fit_prep)
+    matplotlib_fig = plot_raw_data_with_fit(ds_raw_prep, qubits, ds_fit_prep)
+    return plotly_fig, matplotlib_fig
