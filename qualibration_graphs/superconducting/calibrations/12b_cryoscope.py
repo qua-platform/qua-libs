@@ -123,7 +123,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         if node.parameters.use_state_discrimination:
             state = [declare(int) for _ in range(num_qubits)]
             state_st = [declare_stream() for _ in range(num_qubits)]
-        t = declare(int)  # QUA variable for the flux pulse segment index
         state = [declare(int) for _ in range(num_qubits)]
         state_st = [declare_stream() for _ in range(num_qubits)]
         t_left_ns = declare(int)  # QUA variable for the flux pulse segment index
@@ -142,8 +141,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(n, n_st)
 
                 with for_(idx, 1, idx <= cryoscope_len, idx + 1):
-                    # Alternate between X/2 and Y/2 pulses
-                    # for tomography in ['x90', 'y90']:
                     with for_each_(frame, frames):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
