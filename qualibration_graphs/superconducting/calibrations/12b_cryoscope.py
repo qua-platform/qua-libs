@@ -66,7 +66,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.load_data_id = 1289
     pass
 
 
@@ -86,7 +85,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     n_avg = node.parameters.num_shots  # The number of averages
     cryoscope_len = node.parameters.cryoscope_len  # The length of the cryoscope in nanoseconds
-    amplitude_factor = node.parameters.amp_factor  # The amplitude factor for the flux pulse
+
+    # Absolute amplitude of the Cryoscope pulse
+    amplitude = float(np.sqrt(-node.parameters.detuning_target_in_MHz * 1e6 / qubits[0].freq_vs_flux_01_quad_term))
 
     cryoscope_time = np.arange(1, cryoscope_len + 1, 1)  # x-axis for plotting - must be in ns
 
@@ -109,7 +110,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         return pulse_segments
 
-    baked_signals = {qubit.name: baked_waveform(amplitude_factor, qubit) for qubit in qubits}
+    baked_signals = {qubit.name: baked_waveform(amplitude, qubit) for qubit in qubits}
 
     node.namespace["baked_config"] = baked_config
 
@@ -172,7 +173,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                         qubit.z.play(
                                             "const",
                                             duration=t_cycles,
-                                            amplitude_scale=amplitude_factor / qubit.z.operations["const"].amplitude,
+                                            amplitude_scale=amplitude / qubit.z.operations["const"].amplitude,
                                         )
                                         qubit.xy.wait((cryoscope_len + 16) // 4)
                                         qubit.xy.frame_rotation_2pi(frame)
@@ -186,8 +187,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                             qubit.z.play(
                                                 "const",
                                                 duration=t_cycles,
-                                                amplitude_scale=amplitude_factor
-                                                / qubit.z.operations["const"].amplitude,
+                                                amplitude_scale=amplitude / qubit.z.operations["const"].amplitude,
                                             )
                                             baked_signals[qubit.name][j - 1].run()
                                             qubit.xy.wait((cryoscope_len + 16) // 4)
@@ -268,7 +268,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
-    node.parameters.exp_1_tau_guess = 10
 
 
 # %% {Analyse_data}

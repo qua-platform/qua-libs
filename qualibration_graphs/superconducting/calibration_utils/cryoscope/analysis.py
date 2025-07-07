@@ -228,7 +228,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
         fit1_success = False
         print("single exp fit failed with error:\n", e)
     try:
-        p0 = [fit[0], fit[1], 5, fit[1], fit[2]]
+        p0 = [fit[0], fit[1], initial_guess_tau, fit[1], fit[2]]
         fit2, _ = curve_fit(two_expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit=qubit).values, p0=p0)
         fit2_success = True
     except Exception as e:
