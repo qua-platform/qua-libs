@@ -1,16 +1,14 @@
+from dataclasses import dataclass
+from typing import Optional
+
 import matplotlib.pylab as plt
 import numpy as np
-from quam.components.quantum_components import qubit
 import xarray as xr
 from qualibrate import QualibrationNode
-from qualibration_libs.data.processing import _apply_angle
 from qualibration_libs.analysis import fit_oscillation, unwrap_phase
-from scipy.optimize import minimize
-from scipy.signal import deconvolve, savgol_filter
 from qualibration_libs.data import convert_IQ_to_V
 from scipy.optimize import curve_fit, minimize
-
-
+from scipy.signal import deconvolve, savgol_filter
 
 
 def transform_to_circle(x, y):
@@ -41,23 +39,9 @@ def transform_to_circle(x, y):
     cx_circle = cx_fit
     cy_circle = cy_fit
 
-    # Generate points for the fitted ellipse
-    theta = np.linspace(0, 2 * np.pi, 100)
-    ellipse_x = a_fit * np.cos(theta)
-    ellipse_y = b_fit * np.sin(theta)
-
     # Rotate the ellipse points
     cos_angle = np.cos(angle_fit)
     sin_angle = np.sin(angle_fit)
-    x_ellipse_rot = cos_angle * ellipse_x - sin_angle * ellipse_y + cx_fit
-    y_ellipse_rot = sin_angle * ellipse_x + cos_angle * ellipse_y + cy_fit
-
-    # # Plot the original data points
-    # plt.scatter(x, y, label='Data Points')
-
-    # # Plot the fitted ellipse
-    # plt.plot(x_ellipse_rot, y_ellipse_rot, color='r', label='Fitted Ellipse')
-    # plt.show()
 
     # Apply transform to xy points
     # Step 1: Rotate the original points to align with the ellipse's axes
@@ -89,22 +73,19 @@ def diff_savgol(da, dim, range=3, order=2):
     return xr.apply_ufunc(diff_func, da, input_core_dims=[[dim]], output_core_dims=[[dim]])
 
 
-def cryoscope_frequency(ds, stable_time_indices, quad_term=-1, sg_range=3, sg_order=2, plot=False):
+def cryoscope_frequency(ds, stable_time_indices, quad_term=-1, sg_range=3, sg_order=2):
     ds = ds.copy()
 
     freq_cryoscope = diff_savgol(ds, "time", range=sg_range, order=sg_order)
+
     ds["freq"] = freq_cryoscope
-    # if plot:
-    #     (-freq_cryoscope).plot()
-    #     plt.title("Frequency")
-    #     plt.show()
+
     flux_cryoscope = np.sqrt(np.abs(1e9 * freq_cryoscope / quad_term)).fillna(0)
-    # if plot:
-    #     flux_cryoscope.plot()
-    #     plt.title("Flux")
-    #     plt.show()
+
     if quad_term == -1:
-        flux_cryoscope = flux_cryoscope / flux_cryoscope.sel(time=slice(stable_time_indices[0], stable_time_indices[1])).mean(dim="time")
+        flux_cryoscope = flux_cryoscope / flux_cryoscope.sel(
+            time=slice(stable_time_indices[0], stable_time_indices[1])
+        ).mean(dim="time")
 
     ds["flux"] = flux_cryoscope
     return ds
@@ -225,27 +206,81 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
 
     qubit = node.namespace["qubits"][0].name
 
+    # Find the index where ds_fit.flux is closest to 1/e
+    flux_vals = ds_fit.flux.values
+    range_vals = final_vals - first_vals
+    guess_val = 0.37 * range_vals + first_vals
+    idx_closest = np.abs(flux_vals - guess_val.data).argmin()
+
+    if node.parameters.exp_1_tau_guess is not None:
+        initial_guess_tau = node.parameters.exp_1_tau_guess
+    else:
+        initial_guess_tau = ds_fit.time.values[idx_closest]
+
+    print(f"Initial guess for tau: {initial_guess_tau}")
+
     try:
-        p0 = [final_vals, -1 + first_vals / final_vals, 50]
+        p0 = [final_vals, -1 + first_vals / final_vals, initial_guess_tau]
         fit, _ = curve_fit(expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit=qubit).values, p0=p0)
-    except:
+        fit1_success = True
+    except Exception as e:
         fit = p0
-        print("single exp fit failed")
+        fit1_success = False
+        print("single exp fit failed with error:\n", e)
     try:
         p0 = [fit[0], fit[1], 5, fit[1], fit[2]]
         fit2, _ = curve_fit(two_expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit=qubit).values, p0=p0)
-    except:
+        fit2_success = True
+    except Exception as e:
         fit2 = None
-        print("two exp fit failed")
+        fit2_success = False
+        print("two exp fit failed with error:\n", e)
 
     # Save fit results as attributes or DataArrays
     ds_fit.attrs["fit_1exp"] = fit
+    ds_fit.attrs["fit_1exp_success"] = fit1_success
     ds_fit.attrs["fit_2exp"] = fit2
+    ds_fit.attrs["fit_2exp_success"] = fit2_success
 
     ds["fit_results"] = ds_fit
 
-    return ds
+    fit, fit_results = _extract_relevant_fit_parameters(ds, node)
+
+    return fit, fit_results
+
+
+def _extract_relevant_fit_parameters(ds: xr.Dataset, node: QualibrationNode):
+    """Extract relevant fit parameters from the dataset and add metadata."""
+    # Assess whether the fit was successful or not
+
+    fit = ds["fit_results"]
+    fit_results = {
+        q: FitParameters(
+            fit1_success=fit.attrs.get("fit_1exp_success", False),
+            fit2_success=fit.attrs.get("fit_2exp_success", False),
+            fit1_A=fit.attrs.get("fit_1exp", [None, None, None])[1],
+            fit1_tau=fit.attrs.get("fit_1exp", [None, None, None])[2],
+            fit2_A1=fit.attrs.get("fit_2exp", [None, None, None, None, None])[1],
+            fit2_tau1=fit.attrs.get("fit_2exp", [None, None, None, None, None])[2],
+            fit2_A2=fit.attrs.get("fit_2exp", [None, None, None, None, None])[3],
+            fit2_tau2=fit.attrs.get("fit_2exp", [None, None, None, None, None])[4],
+        )
+        for q in fit.qubit.values
+    }
+    return ds, fit_results
 
 
 def log_fitted_results():
     pass
+
+
+@dataclass
+class FitParameters:
+    fit1_success: bool = False
+    fit2_success: bool = False
+    fit1_A: Optional[float] = None
+    fit1_tau: Optional[float] = None
+    fit2_A1: Optional[float] = None
+    fit2_tau1: Optional[float] = None
+    fit2_A2: Optional[float] = None
+    fit2_tau2: Optional[float] = None

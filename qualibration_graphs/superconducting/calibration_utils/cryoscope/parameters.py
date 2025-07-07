@@ -1,21 +1,23 @@
-from typing import Literal
+from typing import Literal, Optional
 
-import numpy as np
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
-    num_shots: int = 50
+    num_shots: int = 5000
     """Number of averages to perform. Default is 50."""
     amp_factor: float = 0.2
-    """Minimum amplitude factor for the operation. Default is 0.001."""
+    """Minimum amplitude factor for the operation. Default is 0.2."""
     cryoscope_len: int = 240
-    """Maximum amplitude factor for the operation. Default is 1.99."""
-    reset_filters: bool = True
-    buffer: int = 10
+    """Length of the cryoscope operation in microseconds. Default is 240."""
     num_frames: int = 17
+    """Number of frames to use in the cryoscope experiment. Default is 17."""
+    number_of_exponents: Literal[1, 2] = 1
+    """Number of exponents to use in the cryoscope experiment. One or two, default is 1."""
+    exp_1_tau_guess: Optional[float] = None
+    """Initial guess for the time constant of the first exponential decay. Default is None."""
 
 
 class Parameters(
