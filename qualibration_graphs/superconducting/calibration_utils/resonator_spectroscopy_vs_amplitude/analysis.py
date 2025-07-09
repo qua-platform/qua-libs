@@ -169,7 +169,10 @@ def _track_resonator_response_across_power(ds: xr.Dataset, qubits: list) -> Dict
     Returns
     -------
     Dict[str, np.ndarray]
-        Dictionary containing tracking results for each qubit
+        Dictionary containing tracking results for each qubit. For debugging, the keys mean:
+        - "rr_tracked": Smoothed and interpolated resonance centers. Provides a clean trace.
+        - "rr_tracked_filtered": Resonance centers with poor quality fits replaced by NaN.
+        - "fit_quality_masks": Boolean mask indicating if fit for each power level was good (True).
     """
     tracking_results = {
         "rr_tracked": [],
