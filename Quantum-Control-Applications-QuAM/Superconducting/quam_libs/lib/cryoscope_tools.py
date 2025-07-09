@@ -6,7 +6,9 @@ from scipy.signal import savgol_filter
 from scipy.signal import deconvolve
 from scipy.optimize import minimize
 from scipy.optimize import curve_fit
-
+from numpy.polynomial import Polynomial as P
+from functools import reduce
+from typing import List, Tuple, Sequence
 
 def transform_to_circle(x, y):
     def ellipse_residuals(params, x, y):
@@ -231,68 +233,6 @@ def fit_gaussian(freqs, states):
         return np.nan
 
 
-def fit_two_exponentials(t_data: np.ndarray, y_data: np.ndarray, fit_single_exponential: bool):
-    """Fit experimental data to single or double exponential decay models.
-    
-    The function first attempts to fit a single exponential. If double exponential
-    fitting is requested and single exponential fit succeeds, it uses those parameters
-    to initialize a double exponential fit.
-    
-    Args:
-        t_data (np.ndarray): Time points
-        y_data (np.ndarray): Measured values
-        fit_single_exponential (bool): If True, only perform single exponential fit
-    
-    Returns:
-        dict: Dictionary containing fit results:
-            '1exp': Results for single exponential fit
-            '2exp': Results for double exponential fit (if requested)
-            Each contains:
-                'fit_successful' (bool): Whether fit converged
-                'params' (array): Fitted parameters if successful
-                'covariance' (array): Parameter covariances if successful
-    """
-    fit_results = {}
-    try:
-        # Fit single exponential with constraints
-        popt, pcov = curve_fit(
-            f=expdecay, 
-            xdata=t_data, 
-            ydata=y_data, 
-            p0=[np.max(y_data), np.min(y_data) / np.max(y_data) - 1, 300],
-            bounds=([0, -np.inf, 0], [np.inf, np.inf, 300])  # Constrain time constant
-        )
-        fit_results['1exp'] = {"fit_successful": True, "params": popt, "covariance": pcov}
-    except RuntimeError:
-        print("failed to fit the first exponential")
-        fit_results['1exp'] = {"fit_successful": False, "params": None, "covariance": None}
-        if not fit_single_exponential:
-            fit_results['2exp'] = {"fit_successful": False, "params": None, "covariance": None}
-        return fit_results
-    
-    if not fit_single_exponential:
-        # Use the first fit to initialize the second fit
-        a0_0 = popt[0]  # Baseline from single exp fit
-        a1_0 = a2_0 = popt[1] / 2  # Split amplitude between two exponentials
-        t1_0 = popt[-1]  # First time constant from single exp fit
-        t2_0 = t1_0 / 10  # Initial guess for second time constant
-
-        try:
-            popt, pcov = curve_fit(
-                f=two_expdecay, 
-                xdata=t_data, 
-                ydata=y_data, 
-                p0=[a0_0, a1_0, t1_0, a2_0, t2_0]
-            )
-            fit_results['2exp'] = {"fit_successful": True, "params": popt, "covariance": pcov}
-        except RuntimeError:
-            print("failed to fit the second exponential")
-            fit_results['2exp'] = {"fit_successful": False, "params": None, "covariance": None}
-            return fit_results
-    
-    return fit_results
-
-
 def single_exp_decay(t, amp, tau):
     """Single exponential decay without offset
     
@@ -460,3 +400,84 @@ def optimize_start_fractions(t, y, base_fractions, bounds_scale=0.5, verbose=Tru
         best_rms = np.sqrt(np.mean(best_residual**2))
     
     return result.success, best_fractions, components, a_dc, best_rms
+
+# The functions below are used to decompose the sum of exponentials to a cascade of single 
+# exponent filters, as implemented in QOP 3.4.    
+def add_rational_terms(terms: List[Tuple[np.array, np.array]]) -> Tuple[np.array, np.array]:
+    # Convert to Polynomial objects
+    rational_terms = [(P(num), P(den)) for num, den in terms]
+
+    # Compute common denominator
+    common_den = reduce(lambda acc, t: acc * t[1], rational_terms, P([1]))
+
+    # Adjust numerators to have the common denominator
+    adjusted_numerators = []
+    for num, den in rational_terms:
+        multiplier = common_den // den
+        adjusted_numerators.append(num * multiplier)
+
+    # Sum all adjusted numerators
+    final_numerator = sum(adjusted_numerators, P([0]))
+
+    # Return as coefficient lists
+    return final_numerator.coef, common_den.coef
+
+
+def decompose_exp_sum_to_cascade(A: Sequence, tau: Sequence, A_dc: float=1.,
+                             compensate_v34_fpga_scale: bool=True, Ts: float=0.5) -> \
+        tuple[np.ndarray, np.ndarray, float]:
+    """decompose_exp_sum_to_cascade
+    Translate from filters configuration as defined in QUA for version 3.5 (sum of exponents) to the
+    definition of version 3.4.1 (cascade of single exponents filters).
+    In v3.5, the analog linear distortion H is characterized by step response:
+    s_H(t) = (A_dc + sum(A[i] * exp(-t/tau[i]), for i in 0...(N-1)))*u(t)
+    In v3.4.1, it is a cascade of single exponent filters, each with step response:
+    s_H_i(t) = (1 + A_c[i] * exp(-t/tau_c[i]))*u(t)
+    The parameters [(A_c[0], tau_c[0]), ...] are the definitions of the filters (under "exponents")
+    in 3.4.1.
+    To make the filters equivalent, the 3.4.1 cascade needs to scaled by the parameter scale.
+    This scaling can be done by multiplying the FIR coefficients by scale, or by scaling the waverform
+    amp accordingly.
+    :return A_c, tau_c, scale
+    """
+
+    assert A_dc > 0.2, "HPF mode is currently not supported"
+
+    ba_sum = [get_rational_filter_single_exp_cont_time(A_i, tau_i) for A_i, tau_i in zip(A, tau)]
+    ba_sum += [([A_dc], [1])]
+
+    b, a = add_rational_terms(ba_sum)
+
+    zeros = np.sort(np.roots(b))
+    poles = np.sort(np.roots(a))
+
+    assert np.all(np.isreal(zeros)) and np.all(np.isreal(poles)), \
+        "Got complex zeros; this configuration can't be inverted or decomposed to cascade of single pole stages"
+
+    tau_c = -1 / poles
+    A_c = poles/zeros - 1
+
+    scale = 1/A_dc
+
+    if compensate_v34_fpga_scale:
+        scale *= get_scaling_of_v34_fpga_filter(A_c, tau_c, Ts)
+
+    return A_c, tau_c, scale
+
+
+def get_scaling_of_v34_fpga_filter(A_c: np.ndarray, tau_c: np.ndarray, Ts) -> float:
+    """get_scaling_of_v34_fpga_filter
+    Calculate the scaling factor for the V3.4 FPGA filter implementation.
+    This scaling is necessary to make the cascade of single exponent filters equivalent to the sum of exponents.
+    :param A_c: Amplitudes of the cascade filters
+    :param tau_c: Time constants of the cascade filters
+    :param Ts: Sampling period
+    :return: scale
+    """
+    return float(np.prod((Ts + 2*tau_c) / (Ts + 2*tau_c*(1+A_c))))
+
+
+def get_rational_filter_single_exp_cont_time(A: float, tau: float) -> tuple[np.ndarray, np.ndarray]:
+    a = np.array([1, 1/tau])
+    b = np.array([A])
+    return b, a

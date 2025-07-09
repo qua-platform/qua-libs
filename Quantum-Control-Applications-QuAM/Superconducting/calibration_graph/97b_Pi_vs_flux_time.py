@@ -71,19 +71,19 @@ class Parameters(NodeParameters):
         reset_type_active_or_thermal (str): Reset method to use
     """
 
-    qubits: Optional[List[str]] = None
-    num_averages: int = 10
-    operation: str = "x180_Gaussian"
+    qubits: Optional[List[str]] = ["qD2"]
+    num_averages: int = 100
+    operation: str = "x180"
     operation_amplitude_factor: Optional[float] = 1
     duration_in_ns: Optional[int] = 5000
     time_axis: Literal["linear", "log"] = "linear"
     time_step_in_ns: Optional[int] = 48 # for linear time axis
     time_step_num: Optional[int] = 200 # for log time axis
-    frequency_span_in_mhz: float = 150
-    frequency_step_in_mhz: float = 0.45
+    frequency_span_in_mhz: float = 200
+    frequency_step_in_mhz: float = 0.4
     flux_amp : float = 0.06
     update_lo: bool = True
-    fitting_base_fractions: List[float] = [0.4, 0.15, 0.07] # fraction of times from which to fit each exponential
+    fitting_base_fractions: List[float] = [0.4, 0.15, 0.05] # fraction of times from which to fit each exponential
     update_state: bool = False
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
@@ -400,14 +400,25 @@ node.results["figure_flux_response"] = grid.fig
 for q in tracked_qubits:
     q.revert_changes()
 
+# if node.parameters.load_data_id is None:
+#     if node.parameters.update_state:
+#         with node.record_state_updates():
+#             for q in qubits:
+#                 if fit_results[q.name]["fit_successful"]:
+#                     q.z.opx_output.exponential_filter = [[amp / best_a_dc, tau] 
+#                         for amp, tau in fit_results[q.name]["best_components"]
+#                         ]
+#                     print("updated the exponential filter")
+
 if node.parameters.load_data_id is None:
     if node.parameters.update_state:
         with node.record_state_updates():
             for q in qubits:
                 if fit_results[q.name]["fit_successful"]:
-                    q.z.opx_output.exponential_filter = [[amp / best_a_dc, tau] 
-                        for amp, tau in fit_results[q.name]["best_components"]
-                        ]
+                    A_list = [component[0] / fit_results[q.name]["best_a_dc"] for component in fit_results[q.name]["best_components"]]
+                    tau_list = [component[1] for component in fit_results[q.name]["best_components"]]
+                    A_c, tau_c, scale = cryoscope_tools.decompose_exp_sum_to_cascade(A=A_list, tau=tau_list, A_dc=1)
+                    q.z.opx_output.exponential_filter = list(zip(A_c, tau_c))
                     print("updated the exponential filter")
 
 # %% {Save_results}
