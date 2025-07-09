@@ -67,12 +67,8 @@ def log_fitted_results(fit_results: Dict[str, Union[FitParameters, dict]], log_c
         amp_str = f"The calibrated {results.operation} amplitude: {amp_mV:.2f} mV "
         prefactor_str = f"(x{results.opt_amp_prefactor:.2f})\n"
         
-        # Add fit quality information if available
-        quality_str = ""
-        if results.fit_quality is not None:
-            quality_str = f"Fit quality (R²): {results.fit_quality:.3f}\n"
         
-        log_callable(status_line + amp_str + prefactor_str + quality_str)
+        log_callable(status_line + amp_str + prefactor_str )
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
