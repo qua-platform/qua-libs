@@ -8,7 +8,7 @@ from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentN
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 5000
     """Number of averages to perform. Default is 50."""
-    detuning_target_in_MHz: int = 350
+    detuning_target_in_MHz: int = 300
     """Target detuning from sweetspot for the cryoscope pulse in MHz. Default is 350."""
     cryoscope_len: int = 240
     """Length of the cryoscope operation in microseconds. Default is 240."""

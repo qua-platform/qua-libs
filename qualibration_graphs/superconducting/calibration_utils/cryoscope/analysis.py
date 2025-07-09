@@ -258,12 +258,28 @@ def _extract_relevant_fit_parameters(ds: xr.Dataset, node: QualibrationNode):
         q: FitParameters(
             fit1_success=fit.attrs.get("fit_1exp_success", False),
             fit2_success=fit.attrs.get("fit_2exp_success", False),
-            fit1_A=fit.attrs.get("fit_1exp", [None, None, None])[1],
-            fit1_tau=fit.attrs.get("fit_1exp", [None, None, None])[2],
-            fit2_A1=fit.attrs.get("fit_2exp", [None, None, None, None, None])[1],
-            fit2_tau1=fit.attrs.get("fit_2exp", [None, None, None, None, None])[2],
-            fit2_A2=fit.attrs.get("fit_2exp", [None, None, None, None, None])[3],
-            fit2_tau2=fit.attrs.get("fit_2exp", [None, None, None, None, None])[4],
+            fit1_A=fit.attrs.get("fit_1exp", [None, None, None])[1] if fit.attrs.get("fit_1exp_success") else None,
+            fit1_tau=fit.attrs.get("fit_1exp", [None, None, None])[2] if fit.attrs.get("fit_1exp_success") else None,
+            fit2_A1=(
+                fit.attrs.get("fit_2exp", [None, None, None, None, None])[1]
+                if fit.attrs.get("fit_2exp_success")
+                else None
+            ),
+            fit2_tau1=(
+                fit.attrs.get("fit_2exp", [None, None, None, None, None])[2]
+                if fit.attrs.get("fit_2exp_success")
+                else None
+            ),
+            fit2_A2=(
+                fit.attrs.get("fit_2exp", [None, None, None, None, None])[3]
+                if fit.attrs.get("fit_2exp_success")
+                else None
+            ),
+            fit2_tau2=(
+                fit.attrs.get("fit_2exp", [None, None, None, None, None])[4]
+                if fit.attrs.get("fit_2exp_success")
+                else None
+            ),
         )
         for q in fit.qubit.values
     }
