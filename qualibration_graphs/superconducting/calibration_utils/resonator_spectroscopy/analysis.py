@@ -417,10 +417,13 @@ def _determine_resonator_outcome(
             )
         return "No peaks were detected, consider changing the frequency range"
     
-    # Check peak shape quality
+    # Check peak shape quality and multiple resonances
     if _is_peak_shape_distorted(asymmetry, skewness, nrmse):
-        if raw_num_peaks > 1 and nrmse < qc_params.nrmse_threshold.value:
-            return "successful"
+        if raw_num_peaks > 1:
+            if nrmse <= qc_params.nrmse_threshold.value:
+                return "successful"
+            else:
+                return "Multiple resonances detected, consider adjusting the span of the frequency range"
         return "The peak shape is distorted"
     
     # Check for peak width issues
