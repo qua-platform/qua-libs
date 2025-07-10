@@ -6,12 +6,16 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import xarray as xr
-from qualibrate import QualibrationNode
 from qualibration_libs.analysis import peaks_dips
+from qualibration_libs.analysis.feature_detection import (
+    estimate_width_from_curvature, find_all_peaks_from_signal)
 from qualibration_libs.analysis.fitting import calculate_quality_metrics
 from qualibration_libs.analysis.models import lorentzian_dip
 from qualibration_libs.analysis.parameters import analysis_config_manager
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
+from scipy.optimize import curve_fit
+
+from qualibrate import QualibrationNode
 
 # Access quality check parameters from the config object
 qc_params = analysis_config_manager.get("resonator_spectroscopy_qc")
@@ -112,13 +116,114 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             - Dataset with fit results and quality metrics
             - Dictionary mapping qubit names to fit parameters
     """
-    # Perform peak/dip detection on IQ amplitude
+    # Perform peak/dip detection on IQ amplitude, providing initial estimates
     fit_dataset = peaks_dips(ds.IQ_abs, "detuning")
-    
-    # Extract and validate fit parameters
+
+    # Extract, validate, and potentially re-fit parameters
     fit_data, fit_results = _extract_and_validate_fit_parameters(ds, fit_dataset, node)
-    
+
     return fit_data, fit_results
+
+
+def _fit_multi_peak_resonator(
+    ds_qubit: xr.Dataset, fit_qubit: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+    """
+    Apply advanced fitting for a qubit with multiple detected peaks.
+
+    This method implements a robust fitting pipeline for signals with multiple resonance features:
+    1. It inverts the signal to treat dips as peaks.
+    2. Finds all significant peaks in the signal.
+    3. Selects the most prominent peak as the candidate for the main resonance.
+    4. Estimates its width using the signal's curvature (2nd derivative).
+    5. Defines a narrow fitting window around the candidate peak.
+    6. Guesses initial parameters from the data within the window.
+    7. Performs a Lorentzian fit on the windowed data.
+    8. Validates the fit and returns the parameters.
+
+    Args:
+        ds_qubit: The raw dataset for a single qubit.
+        fit_qubit: The initial fit dataset from `peaks_dips`.
+        node: The QualibrationNode.
+
+    Returns:
+        A tuple containing the final fit dataset and the fit parameters dictionary for the qubit.
+    """
+    signal_1d = ds_qubit.IQ_abs.values
+    detuning_axis = ds_qubit.detuning.values
+
+    # Find all dips by inverting the signal for the peak finder
+    peaks, properties, _, _ = find_all_peaks_from_signal(-signal_1d)
+
+    if len(peaks) == 0:
+        return fit_qubit, None
+
+    main_peak_idx = np.argmax(properties["prominences"])
+    main_peak_pos = peaks[main_peak_idx]
+
+    # Estimate width from scipy.signal.peak_widths and define a fit window
+    width_samples = properties["widths"][main_peak_idx]
+        
+    fit_window_radius = int(width_samples * qc_params.fit_window_radius_multiple.value)
+    fit_start = max(0, main_peak_pos - fit_window_radius)
+    fit_end = min(len(signal_1d), main_peak_pos + fit_window_radius + 1)
+    
+    x_window = detuning_axis[fit_start:fit_end]
+    y_window = signal_1d[fit_start:fit_end]
+
+    # Guess initial fit parameters for a dip
+    p0_amplitude = properties["prominences"][main_peak_idx]  # Positive amplitude for dip depth
+    p0_center = detuning_axis[main_peak_pos]
+    detuning_step = abs(detuning_axis[1] - detuning_axis[0])
+    p0_width = width_samples * detuning_step
+    # Use the mean of the window edges for a robust baseline guess
+    p0_offset = (y_window[0] + y_window[-1]) / 2 if len(y_window) > 1 else np.mean(y_window)
+
+    # Define bounds for the fit parameters to stabilize the fit
+    lower_bounds = [
+        0,                                          # Amplitude > 0
+        x_window[0],                                # Center within window
+        0,                                          # Width > 0
+        np.min(signal_1d),                          # Offset within signal range
+    ]
+    upper_bounds = [
+        (np.max(y_window) - np.min(y_window)) * 1.5, # Amplitude < 1.5x window range
+        x_window[-1],                               # Center within window
+        (x_window[-1] - x_window[0]),               # Width < window size
+        np.max(signal_1d),                          # Offset within signal range
+    ]
+    bounds = (lower_bounds, upper_bounds)
+
+    try:
+        popt, _ = curve_fit(
+            lorentzian_dip,
+            x_window,
+            y_window,
+            p0=[p0_amplitude, p0_center, p0_width / 2, p0_offset], # HWHM for fit
+            bounds=bounds,
+            maxfev=qc_params.maxfev.value,
+        )
+        fit_amp, fit_center, fit_hwhm, fit_offset = popt
+        fit_fwhm = abs(fit_hwhm * 2)
+
+        # Update the fit dataset with new values
+        fit_qubit["position"] = fit_center
+        fit_qubit["width"] = fit_fwhm
+        fit_qubit["amplitude"] = fit_amp # Amplitude is now positive
+        
+        # Create a new baseline array with the fitted offset
+        new_baseline = xr.DataArray(
+            np.full_like(fit_qubit.base_line.values, fit_offset),
+            dims=fit_qubit.base_line.dims,
+            coords=fit_qubit.base_line.coords,
+        )
+        fit_qubit["base_line"] = new_baseline
+        
+        return fit_qubit, None
+
+    except RuntimeError:
+        # If the advanced fit fails, we return the original `peaks_dips` result
+        return fit_qubit, None
 
 
 def _extract_and_validate_fit_parameters(
@@ -149,14 +254,24 @@ def _extract_and_validate_fit_parameters(
     outcomes = []
     
     for qubit_name in fit.qubit.values:
-        # Extract fit metrics for this qubit
+        # Select the initial fit for the current qubit
+        qubit_fit_initial = fit.sel(qubit=qubit_name)
+
+        # If multiple peaks are detected, attempt a more robust fit.
+        # The multi-peak fitter returns an updated version of the fit dataset for the qubit,
+        # which we then update in the main 'fit' dataset.
+        if qubit_fit_initial.raw_num_peaks.item() > 1:
+            fit_qubit_updated, _ = _fit_multi_peak_resonator(
+                ds.sel(qubit=qubit_name), qubit_fit_initial, node
+            )
+            fit.loc[dict(qubit=qubit_name)] = fit_qubit_updated
+
+        # Now, using the final (potentially updated) fit data, extract metrics and determine the outcome.
         fit_metrics = _extract_qubit_fit_metrics(ds, fit, qubit_name)
-        
-        # Determine outcome based on quality checks
         outcome = _determine_resonator_outcome(fit_metrics)
         outcomes.append(outcome)
         
-        # Store results
+        # Store the final results
         fit_results[qubit_name] = FitParameters(
             frequency=fit.sel(qubit=qubit_name).res_freq.values.item(),
             fwhm=fit.sel(qubit=qubit_name).fwhm.values.item(),
@@ -261,7 +376,6 @@ def _extract_qubit_fit_metrics(
         "sweep_span": sweep_span,
         "asymmetry": float(qubit_data.asymmetry.values),
         "skewness": float(qubit_data.skewness.values),
-        "opx_bandwidth_artifact": not bool(qubit_data.opx_bandwidth_artifact.values),
         **quality_metrics,
     }
 
@@ -287,19 +401,14 @@ def _determine_resonator_outcome(
     sweep_span = metrics["sweep_span"]
     asymmetry = metrics["asymmetry"]
     skewness = metrics["skewness"]
-    opx_bandwidth_artifact = metrics["opx_bandwidth_artifact"]
     nrmse = metrics.get("nrmse", np.inf)
-    r_squared = metrics.get("r_squared", 0)
-
+    
     # Check SNR first
     if snr < qc_params.min_snr.value:
         return "The SNR isn't large enough, consider increasing the number of shots"
     
     
     # Check number of peaks
-    if raw_num_peaks > 1:
-        return "Several peaks were detected"
-    
     if num_peaks == 0:
         if snr < qc_params.min_snr.value:
             return (
@@ -310,10 +419,8 @@ def _determine_resonator_outcome(
     
     # Check peak shape quality
     if _is_peak_shape_distorted(asymmetry, skewness, nrmse):
-        # Check for OPX bandwidth artifacts
-        # if opx_bandwidth_artifact:
-            # return "OPX bandwidth artifact detected, consider shifting the LO frequency by ~20MHz"
-        # else:
+        if raw_num_peaks > 1 and nrmse < qc_params.nrmse_threshold.value:
+            return "successful"
         return "The peak shape is distorted"
     
     # Check for peak width issues
