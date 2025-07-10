@@ -71,9 +71,9 @@ class Parameters(NodeParameters):
         reset_type_active_or_thermal (str): Reset method to use
     """
 
-    qubits: Optional[List[str]] = ["qD2"]
-    num_averages: int = 100
-    operation: str = "x180"
+    qubits: Optional[List[str]] = None
+    num_averages: int = 40
+    operation: str = "x180_Gaussian"
     operation_amplitude_factor: Optional[float] = 1
     duration_in_ns: Optional[int] = 5000
     time_axis: Literal["linear", "log"] = "linear"
@@ -90,8 +90,10 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True
+    multiplexed: bool = False
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
+    thermal_reset_extra_time_in_us: Optional[int] = 10_000
+    min_wait_time_in_ns: Optional[int] = 32
 
 
 node = QualibrationNode(name="97b_Pi_vs_flux_time", parameters=Parameters())
@@ -122,6 +124,7 @@ if node.parameters.update_lo:
                 lo_frequency = 6.5e9
             elif (lo_band == 2) and (lo_frequency < 4.5e9):
                 lo_frequency = 4.5e9
+            print(f"Updated LO frequency for {q.name}: {lo_frequency/1e9} GHz")
             
             q.xy.intermediate_frequency = rf_frequency - lo_frequency
             q.xy.opx_output.upconverter_frequency = lo_frequency
@@ -149,9 +152,9 @@ step = node.parameters.frequency_step_in_mhz * u.MHz
 dfs = np.arange(-span // 2, span // 2, step, dtype=np.int32)
 # Flux bias sweep
 if node.parameters.time_axis == "linear":
-    times = np.arange(4, node.parameters.duration_in_ns // 4, node.parameters.time_step_in_ns // 4, dtype=np.int32)
+    times = np.arange(node.parameters.min_wait_time_in_ns // 4, node.parameters.duration_in_ns // 4, node.parameters.time_step_in_ns // 4, dtype=np.int32)
 elif node.parameters.time_axis == "log":
-    times = np.logspace(np.log10(4), np.log10(node.parameters.duration_in_ns // 4), node.parameters.time_step_num, dtype=np.int32)
+    times = np.logspace(np.log10(node.parameters.min_wait_time_in_ns // 4), np.log10(node.parameters.duration_in_ns // 4), node.parameters.time_step_num, dtype=np.int32)
     # Remove repetitions from times
     times = np.unique(times)
 
@@ -181,7 +184,8 @@ with program() as multi_qubit_spec_vs_flux:
                     if node.parameters.reset_type_active_or_thermal == "active":
                         active_reset(qubit)
                     else:
-                        qubit.wait(qubit.thermalization_time * u.ns)                    # Flux sweeping for a qubit
+                        qubit.wait(qubit.thermalization_time * u.ns)  
+                        qubit.wait(node.parameters.thermal_reset_extra_time_in_us * u.us)# Flux sweeping for a qubit
                     qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency + detuning[i])
                     # Bring the qubit to the desired point during the saturation pulse
                     qubit.align()
@@ -211,6 +215,13 @@ with program() as multi_qubit_spec_vs_flux:
         n_st.save("n")
         for i, qubit in enumerate(qubits):
             state_st[i].buffer(len(times)).buffer(len(dfs)).average().save(f"state{i + 1}")
+# %%
+if node.parameters.reset_type_active_or_thermal == "thermal":
+    num_of_shots = node.parameters.num_averages * len(times) * len(dfs)
+    expected_duration =  num_of_shots * (3e-6 + node.parameters.duration_in_ns * 1e-9 + node.parameters.thermal_reset_extra_time_in_us * 1e-6 + machine.thermalization_time * 1e-9) 
+    print(f"Number of shots: {num_of_shots}")
+    print(f"Expected duration: {expected_duration} s")
+
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
@@ -354,7 +365,6 @@ for ax, qubit in grid_iter(grid):
     ax.set_ylabel("Freq (GHz)")
     ax.set_xlabel("Time (ns)")
     ax.set_title(qubit["qubit"])
-    # ax.set_xscale('log')
 grid.fig.suptitle(f"Qubit frequency shift vs time after flux pulse \n {date_time} #{node_id}")
 
 plt.tight_layout()
@@ -388,12 +398,117 @@ for ax, qubit in grid_iter(grid):
     ax.set_ylabel("Flux (V)")
     ax.set_xlabel("Time (ns)")
     ax.set_title(qubit["qubit"])
-    # ax.set_xscale('log')
+    ax.grid(True)
 grid.fig.suptitle(f"Flux response vs time \n {date_time} #{node_id}")
 
 plt.tight_layout()
 plt.show()
 node.results["figure_flux_response"] = grid.fig
+
+
+
+grid = QubitGrid(ds, [q.grid_location for q in qubits])
+
+for ax, qubit in grid_iter(grid):
+    (ds.loc[qubit].center_freqs / 1e9).plot(ax=ax, marker='o')
+    ax.set_ylabel("Freq (GHz)")
+    ax.set_xlabel("Time (ns)")
+    ax.set_title(qubit["qubit"])
+    ax.set_xscale('log')
+    ax.grid(True)
+grid.fig.suptitle(f"Qubit frequency shift vs time after flux pulse \n {date_time} #{node_id}")
+
+plt.tight_layout()
+plt.show()
+node.results["figure_freqs_shift_log"] = grid.fig
+
+
+# Create grid for flux response plots
+grid = QubitGrid(ds, [q.grid_location for q in qubits])
+
+# Plot flux response and fitted curves for each qubit
+for ax, qubit in grid_iter(grid):
+    # Plot measured flux response
+    ds.loc[qubit].flux_response.plot(ax=ax)
+    # flux_response_norm = ds.loc[qubit].flux_response / ds.loc[qubit].flux_response.values[-1]
+    # flux_response_norm.plot(ax=ax)
+    
+    # Plot fitted curves and parameters if fits were successful    
+    if fit_results[qubit["qubit"]]["fit_successful"]:
+        best_a_dc = fit_results[qubit["qubit"]]["best_a_dc"]
+        t_offset = t_data - t_data[0]
+        y_fit = np.ones_like(t_data, dtype=float) * best_a_dc  # Start with fitted constant
+        fit_text = f'a_dc = {best_a_dc:.3f}\n'
+        for i, (amp, tau) in enumerate(fit_results[qubit["qubit"]]["best_components"]):
+            y_fit += amp * np.exp(-t_offset/tau)
+            fit_text += f'a{i+1} = {amp / best_a_dc:.3f}, τ{i+1} = {tau:.0f}ns\n'
+
+        ax.plot(t_data, y_fit, color='r', label='Full Fit', linewidth=2) # Plot full fit
+        ax.text(0.02, 0.98, fit_text, transform=ax.transAxes, 
+                verticalalignment='top', fontsize=8)
+
+    ax.set_ylabel("Flux (V)")
+    ax.set_xlabel("Time (ns)")
+    ax.set_title(qubit["qubit"])
+    ax.grid(True)
+grid.fig.suptitle(f"Flux response vs time \n {date_time} #{node_id}")
+
+plt.tight_layout()
+plt.show()
+node.results["figure_flux_response"] = grid.fig
+
+
+
+grid = QubitGrid(ds, [q.grid_location for q in qubits])
+
+for ax, qubit in grid_iter(grid):
+    (ds.loc[qubit].center_freqs / 1e9).plot(ax=ax, marker='o')
+    ax.set_ylabel("Freq (GHz)")
+    ax.set_xlabel("Time (ns)")
+    ax.set_title(qubit["qubit"])
+    ax.set_xscale('log')
+    ax.grid(True)
+grid.fig.suptitle(f"Qubit frequency shift vs time after flux pulse \n {date_time} #{node_id}")
+
+plt.tight_layout()
+plt.show()
+node.results["figure_freqs_shift_log"] = grid.fig
+
+
+# Create grid for flux response plots
+grid = QubitGrid(ds, [q.grid_location for q in qubits])
+
+# Plot flux response and fitted curves for each qubit
+for ax, qubit in grid_iter(grid):
+    # Plot measured flux response
+    ds.loc[qubit].flux_response.plot(ax=ax)
+    # flux_response_norm = ds.loc[qubit].flux_response / ds.loc[qubit].flux_response.max()
+    # flux_response_norm.plot(ax=ax)
+
+    # Plot fitted curves and parameters if fits were successful    
+    if fit_results[qubit["qubit"]]["fit_successful"]:
+        best_a_dc = fit_results[qubit["qubit"]]["best_a_dc"]
+        t_offset = t_data - t_data[0]
+        y_fit = np.ones_like(t_data, dtype=float) * best_a_dc  # Start with fitted constant
+        fit_text = f'a_dc = {best_a_dc:.3f}\n'
+        for i, (amp, tau) in enumerate(fit_results[qubit["qubit"]]["best_components"]):
+            y_fit += amp * np.exp(-t_offset/tau)
+            fit_text += f'a{i+1} = {amp / best_a_dc:.3f}, τ{i+1} = {tau:.0f}ns\n'
+
+        ax.plot(t_data, y_fit, color='r', label='Full Fit', linewidth=2) # Plot full fit
+        ax.text(0.02, 0.98, fit_text, transform=ax.transAxes, 
+                verticalalignment='top', fontsize=8)
+
+    ax.set_ylabel("Normalized flux")
+    ax.set_xlabel("Time (ns)")
+    ax.set_title(qubit["qubit"])
+    ax.grid(True)
+    ax.set_xscale('log')
+grid.fig.suptitle(f"Flux response vs time \n {date_time} #{node_id}")
+
+plt.tight_layout()
+plt.show()
+node.results["figure_flux_response_log"] = grid.fig
 
 # %% {Update_state}
 # Revert any temporary changes to tracked qubits
@@ -428,3 +543,4 @@ node.outcomes = {q.name: "successful" for q in qubits}
 node.results["initial_parameters"] = node.parameters.model_dump()
 node.machine = machine
 save_node(node)
+# %%
