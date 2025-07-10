@@ -40,6 +40,13 @@ class MeasureMacro(QubitMacro):
         I, Q = qua_vars
         assign(state, I > pulse.threshold)
         return state
+    
+    @property
+    def inferred_duration(self) -> float:
+        readout_pulse: ReadoutPulse = (
+            self.pulse if isinstance(self.pulse, Pulse) else self.qubit.get_pulse(self.pulse)
+        )
+        return (readout_pulse.length + 150) * 1e-9 # 150 is the approximate duration of the state estimation
 
 
 @quam_dataclass
@@ -48,11 +55,23 @@ class ResetMacro(QubitMacro):
     pi_pulse: Union[Pulse, str] = "x"
     readout_pulse: Union[ReadoutPulse, str] = "measure"
     max_attempts: int = 5
-    thermalize_time: int = 0
-
-    def __post_init__(self) -> None:
-        super().__post_init__()
-        assert self.max_attempts > 0, "max_attempts must be greater than 0"
+    
+    @property
+    def inferred_duration(self) -> float:
+        """
+        This property is used to get the duration of the reset macro (in seconds).
+        We provide here a worst case estimate of the duration for the case where the reset is active.
+        For the case where the reset is thermalize, we return the thermalization time of the qubit.
+        """
+        if self.reset_type == "reset":
+            pi_pulse_duration = self.qubit.get_pulse(self.pi_pulse).length
+            readout_pulse_duration = self.qubit.get_pulse(self.readout_pulse).length
+            return (pi_pulse_duration + readout_pulse_duration) * self.max_attempts * 1e-9 # convert to seconds
+        else:
+            if hasattr(self.qubit, "thermalization_time"):
+                return self.qubit.thermalization_time * 1e-9 # convert to seconds
+            else:
+                raise ValueError("Qubit does not have a thermalization_time attribute")
 
     def apply(self, **kwargs) -> None:
 
@@ -78,7 +97,7 @@ class ResetMacro(QubitMacro):
             # )
         else:
             # Thermalize the qubit
-            self.qubit.wait(self.thermalize_time // 4)
+            self.qubit.wait(self.qubit.thermalization_time // 4)
 
 
 @quam_dataclass
@@ -87,8 +106,15 @@ class VirtualZMacro(QubitMacro):
         self.qubit.xy.frame_rotation(angle)
 
     def __post_init__(self) -> None:
-        self.duration = 0  # Virtual Z gates do not have a duration
+        
         self.fidelity = 1.0  # Virtual Z gates are perfect, so fidelity is 1.0
+    
+    @property
+    def inferred_duration(self) -> float:
+        """
+        Virtual Z gates have a zero duration.
+        """
+        return 0
 
 
 @quam_dataclass
@@ -171,8 +197,17 @@ class CZFixedMacro(QubitPairMacro):
 
 @quam_dataclass
 class DelayMacro(QubitMacro):
+    """
+    This macro is used to delay the qubit for a given duration (in clock cycles).
+    """
 
     def apply(self, duration) -> None:
+        """
+        This macro is used to delay the qubit for a given duration (in clock cycles).
+
+        Args:
+            duration: The duration of the delay (in clock cycles).
+        """
         qubit: Transmon = self.qubit
         qubit.wait(duration)
 
@@ -189,5 +224,11 @@ class IdMacro(QubitMacro):
         self.qubit.align()
 
     def __post_init__(self) -> None:
-        self.duration = 0  # Identity gates do not have a duration
         self.fidelity = 1.0  # Identity gates are perfect, so fidelity is 1.0
+
+    @property
+    def inferred_duration(self) -> float:
+        """
+        Identity gates have a zero duration.
+        """
+        return 0.
