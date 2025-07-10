@@ -19,9 +19,9 @@ from typing import Optional, Literal, List
 
 
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ["qubitC2"]
+    qubits: Optional[List[str]] = ["qD1"]
     num_averages: int = 1000
-    dc_offset: float = 0.01
+    dc_offset: float = 0.012
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
     timeout: int = 100
@@ -96,7 +96,7 @@ num_qubits = len(qubits)
 
 freqs_MHZ = np.arange(-5, -1, 25e-3)  # Integer values from -5e6 to 0 with step 50000
 
-idle_time = 520  # Integer values from 20 to 1000 with step 100
+idle_time = 400  # Integer values from 20 to 1000 with step 100
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 dc = node.parameters.dc_offset
 n_avg = node.parameters.num_averages
@@ -134,10 +134,12 @@ with program() as find_optimal_freq_offset_and_idle_time:
 
                 qubit.xy.play("x90")
                 qubit.xy.frame_rotation_2pi(phi)
-                qubit.z.wait(duration=qubit.xy.operations["x180"].length)
+                # qubit.z.wait(duration=qubit.xy.operations["x180"].length+10)
                 
-                qubit.xy.wait(t + 1)
+                # qubit.xy.wait(t + 1)
+                wait(40)
                 qubit.z.play("const", amplitude_scale=dc / qubit.z.operations["const"].amplitude, duration=t)
+                wait(40)
                 
                 qubit.xy.play("x90")
                 
@@ -248,10 +250,12 @@ with program() as Ramsey_noise_spec:
             # update_frequency(qubit.xy.name, int(opt_freq[qubit.name])  + qubit.xy.intermediate_frequency)
             qubit.xy.play("x90",  timestamp_stream=f'time_stamp{i+1}')
             qubit.xy.frame_rotation_2pi(phi)
-            qubit.z.wait(duration=qubit.xy.operations["x180"].length)
+            # qubit.z.wait(duration=qubit.xy.operations["x180"].length)
             
-            qubit.xy.wait(t + 1)
+            # qubit.xy.wait(t + 1)
+            wait(40)
             qubit.z.play("const", amplitude_scale=dc / qubit.z.operations["const"].amplitude, duration=t)
+            wait(40)
             
             qubit.xy.play("x90")
             # update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
@@ -368,7 +372,7 @@ if not simulate:
         time_stamp_q = ds.time_stamp.sel(qubit = qubit.name).values
         
         f, Pxx_den = signal.welch(data_q-data_q.mean(),  1e9/np.mean(np.diff(time_stamp_q)), 
-                          nperseg=2**17)
+                          nperseg=2**16)
         dat_fft[qubit.name] = xr.Dataset({'Pxx_den': (['freq'], Pxx_den)}, coords={'freq': f}).Pxx_den
 
         # dat_fft[qubit.name] = xrft.power_spectrum(data_q, real_dim='n')
@@ -382,11 +386,23 @@ if not simulate:
         ax.grid(which='both')
         ax.set_xlabel('frequency [Hz]')
         ax.set_ylabel('power spectrum [arb.]')
-        # ax.set_xlim(1e2, 1e3)
+        # ax.set_xlim(1e1, 1e3)
         
     grid.fig.suptitle('Histogram of qubit states')
     plt.tight_layout()
     node.results['figure_fft'] = grid.fig
+
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+    for ax, qubit in grid_iter(grid):
+        dat_fft[qubit['qubit']].plot(yscale='log', xscale='log', ax =ax, marker='.')
+        ax.grid(which='both')
+        ax.set_xlabel('frequency [Hz]')
+        ax.set_ylabel('power spectrum [arb.]')
+        ax.set_xlim(10, 1e3)
+        
+    grid.fig.suptitle('Histogram of qubit states')
+    plt.tight_layout()
+    node.results['figure_fft_zoom'] = grid.fig
 
 
 # %%
