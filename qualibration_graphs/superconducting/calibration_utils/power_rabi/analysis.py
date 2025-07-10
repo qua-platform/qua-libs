@@ -34,12 +34,11 @@ def log_fitted_results(fit_results: Dict[str, Union[FitParameters, dict]], log_c
     Logs the node-specific fitted results for all qubits from the fit results.
     It handles both FitParameters objects and dictionaries to support loaded data from older versions.
 
-    Parameters
-    ----------
-    fit_results : Dict[str, Union[FitParameters, dict]]
-        Dictionary containing the fitted results for all qubits. Can be objects or dicts.
-    log_callable : callable, optional
-        Logger for logging the fitted results. If None, a default logger is used.
+    Args:
+        fit_results : Dict[str, Union[FitParameters, dict]]
+            Dictionary containing the fitted results for all qubits. Can be objects or dicts.
+        log_callable : callable, optional
+            Logger for logging the fitted results. If None, a default logger is used.
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
@@ -75,17 +74,15 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """
     Process raw dataset for power Rabi analysis.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Raw dataset containing measurement data
-    node : QualibrationNode
-        The qualibration node containing parameters and qubit information
+    Args:
+        ds : xr.Dataset
+            Raw dataset containing measurement data
+        node : QualibrationNode
+            The qualibration node containing parameters and qubit information
         
-    Returns
-    -------
-    xr.Dataset
-        Processed dataset with additional coordinates
+    Returns:
+        xr.Dataset
+            Processed dataset with additional coordinates
     """
     if not node.parameters.use_state_discrimination:
         ds = convert_IQ_to_V(ds, node.namespace["qubits"])
@@ -106,19 +103,17 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     """
     Fit the qubit power Rabi data for each qubit in the dataset.
 
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset containing the raw data
-    node : QualibrationNode
-        The qualibration node containing experiment parameters
+    Args:
+        ds : xr.Dataset
+            Dataset containing the raw data
+        node : QualibrationNode
+            The qualibration node containing experiment parameters
 
-    Returns
-    -------
-    Tuple[xr.Dataset, Dict[str, FitParameters]]
-        Tuple containing:
-        - Dataset with fit results
-        - Dictionary mapping qubit names to fit parameters
+    Returns:
+        Tuple[xr.Dataset, Dict[str, FitParameters]]
+            Tuple containing:
+            - Dataset with fit results
+            - Dictionary mapping qubit names to fit parameters
     """
     if node.parameters.max_number_pulses_per_sweep == 1:
         ds_fit = _fit_single_pulse_experiment(ds, node)
@@ -134,17 +129,15 @@ def _fit_single_pulse_experiment(ds: xr.Dataset, node: QualibrationNode) -> xr.D
     """
     Fit single pulse power Rabi experiment data.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Raw dataset
-    node : QualibrationNode
-        Experiment node
+    Args:
+        ds : xr.Dataset
+            Raw dataset
+        node : QualibrationNode
+            Experiment node
         
-    Returns
-    -------
-    xr.Dataset
-        Dataset with oscillation fit results
+    Returns:
+        xr.Dataset
+            Dataset with oscillation fit results
     """
     ds_fit = ds.sel(nb_of_pulses=1)
     
@@ -159,17 +152,15 @@ def _fit_multi_pulse_experiment(ds: xr.Dataset, node: QualibrationNode) -> xr.Da
     """
     Fit multi-pulse power Rabi experiment data by finding optimal amplitude.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Raw dataset
-    node : QualibrationNode
-        Experiment node
+    Args:
+        ds : xr.Dataset
+            Raw dataset
+        node : QualibrationNode
+            Experiment node
         
-    Returns
-    -------
-    xr.Dataset
-        Dataset with optimal amplitude prefactor
+    Returns:
+        xr.Dataset
+            Dataset with optimal amplitude prefactor
     """
     ds_fit = ds.copy()
     
@@ -198,17 +189,15 @@ def _extract_and_validate_fit_parameters(
     """
     Extract fit parameters and validate their quality.
     
-    Parameters
-    ----------
-    fit : xr.Dataset
-        Dataset containing fit results
-    node : QualibrationNode
-        Experiment node
+    Args:
+        fit : xr.Dataset
+            Dataset containing fit results
+        node : QualibrationNode
+            Experiment node
         
-    Returns
-    -------
-    Tuple[xr.Dataset, Dict[str, FitParameters]]
-        Validated fit data and results dictionary
+    Returns:
+        Tuple[xr.Dataset, Dict[str, FitParameters]]
+            Validated fit data and results dictionary
     """
     # Get instrument limits for validation
     limits = [instrument_limits(q.xy) for q in node.namespace["qubits"]]
@@ -389,17 +378,15 @@ def _evaluate_signal_fit_worthiness(ds: xr.Dataset, signal_key: str = "state") -
     """
     Evaluate whether each qubit's signal is suitable for fitting based on autocorrelation.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset containing signal data
-    signal_key : str
-        Key for signal data ("state" or "I")
+    Args:
+        ds : xr.Dataset
+            Dataset containing signal data
+        signal_key : str
+            Key for signal data ("state" or "I")
         
-    Returns
-    -------
-    Dict[str, bool]
-        Dictionary mapping qubit names to fit-worthiness
+    Returns:
+        Dict[str, bool]
+            Dictionary mapping qubit names to fit-worthiness
     """
     result = {}
 
@@ -438,17 +425,15 @@ def _detect_chevron_modulation(signal_2d: np.ndarray, threshold: float = qc_para
     """
     Detect chevron-like modulation in 2D signal data.
     
-    Parameters
-    ----------
-    signal_2d : np.ndarray
-        2D array of signal values
-    threshold : float
-        Minimum modulation threshold
+    Args:
+        signal_2d : np.ndarray
+            2D array of signal values
+        threshold : float
+            Minimum modulation threshold
         
-    Returns
-    -------
-    bool
-        True if chevron modulation detected
+    Returns:
+        bool
+            True if chevron modulation detected
     """
     if signal_2d.ndim != 2:
         return False
@@ -466,19 +451,17 @@ def _determine_detuning_direction(fit: xr.Dataset, qubit: str, node=None) -> str
     """
     Determine detuning direction from frequency information.
     
-    Parameters
-    ----------
-    fit : xr.Dataset
-        Fit dataset
-    qubit : str
-        Qubit identifier
-    node : QualibrationNode, optional
-        Experiment node
+    Args:
+        fit : xr.Dataset
+            Fit dataset
+        qubit : str
+            Qubit identifier
+        node : QualibrationNode, optional
+            Experiment node
         
-    Returns
-    -------
-    str
-        Detuning direction ('positive' or 'negative')
+    Returns:
+        str
+            Detuning direction ('positive' or 'negative')
     """
     try:
         # Try to get frequencies from node
@@ -534,39 +517,37 @@ def _determine_qubit_outcome(
     """
     Determine the outcome for a single qubit based on comprehensive quality checks.
     
-    Parameters
-    ----------
-    nan_success : bool
-        Whether fit parameters are free of NaN values
-    amp_success : bool
-        Whether amplitude is within hardware limits
-    opt_amp : float
-        Optimal amplitude value
-    max_amplitude : float
-        Maximum allowed amplitude
-    fit_quality : float, optional
-        R² value of the fit
-    amp_prefactor : float, optional
-        Amplitude prefactor value
-    snr : float, optional
-        Signal-to-noise ratio
-    should_fit : bool
-        Whether data quality is sufficient for fitting
-    is_1d_dataset : bool
-        Whether this is a 1D dataset
-    has_structure : bool
-        Whether data shows expected structure
-    fit : xr.Dataset, optional
-        Fit dataset for additional checks
-    qubit : str, optional
-        Qubit identifier
-    node : QualibrationNode, optional
-        Analysis node
+    Args:
+        nan_success : bool
+            Whether fit parameters are free of NaN values
+        amp_success : bool
+            Whether amplitude is within hardware limits
+        opt_amp : float
+            Optimal amplitude value
+        max_amplitude : float
+            Maximum allowed amplitude
+        fit_quality : float, optional
+            R² value of the fit
+        amp_prefactor : float, optional
+            Amplitude prefactor value
+        snr : float, optional
+            Signal-to-noise ratio
+        should_fit : bool
+            Whether data quality is sufficient for fitting
+        is_1d_dataset : bool
+            Whether this is a 1D dataset
+        has_structure : bool
+            Whether data shows expected structure
+        fit : xr.Dataset, optional
+            Fit dataset for additional checks
+        qubit : str, optional
+            Qubit identifier
+        node : QualibrationNode, optional
+            Analysis node
         
-    Returns
-    -------
-    str
-        Outcome description
+    Returns:
+        str
+            Outcome description
     """
 
     # Check for invalid fit parameters

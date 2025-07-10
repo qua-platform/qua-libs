@@ -38,12 +38,11 @@ def log_fitted_results(fit_results: Dict[str, FitParameters], log_callable=None)
     """
     Logs the node-specific fitted results for all qubits from the fit results.
 
-    Parameters
-    ----------
-    fit_results : Dict[str, FitParameters]
-        Dictionary containing the fitted results for all qubits.
-    log_callable : callable, optional
-        Logger for logging the fitted results. If None, a default logger is used.
+    Args:
+        fit_results : Dict[str, FitParameters]
+            Dictionary containing the fitted results for all qubits.
+        log_callable : callable, optional
+            Logger for logging the fitted results. If None, a default logger is used.
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
@@ -83,17 +82,15 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """
     Process raw dataset for resonator spectroscopy vs flux analysis.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Raw dataset containing measurement data
-    node : QualibrationNode
-        The qualibration node containing parameters and qubit information
+    Args:
+        ds : xr.Dataset
+            Raw dataset containing measurement data
+        node : QualibrationNode
+            The qualibration node containing parameters and qubit information
         
-    Returns
-    -------
-    xr.Dataset
-        Processed dataset with additional coordinates and derived quantities
+    Returns:
+        xr.Dataset
+            Processed dataset with additional coordinates and derived quantities
     """
     # Convert I/Q quadratures to voltage
     ds = convert_IQ_to_V(ds, node.namespace["qubits"])
@@ -129,19 +126,17 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     """
     Robustly fit the resonance for each qubit as a function of flux.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset containing the processed data
-    node : QualibrationNode
-        The qualibration node containing experiment parameters
+    Args:
+        ds : xr.Dataset
+            Dataset containing the processed data
+        node : QualibrationNode
+            The qualibration node containing experiment parameters
 
-    Returns
-    -------
-    Tuple[xr.Dataset, Dict[str, FitParameters]]
-        Tuple containing:
-        - Dataset with fit results and quality metrics
-        - Dictionary mapping qubit names to fit parameters
+    Returns:
+        Tuple[xr.Dataset, Dict[str, FitParameters]]
+            Tuple containing:
+            - Dataset with fit results and quality metrics
+            - Dictionary mapping qubit names to fit parameters
     """
     # Find minimum frequency points for each flux bias
     peak_freq = ds.IQ_abs.idxmin(dim="detuning")
@@ -172,17 +167,15 @@ def _evaluate_qubit_data_quality(ds: xr.Dataset, peak_freq: xr.Dataset) -> Dict[
     """
     Evaluate data quality for each qubit to determine which can be fit.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Raw dataset
-    peak_freq : xr.Dataset
-        Peak frequency data
+    Args:
+        ds : xr.Dataset
+            Raw dataset
+        peak_freq : xr.Dataset
+            Peak frequency data
         
-    Returns
-    -------
-    Dict[str, str]
-        Dictionary mapping qubit names to quality assessment outcomes
+    Returns:
+        Dict[str, str]
+            Dictionary mapping qubit names to quality assessment outcomes
     """
     qubit_outcomes = {}
     
@@ -306,19 +299,17 @@ def _extract_and_validate_flux_parameters(
     """
     Extract and validate fit parameters from flux dependence data.
     
-    Parameters
-    ----------
-    fit : xr.Dataset
-        Dataset containing fit results
-    node : QualibrationNode
-        Experiment node
-    qubit_outcomes : Dict[str, str]
-        Initial quality assessment for each qubit
+    Args:
+        fit : xr.Dataset
+            Dataset containing fit results
+        node : QualibrationNode
+            Experiment node
+        qubit_outcomes : Dict[str, str]
+            Initial quality assessment for each qubit
         
-    Returns
-    -------
-    Tuple[xr.Dataset, Dict[str, FitParameters]]
-        Validated fit data and results dictionary
+    Returns:
+        Tuple[xr.Dataset, Dict[str, FitParameters]]
+            Validated fit data and results dictionary
     """
     # Calculate flux bias parameters only for qubits that have fit_results
     if "fit_results" in fit.data_vars:

@@ -30,12 +30,11 @@ def log_fitted_results(fit_results: Dict[str, FitParameters], log_callable=None)
     """
     Logs the node-specific fitted results for all qubits from the fit results.
 
-    Parameters
-    ----------
-    fit_results : Dict[str, FitParameters]
-        Dictionary containing the fitted results for all qubits.
-    log_callable : callable, optional
-        Logger for logging the fitted results. If None, a default logger is used.
+    Args:
+        fit_results : Dict[str, FitParameters]
+            Dictionary containing the fitted results for all qubits.
+        log_callable : callable, optional
+            Logger for logging the fitted results. If None, a default logger is used.
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
@@ -69,17 +68,15 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """
     Process raw dataset for resonator spectroscopy analysis.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Raw dataset containing measurement data
-    node : QualibrationNode
-        The qualibration node containing parameters and qubit information
+    Args:
+        ds : xr.Dataset
+            Raw dataset containing measurement data
+        node : QualibrationNode
+            The qualibration node containing parameters and qubit information
         
-    Returns
-    -------
-    xr.Dataset
-        Processed dataset with additional coordinates and derived quantities
+    Returns:
+        xr.Dataset
+            Processed dataset with additional coordinates and derived quantities
     """
     # Convert I/Q quadratures to voltage
     ds = convert_IQ_to_V(ds, node.namespace["qubits"])
@@ -103,19 +100,17 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     """
     Fit resonator spectroscopy data for each qubit in the dataset.
 
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset containing the processed data
-    node : QualibrationNode
-        The qualibration node containing experiment parameters
+    Args:
+        ds : xr.Dataset
+            Dataset containing the processed data
+        node : QualibrationNode
+            The qualibration node containing experiment parameters
 
-    Returns
-    -------
-    Tuple[xr.Dataset, Dict[str, FitParameters]]
-        Tuple containing:
-        - Dataset with fit results and quality metrics
-        - Dictionary mapping qubit names to fit parameters
+    Returns:
+        Tuple[xr.Dataset, Dict[str, FitParameters]]
+            Tuple containing:
+            - Dataset with fit results and quality metrics
+            - Dictionary mapping qubit names to fit parameters
     """
     # Perform peak/dip detection on IQ amplitude
     fit_dataset = peaks_dips(ds.IQ_abs, "detuning")
@@ -134,19 +129,17 @@ def _extract_and_validate_fit_parameters(
     """
     Extract fit parameters and validate their quality.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Raw dataset containing IQ data
-    fit : xr.Dataset
-        Dataset containing fit results from peak detection
-    node : QualibrationNode
-        Experiment node
+    Args:
+        ds : xr.Dataset
+            Raw dataset containing IQ data
+        fit : xr.Dataset
+            Dataset containing fit results from peak detection
+        node : QualibrationNode
+            Experiment node
         
-    Returns
-    -------
-    Tuple[xr.Dataset, Dict[str, FitParameters]]
-        Validated fit data and results dictionary
+    Returns:
+        Tuple[xr.Dataset, Dict[str, FitParameters]]
+            Validated fit data and results dictionary
     """
     # Calculate resonator frequencies and FWHM
     fit = _calculate_resonator_parameters(fit, node)
@@ -182,17 +175,15 @@ def _calculate_resonator_parameters(fit: xr.Dataset, node: QualibrationNode) -> 
     """
     Calculate resonator frequency and FWHM from fit results.
     
-    Parameters
-    ----------
-    fit : xr.Dataset
-        Dataset with peak detection results
-    node : QualibrationNode
-        Experiment node
+    Args:
+        fit : xr.Dataset
+            Dataset with peak detection results
+        node : QualibrationNode
+            Experiment node
         
-    Returns
-    -------
-    xr.Dataset
-        Dataset with resonator parameters added
+    Returns:
+        xr.Dataset
+            Dataset with resonator parameters added
     """
     # Add metadata to fit results
     fit.attrs = {"long_name": "frequency", "units": "Hz"}
@@ -239,19 +230,17 @@ def _extract_qubit_fit_metrics(
     """
     Extract all relevant fit metrics for a single qubit.
 
-    Parameters
-    ----------
-    ds_raw : xr.Dataset
-        The raw dataset containing IQ data
-    fit : xr.Dataset
-        Dataset containing fit results
-    qubit_name : str
-        Name of the qubit to extract metrics for
+    Args:
+        ds_raw : xr.Dataset
+            The raw dataset containing IQ data
+        fit : xr.Dataset
+            Dataset containing fit results
+        qubit_name : str
+            Name of the qubit to extract metrics for
 
-    Returns
-    -------
-    Dict[str, float]
-        Dictionary containing all fit metrics for the qubit
+    Returns:
+        Dict[str, float]
+            Dictionary containing all fit metrics for the qubit
     """
     qubit_data = fit.sel(qubit=qubit_name)
     sweep_span = _calculate_sweep_span(fit)
@@ -283,15 +272,13 @@ def _determine_resonator_outcome(
     """
     Determine the outcome for resonator spectroscopy based on fit metrics.
     
-    Parameters
-    ----------
-    metrics : Dict[str, float]
-        Dictionary containing fit metrics
+    Args:
+        metrics : Dict[str, float]
+            Dictionary containing fit metrics
         
-    Returns
-    -------
-    str
-        Outcome description
+    Returns:
+        str
+            Outcome description
     """
     num_peaks = metrics["num_peaks"]
     raw_num_peaks = metrics["raw_num_peaks"]
@@ -349,19 +336,17 @@ def _is_peak_shape_distorted(
     """
     Check if peak shape indicates distortion based on asymmetry and skewness.
     
-    Parameters
-    ----------
-    asymmetry : float
-        Peak asymmetry value
-    skewness : float
-        Peak skewness value
-    nrmse : float
-        Normalized Root Mean Square Error
+    Args:
+        asymmetry : float
+            Peak asymmetry value
+        skewness : float
+            Peak skewness value
+        nrmse : float
+            Normalized Root Mean Square Error
         
-    Returns
-    -------
-    bool
-        True if peak shape is distorted
+    Returns:
+        bool
+            True if peak shape is distorted
     """
     asymmetry_bad = (asymmetry is not None and 
                     (asymmetry < qc_params.min_asymmetry.value or asymmetry > qc_params.max_asymmetry.value))
@@ -379,19 +364,17 @@ def _is_peak_too_wide(
     """
     Check if peak is too wide relative to sweep or absolutely.
     
-    Parameters
-    ----------
-    fwhm : float
-        Full width at half maximum
-    sweep_span : float
-        Total sweep span
-    snr : float
-        Signal-to-noise ratio
+    Args:
+        fwhm : float
+            Full width at half maximum
+        sweep_span : float
+            Total sweep span
+        snr : float
+            Signal-to-noise ratio
         
-    Returns
-    -------
-    bool
-        True if peak is too wide
+    Returns:
+        bool
+            True if peak is too wide
     """
     # Determine distortion threshold based on SNR
     distorted_fraction = (

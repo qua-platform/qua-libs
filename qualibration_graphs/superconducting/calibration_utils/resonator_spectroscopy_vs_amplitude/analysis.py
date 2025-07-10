@@ -38,12 +38,11 @@ def log_fitted_results(fit_results: Dict[str, FitParameters], log_callable=None)
     """
     Logs the node-specific fitted results for all qubits from the fit results.
 
-    Parameters
-    ----------
-    fit_results : Dict[str, FitParameters]
-        Dictionary containing the fitted results for all qubits.
-    log_callable : callable, optional
-        Logger for logging the fitted results. If None, a default logger is used.
+    Args:
+        fit_results : Dict[str, FitParameters]
+            Dictionary containing the fitted results for all qubits.
+        log_callable : callable, optional
+            Logger for logging the fitted results. If None, a default logger is used.
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
@@ -80,17 +79,15 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """
     Process raw dataset for resonator spectroscopy vs amplitude analysis.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Raw dataset containing measurement data
-    node : QualibrationNode
-        The qualibration node containing parameters and qubit information
+    Args:
+        ds : xr.Dataset
+            Raw dataset containing measurement data
+        node : QualibrationNode
+            The qualibration node containing parameters and qubit information
         
-    Returns
-    -------
-    xr.Dataset
-        Processed dataset with additional coordinates and derived quantities
+    Returns:
+        xr.Dataset
+            Processed dataset with additional coordinates and derived quantities
     """
     # Convert I/Q quadratures to voltage
     ds = convert_IQ_to_V(ds, node.namespace["qubits"])
@@ -116,19 +113,17 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     """
     Fit resonator spectroscopy vs amplitude data for each qubit in the dataset.
 
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset containing the processed data
-    node : QualibrationNode
-        The qualibration node containing experiment parameters
+    Args:
+        ds : xr.Dataset
+            Dataset containing the processed data
+        node : QualibrationNode
+            The qualibration node containing experiment parameters
 
-    Returns
-    -------
-    Tuple[xr.Dataset, Dict[str, FitParameters]]
-        Tuple containing:
-        - Dataset with fit results and quality metrics
-        - Dictionary mapping qubit names to fit parameters
+    Returns:
+        Tuple[xr.Dataset, Dict[str, FitParameters]]
+            Tuple containing:
+            - Dataset with fit results and quality metrics
+            - Dictionary mapping qubit names to fit parameters
     """
     ds_fit = ds.copy()
     qubits = node.namespace["qubits"]
@@ -159,20 +154,18 @@ def _track_resonator_response_across_power(ds: xr.Dataset, qubits: list) -> Dict
     """
     Track resonator response across power levels for all qubits.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset containing measurement data
-    qubits : list
-        List of qubit objects
+    Args:
+        ds : xr.Dataset
+            Dataset containing measurement data
+        qubits : list
+            List of qubit objects
         
-    Returns
-    -------
-    Dict[str, np.ndarray]
-        Dictionary containing tracking results for each qubit. For debugging, the keys mean:
-        - "rr_tracked": Smoothed and interpolated resonance centers. Provides a clean trace.
-        - "rr_tracked_filtered": Resonance centers with poor quality fits replaced by NaN.
-        - "fit_quality_masks": Boolean mask indicating if fit for each power level was good (True).
+    Returns:
+        Dict[str, np.ndarray]
+            Dictionary containing tracking results for each qubit. For debugging, the keys mean:
+            - "rr_tracked": Smoothed and interpolated resonance centers. Provides a clean trace.
+            - "rr_tracked_filtered": Resonance centers with poor quality fits replaced by NaN.
+            - "fit_quality_masks": Boolean mask indicating if fit for each power level was good (True).
     """
     tracking_results = {
         "rr_tracked": [],
@@ -193,17 +186,15 @@ def _track_single_qubit_response(ds: xr.Dataset, qubit_name: str) -> Dict[str, n
     """
     Track resonator response for a single qubit across power levels.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset containing measurement data
-    qubit_name : str
-        Name of the qubit to analyze
+    Args:
+        ds : xr.Dataset
+            Dataset containing measurement data
+        qubit_name : str
+            Name of the qubit to analyze
         
-    Returns
-    -------
-    Dict[str, np.ndarray]
-        Dictionary containing analysis results for the qubit
+    Returns:
+        Dict[str, np.ndarray]
+            Dictionary containing analysis results for the qubit
     """
     iq_abs = ds.IQ_abs.sel(qubit=qubit_name)
     detuning = ds.detuning.values
@@ -240,17 +231,15 @@ def _analyze_signal_for_resonance(signal: np.ndarray, detuning: np.ndarray) -> T
     """
     Analyze a single power level signal to find resonance center.
     
-    Parameters
-    ----------
-    signal : np.ndarray
-        Signal data for analysis
-    detuning : np.ndarray
-        Frequency detuning values
+    Args:
+        signal : np.ndarray
+            Signal data for analysis
+        detuning : np.ndarray
+            Frequency detuning values
         
-    Returns
-    -------
-    Tuple[float, float, bool]
-        Resonance center, SNR value, and quality flag
+    Returns:
+        Tuple[float, float, bool]
+            Resonance center, SNR value, and quality flag
     """
     # Baseline correction
     baseline_window = get_safe_savgol_window_length(len(signal), sp_params.baseline_window_size.value, sp_params.polyorder.value)
@@ -302,17 +291,15 @@ def _smooth_resonance_centers(filtered_centers: np.ndarray, fit_mask: np.ndarray
     """
     Smooth resonance centers using interpolation and filtering.
     
-    Parameters
-    ----------
-    filtered_centers : np.ndarray
-        Array of filtered center frequencies
-    fit_mask : np.ndarray
-        Boolean mask indicating good fits
+    Args:
+        filtered_centers : np.ndarray
+            Array of filtered center frequencies
+        fit_mask : np.ndarray
+            Boolean mask indicating good fits
         
-    Returns
-    -------
-    np.ndarray
-        Smoothed center frequencies
+    Returns:
+        np.ndarray
+            Smoothed center frequencies
     """
     filtered_centers = np.array(filtered_centers)
     fit_mask = np.array(fit_mask)
@@ -351,21 +338,19 @@ def _assign_optimal_power_clustering(
     """
     Assign optimal readout power using KMeans clustering.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset containing measurement data
-    qubits : list
-        List of qubit objects
-    n_clusters : int
-        Number of clusters for KMeans
-    power_margin_db : float
-        Safety margin to subtract from detected power
+    Args:
+        ds : xr.Dataset
+            Dataset containing measurement data
+        qubits : list
+            List of qubit objects
+        n_clusters : int
+            Number of clusters for KMeans
+        power_margin_db : float
+            Safety margin to subtract from detected power
         
-    Returns
-    -------
-    Dict[str, float]
-        Mapping from qubit name to optimal power
+    Returns:
+        Dict[str, float]
+            Mapping from qubit name to optimal power
     """
     if n_clusters is None:
         n_clusters = qc_params.optimal_power_n_clusters.value
@@ -430,21 +415,19 @@ def _calculate_comprehensive_fit_metrics(
     """
     Calculate comprehensive fit metrics for all qubits.
     
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset containing measurement data
-    qubits : list
-        List of qubit objects
-    optimal_power_dict : Dict[str, float]
-        Optimal power for each qubit
-    tracking_results : Dict[str, np.ndarray]
-        Resonator tracking results
+    Args:
+        ds : xr.Dataset
+            Dataset containing measurement data
+        qubits : list
+            List of qubit objects
+        optimal_power_dict : Dict[str, float]
+            Optimal power for each qubit
+        tracking_results : Dict[str, np.ndarray]
+            Resonator tracking results
         
-    Returns
-    -------
-    Dict[str, list]
-        Dictionary containing all calculated metrics
+    Returns:
+        Dict[str, list]
+            Dictionary containing all calculated metrics
     """
     metrics = {
         "snrs": [],
@@ -525,21 +508,19 @@ def _add_metrics_to_dataset(
     """
     Add all calculated metrics to the dataset.
     
-    Parameters
-    ----------
-    ds_fit : xr.Dataset
-        Dataset to add metrics to
-    tracking_results : Dict[str, np.ndarray]
-        Resonator tracking results
-    optimal_power_dict : Dict[str, float]
-        Optimal power for each qubit
-    fit_metrics : Dict[str, list]
-        Calculated fit metrics
+    Args:
+        ds_fit : xr.Dataset
+            Dataset to add metrics to
+        tracking_results : Dict[str, np.ndarray]
+            Resonator tracking results
+        optimal_power_dict : Dict[str, float]
+            Optimal power for each qubit
+        fit_metrics : Dict[str, list]
+            Calculated fit metrics
         
-    Returns
-    -------
-    xr.Dataset
-        Dataset with added metrics
+    Returns:
+        xr.Dataset
+            Dataset with added metrics
     """
     qubit_names = [str(q) for q in ds_fit.qubit.values]
     
@@ -573,17 +554,15 @@ def _calculate_frequency_shifts_at_optimal_power(ds_fit: xr.Dataset, node: Quali
     """
     Calculate frequency shifts at optimal power for all qubits.
     
-    Parameters
-    ----------
-    ds_fit : xr.Dataset
-        Dataset containing fit results
-    node : QualibrationNode
-        Experiment node
+    Args:
+        ds_fit : xr.Dataset
+            Dataset containing fit results
+        node : QualibrationNode
+            Experiment node
         
-    Returns
-    -------
-    list
-        List of frequency shifts for each qubit
+    Returns:
+        list
+            List of frequency shifts for each qubit
     """
     freq_shifts = []
     
@@ -620,19 +599,17 @@ def _extract_and_validate_amplitude_parameters(
     """
     Extract and validate fit parameters from amplitude dependence data.
     
-    Parameters
-    ----------
-    fit : xr.Dataset
-        Dataset containing fit results
-    node : QualibrationNode
-        Experiment node
-    ds_raw : xr.Dataset
-        Raw dataset for additional analysis
+    Args:
+        fit : xr.Dataset
+            Dataset containing fit results
+        node : QualibrationNode
+            Experiment node
+        ds_raw : xr.Dataset
+            Raw dataset for additional analysis
         
-    Returns
-    -------
-    Tuple[xr.Dataset, Dict[str, FitParameters]]
-        Validated fit data and results dictionary
+    Returns:
+        Tuple[xr.Dataset, Dict[str, FitParameters]]
+            Validated fit data and results dictionary
     """
     # Calculate resonator frequencies
     full_freq = np.array([q.resonator.RF_frequency for q in node.namespace["qubits"]])
@@ -714,15 +691,13 @@ def _determine_amplitude_outcome(
     """
     Determine the outcome for amplitude spectroscopy based on parameters.
     
-    Parameters
-    ----------
-    params : Dict[str, any]
-        Dictionary containing all outcome parameters
+    Args:
+        params : Dict[str, any]
+            Dictionary containing all outcome parameters
         
-    Returns
-    -------
-    str
-        Outcome description
+    Returns:
+        str
+            Outcome description
     """
     freq_shift = params["freq_shift"]
     optimal_power = params["optimal_power"]
@@ -783,21 +758,19 @@ def _detect_ground_state_presence(
     """
     Detect ground state presence using binary mapping approach.
     
-    Parameters
-    ----------
-    iq_abs : np.ndarray
-        IQ amplitude array (power, detuning)
-    n_low_powers : int
-        Number of low powers to analyze
-    min_gs_count : int
-        Minimum count for ground state detection
-    gs_window : int
-        Window size for mode detection
+    Args:
+        iq_abs : np.ndarray
+            IQ amplitude array (power, detuning)
+        n_low_powers : int
+            Number of low powers to analyze
+        min_gs_count : int
+            Minimum count for ground state detection
+        gs_window : int
+            Window size for mode detection
         
-    Returns
-    -------
-    bool
-        True if ground state is detected
+    Returns:
+        bool
+            True if ground state is detected
     """
     try:
         n_powers, n_detuning = iq_abs.shape
