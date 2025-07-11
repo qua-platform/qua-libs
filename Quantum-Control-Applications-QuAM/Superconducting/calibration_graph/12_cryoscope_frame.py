@@ -32,8 +32,8 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None 
-    num_averages: int = 15000
+    qubits: Optional[List[str]] = ['qD2']    
+    num_averages: int = 40000
     amplitude_factor: float = 0.3
     cryoscope_len: int = 32
     num_frames: int = 17
@@ -579,9 +579,9 @@ if not node.parameters.simulate:
     node.results['fit_results'] = {}
     for q in qubits:
         node.results['fit_results'][q.name] = {}
-        node.results['fit_results'][q.name]['fir'] = optimized_fir.tolist()
+        node.results['fit_results'][q.name]['fir'] = fir_est.tolist()
         if not node.parameters.only_FIR:
-            node.results['fit_results'][q.name]['iir'] = feedback_tap_1exp
+            node.results['fit_results'][q.name]['iir'] = exponential_filter
 
 # %% {Update state}
 convert_to_2GSPS = True

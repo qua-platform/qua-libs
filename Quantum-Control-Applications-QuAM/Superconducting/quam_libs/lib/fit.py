@@ -176,6 +176,96 @@ def fit_oscillation_decay_exp(da, dim):
     )
 
 
+
+def oscillation_decay_gaussian(t, a, f, phi, offset, decay):
+    return a * np.exp(-t**2 * decay**2) * np.cos(2 * np.pi * f * t + phi) + offset
+
+
+def fit_oscillation_decay_gaussian(da, dim):
+    def get_decay(dat):
+        def oed(d):
+            return guess.oscillation_exp_decay(da[dim], d)
+
+        return np.apply_along_axis(oed, -1, dat)
+
+    def get_freq(dat):
+        def f(d):
+            return guess.frequency(da[dim], d)
+
+        return np.apply_along_axis(f, -1, dat)
+
+    def get_amp(dat):
+        max_ = np.max(dat, axis=-1)
+        min_ = np.min(dat, axis=-1)
+        return (max_ - min_) / 2
+
+    decay_guess = xr.apply_ufunc(get_decay, da, input_core_dims=[[dim]]).rename("decay guess")
+    freq_guess = xr.apply_ufunc(get_freq, da, input_core_dims=[[dim]]).rename("freq guess")
+    amp_guess = xr.apply_ufunc(get_amp, da, input_core_dims=[[dim]]).rename("amp guess")
+
+    def apply_fit(x, y, a, f, phi, offset, decay):
+        try:
+            fit, residuals = curve_fit(oscillation_decay_gaussian, x, y, p0=[a, f, phi, offset, decay])
+            return np.array(fit.tolist() + np.array(residuals).flatten().tolist())
+        except RuntimeError as e:
+            print(f"{a=}, {f=}, {phi=}, {offset=}, {decay=}")
+            plt.plot(x, oscillation_decay_gaussian(x, a, f, phi, offset, decay))
+            plt.plot(x, y)
+            plt.show()
+            # raise e
+
+    fit_res = xr.apply_ufunc(
+        apply_fit,
+        da[dim],
+        da,
+        amp_guess,
+        freq_guess,
+        0,
+        0.5,
+        decay_guess,
+        input_core_dims=[[dim], [dim], [], [], [], [], []],
+        output_core_dims=[["fit_vals"]],
+        vectorize=True,
+    )
+    return fit_res.assign_coords(
+        fit_vals=(
+            "fit_vals",
+            [
+                "a",
+                "f",
+                "phi",
+                "offset",
+                "decay",
+                "a_a",
+                "a_f",
+                "a_phi",
+                "a_offset",
+                "a_decay",
+                "f_a",
+                "f_f",
+                "f_phi",
+                "f_offset",
+                "f_decay",
+                "phi_a",
+                "phi_f",
+                "phi_phi",
+                "phi_offset",
+                "phi_decay",
+                "offset_a",
+                "offset_f",
+                "offset_phi",
+                "offset_offset",
+                "offset_decay",
+                "decay_a",
+                "decay_f",
+                "decay_phi",
+                "decay_offset",
+                "decay_decay",
+            ],
+        )
+    )
+
+
 def echo_decay_exp(t, a, offset, decay, decay_echo):
     return a * np.exp(-t * decay - (t * decay_echo) ** 2) + offset
     # return a * np.exp(-t * decay) + offset

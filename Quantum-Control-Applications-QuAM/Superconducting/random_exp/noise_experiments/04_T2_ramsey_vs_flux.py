@@ -37,13 +37,13 @@ from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
 from qualang_tools.multi_user import qm_session
 
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None
-    num_averages: int = 100
-    frequency_detuning_in_mhz: float = 1.0
-    min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 15000
-    wait_time_step_in_ns: int = 20
-    flux_span : float = 0.04
+    qubits: Optional[List[str]] = ["qD1"]
+    num_averages: int = 400
+    frequency_detuning_in_mhz: float = 1
+    min_wait_time_in_ns: int = 20
+    max_wait_time_in_ns: int = 10000
+    wait_time_step_in_ns: int = 10
+    flux_span : float = 0.026
     flux_step : float = 0.002
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
@@ -98,9 +98,9 @@ idle_times = np.arange(
 # Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
 detuning = int(1e6 * node.parameters.frequency_detuning_in_mhz)
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
-dcs = np.arange(0.0, node.parameters.flux_span / 2+0.001, step = node.parameters.flux_step)
+dcs = np.arange(0.0, node.parameters.flux_span+0.001, step = node.parameters.flux_step)
 quads = {qubit.name: int(qubit.freq_vs_flux_01_quad_term) for qubit in qubits}
-freqs = {qubit.name: (1.04*dcs**2 * qubit.freq_vs_flux_01_quad_term).astype(int) for qubit in qubits}
+freqs = {qubit.name: (1.1*dcs**2 * qubit.freq_vs_flux_01_quad_term).astype(int) for qubit in qubits}
 # %%
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
@@ -129,8 +129,9 @@ with program() as ramsey:
             assign(dc, fluxes_qua[flux_index])
             assign(freq,freqs_qua[flux_index])
             # with for_(*from_array(t, idle_times)):
-            with for_each_(t, idle_times):
-                with for_(n, 0, n < n_avg, n + 1):
+            
+            with for_(n, 0, n < n_avg, n + 1):
+                with for_each_(t, idle_times):
                     save(n, n_st)
                     # readout_state(qubit, init_state)
                     qubit.align()
@@ -142,13 +143,15 @@ with program() as ramsey:
                     assign(phi, phi2+phi)
                     save(phi2,debug_st[i])
                     qubit.align()
-                    # with strict_timing_():
-                    qubit.xy.play("x90")
-                    qubit.align()
-                    qubit.z.play("const", amplitude_scale = dc / qubit.z.operations["const"].amplitude, duration=t)
-                    qubit.xy.frame_rotation_2pi(phi)
-                    qubit.align()
-                    qubit.xy.play("x90")
+                    with strict_timing_():
+                        qubit.xy.play("x90")
+                        qubit.z.wait(duration=qubit.xy.operations["x90"].length // 4)
+                        
+                        qubit.xy.wait(t+10)
+                        qubit.z.play("const", amplitude_scale = dc / qubit.z.operations["const"].amplitude, duration=t)
+                    
+                        qubit.xy.frame_rotation_2pi(phi)
+                        qubit.xy.play("x90")
                     qubit.align()                   
                     # Measure the state of the resonators
                     readout_state(qubit, final_state[i])
@@ -165,7 +168,7 @@ with program() as ramsey:
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubits):
-            state_st[i].buffer(n_avg).buffer(len(idle_times)).buffer(len(dcs)).map(FUNCTIONS.average(2)).save(f"state{i + 1}")
+            state_st[i].buffer(len(idle_times)).buffer(n_avg).buffer(len(dcs)).map(FUNCTIONS.average(1)).save(f"state{i + 1}")
             # debug_st[i].buffer(n_avg).buffer(len(idle_times)).buffer(len(dcs)).map(FUNCTIONS.average(0)).save(f"phi{i + 1}")
 
 ###########################
@@ -292,7 +295,7 @@ if not simulate:
         y_err = fit_dataset.decay_error.sel(qubit=qubit).values
 
         # Perform weighted curve fit
-        popt, pcov = curve_fit(linear_model, x[6:-1], y[6:-1], sigma=y_err[6:-1], absolute_sigma=True)
+        popt, pcov = curve_fit(linear_model, x[4:], y[4:], sigma=y_err[4:], absolute_sigma=True)
         slope, intercept = popt
         slope_err, intercept_err = np.sqrt(np.diag(pcov))
 
@@ -343,7 +346,8 @@ if not simulate:
         ax.set_title(qubit['qubit'])
         ax.set_ylabel('T2* (uS)')
         ax.set_xlabel(' Flux (V)')
-        ax.set_ylim(0, 15)
+        # ax.set_ylim(0, 15)
+        ax.set_yscale('log')
     grid.fig.suptitle('T2*. Vs. flux')
     plt.tight_layout()
     plt.show()
@@ -365,7 +369,7 @@ if not simulate:
         ax.set_title(qubit['qubit'])
         ax.set_ylabel('$\Gamma_R$ (MHz)')
         ax.set_xlabel("$df/d\phi$ (GHz/$\phi_0$)")
-        
+        ax.grid(True)
         
         # Add extra coordinates to the ax axis representing detuning
         detuning_data = fit_dataset.detuning.sel(qubit=qubit['qubit'])
