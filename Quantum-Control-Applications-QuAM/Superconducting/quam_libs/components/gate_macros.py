@@ -63,7 +63,7 @@ class ResetMacro(QubitMacro):
         We provide here a worst case estimate of the duration for the case where the reset is active.
         For the case where the reset is thermalize, we return the thermalization time of the qubit.
         """
-        if self.reset_type == "reset":
+        if self.reset_type == "active":
             pi_pulse_duration = self.qubit.get_pulse(self.pi_pulse).length
             readout_pulse_duration = self.qubit.get_pulse(self.readout_pulse).length
             return (pi_pulse_duration + readout_pulse_duration) * self.max_attempts * 1e-9 # convert to seconds
