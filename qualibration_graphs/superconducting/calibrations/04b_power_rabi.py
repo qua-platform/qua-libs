@@ -216,12 +216,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["fit_results"] = fit_results
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
-        qubit_name: ("successful" if fit_result.outcome == "successful" else "failed")
+        qubit_name: ("successful" if fit_result["outcome"] == "successful" else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()
     }
 
@@ -254,9 +254,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             operation = q.xy.operations[node.parameters.operation]
             fit_result = node.results["fit_results"][q.name]
-            operation.amplitude = fit_result.opt_amp
+            operation.amplitude = fit_result["opt_amp"]
             if node.parameters.operation == "x180":
-                q.xy.operations["x90"].amplitude = fit_result.opt_amp / 2
+                q.xy.operations["x90"].amplitude = fit_result["opt_amp"] / 2
 
 
 # %% {Save_results}
