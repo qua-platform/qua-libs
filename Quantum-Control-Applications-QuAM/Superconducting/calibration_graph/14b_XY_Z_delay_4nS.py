@@ -4,13 +4,14 @@
 """
 import warnings
 
+from datetime import datetime, timezone, timedelta
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import fetching_tool, progress_counter
 from qualibrate import QualibrationNode, NodeParameters
 from typing import Optional, Literal
 
 from scipy.optimize import curve_fit
-from quam_libs.lib.save_utils import save_node
+from quam_libs.lib.save_utils import get_node_id, save_node
 
 class Parameters(NodeParameters):
     qubits: Optional[str] = None
@@ -27,6 +28,7 @@ node = QualibrationNode(
     name="14b_XY_Z_delay_4nS",
     parameters=Parameters()
 )
+node_id = get_node_id(node)
 
 from qm.qua import *
 from qm import SimulationConfig
@@ -146,6 +148,7 @@ if simulate:
     node.save()
     quit()
 else:
+    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(xy_z_delay_calibration)
         results = fetching_tool(job, ["n"], mode="live")
@@ -165,7 +168,7 @@ node.results['ds'] = ds
 
 # %%
 
-# find where the valus of ds.state.sel(sequence=0) is above 0.5 and retrun the mean of the relative_time
+# find where the valus of ds.state.sel(sequence=0) is above 0.5 and return the mean of the relative_time
 delays_0 = (ds.state.sel(sequence=0).where(ds.state.sel(sequence=0) > 0.5) / ds.state.sel(sequence=0).where(ds.state.sel(sequence=0) > 0.5) * ds.relative_time).mean(dim="relative_time")
 delays_1 = (ds.state.sel(sequence=1).where(ds.state.sel(sequence=1) < 0.5) / ds.state.sel(sequence=1).where(ds.state.sel(sequence=1) < 0.5) * ds.relative_time).mean(dim="relative_time")
 delays = (delays_0 + delays_1) / 2
@@ -180,8 +183,8 @@ for ax, qubit in grid_iter(grid):
     # x = ds.relative_time
     qubit = qubit['qubit']
     ds.state.sel(qubit=qubit).plot(hue = "sequence", ax = ax)
-    ax.axvline(delays_0.sel(qubit=qubit), color="C0", linestyle="--")
-    ax.axvline(delays_1.sel(qubit=qubit), color="C1", linestyle="--")
+    ax.axvline(delays_0.sel(qubit=qubit), color="C0", linestyle="--", label="|0>")
+    ax.axvline(delays_1.sel(qubit=qubit), color="C1", linestyle="--", label="|1>")
     
     ax.set_xlabel("Relative Time")
     ax.set_ylabel("State")
@@ -189,7 +192,7 @@ for ax, qubit in grid_iter(grid):
 
     ax.legend()
 
-grid.fig.suptitle('XY Z Delay Fitting')
+grid.fig.suptitle(f'XY Z Delay Fitting \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type_thermal_or_active}')
 plt.tight_layout()
 plt.show()
 

@@ -1,23 +1,17 @@
 """
-        QUBIT SPECTROSCOPY
-This sequence involves sending a saturation pulse to the qubit, placing it in a mixed state,
-and then measuring the state of the resonator across various qubit drive intermediate frequencies dfs.
-In order to facilitate the qubit search, the qubit pulse duration and amplitude can be changed manually in the QUA
-program directly from the node parameters.
+        QUBIT SPECTROSCOPY - 0->2 TRANSITION
+This sequence involves sending a saturation pulse to the qubit to find the 0->2 / 2 transition frequency,
+which allows estimation of the qubit anharmonicity. The sequence searches around f01 - α/2,
+where f01 is the qubit frequency and α is the anharmonicity (default guess of 200 MHz).
 
-The data is post-processed to determine the qubit resonance frequency and the width of the peak.
-
-Note that it can happen that the qubit is excited by the image sideband or LO leakage instead of the desired sideband.
-This is why calibrating the qubit mixer is highly recommended.
+The data is post-processed to determine the 0->2 transition frequency and calculate the actual anharmonicity.
 
 Prerequisites:
-    - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
-    - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
-    - Set the flux bias to the desired working point, independent, joint or arbitrary, in the state.
-    - Configuration of the saturation pulse amplitude and duration to transition the qubit into a mixed state.
+    - Having run the qubit spectroscopy (03a) to find the 0->1 transition frequency
+    - Set the flux bias to the desired working point
 
 Before proceeding to the next node:
-    - Update the qubit frequency in the state, as well as the expected x180 amplitude and IQ rotation angle.
+    - Update the qubit anharmonicity in the state
     - Save the current state
 """
 
@@ -48,11 +42,12 @@ import numpy as np
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
-    num_averages: int = 500
+    num_averages: int = 1000
     operation: str = "saturation"
-    operation_amplitude_factor: Optional[float] = 0.1
+    operation_amplitude_factor: Optional[float] = 7  # Higher power to drive 0->2 transition
     operation_len_in_ns: Optional[int] = None
-    frequency_span_in_mhz: float = 100
+    initial_anharmonicity_mhz: float = 200.0  # Default anharmonicity guess
+    frequency_span_in_mhz: float = 50  # Search window around f01 - α/2
     frequency_step_in_mhz: float = 0.25
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     target_peak_width: Optional[float] = 2e6
@@ -62,10 +57,10 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True
+    multiplexed: bool = False
 
 
-node = QualibrationNode(name="03a_Qubit_Spectroscopy", parameters=Parameters())
+node = QualibrationNode(name="03e_Qubit_Spectroscopy_02", parameters=Parameters())
 node_id = get_node_id()
 
 # %% {Initialize_QuAM_and_QOP}
@@ -97,10 +92,14 @@ if node.parameters.operation_amplitude_factor:
     operation_amp = node.parameters.operation_amplitude_factor
 else:
     operation_amp = 1.0
-# Qubit detuning sweep with respect to their resonance frequencies
+
+# Calculate expected 0->2 transition frequency (f01 - α/2)
+init_anharmonicity = node.parameters.initial_anharmonicity_mhz * u.MHz
+# Qubit detuning sweep around expected 0->2 transition
 span = node.parameters.frequency_span_in_mhz * u.MHz
 step = node.parameters.frequency_step_in_mhz * u.MHz
 dfs = np.arange(-span // 2, +span // 2, step, dtype=np.int32)
+
 flux_point = node.parameters.flux_point_joint_or_independent
 qubit_freqs = {q.name: q.xy.RF_frequency for q in qubits}  # for opx
 
@@ -113,32 +112,26 @@ elif node.parameters.arbitrary_qubit_frequency_in_ghz is not None:
         q.name: 1e9 * node.parameters.arbitrary_qubit_frequency_in_ghz - qubit_freqs[q.name] for q in qubits
     }
     arb_flux_bias_offset = {q.name: np.sqrt(detunings[q.name] / q.freq_vs_flux_01_quad_term) for q in qubits}
-
 else:
     arb_flux_bias_offset = {q.name: 0.0 for q in qubits}
     detunings = {q.name: 0.0 for q in qubits}
 
+# Adjust detunings to search around 0->2 transition
+for q in qubits:
+    detunings[q.name] -= init_anharmonicity / 2
 
 target_peak_width = node.parameters.target_peak_width
 if target_peak_width is None:
-    target_peak_width = (
-        3e6  # the desired width of the response to the saturation pulse (including saturation amp), in Hz
-    )
+    target_peak_width = 3e6  # the desired width of the response to the saturation pulse
 
-with program() as qubit_spec:
+with program() as qubit_spec_02:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     df = declare(int)  # QUA variable for the qubit frequency
-    
-    if flux_point == "joint":
-        # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
-    
+
     for i, qubit in enumerate(qubits):
-        
-        if flux_point != "joint":
-            # Bring the active qubits to the desired frequency point
-            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -181,7 +174,7 @@ with program() as qubit_spec:
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
-    job = qmm.simulate(config, qubit_spec, simulation_config)
+    job = qmm.simulate(config, qubit_spec_02, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
@@ -198,7 +191,7 @@ if node.parameters.simulate:
 elif node.parameters.load_data_id is None:
     date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        job = qm.execute(qubit_spec)
+        job = qm.execute(qubit_spec_02)
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
             # Fetch results
@@ -257,37 +250,30 @@ if not node.parameters.simulate:
         ]
     )
 
-    # Save fitting results
+    # Save fitting results and calculate anharmonicities
     fit_results = {}
     for q in qubits:
         fit_results[q.name] = {}
         if not np.isnan(result.sel(qubit=q.name).position.values):
             fit_results[q.name]["fit_successful"] = True
-            Pi_length = q.xy.operations["x180"].length
-            used_amp = q.xy.operations["saturation"].amplitude * operation_amp
-            print(
-                f"Drive frequency for {q.name} is "
-                f"{(result.sel(qubit = q.name).position.values + q.xy.RF_frequency) / 1e9:.6f} GHz"
-            )
-            fit_results[q.name]["drive_freq"] = result.sel(qubit=q.name).position.values + q.xy.RF_frequency
-            print(f"(shift of {result.sel(qubit = q.name).position.values/1e6:.3f} MHz)")
-            factor_cw = float(target_peak_width / result.sel(qubit=q.name).width.values)
-            factor_pi = np.pi / (result.sel(qubit=q.name).width.values * Pi_length * 1e-9)
-            print(f"Found a peak width of {result.sel(qubit = q.name).width.values/1e6:.2f} MHz")
-            print(
-                f"To obtain a peak width of {target_peak_width/1e6:.1f} MHz the cw amplitude is modified "
-                f"by {factor_cw:.2f} to {factor_cw * used_amp / operation_amp * 1e3:.0f} mV"
-            )
-            print(
-                f"To obtain a Pi pulse at {Pi_length} ns the Rabi amplitude is modified by {factor_pi:.2f} "
-                f"to {factor_pi*used_amp*1e3:.0f} mV"
-            )
-            print(f"readout angle for qubit {q.name}: {angle.sel(qubit = q.name).values:.4}")
-            print()
+            f02_2 = (result.sel(qubit=q.name).position.values + init_anharmonicity / 2)  # Hz
+            measured_anharmonicity = 2*f02_2  # Hz
+            f01 = q.xy.RF_frequency
+            
+            print(f"\nResults for {q.name}:")
+            print(f"f01 frequency: {f01/1e9:.6f} GHz")
+            print(f"Measured anharmonicity: {measured_anharmonicity/1e6:.2f} MHz")
+            print(f"(compared to initial guess of {node.parameters.initial_anharmonicity_mhz:.2f} MHz)")
+            
+            fit_results[q.name]["f01"] = f01
+            fit_results[q.name]["f02_2"] = f02_2
+            fit_results[q.name]["anharmonicity"] = measured_anharmonicity
+            fit_results[q.name]["peak_width"] = result.sel(qubit=q.name).width.values
+            print(f"Found a peak width of {result.sel(qubit=q.name).width.values/1e6:.2f} MHz")
+            print(f"readout angle for qubit {q.name}: {angle.sel(qubit=q.name).values:.4}")
         else:
             fit_results[q.name]["fit_successful"] = False
-            print(f"Failed to find a peak for {q.name}")
-            print()
+            print(f"\nFailed to find a peak for {q.name}")
     node.results["fit_results"] = fit_results
 
     # %% {Plotting}
@@ -303,14 +289,14 @@ if not node.parameters.simulate:
                 ds.loc[qubit].sel(freq=result.loc[qubit].position.values, method="nearest").I_rot * 1e3,
                 ".r",
             )
-            # # Identify the width
+            # Identify the width
             (approx_peak.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit] * 1e3).plot(
                 ax=ax, x="freq_GHz", linewidth=0.5, linestyle="--"
             )
         ax.set_xlabel("Qubit freq [GHz]")
         ax.set_ylabel("Trans. amp. [mV]")
-        ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Qubit spectroscopy (amplitude) \n {date_time} GMT+3 #{node_id} \n multiplexed = {node.parameters.multiplexed}")
+        ax.set_title(f"{qubit['qubit']}")
+    grid.fig.suptitle(f"Qubit spectroscopy 0->2 transition \n {date_time} GMT+3 #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
@@ -320,34 +306,9 @@ if not node.parameters.simulate:
         with node.record_state_updates():
             for q in qubits:
                 if not np.isnan(result.sel(qubit=q.name).position.values):
-                    if flux_point == "arbitrary":
-                        q.arbitrary_intermediate_frequency = float(
-                            result.sel(qubit=q.name).position.values + detunings[q.name] + q.xy.intermediate_frequency
-                        )
-                        q.z.arbitrary_offset = arb_flux_bias_offset[q.name]
-                    else:
-                        q.xy.intermediate_frequency += float(result.sel(qubit=q.name).position.values)
-                    if not flux_point == "arbitrary":
-                        prev_angle = q.resonator.operations["readout"].integration_weights_angle
-                        if not prev_angle:
-                            prev_angle = 0.0
-                        q.resonator.operations["readout"].integration_weights_angle = (
-                            prev_angle + angle.sel(qubit=q.name).values
-                        ) % (2 * np.pi)
-                        Pi_length = q.xy.operations["x180"].length
-                        used_amp = q.xy.operations["saturation"].amplitude * operation_amp
-                        factor_cw = float(target_peak_width / result.sel(qubit=q.name).width.values)
-                        factor_pi = np.pi / (result.sel(qubit=q.name).width.values * Pi_length * 1e-9)
-                        limits = instrument_limits(q.xy)
-                        if factor_cw * used_amp / operation_amp < limits.max_wf_amplitude:
-                            q.xy.operations["saturation"].amplitude = factor_cw * used_amp / operation_amp
-                        else:
-                            q.xy.operations["saturation"].amplitude = limits.max_wf_amplitude
+                    # Update the anharmonicity in the qubit state
+                    q.anharmonicity = int(fit_results[q.name]["anharmonicity"])
 
-                        if factor_pi * used_amp < limits.max_x180_wf_amplitude:
-                            q.xy.operations["x180"].amplitude = factor_pi * used_amp
-                        elif factor_pi * used_amp >= limits.max_x180_wf_amplitude:
-                            q.xy.operations["x180"].amplitude = limits.max_x180_wf_amplitude
         node.results["ds"] = ds
 
         # %% {Save_results}
@@ -356,5 +317,4 @@ if not node.parameters.simulate:
         node.machine = machine
         save_node(node)
 
-
-# %%
+# %% 
