@@ -102,14 +102,13 @@ with program() as xy8_order_sweep:
     # XY8-n sequence
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(xy8_order, order_vec)):
-            with strict_timing_():
-                play("x90", "NV")
-                with for_(i, 0, i < xy8_order, i + 1):
-                    wait(tau_half, "NV")
-                    xy8_block()
-                    wait(tau_half, "NV")
-                wait(t_gap, "NV")  # compensate for timing gap
-                play("x90", "NV")
+            play("x90", "NV")
+            with for_(i, 0, i < xy8_order, i + 1):
+                wait(tau_half, "NV")
+                xy8_block()
+                wait(tau_half, "NV")
+            wait(t_gap, "NV")  # compensate for timing gap
+            play("x90", "NV")
             align()  # Play the laser pulse after the XY8 sequence
             # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
