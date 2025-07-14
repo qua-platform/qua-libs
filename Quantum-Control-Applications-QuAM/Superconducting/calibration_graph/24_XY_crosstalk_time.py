@@ -97,9 +97,14 @@ with program() as cross_talk_sequential:
     t = declare(int)  
     phi = declare(fixed)
     
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+    
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the minimum frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         for j, qubit2 in enumerate(qubits):
             with for_(n, 0, n < n_avg, n + 1):

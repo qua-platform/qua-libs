@@ -267,10 +267,14 @@ class QuaProgramHandler:
             state = declare(int)
             state_st = [declare_stream() for _ in range(self.num_pairs)]
 
+            if self.node.parameters.flux_point_joint_or_independent == "joint":
+                self.machine.set_all_fluxes(flux_point=self.node.parameters.flux_point_joint_or_independent, target=self.qubit_pairs[0].qubit_control)
+            
             for i, qubit_pair in enumerate(self.qubit_pairs):
 
                 # Bring the active qubits to the desired frequency point
-                self.machine.set_all_fluxes(flux_point=self.node.parameters.flux_point_joint_or_independent, target=qubit_pair.qubit_control)
+                if self.node.parameters.flux_point_joint_or_independent != "joint":
+                    self.machine.set_all_fluxes(flux_point=self.node.parameters.flux_point_joint_or_independent, target=qubit_pair.qubit_control)
 
                 # Initialize the qubits
                 if self.node.parameters.reset_type_thermal_or_active == "active":
@@ -320,10 +324,14 @@ class QuaProgramHandler:
             state = declare(int)
             state_st = [declare_stream() for _ in range(self.num_pairs)]
 
+            if self.node.parameters.flux_point_joint_or_independent == "joint":
+                self.machine.set_all_fluxes(flux_point=self.node.parameters.flux_point_joint_or_independent, target=self.qubit_pairs[0].qubit_control)
+            
             for i, qubit_pair in enumerate(self.qubit_pairs):
 
                 # Bring the active qubits to the desired frequency point
-                self.machine.set_all_fluxes(flux_point=self.node.parameters.flux_point_joint_or_independent, target=qubit_pair.qubit_control)
+                if self.node.parameters.flux_point_joint_or_independent != "joint":
+                    self.machine.set_all_fluxes(flux_point=self.node.parameters.flux_point_joint_or_independent, target=qubit_pair.qubit_control)
 
                 # Initialize the qubits
                 if self.node.parameters.reset_type_thermal_or_active == "active":

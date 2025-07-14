@@ -293,9 +293,14 @@ with program() as CPhase_Oscillations:
     tomo_axis_control = declare(int)
     tomo_axis_target = declare(int)
     
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit_pairs[0].qubit_control)
+    
     for i, qp in enumerate(qubit_pairs):
         # Bring the active qubits to the minimum frequency point
-        machine.set_all_fluxes(flux_point, qp.qubit_control)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qp.qubit_control)
 
         with for_(n, 0, n < n_shots, n + 1):
             save(n, n_st) 

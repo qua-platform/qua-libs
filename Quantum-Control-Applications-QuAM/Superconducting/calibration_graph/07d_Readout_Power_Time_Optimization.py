@@ -43,7 +43,7 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = False
+    multiplexed: bool = True
 
 
 node = QualibrationNode(name="07d_Readout_Power_Time_Optimization", parameters=Parameters())
@@ -104,11 +104,16 @@ with program() as iq_blobs:
     Q_e_st = [declare_stream() for _ in range(num_qubits)]
     
     a = declare(fixed)
+    
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
 
     for i, qubit in enumerate(qubits):
 
         # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
          
 
         with for_(n, 0, n < n_runs, n + 1):

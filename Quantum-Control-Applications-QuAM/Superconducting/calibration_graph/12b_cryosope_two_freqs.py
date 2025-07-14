@@ -104,9 +104,14 @@ with program() as cryoscope:
     state_st = [declare_stream() for _ in range(num_qubits)]
     frame = declare(fixed)
     
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+    
     for i,qubit in enumerate(qubits):
         # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         # Outer loop for averaging
         with for_(n, 0, n < n_avg, n + 1):
