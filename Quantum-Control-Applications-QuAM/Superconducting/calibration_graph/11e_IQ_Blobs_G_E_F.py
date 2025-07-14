@@ -115,10 +115,15 @@ with program() as iq_blobs:
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(num_qubits=num_qubits)
     I_f, I_f_st, Q_f, Q_f_st, _, _ = qua_declaration(num_qubits=num_qubits)
 
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+    
     for i, qubit in enumerate(qubits):
 
         # Bring the active qubits to the minimum frequency point
-        machine.set_all_fluxes(flux_point, qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         qubit.resonator.update_frequency(
             qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift

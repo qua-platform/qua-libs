@@ -108,9 +108,15 @@ with program() as ramsey:
     t = declare(int)  # QUA variable for the idle time
     phi = declare(fixed)  # QUA variable for dephasing the second pi/2 pulse (virtual Z-rotation)
     pre_time = declare(int) 
+    
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+    
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
         
 
         with for_(n, 0, n < n_avg, n + 1):

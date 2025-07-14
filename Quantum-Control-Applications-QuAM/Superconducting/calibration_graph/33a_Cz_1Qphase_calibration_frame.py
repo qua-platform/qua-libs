@@ -237,8 +237,8 @@ for qp in qubit_pairs:
     offset_control = float(fit_data_control.sel(qubit=qp.name, fit_vals="offset"))
     offset_target = float(fit_data_target.sel(qubit=qp.name, fit_vals="offset"))
     
-    phases_target[qp.name] = phase_target
-    phases_control[qp.name] = phase_control
+    phases_target[qp.name] = 1 - phase_target
+    phases_control[qp.name] = 1 - phase_control
     
     print(f'measured phase offsets for {qp.name } are target: {phase_target:.3f}, control: {phase_control:.3f} \n old flux amp={qp.gates['Cz'].flux_pulse_control.amplitude}, old phases - target: {qp.gates['Cz'].phase_shift_target}, control: {qp.gates['Cz'].phase_shift_control}')
     
@@ -253,8 +253,8 @@ if not node.parameters.simulate:
         ds.state_control.sel(qubit= qubit_pair['qubit']).plot(ax =ax, marker = '.', lw = 0, label = 'data control',color = 'C1')
         ds.fitted_control.sel(qubit= qubit_pair['qubit']).plot(ax =ax, lw = 0.5, label = 'fit control',color = 'C1')
         ax.set_title(qubit_pair['qubit'])
-        ax.axvline(x = 1-phases_target[qubit_pair['qubit']], color = 'C0', linestyle = '--')
-        ax.axvline(x = 1-phases_control[qubit_pair['qubit']], color = 'C1', linestyle = '--')
+        ax.axvline(x = phases_target[qubit_pair['qubit']], color = 'C0', linestyle = '--')
+        ax.axvline(x = phases_control[qubit_pair['qubit']], color = 'C1', linestyle = '--')
         ax.legend()
     plt.suptitle(f'Cz single qubit phase calibration \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type}')
     plt.tight_layout()
@@ -263,29 +263,29 @@ if not node.parameters.simulate:
 
 
 # %%
-phase_target = {}
-phase_control = {}
-A_control = {}
-A_target = {}
-offset_control = {}
-offset_target = {}
-for qp in qubit_pairs:
-    phase_target[qp.name] = float(fix_oscillation_phi_2pi(fit_data_target.sel(qubit=qp.name))) % 1
-    phase_control[qp.name] = float(fix_oscillation_phi_2pi(fit_data_control.sel(qubit=qp.name))) % 1
-    A_control[qp.name] = float(fit_data_control.sel(qubit=qp.name, fit_vals="a"))
-    A_target[qp.name] = float(fit_data_target.sel(qubit=qp.name, fit_vals="a"))
-    offset_control[qp.name] = float(fit_data_control.sel(qubit=qp.name, fit_vals="offset"))
-    offset_target[qp.name] = float(fit_data_target.sel(qubit=qp.name, fit_vals="offset"))
+# phase_target = {}
+# phase_control = {}
+# A_control = {}
+# A_target = {}
+# offset_control = {}
+# offset_target = {}
+# for qp in qubit_pairs:
+#     phase_target[qp.name] = float(fix_oscillation_phi_2pi(fit_data_target.sel(qubit=qp.name))) % 1
+#     phase_control[qp.name] = float(fix_oscillation_phi_2pi(fit_data_control.sel(qubit=qp.name))) % 1
+#     A_control[qp.name] = float(fit_data_control.sel(qubit=qp.name, fit_vals="a"))
+#     A_target[qp.name] = float(fit_data_target.sel(qubit=qp.name, fit_vals="a"))
+#     offset_control[qp.name] = float(fit_data_control.sel(qubit=qp.name, fit_vals="offset"))
+#     offset_target[qp.name] = float(fit_data_target.sel(qubit=qp.name, fit_vals="offset"))
 
 # %% {Update_state}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         with node.record_state_updates():
             for qp in qubit_pairs:
-                qp.gates['Cz'].phase_shift_control -= (phase_control[qp.name] / 1.0)
-                qp.gates['Cz'].phase_shift_control = qp.gates['Cz'].phase_shift_control  % (1.0)
-                qp.gates['Cz'].phase_shift_target -= (phase_target[qp.name]/ 1.0)
-                qp.gates['Cz'].phase_shift_target = qp.gates['Cz'].phase_shift_target  % (1.0)
+                qp.gates['Cz'].phase_shift_control += (phases_control[qp.name] / 1.0)
+                # qp.gates['Cz'].phase_shift_control = qp.gates['Cz'].phase_shift_control  % (1.0)
+                qp.gates['Cz'].phase_shift_target += (phases_target[qp.name]/ 1.0)
+                # qp.gates['Cz'].phase_shift_target = qp.gates['Cz'].phase_shift_target  % (1.0)
                 
 # %% {Save_results}
 if not node.parameters.simulate:

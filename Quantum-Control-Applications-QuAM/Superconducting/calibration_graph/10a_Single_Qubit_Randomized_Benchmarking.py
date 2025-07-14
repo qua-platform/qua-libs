@@ -230,9 +230,14 @@ with program() as randomized_benchmarking_individual:
     m_st = declare_stream()
     state_st = [declare_stream() for _ in range(num_qubits)]
 
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+    
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
     # QUA for_ loop over the random sequences
     with for_(m, 0, m < num_of_sequences, m + 1):
@@ -292,10 +297,15 @@ with program() as randomized_benchmarking_multiplexed:
     # The relevant streams
     m_st = declare_stream()
     state_st = [declare_stream() for _ in range(num_qubits)]
+    
+    if flux_point == "joint":
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
 
     for i, qubit in enumerate(qubits):
-        # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        
+        if flux_point != "joint":
+            # Bring the active qubits to the desired frequency point
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
     # QUA for_ loop over the random sequences
     with for_(m, 0, m < num_of_sequences, m + 1):
@@ -456,9 +466,12 @@ if not node.parameters.simulate:
 
 # %% {Update_state}
     if node.parameters.load_data_id is None:
+        fidelities_per_qubit = {}
+        for q in qubits:
+            fidelities_per_qubit[q.name] = 1 - EPG.sel(qubit=q.name).values
         with node.record_state_updates():
             for qubit in qubits:
-                qubit.gate_fidelity["single_qubit_rb"] = 1 - EPG.sel(qubit=qubit.name).values
+                qubit.gate_fidelity["single_qubit_rb"] = fidelities_per_qubit[qubit.name]
                 print(f"Updated {qubit.name} fidelity to {qubit.gate_fidelity['single_qubit_rb']:.4f}")
 
 

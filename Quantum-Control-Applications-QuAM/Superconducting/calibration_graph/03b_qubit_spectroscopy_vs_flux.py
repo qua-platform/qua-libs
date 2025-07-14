@@ -107,9 +107,14 @@ with program() as multi_qubit_spec_vs_flux:
     df = declare(int)  # QUA variable for the qubit frequency
     dc = declare(fixed)  # QUA variable for the flux dc level
 
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+    
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the minimum frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -265,7 +270,7 @@ if not node.parameters.simulate:
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Flux (V)")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time} GMT+3 #{node_id}")
+    grid.fig.suptitle(f"Qubit spectroscopy vs flux \n {date_time} GMT+3 #{node_id} \n multiplexed = {node.parameters.multiplexed}")
     
     plt.tight_layout()
     plt.show()

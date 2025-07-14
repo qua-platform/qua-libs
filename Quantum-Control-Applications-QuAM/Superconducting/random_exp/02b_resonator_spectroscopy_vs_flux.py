@@ -109,11 +109,15 @@ with program() as multi_res_spec_vs_flux:
     dc = declare(fixed)  # QUA variable for the flux bias
     df = declare(int)  # QUA variable for the readout frequency
 
+    if flux_point == "joint":
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+
     for i, qubit in enumerate(qubits):
         # resonator of the qubit
         rr = resonators[i]
         # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)

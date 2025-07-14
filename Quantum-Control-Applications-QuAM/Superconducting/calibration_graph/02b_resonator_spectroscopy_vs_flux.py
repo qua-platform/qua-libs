@@ -52,7 +52,7 @@ class Parameters(NodeParameters):
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     input_line_impedance_in_ohm: float = 50
     line_attenuation_in_db: float = 0
-    update_flux_min: bool = False
+    update_flux_min: bool = True
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
@@ -109,18 +109,23 @@ with program() as multi_res_spec_vs_flux:
     dc = declare(fixed)  # QUA variable for the flux bias
     df = declare(int)  # QUA variable for the readout frequency
 
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+    
     for i, qubit in enumerate(qubits):
         # resonator of the qubit
         rr = resonators[i]
-        # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit, do_align=False)
+        if flux_point != "joint":
+            # Bring the active qubits to the desired frequency point
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit, do_align=False)
         align()
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(dc, dcs)):
                 # Flux sweeping by tuning the OPX dc offset associated with the flux_line element
                 qubit.z.set_dc_offset(dc)
-                qubit.z.settle()
+                qubit.z.settle(settle_time=qubit.z.settle_time)
                 align()
                 with for_(*from_array(df, dfs)):
                     # Update the resonator frequencies for resonator

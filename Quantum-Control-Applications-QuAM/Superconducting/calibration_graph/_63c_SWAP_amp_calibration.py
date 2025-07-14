@@ -138,10 +138,14 @@ with program() as SWAP_amp_calibration:
         I_st_target = [declare_stream() for _ in range(num_qubit_pairs)]
         Q_st_target = [declare_stream() for _ in range(num_qubit_pairs)]
     
-    
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit_pairs[0])
+        
     for i, qp in enumerate(qubit_pairs):
         # Bring the active qubits to the minimum frequency point
-        machine.set_all_fluxes(flux_point, qp)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point, qp)
         wait(1000)
 
         with for_(n, 0, n < n_avg, n + 1):
