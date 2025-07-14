@@ -88,9 +88,14 @@ with program() as xy_z_delay_calibration:
     state_stream = [declare_stream() for _ in range(num_qubits)]
     t = declare(int)  # QUA variable for the flux pulse segment index
 
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+    
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the minimum frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         align()
 

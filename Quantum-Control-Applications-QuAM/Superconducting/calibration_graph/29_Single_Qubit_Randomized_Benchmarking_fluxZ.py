@@ -314,12 +314,17 @@ with program() as randomized_benchmarking_sequential:
     # state_st = declare_stream()
     state_st = [declare_stream() for _ in range(num_qubits)]
 
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+    
     for i, qubit in enumerate(qubits):
 
         align()
 
         # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         # QUA for_ loop over the random sequences
         with for_(m, 0, m < num_of_sequences, m + 1):
@@ -384,10 +389,15 @@ with program() as randomized_benchmarking_multiplexed:
     # state_st = declare_stream()
     state_st = [declare_stream() for _ in range(num_qubits)]
 
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+    
     for i, qubit in enumerate(qubits):
 
         # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
     # QUA for_ loop over the random sequences
     with for_(m, 0, m < num_of_sequences, m + 1):

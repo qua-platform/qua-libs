@@ -113,10 +113,15 @@ with program() as ro_freq_opt:
     Q_f_st = [declare_stream() for _ in range(num_qubits)]
     n_st = declare_stream()
 
+    if flux_point == "joint":
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+    
     for i, qubit in enumerate(qubits):
 
         # Bring the active qubits to the minimum frequency point
-        machine.set_all_fluxes(flux_point, qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         align()
 

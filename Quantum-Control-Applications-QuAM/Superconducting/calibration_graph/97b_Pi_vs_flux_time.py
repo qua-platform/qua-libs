@@ -166,9 +166,14 @@ with program() as multi_qubit_spec_vs_flux:
     df = declare(int)  # QUA variable for frequency scan
     t_delay = declare(int)  # QUA variable for delay time scan
     duration = node.parameters.duration_in_ns * u.ns
+    
+    if flux_point == "joint":
+        machine.set_all_fluxes(flux_point=flux_point, target=qubits[0])
+    
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the minimum frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        if flux_point != "joint":
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
