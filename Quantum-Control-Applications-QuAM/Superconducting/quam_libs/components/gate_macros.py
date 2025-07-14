@@ -1,6 +1,7 @@
-from typing import Union, Literal
+from typing import Union, Literal, Optional
 
 import numpy as np
+from quam.components import Qubit
 from quam.components.macro import QubitMacro, QubitPairMacro
 from quam.components.pulses import ReadoutPulse, Pulse
 from quam.core import quam_dataclass
@@ -23,6 +24,13 @@ def get_pulse_name(pulse: Pulse) -> str:
     else:
         raise AttributeError(f"Cannot infer id of {pulse} because it is not attached to a parent")
 
+def get_pulse(pulse: Union[Pulse, str], qubit: Optional[Qubit]) -> Pulse:
+    if isinstance(pulse, Pulse):
+        return pulse
+    elif qubit is not None:
+        return qubit.get_pulse(pulse)
+    else:
+        raise ValueError(f"Cannot get pulse {pulse} because qubit is not provided")
 
 @quam_dataclass
 class MeasureMacro(QubitMacro):
@@ -31,9 +39,7 @@ class MeasureMacro(QubitMacro):
     def apply(self, **kwargs) -> QuaVariableBool:
         state: QuaVariableBool = kwargs.get("state", declare(bool))
         qua_vars = kwargs.get("qua_vars", (declare(fixed), declare(fixed)))
-        pulse: ReadoutPulse = (
-            self.pulse if isinstance(self.pulse, Pulse) else self.qubit.get_pulse(self.pulse)
-        )
+        pulse = get_pulse(self.pulse, self.qubit)
 
         resonator: ReadoutResonatorIQ = self.qubit.resonator
         resonator.measure(get_pulse_name(pulse), qua_vars=qua_vars)
@@ -43,9 +49,7 @@ class MeasureMacro(QubitMacro):
     
     @property
     def inferred_duration(self) -> float:
-        readout_pulse: ReadoutPulse = (
-            self.pulse if isinstance(self.pulse, Pulse) else self.qubit.get_pulse(self.pulse)
-        )
+        readout_pulse = self.pulse if isinstance(self.pulse, Pulse) else self.qubit.get_pulse(self.pulse)
         return (readout_pulse.length + 150) * 1e-9 # 150 is the approximate duration of the state estimation
 
 
@@ -64,8 +68,8 @@ class ResetMacro(QubitMacro):
         For the case where the reset is thermalize, we return the thermalization time of the qubit.
         """
         if self.reset_type == "active":
-            pi_pulse_duration = self.qubit.get_pulse(self.pi_pulse).length
-            readout_pulse_duration = self.qubit.get_pulse(self.readout_pulse).length
+            pi_pulse_duration = get_pulse(self.pi_pulse, self.qubit).length
+            readout_pulse_duration = get_pulse(self.readout_pulse, self.qubit).length
             return (pi_pulse_duration + readout_pulse_duration) * self.max_attempts * 1e-9 # convert to seconds
         else:
             if hasattr(self.qubit, "thermalization_time"):
@@ -75,16 +79,8 @@ class ResetMacro(QubitMacro):
 
     def apply(self, **kwargs) -> None:
 
-        pi_pulse: Pulse = (
-            self.pi_pulse
-            if isinstance(self.pi_pulse, Pulse)
-            else self.qubit.get_pulse(self.pi_pulse)
-        )
-        readout_pulse: ReadoutPulse = (
-            self.readout_pulse
-            if isinstance(self.readout_pulse, Pulse)
-            else self.qubit.get_pulse(self.readout_pulse)
-        )
+        pi_pulse = get_pulse(self.pi_pulse, self.qubit)
+        readout_pulse = get_pulse(self.readout_pulse, self.qubit)
         if self.reset_type == "active":
             from ..macros import active_reset
             active_reset(self.qubit, pi_pulse_name=get_pulse_name(pi_pulse),
@@ -114,7 +110,7 @@ class VirtualZMacro(QubitMacro):
         """
         Virtual Z gates have a zero duration.
         """
-        return 0
+        return 0.0
 
 
 @quam_dataclass
@@ -133,20 +129,12 @@ class CZMacro(QubitPairMacro):
     
     @property
     def flux_pulse_control_label(self) -> str:
-        pulse = (
-            self.qubit_control.get_pulse(self.flux_pulse_control)
-            if isinstance(self.flux_pulse_control, str)
-            else self.flux_pulse_control
-        )
+        pulse = get_pulse(self.flux_pulse_control, self.qubit_control)
         return get_pulse_name(pulse)
 
     @property
     def coupler_flux_pulse_label(self) -> str:
-        pulse = (
-            self.coupler.get_pulse(self.coupler_flux_pulse)
-            if isinstance(self.coupler_flux_pulse, str)
-            else self.coupler_flux_pulse
-        )
+        pulse = get_pulse(self.coupler_flux_pulse, self.coupler)
         return get_pulse_name(pulse)
 
     def apply(
