@@ -44,6 +44,7 @@ save_data_dict = {
     "config": config,
 }
 
+
 ###########################
 #  XY8 sequence wrappers  #
 ###########################
@@ -59,8 +60,8 @@ def xy8_n(order):
         xy8_block()
     wait(tau_half, "NV")
 
-def xy8_block():
-    # A single XY8 block, ends at x frame.
+
+def xy8_block():  # A single XY8 block, ends at x frame.
     play("x180", "NV")  # 1 X
     wait(tau, "NV")
 
@@ -83,6 +84,7 @@ def xy8_block():
     wait(tau, "NV")
 
     play("x180", "NV")  # 8 X
+
 
 ###################
 # The QUA program #
