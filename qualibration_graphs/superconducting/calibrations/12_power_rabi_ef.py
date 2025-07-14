@@ -112,7 +112,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
-                qubit.resonator.update_frequency(qubit.resonator.intermediate_frequency + qubit.chi)
+                qubit.resonator.update_frequency(
+                    qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift
+                )
             align()
 
             with for_(n, 0, n < n_avg, n + 1):
@@ -137,7 +139,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Qubit readout
                         for i, qubit in multiplexed_qubits.items():
                             if node.parameters.use_state_discrimination:
-                                qubit.readout_state(state[i])
+                                qubit.readout_state_gef(state[i])
                                 save(state[i], state_st[i])
                             else:
                                 qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
@@ -208,7 +210,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
     node.namespace["Rabi_ef"] = True
-
 
 
 # %% {Analyse_data}
