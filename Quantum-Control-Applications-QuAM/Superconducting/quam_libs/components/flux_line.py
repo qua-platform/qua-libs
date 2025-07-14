@@ -32,7 +32,7 @@ class FluxLine(SingleChannel):
     def settle(self, settle_time: float = None):
         """Wait for the flux bias to settle"""
         if settle_time is not None:
-            safe_wait(int(settle_time))
+            safe_wait(int(settle_time) // 4)
         elif self.offset_settle_time is not None:
             safe_wait(int(self.offset_settle_time) // 4)
         
