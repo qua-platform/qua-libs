@@ -1,8 +1,9 @@
 from typing import List
+
+import numpy as np
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-
 from qualang_tools.units import unit
 from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
@@ -71,3 +72,30 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
     )
 
     fit.peak_freq.plot(ax=ax, linestyle="--", marker="o", color="black", label="Peak frequency")
+
+    # Plot the exponential fit as a wide red line
+    if "exp_fit" in fit:
+        try:
+            # Get the fit parameters
+            amplitude = float(fit.exp_fit.sel(fit_vals="a").values)
+            offset = float(fit.exp_fit.sel(fit_vals="offset").values)
+            decay_rate = float(fit.exp_fit.sel(fit_vals="decay").values)
+
+            # Determine the dimension that was fitted (should be 'time' for pi flux experiments)
+            peak_freq_dims = list(fit.peak_freq.dims)
+            fit_dim = [dim for dim in peak_freq_dims if dim != "qubit"][0] if peak_freq_dims else "time"
+
+            # Get the coordinate values for the fitted dimension
+            if fit_dim in fit.coords:
+                x_vals = fit.coords[fit_dim].values
+
+                # Calculate the exponential fit: amplitude * exp(decay_rate * x) + offset
+                y_fit = amplitude * np.exp(decay_rate * x_vals) + offset
+
+                # Plot the exponential fit as a wide red line
+                ax.plot(x_vals, y_fit, "r-", linewidth=3, label="Exponential fit", alpha=0.8)
+
+        except Exception as e:
+            print(f"Could not plot exponential fit for qubit {qubit}: {e}")
+
+    ax.legend()
