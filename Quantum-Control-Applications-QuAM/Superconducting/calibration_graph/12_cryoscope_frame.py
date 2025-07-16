@@ -28,13 +28,14 @@ from scipy.signal import deconvolve, lfilter, convolve
 from qualibrate import QualibrationNode, NodeParameters
 from typing import Optional, Literal, List
 from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coefficients, two_expdecay, expdecay, savgol
-
+import time
+start = time.time()
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ['qD2']    
-    num_averages: int = 40000
-    amplitude_factor: float = 0.3
+    qubits: Optional[List[str]] = ['qD1']    
+    num_averages: int = 20000
+    flux_amp: float = 0.06
     cryoscope_len: int = 32
     num_frames: int = 17
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
@@ -49,8 +50,6 @@ node = QualibrationNode(
     parameters=Parameters()
 )
 node_id = get_node_id()
-
-
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -72,7 +71,6 @@ if node.parameters.load_data_id is None:
     qmm = machine.connect()
 flux_point = node.parameters.flux_point_joint_or_independent
 reset_type = node.parameters.reset_type_active_or_thermal
-amplitude_factor = node.parameters.amplitude_factor
 
 num_qubits = len(qubits)
 
@@ -98,7 +96,6 @@ def baked_waveform(waveform_amp, qubit):
 
     return pulse_segments
 
-
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
 
@@ -109,12 +106,11 @@ assert cryoscope_len % 16 == 0, 'cryoscope_len is not multiple of 16 nanoseconds
 baked_signals = {}
 # Baked flux pulse segments with 1ns resolution
 
-baked_signals = baked_waveform(qubits[0].z.operations['const'].amplitude * amplitude_factor, qubits[0]) 
+baked_signals = baked_waveform(node.parameters.flux_amp, qubits[0]) 
 
 cryoscope_time = np.arange(1, cryoscope_len + 5, 1)  # x-axis for plotting - must be in ns
 frames = np.linspace(0, 1, node.parameters.num_frames)
 # %%
-
 with program() as cryoscope:
 
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
@@ -227,7 +223,7 @@ with program() as cryoscope:
                         for j in range(16):
                             with case_(j):
                                 baked_signals[j].run() 
-                                qubits[0].z.play('const', duration=t, amplitude_scale =amplitude_factor)
+                                qubits[0].z.play('const', duration=t, amplitude_scale=node.parameters.flux_amp / qubits[0].z.operations["const"].amplitude)
 
                     # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
                     # pulse arrives after the longest flux pulse
@@ -249,9 +245,7 @@ with program() as cryoscope:
         for i, qubit in enumerate(qubits):
             state_st[i].buffer(len(frames)).buffer(cryoscope_len+4).average().save(f"state{i + 1}")
 
-
 # %%
-
 simulate =  node.parameters.simulate
 
 if node.parameters.simulate:
@@ -277,8 +271,6 @@ elif node.parameters.load_data_id is None:
             progress_counter(n, n_avg, start_time=results.start_time)
 
 
-# %%
-
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
@@ -290,7 +282,9 @@ if not node.parameters.simulate:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
         
-        
+end = time.time()
+print(f"Script runtime: {end - start:.2f} seconds")
+
 # %% {data analysis - extract phase, frequency, and flux}
 # Find phase of sine for each time step by fitting
 def extract_phase(ds):
