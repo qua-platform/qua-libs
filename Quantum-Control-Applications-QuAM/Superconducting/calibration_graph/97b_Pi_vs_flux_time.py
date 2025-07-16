@@ -46,6 +46,7 @@ import xarray as xr
 import time
 import quam_libs.lib.cryoscope_tools as cryoscope_tools
 start = time.time()
+
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     """Configuration parameters for the spectroscopy experiment.
@@ -411,59 +412,6 @@ plt.show()
 node.results["figure_flux_response"] = grid.fig
 
 
-
-grid = QubitGrid(ds, [q.grid_location for q in qubits])
-
-for ax, qubit in grid_iter(grid):
-    (ds.loc[qubit].center_freqs / 1e9).plot(ax=ax, marker='o')
-    ax.set_ylabel("Freq (GHz)")
-    ax.set_xlabel("Time (ns)")
-    ax.set_title(qubit["qubit"])
-    ax.set_xscale('log')
-    ax.grid(True)
-grid.fig.suptitle(f"Qubit frequency shift vs time after flux pulse \n {date_time} #{node_id}")
-
-plt.tight_layout()
-plt.show()
-node.results["figure_freqs_shift_log"] = grid.fig
-
-
-# Create grid for flux response plots
-grid = QubitGrid(ds, [q.grid_location for q in qubits])
-
-# Plot flux response and fitted curves for each qubit
-for ax, qubit in grid_iter(grid):
-    # Plot measured flux response
-    ds.loc[qubit].flux_response.plot(ax=ax)
-    # flux_response_norm = ds.loc[qubit].flux_response / ds.loc[qubit].flux_response.values[-1]
-    # flux_response_norm.plot(ax=ax)
-    
-    # Plot fitted curves and parameters if fits were successful    
-    if fit_results[qubit["qubit"]]["fit_successful"]:
-        best_a_dc = fit_results[qubit["qubit"]]["best_a_dc"]
-        t_offset = t_data - t_data[0]
-        y_fit = np.ones_like(t_data, dtype=float) * best_a_dc  # Start with fitted constant
-        fit_text = f'a_dc = {best_a_dc:.3f}\n'
-        for i, (amp, tau) in enumerate(fit_results[qubit["qubit"]]["best_components"]):
-            y_fit += amp * np.exp(-t_offset/tau)
-            fit_text += f'a{i+1} = {amp / best_a_dc:.3f}, τ{i+1} = {tau:.0f}ns\n'
-
-        ax.plot(t_data, y_fit, color='r', label='Full Fit', linewidth=2) # Plot full fit
-        ax.text(0.02, 0.98, fit_text, transform=ax.transAxes, 
-                verticalalignment='top', fontsize=8)
-
-    ax.set_ylabel("Flux (V)")
-    ax.set_xlabel("Time (ns)")
-    ax.set_title(qubit["qubit"])
-    ax.grid(True)
-grid.fig.suptitle(f"Flux response vs time \n {date_time} #{node_id}")
-
-plt.tight_layout()
-plt.show()
-node.results["figure_flux_response"] = grid.fig
-
-
-
 grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
 for ax, qubit in grid_iter(grid):
@@ -492,14 +440,6 @@ for ax, qubit in grid_iter(grid):
 
     # Plot fitted curves and parameters if fits were successful    
     if fit_results[qubit["qubit"]]["fit_successful"]:
-        best_a_dc = fit_results[qubit["qubit"]]["best_a_dc"]
-        t_offset = t_data - t_data[0]
-        y_fit = np.ones_like(t_data, dtype=float) * best_a_dc  # Start with fitted constant
-        fit_text = f'a_dc = {best_a_dc:.3f}\n'
-        for i, (amp, tau) in enumerate(fit_results[qubit["qubit"]]["best_components"]):
-            y_fit += amp * np.exp(-t_offset/tau)
-            fit_text += f'a{i+1} = {amp / best_a_dc:.3f}, τ{i+1} = {tau:.0f}ns\n'
-
         ax.plot(t_data, y_fit, color='r', label='Full Fit', linewidth=2) # Plot full fit
         ax.text(0.02, 0.98, fit_text, transform=ax.transAxes, 
                 verticalalignment='top', fontsize=8)
