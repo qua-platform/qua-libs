@@ -1,5 +1,6 @@
 # %% {Imports}
 import warnings
+from dataclasses import asdict, dataclass
 from typing import List, Literal, Optional
 
 import matplotlib.pyplot as plt
@@ -23,13 +24,11 @@ from qualibrate import NodeParameters, QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
+from quam_builder.architecture.superconducting.custom_gates.cz import CZGate
 from quam_config import Quam
 from scipy.optimize import curve_fit
 
-from quam_builder.architecture.superconducting.custom_gates.cz import CZGate
-
 from quam.components.pulses import SquarePulse
-from dataclasses import dataclass, asdict
 
 # %% {Node_parameters}
 description = """

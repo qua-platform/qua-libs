@@ -23,21 +23,24 @@ def rabi_chevron_model(ft, J, f0, a, offset):
 
 
 def fit_rabi_chevron(ds_qp, init_length, init_detuning):
-    da_target = ds_qp.state_target
-    exp_data = da_target.values
-    detuning = da_target.detuning[0]
-    time = da_target.time * 1e-9
-    t, f = np.meshgrid(time, detuning)
-    initial_guess = (1e9 / init_length, init_detuning[0], -1, 1.0)
-    fdata = np.vstack((f.ravel(), t.ravel()))
-    tdata = exp_data.ravel()
-    popt, pcov = curve_fit(rabi_chevron_model, fdata, tdata, p0=initial_guess)
-    J = popt[0]
-    f0 = popt[1]
-    a = popt[2]
-    offset = popt[3]
-
-    return J, f0, a, offset
+    try:
+        da_target = ds_qp.state_target
+        exp_data = da_target.values
+        detuning = da_target.detuning[0]
+        time = da_target.time * 1e-9
+        t, f = np.meshgrid(time, detuning)
+        initial_guess = (1e9 / init_length, init_detuning[0], -1, 1.0)
+        fdata = np.vstack((f.ravel(), t.ravel()))
+        tdata = exp_data.ravel()
+        popt, pcov = curve_fit(rabi_chevron_model, fdata, tdata, p0=initial_guess)
+        J = popt[0]
+        f0 = popt[1]
+        a = popt[2]
+        offset = popt[3]
+        return J, f0, a, offset
+    except Exception as e:
+        # Return NaN values if fitting fails
+        return float("nan"), float("nan"), float("nan"), float("nan")
 
 
 @dataclass
@@ -69,31 +72,44 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 def fit_chevron_cz(ds, dim):
     def fit_routine(ds_qp):
-        # ds_qp is a Dataset for a single qubit_pair
-        amp_guess = ds_qp.state_target.max("time") - ds_qp.state_target.min("time")
-        flux_amp_idx = int(amp_guess.argmax())
-        flux_amp = float(ds_qp.amp_full[0][flux_amp_idx])
-        fit_data = fit_oscillation_decay_exp(ds_qp.state_target.isel(amplitude=flux_amp_idx), "time")
-        flux_time = int(1 / fit_data.sel(fit_vals="f"))
+        try:
+            # ds_qp is a Dataset for a single qubit_pair
+            amp_guess = ds_qp.state_target.max("time") - ds_qp.state_target.min("time")
+            flux_amp_idx = int(amp_guess.argmax())
+            flux_amp = float(ds_qp.amp_full[0][flux_amp_idx])
 
-        amplitudes = flux_amp
-        detunings = -(flux_amp**2) * ds_qp.quad_term_control
-        lengths = flux_time - flux_time % 4 + 4
+            # Try the preliminary oscillation fit
+            try:
+                fit_data = fit_oscillation_decay_exp(ds_qp.state_target.isel(amplitude=flux_amp_idx), "time")
+                flux_time = int(1 / fit_data.sel(fit_vals="f"))
+            except Exception:
+                # If preliminary fit fails, use a default time
+                flux_time = 50  # default 50 ns
 
-        t = ds_qp.time * 1e-9
-        f = ds_qp.detuning
-        t, f = np.meshgrid(t, f)
-        J, f0, a, offset = fit_rabi_chevron(ds_qp, lengths * 2, detunings.values)
-        # initial_guess = (1e9 / lengths / 2, detunings, -1, 1.0)
-        # initial_model = rabi_chevron_model((f, t), *initial_guess).reshape(len(ds_qp.amplitude), len(ds_qp.time))
-        # data_fitted = rabi_chevron_model((f, t), J, f0, a, offset).reshape(len(ds_qp.amplitude), len(ds_qp.time))
-        detunings = f0
-        amplitudes = np.sqrt(-detunings / ds_qp.quad_term_control)
-        flux_time = int(1 / (2 * J) * 1e9)
-        lengths = flux_time - flux_time % 4 + 4
+            amplitudes = flux_amp
+            detunings = -(flux_amp**2) * ds_qp.quad_term_control
+            lengths = flux_time - flux_time % 4 + 4
 
-        # Return as DataArray for stacking
-        return xr.DataArray([J, f0, a, offset], dims=["fit_vals"])
+            t = ds_qp.time * 1e-9
+            f = ds_qp.detuning
+            t, f = np.meshgrid(t, f)
+            J, f0, a, offset = fit_rabi_chevron(ds_qp, lengths * 2, detunings.values)
+
+            # Check if fitting produced valid results
+            if np.isnan(J) or np.isnan(f0):
+                # Return default/invalid values
+                return xr.DataArray([float("nan"), float("nan"), float("nan"), float("nan")], dims=["fit_vals"])
+
+            detunings = f0
+            amplitudes = np.sqrt(-detunings / ds_qp.quad_term_control)
+            flux_time = int(1 / (2 * J) * 1e9)
+            lengths = flux_time - flux_time % 4 + 4
+
+            # Return as DataArray for stacking
+            return xr.DataArray([J, f0, a, offset], dims=["fit_vals"])
+        except Exception as e:
+            # Return NaN values if any step fails
+            return xr.DataArray([float("nan"), float("nan"), float("nan"), float("nan")], dims=["fit_vals"])
 
     # Use groupby-apply pattern
     fit_res = ds.groupby("qubit_pair").apply(fit_routine)
@@ -164,24 +180,50 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     # Populate the FitParameters class with fitted values
     fit_results = {}
     for qp in fit.qubit_pair.values:
-        J_val = fit.fit.sel(qubit_pair=qp, fit_vals="J").values.item()
-        f0_val = fit.fit.sel(qubit_pair=qp, fit_vals="f0").values.item()
-        cz_len_val = int(1 / (2 * J_val) * 1e9)
-        cz_amp_val = np.sqrt(-f0_val / fit.quad_term_control.sel(qubit_pair=qp).values.item())
+        try:
+            J_val = fit.fit.sel(qubit_pair=qp, fit_vals="J").values.item()
+            f0_val = fit.fit.sel(qubit_pair=qp, fit_vals="f0").values.item()
 
-        # Determine success based on reasonable parameter ranges
-        amp_min = fit.amp_full.sel(qubit_pair=qp).min().item()
-        amp_max = fit.amp_full.sel(qubit_pair=qp).max().item()
+            # Check if values are valid
+            if np.isnan(J_val) or np.isnan(f0_val) or J_val <= 0:
+                success = False
+                cz_len_val = 0
+                cz_amp_val = float("nan")
+            else:
+                try:
+                    cz_len_val = int(1 / (2 * J_val) * 1e9)
+                    cz_amp_val = np.sqrt(-f0_val / fit.quad_term_control.sel(qubit_pair=qp).values.item())
 
-        success = bool((10 < cz_len_val < 1000) and (amp_min <= cz_amp_val <= amp_max))
+                    # Determine success based on reasonable parameter ranges
+                    amp_min = fit.amp_full.sel(qubit_pair=qp).min().item()
+                    amp_max = fit.amp_full.sel(qubit_pair=qp).max().item()
 
-        fit_results[qp] = FitParameters(
-            success=success,
-            J=J_val,
-            f0=f0_val,
-            cz_len=cz_len_val,
-            cz_amp=cz_amp_val,
-        )
+                    is_length_valid = 10 < cz_len_val < 1000
+                    is_amp_valid = amp_min <= cz_amp_val <= amp_max
+                    is_not_nan = not np.isnan(cz_amp_val)
+                    success = bool(is_length_valid and is_amp_valid and is_not_nan)
+                except Exception:
+                    # If parameter calculation fails, mark as failed
+                    success = False
+                    cz_len_val = 0
+                    cz_amp_val = float("nan")
+
+            fit_results[qp] = FitParameters(
+                success=success,
+                J=J_val,
+                f0=f0_val,
+                cz_len=cz_len_val,
+                cz_amp=cz_amp_val,
+            )
+        except Exception as e:
+            # If any step fails, mark as failed
+            fit_results[qp] = FitParameters(
+                success=False,
+                J=float("nan"),
+                f0=float("nan"),
+                cz_len=0,
+                cz_amp=float("nan"),
+            )
 
     fit = fit.assign_coords(
         {

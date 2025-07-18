@@ -1,6 +1,7 @@
 from typing import List
 
 import matplotlib.pyplot as plt
+import numpy as np
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -37,7 +38,15 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubit_pairs: List[AnyTransmon], fits:
     fig, axs = plt.subplots(nrows=len(qubit_pairs), ncols=1, figsize=(15, 9))
     for ii, qp in enumerate(qubit_pairs):
         ax = axs[ii] if len(qubit_pairs) > 1 else axs
-        plot_individual_data_with(ax, ds, qp.id, fits.sel(qubit_pair=qp.id))
+
+        # Try to get fit data for this qubit pair, handle if missing
+        try:
+            fit_data = fits.sel(qubit_pair=qp.id) if fits is not None else None
+        except (KeyError, ValueError):
+            # If this qubit pair is not in the fit results, set fit_data to None
+            fit_data = None
+
+        plot_individual_data_with(ax, ds, qp.id, fit_data)
 
     fig.suptitle("CZ Chevron")
     fig.set_size_inches(15, 9)
@@ -66,12 +75,24 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit_pair: str, fit: xr
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    # if hasattr(ds, "I"):
-    #     data = "I"
-    # elif hasattr(ds, "state"):
-    #     data = "state"
-    # else:
-    #     raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
-
     ds.state_target.sel(qubit_pair=qubit_pair).plot(y="amp_full", ax=ax)
-    ax.scatter(fit.cz_len, fit.cz_amp, color="red", label="Fitted", marker="*", s=100)
+
+    # Only plot fit results if they exist and are valid
+    if fit is not None:
+        try:
+            # Check if fit values exist and are valid (not NaN)
+            cz_len = float(fit.cz_len)
+            cz_amp = float(fit.cz_amp)
+            if not (np.isnan(cz_len) or np.isnan(cz_amp)):
+                ax.scatter(cz_len, cz_amp, color="red", label="Fitted", marker="*", s=100)
+                ax.set_title(f"{qubit_pair} - Fit Successful")
+                ax.legend()
+            else:
+                ax.set_title(f"{qubit_pair} - Fit Failed (Invalid Parameters)")
+        except (ValueError, TypeError, AttributeError):
+            ax.set_title(f"{qubit_pair} - Fit Failed")
+    else:
+        ax.set_title(f"{qubit_pair} - No Fit Data")
+
+    ax.set_xlabel("Time [ns]")
+    ax.set_ylabel("Target State")
