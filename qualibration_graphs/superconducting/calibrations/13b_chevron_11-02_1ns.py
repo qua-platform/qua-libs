@@ -5,7 +5,13 @@ from typing import List, Literal, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.chevron_cz import Parameters, fit_raw_data, plot_raw_data_with_fit, process_raw_dataset
+from calibration_utils.chevron_cz import (
+    Parameters,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+    process_raw_dataset,
+)
 from qm import SimulationConfig
 from qm.qua import *
 from qualang_tools.bakery import baking
@@ -15,10 +21,15 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.units import unit
 from qualibrate import NodeParameters, QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.parameters import get_qubits
+from qualibration_libs.parameters import get_qubit_pairs, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 from scipy.optimize import curve_fit
+
+from quam_builder.architecture.superconducting.custom_gates.cz import CZGate
+
+from quam.components.pulses import SquarePulse
+from dataclasses import dataclass, asdict
 
 # %% {Node_parameters}
 description = """
@@ -61,6 +72,12 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
+    node.parameters.qubit_pairs = ["qD1-qD2"]
+    node.parameters.reset_type = "active"
+    node.parameters.use_state_discrimination = True
+    node.parameters.amp_step = 0.003
+    node.parameters.amp_range = 0.2
+    node.parameters.load_data_id = 1979
     pass
 
 
@@ -74,9 +91,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 
     u = unit(coerce_to_integer=True)
-    node.namespace["qubit_pairs"] = qubit_pairs = [
-        node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs
-    ]
+    # node.namespace["qubit_pairs"] = qubit_pairs = [
+    #     node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs
+    # ]
+
+    node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     # define the amplitudes for the flux pulses
     pulse_amplitudes = {}
     for qp in qubit_pairs:
@@ -97,7 +116,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     times_cycles = np.arange(1, node.parameters.max_time_in_ns)
 
     node.namespace["sweep_axes"] = {
-        "qubit_pair": xr.DataArray([pair.id for pair in qubit_pairs], attrs={"long_name": "qubit pairs"}),
+        "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "amplitude": xr.DataArray(amplitudes, attrs={"long_name": "amplitudes of the flux pulse"}),
         "time": xr.DataArray(times_cycles, attrs={"long_name": "pulse duration", "units": "ns"}),
     }
@@ -130,55 +149,53 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n_st = declare_stream()
         t_left_ns = declare(int)  # QUA variable for the flux pulse segment index
         t_cycles = declare(int)  # QUA variable for the flux pulse segment index
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
+        I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
+        I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
         if node.parameters.use_state_discrimination:
-            state = [declare(int) for _ in range(num_qubits)]
-            state_st = [declare_stream() for _ in range(num_qubits)]
+            state_c = [declare(int) for _ in range(num_qubit_pairs)]
+            state_t = [declare(int) for _ in range(num_qubit_pairs)]
+            state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
 
         for qubit in node.machine.active_qubits:
             node.machine.initialize_qpu(target=qubit)
             align()
 
-        for ii, qp in enumerate(qubit_pairs):
+        for multiplexed_qubit_pairs in qubit_pairs.batch():
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(a, amplitudes)):
                     # rest of the pulse
                     with for_(*from_array(t, times_cycles)):
-                        # Qubit initialization
-                        qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
-                        qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
-                        align()
-                        # set both qubits to the excited state
-                        qp.qubit_control.xy.play("x180")
-                        qp.qubit_target.xy.play("x180")
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            # Qubit initialization
+                            qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
+                            qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
+                            align()
+                            # set both qubits to the excited state
+                            qp.qubit_control.xy.play("x180")
+                            qp.qubit_target.xy.play("x180")
 
-                        align()
+                            align()
 
-                        # play the flux pulse
-                        with if_(t <= 16):
-                            with switch_(t):
-                                for j in range(1, 17):
-                                    with case_(j):
-                                        baked_signals[qp.qubit_control.name][j - 1].run(
-                                            amp_array=[(qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * a)]
-                                        )
+                            # play the flux pulse
+                            with if_(t <= 16):
+                                with switch_(t):
+                                    for j in range(1, 17):
+                                        with case_(j):
+                                            baked_signals[qp.qubit_control.name][j - 1].run(
+                                                amp_array=[
+                                                    (qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * a)
+                                                ]
+                                            )
 
-                        with else_():
-                            assign(t_cycles, t >> 2)  # Right shift by 2 is a quick way to divide by 4
-                            assign(t_left_ns, t - (t_cycles << 2))  # left shift by 2 is a quick way to multiply by 4
-                            with switch_(t_left_ns):
-                                with case_(0):
-                                    align()
-                                    qp.qubit_control.z.play(
-                                        "const",
-                                        duration=t_cycles,
-                                        amplitude_scale=pulse_amplitudes[qp.name]
-                                        / qp.qubit_control.z.operations["const"].amplitude
-                                        * a,
-                                    )
-                                for j in range(1, 4):
-                                    with case_(j):
+                            with else_():
+                                assign(t_cycles, t >> 2)  # Right shift by 2 is a quick way to divide by 4
+                                assign(
+                                    t_left_ns, t - (t_cycles << 2)
+                                )  # left shift by 2 is a quick way to multiply by 4
+                                with switch_(t_left_ns):
+                                    with case_(0):
                                         align()
                                         qp.qubit_control.z.play(
                                             "const",
@@ -187,38 +204,47 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                             / qp.qubit_control.z.operations["const"].amplitude
                                             * a,
                                         )
-                                        baked_signals[qp.qubit_control.name][j - 1].run(
-                                            amp_array=[(qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * a)]
-                                        )
-                        align()
+                                    for j in range(1, 4):
+                                        with case_(j):
+                                            align()
+                                            qp.qubit_control.z.play(
+                                                "const",
+                                                duration=t_cycles,
+                                                amplitude_scale=pulse_amplitudes[qp.name]
+                                                / qp.qubit_control.z.operations["const"].amplitude
+                                                * a,
+                                            )
+                                            baked_signals[qp.qubit_control.name][j - 1].run(
+                                                amp_array=[
+                                                    (qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * a)
+                                                ]
+                                            )
+                            align()
 
-                        if node.parameters.use_state_discrimination:
-                            # qp.qubit_control.readout_state(state[ii])
-                            qp.qubit_control.readout_state(state[ii])
-                            qp.qubit_target.readout_state(state[ii + 1])
-                            save(state[ii], state_st[ii])
-                            save(state[ii + 1], state_st[ii + 1])
-                        else:
-                            qp.qubit_control.resonator.measure("readout", qua_vars=(I[ii], Q[ii]))
-                            qp.qubit_target.resonator.measure("readout", qua_vars=(I[ii + 1], Q[ii + 1]))
-                            save(I[ii], I_st[ii])
-                            save(Q[ii], Q_st[ii])
-                            save(I[ii + 1], I_st[ii + 1])
-                            save(Q[ii + 1], Q_st[ii + 1])
+                            if node.parameters.use_state_discrimination:
+                                qp.qubit_control.readout_state(state_c[ii])
+                                qp.qubit_target.readout_state(state_t[ii])
+                                save(state_c[ii], state_c_st[ii])
+                                save(state_t[ii], state_t_st[ii])
+                            else:
+                                qp.qubit_control.resonator.measure("readout", qua_vars=(I_c[ii], Q_c[ii]))
+                                qp.qubit_target.resonator.measure("readout", qua_vars=(I_t[ii], Q_t[ii]))
+                                save(I_c[ii], I_c_st[ii])
+                                save(Q_c[ii], Q_c_st[ii])
+                                save(I_t[ii], I_t_st[ii])
+                                save(Q_t[ii], Q_t_st[ii])
 
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubit_pairs):
                 if node.parameters.use_state_discrimination:
-                    state_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"state_control{i}")
-                    state_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(
-                        f"state_target{i+1}"
-                    )
+                    state_c_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"state_control{i}")
+                    state_t_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"state_target{i}")
                 else:
-                    I_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"I_control{i}")
-                    Q_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"Q_control{i}")
-                    I_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"I_target{i+1}")
-                    Q_st[i + 1].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"Q_target{i+1}")
+                    I_c_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"I_control{i}")
+                    Q_c_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"Q_control{i}")
+                    I_t_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"I_target{i}")
+                    Q_t_st[i].buffer(len(times_cycles)).buffer(len(amplitudes)).average().save(f"Q_target{i}")
 
 
 # %% {Simulate}
@@ -286,14 +312,14 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    # node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-    # # Log the relevant information extracted from the data analysis
-    # log_fitted_results(node.results["fit_results"], log_callable=node.log)
-    # node.outcomes = {
-    #     qubit_name: ("successful" if fit_result["success"] else "failed")
-    #     for qubit_name, fit_result in node.results["fit_results"].items()
-    # }
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    node.outcomes = {
+        qubit_pair_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_pair_name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plot_data}
@@ -307,7 +333,31 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         "amplitude": fig_raw_fit,
     }
 
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def update_state(node: QualibrationNode[Parameters, Quam]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+
+    for qp in node.namespace["qubit_pairs"]:
+        if hasattr(qp.macros, "cz_unipolar"):
+            continue
+        else:
+            print(f"Creating CZ gate macro for {qp.name}")
+            cz_pulse = SquarePulse(length=100, amplitude=0.5, id="cz_unipolar_pulse")
+            cz = CZGate(flux_pulse_control=cz_pulse)
+            node.machine.qubit_pairs[qp.name].macros = {"cz_unipolar": cz}
+
+    with node.record_state_updates():
+        for qp in node.namespace["qubit_pairs"]:
+            if node.outcomes[qp.name] == "failed":
+                continue
+            else:
+                qp.macros["cz_unipolar"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
+                qp.macros["cz_unipolar"].flux_pulse_control.length = node.results["fit_results"][qp.name]["cz_len"]
+
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
-
-
-# TODO: record fits and update state

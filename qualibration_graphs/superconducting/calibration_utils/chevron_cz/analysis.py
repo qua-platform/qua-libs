@@ -162,19 +162,26 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
 
     # Populate the FitParameters class with fitted values
-    fit_results = {
-        qp: FitParameters(
-            success=False,
-            J=fit.fit.sel(qubit_pair=qp, fit_vals="J").values.item(),
-            f0=fit.fit.sel(qubit_pair=qp, fit_vals="f0").values.item(),
-            cz_len=int(1 / (2 * fit.fit.sel(qubit_pair=qp, fit_vals="J").values.item()) * 1e9),
-            cz_amp=np.sqrt(
-                -fit.fit.sel(qubit_pair=qp, fit_vals="f0").values.item()
-                / fit.quad_term_control.sel(qubit_pair=qp).values.item()
-            ),
+    fit_results = {}
+    for qp in fit.qubit_pair.values:
+        J_val = fit.fit.sel(qubit_pair=qp, fit_vals="J").values.item()
+        f0_val = fit.fit.sel(qubit_pair=qp, fit_vals="f0").values.item()
+        cz_len_val = int(1 / (2 * J_val) * 1e9)
+        cz_amp_val = np.sqrt(-f0_val / fit.quad_term_control.sel(qubit_pair=qp).values.item())
+
+        # Determine success based on reasonable parameter ranges
+        amp_min = fit.amp_full.sel(qubit_pair=qp).min().item()
+        amp_max = fit.amp_full.sel(qubit_pair=qp).max().item()
+
+        success = bool((10 < cz_len_val < 1000) and (amp_min <= cz_amp_val <= amp_max))
+
+        fit_results[qp] = FitParameters(
+            success=success,
+            J=J_val,
+            f0=f0_val,
+            cz_len=cz_len_val,
+            cz_amp=cz_amp_val,
         )
-        for qp in fit.qubit_pair.values
-    }
 
     fit = fit.assign_coords(
         {
