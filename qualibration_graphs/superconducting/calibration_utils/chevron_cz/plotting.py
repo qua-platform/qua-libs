@@ -75,7 +75,13 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit_pair: str, fit: xr
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    ds.state_target.sel(qubit_pair=qubit_pair).plot(y="amp_full", ax=ax)
+    if hasattr(ds, "state_target"):
+        # If the dataset has 'state_target', use it for plotting
+        data = ds.state_target
+    else:
+        data = ds.I_target
+
+    data.sel(qubit_pair=qubit_pair).plot(y="amp_full", ax=ax)
 
     # Only plot fit results if they exist and are valid
     if fit is not None:

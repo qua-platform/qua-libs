@@ -23,8 +23,13 @@ def rabi_chevron_model(ft, J, f0, a, offset):
 
 
 def fit_rabi_chevron(ds_qp, init_length, init_detuning):
+    if hasattr(ds_qp, "state_target"):
+        data = ds_qp.state_target
+    else:
+        data = ds_qp.I_target
+
     try:
-        da_target = ds_qp.state_target
+        da_target = data
         exp_data = da_target.values
         detuning = da_target.detuning[0]
         time = da_target.time * 1e-9
@@ -72,15 +77,19 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 def fit_chevron_cz(ds, dim):
     def fit_routine(ds_qp):
+        if hasattr(ds_qp, "state_target"):
+            data = ds_qp.state_target
+        else:
+            data = ds_qp.I_target
         try:
             # ds_qp is a Dataset for a single qubit_pair
-            amp_guess = ds_qp.state_target.max("time") - ds_qp.state_target.min("time")
+            amp_guess = data.max("time") - data.min("time")
             flux_amp_idx = int(amp_guess.argmax())
             flux_amp = float(ds_qp.amp_full[0][flux_amp_idx])
 
             # Try the preliminary oscillation fit
             try:
-                fit_data = fit_oscillation_decay_exp(ds_qp.state_target.isel(amplitude=flux_amp_idx), "time")
+                fit_data = fit_oscillation_decay_exp(data.isel(amplitude=flux_amp_idx), "time")
                 flux_time = int(1 / fit_data.sel(fit_vals="f"))
             except Exception:
                 # If preliminary fit fails, use a default time
