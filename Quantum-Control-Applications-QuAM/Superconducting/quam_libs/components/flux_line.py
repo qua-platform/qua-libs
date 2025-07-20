@@ -25,8 +25,8 @@ class FluxLine(SingleChannel):
     joint_offset: float = 0.0
     min_offset: float = 0.0
     arbitrary_offset: float = 0.0
-    settle_time: float = 16
-    offset_settle_time: float = 16 
+    settle_time: float = 64
+    offset_settle_time: float = 64
     extras: Dict[str, Any] = field(default_factory=dict)
 
     def settle(self, settle_time: float = None):

@@ -28,7 +28,7 @@ node = QualibrationNode(
     name="14b_XY_Z_delay_4nS",
     parameters=Parameters()
 )
-node_id = get_node_id(node)
+node_id = get_node_id()
 
 from qm.qua import *
 from qm import SimulationConfig
