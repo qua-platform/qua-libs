@@ -63,7 +63,7 @@ with program() as calib_delays:
         play("cw" * amp(1), "NV", duration=mw_len * u.ns)
 
         # Measure the photon counted by the SPCM
-        measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len, counts))
+        measure("readout", "SPCM1", time_tagging.analog(times, meas_len, counts))
         # Adjust the wait time between each averaging iteration
         wait(wait_between_runs * u.ns, "SPCM1")
         # Save the time tags to the stream

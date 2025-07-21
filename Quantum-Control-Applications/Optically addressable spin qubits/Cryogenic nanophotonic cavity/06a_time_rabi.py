@@ -58,7 +58,7 @@ with program() as time_rabi:
             align()
 
             # decay readout
-            measure("readout", "SNSPD", None, time_tagging.analog(times, meas_len, counts))
+            measure("readout", "SNSPD", time_tagging.analog(times, meas_len, counts))
             save(counts, counts_st)  # save counts
             wait(100)
 

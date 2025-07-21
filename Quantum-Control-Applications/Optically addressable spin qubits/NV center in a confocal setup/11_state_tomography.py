@@ -187,7 +187,7 @@ with program() as state_tomography:
             align()  # Play the laser pulse after the mw sequence
             # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
-            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
+            measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_st)  # save counts
             wait(wait_between_runs * u.ns, "AOM1")
         save(n, n_st)
