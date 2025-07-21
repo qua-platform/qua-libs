@@ -28,7 +28,7 @@ with program() as calib_delays:
     n_st = declare_stream()  # stream for 'iteration'
 
     with for_(n, 0, n < n_avg, n + 1):
-        reset_phase("A_transition")
+        reset_if_phase("A_transition")
         play("laser_ON", "A_transition", duration=AC_len)
 
         wait(ttl_wait, "AOM")  # AOM is dummy channel for the TTL switch

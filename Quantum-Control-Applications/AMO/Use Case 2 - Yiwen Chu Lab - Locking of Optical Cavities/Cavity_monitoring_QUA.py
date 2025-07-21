@@ -116,8 +116,8 @@ def PID_monitor_prog(
                 with for_(n_inner_repeat, 0, n_inner_repeat < N_inner_repeat, n_inner_repeat + 1):
 
                     # Ensure that the two digital oscillators will start with the same phase
-                    reset_phase("phase_modulator")
-                    reset_phase("detector_AC")
+                    reset_if_phase("phase_modulator")
+                    reset_if_phase("detector_AC")
 
                     # Adjust the phase delay between the two
                     # frame_rotation_2pi(angle, "detector_AC") #rotate the detector phase

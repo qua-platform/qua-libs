@@ -154,8 +154,8 @@ def measure_macro(RFconfig, single_shot_DC_st, single_shot_AC_st, I, Q, savedata
     # assign(cavity_number,RFswitch_lookup[cavity])
     with for_(n_avg, 0, n_avg < N_avg, n_avg + 1):
         # Ensure that the two digital oscillators will start with the same phase
-        reset_phase("phase_modulator")
-        reset_phase("detector_AC")
+        reset_if_phase("phase_modulator")
+        reset_if_phase("detector_AC")
         # Adjust the phase delay between the two
         # frame_rotation_2pi(angle, "detector_AC")
         frame_rotation_2pi(angle, "phase_modulator")
@@ -197,8 +197,8 @@ def measure_macro_withavg(RFconfig, single_shot_DC_st, single_shot_AC_st, I, Q, 
     # assign(cavity_number,RFswitch_lookup[cavity])
     with for_(n_avg, 0, n_avg < N_avg, n_avg + 1):
         # Ensure that the two digital oscillators will start with the same phase
-        reset_phase("phase_modulator")
-        reset_phase("detector_AC")
+        reset_if_phase("phase_modulator")
+        reset_if_phase("detector_AC")
         # Adjust the phase delay between the two
         # frame_rotation_2pi(angle, "detector_AC")
         frame_rotation_2pi(angle, "phase_modulator")
@@ -246,8 +246,8 @@ def measure_macro_slowlock(RFconfig, I, Q, single_shot_DC, single_shot_AC, N_avg
 
     with for_(n_avg, 0, n_avg < N_avg, n_avg + 1):
         # Ensure that the two digital oscillators will start with the same phase
-        reset_phase("phase_modulator")
-        reset_phase("detector_AC")
+        reset_if_phase("phase_modulator")
+        reset_if_phase("detector_AC")
         # Adjust the phase delay between the two
         # frame_rotation_2pi(angle, "detector_AC")
         frame_rotation_2pi(angle, "phase_modulator")

@@ -45,8 +45,8 @@ with program() as signal_test:
         # do not wash out. Furthermore, because the control signal is associated with
         # 'ensemble' and demodulated in 'resonator', we reset the phase of the 'resonator'
         # as well so that there is no random phase in the demodulation stage
-        reset_phase("ensemble")
-        reset_phase("resonator")
+        reset_if_phase("ensemble")
+        reset_if_phase("resonator")
         reset_frame("ensemble")
 
         # Play 1st pulse (pi/2)

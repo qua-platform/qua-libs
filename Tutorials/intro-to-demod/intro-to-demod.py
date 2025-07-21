@@ -40,12 +40,12 @@ with program() as measureProg:
     measure("readout", "qe1", raw_adc, demod.full("cos", I))
     save(I, "full")
 
-    reset_phase("qe1")
+    reset_if_phase("qe1")
     measure("readout", "qe1", None, demod.sliced("cos", sliced_demod_res, seg_length))
     with for_(ind, 0, ind < num_segments, ind + 1):  # save a QUA array
         save(sliced_demod_res[ind], int_stream)
 
-    reset_phase("qe1")
+    reset_if_phase("qe1")
     measure("readout", "qe1", None, demod.accumulated("cos", acc_demod_res, seg_length))
     with for_(ind, 0, ind < num_segments, ind + 1):  # save a QUA array
         save(acc_demod_res[ind], acc_int_stream)
