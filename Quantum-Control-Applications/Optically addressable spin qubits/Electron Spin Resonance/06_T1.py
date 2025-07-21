@@ -92,7 +92,6 @@ with program() as T1:
             measure(
                 "readout",
                 "resonator",
-                None,
                 dual_demod.full("cos", "out1", "sin", "out2", I),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
             )
