@@ -139,8 +139,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qp.qubit_target.reset(
                                     node.parameters.reset_type, node.parameters.simulate)
                                 qp.align()
-                                # reset_frame(qp.qubit_target.xy.name)
-                                # reset_frame(qp.qubit_control.xy.name)
+                                reset_frame(qp.qubit_target.xy.name)
+                                reset_frame(qp.qubit_control.xy.name)
                                 # setting both qubits to the initial state
                                 qp.qubit_control.xy.play("x180", condition=control_initial == 1)
                                 qp.qubit_target.xy.play("x90")
