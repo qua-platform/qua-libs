@@ -26,10 +26,10 @@ class QDACII:
         rm = visa.ResourceManager(lib)  # To use pyvisa-py backend, use argument '@py'
         if communication_type == "Ethernet":
             self._visa = rm.open_resource(f"TCPIP::{IP_address}::{port}::SOCKET")
-            self._visa.baud_rate = 921600
             # self._visa.send_end = False
         elif communication_type == "USB":
             self._visa = rm.open_resource(f"ASRL{USB_device}::INSTR")
+        self._visa.baud_rate = 921600
 
         self._visa.write_termination = "\n"
         self._visa.read_termination = "\n"
