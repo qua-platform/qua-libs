@@ -64,7 +64,6 @@ with program() as resonator_spec:
             measure(
                 "readout",
                 "resonator",
-                None,
                 dual_demod.full("cos", "sin", I),
                 dual_demod.full("minus_sin", "cos", Q),
             )

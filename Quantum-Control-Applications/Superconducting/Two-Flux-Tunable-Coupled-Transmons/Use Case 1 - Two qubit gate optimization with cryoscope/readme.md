@@ -166,7 +166,6 @@ with for_(n, 0, n < n_avg, n + 1):
             measure(
                 "readout",
                 "resonator0",
-                None,
                 dual_demod.full("rotated_cos", "rotated_sin", I),
                 dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
             )
