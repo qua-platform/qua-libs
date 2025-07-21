@@ -1,7 +1,7 @@
-from qm.qua import wait, align
+from qm.qua import wait, align, for_, declare
 
 
-def safe_wait(t, max_wait=int(1e8)):
+def safe_wait(t, max_wait=int(1e6)):
     """
     Execute QUA wait commands for the given time t.
     
@@ -36,8 +36,9 @@ def safe_wait(t, max_wait=int(1e8)):
     num_full_chunks = t // max_wait
     remainder = t % max_wait
     
-    # Execute full chunks
-    for _ in range(num_full_chunks):
+    # Execute full chunks using a QUA for_ loop
+    i = declare(int)  # Define a QUA variable
+    with for_(i, 0, i < num_full_chunks, i + 1):
         wait(max_wait)
     
     # Execute remainder if any
