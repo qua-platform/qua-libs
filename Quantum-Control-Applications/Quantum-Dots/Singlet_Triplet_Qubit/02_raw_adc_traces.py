@@ -33,8 +33,9 @@ with program() as raw_trace_prog:
         reset_if_phase("tank_circuit")
         # *amp(0) sets the amplitude to zero, thus the collected trace is the digitization of the analog input
         # in the majority of cases the DC bias to the sensor is applied with an external DC source.
-        measure("readout" * amp(0), "TIA", adc_dc_st)
+        measure("readout" * amp(0), "TIA", adc_stream=adc_dc_st)
         # Measure the tank circuit (send a readout pulse and record the raw ADC trace)
+        measure("readout", "tank_circuit", adc_stream=adc_rf_st)
         # Wait for the resonator to deplete
         wait(1_000 * u.ns, "TIA", "tank_circuit")
 

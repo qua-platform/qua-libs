@@ -589,7 +589,7 @@ with program() as atom_sorting:
                     )
                 # Measure raw adc trace for spectrograms
                 if raw_adc_acquisition:
-                    measure("readout", "detector", raw_adc)
+                    measure("readout", "detector", adc_stream=raw_adc)
             # Exit the infinite loop in case just a single sorting sequence is needed
             if single_run:
                 assign(infinite_run, False)

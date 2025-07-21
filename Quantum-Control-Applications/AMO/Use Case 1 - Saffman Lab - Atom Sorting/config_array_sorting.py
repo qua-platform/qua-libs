@@ -34,6 +34,7 @@ def print_2d(matrix):
 #############
 
 qop_ip = "127.0.0.1"
+cluster_name = "my_cluster"
 qop_port = 80
 
 # Units
