@@ -181,117 +181,207 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
+    """
+    Fit raw cryoscope data with exponential models.
 
-    if hasattr(ds, "I"):
-        data = "I"
-    elif hasattr(ds, "state"):
-        data = "state"
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Raw dataset containing I/Q or state data
+    node : QualibrationNode
+        Node containing parameters and configuration
 
-    dafit = fit_oscillation(ds[data], "frame")
-
-    daphi = unwrap_phase(dafit.sel(fit_vals="phi"), "time")
-    sg_order = 2
-    sg_range = 3
-
-    ds_fit = cryoscope_frequency(
-        daphi,
-        quad_term=-1,
-        stable_time_indices=(node.parameters.cryoscope_len - 20, node.parameters.cryoscope_len),
-        sg_order=sg_order,
-        sg_range=sg_range,
-    )
-
-    first_vals = ds_fit.flux.sel(time=slice(0, 1)).mean()
-    final_vals = ds_fit.flux.sel(time=slice(node.parameters.cryoscope_len - 20, None)).mean()
-
-    qubit = node.namespace["qubits"][0].name
-
-    # Find the index where ds_fit.flux is closest to 1/e
-    flux_vals = ds_fit.flux.values
-    range_vals = final_vals - first_vals
-    guess_val = 0.37 * range_vals + first_vals
-    idx_closest = np.abs(flux_vals - guess_val.data).argmin()
-
-    if node.parameters.exp_1_tau_guess is not None:
-        initial_guess_tau = node.parameters.exp_1_tau_guess
-    else:
-        initial_guess_tau = ds_fit.time.values[idx_closest]
-
-    print(f"Initial guess for tau: {initial_guess_tau}")
-
+    Returns
+    -------
+    tuple
+        (fitted_dataset, fit_results_dict)
+    """
     try:
-        p0 = [final_vals, -1 + first_vals / final_vals, initial_guess_tau]
-        fit, _ = curve_fit(expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit=qubit).values, p0=p0)
-        fit1_success = True
+        if hasattr(ds, "I"):
+            data = "I"
+        elif hasattr(ds, "state"):
+            data = "state"
+        else:
+            raise ValueError("Dataset must contain either 'I' or 'state' data")
+
+        dafit = fit_oscillation(ds[data], "frame")
+
+        daphi = unwrap_phase(dafit.sel(fit_vals="phi"), "time")
+        sg_order = 2
+        sg_range = 3
+
+        ds_fit = cryoscope_frequency(
+            daphi,
+            quad_term=-1,
+            stable_time_indices=(node.parameters.cryoscope_len - 20, node.parameters.cryoscope_len),
+            sg_order=sg_order,
+            sg_range=sg_range,
+        )
+
+        first_vals = ds_fit.flux.sel(time=slice(0, 1)).mean()
+        final_vals = ds_fit.flux.sel(time=slice(node.parameters.cryoscope_len - 20, None)).mean()
+
+        qubit = node.namespace["qubits"][0].name
+
+        # Find the index where ds_fit.flux is closest to 1/e
+        qubit_flux = ds_fit.flux.sel(qubit=qubit)
+        flux_vals = qubit_flux.values
+        range_vals = final_vals - first_vals
+        guess_val = 0.37 * range_vals + first_vals
+
+        # Handle both scalar and array cases for guess_val
+        if hasattr(guess_val, "data"):
+            guess_val_scalar = float(guess_val.data)
+        else:
+            guess_val_scalar = float(guess_val)
+
+        idx_closest = np.abs(flux_vals - guess_val_scalar).argmin()
+
+        if node.parameters.exp_1_tau_guess is not None:
+            initial_guess_tau = node.parameters.exp_1_tau_guess
+        else:
+            # Ensure the index is within bounds
+            if idx_closest >= len(ds_fit.time.values):
+                idx_closest = len(ds_fit.time.values) - 1
+            initial_guess_tau = ds_fit.time.values[idx_closest]
+
+        print(f"Initial guess for tau: {initial_guess_tau}")
+
+        # Single exponential fit
+        try:
+            p0 = [final_vals, -1 + first_vals / final_vals, initial_guess_tau]
+            fit, _ = curve_fit(expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit=qubit).values, p0=p0)
+            fit1_success = True
+        except Exception as e:
+            fit = p0
+            fit1_success = False
+            print("single exp fit failed with error:\n", e)
+
+        # Double exponential fit
+        try:
+            p0 = [fit[0], fit[1], initial_guess_tau, fit[1], fit[2]]
+            fit2, _ = curve_fit(two_expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit=qubit).values, p0=p0)
+            fit2_success = True
+        except Exception as e:
+            fit2 = None
+            fit2_success = False
+            print("two exp fit failed with error:\n", e)
+
+        # Save fit results as attributes
+        ds_fit.attrs["fit_1exp"] = fit
+        ds_fit.attrs["fit_1exp_success"] = fit1_success
+        ds_fit.attrs["fit_2exp"] = fit2
+        ds_fit.attrs["fit_2exp_success"] = fit2_success
+
+        ds["fit_results"] = ds_fit
+
+        fit, fit_results = _extract_relevant_fit_parameters(ds, node)
+
+        return fit, fit_results
+
     except Exception as e:
-        fit = p0
-        fit1_success = False
-        print("single exp fit failed with error:\n", e)
-    try:
-        p0 = [fit[0], fit[1], initial_guess_tau, fit[1], fit[2]]
-        fit2, _ = curve_fit(two_expdecay, ds_fit.time.values, ds_fit.flux.sel(qubit=qubit).values, p0=p0)
-        fit2_success = True
-    except Exception as e:
-        fit2 = None
-        fit2_success = False
-        print("two exp fit failed with error:\n", e)
+        print(f"Critical error in fit_raw_data: {e}")
+        print("Returning minimal dataset with failed fit results")
 
-    # Save fit results as attributes or DataArrays
-    ds_fit.attrs["fit_1exp"] = fit
-    ds_fit.attrs["fit_1exp_success"] = fit1_success
-    ds_fit.attrs["fit_2exp"] = fit2
-    ds_fit.attrs["fit_2exp_success"] = fit2_success
+        # Create a minimal failed result
+        qubit_names = [q.name for q in node.namespace["qubits"]]
+        fit_results = {qubit_name: FitParameters(success=False) for qubit_name in qubit_names}
 
-    ds["fit_results"] = ds_fit
+        # Create a copy of the original dataset for ds_fit
+        # Don't assign it to ds["fit_results"] as that causes the xarray error
+        ds_fit = ds.copy()
+        ds_fit.attrs["fit_1exp_success"] = False
+        ds_fit.attrs["fit_2exp_success"] = False
 
-    fit, fit_results = _extract_relevant_fit_parameters(ds, node)
-
-    return fit, fit_results
+        return ds_fit, fit_results
 
 
 def _extract_relevant_fit_parameters(ds: xr.Dataset, node: QualibrationNode):
     """Extract relevant fit parameters from the dataset and add metadata."""
     # Assess whether the fit was successful or not
 
-    fit = ds["fit_results"]
-    fit_results = {
-        q: FitParameters(
-            fit1_success=fit.attrs.get("fit_1exp_success", False),
-            fit2_success=fit.attrs.get("fit_2exp_success", False),
-            fit1_A=fit.attrs.get("fit_1exp", [None, None, None])[1] if fit.attrs.get("fit_1exp_success") else None,
-            fit1_tau=fit.attrs.get("fit_1exp", [None, None, None])[2] if fit.attrs.get("fit_1exp_success") else None,
-            fit2_A1=(
-                fit.attrs.get("fit_2exp", [None, None, None, None, None])[1]
-                if fit.attrs.get("fit_2exp_success")
-                else None
-            ),
-            fit2_tau1=(
-                fit.attrs.get("fit_2exp", [None, None, None, None, None])[2]
-                if fit.attrs.get("fit_2exp_success")
-                else None
-            ),
-            fit2_A2=(
-                fit.attrs.get("fit_2exp", [None, None, None, None, None])[3]
-                if fit.attrs.get("fit_2exp_success")
-                else None
-            ),
-            fit2_tau2=(
-                fit.attrs.get("fit_2exp", [None, None, None, None, None])[4]
-                if fit.attrs.get("fit_2exp_success")
-                else None
-            ),
+    # Check if ds has fit_results (normal case) or use ds directly (error case)
+    if "fit_results" in ds:
+        fit = ds["fit_results"]
+    else:
+        fit = ds
+
+    fit_results = {}
+
+    # Get qubit names from the node if qubit dimension doesn't exist
+    if hasattr(fit, "qubit") and hasattr(fit.qubit, "values"):
+        qubit_names = fit.qubit.values
+    else:
+        qubit_names = [q.name for q in node.namespace["qubits"]]
+
+    for q in qubit_names:
+        fit1_success = fit.attrs.get("fit_1exp_success", False)
+        fit2_success = fit.attrs.get("fit_2exp_success", False)
+
+        # Determine overall success based on the number of exponents requested
+        if node.parameters.number_of_exponents == 1:
+            success = fit1_success
+        elif node.parameters.number_of_exponents == 2:
+            success = fit2_success
+        else:
+            success = fit1_success or fit2_success  # Default fallback
+
+        fit_results[q] = FitParameters(
+            success=success,
+            fit1_success=fit1_success,
+            fit2_success=fit2_success,
+            fit1_A=fit.attrs.get("fit_1exp", [None, None, None])[1] if fit1_success else None,
+            fit1_tau=fit.attrs.get("fit_1exp", [None, None, None])[2] if fit1_success else None,
+            fit2_A1=(fit.attrs.get("fit_2exp", [None, None, None, None, None])[1] if fit2_success else None),
+            fit2_tau1=(fit.attrs.get("fit_2exp", [None, None, None, None, None])[2] if fit2_success else None),
+            fit2_A2=(fit.attrs.get("fit_2exp", [None, None, None, None, None])[3] if fit2_success else None),
+            fit2_tau2=(fit.attrs.get("fit_2exp", [None, None, None, None, None])[4] if fit2_success else None),
         )
-        for q in fit.qubit.values
-    }
     return ds, fit_results
 
 
-def log_fitted_results():
-    pass
+def log_fitted_results(fit_results: dict, log_callable=print):
+    """Log the fitted results for each qubit.
+
+    Parameters
+    ----------
+    fit_results : dict
+        Dictionary containing fit results for each qubit.
+    log_callable : callable, optional
+        Function to use for logging (default is print).
+    """
+    for qubit_name, fit_result in fit_results.items():
+        log_callable(f"=== {qubit_name} ===")
+        if fit_result.success:
+            log_callable("Overall fit: SUCCESSFUL")
+            if fit_result.fit1_success:
+                log_callable("Single exponential fit: SUCCESS")
+                if fit_result.fit1_A is not None and fit_result.fit1_tau is not None:
+                    log_callable(f"  A = {fit_result.fit1_A:.4f}")
+                    log_callable(f"  tau = {fit_result.fit1_tau:.2f} ns")
+            else:
+                log_callable("Single exponential fit: FAILED")
+
+            if fit_result.fit2_success:
+                log_callable("Double exponential fit: SUCCESS")
+                if all(
+                    val is not None
+                    for val in [fit_result.fit2_A1, fit_result.fit2_tau1, fit_result.fit2_A2, fit_result.fit2_tau2]
+                ):
+                    log_callable(f"  A1 = {fit_result.fit2_A1:.4f}, tau1 = {fit_result.fit2_tau1:.2f} ns")
+                    log_callable(f"  A2 = {fit_result.fit2_A2:.4f}, tau2 = {fit_result.fit2_tau2:.2f} ns")
+            else:
+                log_callable("Double exponential fit: FAILED")
+        else:
+            log_callable("Overall fit: FAILED")
+            log_callable(f"Single exponential fit: {'SUCCESS' if fit_result.fit1_success else 'FAILED'}")
+            log_callable(f"Double exponential fit: {'SUCCESS' if fit_result.fit2_success else 'FAILED'}")
+        log_callable("")
 
 
 @dataclass
 class FitParameters:
+    success: bool = False
     fit1_success: bool = False
     fit2_success: bool = False
     fit1_A: Optional[float] = None

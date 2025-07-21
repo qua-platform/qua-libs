@@ -12,7 +12,7 @@ from .analysis import (
     two_expdecay,
 )
 from .parameters import Parameters
-from .plotting import plot_raw_data, plot_normalized_flux
+from .plotting import plot_normalized_flux, plot_raw_data, plot_raw_data_only
 
 __all__ = [
     "Parameters",
@@ -31,4 +31,5 @@ __all__ = [
     "single_exp",
     "plot_raw_data",
     "plot_normalized_flux",
+    "plot_raw_data_only",
 ]

@@ -131,10 +131,148 @@ def plot_individual_flux(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: x
 
     Notes
     -----
-    - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
+    - If the fit dataset is provided and successful, the fitted curve is plotted along with the raw data.
+    - If the fit failed, only the raw data is plotted with appropriate annotations.
     """
+    # Always plot the raw flux data
+    fit.fit_results.flux.plot(ax=ax, linestyle="--", marker=".", label="Raw flux data")
 
-    fit.fit_results.flux.plot(ax=ax, linestyle="--", marker=".")
-    ax.plot(fit.time, expdecay(fit.time, *fit.fit_results.fit_1exp), label="fit_1exp", linewidth=5)
-    ax.plot(fit.time, two_expdecay(fit.time, *fit.fit_results.fit_2exp), label="fit_2exp", linewidth=5)
+    # Check if fits are available and successful
+    fit1_success = fit.fit_results.attrs.get("fit_1exp_success", False)
+    fit2_success = fit.fit_results.attrs.get("fit_2exp_success", False)
+
+    if fit1_success:
+        fit1_params = fit.fit_results.attrs.get("fit_1exp")
+        if fit1_params is not None:
+            ax.plot(fit.time, expdecay(fit.time, *fit1_params), label="Single exp fit", linewidth=3, alpha=0.8)
+
+    if fit2_success:
+        fit2_params = fit.fit_results.attrs.get("fit_2exp")
+        if fit2_params is not None:
+            ax.plot(fit.time, two_expdecay(fit.time, *fit2_params), label="Double exp fit", linewidth=3, alpha=0.8)
+
+    # Add status annotation
+    status_text = []
+    if fit1_success:
+        status_text.append("Single exp: ✓")
+    else:
+        status_text.append("Single exp: ✗")
+
+    if fit2_success:
+        status_text.append("Double exp: ✓")
+    else:
+        status_text.append("Double exp: ✗")
+
+    ax.text(
+        0.02,
+        0.98,
+        "\n".join(status_text),
+        transform=ax.transAxes,
+        verticalalignment="top",
+        fontsize=10,
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray", alpha=0.7),
+    )
+
     ax.legend()
+    ax.set_title(f"Qubit {qubit['qubit']}")
+    ax.set_xlabel("Time [ns]")
+    ax.set_ylabel("Normalized flux")
+
+
+def plot_raw_data_only(ds: xr.Dataset, qubits: List[AnyTransmon]):
+    """
+    Plots only the raw cryoscope data when fits are not available.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The dataset containing the quadrature data.
+    qubits : list of AnyTransmon
+        A list of qubits to plot.
+
+    Returns
+    -------
+    Figure
+        The matplotlib figure object containing the plots.
+    """
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+    for ax, qubit in grid_iter(grid):
+        plot_individual_raw_data_only(ax, ds, qubit)
+
+    grid.fig.suptitle("Raw Cryoscope Data (No fits available)")
+    grid.fig.set_size_inches(15, 9)
+    grid.fig.tight_layout()
+    return grid.fig
+
+
+def plot_individual_raw_data_only(ax: Axes, ds: xr.Dataset, qubit: dict[str, str]):
+    """
+    Plots individual raw qubit data when no fits are available.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axis on which to plot the data.
+    ds : xr.Dataset
+        The dataset containing the quadrature data.
+    qubit : dict[str, str]
+        mapping to the qubit to plot.
+    """
+    try:
+        if hasattr(ds, "I"):
+            data = "I"
+            label = "Rotated I quadrature [mV]"
+        elif hasattr(ds, "state"):
+            data = "state"
+            label = "Qubit state"
+        else:
+            raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
+
+        # Plot raw data vs time for each frame
+        qubit_data = ds[data].sel(qubit=qubit["qubit"])
+
+        # Plot a subset of frames to avoid cluttering
+        num_frames = qubit_data.sizes.get("frame", 1)
+        frame_step = max(1, num_frames // 5)  # Show max 5 frames
+
+        for i, frame_idx in enumerate(range(0, num_frames, frame_step)):
+            frame_data = qubit_data.isel(frame=frame_idx)
+            alpha = 0.7 if num_frames > 1 else 1.0
+            ax.plot(
+                frame_data.time,
+                frame_data.values,
+                linestyle="--",
+                marker=".",
+                alpha=alpha,
+                label=f"Frame {frame_idx}" if num_frames > 1 and i < 3 else "",
+            )
+
+        ax.set_title(f"Qubit {qubit['qubit']} - Fit Failed")
+        ax.set_xlabel("Time [ns]")
+        ax.set_ylabel(label)
+
+        if num_frames > 1:
+            ax.legend()
+
+        ax.text(
+            0.02,
+            0.98,
+            "Fits failed - showing raw data only",
+            transform=ax.transAxes,
+            verticalalignment="top",
+            fontsize=10,
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="lightcoral", alpha=0.7),
+        )
+
+    except Exception as e:
+        # Fallback if even raw data plotting fails
+        ax.text(
+            0.5,
+            0.5,
+            f"Error plotting data:\n{str(e)}",
+            transform=ax.transAxes,
+            ha="center",
+            va="center",
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="red", alpha=0.7),
+        )
+        ax.set_title(f"Qubit {qubit['qubit']} - Error")

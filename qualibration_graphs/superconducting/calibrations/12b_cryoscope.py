@@ -3,7 +3,14 @@ from dataclasses import asdict
 
 import numpy as np
 import xarray as xr
-from calibration_utils.cryoscope import Parameters, fit_raw_data, plot_normalized_flux, process_raw_dataset
+from calibration_utils.cryoscope import (
+    Parameters,
+    fit_raw_data,
+    log_fitted_results,
+    plot_normalized_flux,
+    plot_raw_data_only,
+    process_raw_dataset,
+)
 from qm.qua import *
 from qualang_tools.bakery import baking
 from qualang_tools.multi_user import qm_session
@@ -277,7 +284,15 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(fit_results, log_callable=node.log)
+
+    # Convert to dict format for storage and create outcomes
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result.success else "failed") for qubit_name, fit_result in fit_results.items()
+    }
 
 
 # %% {Plot_data}
@@ -287,7 +302,16 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     Plot the raw and fitted data in specific figures whose shape is given by
     qubit.grid_location.
     """
-    fig_flux = plot_normalized_flux(node.results["ds_raw"], node.namespace["qubits"], fits=node.results["ds_fit"])
+    # Check if we have any successful fits
+    any_fits_successful = any(outcome == "successful" for outcome in node.outcomes.values())
+
+    if any_fits_successful:
+        # Plot with fits (handles both successful and failed cases gracefully)
+        fig_flux = plot_normalized_flux(node.results["ds_raw"], node.namespace["qubits"], fits=node.results["ds_fit"])
+    else:
+        # All fits failed, plot raw data only
+        fig_flux = plot_raw_data_only(node.results["ds_raw"], node.namespace["qubits"])
+
     node.results["figure_flux"] = fig_flux
 
 
@@ -297,6 +321,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
+                continue
 
             if node.parameters.number_of_exponents == 1:
                 if node.results["fit_results"][q.name]["fit1_success"]:
@@ -307,7 +333,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                         ),
                     ]
                 else:
-                    print(f"Warning: fit_1exp for qubit {q.name} was not successful. No filter will be applied.")
+                    node.log(f"Warning: fit_1exp for qubit {q.name} was not successful. No filter will be applied.")
 
             elif node.parameters.number_of_exponents == 2:
                 if node.results["fit_results"][q.name]["fit2_success"]:
@@ -322,6 +348,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                         ),
                     ]
                 else:
-                    print(f"Warning: fit_2exp for qubit {q.name} was not successful. No filter will be applied.")
+                    node.log(f"Warning: fit_2exp for qubit {q.name} was not successful. No filter will be applied.")
 
-            node.save()
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
+    node.save()
