@@ -127,7 +127,7 @@ def PID_monitor_prog(
                     # Play the PDH sideband
                     play("cw", "phase_modulator")
                     # Measure and integrate the signal received by the detector --> DC measurement
-                    measure("readout", "detector_DC", None, integration.full("constant", single_shot_DC, "out1"))
+                    measure("readout", "detector_DC", integration.full("constant", single_shot_DC, "out1"))
                     # Measure and demodulate the signal received by the detector --> AC measurement sqrt(I**2 + Q**2)
                     measure(
                         "readout",

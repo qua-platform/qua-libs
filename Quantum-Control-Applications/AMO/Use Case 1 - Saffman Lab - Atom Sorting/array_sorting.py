@@ -77,7 +77,7 @@ def analog_readout(nb_of_rows, nb_of_columns, readout_threshold, readout_done):
     assign(counter, 0)
     with while_(~readout_done):
         wait_for_trigger("fpga")
-        measure("readout_fpga", "fpga", None, integration.full("constant", data, "out1"))
+        measure("readout_fpga", "fpga", integration.full("constant", data, "out1"))
         with if_(data < readout_threshold):
             assign(occupation_matrix[counter], 1)
         with else_():

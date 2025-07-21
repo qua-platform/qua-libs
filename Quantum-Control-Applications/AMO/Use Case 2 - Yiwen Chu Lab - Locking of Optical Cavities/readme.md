@@ -97,9 +97,9 @@ def measure_macro(RFconfig,single_shot_DC_st,single_shot_AC_st,I,Q,savedata,N_av
         # Play the PDH sideband
         play("cw", "phase_modulator")
         # Measure and integrate the signal received by the detector --> DC measurement
-        measure("readout", "detector_DC", None, integration.full("constant", single_shot_DC, "out1"))
+        measure("readout", "detector_DC", integration.full("constant", single_shot_DC, "out1"))
         # Measure and demodulate the signal received by the detector --> AC measurement sqrt(I**2 + Q**2)
-        measure("readout", "detector_AC", None, demod.full("constant", I, "out1"), demod.full("constant", Q, "out1"))
+        measure("readout", "detector_AC", demod.full("constant", I, "out1"), demod.full("constant", Q, "out1"))
         assign(single_shot_AC, I)
         reset_frame("phase_modulator") #reset the phase to undo the angle rotation above
 
