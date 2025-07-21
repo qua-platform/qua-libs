@@ -26,7 +26,7 @@ with program() as input_cal:
         play("activate", "switch_receiver")
         wait(150, "resonator")
         reset_if_phase("resonator")
-        measure("readout", "resonator", adc_st)
+        measure("readout", "resonator", adc_stream=adc_st)
         wait(250, "resonator")
 
     with stream_processing():
