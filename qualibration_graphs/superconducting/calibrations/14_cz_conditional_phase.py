@@ -1,8 +1,8 @@
 # %% {Imports}
 from dataclasses import asdict
-from datetime import datetime, timedelta, timezone
 
 import matplotlib.pyplot as plt
+import numpy as np
 import xarray as xr
 from calibration_utils.cz_conditional_phase import (
     CzConditionalPhaseFit,
@@ -10,8 +10,7 @@ from calibration_utils.cz_conditional_phase import (
     fit_raw_data,
     log_fitted_results,
     plot_leakage_data,
-    plot_phase_calibration_data,
-    plot_raw_oscillation_data,
+    plot_raw_data_with_fit,
     process_raw_dataset,
 )
 from qm import SimulationConfig
@@ -26,8 +25,6 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
-import numpy as np
-
 
 # %% {Initialisation}
 description = """
@@ -78,6 +75,8 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.qubit_pairs = ["qD1-qD2"]
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
+    node.parameters.amp_step = 0.0005
+    node.parameters.amp_range = 0.1
     pass
 
 
@@ -134,10 +133,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     with for_(*from_array(frame, frames)):
                         with for_(*from_array(control_initial, [0, 1])):
                             for ii, qp in multiplexed_qubit_pairs.items():
-                                qp.qubit_control.reset(
-                                    node.parameters.reset_type, node.parameters.simulate)
-                                qp.qubit_target.reset(
-                                    node.parameters.reset_type, node.parameters.simulate)
+                                qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
+                                qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
                                 qp.align()
                                 reset_frame(qp.qubit_target.xy.name)
                                 reset_frame(qp.qubit_control.xy.name)
@@ -183,18 +180,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         f"state_target{i + 1}"
                     )
                 else:
-                    I_c_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(
-                        f"I_control{i + 1}"
-                    )
-                    Q_c_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(
-                        f"Q_control{i + 1}"
-                    )
-                    I_t_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(
-                        f"I_target{i + 1}"
-                    )
-                    Q_t_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(
-                        f"Q_target{i + 1}"
-                    )
+                    I_c_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(f"I_control{i + 1}")
+                    Q_c_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(f"Q_control{i + 1}")
+                    I_t_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(f"I_target{i + 1}")
+                    Q_t_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(f"Q_target{i + 1}")
+
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
@@ -235,7 +225,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
-ds = node.results["ds_raw"]
+
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
@@ -269,28 +259,24 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     }
 
 
+# %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit pair grid locations."""
-
     fit_results = {k: CzConditionalPhaseFit(**v) for k, v in node.results["fit_results"].items()}
     optimal_amps = node.results["optimal_amps"]
     qubit_pairs = node.namespace["qubit_pairs"]
 
-    # Generate timestamp and node ID for plots
-    date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
-    node_id = getattr(node, "id", "unknown")
-
     # Plot phase calibration data
-    fig_phase = plot_phase_calibration_data(
+    fig_phase = plot_raw_data_with_fit(
         fit_results,
         optimal_amps,
         qubit_pairs,
-        date_time,
-        node_id,
-        node.parameters.reset_type,
     )
     plt.show()
+
+    # Store the generated figures
+    figures = {"phase": fig_phase}
 
     # Plot leakage data if measured
     if node.parameters.measure_leak:
@@ -300,13 +286,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
             qubit_pairs,
         )
         plt.show()
-        node.results["figures"] = {"phase": fig_phase, "leak": fig_leak}
-    else:
-        node.results["figures"] = {"phase": fig_phase}
+        figures["leak"] = fig_leak
 
-    # Plot raw oscillation data if requested
-    if node.parameters.plot_raw:
-        plot_raw_oscillation_data(node.results["ds_raw"], qubit_pairs)
+    node.results["figures"] = figures
 
 
 # %% {Update_state}
@@ -314,14 +296,17 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit pair data analysis was successful."""
     with node.record_state_updates():
-        optimal_amps = node.results["optimal_amps"]
-        for qp in node.namespace["qubit_pairs"]:
-            if node.outcomes[qp.name] == "failed":
-                continue
-            qp.gates["Cz"].flux_pulse_control.amplitude = optimal_amps[qp.name]
+        # optimal_amps = node.results["optimal_amps"]
+        # for qp in node.namespace["qubit_pairs"]:
+        #     if node.outcomes[qp.name] == "failed":
+        #         continue
+        #     qp.gates["Cz"].flux_pulse_control.amplitude = optimal_amps[qp.name]
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
+
+# %%

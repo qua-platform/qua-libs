@@ -6,16 +6,13 @@ from calibration_utils.cz_conditional_phase.analysis import CzConditionalPhaseFi
 from qualibration_libs.core import BatchableList
 
 
-def plot_phase_calibration_data(
+def plot_raw_data_with_fit(
     fit_results: Dict[str, CzConditionalPhaseFit],
     optimal_amps: Dict[str, float],
     qubit_pairs: BatchableList,
-    date_time: str,
-    node_id: int,
-    reset_type: str,
 ) -> plt.Figure:
     """
-    Plot the CZ phase calibration data showing phase difference vs amplitude.
+    Plot the CZ phase calibration data showing phase difference vs amplitude with fit.
 
     Parameters:
     -----------
@@ -25,12 +22,6 @@ def plot_phase_calibration_data(
         Optimal amplitudes for each qubit pair
     qubit_pairs : BatchableList
         List of qubit pairs
-    date_time : str
-        Timestamp for the plot
-    node_id : int
-        Node ID for the plot
-    reset_type : str
-        Reset type used in the experiment
 
     Returns:
     --------
@@ -79,8 +70,8 @@ def plot_phase_calibration_data(
     for i in range(n_pairs, len(axes)):
         axes[i].axis("off")
 
-    plt.suptitle(f"Cz phase calibration \\n {date_time} GMT+3 #{node_id} \\n reset type = {reset_type}", y=0.95)
-    plt.tight_layout()
+    fig.suptitle("CZ phase calibration (phase difference + fit)")
+    fig.tight_layout()
 
     return fig
 
@@ -141,27 +132,7 @@ def plot_leakage_data(
     for i in range(n_pairs, len(axes)):
         axes[i].axis("off")
 
-    plt.suptitle("F state probability", y=0.95)
-    plt.tight_layout()
+    fig.suptitle("F state probability")
+    fig.tight_layout()
 
     return fig
-
-
-def plot_raw_oscillation_data(ds, qubit_pairs):
-    """
-    Plot raw oscillation data for debugging purposes.
-
-    Parameters:
-    -----------
-    ds : xr.Dataset
-        Dataset containing raw and fitted oscillation data
-    qubit_pairs : BatchableList
-        List of qubit pairs
-    """
-    for qp in qubit_pairs:
-        ds_qp = ds.sel(qubit=qp.name)
-        plt.figure()
-        ds_qp.mean(dim="N").to_array().sel(variable=["state_target", "fitted"]).stack(
-            control_axis_fit=("control_axis", "variable")
-        ).plot.line(x="frame", col="amp", col_wrap=4)
-        plt.show()

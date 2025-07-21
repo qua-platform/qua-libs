@@ -1,6 +1,6 @@
-from .analysis import CzConditionalPhaseFit, fit_raw_data, log_fitted_results, process_raw_dataset, tanh_fit
+from .analysis import CzConditionalPhaseFit, fit_raw_data, log_fitted_results, process_raw_dataset
 from .parameters import Parameters
-from .plotting import plot_leakage_data, plot_phase_calibration_data, plot_raw_oscillation_data
+from .plotting import plot_leakage_data, plot_raw_data_with_fit
 
 __all__ = [
     "Parameters",
@@ -8,8 +8,6 @@ __all__ = [
     "fit_raw_data",
     "log_fitted_results",
     "CzConditionalPhaseFit",
-    "tanh_fit",
-    "plot_phase_calibration_data",
+    "plot_raw_data_with_fit",
     "plot_leakage_data",
-    "plot_raw_oscillation_data",
 ]

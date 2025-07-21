@@ -14,8 +14,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Step size for amplitude scanning. Default is 0.001."""
     num_frames: int = 10
     """Number of frame rotation points for phase measurement. Default is 10."""
-    plot_raw: bool = False
-    """Whether to plot raw oscillation data. Default is False."""
     measure_leak: bool = False
     """Whether to measure leakage to the |f> state. Default is True."""
 
