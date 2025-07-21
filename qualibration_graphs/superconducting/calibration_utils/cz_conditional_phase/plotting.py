@@ -1,0 +1,167 @@
+from typing import Dict
+
+import matplotlib.pyplot as plt
+import numpy as np
+from calibration_utils.cz_conditional_phase.analysis import CzConditionalPhaseFit
+from qualibration_libs.core import BatchableList
+
+
+def plot_phase_calibration_data(
+    fit_results: Dict[str, CzConditionalPhaseFit],
+    optimal_amps: Dict[str, float],
+    qubit_pairs: BatchableList,
+    date_time: str,
+    node_id: int,
+    reset_type: str,
+) -> plt.Figure:
+    """
+    Plot the CZ phase calibration data showing phase difference vs amplitude.
+
+    Parameters:
+    -----------
+    fit_results : Dict[str, CzConditionalPhaseFit]
+        Fit results for each qubit pair
+    optimal_amps : Dict[str, float]
+        Optimal amplitudes for each qubit pair
+    qubit_pairs : BatchableList
+        List of qubit pairs
+    date_time : str
+        Timestamp for the plot
+    node_id : int
+        Node ID for the plot
+    reset_type : str
+        Reset type used in the experiment
+
+    Returns:
+    --------
+    plt.Figure
+        The generated figure
+    """
+    n_pairs = len(qubit_pairs)
+    cols = min(4, n_pairs)  # Max 4 columns
+    rows = (n_pairs + cols - 1) // cols  # Ceiling division
+
+    fig, axes = plt.subplots(rows, cols, figsize=(3 * cols, 3 * rows), squeeze=False)
+    axes = axes.flatten()
+
+    for i, qp in enumerate(qubit_pairs):
+        ax = axes[i]
+        qp_name = qp.name
+        fit_result = fit_results[qp_name]
+
+        # Plot phase difference data
+        fit_result.phase_diff.plot.line(ax=ax, x="amp_full")
+
+        # Plot fitted curve if available
+        if fit_result.success and not np.all(np.isnan(fit_result.fitted_curve)):
+            ax.plot(fit_result.phase_diff.amp_full, fit_result.fitted_curve)
+
+        # Mark optimal point
+        ax.plot([optimal_amps[qp_name]], [0.5], marker="o", color="red")
+        ax.axhline(y=0.5, color="red", linestyle="--", lw=0.5)
+        ax.axvline(x=optimal_amps[qp_name], color="red", linestyle="--", lw=0.5)
+
+        # Add secondary x-axis for detuning in MHz
+        def amp_to_detuning_MHz(amp):
+            return -(amp**2) * qp.qubit_control.freq_vs_flux_01_quad_term / 1e6  # Convert Hz to MHz
+
+        def detuning_MHz_to_amp(detuning_MHz):
+            return np.sqrt(-detuning_MHz * 1e6 / qp.qubit_control.freq_vs_flux_01_quad_term)
+
+        secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
+        secax.set_xlabel("Detuning (MHz)")
+
+        ax.set_title(qp_name)
+        ax.set_xlabel("Amplitude (V)")
+        ax.set_ylabel("Phase difference")
+
+    # Hide unused axes
+    for i in range(n_pairs, len(axes)):
+        axes[i].axis("off")
+
+    plt.suptitle(f"Cz phase calibration \\n {date_time} GMT+3 #{node_id} \\n reset type = {reset_type}", y=0.95)
+    plt.tight_layout()
+
+    return fig
+
+
+def plot_leakage_data(
+    fit_results: Dict[str, CzConditionalPhaseFit],
+    optimal_amps: Dict[str, float],
+    qubit_pairs: BatchableList,
+) -> plt.Figure:
+    """
+    Plot the leakage data showing F state probability vs amplitude.
+
+    Parameters:
+    -----------
+    fit_results : Dict[str, CzConditionalPhaseFit]
+        Fit results for each qubit pair
+    optimal_amps : Dict[str, float]
+        Optimal amplitudes for each qubit pair
+    qubit_pairs : BatchableList
+        List of qubit pairs
+
+    Returns:
+    --------
+    plt.Figure
+        The generated figure
+    """
+    n_pairs = len(qubit_pairs)
+    cols = min(4, n_pairs)  # Max 4 columns
+    rows = (n_pairs + cols - 1) // cols  # Ceiling division
+
+    fig, axes = plt.subplots(rows, cols, figsize=(3 * cols, 3 * rows), squeeze=False)
+    axes = axes.flatten()
+
+    for i, qp in enumerate(qubit_pairs):
+        ax = axes[i]
+        qp_name = qp.name
+        fit_result = fit_results[qp_name]
+
+        if fit_result.leakage is not None:
+            fit_result.leakage.plot(ax=ax, x="amp_full")
+            ax.axvline(optimal_amps[qp_name], color="r", linestyle="--", lw=0.5)
+
+            # Add secondary x-axis for detuning in MHz
+            def amp_to_detuning_MHz(amp):
+                return -(amp**2) * qp.qubit_control.freq_vs_flux_01_quad_term / 1e6  # Convert Hz to MHz
+
+            def detuning_MHz_to_amp(detuning_MHz):
+                return np.sqrt(-detuning_MHz * 1e6 / qp.qubit_control.freq_vs_flux_01_quad_term)
+
+            secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
+            secax.set_xlabel("Detuning (MHz)")
+
+        ax.set_title(qp_name)
+        ax.set_xlabel("Amplitude (V)")
+        ax.set_ylabel("Leak probability")
+
+    # Hide unused axes
+    for i in range(n_pairs, len(axes)):
+        axes[i].axis("off")
+
+    plt.suptitle("F state probability", y=0.95)
+    plt.tight_layout()
+
+    return fig
+
+
+def plot_raw_oscillation_data(ds, qubit_pairs):
+    """
+    Plot raw oscillation data for debugging purposes.
+
+    Parameters:
+    -----------
+    ds : xr.Dataset
+        Dataset containing raw and fitted oscillation data
+    qubit_pairs : BatchableList
+        List of qubit pairs
+    """
+    for qp in qubit_pairs:
+        ds_qp = ds.sel(qubit=qp.name)
+        plt.figure()
+        ds_qp.mean(dim="N").to_array().sel(variable=["state_target", "fitted"]).stack(
+            control_axis_fit=("control_axis", "variable")
+        ).plot.line(x="frame", col="amp", col_wrap=4)
+        plt.show()
