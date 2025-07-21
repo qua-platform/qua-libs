@@ -65,7 +65,7 @@ with program() as hahn_echo:
             align()
 
             # decay readout
-            measure("readout", "SNSPD", None, time_tagging.analog(times1, meas_len, counts1))
+            measure("readout", "SNSPD", time_tagging.analog(times1, meas_len, counts1))
             save(counts1, counts_1_st)  # save counts
             wait(100)
 
@@ -96,7 +96,7 @@ with program() as hahn_echo:
             align()  # global align
 
             # decay readout
-            measure("readout", "SNSPD", None, time_tagging.analog(times2, meas_len, counts2))
+            measure("readout", "SNSPD", time_tagging.analog(times2, meas_len, counts2))
             save(counts2, counts_2_st)  # save counts
             wait(100)
 
