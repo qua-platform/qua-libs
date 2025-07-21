@@ -17,6 +17,7 @@ from quam.serialisation.json import JSONSerialiser
 
 from .transmon import Transmon
 from .transmon_pair import TransmonPair
+from .twpa import TWPA
 
 from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
@@ -41,6 +42,8 @@ class QuAM(QuamRoot):
 
     active_qubit_names: List[str] = field(default_factory=list)
     active_qubit_pair_names: List[str] = field(default_factory=list)
+
+    twpas: Dict[str, TWPA] = field(default=dict)
 
     _data_handler: ClassVar[DataHandler] = None
     qmm: ClassVar[Optional[QuantumMachinesManager]] = None
