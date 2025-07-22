@@ -5,11 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from calibration_utils.cz_conditional_phase import (
-    CzConditionalPhaseFit,
+    FitResults,
     Parameters,
     fit_raw_data,
     log_fitted_results,
-    plot_leakage_data,
     plot_raw_data_with_fit,
     process_raw_dataset,
 )
@@ -77,6 +76,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.reset_type = "active"
     node.parameters.amp_step = 0.0005
     node.parameters.amp_range = 0.1
+    # node.parameters.load_data_id = 2119
     pass
 
 
@@ -152,10 +152,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                                 if node.parameters.use_state_discrimination:
                                     # measure both qubits
-                                    if node.parameters.measure_leak:
-                                        qp.qubit_control.readout_state_gef(state_c[ii])
-                                    else:
-                                        qp.qubit_control.readout_state(state_c[ii])
+                                    qp.qubit_control.readout_state(state_c[ii])
                                     qp.qubit_target.readout_state(state_t[ii])
                                     save(state_c[ii], state_c_st[ii])
                                     save(state_t[ii], state_t_st[ii])
@@ -243,14 +240,13 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analysis the raw data and store the fitted data in another xarray dataset and the fitted results."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    fit_results, optimal_amps = fit_raw_data(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
 
-    # Store fit results
+    # Store fit results in the format expected by the rest of the node
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-    node.results["optimal_amps"] = optimal_amps
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(optimal_amps, log_callable=node.log)
+    log_fitted_results(fit_results, log_callable=node.log)
 
     # Set outcomes based on fit success
     node.outcomes = {
@@ -263,32 +259,16 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit pair grid locations."""
-    fit_results = {k: CzConditionalPhaseFit(**v) for k, v in node.results["fit_results"].items()}
-    optimal_amps = node.results["optimal_amps"]
     qubit_pairs = node.namespace["qubit_pairs"]
 
     # Plot phase calibration data
     fig_phase = plot_raw_data_with_fit(
-        fit_results,
-        optimal_amps,
+        node.results["ds_fit"],
         qubit_pairs,
     )
     plt.show()
 
-    # Store the generated figures
-    figures = {"phase": fig_phase}
-
-    # Plot leakage data if measured
-    if node.parameters.measure_leak:
-        fig_leak = plot_leakage_data(
-            fit_results,
-            optimal_amps,
-            qubit_pairs,
-        )
-        plt.show()
-        figures["leak"] = fig_leak
-
-    node.results["figures"] = figures
+    node.results["phase_figure"] = fig_phase
 
 
 # %% {Update_state}
@@ -296,11 +276,12 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit pair data analysis was successful."""
     with node.record_state_updates():
-        # optimal_amps = node.results["optimal_amps"]
-        # for qp in node.namespace["qubit_pairs"]:
-        #     if node.outcomes[qp.name] == "failed":
-        #         continue
-        #     qp.gates["Cz"].flux_pulse_control.amplitude = optimal_amps[qp.name]
+        fit_results = node.results["fit_results"]
+        for qp in node.namespace["qubit_pairs"]:
+            if node.outcomes[qp.name] == "failed":
+                continue
+            qp.macros["cz_unipolar"].flux_pulse_control.amplitude = fit_results[qp.name]["optimal_amplitude"]
+
 
 
 # %% {Save_results}
