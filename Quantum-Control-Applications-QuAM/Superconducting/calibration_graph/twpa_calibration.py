@@ -24,9 +24,9 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
+from quam_libs.lib.fit_utils import fit_resonator
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset, get_node_id, save_node
-from quam_libs.lib.fit import fit_oscillation
+from quam_libs.lib.twpa_utils import  * 
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -36,7 +36,6 @@ from qm.qua import *
 from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
-import warnings
 
 
 # %% {Node_parameters}
@@ -45,11 +44,11 @@ class Parameters(NodeParameters):
     num_averages: int = 100
     amp_min: float = 0.1
     amp_max: float = 1.5
-    amp_step: float = 0.05
+    amp_step: float = 0.5
     frequency_span_in_mhz: float = 20
-    frequency_step_in_mhz: float = 0.5
+    frequency_step_in_mhz: float = 5#0.5
     p_frequency_span_in_mhz: float = 700
-    p_frequency_step_in_mhz: float = 0.5
+    p_frequency_step_in_mhz: float = 300 #0.5
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     input_line_impedance_in_ohm: float = 50
     line_attenuation_in_db: float = 0
@@ -58,7 +57,6 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = False
 
 node = QualibrationNode(name="twpa_calibration", parameters=Parameters())
 node_id = get_node_id()
@@ -95,76 +93,47 @@ update_flux_min = node.parameters.update_flux_min  # Update the min flux point
 amp_max = node.parameters.amp_max
 amp_min = node.parameters.amp_min
 amp_step = node.parameters.amp_step
-amps = np.arange(amp_min, amp_max, amp_step)
+daps = np.arange(amp_min, amp_max, amp_step)
+daps = np.insert(daps,0,0)
 
 span_p = node.parameters.p_frequency_span_in_mhz * u.MHz
 step_p = node.parameters.p_frequency_step_in_mhz * u.MHz
-dps = np.arange(-span_p / 2, +span_p / 2, step_p)
+dfps = np.arange(-span_p / 2, +span_p / 2, step_p)
 
-I_list, I_st_list = [], []
-Q_list, Q_st_list = [], []
-n_list, n_st_list = [], []
 
 with program() as twpa_calibration:
-    
-    # declare qua variable
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=len(qubits))
-    df = declare(int)  # QUA variable for the readout frequency
     dp = declare(int)  # QUA variable for the pump frequency
-    amp = declare(float) 
-    machine.apply_all_flux_to_min()
+    da = declare(float)# QUA variable for the pump amplitude
+    df = declare(int)  # QUA variable for the readout frequency
 
-    # measure readout responses around readout resonators without pump
-    # for i,twpa in enumerate(twpas):
-    with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st)
-            with for_(*from_array(df, dfs)):
-                for i, rr in enumerate(resonators):
-                    # Update the resonator frequencies for all resonators
-                    update_frequency(rr.name, df + rr.intermediate_frequency)
-                    # Measure the resonator
-                    rr.measure("readout", qua_vars=(I[i], Q[i]))
-                    # wait for the resonator to relax
-                    rr.wait(rr.depletion_time * u.ns)
-                    # save data
-                    save(I[i], I_st[i])
-                    save(Q[i], Q_st[i])
-    
-    with stream_processing():
-        n_st.save("n")
-        for i in range(len(qubits)):
-            I_st[i].buffer(len(dfs)).average().save(f"I{i + 1}")
-            Q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
-    
-        # turn on twpa pump     
-    with for_(*from_array(dp, dps)):
-            with for_(*from_array(amp, amps)):                
-                I_p, I_st_p, Q_p, Q_st_p, n_p, n_st_p = qua_declaration(num_qubits=len(qubits))
-              
+    # turn on twpa pump     
+    with for_(*from_array(dp, dfps)):
+            # with for_(*from_array(da, daps)):  
+            with for_each_(da, daps):     
                 update_frequency(twpas[0].pump.name, dp + twpas[0].pump.intermediate_frequency)
-                twpas[0].pump.play('pump', amplitude_scale=amp) ######## how can i make it on until the readout measurement is finished
-        # measure amplified readout responses around readout resonators with pump
+                twpas[0].pump.play('pump', amplitude_scale=da) ######## how can i make it on until the readout measurement is finished
+    
+    # measure amplified readout responses around readout resonators with pump
                 with for_(n, 0, n < n_avg, n + 1):
-                    save(n_p, n_st_p)
+                    save(n, n_st)
                     with for_(*from_array(df, dfs)):
                         for i, rr in enumerate(resonators):
                             # Update the resonator frequencies for all resonators
                             update_frequency(rr.name, df + rr.intermediate_frequency)
                             # Measure the resonator
-                            rr.measure("readout", qua_vars=(I_p[i], Q_p[i]))
+                            rr.measure("readout", qua_vars=(I[i], Q[i]))
                             # wait for the resonator to relax
                             rr.wait(rr.depletion_time * u.ns)
                             # save data
-                            save(I_p[i], I_st_p[i])
-                            save(Q_p[i], Q_st_p[i])
-    if not node.parameters.multiplexed:
-        align()
+                            save(I[i], I_st[i])
+                            save(Q[i], Q_st[i])
     with stream_processing():
-        n_st_p.save("n_p")
+        n_st.save("n")
         for i in range(len(qubits)):
-            I_st_p[i].buffer(len(dfs)).average().buffer(len(amp)).buffer(len(dp)).save(f"I_p{i + 1}")
-            Q_st_p[i].buffer(len(dfs)).average().buffer(len(amp)).buffer(len(dp)).save(f"Q_p{i + 1}")
-              
+            I_st[i].buffer(len(dfs)).average().buffer(len(daps)).buffer(len(dfps)).save(f"I{i + 1}")
+            Q_st[i].buffer(len(dfs)).average().buffer(len(daps)).buffer(len(dfps)).save(f"Q{i + 1}")
+                    
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
@@ -200,142 +169,95 @@ if not node.parameters.simulate:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
     else:
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs, "flux": dcs})
+        ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs, "pump_amp": daps, "pump_freq" : dfps})
         # Convert IQ data into volts
         ds = convert_IQ_to_V(ds, qubits)
         # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2)
-        ds = ds.assign({"IQ_abs": np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
+        ds = ds.assign({"IQ_abs": 1e3*np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
+        # get pump off - resonator spec, signal, snr
+        pumpoff_resspec = pumpoff_res_spec_per_qubit(ds.IQ_abs, qubits, dfs, dfps)
+        pumpoff_signal_snr = pumpzero_signal_snr(ds.IQ_abs, dfs, qubits, dfps, daps)
+        # get pump on - resonator spec, signal, snr
+        pumpon_resspec_maxG = pumpoon_maxgain_res_spec(ds.IQ_abs, qubits,  dfps, daps)
+        pumpon_resspec_maxDsnr = pumpoon_maxdsnr_res_spec(ds.IQ_abs, qubits,  dfps, daps)
+        pumpon_signal_snr = pump_signal_snr(ds.IQ_abs, qubits, dfps, daps)
+        # get gain & snr improvement
+        gain_dsnr = pumpon_signal_snr-pumpoff_signal_snr
+
         # Add the resonator RF frequency axis of each qubit to the dataset coordinates for plotting
         RF_freq = np.array([dfs + q.resonator.RF_frequency for q in qubits])
-        ds = ds.assign_coords({"freq_full": (["qubit", "freq"], RF_freq)})
-        ds.freq_full.attrs["long_name"] = "Frequency"
-        ds.freq_full.attrs["units"] = "GHz"
-        # Add the current axis of each qubit to the dataset coordinates for plotting
-        current = np.array([ds.flux.values / node.parameters.input_line_impedance_in_ohm for q in qubits])
-        ds = ds.assign_coords({"current": (["qubit", "flux"], current)})
-        ds.current.attrs["long_name"] = "Current"
-        ds.current.attrs["units"] = "A"
-        # Add attenuated current to dataset
-        attenuation_factor = 10 ** (-node.parameters.line_attenuation_in_db / 20)
-        attenuated_current = ds.current * attenuation_factor
-        ds = ds.assign_coords({"attenuated_current": (["qubit", "flux"], attenuated_current.values)})
-        ds.attenuated_current.attrs["long_name"] = "Attenuated Current"
-        ds.attenuated_current.attrs["units"] = "A"
-    # Add the dataset to the node
+        # ds = ds.assign_coords({"freq_full": (["qubit", "freq"], RF_freq)})
+        # Add the pump amp axis of each qubit to the dataset coordinates for plotting
+        pump_amp= np.array([ds.pump_amp.values  for q in qubits])
+        pump_freq= np.array([ds.pump_freq.values  for q in qubits])
     node.results = {"ds": ds}
 
     # %% {Data_analysis}
-    # Find the minimum of each frequency line to follow the resonance vs flux
-    peak_freq = ds.IQ_abs.idxmin(dim="freq")
-    peak_freq_full = {q.name : peak_freq.loc[q.name].values + q.resonator.RF_frequency for q in qubits}
-
-    # Fit to a cosine using the qiskit function: a * np.cos(2 * np.pi * f * t + phi) + offset
-    fit_osc = fit_oscillation(peak_freq.dropna(dim="flux"), "flux")
-    # Ensure that the phase is between -pi and pi
-    idle_offset = -fit_osc.sel(fit_vals="phi")
-    idle_offset = np.mod(idle_offset + np.pi, 2 * np.pi) - np.pi
-    # converting the phase phi from radians to voltage
-    idle_offset = idle_offset / fit_osc.sel(fit_vals="f") / 2 / np.pi
-    # finding the location of the minimum frequency flux point
-    flux_min = idle_offset + ((idle_offset < 0) - 0.5) / fit_osc.sel(fit_vals="f")
-    flux_min = flux_min * (np.abs(flux_min) < 0.5) + 0.5 * (flux_min > 0.5) - 0.5 * (flux_min < -0.5)
-    # finding the frequency as the sweet spot flux
-    rel_freq_shift = peak_freq.sel(flux=idle_offset, method="nearest")
-    abs_freqs = ds.sel(flux=idle_offset, method="nearest").sel(freq = rel_freq_shift).freq_full
-    # Save fitting results
-    fit_results = {}
-    for q in qubits:
-        fit_results[q.name] = {}
-        fit_results[q.name]["resonator_frequency"] = abs_freqs.sel(qubit=q.name).values
-        fit_results[q.name]["min_offset"] = float(flux_min.sel(qubit=q.name).data)
-        fit_results[q.name]["offset"] = float(idle_offset.sel(qubit=q.name).data)
-        fit_results[q.name]["dv_phi0"] = 1 / fit_osc.sel(fit_vals="f", qubit=q.name).values
-        attenuation_factor = 10 ** (-node.parameters.line_attenuation_in_db / 20)
-        fit_results[q.name]["m_pH"] = (
-            1e12
-            * 2.068e-15
-            / (
-                (1 / fit_osc.sel(fit_vals="f", qubit=q.name).values)
-                / node.parameters.input_line_impedance_in_ohm
-                * attenuation_factor
-            )
-        )
-        print(f"DC offset for {q.name} is {fit_results[q.name]['offset'] * 1e3:.0f} mV")
-        print(f"Resonator frequency for {q.name} is {fit_results[q.name]['resonator_frequency'] / 1e9:.3f} GHz")
-        print(f"(shift of {rel_freq_shift.sel(qubit = q.name).values / 1e6:.0f} MHz)")
-
-    node.results["fit_results"] = fit_results
+    p_lo=twpas[0].pump.LO_frequency
+    p_if=twpas[0].pump.intermediate_frequency
+    # get pump point of max G
+    pumpATmaxG=pump_maxgain(pumpon_signal_snr, dfps, daps)
+    print(f'max Avg Gain at fp={np.round((p_lo+p_if+pumpATmaxG[0])*1e-9,3)}GHz,Pp={-50-10+pumpATmaxG[1]}')
+    # get pump point of max dSNR
+    pumpATmaxDSNR=pump_maxdsnr(pumpon_signal_snr,dfps, daps)
+    print(f'max Avg dSNR at fp={np.round((p_lo+p_if+pumpATmaxDSNR[0])*1e-9,3)}GHz,Pp={-50-10+pumpATmaxDSNR[1]}')
+    
+    operation_point={'fp':np.round((p_lo+p_if+pumpATmaxDSNR[0]),3), 'Pp': -50-10+pumpATmaxDSNR[1]}
+    node.results["pumping point"] = operation_point
 
     # %% {Plotting}
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        ax2 = ax.twiny()
-        # Plot using the attenuated current x-axis
-        ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].IQ_abs.plot(
-            ax=ax2,
-            add_colorbar=False,
-            x="attenuated_current",
-            y="freq_GHz",
-            robust=True,
-        )
-        ax2.set_xlabel("Current (A)")
-        ax2.set_ylabel("Freq (GHz)")
-        ax2.set_title("")
-        # Move ax2 behind ax
-        ax2.set_zorder(ax.get_zorder() - 1)
-        ax.patch.set_visible(False)
-        # Plot using the flux x-axis
-        ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].IQ_abs.plot(
-            ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
-        )
-        ax.plot(ds.flux, peak_freq_full[qubit["qubit"]]/1e9, linewidth=1, color = "purple")
-        ax.axvline(
-            idle_offset.loc[qubit],
-            linestyle="dashed",
-            linewidth=2,
-            color="r",
-            label="idle offset",
-        )
-        ax.axvline(
-            flux_min.loc[qubit],
-            linestyle="dashed",
-            linewidth=2,
-            color="orange",
-            label="min offset",
-        )
-        # Location of the current resonator frequency
-        ax.plot(
-            idle_offset.loc[qubit].values,
-            abs_freqs.sel(qubit=qubit["qubit"]).values
-            * 1e-9,
-            "r*",
-            markersize=10,
-        )
-        ax.set_title(qubit["qubit"])
-        ax.set_xlabel("Flux (V)")
+    # plot spectroscopy results of pumpoff/on@maxG/on@maxDsnr
+    fig, axs = plt.subplots(1, len(qubits), figsize=(25,5))
+    for i in range(len(qubits)):
+        axs[i].plot(RF_freq[i], pumpoff_resspec[i],label='pumpoff')
+        axs[i].plot(RF_freq[i], pumpon_resspec_maxG[i],label='pump @ maxG')
+        axs[i].plot(RF_freq[i], pumpon_resspec_maxDsnr[i],label='pump @ maxDsnr')
+        axs[i].set_title(f'{qubits[i].name}', fontsize=20)
+        axs[i].set_xlabel('Res.freq[GHz]', fontsize=20)
+        axs[i].set_ylabel('Trans.amp.[mV]', fontsize=20)
+        axs[i].legend()
+    plt.tight_layout(pad=2.0) 
+    plt.show()
+    ##    
+    gain_dsnr_avg=np.mean(gain_dsnr,axis=0)
+    data_gain = gain_dsnr_avg[:, :, 0] 
+    data_dSNR = gain_dsnr_avg[:, :, 1]  
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+    # plot gain vs pump
+    im0 = axs[0].imshow(data_gain, origin='lower', aspect='auto',
+                        extent=[0, len(daps)-1, 0, len(dfps)-1])
+    axs[0].set_xticks(np.arange(len(daps)))
+    axs[0].set_xticklabels(daps)
+    axs[0].set_yticks(np.arange(len(dfps)))
+    axs[0].set_yticklabels(np.round((dfps*1e-9),3))
+    axs[0].set_title('pump vs Gain', fontsize=20)
+    axs[0].set_xlabel('pump amplitude', fontsize=20)
+    axs[0].set_ylabel('pump frequency[GHz]', fontsize=20)
+    cbar0 = fig.colorbar(im0, ax=axs[0])
+    cbar0.set_label('Avg Gain [dB]', fontsize=14)
 
-    grid.fig.suptitle(f"Resonator spectroscopy vs flux \n {date_time} GMT+3 #{node_id}")
+    # plot dSNR vs pump
+    im1 = axs[1].imshow(data_dSNR, origin='lower', aspect='auto',
+                        extent=[0, len(daps)-1, 0, len(dfps)-1])
+    axs[1].set_xticks(np.arange(len(daps)))
+    axs[1].set_xticklabels(daps)
+    axs[1].set_yticks(np.arange(len(dfps)))
+    axs[1].set_yticklabels(np.round((dfps*1e-9),3))
+    axs[1].set_title('pump vs dSNR', fontsize=20)
+    axs[1].set_xlabel('pump amplitude', fontsize=20)
+    axs[1].set_ylabel('pump frequency[GHz]', fontsize=20)
+    cbar1 = fig.colorbar(im1, ax=axs[1])
+    cbar1.set_label('Avg dSNR [dB]', fontsize=14)
+
     plt.tight_layout()
     plt.show()
-    node.results["figure"] = grid.fig
 
     # %% {Update_state}
     if not node.parameters.load_data_id:
         with node.record_state_updates():
-            for q in qubits:
-                if not (np.isnan(float(idle_offset.sel(qubit=q.name).data))):
-                    if flux_point == "independent":
-                        q.z.independent_offset = float(idle_offset.sel(qubit=q.name).data)
-                    else:
-                        q.z.joint_offset = float(idle_offset.sel(qubit=q.name).data)
-
-                    if update_flux_min:
-                        q.z.min_offset = float(flux_min.sel(qubit=q.name).data)
-                q.resonator.intermediate_frequency += float(rel_freq_shift.sel(qubit=q.name).data)
-                q.phi0_voltage = fit_results[q.name]["dv_phi0"]
-                q.phi0_current = (
-                    fit_results[q.name]["dv_phi0"] * node.parameters.input_line_impedance_in_ohm * attenuation_factor
-                )
+           
+            machine.twpas['twpa1'].pump.operations.pump.amplitude=pumpamp # need to find out how to update in the state file
+            machine.twpas['twpa1'].pump.intermediate_frequency=pumpfreq
 
         # %% {Save_results}
         node.outcomes = {q.name: "successful" for q in qubits}
