@@ -45,13 +45,13 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Convert IQ data into volts
-    ds = convert_IQ_to_V(ds, node.namespace["qubits"], ["I_g", "Q_g", "I_e", "Q_e"])
+    ds = convert_IQ_to_V(ds, node.namespace["qubits"], IQ_list=["Ig", "Qg", "Ie", "Qe"])
     # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2) for |g> and |e> as well as the distance between the two blobs D
     ds = ds.assign(
         {
-            "D": np.sqrt((ds.I_g - ds.I_e) ** 2 + (ds.Q_g - ds.Q_e) ** 2),
-            "IQ_abs_g": np.sqrt(ds.I_g**2 + ds.Q_g**2),
-            "IQ_abs_e": np.sqrt(ds.I_e**2 + ds.Q_e**2),
+            "D": np.sqrt((ds.Ig - ds.Ie) ** 2 + (ds.Qg - ds.Qe) ** 2),
+            "IQ_abs_g": np.sqrt(ds.Ig**2 + ds.Qg**2),
+            "IQ_abs_e": np.sqrt(ds.Ie**2 + ds.Qe**2),
         }
     )
     # Add the absolute frequency to the dataset
