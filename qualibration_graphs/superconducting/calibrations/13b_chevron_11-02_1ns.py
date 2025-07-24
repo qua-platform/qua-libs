@@ -74,9 +74,9 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.qubit_pairs = ["qD1-qD2"]
     node.parameters.reset_type = "active"
     node.parameters.use_state_discrimination = True
-    node.parameters.amp_step = 0.003
-    node.parameters.amp_range = 0.2
-    node.parameters.load_data_id = 1979
+    # node.parameters.amp_step = 0.003
+    # node.parameters.amp_range = 0.2
+    # node.parameters.load_data_id = 1979
     pass
 
 
@@ -221,7 +221,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             align()
 
                             if node.parameters.use_state_discrimination:
-                                qp.qubit_control.readout_state(state_c[ii])
+                                qp.qubit_control.readout_state_gef(state_c[ii])
                                 qp.qubit_target.readout_state(state_t[ii])
                                 save(state_c[ii], state_c_st[ii])
                                 save(state_t[ii], state_t_st[ii])
