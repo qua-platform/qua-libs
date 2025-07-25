@@ -20,12 +20,13 @@ from calibration_utils.qubit_spectroscopy import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
+from calibration_utils.data_process_utils import *
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.data import XarrayDataFetcher, CloudDataProcessor
 
 
-# %% {Node initialisation}
+# %% {Initialisation}
 description = """
         QUBIT SPECTROSCOPY
 This sequence involves sending a saturation pulse to the qubit, placing it in a mixed state,
@@ -65,8 +66,15 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1", "q2"]
-    pass
+    node.parameters.multiplexed = True
+    node.parameters.qubits = ["qA1", "qA2", "qA3", "qA4"]
+    node.parameters.num_shots = 1000
+
+    node.parameters.operation_amplitude_factor = 0.02
+    node.parameters.frequency_span_in_mhz = 10
+    node.parameters.frequency_step_in_mhz = 0.1
+    node.parameters.target_peak_width = 4e5
+    # pass
 
 
 # Instantiate the QUAM class from the state file
@@ -125,7 +133,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             amplitude_scale=operation_amp,
                             duration=duration // 4,
                         )
-                    align()
+                        qubit.align()
 
                     for i, qubit in multiplexed_qubits.items():
                         # readout the resonator
@@ -135,7 +143,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # save data
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
-                    align()
+                    # align()
 
         with stream_processing():
             n_st.save("n")
@@ -162,29 +170,52 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
-    # Connect to the QOP
-    qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        # The job is stored in the node namespace to be reused in the fetching_data run_action
-        node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-        # Display the progress bar
-        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
-        for dataset in data_fetcher:
-            progress_counter(
-                data_fetcher["n"],
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-            )
-        # Display the execution report to expose possible runtime errors
-        node.log(job.execution_report())
+    
+    if node.machine.network.cloud:
+        from iqcc_cloud_client import IQCC_Cloud
+        qc = IQCC_Cloud("arbel")
+        run_data = qc.execute(node.namespace["qua_program"], config, False)
+        node.results["ds_raw"] = run_data["result"]
+        # Prepare args for the builder
+        data_dict = run_data["result"]
+        sweep_axes = node.namespace["sweep_axes"]
+        outer_key = "qubit" if "qubit" in sweep_axes.keys() else "qubit_pair"
+        fetch_names = ["I", "Q"]
+
+        # Instantiate the builder
+        dataset = CloudDataProcessor(
+            data_dict=data_dict,
+            sweep_axes=sweep_axes,
+            outer_key=outer_key,
+            fetch_names=fetch_names,
+        ).build_dataset()
+
+    else:
+        # Connect to the QOP
+        qmm = node.machine.connect()
+        # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+        with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+            # The job is stored in the node namespace to be reused in the fetching_data run_action
+            node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+            # Display the progress bar
+            data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+            for dataset in data_fetcher:
+                print("f: ", dataset)
+                progress_counter(
+                    data_fetcher["n"],
+                    node.parameters.num_shots,
+                    start_time=data_fetcher.t_start,
+                )
+            # Display the execution report to expose possible runtime errors
+            node.log(job.execution_report())
+
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
 
-# %% {Load_historical_data}
+# %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
@@ -232,7 +263,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-
+            
+            # pass
             # Update the readout frequency for the given flux point
             q.f_01 = node.results["fit_results"][q.name]["frequency"]
             q.xy.RF_frequency = node.results["fit_results"][q.name]["frequency"]
@@ -252,3 +284,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
+#%%

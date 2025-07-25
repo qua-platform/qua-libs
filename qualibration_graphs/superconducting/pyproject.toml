@@ -16,8 +16,6 @@ dependencies = [
     "qualibrate>=0.2.1",
     "qm-qua>=1.2.1",
     "tomli>=2.0.1; python_version < '3.11'",
-    "quam-builder@git+https://github.com/qua-platform/quam-builder.git",
-    "qualibration-libs@git+https://github.com/qua-platform/qualibration-libs.git",
     "xarray>=2024.7.0",
     "plotly>=5.24.1",
     "lmfit>=1.3.3",
@@ -26,6 +24,8 @@ dependencies = [
     "tqdm>=4.67.1",
     "qiskit<2.0",
 ]
+# qualibration-libs @ git+https://github.com/qua-platform/qualibration-libs.git@d8cdec55de6ba06c764afb62d359948bf1928c16
+# quam-builder @ git+https://github.com/qua-platform/quam-builder.git@7291eea1b7fac1de1284c9bd88b028c94e6da769
 
 [tool.black]
 line-length = 120

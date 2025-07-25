@@ -22,3 +22,4 @@ def close_all_quantum_machines(node: QualibrationNode[NodeParameters, Quam]):
     """Closes all the opened quantum machines."""
     qmm = node.machine.connect()
     qmm.close_all_qms()
+    qmm.clear_all_job_results()
