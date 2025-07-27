@@ -44,15 +44,12 @@ class Parameters(NodeParameters):
     num_averages: int = 100
     amp_min: float = 0.1
     amp_max: float = 1.5
-    amp_step: float = 0.5
-    frequency_span_in_mhz: float = 20
-    frequency_step_in_mhz: float = 5#0.5
-    p_frequency_span_in_mhz: float = 700
-    p_frequency_step_in_mhz: float = 300 #0.5
+    amp_step: float = 0.2
+    frequency_span_in_mhz: float = 7
+    frequency_step_in_mhz: float = 0.5
+    p_frequency_span_in_mhz: float = 100
+    p_frequency_step_in_mhz: float = 1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    input_line_impedance_in_ohm: float = 50
-    line_attenuation_in_db: float = 0
-    update_flux_min: bool = False
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
@@ -77,7 +74,6 @@ config = machine.generate_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
-    
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
@@ -88,7 +84,6 @@ step = node.parameters.frequency_step_in_mhz * u.MHz
 dfs = np.arange(-span / 2, +span / 2, step)
 
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
-update_flux_min = node.parameters.update_flux_min  # Update the min flux point
 
 amp_max = node.parameters.amp_max
 amp_min = node.parameters.amp_min
@@ -100,6 +95,7 @@ span_p = node.parameters.p_frequency_span_in_mhz * u.MHz
 step_p = node.parameters.p_frequency_step_in_mhz * u.MHz
 dfps = np.arange(-span_p / 2, +span_p / 2, step_p)
 
+pump_duration = n_avg*len(qubits)*(machine.qubits["qB2"].resonator.operations["readout"].length+machine.qubits["qB2"].resonator.depletion_time)
 
 with program() as twpa_calibration:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=len(qubits))
@@ -112,7 +108,7 @@ with program() as twpa_calibration:
             # with for_(*from_array(da, daps)):  
             with for_each_(da, daps):     
                 update_frequency(twpas[0].pump.name, dp + twpas[0].pump.intermediate_frequency)
-                twpas[0].pump.play('pump', amplitude_scale=da) ######## how can i make it on until the readout measurement is finished
+                twpas[0].pump.play('pump', amplitude_scale=da, duration=pump_duration) ######## how can i make it on until the readout measurement is finished
     
     # measure amplified readout responses around readout resonators with pump
                 with for_(n, 0, n < n_avg, n + 1):
@@ -128,6 +124,7 @@ with program() as twpa_calibration:
                             # save data
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
+            align()                
     with stream_processing():
         n_st.save("n")
         for i in range(len(qubits)):
@@ -207,17 +204,29 @@ if not node.parameters.simulate:
 
     # %% {Plotting}
     # plot spectroscopy results of pumpoff/on@maxG/on@maxDsnr
-    fig, axs = plt.subplots(1, len(qubits), figsize=(25,5))
+    # fig, axs = plt.subplots(1, len(qubits), figsize=(20,4))
+    # for i in range(len(qubits)):
+    #     axs[i].plot(RF_freq[i], pumpoff_resspec[i],label='pumpoff')
+    #     axs[i].plot(RF_freq[i], pumpon_resspec_maxG[i],label='pump @ maxG')
+    #     axs[i].plot(RF_freq[i], pumpon_resspec_maxDsnr[i],label='pump @ maxDsnr')
+    #     axs[i].set_title(f'{qubits[i].name}', fontsize=20)
+    #     axs[i].set_xlabel('Res.freq[GHz]', fontsize=20)
+    #     axs[i].set_ylabel('Trans.amp.[mV]', fontsize=20)
+    #     axs[i].legend()
+    # plt.tight_layout(pad=2.0) 
+    # plt.show()
     for i in range(len(qubits)):
-        axs[i].plot(RF_freq[i], pumpoff_resspec[i],label='pumpoff')
-        axs[i].plot(RF_freq[i], pumpon_resspec_maxG[i],label='pump @ maxG')
-        axs[i].plot(RF_freq[i], pumpon_resspec_maxDsnr[i],label='pump @ maxDsnr')
-        axs[i].set_title(f'{qubits[i].name}', fontsize=20)
-        axs[i].set_xlabel('Res.freq[GHz]', fontsize=20)
-        axs[i].set_ylabel('Trans.amp.[mV]', fontsize=20)
-        axs[i].legend()
-    plt.tight_layout(pad=2.0) 
-    plt.show()
+        plt.figure(figsize=(3,3))  # Width=8 inches, Height=6 inches (adjust as needed)
+
+        plt.plot(RF_freq[i], pumpoff_resspec[i], label='pumpoff')
+        plt.plot(RF_freq[i], pumpon_resspec_maxG[i], label='pump @ maxG')
+        plt.plot(RF_freq[i], pumpon_resspec_maxDsnr[i], label='pump @ maxDsnr',linestyle='--')
+
+        plt.title(f'{qubits[i].name}', fontsize=20)
+        plt.xlabel('Res.freq [GHz]', fontsize=16)
+        plt.ylabel('Trans.amp. [mV]', fontsize=16)
+        plt.legend(fontsize=12)
+        plt.tight_layout()
     ##    
     gain_dsnr_avg=np.mean(gain_dsnr,axis=0)
     data_gain = gain_dsnr_avg[:, :, 0] 
