@@ -1,15 +1,24 @@
-from typing import Optional, Literal, List
 from qualibrate import NodeParameters
+from qualibrate.parameters import RunnableParameters
+from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonNodeParameters, IdleTimeNodeParameters
 
 
-class Parameters(NodeParameters):
-    qubit_pairs: Optional[List[str]] = ['q2-q4']
-    num_averages: int = 100
-    max_time_in_ns: int = 160
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "active"
-    simulate: bool = False
-    timeout: int = 100
-    amp_range : float = 0.05
-    amp_step : float = 0.001
-    load_data_id: Optional[int] = None
+class NodeSpecificParameters(RunnableParameters):
+    num_shots: int = 1000
+    """Number of averages to perform. Default is 1000."""
+    control_amp_range: float = 0.4
+    """Amp range for the operation. Default is 0.6."""
+    control_amp_step: float = 0.02
+    """Amp step for the operation. Default is 0.02."""
+    use_state_discrimination: bool = False
+    """Perform qubit state discrimination. Default is False."""
+
+
+class Parameters(
+    NodeParameters,
+    CommonNodeParameters,
+    IdleTimeNodeParameters,
+    NodeSpecificParameters,
+    QubitsExperimentNodeParameters,
+):
+    pass
