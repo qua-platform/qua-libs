@@ -2,9 +2,9 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, Tuple
 
-from matplotlib import pyplot as plt
 import numpy as np
 import xarray as xr
+from matplotlib import pyplot as plt
 from qualibrate import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation
 from qualibration_libs.data import convert_IQ_to_V
@@ -17,6 +17,7 @@ class FitParameters:
     """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
 
     success: bool
+    flux_delay: int
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
@@ -35,24 +36,25 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
-        s_amp = f"The calibrated {fit_results[q]['operation']} amplitude: {1e3 * fit_results[q]['opt_amp']:.2f} mV (x{fit_results[q]['opt_amp_prefactor']:.2f})\n "
         if fit_results[q]["success"]:
             s_qubit += " SUCCESS!\n"
         else:
             s_qubit += " FAIL!\n"
-        log_callable(s_qubit + s_amp)
+        log_callable(s_qubit)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     if not node.parameters.use_state_discrimination:
         ds = convert_IQ_to_V(ds, node.namespace["qubits"])
 
-    if hasattr(ds, "state"):
-        data = "state"
-    else:
-        data = "I"
+    data = "state" if hasattr(ds, "state") else "I"
 
-    ds["difference"] = ds[data].sel(init_state="e") - ds[data].sel(init_state="g")
+    difference = ds[data].sel(init_state="e") - ds[data].sel(init_state="g")
+
+    if data == "I":
+        difference -= difference.mean()
+
+    ds["difference"] = difference
     return ds
 
 
@@ -75,12 +77,19 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 
     dfit = ds.groupby("qubit").apply(fit_routine, node=node)
 
-    return dfit, None
+    fit_results = _extract_relevant_fit_parameters(dfit, node)
+
+    return dfit, fit_results
 
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
-    pass
+    fit_results = {}
+    for q in fit.qubit.data:
+        fit_results[q] = FitParameters(
+            success=fit.success.sel(qubit=q).data, flux_delay=fit.flux_delay.sel(qubit=q).data
+        )
+    return fit_results
 
 
 def fit_routine(da, node):
@@ -88,20 +97,20 @@ def fit_routine(da, node):
     x = da.relative_time.data
     y = da.difference.data[0]
 
-    sign_changes = np.sign(y)
-    crossings = np.where(np.diff(sign_changes) != 0)[0]
+    try:
+        sign_changes = np.sign(y)
+        crossings = np.where(np.diff(sign_changes) != 0)[0]
+        assert len(crossings) == 2, "Expected exactly two sign change points in the data."
+        flux_delay = x[(crossings[1] + crossings[0]) // 2]
+        da = da.assign(flux_delay=flux_delay)
+        da = da.assign(success=True)
 
-    assert len(crossings) == 2, "Expected exactly two sign change points in the data."
-    flux_delay = x[(crossings[1] + crossings[0]) // 2]
-
-    plt.plot(x, y)
-
-    plt.scatter(x[crossings], [0,0], color="red", label="Sign Change Points")
-
-    plt.axvline(x[(crossings[1] + crossings[0])//2], color="black", linestyle="--", alpha=0.5, label="Crossing Point")
-    plt.axhline(0, color="green", linestyle="--", alpha=0.5)
-
-    da = da.assign(flux_delay=flux_delay)
+    except AssertionError as e:
+        print(f"Error processing {da.qubit.data}: {e}")
+        flux_delay = 0
+        da = da.assign(flux_delay=flux_delay)
+        da = da.assign(success=False)
+        return da
 
     print(f"Flux delay for {da.qubit.data}: {flux_delay:.2f} ns")
 

@@ -43,12 +43,12 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["qA1", "qA2", "qA3", "qA4", "qA5"]  # Qubits to calibrate
-    node.parameters.qubits = ["qA2"]  # Qubits to calibrate
-    node.parameters.num_shots = 1000
+    node.parameters.qubits = ["qA1"]  # Qubits to calibrate
+    node.parameters.num_shots = 500
     node.parameters.reset_type = "active"
     node.parameters.use_state_discrimination = True
     node.parameters.zeros_before_after_pulse = 100
-    # node.parameters.load_data_id = 2377
+    # node.parameters.load_data_id = 2505
     pass
 
 
@@ -254,14 +254,14 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    # node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-    # # Log the relevant information extracted from the data analysis
-    # log_fitted_results(node.results["fit_results"], log_callable=node.log)
-    # node.outcomes = {
-    #     qubit_name: ("successful" if fit_result["success"] else "failed")
-    #     for qubit_name, fit_result in node.results["fit_results"].items()
-    # }
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plot_data}
@@ -281,137 +281,16 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
 
-    # Revert the change done at the beginning of the node
-    for tracked_qubit in node.namespace.get("tracked_qubits", []):
-        tracked_qubit.revert_changes()
-
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
+            else:
+                # Update the qubit flux delay
+                q.z.opx_output.delay += int(node.results["fit_results"][q.name]["flux_delay"])
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
-
-
-# %% {Data fetching}
-handles = job.result_handles
-ds = fetch_results_as_xarray(handles, qubits, {"relative_time": relative_time, "sequence": [0, 1]})
-
-ds = ds.assign_coords({"relative_time": (["relative_time"], relative_time)})
-ds.relative_time.attrs["long_name"] = "timing_delay"
-ds.relative_time.attrs["units"] = "nS"
-node.results = {}
-node.results["ds"] = ds
-
-
-# %% {Data analysis}
-# Define a smooth model for each line
-def smooth_model(x, a, b, c, d):
-    return a / (1 + np.exp(-b * (x - c))) + d
-
-
-# Define the first derivative of the sigmoid
-def sigmoid_derivative(x, a, b, c, d):
-    exp_term = np.exp(-b * (x - c))
-    return (a * b * exp_term) / ((1 + exp_term) ** 2)
-
-
-# Find the left boundary of the transition region
-def find_transition_boundary(params, x_range, threshold=0.0001):
-    a, b, c, d = params
-    for x in x_range:
-        if sigmoid_derivative(x, a, b, c, d) > threshold:
-            return x
-    return None  # If no boundary is found in the range
-
-
-# %% {Plotting}
-grid = QubitGrid(ds, [q.grid_location for q in qubits])
-
-
-flux_delays = []
-for ax, qubit in grid_iter(grid):
-    x = ds.relative_time
-    qubit = qubit["qubit"]
-    y1 = ds.state.sel(qubit=qubit).sel(sequence=0)
-    y2 = ds.state.sel(qubit=qubit).sel(sequence=1)
-
-    ax.plot(x, y1, label=r"$|0\rangle$", color="b", linewidth=2)
-    ax.plot(x, y2, label=r"$|1\rangle$", color="r", linewidth=2)
-
-    plt.figure(figsize=(8, 6))
-
-    try:
-        # Fit both lines to the smooth model
-        bounds = ([0, -np.inf, -np.inf, 0], [np.inf, np.inf, np.inf, 1])  # d between 0 and 1
-        params1, _ = curve_fit(smooth_model, x, y1, p0=[1, 1, 5, 0], bounds=bounds, maxfev=10000)
-        params2, _ = curve_fit(smooth_model, x, y2, p0=[1, -1, 5, 0], bounds=bounds, maxfev=10000)
-
-        # Extended x-range for boundary search
-        extended_x = np.linspace(x.min() - len(x), x.max() + len(x), 1000)
-
-        crossing_point = find_transition_boundary(params2, extended_x, threshold=0.01)
-        flux_delay = crossing_point - machine.qubits[qubit].xy.operations["x180"].length // 2
-        flux_delays.append(flux_delay)
-
-        ax.plot(extended_x, smooth_model(extended_x, *params1), color="blue", linestyle="--")
-        ax.plot(extended_x, smooth_model(extended_x, *params2), color="red", linestyle="--")
-
-        if flux_delay is not None:
-            ax.axvline(crossing_point, color="black", linestyle="--", alpha=0.5, label="Crossing Point")
-            ax.axvline(flux_delay, color="green", linestyle="-", alpha=0.5, label="Delay")
-
-        ax.set_xlabel("Relative Time")
-        ax.set_ylabel("State")
-        ax.set_title(
-            f"{qubit} \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type_thermal_or_active}"
-        )
-
-        margin = 2
-        ax.set_xlim(flux_delay - margin, max(x) + margin)
-        ax.legend()
-
-    except Exception as e:
-        warnings.warn(f"Fitting for qubit {qubit} failed with error: {e}")
-        flux_delays.append(None)
-
-    plt.tight_layout()
-    plt.show()
-
-    # Create a separate figure for raw state data
-    raw_state_fig, raw_state_ax = plt.subplots(figsize=(10, 6))
-
-    # Plot the raw state data with hue set to "sequence"
-    ds.sel(qubit=qubit).state.plot(hue="sequence", ax=raw_state_ax)
-
-    # Add title, axis labels, and legend
-    raw_state_ax.set_title(
-        f"Raw State Data for {qubit} \n {date_time} GMT+3 #{node_id} \n reset type = {node.parameters.reset_type_thermal_or_active}"
-    )
-    raw_state_ax.set_xlabel("Index")
-    raw_state_ax.set_ylabel("State")
-    raw_state_ax.legend(title="Sequence")
-
-    plt.tight_layout()
-    plt.show()
-
-node.results["figure"] = grid.fig
-
-
-# %% {Update state}
-for qubit in tracked_qubits:
-    qubit.revert_changes()
-
-with node.record_state_updates():
-    for i, q in enumerate(qubits):
-        if flux_delays[i] is not None:
-            q.z.opx_output.delay += round(flux_delays[i])
-
-# %% {Save results}
-node.results["initial_parameters"] = node.parameters.model_dump()
-node.machine = machine
-save_node(node)
