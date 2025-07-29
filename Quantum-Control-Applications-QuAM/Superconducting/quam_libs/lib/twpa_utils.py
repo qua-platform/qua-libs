@@ -12,6 +12,12 @@ def voltTOdbm(spec):
     p_w=(spec**2)/50
     dbm=10*np.log10(p_w*1000)
     return dbm
+def dBm(daps):
+    full_scale_power_dbm=-5
+    v=np.sqrt((2*50*10**(full_scale_power_dbm/10))/1000)*daps*1 # 1 : twpa readout amplitude  #opx1000 documentation
+    p_w=(v**2)/50
+    dbm=10*np.log10(p_w*1000)-10
+    return dbm
 
 ## pumpon
 def pumpoon_maxgain_res_spec(IQ_abs, qubits,  dfps, daps):
