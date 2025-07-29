@@ -43,7 +43,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["qA1", "qA2", "qA3", "qA4", "qA5"]  # Qubits to calibrate
-    node.parameters.qubits = ["qA5"]  # Qubits to calibrate
+    node.parameters.qubits = ["qA2"]  # Qubits to calibrate
     node.parameters.num_shots = 1000
     node.parameters.reset_type = "active"
     node.parameters.use_state_discrimination = True
@@ -168,6 +168,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             elif init_state == "I":
                                 qubit.xy.wait(qubit.xy.operations["x180"].length)
 
+                            qubit.align()
+                            qubit.wait(node.parameters.zeros_before_after_pulse // 4)
                             with switch_(segment):
                                 for j in range(0, number_of_segments):
                                     with case_(j):
@@ -245,33 +247,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
 
-
-# %%
-# if hasattr(node.results["ds_raw"], "state"):
-#     data = "state"
-# else:
-#     data = "I"
-
-# node.results["ds_raw"]["difference"] = node.results["ds_raw"][data].sel(init_state="e") - node.results[
-#     "ds_raw"
-# ][data].sel(init_state="g")
-
-# da = node.results["ds_raw"].sel(qubit="qD3")
-
-# x = da.relative_time.data
-# y = da.difference.data
-
-# sign_changes = np.sign(y)
-# crossings = np.where(np.diff(sign_changes) != 0)[0]
-
-
-# plt.plot(x, y)
-
-# plt.scatter(x[crossings], [0,0], color="red", label="Sign Change Points")
-
-# plt.axvline(x[(crossings[1] + crossings[0])//2], color="black", linestyle="--", alpha=0.5, label="Crossing Point")
-# plt.axhline(0, color="green", linestyle="--", alpha=0.5)
-# flux_delay = x[(crossings[1] + crossings[0])//2]
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
