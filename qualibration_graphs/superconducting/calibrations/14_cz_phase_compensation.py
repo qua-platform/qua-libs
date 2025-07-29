@@ -3,6 +3,7 @@ from dataclasses import asdict
 
 import matplotlib.pyplot as plt
 import numpy as np
+from quam.core import operation
 import xarray as xr
 from calibration_utils.cz_phase_compensation import (
     Parameters,
@@ -43,9 +44,10 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubit_pairs = ["qD1-qD3"]
+    node.parameters.qubit_pairs = ["qA1-qA3"]
     node.parameters.use_state_discrimination = True
     node.parameters.num_shots = 1000
+    node.parameters.operation = "cz_flattop"
     # node.parameters.reset_type = "active"
     pass
 
@@ -68,6 +70,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_shots
     frames = np.arange(0, 1, 1 / node.parameters.num_frames)
+    operation = node.parameters.operation
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -109,9 +112,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qp.align()
                             qubit.xy.play("x90")
                             if qubit is qp.qubit_control:
-                                qp.macros["cz_unipolar"].apply(phase_shift_control=frame)
+                                qp.macros[operation].apply(phase_shift_control=frame)
                             elif qubit is qp.qubit_target:
-                                qp.macros["cz_unipolar"].apply(phase_shift_target=frame)
+                                qp.macros[operation].apply(phase_shift_target=frame)
                             qubit.xy.play("x90")
                             qp.align()
 

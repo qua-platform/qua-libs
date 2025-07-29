@@ -4,6 +4,7 @@ import numpy as np
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, TwoQubitExperimentNodeParameters
+from quam.core import operation
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -22,6 +23,7 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 100
     num_frames: int = 17
+    operation: Literal["cz_flattop", "cz_unipolar"] = "cz_unipolar"
 
 
 class Parameters(
