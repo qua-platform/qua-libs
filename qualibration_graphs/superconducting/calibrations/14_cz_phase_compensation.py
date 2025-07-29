@@ -111,6 +111,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             )
                             qp.align()
                             qubit.xy.play("x90")
+                            qubit.align()
                             if qubit is qp.qubit_control:
                                 qp.macros[operation].apply(phase_shift_control=frame)
                             elif qubit is qp.qubit_target:
