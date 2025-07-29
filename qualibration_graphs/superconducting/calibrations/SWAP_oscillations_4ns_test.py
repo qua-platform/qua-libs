@@ -27,7 +27,7 @@ from quam_libs.lib.fit import oscillation_decay_exp, fit_oscillation_decay_exp
 
 ### modifications
 from quam_config import Quam
-from calibration_utils.swap_oscillations import (
+from calibration_utils.swap_oscillations_test import (
     Parameters
 )
 from qualibration_libs.parameters import get_qubits
