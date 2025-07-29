@@ -3,6 +3,7 @@ from dataclasses import asdict
 
 import matplotlib.pyplot as plt
 import numpy as np
+from quam.core import operation
 import xarray as xr
 from calibration_utils.cz_conditional_phase import (
     FitResults,
@@ -71,11 +72,11 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubit_pairs = ["qD1-qD2"]
+    node.parameters.qubit_pairs = ["qA1-qA3"]
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
-    node.parameters.amp_step = 0.0005
-    node.parameters.amp_range = 0.1
+
+    node.parameters.amp_range = 0.07
     # node.parameters.load_data_id = 2119
     pass
 
@@ -99,6 +100,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     n_avg = node.parameters.num_averages
     amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
     frames = np.arange(0, 1, 1 / node.parameters.num_frames)
+
+    operation = node.parameters.operation
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -143,7 +146,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qp.qubit_target.xy.play("x90")
                                 qp.align()
                                 # play the CZ gate
-                                qp.macros["cz_unipolar"].apply(amplitude_scale=amp)
+                                qp.macros[operation].apply(amplitude_scale_control=amp)
                                 # rotate the frame
                                 qp.qubit_target.xy.frame_rotation_2pi(frame)
                                 # return the target qubit before measurement
@@ -275,12 +278,14 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit pair data analysis was successful."""
+
+    operation = node.parameters.operation
     with node.record_state_updates():
         fit_results = node.results["fit_results"]
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
                 continue
-            qp.macros["cz_unipolar"].flux_pulse_control.amplitude = fit_results[qp.name]["optimal_amplitude"]
+            qp.macros[operation].flux_pulse_control.amplitude = fit_results[qp.name]["optimal_amplitude"]
 
 
 

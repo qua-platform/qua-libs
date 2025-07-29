@@ -14,6 +14,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Step size for amplitude scanning. Default is 0.001."""
     num_frames: int = 10
     """Number of frame rotation points for phase measurement. Default is 10."""
+    operation: Literal["cz_flattop", "cz_unipolar"] = "cz_unipolar"
+    """Type of CZ operation to perform. Options are 'cz_flattop' or 'cz_unipolar'. Default is 'cz_unipolar'."""
 
 
 class Parameters(
