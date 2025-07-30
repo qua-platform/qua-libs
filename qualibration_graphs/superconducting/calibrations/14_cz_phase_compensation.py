@@ -18,7 +18,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
-from qualibration_libs.core import tracked_updates
+
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
@@ -28,7 +28,6 @@ from quam_config import Quam
 description = """
 A blank template for a calibration node.
 """
-
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
@@ -46,8 +45,9 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubit_pairs = ["qA1-qA3"]
     node.parameters.use_state_discrimination = True
-    node.parameters.num_shots = 1000
+    node.parameters.num_shots = 5000
     node.parameters.operation = "cz_flattop"
+    node.parameters.num_frames = 21
     # node.parameters.reset_type = "active"
     pass
 
@@ -92,6 +92,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         for qubit in node.machine.active_qubits:
             node.machine.initialize_qpu(target=qubit)
+
+        for qubit_pair in node.machine.active_qubit_pairs:
+            if hasattr(qubit_pair, "coupler") and qubit_pair.coupler is not None:
+                node.machine.initialize_qpu(target=qubit_pair.coupler)
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             with for_(n, 0, n < n_avg, n + 1):
@@ -197,13 +201,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 ds = node.results["ds_raw"]
-fig, axs = plt.subplots(1, 2)
-ds.state_control.plot(ax=axs[0])
-ds.state_target.plot(ax=axs[1])
-axs[0].axhline(1)
-axs[0].axhline(0)
-axs[1].axhline(1)
-axs[1].axhline(0)
+fig, axs = plt.subplots()
+ds.state_control.plot(ax=axs, marker="o", linestyle="--", color= "blue", label="Control Qubit")
+ds.state_target.plot(ax=axs, marker="o", linestyle="--", color= "red", label="Target Qubit")
+axs.legend()
+fig.tight_layout()
 
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
