@@ -1,4 +1,6 @@
 
+
+# %% {Imports}
 from dataclasses import asdict
 
 from qualibrate import QualibrationNode
@@ -15,14 +17,14 @@ from qm.qua import *
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.swap_oscillations.parameters import Parameters
-from calibration_utils.swap_oscillations.analysis import (
+from calibration_utils.swap_amp_calibration.parameters import Parameters
+from calibration_utils.swap_amp_calibration.analysis import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
     FitParameters
 )
-from calibration_utils.swap_oscillations.plotting import plot_raw_data_with_fit
+from calibration_utils.swap_amp_calibration.plotting import plot_raw_data_with_fit
 
 # %% {Description}
 description = """
@@ -30,10 +32,11 @@ description = """
 """
 
 node = QualibrationNode(
-    name="swap_oscillations",
+    name="SWAP_amp_calibration",
     description=description,
     parameters=Parameters()
 )
+
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
@@ -44,12 +47,9 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.qubit_pairs = ["q0-1"]
     node.parameters.reset_type = "active"
     node.parameters.use_state_discrimination = True
-    node.parameters.min_wait_time_in_ns  = 16
-    node.parameters.max_wait_time_in_ns  = 250
-    node.parameters.wait_time_num_points  = 100
     node.parameters.control_amp_range = 0.4
     node.parameters.control_amp_step = 0.02
-
+    node.parameters.max_number_pulses_per_sweep = 50
 
 
 # Instantiate the QUAM class from the state file
@@ -78,19 +78,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Loop parameters
     n_avg = node.parameters.num_shots  # The number of averages
     control_amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
-    node.namespace["control_amplitudes_scale"] = control_amplitudes
+    N_pi = node.parameters.max_number_pulses_per_sweep
+    N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
     idle_times = np.arange(0, node.parameters.max_time_in_ns // 4)
-
+    node.namespace["control_amplitudes_scale"] = control_amplitudes
 
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "amplitude": xr.DataArray(control_amplitudes, attrs={"long_name": "amplitudes of the control qubit flux pulse"}),
-        "idle_time": xr.DataArray(idle_times, attrs={"long_name": "pulse duration", "units": "ns"}),
+        "N_pi_vec": xr.DataArray(N_pi_vec, attrs={"long_name": "pulse duration", "units": "ns"}),
     }
 
     with program() as node.namespace["qua_program"]:
-        t = declare(int)
-        amp = declare(fixed)
+        amp = declare(float)
+        npi = declare(int)
+        count = declare(int)
         I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
         I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
         if node.parameters.use_state_discrimination:
@@ -107,31 +109,25 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         ]:
             node.machine.initialize_qpu(target=target)
         wait(1000)  # TODO: DO WE NEED THIS WAIT?
+
+
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
-                with for_(*from_array(amp, control_amplitudes)):
-                    with for_(*from_array(t, idle_times)):
+                with for_(*from_array(npi, node.namespace["N_pi_vec"])):
+                    with for_(*from_array(amp, control_amplitudes)):
                         for ii, qp in multiplexed_qubit_pairs.items():
                             # Qubit initialization
                             qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
                             qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
                             qp.align()
 
-                            # set control qubit to the excited state
+                            # setting both qubits ot the initial state
                             qp.qubit_control.xy.play("x180")
 
                             qp.align()
-
-                            qp.qubit_control.z.play(
-                                "const",
-                                amplitude_scale=amp * qp.gates["SWAP_Coupler"].flux_pulse_control.amplitude / 0.1,
-                                duration=t) #TODO: SEE THAT WE HAVE qp.gates["SWAP_Coupler"] IN QUAM
-                            qp.coupler.play(
-                                "const",
-                                amplitude_scale=amp * qp.gates["SWAP_Coupler"].flux_pulse_control.amplitude / 0.1,
-                                duration=t)
-
+                            with for_(count, 0, count < npi, count + 1):
+                                qp.gates["SWAP_Coupler"].execute(amplitude_scale=amp)
                             qp.align()
 
                             # measure both qubits
@@ -149,6 +145,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 save(Q_c[ii], Q_c_st[ii])
                                 save(I_t[ii], I_t_st[ii])
                                 save(Q_t[ii], Q_t_st[ii])
+            align()
 
         with stream_processing():
             n_st.save("n")
@@ -225,7 +222,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node) # YAY
     ds_fit, fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["ds_fit"] = ds_fit
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
@@ -243,7 +240,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"], node.results["fit_results"])
+    fig = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"], node.results["fit_results"], node)
     plt.show()
     # Store the generated figures
     node.results["figures"] = {"raw_fit": fig}
@@ -254,16 +251,17 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     if node.parameters.load_data_id is None:
         with node.record_state_updates():
             for qp in node.namespace["qubit_pairs"]:
-                flux_time_ns = int(1/(node.results["ds_fit"].sel(fit_vals="f")[qp.name]) / 2)
-                flux_time_including_zeros = flux_time_ns - flux_time_ns % 4 + 4
-                zero_padding = flux_time_including_zeros - flux_time_ns
-                flux_pulse_amp = node.results["ds_fit"].sel(fit_vals="a")[qp.name]
-                qp.gates['SWAP_Coupler'].flux_pulse_control.amplitude = flux_pulse_amp
-                qp.gates['SWAP_Coupler'].flux_pulse_control.zero_padding = zero_padding
-                qp.gates['SWAP_Coupler'].flux_pulse_control.length = flux_time_including_zeros
+                qp.gates['SWAP_Coupler'].flux_pulse_control.amplitude = node.results["results"][qp.name]["SWAP_amplitude"]
 
+
+# %% {Update_state}
+if not node.parameters.simulate:
+    with node.record_state_updates():
+        for qp in node.namespace["qubit_pairs"]:
+            qp.gates['SWAP_Coupler'].flux_pulse_control.amplitude = node.results["results"][qp.name]["SWAP_amplitude"]
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
