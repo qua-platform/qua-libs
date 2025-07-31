@@ -127,19 +127,13 @@ def determine_flux_time(flux_amp_idx, ds_qp):
     return int(fit_time)
 
 
-# def fit_oscillation_decay_exp(signal, x_key):
-#     fit_data = fit_oscillation(
-#         signal,
-#         x_data=signal[x_key],
-#         decay_model_func=oscillation_decay_exp
-#     )
-#     return fit_data
-
 def abs_amp(qp, amp, pulse_amplitudes):
     return amp * pulse_amplitudes[qp.name]
 
+
 def detuning(qp, amp, pulse_amplitudes):
     return -(amp * pulse_amplitudes[qp.name]) ** 2 * qp.qubit_control.freq_vs_flux_01_quad_term
+
 
 def log_fitted_results(fit_results: Dict[str, FitParameters], log_callable=None):
     if log_callable is None:
