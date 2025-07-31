@@ -114,9 +114,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Ground state iq blobs for all qubits
                 # Qubit initialization
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.reset(node.parameters.reset_type, node.parameters.simulate)
-                    if node.parameters.reset_type == "thermal":
-                        qubit.wait(3 * qubit.thermalization_time * u.ns)
+
+                    qubit.wait(3 * qubit.thermalization_time * u.ns)
                 align()
                 # Qubit readout
                 for i, qubit in multiplexed_qubits.items():
@@ -130,9 +129,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Excited state iq blobs for all qubits
                 # Qubit initialization
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.reset(node.parameters.reset_type, node.parameters.simulate)
-                    if node.parameters.reset_type == "thermal":
-                        qubit.wait(3 * qubit.thermalization_time * u.ns)
+                    qubit.wait(3 * qubit.thermalization_time * u.ns)
                 align()
 
                 # Qubit readout
@@ -159,7 +156,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     qubit.wait(10)
                     qubit.xy.play("EF_x180")
                     update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
-                    qubit.xy.play("EF_x180")
                     qubit.resonator.measure(operation, qua_vars=(I_f[i], Q_f[i]))
                     qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
                     # save data
