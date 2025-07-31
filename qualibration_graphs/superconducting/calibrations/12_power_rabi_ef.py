@@ -56,6 +56,9 @@ node.namespace["Rabi_ef"] = True
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.use_state_discrimination = True
+    # node.parameters.qubits(["qA1", "qA2"])
+    node.parameters.load_data_id = 2714
     pass
 
 
@@ -121,9 +124,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
                             qubit.wait(3 * qubit.thermalization_time * u.ns)
-                            qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
                         align()
                         for i, qubit in multiplexed_qubits.items():
+                            qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
                             qubit.xy.play("x180")
                             qubit.xy.update_frequency(qubit.xy.intermediate_frequency - qubit.anharmonicity)
                             # Loop for error amplification (perform many qubit pulses)
