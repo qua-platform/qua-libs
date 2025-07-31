@@ -49,9 +49,6 @@ node = QualibrationNode[Parameters, Quam](
 )
 
 node.namespace["Rabi_ef"] = True
-node.parameters.operation = "x180"
-node.parameters.max_number_pulses_per_sweep = 1
-
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
@@ -123,14 +120,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     with for_(*from_array(a, amps)):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                            qubit.wait(3 * qubit.thermalization_time * u.ns)
                             qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
                         align()
                         for i, qubit in multiplexed_qubits.items():
                             qubit.xy.play("x180")
                             qubit.xy.update_frequency(qubit.xy.intermediate_frequency - qubit.anharmonicity)
-                        align()
-                        for i, qubit in multiplexed_qubits.items():
                             # Loop for error amplification (perform many qubit pulses)
                             with for_(count, 0, count < npi, count + 1):
                                 qubit.xy.play("EF_x180", amplitude_scale=a)
