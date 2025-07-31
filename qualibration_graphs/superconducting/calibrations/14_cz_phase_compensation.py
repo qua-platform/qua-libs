@@ -3,7 +3,6 @@ from dataclasses import asdict
 
 import matplotlib.pyplot as plt
 import numpy as np
-from quam.core import operation
 import xarray as xr
 from calibration_utils.cz_phase_compensation import (
     Parameters,
@@ -18,11 +17,12 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
-
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
+
+from quam.core import operation
 
 # %% {Description}
 description = """
@@ -45,9 +45,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubit_pairs = ["qA1-qA3"]
     node.parameters.use_state_discrimination = True
-    node.parameters.num_shots = 5000
-    node.parameters.operation = "cz_flattop"
+    node.parameters.num_shots = 500
+    node.parameters.operation = "cz_unipolar"
     node.parameters.num_frames = 21
+    # node.parameters.load_data_id = 2593
     # node.parameters.reset_type = "active"
     pass
 
@@ -89,24 +90,25 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         state_t = [declare(int) for _ in range(num_qubit_pairs)]
         state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
         state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
+        extra_phase_c = declare(fixed)
+        extra_phase_t = declare(fixed)
 
-        for qubit in node.machine.active_qubits:
-            node.machine.initialize_qpu(target=qubit)
-
-        for qubit_pair in node.machine.active_qubit_pairs:
-            if hasattr(qubit_pair, "coupler") and qubit_pair.coupler is not None:
-                node.machine.initialize_qpu(target=qubit_pair.coupler)
+        for target in list(node.machine.active_qubits) + [
+            qp.coupler for qp in node.machine.active_qubit_pairs if hasattr(qp, "coupler") and qp.coupler is not None
+        ]:
+            node.machine.initialize_qpu(target=target)
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(frame, frames)):
                     for ii, qp in multiplexed_qubit_pairs.items():
+                        assign(extra_phase_c, qp.macros[operation].phase_shift_control)
+                        assign(extra_phase_t, qp.macros[operation].phase_shift_target)
                         for qubit, state_q, state_st in [
                             (qp.qubit_control, state_c[ii], state_c_st[ii]),
                             (qp.qubit_target, state_t[ii], state_t_st[ii]),
                         ]:
-
                             qp.qubit_control.reset(
                                 reset_type=node.parameters.reset_type, simulate=node.parameters.simulate
                             )
@@ -117,9 +119,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qubit.xy.play("x90")
                             qubit.align()
                             if qubit is qp.qubit_control:
-                                qp.macros[operation].apply(phase_shift_control=frame)
+                                qp.macros[operation].apply(phase_shift_control=frame + extra_phase_c)
                             elif qubit is qp.qubit_target:
-                                qp.macros[operation].apply(phase_shift_target=frame)
+                                qp.macros[operation].apply(phase_shift_target=frame + extra_phase_t)
                             qubit.xy.play("x90")
                             qp.align()
 
@@ -141,12 +143,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n")
             for ii in range(num_qubit_pairs):
                 if node.parameters.use_state_discrimination:
-                    state_c_st[ii].buffer(len(frames)).average().save(
-                        f"state_control{ii + 1}"
-                    )
-                    state_t_st[ii].buffer(len(frames)).average().save(
-                        f"state_target{ii + 1}"
-                    )
+                    state_c_st[ii].buffer(len(frames)).average().save(f"state_control{ii + 1}")
+                    state_t_st[ii].buffer(len(frames)).average().save(f"state_target{ii + 1}")
                 else:
                     I_c_st[ii].buffer(len(frames)).average().save(f"I_control{ii + 1}")
                     Q_c_st[ii].buffer(len(frames)).average().save(f"Q_control{ii + 1}")
@@ -200,12 +198,14 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
-ds = node.results["ds_raw"]
-fig, axs = plt.subplots()
-ds.state_control.plot(ax=axs, marker="o", linestyle="--", color= "blue", label="Control Qubit")
-ds.state_target.plot(ax=axs, marker="o", linestyle="--", color= "red", label="Target Qubit")
-axs.legend()
-fig.tight_layout()
+
+# ds = node.results["ds_raw"]
+# fig, axs = plt.subplots()
+# ds.state_control.plot(ax=axs, marker="o", linestyle="--", color= "blue", label="Control Qubit")
+# ds.state_target.plot(ax=axs, marker="o", linestyle="--", color= "red", label="Target Qubit")
+# axs.legend()
+# fig.tight_layout()
+
 
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
@@ -216,7 +216,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
-    node.namespace["qubits"] = get_qubits(node)
+    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 
 # %% {Analyse_data}
@@ -242,7 +242,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
@@ -254,18 +254,23 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
-
-    # Revert the change done at the beginning of the node
-    for tracked_qubit in node.namespace.get("tracked_qubits", []):
-        tracked_qubit.revert_changes()
-
+    operation = node.parameters.operation
     with node.record_state_updates():
-        for q in node.namespace["qubits"]:
-            if node.outcomes[q.name] == "failed":
+        for qp in node.namespace["qubit_pairs"]:
+            if node.outcomes[qp.name] == "failed":
                 continue
+            qp.macros[operation].phase_shift_control -= float(
+                node.results["ds_fit"].sel(qubit_pair=qp.name).fitted_control_phase.values
+            )
+            qp.macros[operation].phase_shift_target -= float(
+                node.results["ds_fit"].sel(qubit_pair=qp.name).fitted_target_phase.values
+            )
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
+
+# %%
