@@ -52,13 +52,13 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         ds_qp = ds.sel(qubit=qp.name)
         try:
             amp_guess = ds_qp.state_target.max("idle_time") - ds_qp.state_target.min("idle_time")
-            amp_idx = int(amp_guess.argmax())
-            amp = float(ds_qp.amp_full[amp_idx])
-            fit_osc = fit_oscillation_decay_exp(ds_qp.state_control.isel(amp=amp_idx), "idle_time")
-            flux_time = int(1 / fit_osc.sel(fit_vals="f"))
+            flux_amp_idx = int(amp_guess.argmax())
+            flux_amp = float(ds_qp.amp_full[flux_amp_idx])
+            fit_data = fit_oscillation_decay_exp(ds_qp.state_control.isel(amp=flux_amp_idx), "idle_time")
+            flux_time = int(1 / fit_data.sel(fit_vals="f"))
 
 
-            J, f0, *_ = fit_rabi_chevron(ds_qp, flux_time, -amp ** 2 * qp.qubit_control.freq_vs_flux_01_quad_term)
+            J, f0, *_ = fit_rabi_chevron(ds_qp, flux_time, -flux_amp ** 2 * qp.qubit_control.freq_vs_flux_01_quad_term)
             amp_from_fit = np.sqrt(-f0 / qp.qubit_control.freq_vs_flux_01_quad_term)
             flux_time = int(1 / (2 * J) * 1e9)
             zero_padding = flux_time - flux_time % 4 + 4 - flux_time
@@ -66,11 +66,11 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
             ds_fit[qp.name] = ds_qp.assign({
                 "fitted": oscillation_decay_exp(
                     ds_qp.idle_time,
-                    fit_osc.sel(fit_vals="a"),
-                    fit_osc.sel(fit_vals="f"),
-                    fit_osc.sel(fit_vals="phi"),
-                    fit_osc.sel(fit_vals="offset"),
-                    fit_osc.sel(fit_vals="decay")
+                    fit_data.sel(fit_vals="a"),
+                    fit_data.sel(fit_vals="f"),
+                    fit_data.sel(fit_vals="phi"),
+                    fit_data.sel(fit_vals="offset"),
+                    fit_data.sel(fit_vals="decay")
                 )
             })
 
@@ -98,7 +98,7 @@ def fit_rabi_chevron(ds_qp, init_length, init_detuning):
     try:
         exp_data = da_target.values
         detuning = da_target.detuning
-        time = da_target.time*1e-9
+        time = da_target.idle_time *1e-9
         t,f  = np.meshgrid(time,detuning)
         initial_guess = (1e9/init_length/2,
                 init_detuning,
@@ -122,7 +122,7 @@ def fit_rabi_chevron(ds_qp, init_length, init_detuning):
 
 def determine_flux_time(flux_amp_idx, ds_qp):
     signal = ds_qp.state_control.isel(amp=flux_amp_idx)
-    fit_data = fit_oscillation_decay_exp(signal, "time")
+    fit_data = fit_oscillation_decay_exp(signal, "idle_time")
     fit_time = 1 / fit_data.sel(fit_vals='f')  # Oscillation frequency (example only)
     return int(fit_time)
 

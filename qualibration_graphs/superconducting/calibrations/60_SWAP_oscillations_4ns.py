@@ -74,7 +74,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = [qp.qubit_control for qp in qubit_pairs] + [
         qp.qubit_target for qp in qubit_pairs
     ]
-    num_qubits = len(qubits)
 
     # Loop parameters
     n_avg = node.parameters.num_shots  # The number of averages
@@ -102,11 +101,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state = [declare(int) for _ in range(num_qubit_pairs)]
             state_st = [declare_stream() for _ in range(num_qubit_pairs)]
 
-        for qubit in node.machine.active_qubits:
-            node.machine.initialize_qpu(target=qubit) #TODO: ADD COUPLER TO THE INITIALIZATION
-            align()
-            wait(1000) #TODO: DO WE NEED THIS WAIT?
 
+        for target in list(node.machine.active_qubits) + [
+            qp.coupler for qp in node.machine.active_qubit_pairs if hasattr(qp, "coupler") and qp.coupler is not None
+        ]:
+            node.machine.initialize_qpu(target=target)
+        wait(1000)  # TODO: DO WE NEED THIS WAIT?
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
@@ -126,7 +126,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qp.qubit_control.z.play(
                                 "const",
                                 amplitude_scale=amp * qp.gates["SWAP_Coupler"].flux_pulse_control.amplitude / 0.1,
-                                duration=t)
+                                duration=t) #TODO: SEE THAT WE HAVE qp.gates["SWAP_Coupler"] IN QUAM
                             qp.coupler.play(
                                 "const",
                                 amplitude_scale=amp * qp.gates["SWAP_Coupler"].flux_pulse_control.amplitude / 0.1,
