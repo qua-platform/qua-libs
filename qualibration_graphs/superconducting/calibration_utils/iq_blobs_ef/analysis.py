@@ -123,7 +123,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
         dask="parallelized",  # This allows for parallel processing
         output_dtypes=[float],  # Specify the output data type
     )
-    ds = convert_IQ_to_V(ds, node.namespace["qubits"], IQ_list=["Ig", "Qg", "Ie", "Qe"])
+    ds = convert_IQ_to_V(ds, node.namespace["qubits"], IQ_list=["Ig", "Qg", "Ie", "Qe", "If", "Qf"])
     return ds
 
 

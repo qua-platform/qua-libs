@@ -63,7 +63,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     execution in the Python IDE.
     """
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qD1", "qD2", "qD4"]
+    node.parameters.qubits = ["qA1", "qA3"]
     # node.parameters.load_data_id = 1524
     pass
 
@@ -260,7 +260,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     node.results["figures"] = {
         "iq_blobs": fig_iq,
         "confusion_matrix": fig_confusion,
-        # "histograms": fig_histogram,
     }
 
 
