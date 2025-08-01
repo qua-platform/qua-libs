@@ -68,14 +68,14 @@ def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fi
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    ax.plot(1e3 * fit.Ig, 1e3 * fit.Qg, ".", alpha=0.2, label="Ground", markersize=1)
+    ax.plot(1e3 * fit.Ig, 1e3 * fit.Qg, ".", alpha=0.2, label="Ground", markersize=10)
     ax.plot(
         1e3 * fit.Ie,
         1e3 * fit.Qe,
         ".",
         alpha=0.2,
         label="Excited",
-        markersize=1,
+        markersize=10,
     )
     ax.plot(
         1e3 * fit.If,
@@ -83,7 +83,7 @@ def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fi
         ".",
         alpha=0.2,
         label="Second Excited",
-        markersize=1,
+        markersize=10,
     )
 
     ax.plot(
