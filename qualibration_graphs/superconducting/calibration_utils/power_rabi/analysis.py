@@ -47,9 +47,11 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     if not node.parameters.use_state_discrimination:
         ds = convert_IQ_to_V(ds, node.namespace["qubits"])
-    full_amp = np.array(
-        [ds.amp_prefactor * q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]]
-    )
+
+    if node.namespace["Rabi_ef"] is not None:
+        full_amp = np.array([ds.amp_prefactor * q.xy.operations["EF_x180"].amplitude for q in node.namespace["qubits"]])
+    else:
+        full_amp = np.array([ds.amp_prefactor * q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]])
     ds = ds.assign_coords(full_amp=(["qubit", "amp_prefactor"], full_amp))
     ds.full_amp.attrs = {"long_name": "pulse amplitude", "units": "V"}
     return ds
@@ -111,10 +113,16 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             "long_name": "factor to get a pi pulse",
             "units": "Hz",
         }
-        current_amps = xr.DataArray(
-            [q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]],
-            coords=dict(qubit=fit.qubit.data),
-        )
+        if node.namespace["Rabi_ef"] is not None:
+            current_amps = xr.DataArray(
+                [q.xy.operations["EF_x180"].amplitude for q in node.namespace["qubits"]],
+                coords=dict(qubit=fit.qubit.data),
+            )
+        else:
+            current_amps = xr.DataArray(
+                [q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]],
+                coords=dict(qubit=fit.qubit.data),
+            )
         opt_amp = factor * current_amps
         fit = fit.assign({"opt_amp": opt_amp})
         fit.opt_amp.attrs = {"long_name": "x180 pulse amplitude", "units": "V"}

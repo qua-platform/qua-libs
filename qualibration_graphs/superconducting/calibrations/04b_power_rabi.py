@@ -41,7 +41,7 @@ Prerequisites:
     - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
 State update:
-    - The qubit pulse amplitude corresponding to the specified operation (x180, x90...) 
+    - The qubit pulse amplitude corresponding to the specified operation (x180, x90...)
     (qubit.xy.operations[operation].amplitude).
 """
 
@@ -53,6 +53,7 @@ node = QualibrationNode[Parameters, Quam](
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
 
+node.namespace["Rabi_ef"] = None
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
