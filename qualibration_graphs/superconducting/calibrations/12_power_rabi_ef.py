@@ -125,7 +125,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     with for_(*from_array(a, amps)):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.wait(3 * qubit.thermalization_time * u.ns)
+                            qubit.reset(reset_type=node.parameters.reset_type, simulate=node.parameters.simulate)
+                            if node.parameters.reset_type == "thermal":
+                                qubit.wait(2 * qubit.thermalization_time // 2)
                         align()
                         for i, qubit in multiplexed_qubits.items():
                             qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
