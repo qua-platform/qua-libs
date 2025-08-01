@@ -51,7 +51,9 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     if node.namespace["Rabi_ef"] is not None:
         full_amp = np.array([ds.amp_prefactor * q.xy.operations["EF_x180"].amplitude for q in node.namespace["qubits"]])
     else:
-        full_amp = np.array([ds.amp_prefactor * q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]])
+        full_amp = np.array(
+            [ds.amp_prefactor * q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]]
+        )
     ds = ds.assign_coords(full_amp=(["qubit", "amp_prefactor"], full_amp))
     ds.full_amp.attrs = {"long_name": "pulse amplitude", "units": "V"}
     return ds
