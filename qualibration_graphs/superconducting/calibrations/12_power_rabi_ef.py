@@ -113,7 +113,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
                 qubit.resonator.update_frequency(
-                    qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift
+                    qubit.resonator.intermediate_frequency + (
+                        qubit.resonator.GEF_frequency_shift if node.parameters.use_state_discrimination else qubit.chi
+                    )
                 )
             align()
 
