@@ -44,14 +44,14 @@ class Parameters(NodeParameters):
     num_averages: int = 100
     amp_min: float =  0.1
     amp_max: float =  0.4
-    amp_step: float = 0.1 # 0.01
+    amp_step: float = 0.1#0.01
     frequency_span_in_mhz: float = 7
     frequency_step_in_mhz: float = 1
     p_frequency_span_in_mhz: float = 100
-    p_frequency_step_in_mhz: float = 30
+    p_frequency_step_in_mhz: float = 20
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    simulate: bool = True
-    simulation_duration_ns: int = 2500
+    simulate: bool = False
+    simulation_duration_ns: int = 8000
     timeout: int = 100
     load_data_id: Optional[int] = None
     pumpline_attenuation: int = -50-6 #(-50: fridge atten, directional coupler, -6: room temp line, -5: fridge line)
@@ -95,9 +95,9 @@ daps = np.insert(daps,0,0)
 span_p = node.parameters.p_frequency_span_in_mhz * u.MHz
 step_p = node.parameters.p_frequency_step_in_mhz * u.MHz
 dfps = np.arange(-span_p / 2, +span_p / 2, step_p)
-# dfps=np.array([-3e6, 0e6])
-
-pump_duration = (n_avg*len(qubits)*(machine.qubits["qB2"].resonator.operations["readout"].length+machine.qubits["qB2"].resonator.depletion_time))/4
+dfps = np.array([-3e6,0])
+# pump duration should be able to cover the resonator spectroscopy which takes #(dfs)*n_avg (as we are multiplexing qubit number doesnt matter) 
+pump_duration = (n_avg*len(dfs)*(machine.qubits["qB1"].resonator.operations["readout"].length+machine.qubits["qB1"].resonator.depletion_time))/4
 
 with program() as twpa_calibration:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=len(qubits))
@@ -114,8 +114,8 @@ with program() as twpa_calibration:
     with for_(*from_array(dp, dfps)):  
             with for_each_(da, daps):     
                 update_frequency(twpas[0].pump.name, dp + twpas[0].pump.intermediate_frequency)
-                twpas[0].pump.play('pump', amplitude_scale=da, duration=pump_duration+1000) 
-                # wait(250000) # didnt see any difference 
+                twpas[0].pump.play('pump', amplitude_scale=da, duration=pump_duration+250000)#250/4) 
+                wait(250000) #10000/4 wait 10us for pump to settle 
     # measure amplified readout responses around readout resonators with pump
                 with for_(n, 0, n < n_avg, n + 1):
                     save(n, n_st)
@@ -137,8 +137,7 @@ with program() as twpa_calibration:
         for i in range(len(qubits)):
             I_st[i].buffer(len(dfs)).average().buffer(len(daps)).buffer(len(dfps)).save(f"I{i + 1}")
             Q_st[i].buffer(len(dfs)).average().buffer(len(daps)).buffer(len(dfps)).save(f"Q{i + 1}")
-
-    
+ 
 # ## kill
 # qm=qmm.open_qm(config,close_other_machines=True)
 # job=qm.execute(twpa_calibration)        
@@ -148,13 +147,14 @@ if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
     job = qmm.simulate(config, twpa_calibration, simulation_config)
+    
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
         plt.subplot(len(samples.keys()),1,i+1)
         samples[con].plot()
-        plt.title(con)
+        plt.title(f'{con}-Pump, Readout pulse simulation')
     plt.tight_layout()
     # Save the figure
     node.results = {"figure": plt.gcf()}
@@ -170,7 +170,48 @@ elif node.parameters.load_data_id is None:
             n = results.fetch_all()[0]
             # Progress bar
             # progress_counter(n, n_avg, start_time=results.start_time)
+# #%% control the window
+# res = job.get_simulated_samples().con1
+# t_min, t_max = 0,5000     # ns
 
+# def t_axis(n_samples, sr):
+#     return np.arange(n_samples) / sr * 1e9       # ns
+# def label_from(port, typ):
+#     port = str(port)
+#     addr = port.split("-")
+#     if len(addr) == 2:
+#         return f"FEM{addr[0]}-{typ}O{addr[1]}"
+#     if len(addr) == 3:
+#         return f"FEM{addr[0]}-{typ}O{addr[1]}-UP{addr[2]}"
+#     return port
+# # --- analog ---
+# for port, samples in res.analog.items():
+#     sr     = res._analog_sampling_rate[str(port)]
+#     t      = t_axis(len(samples), sr)
+#     window = (t >= t_min) & (t <= t_max)
+
+#     if np.iscomplexobj(samples):
+#         I = samples.real
+#         Q = samples.imag
+#         if np.any(I[window]) or np.any(Q[window]):
+#             plt.plot(t[window], I[window], label=f"{label_from(port,'A')} I")
+#             plt.plot(t[window], Q[window], label=f"{label_from(port,'A')} Q")
+#     else:
+#         if np.any(samples[window]):
+#             plt.plot(t[window], samples[window], label=label_from(port,'A'))
+# # --- digital (optional, rarely useful in this window) ---
+# for port, dig in res.digital.items():
+#     if not np.any(dig):
+#         continue
+#     t  = t_axis(len(dig), 1e9)   # digital always at 1 GS/s
+#     window = (t >= t_min) & (t <= t_max)
+#     plt.plot(t[window], dig[window], label=label_from(port,'D'))
+# plt.xlabel("Time [ns]")
+# plt.ylabel("Output")
+# # plt.legend()
+# plt.xlim(t_min, t_max)          # keeps ticks sensible
+# plt.tight_layout()
+# plt.show()
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
@@ -202,6 +243,7 @@ if not node.parameters.simulate:
     node.results = {"ds": ds}
 
     # %% {Data_analysis}
+    print(f'twpa calibration took {((machine.qubits["qB1"].resonator.operations["readout"].length+machine.qubits["qB1"].resonator.depletion_time)*len(dfs)*n_avg*len(dfps)*len(daps)*1e-9)}sec ')
     p_lo=twpas[0].pump.LO_frequency
     p_if=twpas[0].pump.intermediate_frequency
     # get pump point of max G
@@ -215,6 +257,7 @@ if not node.parameters.simulate:
     node.results["pumping point"] = operation_point
 
     # %% {Plotting}
+    # resonator
     pump_frequency=machine.twpas['twpa1'].pump.LO_frequency+machine.twpas['twpa1'].pump.intermediate_frequency+dfps
     pump_power=dBm(daps)+node.parameters.pumpline_attenuation
     pump_power[np.isneginf(pump_power)]=0
@@ -245,8 +288,6 @@ if not node.parameters.simulate:
     # plot gain vs pump
     im0 = axs[0].imshow(data_gain, origin='lower', aspect='auto',
                         extent=[0, len(daps)-1, 0, len(dfps)-1])
-    # axs[0].set_xticks(np.arange(len(daps)))
-    # axs[0].set_xticklabels(np.round(pump_power,2), rotation=90, ha='right')
     axs[0].set_xticks(xtick_pos)
     axs[0].set_xticklabels(selected_powers,rotation=90)
     axs[0].set_yticks(ytick_pos)
@@ -260,8 +301,6 @@ if not node.parameters.simulate:
     # plot dSNR vs pump
     im1 = axs[1].imshow(data_dSNR, origin='lower', aspect='auto',
                         extent=[0, len(daps)-1, 0, len(dfps)-1])
-    # axs[1].set_xticks(np.arange(len(daps)))
-    # axs[1].set_xticklabels(np.round(pump_power,2),rotation=90,ha='right')
     axs[1].set_xticks(xtick_pos)
     axs[1].set_xticklabels(selected_powers,rotation=90)
     axs[1].set_yticks(ytick_pos)
