@@ -1,0 +1,48 @@
+{
+    "wiring": {
+        "qubits": {
+            "qA1": {
+                "z": {
+                    "opx_output": "#/ports/analog_outputs/con1/5/1"
+                },
+                "rr": {
+                    "opx_input": "#/ports/mw_inputs/con1/1/1",
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
+                },
+                "xy": {
+                    "opx_output": "#/ports/mw_outputs/con1/1/2"
+                }
+            },
+            "qA2": {
+                "z": {
+                    "opx_output": "#/ports/analog_outputs/con1/5/2"
+                },
+                "rr": {
+                    "opx_input": "#/ports/mw_inputs/con1/1/1",
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
+                },
+                "xy": {
+                    "opx_output": "#/ports/mw_outputs/con1/1/3"
+                }
+            }
+        },
+        "qubit_pairs": {
+            "qA1-qA2": {
+                "c": {
+                    "control_qubit": "#/qubits/qA1",
+                    "target_qubit": "#/qubits/qA2",
+                    "opx_output": "#/ports/analog_outputs/con1/5/3"
+                }
+            }
+        }
+    },
+    "network": {
+        "host": "10.1.1.6",
+        "port": null,
+        "cloud": true,
+        "octave_ips": [],
+        "cluster_name": "galil_arbel",
+        "octave_ports": [],
+        "quantum_computer_backend": "arbel"
+    }
+}

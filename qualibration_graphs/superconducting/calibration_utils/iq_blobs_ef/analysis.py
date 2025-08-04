@@ -199,9 +199,11 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
 
 def center_matrix(da: xr.DataArray) -> xr.DataArray:
-    center = np.array([
-        [da.I_g_center.item(), da.Q_g_center.item()],
-        [da.I_e_center.item(), da.Q_e_center.item()],
-        [da.I_f_center.item(), da.Q_f_center.item()],
-    ])
+    center = np.array(
+        [
+            [da.I_g_center.item(), da.Q_g_center.item()],
+            [da.I_e_center.item(), da.Q_e_center.item()],
+            [da.I_f_center.item(), da.Q_f_center.item()],
+        ]
+    )
     return da.assign(center_matrix=(["I", "Q"], center))

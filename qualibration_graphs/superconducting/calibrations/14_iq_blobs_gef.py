@@ -273,8 +273,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             #     continue
             operation = q.resonator.operations[node.parameters.operation]
             node.machine.qubits[q.name].resonator.gef_centers = (
-                (node.results["ds_fit"].sel(qubit=q.name).center_matrix.data * operation.length / 2**12).tolist()
-            )
+                node.results["ds_fit"].sel(qubit=q.name).center_matrix.data * operation.length / 2**12
+            ).tolist()
 
 
 # %% {Save_results}

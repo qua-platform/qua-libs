@@ -50,6 +50,7 @@ node = QualibrationNode[Parameters, Quam](
 
 node.namespace["Rabi_ef"] = True
 
+
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
@@ -113,9 +114,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
                 qubit.resonator.update_frequency(
-                    qubit.resonator.intermediate_frequency + (
-                        qubit.resonator.GEF_frequency_shift if node.parameters.use_state_discrimination else qubit.chi
-                    )
+                    qubit.resonator.intermediate_frequency
+                    + (qubit.resonator.GEF_frequency_shift if node.parameters.use_state_discrimination else qubit.chi)
                 )
             align()
 
