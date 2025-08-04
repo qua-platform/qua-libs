@@ -1,4 +1,3 @@
-
 from dataclasses import asdict
 
 from qualibrate import QualibrationNode
@@ -20,7 +19,7 @@ from calibration_utils.swap_oscillations.analysis import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
-    FitParameters
+    FitParameters,
 )
 from calibration_utils.swap_oscillations.plotting import plot_raw_data_with_fit
 
@@ -29,11 +28,8 @@ description = """
 
 """
 
-node = QualibrationNode(
-    name="swap_oscillations",
-    description=description,
-    parameters=Parameters()
-)
+node = QualibrationNode(name="swap_oscillations", description=description, parameters=Parameters())
+
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
@@ -44,12 +40,11 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.qubit_pairs = ["q0-1"]
     node.parameters.reset_type = "active"
     node.parameters.use_state_discrimination = True
-    node.parameters.min_wait_time_in_ns  = 16
-    node.parameters.max_wait_time_in_ns  = 250
-    node.parameters.wait_time_num_points  = 100
+    node.parameters.min_wait_time_in_ns = 16
+    node.parameters.max_wait_time_in_ns = 250
+    node.parameters.wait_time_num_points = 100
     node.parameters.control_amp_range = 0.4
     node.parameters.control_amp_step = 0.02
-
 
 
 # Instantiate the QUAM class from the state file
@@ -70,21 +65,23 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     #     detuning = qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency
     #     pulse_amplitudes[qp.name] = float(np.sqrt(-detuning / qp.qubit_control.freq_vs_flux_01_quad_term))
 
-
     node.namespace["qubits"] = qubits = [qp.qubit_control for qp in qubit_pairs] + [
         qp.qubit_target for qp in qubit_pairs
     ]
 
     # Loop parameters
     n_avg = node.parameters.num_shots  # The number of averages
-    control_amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
+    control_amplitudes = np.arange(
+        1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step
+    )
     node.namespace["control_amplitudes_scale"] = control_amplitudes
     idle_times = np.arange(0, node.parameters.max_time_in_ns // 4)
 
-
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
-        "amplitude": xr.DataArray(control_amplitudes, attrs={"long_name": "amplitudes of the control qubit flux pulse"}),
+        "amplitude": xr.DataArray(
+            control_amplitudes, attrs={"long_name": "amplitudes of the control qubit flux pulse"}
+        ),
         "idle_time": xr.DataArray(idle_times, attrs={"long_name": "pulse duration", "units": "ns"}),
     }
 
@@ -100,7 +97,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
             state = [declare(int) for _ in range(num_qubit_pairs)]
             state_st = [declare_stream() for _ in range(num_qubit_pairs)]
-
 
         for target in list(node.machine.active_qubits) + [
             qp.coupler for qp in node.machine.active_qubit_pairs if hasattr(qp, "coupler") and qp.coupler is not None
@@ -126,11 +122,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qp.qubit_control.z.play(
                                 "const",
                                 amplitude_scale=amp * qp.gates["SWAP_Coupler"].flux_pulse_control.amplitude / 0.1,
-                                duration=t) #TODO: SEE THAT WE HAVE qp.gates["SWAP_Coupler"] IN QUAM
+                                duration=t,
+                            )  # TODO: SEE THAT WE HAVE qp.gates["SWAP_Coupler"] IN QUAM
                             qp.coupler.play(
                                 "const",
                                 amplitude_scale=amp * qp.gates["SWAP_Coupler"].flux_pulse_control.amplitude / 0.1,
-                                duration=t)
+                                duration=t,
+                            )
 
                             qp.align()
 
@@ -154,16 +152,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n")
             for i in range(num_qubit_pairs):
                 if node.parameters.use_state_discrimination:
-                    state_c_st[i].buffer(len(idle_times)).buffer(len(control_amplitudes)).average().save(f"state_control{i}")
-                    state_t_st[i].buffer(len(idle_times)).buffer(len(control_amplitudes)).average().save(f"state_target{i}")
+                    state_c_st[i].buffer(len(idle_times)).buffer(len(control_amplitudes)).average().save(
+                        f"state_control{i}"
+                    )
+                    state_t_st[i].buffer(len(idle_times)).buffer(len(control_amplitudes)).average().save(
+                        f"state_target{i}"
+                    )
                     state_st[i].buffer(len(idle_times)).buffer(len(control_amplitudes)).average().save(f"state{i}")
                 else:
                     I_c_st[i].buffer(len(idle_times)).buffer(len(control_amplitudes)).average().save(f"I_control{i}")
                     Q_c_st[i].buffer(len(idle_times)).buffer(len(control_amplitudes)).average().save(f"Q_control{i}")
                     I_t_st[i].buffer(len(idle_times)).buffer(len(control_amplitudes)).average().save(f"I_target{i}")
                     Q_t_st[i].buffer(len(idle_times)).buffer(len(control_amplitudes)).average().save(f"Q_target{i}")
-
-
 
 
 # %% {Simulate}
@@ -178,7 +178,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
-
 
 
 # %% {Execute}
@@ -220,7 +219,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
 
 
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
@@ -230,7 +228,6 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_fit"] = ds_fit
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
@@ -239,11 +236,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     }
 
 
-
 @node.run_action()
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"], node.results["fit_results"])
+    fig = plot_raw_data_with_fit(
+        node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"], node.results["fit_results"]
+    )
     plt.show()
     # Store the generated figures
     node.results["figures"] = {"raw_fit": fig}
@@ -254,13 +252,13 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     if node.parameters.load_data_id is None:
         with node.record_state_updates():
             for qp in node.namespace["qubit_pairs"]:
-                flux_time_ns = int(1/(node.results["ds_fit"].sel(fit_vals="f")[qp.name]) / 2)
+                flux_time_ns = int(1 / (node.results["ds_fit"].sel(fit_vals="f")[qp.name]) / 2)
                 flux_time_including_zeros = flux_time_ns - flux_time_ns % 4 + 4
                 zero_padding = flux_time_including_zeros - flux_time_ns
                 flux_pulse_amp = node.results["ds_fit"].sel(fit_vals="a")[qp.name]
-                qp.gates['SWAP_Coupler'].flux_pulse_control.amplitude = flux_pulse_amp
-                qp.gates['SWAP_Coupler'].flux_pulse_control.zero_padding = zero_padding
-                qp.gates['SWAP_Coupler'].flux_pulse_control.length = flux_time_including_zeros
+                qp.gates["SWAP_Coupler"].flux_pulse_control.amplitude = flux_pulse_amp
+                qp.gates["SWAP_Coupler"].flux_pulse_control.zero_padding = zero_padding
+                qp.gates["SWAP_Coupler"].flux_pulse_control.length = flux_time_including_zeros
 
 
 # %% {Save_results}

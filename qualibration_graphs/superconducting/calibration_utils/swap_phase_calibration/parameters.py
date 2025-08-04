@@ -16,7 +16,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Perform qubit state discrimination. Default is False."""
 
 
-
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
