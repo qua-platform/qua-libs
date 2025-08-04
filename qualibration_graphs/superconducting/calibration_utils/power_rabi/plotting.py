@@ -79,7 +79,10 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
         else:
             fitted_data = None
 
-        if hasattr(ds, "I"):
+        if hasattr(ds, "IQ_abs"):
+            data = "IQ_abs"
+            label = "IQ amplitude [mV]"
+        elif hasattr(ds, "I"):
             data = "I"
             label = "Rotated I quadrature [mV]"
         elif hasattr(ds, "state"):
