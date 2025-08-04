@@ -1,4 +1,3 @@
-
 from dataclasses import asdict
 
 from qualibrate import QualibrationNode
@@ -20,7 +19,7 @@ from calibration_utils.swap_phase_calibration.analysis import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
-    FitParameters
+    FitParameters,
 )
 from calibration_utils.swap_phase_calibration.plotting import plot_raw_data_with_fit
 
@@ -29,11 +28,7 @@ description = """
 
 """
 
-node = QualibrationNode(
-    name="swap_phase_calibration",
-    description=description,
-    parameters=Parameters()
-)
+node = QualibrationNode(name="swap_phase_calibration", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -45,11 +40,9 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.qubit_pairs = ["q0-1"]
     node.parameters.reset_type = "active"
     node.parameters.use_state_discrimination = True
-    node.parameters.phase_min  = 0.0
-    node.parameters.phase_max  = 1.0
-    node.parameters.phase_steps_number  = 21
-
-
+    node.parameters.phase_min = 0.0
+    node.parameters.phase_max = 1.0
+    node.parameters.phase_steps_number = 21
 
 
 # Instantiate the QUAM class from the state file
@@ -69,7 +62,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # for qp in qubit_pairs:
     #     detuning = qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency
     #     pulse_amplitudes[qp.name] = float(np.sqrt(-detuning / qp.qubit_control.freq_vs_flux_01_quad_term))
-
 
     node.namespace["qubits"] = qubits = [qp.qubit_control for qp in qubit_pairs] + [
         qp.qubit_target for qp in qubit_pairs
@@ -96,8 +88,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state = [declare(int) for _ in range(num_qubit_pairs)]
             state_st = [declare_stream() for _ in range(num_qubit_pairs)]
 
-
-
         for target in list(node.machine.active_qubits) + [
             qp.coupler for qp in node.machine.active_qubit_pairs if hasattr(qp, "coupler") and qp.coupler is not None
         ]:
@@ -120,7 +110,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                             qp.align()
 
-                            qp.gates["SWAP_Coupler"].execute() #TODO: WHAT DOES THIS DO?
+                            qp.gates["SWAP_Coupler"].execute()  # TODO: WHAT DOES THIS DO?
 
                             qp.align()
                             qp.xy.frame_rotation_2pi(phase)
@@ -160,8 +150,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     Q_t_st[i].buffer(len(phases)).average().save(f"Q_target{i}")
 
 
-
-
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -174,7 +162,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
-
 
 
 # %% {Execute}
@@ -216,8 +203,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
 
 
-
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
@@ -227,7 +212,6 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_fit"] = ds_fit
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
@@ -236,15 +220,15 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     }
 
 
-
 @node.run_action()
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_control, fig_traget = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"], node.results["fit_results"])
+    fig_control, fig_traget = plot_raw_data_with_fit(
+        node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"], node.results["fit_results"]
+    )
     plt.show()
     # Store the generated figures
-    node.results["figures"] = {"raw_fit_control": fig_control,
-                               "raw_fit_target": fig_traget}
+    node.results["figures"] = {"raw_fit_control": fig_control, "raw_fit_target": fig_traget}
 
 
 @node.run_action()
@@ -252,9 +236,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     if node.parameters.load_data_id is None:
         with node.record_state_updates():
             for qp in node.namespace["qubit_pairs"]:
-                qp.gates['SWAP_Coupler'].flux_pulse_control.amplitude = node.results["results"][qp.name][
-                    "SWAP_amplitude"]
-
+                qp.gates["SWAP_Coupler"].flux_pulse_control.amplitude = node.results["results"][qp.name][
+                    "SWAP_amplitude"
+                ]
 
 
 # %% {Save_results}

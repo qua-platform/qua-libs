@@ -4,7 +4,7 @@ import xarray as xr
 from typing import List, Dict
 from qualibrate import QualibrationNode
 from calibration_utils.swap_amp_calibration.analysis import FitParameters
-from quam_builder.architecture.superconducting.qubit import AnyQubitPair #TODO: FIX THIS
+from quam_builder.architecture.superconducting.qubit import AnyQubitPair  # TODO: FIX THIS
 
 
 def plot_raw_data_with_fit(
@@ -12,7 +12,7 @@ def plot_raw_data_with_fit(
     qubit_pairs: List[AnyQubitPair],
     ds_fit: xr.Dataset,
     fit_results: Dict[str, Dict],
-    node: QualibrationNode
+    node: QualibrationNode,
 ) -> plt.Figure:
     """
     Plot raw data (control and target) and overlay fits or optimal amplitude lines.

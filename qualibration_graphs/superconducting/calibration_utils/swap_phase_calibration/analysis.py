@@ -6,6 +6,7 @@ from dataclasses import dataclass, asdict
 from qualibrate import QualibrationNode
 from qualibration_libs.analysis.fitting import fit_oscillation, oscillation
 
+
 @dataclass
 class FitParameters:
     success: bool = False
@@ -19,15 +20,9 @@ class FitParameters:
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
 
     if node.parameters.use_state_discrimination:
-        ds = ds.assign({
-            "data_var_control": ds.state_control,
-            "data_var_target": ds.state_target
-        })
+        ds = ds.assign({"data_var_control": ds.state_control, "data_var_target": ds.state_target})
     else:
-        ds = ds.assign({
-            "data_var_control": ds.I_control,
-            "data_var_target": ds.I_target
-        })
+        ds = ds.assign({"data_var_control": ds.I_control, "data_var_target": ds.I_target})
 
     return ds
 
@@ -88,7 +83,11 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             else:
                 node.results["results"][name] = {}
                 idx = (ds_qp.data_var_target - ds_qp.data_var_control).mean(dim="N_pi_vec").argmax(dim="amplitude")
-                amp_opt = node.namespace["control_amplitudes_scale"] * qp.gates["SWAP_Coupler"].flux_pulse_control.amplitude * float(ds_qp.amplitude[idx].values)
+                amp_opt = (
+                    node.namespace["control_amplitudes_scale"]
+                    * qp.gates["SWAP_Coupler"].flux_pulse_control.amplitude
+                    * float(ds_qp.amplitude[idx].values)
+                )
                 node.results["results"][name]["SWAP_amplitude"] = amp_opt
                 fit_results[name] = FitParameters(success=True, optimal_amplitude=amp_opt)
 
@@ -101,13 +100,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     return xr.concat(ds_fit.values(), dim="qubit"), {k: asdict(v) for k, v in fit_results.items()}
 
 
-
 def log_fitted_results(fit_results: Dict[str, Dict], log_callable=None):
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
 
     for name, result in fit_results.items():
-        log_callable(
-            f"{name}: SUCCESS={result['success']}, "
-            f"amp={result['optimal_amplitude']:.3e}"
-        )
+        log_callable(f"{name}: SUCCESS={result['success']}, " f"amp={result['optimal_amplitude']:.3e}")
