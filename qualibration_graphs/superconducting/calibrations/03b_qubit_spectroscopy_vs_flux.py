@@ -90,6 +90,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num = node.parameters.num_flux_points
     dcs = np.linspace(-span / 2, +span / 2, num)
 
+    # Setting the flux point of the qubits
+    for qubit in qubits:
+        qubit.z.flux_point = "joint"
+
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
@@ -106,7 +110,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             for qubit in multiplexed_qubits.values():
-                node.machine.initialize_qpu(target=qubit)
+                node.machine.initialize_qpu(target=qubit, flux_point=qubit.z.flux_point)
             align()
 
             with for_(n, 0, n < n_avg, n + 1):
@@ -264,3 +268,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
+

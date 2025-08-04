@@ -157,8 +157,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
-
-
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
