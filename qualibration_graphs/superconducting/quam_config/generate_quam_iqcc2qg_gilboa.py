@@ -7,10 +7,11 @@ import subprocess
 
 
 # Get the state folder path from environment variable
-quam_state_folder_path = Path(os.environ["QUAM_STATE_PATH"])
+# quam_state_folder_path = Path(os.environ["QUAM_STATE_PATH"])
+quam_state_folder_path = Path("/workspaces/qualibration_graphs/superconducting/quam_state")
 
-shutil.rmtree(quam_state_folder_path)
-shutil.rmtree((quam_state_folder_path / "../quam_state_copy").resolve())
+shutil.rmtree(quam_state_folder_path, ignore_errors=True)
+shutil.rmtree((quam_state_folder_path / "../quam_state_copy").resolve(), ignore_errors=True)
 
 script = "generate_quam_iqcc.py"
 print(f"Running: {script}")
@@ -40,7 +41,11 @@ from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 from quam_builder.builder.qop_connectivity import build_quam_wiring
 from quam_builder.builder.superconducting import build_quam
-from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses, add_Square_pulses, add_default_transmon_pair_pulses
+from quam_builder.builder.superconducting.pulses import (
+    add_DragCosine_pulses,
+    add_Square_pulses,
+    add_default_transmon_pair_pulses,
+)
 from quam_builder.architecture.superconducting.custom_gates import cross_resonance
 from quam.components import pulses
 from qualang_tools.units import unit
@@ -57,17 +62,19 @@ with open(path_latest_wiring, "r") as f:
     latest_wiring = json.load(f)
 
 
-
 connectivity = Connectivity()
 instruments = Instruments()
 # Single qubit individual drive and readout lines
 
 import re
-pattern = r'/ports/\w+/con(\d+)/(\d+)/(\d+)'
+
+pattern = r"/ports/\w+/con(\d+)/(\d+)/(\d+)"
 
 qubit_pairs = [
-    ("A1", "A2"), ("A2", "A1"),
-    ("A3", "A4"), ("A4", "A3"),
+    ("B1", "B2"),
+    ("B2", "B1"),
+    ("B3", "B4"),
+    ("B4", "B3"),
 ]
 qubits_in_pairs = unique_qubits = sorted(set(q for pair in qubit_pairs for q in pair))
 
@@ -122,17 +129,14 @@ for qb, elems in latest_wiring["wiring"]["qubits"].items():
             }
 
 
-
 for con, slots in mwfem_slots.items():
     instruments.add_mw_fem(controller=con, slots=list(slots))
 
 for con, slots in lffem_slots.items():
     instruments.add_lf_fem(controller=con, slots=list(slots))
-    
 
 
 for qb_name, elem_port in wires.items():
-
     rr = elem_port["rr"]
     connectivity.add_resonator_line(
         qubits=qb_name,
@@ -156,7 +160,7 @@ for qb_name, elem_port in wires.items():
 
 
 # Two-qubit drives
-for (qc, qt) in qubit_pairs:
+for qc, qt in qubit_pairs:
     idc, idt = wires[qc], wires[qt]
     kv = wires[qc]["xy"]
 
@@ -180,8 +184,6 @@ visualize(connectivity.elements, available_channels=instruments.available_channe
 plt.show(block=True)
 
 
-
-
 ########################################################################################################################
 # %%                                   Build the wiring and QUAM
 ########################################################################################################################
@@ -194,15 +196,15 @@ build_quam_wiring(connectivity, host_ip, cluster_name, machine)
 
 # Reload QUAM, build the QUAM object and save the state as state.json
 machine = Quam.load()
-machine.network.update({
-    "cloud": "true",
-    "quantum_computer_backend": "arbel",
-    "octave_ips": [],
-    "octave_ports": [],
-})
+machine.network.update(
+    {
+        "cloud": "true",
+        "quantum_computer_backend": "arbel",
+        "octave_ips": [],
+        "octave_ports": [],
+    }
+)
 build_quam(machine)
-
-
 
 
 #######################
@@ -216,11 +218,10 @@ active_qubits = []
 
 # Update qubit rr freq and power
 for qb_name, qubit in machine.qubits.items():
-
     qb_name = qubit.name[1:]
 
     try:
-        # qubit 
+        # qubit
         state_qubit = latest_state["qubits"][qubit.name]
         qubit.chi = state_qubit.get("chi")
         qubit.T1 = state_qubit.get("T1")
@@ -247,7 +248,9 @@ for qb_name, qubit in machine.qubits.items():
             rr.opx_input.downconverter_frequency = state_rr_in_port.get("downconverter_frequency")
         # rr - qubit
         state_qubit_rr = latest_state["qubits"][qubit.name]["resonator"]
-        rr.thread = f"{qubit.name}_{rr.opx_output.controller_id}_slot{rr.opx_output.fem_id}" # state_qubit_rr.get("thread")
+        rr.thread = (
+            f"{qubit.name}_{rr.opx_output.controller_id}_slot{rr.opx_output.fem_id}"  # state_qubit_rr.get("thread")
+        )
         rr.time_of_flight = state_qubit_rr.get("time_of_flight")
         rr.confusion_matrix = state_qubit_rr.get("confusion_matrix")
         print(f"{qubit.name} - rr IF before: ", rr.intermediate_frequency)
@@ -260,17 +263,25 @@ for qb_name, qubit in machine.qubits.items():
         rr.operations["readout"].length = state_qubit_rr["operations"]["readout"].get("length")
         rr.operations["readout"].amplitude = state_qubit_rr["operations"]["readout"].get("amplitude")
         rr.operations["readout"].threshold = state_qubit_rr["operations"]["readout"].get("threshold", 0)
-        rr.operations["readout"].rus_exit_threshold = state_qubit_rr["operations"]["readout"].get("rus_exit_threshold", 0)
-        rr.operations["readout"].integration_weights_angle = state_qubit_rr["operations"]["readout"].get("integration_weights_angle", 0)
+        rr.operations["readout"].rus_exit_threshold = state_qubit_rr["operations"]["readout"].get(
+            "rus_exit_threshold", 0
+        )
+        rr.operations["readout"].integration_weights_angle = state_qubit_rr["operations"]["readout"].get(
+            "integration_weights_angle", 0
+        )
 
         # xy out
         xy = qubit.xy
         kv = wires[qb_name]["xy"]
         con, slot, out_port = kv.get("con"), kv.get("slot"), kv.get("out_port")
-        xy.thread = f"{qubit.name}_{xy.opx_output.controller_id}_slot{xy.opx_output.fem_id}" # state_qubit_xy.get("thread") 
+        xy.thread = (
+            f"{qubit.name}_{xy.opx_output.controller_id}_slot{xy.opx_output.fem_id}"  # state_qubit_xy.get("thread")
+        )
         state_xy_out_port = latest_state["ports"]["mw_outputs"][f"con{con}"][str(slot)][str(out_port)]
         xy.opx_output.band = state_xy_out_port.get("band")
-        print(f"{qubit.name} - xy port: {xy.opx_output.controller_id}-{xy.opx_output.fem_id}-{xy.opx_output.port_id}, band: {state_xy_out_port.get('band')}")
+        print(
+            f"{qubit.name} - xy port: {xy.opx_output.controller_id}-{xy.opx_output.fem_id}-{xy.opx_output.port_id}, band: {state_xy_out_port.get('band')}"
+        )
         xy.opx_output.full_scale_power_dbm = state_xy_out_port.get("full_scale_power_dbm", -11)
         state_qubit_xy = latest_state["qubits"][qubit.name]["xy"]
         if qb_name in qubits_in_pairs:
@@ -279,7 +290,10 @@ for qb_name, qubit in machine.qubits.items():
             # print(f"{qubit.name} - xy upconverters before:", xy.opx_output.upconverters)
             # xy.opx_output.upconverter_frequency = state_xy_out_port.get("upconverter_frequency")
             # xy.opx_output.upconverters = {1: {"frequency": state_xy_out_port.get("upconverter_frequency")}, 2: {"frequency": 123}}
-            xy.opx_output.upconverters = {1: {"frequency": state_xy_out_port.get("upconverter_frequency")}, 2: {"frequency": 123.0}}
+            xy.opx_output.upconverters = {
+                1: {"frequency": state_xy_out_port.get("upconverter_frequency")},
+                2: {"frequency": 123.0},
+            }
             xy.upconverter = 1
             print(f"{qubit.name} - {state_xy_out_port}")
             print(f"{qubit.name} - xy upconverters after: {xy.opx_output.upconverters}")
@@ -312,7 +326,8 @@ for qb_name, qubit in machine.qubits.items():
         kv = wires[qb_name]["z"]
         con, slot, out_port = kv.get("con"), kv.get("slot"), kv.get("out_port")
         state_z_out_port = latest_state["ports"]["analog_outputs"][f"con{con}"][str(slot)][str(out_port)]
-        z.opx_output.output_mode = state_z_out_port.get("output_mode")
+        
+        z.opx_output.output_mode = state_z_out_port.get("output_mode", "direct")
         z.opx_output.upsampling_mode = state_z_out_port.get("upsampling_mode")
         # z - qubit
         state_qubit_z = latest_state["qubits"][qubit.name]["z"]
@@ -348,7 +363,7 @@ for qb_name, qubit in machine.qubits.items():
             amplitude=0.5,
             axis_angle=0.0,
         )
-        
+
         active_qubits.append(qubit.name)
 
     except:
@@ -366,7 +381,6 @@ machine.active_qubit_names = active_qubits
 for qp_name, qb_pair in machine.qubit_pairs.items():
     print(qp_name, qb_pair)
     print(dir(qb_pair))
-
 
 
 for qp_name, qb_pair in machine.qubit_pairs.items():
@@ -389,7 +403,6 @@ for qp_name, qb_pair in machine.qubit_pairs.items():
     print(f"{qp_name} - CR target_qubit_LO_frequency: {qb_pair.cross_resonance.target_qubit_LO_frequency}")
     print(f"{qp_name} - CR target_qubit_IF_frequency: {qb_pair.cross_resonance.target_qubit_IF_frequency}")
     print(f"{qp_name} - CR LO_frequency: {qb_pair.cross_resonance.LO_frequency}")
-
 
     qb_pair.zz_drive.target_qubit_LO_frequency = f"#/qubits/{qbt.name}/xy/LO_frequency"
     qb_pair.zz_drive.target_qubit_IF_frequency = f"#/qubits/{qbt.name}/xy/intermediate_frequency"
@@ -430,7 +443,7 @@ for qp_name, qb_pair in machine.qubit_pairs.items():
             detuning=0,
             # correction_phase=0.0,
         )
-        qb_pair.qubit_target.xy.operations[f"cr_cosine_{qb_pair.name}"]= pulses.DragCosinePulse(
+        qb_pair.qubit_target.xy.operations[f"cr_cosine_{qb_pair.name}"] = pulses.DragCosinePulse(
             length=100,
             amplitude=1.0,
             axis_angle=0.0,
@@ -441,7 +454,7 @@ for qp_name, qb_pair in machine.qubit_pairs.items():
         # gauss
         qb_pair.cross_resonance.operations["gauss"] = pulses.DragGaussianPulse(
             length=100,
-            sigma=100/5,
+            sigma=100 / 5,
             amplitude=1.0,
             axis_angle=0.0,
             anharmonicity=260 * u.MHz,
@@ -449,9 +462,9 @@ for qp_name, qb_pair in machine.qubit_pairs.items():
             detuning=0,
             # correction_phase=0.0,
         )
-        qb_pair.qubit_target.xy.operations[f"cr_gauss_{qb_pair.name}"]= pulses.DragGaussianPulse(
+        qb_pair.qubit_target.xy.operations[f"cr_gauss_{qb_pair.name}"] = pulses.DragGaussianPulse(
             length=100,
-            sigma=100/5,
+            sigma=100 / 5,
             amplitude=1.0,
             axis_angle=0.0,
             anharmonicity=260 * u.MHz,
@@ -461,19 +474,19 @@ for qp_name, qb_pair in machine.qubit_pairs.items():
 
         # flattop
         rise_fall_len = 8
-        flattop_lens = np.arange(0, 80, 20).tolist() # must be python list (not numpy array)
+        flattop_lens = np.arange(0, 80, 20).tolist()  # must be python list (not numpy array)
         for flattop_len in flattop_lens:
             qb_pair.cross_resonance.operations[f"flattop_{flattop_len:04d}"] = pulses.FlatTopGaussianPulse(
                 amplitude=1.0,
                 length=rise_fall_len + flattop_len + rise_fall_len,
                 flat_length=flattop_len,
-                axis_angle=0.0, 
+                axis_angle=0.0,
             )
             qb_pair.qubit_target.xy.operations[f"cr_flattop_{flattop_len:04d}"] = pulses.FlatTopGaussianPulse(
                 amplitude=1.0,
                 length=rise_fall_len + flattop_len + rise_fall_len,
                 flat_length=flattop_len,
-                axis_angle=0.0, 
+                axis_angle=0.0,
             )
 
     except:
@@ -482,11 +495,11 @@ for qp_name, qb_pair in machine.qubit_pairs.items():
     print()
 
 
-
 ########################################################################################################################
 # %%                                         Save the updated QUAM
 ########################################################################################################################
 from pprint import pprint
+
 # save into state.json
 machine.save()
 # Visualize the QUA config and save it

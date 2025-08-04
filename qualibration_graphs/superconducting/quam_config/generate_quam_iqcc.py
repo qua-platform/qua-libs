@@ -4,7 +4,8 @@ import json
 from iqcc_cloud_client import IQCC_Cloud
 
 
-qc = IQCC_Cloud("arbel")
+# qc = IQCC_Cloud("arbel")
+qc = IQCC_Cloud("gilboa")
 
 # Get the latest state and wiring
 latest_wiring = qc.state.get_latest("wiring")
