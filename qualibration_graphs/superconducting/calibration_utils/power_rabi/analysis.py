@@ -1,12 +1,12 @@
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Dict
+from typing import Dict, Tuple
+
 import numpy as np
 import xarray as xr
-
 from qualibrate import QualibrationNode
-from qualibration_libs.data import convert_IQ_to_V
 from qualibration_libs.analysis import fit_oscillation
+from qualibration_libs.data import convert_IQ_to_V, add_amplitude_and_phase
 from quam_config.instrument_limits import instrument_limits
 
 
@@ -51,9 +51,13 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     if node.namespace["Rabi_ef"] is not None:
         full_amp = np.array([ds.amp_prefactor * q.xy.operations["EF_x180"].amplitude for q in node.namespace["qubits"]])
     else:
-        full_amp = np.array([ds.amp_prefactor * q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]])
+        full_amp = np.array(
+            [ds.amp_prefactor * q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]]
+        )
     ds = ds.assign_coords(full_amp=(["qubit", "amp_prefactor"], full_amp))
     ds.full_amp.attrs = {"long_name": "pulse amplitude", "units": "V"}
+    if node.name == "12b_power_rabi_ef" and hasattr(ds, "I"):
+        ds = add_amplitude_and_phase(ds, "amp_prefactor", subtract_slope_flag=True)
     return ds
 
 
@@ -79,7 +83,10 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         if node.parameters.use_state_discrimination:
             fit_vals = fit_oscillation(ds_fit.state, "amp_prefactor")
         else:
-            fit_vals = fit_oscillation(ds_fit.I, "amp_prefactor")
+            if node.name == "12b_power_rabi_ef":
+                fit_vals = fit_oscillation(ds_fit.IQ_abs, "amp_prefactor")
+            else:
+                fit_vals = fit_oscillation(ds_fit.I, "amp_prefactor")
 
         ds_fit = xr.merge([ds, fit_vals.rename("fit")])
     else:
