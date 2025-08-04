@@ -199,14 +199,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 
-# ds = node.results["ds_raw"]
-# fig, axs = plt.subplots()
-# ds.state_control.plot(ax=axs, marker="o", linestyle="--", color= "blue", label="Control Qubit")
-# ds.state_target.plot(ax=axs, marker="o", linestyle="--", color= "red", label="Target Qubit")
-# axs.legend()
-# fig.tight_layout()
-
-
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
