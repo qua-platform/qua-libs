@@ -151,3 +151,13 @@ def integer_histogram(da: xr.DataArray, dim: str, minlength: Optional[int] = Non
 
     da2 = xr.apply_ufunc(count_bins, da, input_core_dims=[[dim]], output_core_dims=[[da.name]], vectorize=True)
     return da2.assign_coords({da.name: np.arange(len(da2[da.name]))})
+
+def dBm(full_scale_power_dbm, amp):
+    v=np.sqrt((2*50*10**(full_scale_power_dbm/10))/1000)*amp 
+    p_w=(v**2)/50
+    dbm=10*np.log10(p_w*1000)-10
+    return dbm
+
+def mV(full_scale_power_dbm, amp):
+    v=np.sqrt((2*50*10**(full_scale_power_dbm/10))/1000)*amp     
+    return v*1e3
