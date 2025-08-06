@@ -20,10 +20,10 @@ from calibration_utils.resonator_spectroscopy_vs_amplitude import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
+from quam_builder.tools.power_tools import calculate_voltage_scaling_factor
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.hardware.power_tools import calculate_voltage_scaling_factor
 from qualibration_libs.core import tracked_updates
 
 
