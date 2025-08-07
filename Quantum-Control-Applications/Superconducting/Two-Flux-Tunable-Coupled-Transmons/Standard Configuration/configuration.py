@@ -5,6 +5,7 @@ import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
+
 pio.renderers.default = "browser"
 #######################
 # AUXILIARY FUNCTIONS #

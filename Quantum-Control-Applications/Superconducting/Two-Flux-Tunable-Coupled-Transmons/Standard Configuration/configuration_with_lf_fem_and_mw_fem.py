@@ -8,6 +8,8 @@ import numpy as np
 import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
+from qm import QuantumMachinesManager
+from qm import QopCaps
 
 pio.renderers.default = "browser"
 
@@ -732,3 +734,15 @@ config = {
         },
     },
 }
+
+
+full_config = config.copy()
+controller_keys = ['controllers','mixer']
+controller_config= {key:config.pop(key) for key in controller_keys if key in config}
+logical_config = config
+
+
+if __name__ == "__main__":
+    print(full_config.keys())
+    print(controller_config.keys())
+    print(logical_config.keys())

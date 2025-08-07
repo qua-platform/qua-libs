@@ -6,7 +6,7 @@ All the macros below have been written and tested with the basic configuration. 
 
 from qm.qua import *
 from qualang_tools.addons.variables import assign_variables_to_element
-
+from qm import QopCaps
 ##############
 # QUA macros #
 ##############
@@ -203,3 +203,43 @@ def filter_calc(exponential):
         feedforward_taps = 2 * feedforward_taps / max(feedforward_taps)
 
     return feedforward_taps, feedback_taps
+
+
+def qm_wrapper(qmm, program, config):
+    full_config = config.copy()
+    # Split config into controller and logical parts
+    controller_config = {key: full_config.pop(key) for key in ['controllers', 'mixer'] if key in full_config}
+    logical_config = full_config
+    if "octave" in full_config or not qmm.capabilities.supports(QopCaps.config_v2):
+        qm_config = full_config
+        args = (program,) 
+    else:
+        qm_config = controller_config
+        args = (program, logical_config)
+    qm = qmm.open_qm(qm_config)
+    job = qm.execute(*args)
+    return job
+
+
+def qm_connect(qmm, config):
+    full_config = config.copy()
+
+    # Split config into controller and logical parts
+    controller_config = {key: full_config.pop(key) for key in ['controllers', 'mixer'] if key in full_config}
+    logical_config = full_config
+
+    # Decide configuration and arguments
+    if "octave" in full_config or not qmm.capabilities.supports(QopCaps.config_v2):
+        qm_config = full_config
+        args = ()
+    else:
+        qm_config = controller_config
+        args = (logical_config,)
+
+    # Open QM connection
+    qm = qmm.open_qm(qm_config)
+
+    return qm, args
+
+qm, execute_config = qm_connect(qmm, config)
+job = qm.execute(program, *execute_config)
