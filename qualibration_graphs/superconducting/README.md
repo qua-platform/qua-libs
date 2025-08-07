@@ -93,7 +93,7 @@ The QUAlibrate framework needs some initial configuration to know where to find 
 
     **Note**: If you receive a `Permission Denied` error, the script may have been installed with the wrong permissions. This has been observed when installing using Anaconda environments. In this case, you can also run the setup using `python -c "import qualibration_libs.config.setup_qualibrate as m; m.setup_qualibrate_config()"`
 
-3.  **Follow Prompts:** The script will interactively ask for the following details:
+2.  **Follow Prompts:** The script will interactively ask for the following details:
 
     - `project name`: A unique name for your project or QPU chip (e.g., `MyQPU_Chip1`).  
       Default: `QPU_project`.
@@ -106,7 +106,7 @@ The QUAlibrate framework needs some initial configuration to know where to find 
 
           You can press `Enter` or type `y` to accept the defaults, or `n` to provide custom paths.
 
-4.  **Confirm Full Config:** The script will show the complete QUAlibrate configuration for final confirmation.
+3.  **Confirm Full Config:** The script will show the complete QUAlibrate configuration for final confirmation.
     For detailed explanations of all settings, refer to the [QUAlibrate Configuration File Documentation](https://qua-platform.github.io/qualibrate/configuration/).
 
 ### Verify Setup
