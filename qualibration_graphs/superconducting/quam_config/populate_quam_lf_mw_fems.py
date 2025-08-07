@@ -15,7 +15,8 @@ import json
 from qualang_tools.units import unit
 from quam_config import Quam
 from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
-from quam.components.pulses import GaussianPulse
+from quam_builder.architecture.superconducting.custom_gates.cz import CZGate
+from quam.components.pulses import GaussianPulse, FlatTopGaussianPulse
 import numpy as np
 from pprint import pprint
 
@@ -218,6 +219,52 @@ for k, q in enumerate(machine.qubits):
 
 
 ########################################################################################################################
+# %%                                        Qubit pairs and CZ macros
+########################################################################################################################
+
+
+for id_pair in machine.qubit_pairs:
+
+    cz_pulse = FlatTopGaussianPulse(length=100, amplitude=0.1, flat_length=80, id="cz_flattop_pulse")
+    cz = CZGate(flux_pulse_control=cz_pulse, coupler_flux_pulse=cz_pulse)
+
+    pair = machine.qubit_pairs[id_pair]
+    pair.macros["cz_flattop"] = cz
+
+    qp_name = pair.id
+
+    # Qubit pulse parameters
+    qubit_pulse_length = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/length"
+    qubit_pulse_flat_length = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/flat_length"
+    qubit_pulse_amp = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/amplitude"
+
+    pulse_name = pair.macros["cz_flattop"].flux_pulse_control_label
+
+    control_qb = pair.qubit_control
+
+    control_qb.z.operations[pulse_name] = FlatTopGaussianPulse(length=100, amplitude=0.1, flat_length=80)
+
+    control_qb.z.operations[pulse_name].length = qubit_pulse_length
+    control_qb.z.operations[pulse_name].flat_length = qubit_pulse_flat_length
+    control_qb.z.operations[pulse_name].amplitude = qubit_pulse_amp
+
+    # Coupler pulse parameters
+    coupler_pulse_length = pair.macros["cz_flattop"].coupler_flux_pulse.get_reference() + "/length"
+    coupler_pulse_flat_length = pair.macros["cz_flattop"].coupler_flux_pulse.get_reference() + "/flat_length"
+    coupler_pulse_amp = pair.macros["cz_flattop"].coupler_flux_pulse.get_reference() + "/amplitude"
+
+    pulse_name = pair.macros["cz_flattop"].coupler_flux_pulse_label
+
+    coupler = pair.coupler
+
+    coupler.operations[pulse_name] = FlatTopGaussianPulse(length=100, amplitude=0.1, flat_length=80)
+
+    coupler.operations[pulse_name].length = coupler_pulse_length
+    coupler.operations[pulse_name].flat_length = coupler_pulse_flat_length
+    coupler.operations[pulse_name].amplitude = coupler_pulse_amp
+
+
+########################################################################################################################
 # %%                                         Save the updated QUAM
 ########################################################################################################################
 # save into state.json
@@ -226,3 +273,5 @@ machine.save()
 pprint(machine.generate_config())
 with open("qua_config.json", "w+") as f:
     json.dump(machine.generate_config(), f, indent=4)
+
+# %%
