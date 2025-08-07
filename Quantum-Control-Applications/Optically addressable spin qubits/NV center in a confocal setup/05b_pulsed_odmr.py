@@ -93,7 +93,7 @@ qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octa
 #######################
 # Simulate or execute #
 #######################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration

@@ -8,12 +8,12 @@ does not take into account the finite length of the pi-pulses.
 The data is post-processed to determine the coherence time T2 associated with the XY8 order sweep measurement.
 
 The sequence is defined in the following way:
-pix/2 - [t - pix - 2t - piy - 2t - pix - 2t - piy - 2t - piy - 2t - pix - 2t - piy - 2t - pix - t] ^ xy8_order - pix/2
+x90 - [t - x180 - 2t - y180 - 2t - x180 - 2t - y180 - 2t - y180 - 2t - x180 - 2t - y180 - 2t - x180 - t] ^ xy8_order - x90
 
-There is a possible timing gap due to QUA's pulse processing between the initial pi/2-pulse and the XY8 block.
+There is a possible timing gap due to QUA's pulse processing between the initial x90-pulse and the XY8 block.
 To evaluate the length of the gap the `with strict_timing_()` command can be used and the gap duration can
 be extracted from the error message.
-To compensate the gap, the gap duration is added to the time between the XY8 block and the last pi/2-pulse.
+The gap is acknowledged by adding the duration to the time between the XY8 block and the last x90-pulse.
 
 Prerequisites:
     - Ensure calibration of the different delays in the system (calibrate_delays).
@@ -38,7 +38,9 @@ import matplotlib.pyplot as plt
 ##################
 #   Parameters   #
 ##################
-tau = 2 * 50  # The time between pi-pulses in clock cycles (4ns)
+# The time the time between pi-pulses in clock cycles (4ns)
+# Must be a multiple of 2 clock cycles to ensure that tau_half is a multiple of a single clock cycle
+tau = 2 * 50
 order_vec = np.arange(1, 21, 1, dtype=int)  # order vector for varying the order n of the XY8-n measurement
 n_avg = 1_000_000
 t_gap = 10  # possible timing gap in clock cycles that is to be compensated
@@ -47,6 +49,7 @@ tau_half = tau // 2  # time between pi/2-pulse and XY8 block
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "tau": tau,
     "order_vec": order_vec,
     "config": config,
 }
@@ -55,7 +58,7 @@ save_data_dict = {
 ##########################
 #  XY8 sequence wrapper  #
 ##########################
-def xy8_block():
+def xy8_block(tau):
     # A single XY8 block, ends at x frame.
     play("x180", "NV")  # 1 X
     wait(tau, "NV")
@@ -104,13 +107,16 @@ with program() as xy8_order_sweep:
     # XY8-n sequence
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(xy8_order, order_vec)):
-            play("x90", "NV")
-            with for_(i, 0, i < xy8_order, i + 1):
-                wait(tau_half, "NV")
-                xy8_block()
-                wait(tau_half, "NV")
-            wait(t_gap, "NV")  # compensate for timing gap
-            play("x90", "NV")
+            with strict_timing_():  # Strict_timing validates that the sequence will be played without gaps
+                                    # If gaps are detected, then an error will be raised and the duration has to be
+                                    # added to t_gap
+                play("x90", "NV")
+                with for_(i, 0, i < xy8_order, i + 1):
+                    wait(tau_half, "NV")
+                    xy8_block(tau)
+                    wait(tau_half, "NV")
+                wait(t_gap, "NV")  # acknowledge the timing gap
+                play("x90", "NV")
             align()  # Play the laser pulse after the XY8 sequence
             # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
@@ -181,12 +187,14 @@ else:
     while results.is_processing():
         # Fetch results
         counts1, counts2, iteration = results.fetch_all()
+        counts1_kcps = counts1 / 1000 / (meas_len_1 / u.s)
+        counts2_kcps = counts2 / 1000 / (meas_len_1 / u.s)
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(2 * order_vec, counts1 / 1000 / (meas_len_1 / u.s), label="x90_XY8_x90")
-        plt.plot(2 * order_vec, counts2 / 1000 / (meas_len_1 / u.s), label="x90_XY8_-x90")
+        plt.plot(2 * order_vec, counts1_kcps, label="x90_XY8_x90")
+        plt.plot(2 * order_vec, counts2_kcps, label="x90_XY8_-x90")
         plt.xlabel("XY8 order")
         plt.ylabel("Intensity [kcps]")
         plt.title("XY8 order sweep")
@@ -194,7 +202,7 @@ else:
         plt.pause(0.1)
 
         plt.cla()
-        contrast = (counts2 - counts1) / 1000 / (meas_len_1 / u.s)
+        contrast = counts2_kcps - counts1_kcps
         plt.plot(2 * order_vec, contrast, label="XY8 contrast")
         plt.xlabel("XY8 order")
         plt.ylabel("Contrast [kcps]")
@@ -204,8 +212,9 @@ else:
     # Save results
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
-    save_data_dict.update({"counts1_data": counts1})
-    save_data_dict.update({"counts2_data": counts2})
+    save_data_dict.update({"counts1_data": counts1_kcps})
+    save_data_dict.update({"counts2_data": counts2_kcps})
+    save_data_dict.update({"contrast": contrast})
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
