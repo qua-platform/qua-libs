@@ -10,7 +10,6 @@ This frequency can be used to update the NV intermediate frequency in the config
 Prerequisites:
     - Ensure calibration of the different delays in the system (calibrate_delays).
     - Update the different delays in the configuration
-    - Setting the pi pulse amplitude and duration in the configuration
 
 Next steps before going to the next node:
     - Update the NV frequency, labeled as "NV_IF_freq", in the configuration.
