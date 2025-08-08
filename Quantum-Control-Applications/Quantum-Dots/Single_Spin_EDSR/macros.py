@@ -34,7 +34,7 @@ def RF_reflectometry_macro(
         I_st = declare_stream()
     if Q_st is None:
         Q_st = declare_stream()
-    measure(operation, element, None, demod.full("cos", I, element_output), demod.full("sin", Q, element_output))
+    measure(operation, element, demod.full("cos", I, element_output), demod.full("sin", Q, element_output))
     save(I, I_st)
     save(Q, Q_st)
     return I, Q, I_st, Q_st
@@ -47,7 +47,7 @@ def DC_current_sensing_macro(
         dc_signal = declare(fixed)
     if dc_signal_st is None:
         dc_signal_st = declare_stream()
-    measure(operation, element, None, integration.full("constant", dc_signal, element_output))
+    measure(operation, element, integration.full("constant", dc_signal, element_output))
     save(dc_signal, dc_signal_st)
     return dc_signal, dc_signal_st
 

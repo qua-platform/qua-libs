@@ -32,7 +32,7 @@ def measurement_macro_with_pulses(x_element, y_element, measured_element, wait_b
     # wait for 1us before measuring
     # wait(wait_before_meas // 4, measured_element)
 
-    measure("measure", measured_element, None, demod.full("cos", I), demod.full("sin", Q))
+    measure("measure", measured_element, demod.full("cos", I), demod.full("sin", Q))
     save(I, I_stream)
     save(Q, Q_stream)
 

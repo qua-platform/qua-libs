@@ -23,7 +23,7 @@ with program() as TimeTagging_calibration:
     adc_st = declare_stream(adc_trace=True)
     with for_(n, 0, n < n_avg, n + 1):
         play("laser_ON", "AOM")
-        measure("long_readout", "SNSPD", adc_st)
+        measure("long_readout", "SNSPD", adc_stream=adc_st)
         wait(1000, "SNSPD")
 
     with stream_processing():

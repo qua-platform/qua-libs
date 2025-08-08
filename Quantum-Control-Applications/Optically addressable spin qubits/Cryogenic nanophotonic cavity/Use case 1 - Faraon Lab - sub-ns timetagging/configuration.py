@@ -13,7 +13,7 @@ def IQ_imbalance(g, phi):
     """
     Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
     be seen here:
-    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
+    https://pubs.aip.org/aip/rsi/article/91/12/124707/1021407/Calibration-of-mixer-amplitude-and-phase-imbalance
 
     :param g: relative gain imbalance between the I & Q ports (unit-less). Set to 0 for no gain imbalance.
     :param phi: relative phase imbalance between the I & Q ports (radians). Set to 0 for no phase imbalance.

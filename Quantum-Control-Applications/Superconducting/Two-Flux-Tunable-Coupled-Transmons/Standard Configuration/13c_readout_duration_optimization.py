@@ -75,7 +75,6 @@ with program() as ro_weights_opt:
             measure(
                 "readout",
                 f"rr{res}",
-                None,
                 demod.accumulated("rotated_cos", II[rr], division_length, "out1"),
                 demod.accumulated("rotated_sin", IQ[rr], division_length, "out2"),
                 demod.accumulated("rotated_minus_sin", QI[rr], division_length, "out1"),
@@ -102,7 +101,6 @@ with program() as ro_weights_opt:
             measure(
                 "readout",
                 f"rr{res}",
-                None,
                 demod.accumulated("rotated_cos", II[rr], division_length, "out1"),
                 demod.accumulated("rotated_sin", IQ[rr], division_length, "out2"),
                 demod.accumulated("rotated_minus_sin", QI[rr], division_length, "out1"),

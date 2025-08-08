@@ -29,7 +29,7 @@ with program() as reset_ph:
     # This program plays the same pulse twice with 200ns in between, but with the phase of the 2nd pulse reset.
     play("const", "qubit")
     wait(50, "qubit")  # 50 cycles = 200 ns
-    reset_phase("qubit")
+    reset_if_phase("qubit")
     play("const", "qubit")
 
 with program() as reset_ph_and_rotate:
@@ -37,17 +37,17 @@ with program() as reset_ph_and_rotate:
     # and shifted by pi/2.
     play("const", "qubit")
     wait(50, "qubit")  # 50 cycles = 200 ns
-    reset_phase("qubit")
+    reset_if_phase("qubit")
     frame_rotation_2pi(-0.25, "qubit")
     play("const", "qubit")
 
 with program() as reset_both_ph_and_rotate:
     # This program plays the pulse twice with 200ns in between, 1st pulse is phase reset and 2nd pulse is phase
     # reset and shifted by pi/2.
-    reset_phase("qubit")
+    reset_if_phase("qubit")
     play("const", "qubit")
     wait(50, "qubit")  # 50 cycles = 200 ns
-    reset_phase("qubit")
+    reset_if_phase("qubit")
     frame_rotation_2pi(-0.25, "qubit")
     play("const", "qubit")
 
