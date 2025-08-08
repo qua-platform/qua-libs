@@ -183,8 +183,10 @@ else:
     # Get results from QUA program
     results = fetching_tool(job, data_list=["counts1", "counts2", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure()
-    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    fig1, ax1 = plt.subplots()
+    fig2, ax2 = plt.subplots()
+    interrupt_on_close(fig1, job)  # Interrupts the job when closing the figure
+    interrupt_on_close(fig2, job)  # Interrupts the job when closing the figure
 
     while results.is_processing():
         # Fetch results
@@ -194,22 +196,22 @@ else:
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
-        plt.cla()
-        plt.plot(4 * tau_vec, counts1_kcps, label="x90_XY8_x90")
-        plt.plot(4 * tau_vec, counts2_kcps, label="x90_XY8_-x90")
-        plt.xlabel("Interpulse spacing [ns]")
-        plt.ylabel("Intensity [kcps]")
-        plt.title("XY8-{} tau sweep".format(xy8_order))
-        plt.legend()
+        ax1.cla()
+        ax1.plot(4 * tau_vec, counts1_kcps, label="x90_XY8-{}_x90".format(xy8_order))
+        ax1.plot(4 * tau_vec, counts2_kcps, label="x90_XY8-{}_-x90".format(xy8_order))
+        ax1.set_xlabel("Interpulse spacing [ns]")
+        ax1.set_ylabel("Intensity [kcps]")
+        ax1.set_title("XY8-{} tau sweep".format(xy8_order))
+        ax1.legend()
         plt.pause(0.1)
 
-        plt.cla()
         contrast = counts2_kcps - counts1_kcps
-        plt.plot(4 * tau_vec, contrast, label="XY8 contrast")
-        plt.xlabel("Interpulse spacing [ns]")
-        plt.ylabel("Contrast [kcps]")
-        plt.title("XY8-{} tau sweep".format(xy8_order))
-        plt.legend()
+        ax2.cla()
+        ax2.plot(4 * tau_vec, contrast, label="XY8 contrast")
+        ax2.set_xlabel("Interpulse spacing [ns]")
+        ax2.set_ylabel("Contrast [kcps]")
+        ax2.set_title("XY8-{} tau sweep contrast".format(xy8_order))
+        ax2.legend()
         plt.pause(0.1)
     # Save results
     script_name = Path(__file__).name
@@ -217,6 +219,7 @@ else:
     save_data_dict.update({"counts1_data": counts1_kcps})
     save_data_dict.update({"counts2_data": counts2_kcps})
     save_data_dict.update({"contrast": contrast})
-    save_data_dict.update({"fig_live": fig})
+    save_data_dict.update({"fig1_live": fig1})
+    save_data_dict.update({"fig2_live": fig2})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

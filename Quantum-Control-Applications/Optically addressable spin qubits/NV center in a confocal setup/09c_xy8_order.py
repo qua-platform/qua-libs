@@ -23,7 +23,9 @@ Next steps before going to the next node:
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
+
+# from configuration import *
+from config_test import *
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
 
@@ -37,7 +39,7 @@ import matplotlib.pyplot as plt
 # Must be a multiple of 2 clock cycles to ensure that tau_half is a multiple of a single clock cycle
 tau = 2 * 50
 order_vec = np.arange(1, 21, 1, dtype=int)  # order vector for varying the order n of the XY8-n measurement
-n_avg = 1_000_000
+n_avg = 1_000
 tau_half = tau // 2  # time between pi/2-pulse and XY8 block
 
 # Data to save
@@ -182,8 +184,10 @@ else:
     # Get results from QUA program
     results = fetching_tool(job, data_list=["counts1", "counts2", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure()
-    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    fig1, ax1 = plt.subplots()
+    fig2, ax2 = plt.subplots()
+    interrupt_on_close(fig1, job)  # Interrupts the job when closing the figure
+    interrupt_on_close(fig2, job)  # Interrupts the job when closing the figure
 
     while results.is_processing():
         # Fetch results
@@ -193,22 +197,22 @@ else:
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
-        plt.cla()
-        plt.plot(2 * order_vec, counts1_kcps, label="x90_XY8_x90")
-        plt.plot(2 * order_vec, counts2_kcps, label="x90_XY8_-x90")
-        plt.xlabel("XY8 order")
-        plt.ylabel("Intensity [kcps]")
-        plt.title("XY8 order sweep")
-        plt.legend()
+        ax1.cla()
+        ax1.plot(2 * order_vec, counts1_kcps, label="x90_XY8-n_x90")
+        ax1.plot(2 * order_vec, counts2_kcps, label="x90_XY8-n_-x90")
+        ax1.set_xlabel("XY8 order")
+        ax1.set_ylabel("Intensity [kcps]")
+        ax1.set_title("XY8 order sweep")
+        ax1.legend()
         plt.pause(0.1)
 
-        plt.cla()
         contrast = counts2_kcps - counts1_kcps
-        plt.plot(2 * order_vec, contrast, label="XY8 contrast")
-        plt.xlabel("XY8 order")
-        plt.ylabel("Contrast [kcps]")
-        plt.title("XY8 order sweep")
-        plt.legend()
+        ax2.cla()
+        ax2.plot(2 * order_vec, contrast, label="XY8 contrast")
+        ax2.set_xlabel("XY8 order")
+        ax2.set_ylabel("Contrast [kcps]")
+        ax2.set_title("XY8 order sweep contrast")
+        ax2.legend()
         plt.pause(0.1)
     # Save results
     script_name = Path(__file__).name
@@ -216,6 +220,7 @@ else:
     save_data_dict.update({"counts1_data": counts1_kcps})
     save_data_dict.update({"counts2_data": counts2_kcps})
     save_data_dict.update({"contrast": contrast})
-    save_data_dict.update({"fig_live": fig})
+    save_data_dict.update({"fig_live": fig1})
+    save_data_dict.update({"fig_live": fig2})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
