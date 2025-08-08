@@ -10,11 +10,6 @@ The data is post-processed to determine the coherence time T2 associated with th
 The sequence is defined in the following way:
 x90 - [t - x180 - 2t - y180 - 2t - x180 - 2t - y180 - 2t - y180 - 2t - x180 - 2t - y180 - 2t - x180 - t] ^ xy8_order - x90
 
-There is a possible timing gap due to QUA's pulse processing between the initial x90-pulse and the XY8 block.
-To evaluate the length of the gap the `with strict_timing_()` command can be used and the gap duration can
-be extracted from the error message.
-The gap is acknowledged by adding the duration to the time between the XY8 block and the last x90-pulse.
-
 Prerequisites:
     - Ensure calibration of the different delays in the system (calibrate_delays).
     - Having updated the different delays in the configuration.
@@ -43,7 +38,6 @@ import matplotlib.pyplot as plt
 tau = 2 * 50
 order_vec = np.arange(1, 21, 1, dtype=int)  # order vector for varying the order n of the XY8-n measurement
 n_avg = 1_000_000
-t_gap = 10  # possible timing gap in clock cycles that is to be compensated
 tau_half = tau // 2  # time between pi/2-pulse and XY8 block
 
 # Data to save
@@ -58,8 +52,17 @@ save_data_dict = {
 ##########################
 #  XY8 sequence wrapper  #
 ##########################
-def xy8_block(tau):
-    # A single XY8 block, ends at x frame.
+def xy8_n(tau, order):
+    """Performs the full xy8_n sequence.
+    The first block is outside the loop to avoid delays caused from either the
+    loop or from two consecutive wait commands."""
+    xy8_block(tau)
+    with for_(i, 1, i <= order - 1, i + 1):
+        wait(tau, "NV")
+        xy8_block(tau)
+
+
+def xy8_block(tau):  # A single XY8 block
     play("x180", "NV")  # 1 X
     wait(tau, "NV")
 
@@ -104,18 +107,16 @@ with program() as xy8_order_sweep:
     play("laser_ON", "AOM1")
     wait(wait_for_initialization * u.ns, "AOM1")
 
-    # XY8-n sequence
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(xy8_order, order_vec)):
-            with strict_timing_():  # Strict_timing validates that the sequence will be played without gaps
-                                    # If gaps are detected, then an error will be raised and the duration has to be
-                                    # added to t_gap
+            # Strict_timing validates that the sequence will be played without gaps.
+            # If gaps are detected, an error will be raised
+            with strict_timing_():
+                # First XY8 sequence with x90 - XY8-order block - x90
                 play("x90", "NV")
-                with for_(i, 0, i < xy8_order, i + 1):
-                    wait(tau_half, "NV")
-                    xy8_block(tau)
-                    wait(tau_half, "NV")
-                wait(t_gap, "NV")  # acknowledge the timing gap
+                wait(tau_half, "NV")
+                xy8_n(tau, xy8_order)
+                wait(tau_half, "NV")
                 play("x90", "NV")
             align()  # Play the laser pulse after the XY8 sequence
             # Measure and detect the photons on SPCM1
@@ -125,13 +126,13 @@ with program() as xy8_order_sweep:
             wait(wait_between_runs * u.ns, "AOM1")
 
             align()
-            play("x90", "NV")
-            with for_(i, 0, i < xy8_order, i + 1):
+            with strict_timing_():
+                # Second XY8 sequence with x90 - XY8-order block - -x90
+                play("x90", "NV")
                 wait(tau_half, "NV")
-                xy8_block()
+                xy8_n(tau, xy8_order)
                 wait(tau_half, "NV")
-            wait(t_gap, "NV")  # compensate for timing gap
-            play("-x90", "NV")
+                play("-x90", "NV")
             align()  # Play the laser pulse after the Echo sequence
             # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
@@ -155,7 +156,7 @@ qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octa
 #######################
 # Simulate or execute #
 #######################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
