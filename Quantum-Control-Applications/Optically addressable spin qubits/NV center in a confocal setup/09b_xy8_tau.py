@@ -48,22 +48,20 @@ save_data_dict = {
 }
 
 
-###########################
-#  XY8 sequence wrappers  #
-###########################
-def xy8_n(tau, tau_half, order):
+##########################
+#  XY8 sequence wrapper  #
+##########################
+def xy8_n(tau, order):
     """Performs the full xy8_n sequence.
-    The first block is outside loop to avoid delays caused from either the
+    The first block is outside the loop to avoid delays caused from either the
     loop or from two consecutive wait commands."""
-    wait(tau_half, "NV")
     xy8_block(tau)
-    for _ in range(order - 1):
+    with for_(i, 1, i <= order - 1, i + 1):
         wait(tau, "NV")
         xy8_block(tau)
-    wait(tau_half, "NV")
 
 
-def xy8_block(tau):  # A single XY8 block, ends at x frame.
+def xy8_block(tau):  # A single XY8 block
     play("x180", "NV")  # 1 X
     wait(tau, "NV")
 
@@ -109,15 +107,17 @@ with program() as xy8_tau:
     play("laser_ON", "AOM1")
     wait(wait_for_initialization * u.ns, "AOM1")
 
-    # XY8-n sequence
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(tau, tau_vec)):
             assign(tau_half, tau >> 1)
-            with strict_timing_():  # Strict_timing validates that the sequence will be played without gaps
-                                    # If gaps are detected, then an error will be raised
-                # First XY8 sequence with x90 - XY8 block - x90
+            # Strict_timing validates that the sequence will be played without gaps.
+            # If gaps are detected, an error will be raised
+            with strict_timing_():
+                # First XY8 sequence with x90 - XY8-order block - x90
                 play("x90", "NV")
-                xy8_n(tau, tau_half, xy8_order)
+                wait(tau_half, "NV")
+                xy8_n(tau, xy8_order)
+                wait(tau_half, "NV")
                 play("x90", "NV")
             align()  # Play the laser pulse after the XY8 sequence
             # Measure and detect the photons on SPCM1
@@ -127,11 +127,12 @@ with program() as xy8_tau:
             wait(wait_between_runs * u.ns, "AOM1")
 
             align()
-            # Second XY8 sequence with x90 - XY8 block - -x90
             with strict_timing_():
-                # First XY8 sequence with x90 - XY8 block - x90
+                # Second XY8 sequence with x90 - XY8-order block - x90
                 play("x90", "NV")
-                xy8_n(tau, tau_half, xy8_order)
+                wait(tau_half, "NV")
+                xy8_n(tau, xy8_order)
+                wait(tau_half, "NV")
                 play("-x90", "NV")
             align()  # Play the laser pulse after the Echo sequence
             # Measure and detect the photons on SPCM1
