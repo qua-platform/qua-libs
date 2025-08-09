@@ -82,7 +82,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
-    num_qubits = len(qubits)
+    num_qubit_pairs = len(qubit_pairs)
     # Check if the couplers have a z-line attached
     if any([q.coupler is None for q in qubit_pairs]):
         warnings.warn("Found couplers without a flux line. Skipping")
@@ -105,7 +105,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
-        "qubit": xr.DataArray(qubits.get_names()),
+        "qubit_pairs": xr.DataArray(qubit_pairs.get_names()),
         "coupler_flux_bias": xr.DataArray(dcs, attrs={"long_name": "flux bias", "units": "V"}),
         "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
     }
@@ -145,7 +145,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         with stream_processing():
             n_st.save("n")
-            for i in range(num_qubits):
+            for i in range(num_qubit_pairs):
                 I_st[i].buffer(len(dfs)).buffer(len(dcs)).average().save(f"I{i + 1}")
                 Q_st[i].buffer(len(dfs)).buffer(len(dcs)).average().save(f"Q{i + 1}")
 
@@ -223,7 +223,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
