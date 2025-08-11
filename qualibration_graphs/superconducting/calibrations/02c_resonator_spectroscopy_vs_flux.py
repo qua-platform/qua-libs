@@ -99,6 +99,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span / 2, +span / 2, step)
 
+    # Setting the flux point of the qubits
+    for qubit in qubits:
+        qubit.z.flux_point = "joint"
+
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
@@ -115,7 +119,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             for qubit in multiplexed_qubits.values():
-                node.machine.initialize_qpu(target=qubit)
+                node.machine.initialize_qpu(target=qubit, flux_point=qubit.z.flux_point)
             align()
 
             with for_(n, 0, n < n_avg, n + 1):

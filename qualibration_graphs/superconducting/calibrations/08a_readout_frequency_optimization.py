@@ -139,10 +139,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubits):
-                I_g_st[i].buffer(len(dfs)).average().save(f"I_g{i + 1}")
-                Q_g_st[i].buffer(len(dfs)).average().save(f"Q_g{i + 1}")
-                I_e_st[i].buffer(len(dfs)).average().save(f"I_e{i + 1}")
-                Q_e_st[i].buffer(len(dfs)).average().save(f"Q_e{i + 1}")
+                I_g_st[i].buffer(len(dfs)).average().save(f"Ig{i + 1}")
+                Q_g_st[i].buffer(len(dfs)).average().save(f"Qg{i + 1}")
+                I_e_st[i].buffer(len(dfs)).average().save(f"Ie{i + 1}")
+                Q_e_st[i].buffer(len(dfs)).average().save(f"Qe{i + 1}")
 
 
 # %% {Simulate}

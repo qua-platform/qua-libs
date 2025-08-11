@@ -6,6 +6,7 @@ import numpy as np
 from calibration_utils.swap_oscillations.analysis import FitParameters
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
+
 def plot_raw_data_with_fit(
     ds: xr.Dataset,
     qubit_pairs: List[AnyTransmon],
@@ -50,12 +51,12 @@ def plot_raw_data_with_fit(
 
             fp = fit_results.get(name)
             if fp and fp.success:
-                ax.axhline(fp.detuning * 1e-6, linestyle='--', color='k', lw=0.5)
-                ax.axvline(fp.optimal_length, linestyle='--', color='k', lw=0.5)
+                ax.axhline(fp.detuning * 1e-6, linestyle="--", color="k", lw=0.5)
+                ax.axvline(fp.optimal_length, linestyle="--", color="k", lw=0.5)
 
-                f_eff = np.sqrt(fp.J ** 2 + (detuning - fp.detuning) ** 2)
+                f_eff = np.sqrt(fp.J**2 + (detuning - fp.detuning) ** 2)
                 for n_line in range(1, 10):
-                    ax.plot(n_line * 0.5 / f_eff * 1e9, detuning * 1e-6, 'r-', lw=0.3)
+                    ax.plot(n_line * 0.5 / f_eff * 1e9, detuning * 1e-6, "r-", lw=0.3)
 
             ax.set_title(f"{name} - {var.replace('state_', '')}")
             ax.set_xlabel("Idle time [ns]")

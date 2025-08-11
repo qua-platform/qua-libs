@@ -19,29 +19,33 @@ class FitParameters:
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    ds = ds.assign_coords(idle_time = ds.idle_time * 4)
+    ds = ds.assign_coords(idle_time=ds.idle_time * 4)
     ds = ds.assign({"res_sum": ds.state_control - ds.state_target})
 
-    amp_full = np.array([
-        node.namespace["control_amplitudes_scale"] * qp.gates["SWAP_Coupler"].flux_pulse_control.amplitude
-        for qp in node.namespace["qubit_pairs"]
-    ])
+    amp_full = np.array(
+        [
+            node.namespace["control_amplitudes_scale"] * qp.gates["SWAP_Coupler"].flux_pulse_control.amplitude
+            for qp in node.namespace["qubit_pairs"]
+        ]
+    )
     ds = ds.assign_coords({"amp_full": (["qubit", "amp"], amp_full)})
 
-    detunings = np.array([
-        -(amp_full[i] ** 2) * qp.qubit_control.freq_vs_flux_01_quad_term
-        for i, qp in enumerate(node.namespace["qubit_pairs"])
-    ])
+    detunings = np.array(
+        [
+            -(amp_full[i] ** 2) * qp.qubit_control.freq_vs_flux_01_quad_term
+            for i, qp in enumerate(node.namespace["qubit_pairs"])
+        ]
+    )
     ds = ds.assign_coords({"detuning": (["qubit", "amp"], detunings)})
     return ds
 
 
-def rabi_chevron_model(ft, J, f0, a, offset,tau):
-    f,t = ft
+def rabi_chevron_model(ft, J, f0, a, offset, tau):
+    f, t = ft
     J = J
     w = f
     w0 = f0
-    g = offset+a * np.sin(2*np.pi*np.sqrt(J**2 + (w-w0)**2) * t)**2*np.exp(-tau*np.abs((w-w0)))
+    g = offset + a * np.sin(2 * np.pi * np.sqrt(J**2 + (w - w0) ** 2) * t) ** 2 * np.exp(-tau * np.abs((w - w0)))
     return g.ravel()
 
 
@@ -57,22 +61,23 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
             fit_data = fit_oscillation_decay_exp(ds_qp.state_control.isel(amp=flux_amp_idx), "idle_time")
             flux_time = int(1 / fit_data.sel(fit_vals="f"))
 
-
-            J, f0, *_ = fit_rabi_chevron(ds_qp, flux_time, -flux_amp ** 2 * qp.qubit_control.freq_vs_flux_01_quad_term)
+            J, f0, *_ = fit_rabi_chevron(ds_qp, flux_time, -(flux_amp**2) * qp.qubit_control.freq_vs_flux_01_quad_term)
             amp_from_fit = np.sqrt(-f0 / qp.qubit_control.freq_vs_flux_01_quad_term)
             flux_time = int(1 / (2 * J) * 1e9)
             zero_padding = flux_time - flux_time % 4 + 4 - flux_time
 
-            ds_fit[qp.name] = ds_qp.assign({
-                "fitted": oscillation_decay_exp(
-                    ds_qp.idle_time,
-                    fit_data.sel(fit_vals="a"),
-                    fit_data.sel(fit_vals="f"),
-                    fit_data.sel(fit_vals="phi"),
-                    fit_data.sel(fit_vals="offset"),
-                    fit_data.sel(fit_vals="decay")
-                )
-            })
+            ds_fit[qp.name] = ds_qp.assign(
+                {
+                    "fitted": oscillation_decay_exp(
+                        ds_qp.idle_time,
+                        fit_data.sel(fit_vals="a"),
+                        fit_data.sel(fit_vals="f"),
+                        fit_data.sel(fit_vals="phi"),
+                        fit_data.sel(fit_vals="offset"),
+                        fit_data.sel(fit_vals="decay"),
+                    )
+                }
+            )
 
             fit_results[qp.name] = FitParameters(
                 success=True,
@@ -80,7 +85,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
                 detuning=f0,
                 optimal_amplitude=amp_from_fit,
                 optimal_length=flux_time,
-                zero_padding=zero_padding
+                zero_padding=zero_padding,
             )
         except Exception as e:
             fit_results[qp.name] = FitParameters(success=False)
@@ -98,14 +103,10 @@ def fit_rabi_chevron(ds_qp, init_length, init_detuning):
     try:
         exp_data = da_target.values
         detuning = da_target.detuning
-        time = da_target.idle_time *1e-9
-        t,f  = np.meshgrid(time,detuning)
-        initial_guess = (1e9/init_length/2,
-                init_detuning,
-                -1,
-                1.0,
-                100e-9)
-        fdata = np.vstack((f.ravel(),t.ravel()))
+        time = da_target.idle_time * 1e-9
+        t, f = np.meshgrid(time, detuning)
+        initial_guess = (1e9 / init_length / 2, init_detuning, -1, 1.0, 100e-9)
+        fdata = np.vstack((f.ravel(), t.ravel()))
         tdata = exp_data.ravel()
         popt, pcov = curve_fit(rabi_chevron_model, fdata, tdata, p0=initial_guess)
         J = popt[0]
@@ -123,23 +124,17 @@ def fit_rabi_chevron(ds_qp, init_length, init_detuning):
 def determine_flux_time(flux_amp_idx, ds_qp):
     signal = ds_qp.state_control.isel(amp=flux_amp_idx)
     fit_data = fit_oscillation_decay_exp(signal, "idle_time")
-    fit_time = 1 / fit_data.sel(fit_vals='f')  # Oscillation frequency (example only)
+    fit_time = 1 / fit_data.sel(fit_vals="f")  # Oscillation frequency (example only)
     return int(fit_time)
 
-
-# def fit_oscillation_decay_exp(signal, x_key):
-#     fit_data = fit_oscillation(
-#         signal,
-#         x_data=signal[x_key],
-#         decay_model_func=oscillation_decay_exp
-#     )
-#     return fit_data
 
 def abs_amp(qp, amp, pulse_amplitudes):
     return amp * pulse_amplitudes[qp.name]
 
+
 def detuning(qp, amp, pulse_amplitudes):
-    return -(amp * pulse_amplitudes[qp.name]) ** 2 * qp.qubit_control.freq_vs_flux_01_quad_term
+    return -((amp * pulse_amplitudes[qp.name]) ** 2) * qp.qubit_control.freq_vs_flux_01_quad_term
+
 
 def log_fitted_results(fit_results: Dict[str, FitParameters], log_callable=None):
     if log_callable is None:
@@ -150,5 +145,3 @@ def log_fitted_results(fit_results: Dict[str, FitParameters], log_callable=None)
             f"f0={results.detuning:.3e}, amp={results.optimal_amplitude:.3e}, "
             f"len={results.optimal_length}, pad={results.zero_padding}"
         )
-
-

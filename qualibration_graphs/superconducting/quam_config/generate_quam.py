@@ -11,6 +11,7 @@ The workflow is as follows:
     - Build the wiring and QUAM.
     - Populate the generated quam with initial values by modifying and running populate_quam_xxx.py
 """
+
 import matplotlib.pyplot as plt
 from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
