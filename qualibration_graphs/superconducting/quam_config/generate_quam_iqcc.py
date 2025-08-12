@@ -23,4 +23,5 @@ with open(os.path.join(quam_state_folder_path, "wiring.json"), "w") as f:
 
 with open(os.path.join(quam_state_folder_path, "state.json"), "w") as f:
     json.dump(latest_state.data, f, indent=4)
+
 # %%

@@ -46,7 +46,7 @@ from quam_builder.builder.superconducting.pulses import (
     add_Square_pulses,
     add_default_transmon_pair_pulses,
 )
-from quam_builder.architecture.superconducting.custom_gates import cross_resonance
+from quam_builder.architecture.superconducting.custom_gates import cross_resonance, stark_induced_zz
 from quam.components import pulses
 from qualang_tools.units import unit
 from quam_config import Quam
@@ -483,6 +483,76 @@ for qp_name, qb_pair in machine.qubit_pairs.items():
                 axis_angle=0.0,
             )
             qb_pair.qubit_target.xy.operations[f"cr_flattop_{flattop_len:04d}"] = pulses.FlatTopGaussianPulse(
+                amplitude=1.0,
+                length=rise_fall_len + flattop_len + rise_fall_len,
+                flat_length=flattop_len,
+                axis_angle=0.0,
+            )
+
+
+        # Stark-induced ZZ
+        qb_pair.macros["stark_zz"] = stark_induced_zz.StarkZZGate(qc_correction_phase=0.0)
+
+        # square
+        qb_pair.zz_drive.operations["square"] = pulses.SquarePulse(
+            length=100,
+            amplitude=1.0,
+            axis_angle=0.0,
+        )
+        qb_pair.qubit_target.xy_detuned.operations[f"zz_square_{qb_pair.name}"] = pulses.SquarePulse(
+            length=100,
+            amplitude=1.0,
+            axis_angle=0.0,
+        )
+        # cosine
+        qb_pair.zz_drive.operations["cosine"] = pulses.DragCosinePulse(
+            length=100,
+            amplitude=1.0,
+            axis_angle=0.0,
+            anharmonicity=260 * u.MHz,
+            alpha=0.0,
+            detuning=0,
+            # correction_phase=0.0,
+        )
+        qb_pair.qubit_target.xy.operations[f"zz_cosine_{qb_pair.name}"] = pulses.DragCosinePulse(
+            length=100,
+            amplitude=1.0,
+            axis_angle=0.0,
+            anharmonicity=260 * u.MHz,
+            alpha=0.0,
+            detuning=0,
+        )
+        # gauss
+        qb_pair.zz_drive.operations["gauss"] = pulses.DragGaussianPulse(
+            length=100,
+            sigma=100 / 5,
+            amplitude=1.0,
+            axis_angle=0.0,
+            anharmonicity=260 * u.MHz,
+            alpha=0.0,
+            detuning=0,
+            # correction_phase=0.0,
+        )
+        qb_pair.qubit_target.xy.operations[f"zz_gauss_{qb_pair.name}"] = pulses.DragGaussianPulse(
+            length=100,
+            sigma=100 / 5,
+            amplitude=1.0,
+            axis_angle=0.0,
+            anharmonicity=260 * u.MHz,
+            alpha=0.0,
+            detuning=0,
+        )
+        # flattop
+        rise_fall_len = 8
+        flattop_lens = np.arange(0, 80, 20).tolist()  # must be python list (not numpy array)
+        for flattop_len in flattop_lens:
+            qb_pair.zz_drive.operations[f"flattop_{flattop_len:04d}"] = pulses.FlatTopGaussianPulse(
+                amplitude=1.0,
+                length=rise_fall_len + flattop_len + rise_fall_len,
+                flat_length=flattop_len,
+                axis_angle=0.0,
+            )
+            qb_pair.qubit_target.xy.operations[f"zz_flattop_{flattop_len:04d}"] = pulses.FlatTopGaussianPulse(
                 amplitude=1.0,
                 length=rise_fall_len + flattop_len + rise_fall_len,
                 flat_length=flattop_len,
