@@ -24,7 +24,7 @@ from calibration_utils.cr_utils import *
 from calibration_utils.data_process_utils import *
 from qualibration_libs.parameters import get_qubit_pairs, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher, CloudDataProcessor
+from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
 
 
@@ -65,7 +65,8 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.num_shots = 3
     node.parameters.max_wait_time_in_ns = 100
 
-    node.parameters.qubit_pairs = ["qA1-A2", "qA3-A4"]
+    # node.parameters.qubit_pairs = ["qA1-A2", "qA3-A4"]
+    node.parameters.qubit_pairs = ["q1-2", "q3-4"]
     node.parameters.use_state_discrimination = False
 
     node.parameters.wf_type = "square"

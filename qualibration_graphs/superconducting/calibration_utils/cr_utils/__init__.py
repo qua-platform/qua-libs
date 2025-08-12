@@ -5,11 +5,10 @@ from .cr_hamiltonian_tomography import (
     plot_crqst_result_3D,
     PAULI_2Q,
 )
-from .cr_pulse_sequencess import play_cross_resonance, get_cr_elements
+from .cr_pulse_sequencess import get_cr_elements
 
 __all__ = [
     "CRHamiltonianTomographyAnalysis",
-    "play_cross_resonance",
     "get_cr_elements",
     "plot_interaction_coeffs",
     "plot_crqst_result_3D",

@@ -24,7 +24,7 @@ from calibration_utils.cr_utils import *
 from calibration_utils.data_process_utils import *
 from qualibration_libs.parameters import get_qubit_pairs, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher, CloudDataProcessor
+from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
 
 
@@ -215,8 +215,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for i, qp in enumerate(qubit_pairs):
-                state_c_st[i].buffer(2).buffer(3).buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"statec{i}")
-                state_t_st[i].buffer(2).buffer(3).buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"statet{i}")
+                state_c_st[i].buffer(2).buffer(3).buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"state_c{i}")
+                state_t_st[i].buffer(2).buffer(3).buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"state_t{i}")
 
 
 # %% {Simulate}
