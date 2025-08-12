@@ -11,7 +11,7 @@ from qualang_tools.results import progress_counter
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from qualibration_libs.data import XarrayDataFetcher, CloudDataProcessor
+from qualibration_libs.data import XarrayDataFetcher
 from calibration_utils.data_process_utils import *
 from qualibration_libs.parameters import get_qubits, get_idle_times_in_clock_cycles
 from qualibration_libs.runtime import simulate_and_plot

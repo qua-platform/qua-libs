@@ -22,7 +22,7 @@ from calibration_utils.ramsey import (
 from calibration_utils.data_process_utils import *
 from qualibration_libs.parameters import get_qubits, get_idle_times_in_clock_cycles
 from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher, CloudDataProcessor
+from qualibration_libs.data import XarrayDataFetcher
 
 
 # %% {Description}

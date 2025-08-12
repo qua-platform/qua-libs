@@ -23,7 +23,7 @@ from calibration_utils.single_qubit_randomized_benchmarking import (
 from calibration_utils.data_process_utils import *
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher, CloudDataProcessor
+from qualibration_libs.data import XarrayDataFetcher
 
 
 # %% {Initialisation}
