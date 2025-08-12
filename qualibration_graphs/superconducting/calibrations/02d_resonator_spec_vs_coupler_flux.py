@@ -32,7 +32,7 @@ description = """
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
 extract the 'I' and 'Q' quadratures. This is done across various readout frequencies and coupler flux biases.
 
-This information can then be used to adjust the ON and OFF point for the coupling interation. 
+This information can then be used to adjust the ON and OFF point for the coupling interation.
 The flux point parameter (qubit.z.flux_point) is used in order to decide to update the independent or joint offset.
 
 Prerequisites:
@@ -44,7 +44,7 @@ State update:
     - The readout frequency for the chosen flux bias: qubit.resonator.f_01 & qubit.resonator.RF_frequency
     - The joint or independent offset depending on the chosen flux point: qubit.z.
     - The min offset: qubit.z.min_offset
-    - The relevant flux offset: qubit.z.independent_offset or qubit.z.joint_offset 
+    - The relevant flux offset: qubit.z.independent_offset or qubit.z.joint_offset
     - The min offset: qubit.z.min_offset
     - phi0: qubit.z.phi0_voltage and qubit.z.phi0_current
 """
@@ -52,7 +52,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="02c_resonator_spectroscopy_vs_flux",  # Name should be unique
+    name="02d_resonator_spectroscopy_vs_coupler_flux",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
