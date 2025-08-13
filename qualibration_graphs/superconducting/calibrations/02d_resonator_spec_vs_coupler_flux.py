@@ -32,8 +32,7 @@ description = """
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
 extract the 'I' and 'Q' quadratures. This is done across various readout frequencies and coupler flux biases.
 
-This information can then be used to adjust the ON and OFF point for the coupling interation.
-The flux point parameter (qubit.z.flux_point) is used in order to decide to update the independent or joint offset.
+This information can then be used to find the OFF point for the coupling interation.
 
 Prerequisites:
     - Having calibrated the resonator frequency (nodes 02a, 02b and/or 02c).
@@ -41,12 +40,7 @@ Prerequisites:
 
 
 State update:
-    - The readout frequency for the chosen flux bias: qubit.resonator.f_01 & qubit.resonator.RF_frequency
-    - The joint or independent offset depending on the chosen flux point: qubit.z.
-    - The min offset: qubit.z.min_offset
-    - The relevant flux offset: qubit.z.independent_offset or qubit.z.joint_offset
-    - The min offset: qubit.z.min_offset
-    - phi0: qubit.z.phi0_voltage and qubit.z.phi0_current
+    - The decouple offset depending: qubit_pair.coupler.decouple_offset
 """
 
 
@@ -65,7 +59,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1", "q2"]
-    node.parameters.qubit_pairs = ["qA1-qA2"]
+    node.parameters.qubit_pairs = ["q1-2"]
+    node.parameters.num_shots = 10
+    node.parameters.min_flux_offset_in_v=-0.2
+    node.parameters.max_flux_offset_in_v = 0.0
     pass
 
 
@@ -80,7 +77,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
-    node.namespace["qubits"] = qubits = get_qubits(node)
+    node.namespace["qubits"] = qubits = [get_qubit_pairs(node)[i].qubit_control for i in range(len(get_qubit_pairs(node)))]
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
     # Check if the couplers have a z-line attached
@@ -105,8 +102,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
-        "qubit_pairs": xr.DataArray(qubit_pairs.get_names()),
-        "coupler_flux_bias": xr.DataArray(dcs, attrs={"long_name": "flux bias", "units": "V"}),
+        # "qubit_pairs": xr.DataArray(qubit_pairs.get_names()),
+        "qubit": xr.DataArray([qubits[i].id for i in range(len(qubits))]),
+        "flux_bias": xr.DataArray(dcs, attrs={"long_name": "flux bias", "units": "V"}),
         "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
     }
 
@@ -128,7 +126,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     for i, qp in multiplexed_qubit_pairs.items():
                         rr = qp.qubit_control.resonator
                         coupler = qp.coupler
-                        # Flux sweeping by tuning the OPX dc offset associated with the flux_line element
+                        # Flux sweeping by tuning the OPX dc offset associated with the coupler flux_line element
                         coupler.set_dc_offset(dc)
                         coupler.settle()
                         qp.align()
@@ -199,7 +197,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
-    node.namespace["qubits"] = get_qubits(node)
+    node.namespace["qubits"] = [get_qubit_pairs(node)[i].qubit_control for i in range(len(get_qubit_pairs(node)))]
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 
@@ -223,7 +221,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
+    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
@@ -237,16 +235,23 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
-            if node.outcomes[qp.name] == "failed":
+            if node.outcomes[qp.qubit_control.name] == "failed":
                 continue
 
-            fit_results = node.results["fit_results"][qp.name]
+            fit_results = node.results["fit_results"][qp.qubit_control.name]
+
+            mode = qp.coupler.opx_output.output_mode
+            min_offest = fit_results["min_offset"]
+            idle_offset = fit_results["idle_offset"]
 
             # Update the decouple offset
-            qp.coupler.decouple_offset = fit_results["min_offset"]
+            if mode == "direct":
+                if -0.5 < min_offest < 0.5:
+                    qp.coupler.decouple_offset = min_offest
+            else:
+                if -2.5 < min_offest < 2.5:
+                    qp.coupler.decouple_offset = min_offest
 
-            # Update the interaction offset
-            qp.coupler.interaction_offset = fit_results["idle_offset"]
 
 
 
