@@ -1,5 +1,9 @@
 # %% {Imports}
+import math
+
 from qualibrate import QualibrationNode, NodeParameters
+
+from qualibration_libs.legacy.lib.pulses import FluxPulse
 from quam_config import Quam
 from qualibration_libs.legacy.macros import active_reset, readout_state, readout_state_gef, active_reset_gef, active_reset_simple
 from qualibration_libs.legacy.lib.save_utils import fetch_results_as_xarray, load_dataset
@@ -14,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qualibration_libs.legacy.lib.fit import fit_oscillation, oscillation, fix_oscillation_phi_2pi
 from qualibration_libs.legacy.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
+from quam_libs.components import CZMacro
 
 # %% {Description}
 description = """
@@ -68,7 +73,7 @@ class Parameters(NodeParameters):
     reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
     timeout: int = 100
-    load_data_id: Optional[int] = None
+    load_data_id: Optional[int] = 69
 
     coupler_flux_min : float = -0.05 #relative to the coupler set point
     coupler_flux_max : float = 0.05 #relative to the coupler set point
@@ -83,7 +88,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(
-    name="18a_coupler_zero_point_calibration", parameters=Parameters()
+    name="70_coupler_zero_point_calibration", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
@@ -262,7 +267,7 @@ if not node.parameters.simulate:
         flux_qubit_full = np.array([fluxes_qp[qp.name] for qp in qubit_pairs])
         ds = ds.assign_coords({"flux_qubit_full": (["qubit", "flux_qubit"], flux_qubit_full)})
     else:
-        ds, machine = load_dataset(node.parameters.load_data_id)
+        ds, machine, _, _ = load_dataset(node.parameters.load_data_id)
 
     node.results = {"ds": ds}
 # %%
@@ -286,25 +291,12 @@ if not node.parameters.simulate:
     else:
         res_sum = -ds.I_control + ds.I_target
 
-    # for i, qp in enumerate(qubit_pairs):
-    #     coupler_min_arg = res_sum.sel(qubit = qp.name).mean(dim = 'flux_qubit').argmin()
-    #     flux_coupler_min = ds.flux_coupler_full.sel(qubit = qp.name)[coupler_min_arg]
-    #     qubit_max_arg = res_sum.sel(qubit = qp.name).mean(dim = "flux_coupler").argmax()
-    #     flux_qubit_max = fluxes_qp[qp.name][qubit_max_arg]
-    #     node.results["results"][qp.name] = {"flux_coupler_min": float(flux_coupler_min.values), "flux_qubit_max": float(flux_qubit_max)}
-
     for i, qp in enumerate(qubit_pairs):
-
-        qubit_max_arg = res_sum.sel(qubit=qp.name).mean(dim="flux_coupler").argmax()
+        coupler_min_arg = res_sum.sel(qubit = qp.name).mean(dim = 'flux_qubit').argmin()
+        flux_coupler_min = ds.flux_coupler_full.sel(qubit = qp.name)[coupler_min_arg]
+        qubit_max_arg = res_sum.sel(qubit = qp.name).mean(dim = "flux_coupler").argmax()
         flux_qubit_max = fluxes_qp[qp.name][qubit_max_arg]
-
-        qubit_flux_col = res_sum.sel(qubit=qp.name).isel(flux_qubit=qubit_max_arg.item())
-
-        coupler_min_arg = int(qubit_flux_col.argmin(dim="flux_coupler"))
-        flux_coupler_min = ds.flux_coupler_full.sel(qubit=qp.name)[coupler_min_arg]
-
-        node.results["results"][qp.name] = {"flux_coupler_min": float(flux_coupler_min.values),
-                                            "flux_qubit_max": float(flux_qubit_max)}
+        node.results["results"][qp.name] = {"flux_coupler_min": float(flux_coupler_min.values), "flux_qubit_max": float(flux_qubit_max)}
 
 
 # %% {Plotting}
@@ -376,9 +368,37 @@ if not node.parameters.simulate:
 
 # %% {Update_state}
 if not node.parameters.simulate:
+    for qp in qubit_pairs:
+        qp = machine.qubit_pairs[qp.name]  # todo: why is this necessary?
+        length = math.ceil(node.parameters.pulse_duration_ns / 4)
+        zero_padding_in_ns = 4 * length - node.parameters.pulse_duration_ns
+
+        macro_name = f"Cz_square_pulse_{node.parameters.pulse_duration_ns}"
+
+        if macro_name not in qp.macros:
+            qp.qubit_control.z.operations[macro_name] = FluxPulse(
+                id=macro_name,
+                length=length,
+                amplitude=0.1,
+                zero_padding=zero_padding_in_ns
+            )
+            qp.coupler.operations[macro_name] = FluxPulse(
+                id=macro_name,
+                length=length,
+                amplitude=0.1,
+                zero_padding=zero_padding_in_ns
+            )
+            qp.macros[macro_name] = CZMacro(
+                flux_pulse_control=f"#/qubits/{qp.qubit_control.name}/z/operations/{macro_name}",
+                coupler_flux_pulse=f"#/qubit_pairs/{qp.name}/coupler/operations/{macro_name}",
+            )
+        qp.macros["Cz"] = f"#./{macro_name}"
+
     with node.record_state_updates():
         for qp in qubit_pairs:
             qp.coupler.decouple_offset = node.results["results"][qp.name]["flux_coupler_min"]
+            qp.macros["Cz"].coupler_flux_pulse.amplitude = node.results["results"][qp.name]["flux_qubit_max"]
+            # todo: is this needed?
             qp.detuning = node.results["results"][qp.name]["flux_qubit_max"]
 
 # %% {Save_results}
