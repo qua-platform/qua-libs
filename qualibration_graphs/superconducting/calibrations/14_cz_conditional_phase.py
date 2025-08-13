@@ -72,7 +72,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubit_pairs = ["qA1-qA3"]
+    node.parameters.qubit_pairs = ["q1-2"]
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
 
