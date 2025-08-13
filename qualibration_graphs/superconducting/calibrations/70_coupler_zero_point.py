@@ -63,7 +63,7 @@ and preparing the system for entangling gate calibration.
 qubit_pair_indexes = [1]  # [1, 2]
 class Parameters(NodeParameters):
     qubit_pairs: Optional[List[str]] = ["q%s-%s"%(i,i+1) for i in qubit_pair_indexes] # ["coupler_q1_q2"]
-    num_averages: int = 120
+    num_averages: int = 500
     flux_point_joint_or_independent_or_pairwise: Literal["joint", "independent", "pairwise"] = "joint"
     reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
@@ -278,12 +278,25 @@ if not node.parameters.simulate:
     else:
         res_sum = -ds.I_control + ds.I_target
 
+    # for i, qp in enumerate(qubit_pairs):
+    #     coupler_min_arg = res_sum.sel(qubit = qp.name).mean(dim = 'flux_qubit').argmin()
+    #     flux_coupler_min = ds.flux_coupler_full.sel(qubit = qp.name)[coupler_min_arg]
+    #     qubit_max_arg = res_sum.sel(qubit = qp.name).mean(dim = "flux_coupler").argmax()
+    #     flux_qubit_max = fluxes_qp[qp.name][qubit_max_arg]
+    #     node.results["results"][qp.name] = {"flux_coupler_min": float(flux_coupler_min.values), "flux_qubit_max": float(flux_qubit_max)}
+
     for i, qp in enumerate(qubit_pairs):
-        coupler_min_arg = res_sum.sel(qubit = qp.name).mean(dim = 'flux_qubit').argmin()
-        flux_coupler_min = ds.flux_coupler_full.sel(qubit = qp.name)[coupler_min_arg]
-        qubit_max_arg = res_sum.sel(qubit = qp.name).mean(dim = "flux_coupler").argmax()
+
+        qubit_max_arg = res_sum.sel(qubit=qp.name).mean(dim="flux_coupler").argmax()
         flux_qubit_max = fluxes_qp[qp.name][qubit_max_arg]
-        node.results["results"][qp.name] = {"flux_coupler_min": float(flux_coupler_min.values), "flux_qubit_max": float(flux_qubit_max)}
+
+        qubit_flux_col = res_sum.sel(qubit=qp.name).isel(flux_qubit=qubit_max_arg.item())
+
+        coupler_min_arg = int(qubit_flux_col.argmin(dim="flux_coupler"))
+        flux_coupler_min = ds.flux_coupler_full.sel(qubit=qp.name)[coupler_min_arg]
+
+        node.results["results"][qp.name] = {"flux_coupler_min": float(flux_coupler_min.values),
+                                            "flux_qubit_max": float(flux_qubit_max)}
 
 
 # %% {Plotting}
@@ -346,8 +359,8 @@ if not node.parameters.simulate:
 
         sec_ax = ax.secondary_xaxis('top', functions=(flux_to_detuning, detuning_to_flux))
         sec_ax.set_xlabel('Detuning [MHz]')
-        ax.set_xlabel('Qubit flux shift [V]')
-        ax.set_ylabel('Coupler flux [V]')
+        ax.set_xlabel('Qubit flux shift [mV]')
+        ax.set_ylabel('Coupler flux [mV]')
     grid.fig.suptitle('Target')
     plt.tight_layout()
     plt.show()
