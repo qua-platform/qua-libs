@@ -36,12 +36,12 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
 
     # coupler_q1_q2:
-    coupler_flux_min : float = -0.05
-    coupler_flux_max : float = 0.01
-    coupler_flux_step : float = 0.002
+    coupler_flux_min : float = -0.1
+    coupler_flux_max : float = 0.1
+    coupler_flux_step : float = 0.005
 
     idle_time_min : int = 16
-    idle_time_max : int = 500
+    idle_time_max : int = 5000
     idle_time_step : int = 4
 
     gate_time_in_ns: int = 50
@@ -202,7 +202,7 @@ if not node.parameters.simulate:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(job.result_handles, qubit_pairs, {  "idle_time": idle_times, "flux_coupler": fluxes_coupler})
     else:
-        ds, machine = load_dataset(node.parameters.load_data_id)
+        ds, _, _, qubit_pairs = load_dataset(node.parameters.load_data_id)
 
     node.results = {"ds": ds}
 

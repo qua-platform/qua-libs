@@ -56,24 +56,23 @@ import matplotlib
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubit_pairs: Optional[List[str]] = ["coupler_q1_q2"]
+    qubit_pairs: Optional[List[str]] = ["q1-2"]
     num_averages: int = 200
     flux_point_joint_or_independent_or_pairwise: Literal["joint", "independent", "pairwise"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "active"
+    reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
     
-    coupler_flux_min : float = 0.21 #relative to the coupler set point
-    coupler_flux_max : float = 0.26 #relative to the coupler set point
-
-    coupler_flux_step : float = 0.001
+    coupler_flux_min : float = -0.01
+    coupler_flux_max : float = 0.01
+    coupler_flux_step : float = 0.0002
     
     # wide scan:
-    qubit_flux_min : float = -0.09 #-0.2 # relative to the qubit pair detuning
-    qubit_flux_max : float = -0.04 #0.2 # relative to the qubit pair detuning
+    qubit_flux_min : float = -0.015
+    qubit_flux_max : float = 0.015
     
-    qubit_flux_step : float = 0.001
+    qubit_flux_step : float = 0.005
     use_state_discrimination: bool = True
 
 
@@ -116,13 +115,25 @@ n_avg = node.parameters.num_averages  # The number of averages
 
 flux_point = node.parameters.flux_point_joint_or_independent_or_pairwise  # 'independent' or 'joint' or 'pairwise'
 # Loop parameters
-fluxes_coupler = np.arange(node.parameters.coupler_flux_min, node.parameters.coupler_flux_max+0.0001, node.parameters.coupler_flux_step)
-fluxes_qubit = np.arange(node.parameters.qubit_flux_min, node.parameters.qubit_flux_max+0.0001, node.parameters.qubit_flux_step)
+fluxes_coupler = (
+    np.arange(node.parameters.coupler_flux_min,
+              node.parameters.coupler_flux_max+0.0001,
+              node.parameters.coupler_flux_step) +
+    qubit_pairs[0].macros["Cz"].coupler_flux_pulse.amplitude
+)
+
+fluxes_qubit = (
+    np.arange(node.parameters.qubit_flux_min,
+              node.parameters.qubit_flux_max+0.0001,
+              node.parameters.qubit_flux_step)
+)
+
 fluxes_qp = {}
-pulse_duration = None
 for qp in qubit_pairs:
     # estimate the flux shift to get the control qubit to the target qubit frequency
     fluxes_qp[qp.name] = fluxes_qubit + qp.detuning
+    pulse_duration = (qp.macros["Cz"].coupler_flux_pulse.length -
+                      qp.macros["Cz"].coupler_flux_pulse.zero_padding)
 
 reset_coupler_bias = False
 
@@ -266,12 +277,6 @@ if not node.parameters.simulate:
 # %%
 node.results["results"] = {}
 
-## HARD CODED FROM EXPERIMENT
-node.results["results"]["coupler_q1_q2"] = {"flux_coupler_Cz": 0.160, "flux_qubit_Cz": 0.07}
-node.results["results"]["coupler_q2_q3"] = {"flux_coupler_Cz": 0.230, "flux_qubit_Cz": 0.078}
-node.results["results"]["coupler_q3_q4"] = {"flux_coupler_Cz": 0.2345, "flux_qubit_Cz": 0.129}
-node.results["results"]["coupler_q4_q5"] = {"flux_coupler_Cz": 0.235, "flux_qubit_Cz": 0.055}
-
 # if not node.parameters.simulate:
 #     if node.parameters.use_state_discrimination:
 #         res_sum = -ds.state_control + ds.state_target
@@ -301,8 +306,8 @@ if not node.parameters.simulate:
         values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(ax = ax, cmap = 'viridis', x = 'flux_qubit_mV', y = 'flux_coupler_mV')
         qubit_pair = machine.qubit_pairs[qp['qubit']]
         ax.set_title(f"{qp['qubit']}, coupler set point: {qubit_pair.coupler.decouple_offset}", fontsize = 10)
-        ax.axhline(1e3*node.results["results"][qp["qubit"]]["flux_coupler_Cz"], color = 'red', lw = 0.5, ls = '--')
-        ax.axvline(1e3*node.results["results"][qp["qubit"]]["flux_qubit_Cz"], color = 'red', lw =0.5, ls = '--')
+        # ax.axhline(1e3*node.results["results"][qp["qubit"]]["flux_coupler_Cz"], color = 'red', lw = 0.5, ls = '--')
+        # ax.axvline(1e3*node.results["results"][qp["qubit"]]["flux_qubit_Cz"], color = 'red', lw =0.5, ls = '--')
         # Create a secondary x-axis for detuning
         base_detuning = -machine.qubit_pairs[qp['qubit']].detuning **2 * machine.qubit_pairs[qp['qubit']].qubit_control.freq_vs_flux_01_quad_term
         flux_qubit_data = ds.sel(qubit=qp['qubit']).flux_qubit_full.values*1e3
@@ -333,8 +338,8 @@ if not node.parameters.simulate:
         values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(ax = ax, cmap = 'viridis', x = 'flux_qubit_mV', y = 'flux_coupler_mV')
         qubit_pair = machine.qubit_pairs[qp['qubit']]
         ax.set_title(f"{qp['qubit']}, coupler set point: {qubit_pair.coupler.decouple_offset}", fontsize = 10)
-        ax.axhline(1e3*node.results["results"][qp["qubit"]]["flux_coupler_Cz"], color = 'red', lw = 0.5, ls = '--')
-        ax.axvline(1e3*node.results["results"][qp["qubit"]]["flux_qubit_Cz"], color = 'red', lw =0.5, ls = '--')
+        # ax.axhline(1e3*node.results["results"][qp["qubit"]]["flux_coupler_Cz"], color = 'red', lw = 0.5, ls = '--')
+        # ax.axvline(1e3*node.results["results"][qp["qubit"]]["flux_qubit_Cz"], color = 'red', lw =0.5, ls = '--')
         # Create a secondary x-axis for detuning
         base_detuning = -machine.qubit_pairs[qp['qubit']].detuning **2 * machine.qubit_pairs[qp['qubit']].qubit_control.freq_vs_flux_01_quad_term
         flux_qubit_data = ds.sel(qubit=qp['qubit']).flux_qubit_full.values*1e3
