@@ -10,7 +10,7 @@ from quam_builder.architecture.superconducting.qubit import AnyTransmon
 u = unit(coerce_to_integer=True)
 
 
-def plot_raw_data_with_fit(ds: xr.Dataset, qubit_pairs: List[AnyTransmon], fits: xr.Dataset):
+def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     """
     Plots the raw data with fitted curves for the given qubits.
 
@@ -33,11 +33,11 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubit_pairs: List[AnyTransmon], fits:
     - The function creates a grid of subplots, one for each qubit.
     - Each subplot contains the raw data and the fitted curve.
     """
-    grid = QubitGrid(ds, [qp.qubit_control.grid_location for qp in qubit_pairs])
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         plot_individual_raw_data_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
 
-    grid.fig.suptitle("Resonator spectroscopy vs flux")
+    grid.fig.suptitle("Resonator spectroscopy vs Coupler flux")
     grid.fig.set_size_inches(15, 9)
     grid.fig.tight_layout()
     return grid.fig
@@ -105,4 +105,4 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
             markersize=10,
         )
     ax.set_title(qubit["qubit"])
-    ax.set_xlabel("Flux (V)")
+    ax.set_xlabel("Coupler Flux (V)")
