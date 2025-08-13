@@ -94,7 +94,7 @@
         }
     },
     "network": {
-        "host": "10.21.19.201",
+        "host": "localhost",
         "port": 9501,
         "cluster_name": "QPX1000_1"
     }
