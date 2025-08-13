@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # %% {Node_parameters}
-qubit_pair_indexes = [1] 
+qubit_pair_indexes = [1]
 class Parameters(NodeParameters):
     qubit_pairs: Optional[List[str]] =  ["q%s-%s"%(i,i+1) for i in qubit_pair_indexes]
     num_averages: int = 880
@@ -36,9 +36,9 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
 
     # coupler_q1_q2:
-    coupler_flux_min : float = -0.1
-    coupler_flux_max : float = 0.1
-    coupler_flux_step : float = 0.005
+    coupler_flux_min : float = -0.05
+    coupler_flux_max : float = 0.01
+    coupler_flux_step : float = 0.002
 
     idle_time_min : int = 16
     idle_time_max : int = 500
@@ -129,7 +129,7 @@ with program() as CPhase_Oscillations:
                         wait(qp.qubit_control.thermalization_time * u.ns)
                         wait(qp.qubit_target.thermalization_time * u.ns)
                     
-
+                    
                     if "coupler_qubit_crosstalk" in qp.extras:
                         assign(comp_flux_qubit, qp.detuning  +  qp.extras["coupler_qubit_crosstalk"] * flux_coupler )
                     else:
@@ -203,7 +203,7 @@ if not node.parameters.simulate:
         ds = fetch_results_as_xarray(job.result_handles, qubit_pairs, {  "idle_time": idle_times, "flux_coupler": fluxes_coupler})
     else:
         ds, machine = load_dataset(node.parameters.load_data_id)
-        
+
     node.results = {"ds": ds}
 
 # %%
@@ -214,7 +214,7 @@ if not node.parameters.simulate:
     else:
         ds = ds.assign({"res_sum" : ds.I_control - ds.I_target})
     flux_coupler_full = np.array([fluxes_coupler + qp.coupler.decouple_offset for qp in qubit_pairs])
-    ds = ds.assign_coords({"flux_coupler_full": (["qubit", "flux_coupler"], flux_coupler_full)})    
+    ds = ds.assign_coords({"flux_coupler_full": (["qubit", "flux_coupler"], flux_coupler_full)})
 # %%
 if not node.parameters.simulate:
     # Add the dominant frequencies to the dataset
@@ -233,8 +233,8 @@ if not node.parameters.simulate:
 # %% {Plotting}
 if not node.parameters.simulate:
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
-    grid = QubitPairGrid(grid_names, qubit_pair_names)    
-    for ax, qp in grid_iter(grid):     
+    grid = QubitPairGrid(grid_names, qubit_pair_names)
+    for ax, qp in grid_iter(grid):
         if node.parameters.use_state_discrimination:
             values_to_plot = ds.state_control.sel(qubit=qp['qubit'])
         else:
@@ -246,8 +246,8 @@ if not node.parameters.simulate:
     plt.tight_layout()
     plt.show()
     node.results['figure_I_control'] = grid.fig
-    
-    grid = QubitPairGrid(grid_names, qubit_pair_names)    
+
+    grid = QubitPairGrid(grid_names, qubit_pair_names)
     for ax, qp in grid_iter(grid):
         if node.parameters.use_state_discrimination:
             values_to_plot = ds.state_target.sel(qubit=qp['qubit'])
@@ -260,8 +260,8 @@ if not node.parameters.simulate:
     plt.tight_layout()
     plt.show()
     node.results['figure_I_target'] = grid.fig
-    
-    grid = QubitPairGrid(grid_names, qubit_pair_names)    
+
+    grid = QubitPairGrid(grid_names, qubit_pair_names)
     for ax, qp in grid_iter(grid):
         (1e3*ds.dominant_frequency.sel(qubit=qp['qubit'])).plot(ax = ax, marker = '.', ls = 'None', x = 'flux_coupler')
         qubit_pair = machine.qubit_pairs[qp['qubit']]
@@ -318,7 +318,7 @@ if not node.parameters.simulate:
             # qp.extras["flux_values"] = ds.flux_coupler.values.tolist()
             # qp.extras["J_vs_flux"] = ds.dominant_frequency.sel(qubit = qp.name).values.tolist()
 # %% {Save_results}
-if not node.parameters.simulate:    
+if not node.parameters.simulate:
     node.outcomes = {q.name: "successful" for q in qubit_pairs}
     node.results['initial_parameters'] = node.parameters.model_dump()
     node.machine = machine
