@@ -127,7 +127,7 @@ for qp in qubit_pairs:
     if qp.detuning is not None:
         est_flux_shift = qp.detuning
     else:
-        est_flux_shift = np.sqrt(-(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency) * 1e3/ qp.qubit_control.freq_vs_flux_01_quad_term)
+        est_flux_shift = np.sqrt(-(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency) * 1e3/ qp.qubit_control.freq_vs_flux_01_quad_term) #TODO: figure out how to make this run properly after filters
     fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
 
 pulse_duration = node.parameters.pulse_duration_ns // 4
