@@ -310,7 +310,7 @@ if not node.parameters.simulate:
                 qubit_flux_pulse_amp = qp.detuning
 
             # qp.macros["Cz"].flux_pulse_control.amplitude = qubit_flux_pulse_amp
-            qp.macros["Cz"].coupler_flux_pulse_amp.amplitude = qubit_flux_pulse_amp
+            qp.macros["Cz"].coupler_flux_pulse.amplitude = qubit_flux_pulse_amp
 
             # # qp.coupler.decouple_offset = float(coupler_flux_min.sel(qubit = qp.name).values)
             # # qp.gates['SWAP_Coupler'] = SWAP_Coupler_Gate(flux_pulse_control = FluxPulse(length = gate_time_including_zeros, amplitude = qubit_flux_pulse_amp, zero_padding = zero_padding, id = 'flux_pulse_control_' + qp.qubit_target.name),
