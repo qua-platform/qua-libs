@@ -36,12 +36,12 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
 
     # coupler_q1_q2:
-    coupler_flux_min : float = 0.06
-    coupler_flux_max : float = 0.26
+    coupler_flux_min : float = -0.1
+    coupler_flux_max : float = 0.1
     coupler_flux_step : float = 0.005
 
     idle_time_min : int = 16
-    idle_time_max : int = 600
+    idle_time_max : int = 500
     idle_time_step : int = 4
 
     gate_time_in_ns: int = 50
@@ -288,13 +288,13 @@ for qp in qubit_pairs:
             amplitude=0.1,
             zero_padding=zero_padding
         ),
-        flux_pulse_coupler=FluxPulse(
+        coupler_flux_pulse=FluxPulse(
             length=length,
             amplitude=0.1,
             zero_padding=zero_padding
         )
     )
-    qp.macros["Cz"] = f"#../{macro_name}"
+    qp.macros["Cz"] = f"#./{macro_name}"
 
 # %% {Update_state}
 if not node.parameters.simulate:
