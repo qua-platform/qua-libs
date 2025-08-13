@@ -12,6 +12,7 @@ from calibration_utils.cryoscope import (
     process_raw_dataset,
     expdecay,
     savgol,
+    AdvancedFitParameters,
     calculate_advanced_filters,
     log_advanced_results,
     plot_advanced_analysis
@@ -72,7 +73,7 @@ description = """
 """
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="17b_cryoscope",  # Name should be unique
+    name="12b_cryoscope",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
@@ -84,7 +85,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.simulate = False
     node.parameters.simulation_duration_ns = 1000
-    node.parameters.qubits = ["qB2"]
+    node.parameters.qubits = ["q0"]
     node.parameters.num_shots = 10
     pass
 
@@ -141,9 +142,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
-        if node.parameters.use_state_discrimination:
-            state = [declare(int) for _ in range(num_qubits)]
-            state_st = [declare_stream() for _ in range(num_qubits)]
         state = [declare(int) for _ in range(num_qubits)]
         state_st = [declare_stream() for _ in range(num_qubits)]
         t_left_ns = declare(int)  # QUA variable for the flux pulse segment index
@@ -327,120 +325,136 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
     node.results["figure_flux"] = fig_flux
 
-# # %%
-# @node.run_action(skip_if=node.parameters.simulate)
-# def calculate_taps(node: QualibrationNode[Parameters, Quam]):
-#     """
-#     Calculate FIR and IIR taps for short time-scale flux distortion correction from the resulting exponential fit
-#     """
-#     print('\033[1m\033[32m ADVANCED CRYOSCOPE ANALYSIS \033[0m')
+# %%
+@node.run_action(skip_if=node.parameters.simulate)
+def calculate_taps(node: QualibrationNode[Parameters, Quam]):
+    """
+    Calculate FIR and IIR taps for short time-scale flux distortion correction from the resulting exponential fit
+    """
+    print('\033[1m\033[32m ADVANCED CRYOSCOPE ANALYSIS \033[0m')
     
-#     # Get the fitted dataset
-#     ds_fit = node.results["ds_fit"]
+    # Get the fitted dataset
+    ds_fit = node.results["ds_fit"]
     
-#     # Calculate advanced filters using the calibration_utils function
-#     advanced_results = calculate_advanced_filters(ds_fit, node)
+    # Calculate advanced filters using the calibration_utils function
+    advanced_results = calculate_advanced_filters(ds_fit, node)
     
-#     # Convert to dict format for storage (JSON serializable)
-#     # Also convert numpy types to native Python types
-#     def convert_numpy_types(obj):
-#         if isinstance(obj, dict):
-#             return {k: convert_numpy_types(v) for k, v in obj.items()}
-#         elif isinstance(obj, list):
-#             return [convert_numpy_types(item) for item in obj]
-#         elif isinstance(obj, (np.integer, np.int64, np.int32)):
-#             return int(obj)
-#         elif isinstance(obj, (np.floating, np.float64, np.float32)):
-#             return float(obj)
-#         else:
-#             return obj
+    # Convert to dict format for storage (JSON serializable)
+    # Also convert numpy types to native Python types
+    def convert_numpy_types(obj):
+        if isinstance(obj, dict):
+            return {k: convert_numpy_types(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_numpy_types(item) for item in obj]
+        elif isinstance(obj, (np.integer, np.int64, np.int32)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float64, np.float32)):
+            return float(obj)
+        else:
+            return obj
     
-#     advanced_results_dict = {k: asdict(v) for k, v in advanced_results.items()}
-#     node.results["advanced_results"] = convert_numpy_types(advanced_results_dict)
+    advanced_results_dict = {k: asdict(v) for k, v in advanced_results.items()}
+    node.results["advanced_results"] = convert_numpy_types(advanced_results_dict)
     
-#     # Log the advanced results
-#     log_advanced_results(advanced_results, log_callable=node.log)
+    # Log the advanced results
+    log_advanced_results(advanced_results, log_callable=node.log)
 
 
-# # %%
-# @node.run_action(skip_if=node.parameters.simulate)
-# def plot_advanced_data(node: QualibrationNode[Parameters, Quam]):
-#     """
-#     Plot the advanced cryoscope analysis results
-#     """
-#     if "advanced_results" not in node.results:
-#         print("No advanced results available. Run calculate_taps first.")
-#         return
+# %%
+@node.run_action(skip_if=node.parameters.simulate)
+def plot_advanced_data(node: QualibrationNode[Parameters, Quam]):
+    """
+    Plot the advanced cryoscope analysis results
+    """
+    if "advanced_results" not in node.results:
+        print("No advanced results available. Run calculate_taps first.")
+        return
     
-#     # Get the fitted dataset
-#     ds_fit = node.results["ds_fit"]
-#     advanced_results_dict = node.results["advanced_results"]
+    # Get the fitted dataset
+    ds_fit = node.results["ds_fit"]
+    advanced_results_dict = node.results["advanced_results"]
     
-#     # Convert back to AdvancedFitParameters objects for the plotting function
-#     from calibration_utils.cryoscope import AdvancedFitParameters
-#     advanced_results = {}
-#     for qubit_name, result_dict in advanced_results_dict.items():
-#         advanced_results[qubit_name] = AdvancedFitParameters(**result_dict)
+    # Convert back to AdvancedFitParameters objects for the plotting function
+    # from calibration_utils.cryoscope import AdvancedFitParameters
+    advanced_results = {}
+    for qubit_name, result_dict in advanced_results_dict.items():
+        advanced_results[qubit_name] = AdvancedFitParameters(**result_dict)
     
-#     # Plot advanced analysis using the calibration_utils function
-#     figures = plot_advanced_analysis(ds_fit, node.namespace["qubits"], advanced_results)
+    # Plot advanced analysis using the calibration_utils function
+    figures = plot_advanced_analysis(ds_fit, node.namespace["qubits"], advanced_results)
     
-#     # Store the figures
-#     node.results["advanced_figures"] = figures
+    # Store the figures
+    node.results["advanced_figures"] = figures
     
-#     # Show all figures at once instead of individually
-#     print(f"Created {len(figures)} advanced analysis figures:")
-#     for fig_name in figures.keys():
-#         print(f"  - {fig_name}")
+    # Show all figures at once instead of individually
+    print(f"Created {len(figures)} advanced analysis figures:")
+    for fig_name in figures.keys():
+        print(f"  - {fig_name}")
 
-# # %% {Update_state_with_filters}
-# @node.run_action(skip_if=node.parameters.simulate)
-# def update_state_with_filters(node: QualibrationNode[Parameters, Quam]):
-#     """
-#     Update the qubit configuration with the calculated FIR and IIR filter coefficients
-#     """
-#     print('\033[1m\033[32m UPDATING STATE WITH FILTER COEFFICIENTS \033[0m')
+# %% {Update_state_with_filters}
+@node.run_action(skip_if=node.parameters.simulate)
+def update_state_with_filters(node: QualibrationNode[Parameters, Quam]):
+    """
+    Update the qubit configuration with the calculated FIR and IIR filter coefficients
+    """
     
-#     if 'advanced_results' not in node.results:
-#         print("No advanced results available. Run calculate_taps first.")
-#         return
+    if 'advanced_results' not in node.results:
+        print("No advanced results available. Run calculate_taps first.")
+        return
     
-#     with node.record_state_updates():
-#         for qubit in node.namespace["qubits"]:
-#             qubit_name = qubit.name
+    with node.record_state_updates():
+        for qubit in node.namespace["qubits"]:
+            qubit_name = qubit.name
             
-#             if qubit_name in node.results['advanced_results']:
-#                 advanced_result = node.results['advanced_results'][qubit_name]
+            if qubit_name in node.results['advanced_results']:
+                advanced_result = node.results['advanced_results'][qubit_name]
                 
-#                 if not advanced_result['success']:
-#                     print(f"Advanced analysis failed for {qubit_name}, skipping state update")
-#                     continue
+                if not advanced_result['success']:
+                    print(f"Advanced analysis failed for {qubit_name}, skipping state update")
+                    continue
                 
-#                 # Get the FIR coefficients
-#                 fir_coefficients = advanced_result['fir_coefficients']
-#                 exponential_filter = advanced_result['exponential_filter']
+                # Get the FIR coefficients
+                fir_coefficients = advanced_result['fir_coefficients']
+                exponential_filter = advanced_result['exponential_filter']
                 
-#                 # Convert to 2GSPS if needed (duplicate each coefficient)
-#                 convert_to_2GSPS = True
-#                 if convert_to_2GSPS:
-#                     fir_list = [element for item in fir_coefficients for element in (item, item)]
-#                 else:
-#                     fir_list = fir_coefficients
+                # Convert to 2GSPS if needed (duplicate each coefficient)
+                convert_to_2GSPS = True
+                if convert_to_2GSPS:
+                    fir_list = [element for item in fir_coefficients for element in (item, item)]
+                else:
+                    fir_list = fir_coefficients
                 
-#                 # Update the qubit configuration
-#                 qubit.z.opx_output.feedforward_filter = fir_list
+                # Validate ranges before updating state
+                # - feedforward_filter coefficients must be within [-2, 2)
+                # - exponential_filter amplitudes (first element of each pair) must less than 2.0
+                fir_invalid = any((coef < -2.0) or (coef >= 2.0) for coef in fir_list)
+                exp_invalid = False
+                if exponential_filter:
+                    try:
+                        exp_invalid = any((abs(amp) >= 2.0) for amp, _ in exponential_filter)
+                    except Exception:
+                        # If malformed, treat as invalid
+                        exp_invalid = True
+
+                if fir_invalid or exp_invalid:
+                    print(
+                        f"Invalid filter parameters for {qubit_name}; skipping state update. "
+                        f"FIR invalid: {fir_invalid}, EXP invalid: {exp_invalid}"
+                    )
+                    continue
+
+                # Update the qubit configuration
+                qubit.z.opx_output.feedforward_filter = fir_list
+
+                if exponential_filter:
+                    qubit.z.opx_output.exponential_filter = exponential_filter
                 
-#                 # Replace exponential filter entirely (like in pi_vs_flux_example.py)
-#                 if exponential_filter:
-#                     qubit.z.opx_output.exponential_filter = exponential_filter
-                
-#                 print(f"Updated {qubit_name} with:")
-#                 print(f"  FIR coefficients: {fir_list[:5]}... (showing first 5)")
-#                 print(f"  Exponential filter: {exponential_filter}")
-#             else:
-#                 print(f"No advanced results available for {qubit_name}")
-    
-#     print('\033[1m\033[32m STATE UPDATE COMPLETE \033[0m')
+                print(f"Updated {qubit_name} with:")
+                print(f"  FIR coefficients: {fir_list[:5]}... (showing first 5)")
+                print(f"  Exponential filter: {exponential_filter}")
+            else:
+                print(f"No advanced results available for {qubit_name}")
+
 
 
 # %% {Update_state}

@@ -1,176 +1,182 @@
-# %% {Imports}
-import dataclasses
+# %%
+from __future__ import annotations
+
 from dataclasses import asdict
-from datetime import datetime
 from typing import List, Literal, Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.pi_flux import (
-    Parameters,
-    fit_raw_data,
-    log_fitted_results,
-    plot_raw_data_with_fit,
-    process_raw_dataset,
-    fit_raw_data_cascade,
-    plot_cascade_analysis,
-    decompose_exp_sum_to_cascade,
-)
+import matplotlib.pyplot as plt
 from qm import SimulationConfig
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.units import unit
-from qualibrate import NodeParameters, QualibrationNode
+
+from qualibrate import QualibrationNode
 from qualibration_libs.core import tracked_updates
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
-from scipy.optimize import curve_fit
 
-from quam.components.pulses import DragGaussianPulse, GaussianPulse
-
-# %% {Node_parameters}
-description = """
-Pi pulse vs flux calibration experiment.
-"""
-
-# Be sure to include [Parameters, Quam] so the node has proper type hinting
-node = QualibrationNode[Parameters, Quam](
-    name="17a_pi_vs_flux",  # Name should be unique
-    description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
-    parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
+from calibration_utils.pi_flux import (
+    Parameters,
+    process_raw_dataset,
+    fit_raw_data,
+    plot_pi_flux,
+    log_fitted_results,
+    decompose_exp_sum_to_cascade
 )
 
 
-# Any parameters that should change for debugging purposes only should go in here
-# These parameters are ignored when run through the GUI or as part of a graph
+description = """
+Pi vs Flux :
+"""
+
+node = QualibrationNode[Parameters, Quam](
+    name="17a_pi_vs_flux",
+    description=description,
+    parameters=Parameters(),
+)
+
+
+# %% {Custom_param}
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qB2"]
-    node.parameters.num_shots = 100
-    node.parameters.update_lo = False
-    node.parameters.frequency_span_in_mhz = 150
-    node.parameters.frequency_step_in_mhz = 2
+    node.parameters.qubits = ["q0"]
+    node.parameters.num_shots = 10
+    node.parameters.update_lo = True
+    node.parameters.frequency_span_in_mhz = 200
+    node.parameters.frequency_step_in_mhz = 1
     node.parameters.operation_amplitude_factor = 1.0
     node.parameters.duration_in_ns = 9000
-    node.parameters.reset_type = "thermal"
-    node.parameters.multiplexed = True
-    node.parameters.qubit_detuning_in_mhz = 200
-    node.parameters.fitting_base_fractions = [0.4, 0.15, 0.05]  # Start fitting later to avoid early transients
-    node.parameters.update_state = True  # Set to True to update system state with fit results
-    # node.parameters.load_data_id = 99
+    node.parameters.time_axis = "linear"
+    node.parameters.time_step_in_ns = 60
+    node.parameters.multiplexed = False
+    node.parameters.flux_amp = 0.06
+    node.parameters.fitting_base_fractions = [0.4, 0.15, 0.05]
+    node.parameters.update_state = True
+    node.parameters.use_state_discrimination = False
+    node.parameters.load_data_id = None
+    node.parameters.simulate = False
+    node.parameters.use_waveform_report = False
+    node.parameters.reset_type_active_or_thermal = "thermal"
 
 
-# Instantiate the QUAM class from the state file
+# Instantiate machine
 node.machine = Quam.load()
 
 
-# %% {Create_QUA_program}
+# %% {Create_qua_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
-    # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    node.namespace["qubits"] = qubits = get_qubits(node)
-    n_avg = node.parameters.num_shots  # The number of averages
-    operation = node.parameters.operation  # The qubit operation to play
+    operation_name = node.parameters.operation
 
+    # Ensure operation exists
     for qubit in qubits:
-        # Check if the qubit has the required operations
-        if hasattr(qubit.xy.operations, operation):
+        if hasattr(qubit.xy.operations, operation_name):
             continue
-        else:
-            x180 = qubit.xy.operations["x180"]
-            qubit.xy.operations[operation] = DragGaussianPulse(
-                length=int(x180.length),
-                amplitude=float(x180.amplitude),
-                sigma=int(x180.length / 4),
-                alpha=0.0,
-                anharmonicity=200e6,
-                axis_angle=0.0,
-            )
-    # Modify the lo frequency to allow for maximum detuning
-    tracked_qubits = []
-    if node.parameters.update_lo:
-        for q in qubits:
-            with tracked_updates(q, auto_revert=False, dont_assign_to_none=True) as q:
-                q.xy.opx_output.upconverter_frequency -= 300e6
-                # if q.xy.upconverter_frequency < 4.5e9:
-                #     q.xy.opx_output.band = 1
-                q.xy.RF_frequency -= 400e6
-                tracked_qubits.append(q)
+        qubit.xy.operations[operation_name] = qubit.xy.operations["x180"]
 
-    node.namespace["tracked_qubits"] = tracked_qubits
-    # Adjust the pulse duration and amplitude to drive the qubit into a mixed state - can be None
+    operation_amp_scale = node.parameters.operation_amplitude_factor or 1.0
 
-    operation_amp = node.parameters.operation_amplitude_factor
-
-    # Qubit detuning sweep with respect to their resonance frequencies
+    # Frequency sweep
     span = node.parameters.frequency_span_in_mhz * u.MHz
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span // 2, span // 2, step, dtype=np.int32)
-    times = np.arange(4, node.parameters.duration_in_ns // 4, 60, dtype=np.int32)
 
-    detunings = [node.parameters.qubit_detuning_in_mhz * u.MHz for q in qubits]
+    # Time sweep
+    if node.parameters.time_axis == "linear":
+        times = np.arange(
+            node.parameters.min_wait_time_in_ns // 4,
+            node.parameters.duration_in_ns // 4,
+            max(node.parameters.time_step_in_ns, 4) // 4,
+            dtype=np.int32,
+        )
+    else:
+        times = np.logspace(
+            np.log10(max(node.parameters.min_wait_time_in_ns // 4, 1)),
+            np.log10(max(node.parameters.duration_in_ns // 4, 2)),
+            max(node.parameters.time_step_num, 3),
+            dtype=np.int32,
+        )
+        times = np.unique(times)
 
-    flux_amplitudes = [
-        float(np.sqrt(-node.parameters.qubit_detuning_in_mhz * u.MHz / q.freq_vs_flux_01_quad_term)) for q in qubits
-    ]
+    detuning_offsets = [q.freq_vs_flux_01_quad_term * node.parameters.flux_amp ** 2 for q in qubits]
 
+    # Sweep axes for data fetcher
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "detuning": xr.DataArray(dfs, attrs={"long_name": "qubit frequency", "units": "Hz"}),
         "time": xr.DataArray(4 * times, attrs={"long_name": "Flux pulse duration", "units": "ns"}),
     }
 
-    with program() as node.namespace["qua_program"]:
-        # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
+    # LO retune for headroom
+    tracked_qubits = []
+    if node.parameters.update_lo:
+        for q in qubits:
+            with tracked_updates(q, auto_revert=False, dont_assign_to_none=False) as q_upd:
+                rf_frequency = q_upd.xy.intermediate_frequency + q_upd.xy.opx_output.upconverter_frequency
+                lo_frequency = rf_frequency - 400e6
+                if (q_upd.xy.opx_output.band == 3) and (lo_frequency < 6.5e9):
+                    lo_frequency = 6.5e9
+                elif (q_upd.xy.opx_output.band == 2) and (lo_frequency < 4.5e9):
+                    lo_frequency = 4.5e9
+                try:
+                    q_upd.xy.intermediate_frequency = None
+                except Exception:
+                    pass
+                try:
+                    q_upd.xy.opx_output.upconverter_frequency = None
+                except Exception:
+                    pass
+                q_upd.xy.intermediate_frequency = rf_frequency - lo_frequency
+                q_upd.xy.opx_output.upconverter_frequency = lo_frequency
+                tracked_qubits.append(q_upd)
+    node.namespace["tracked_qubits"] = tracked_qubits
+
+    with program() as qua_prog:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         if node.parameters.use_state_discrimination:
             state = [declare(int) for _ in range(num_qubits)]
             state_st = [declare_stream() for _ in range(num_qubits)]
-        df = declare(int)  # QUA variable for the qubit frequency
+
+        df = declare(int)
         t_delay = declare(int)
 
-
         for multiplexed_qubits in qubits.batch():
-            # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
             align()
 
-            with for_(n, 0, n < n_avg, n + 1):
+            with for_(n, 0, n < node.parameters.num_shots, n + 1):
                 save(n, n_st)
+
                 with for_(*from_array(df, dfs)):
                     with for_each_(t_delay, times):
-                        # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                            qubit.reset(node.parameters.reset_type_active_or_thermal, node.parameters.simulate)
                         align()
+
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency - detunings[i])
-                            # Bring the qubit to the desired point during the saturation pulse
+                            qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency + detuning_offsets[i])
                             qubit.align()
                             qubit.z.play(
                                 "const",
-                                amplitude_scale=flux_amplitudes[i] / qubit.z.operations["const"].amplitude,
+                                amplitude_scale=node.parameters.flux_amp / qubit.z.operations["const"].amplitude,
                                 duration=t_delay + 200,
                             )
                             qubit.xy.wait(t_delay)
-                            qubit.xy.play(operation, amplitude_scale=operation_amp)
-                            qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
-                        align()
-                        # Qubit readout
+                            qubit.xy.play(operation_name, amplitude_scale=operation_amp_scale)
+                            qubit.align()
+                            qubit.wait(200)
+
                         for i, qubit in multiplexed_qubits.items():
                             if node.parameters.use_state_discrimination:
                                 qubit.readout_state(state[i])
@@ -183,270 +189,142 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         with stream_processing():
             n_st.save("n")
-            for i, qubit in enumerate(qubits):
+            for i, _ in enumerate(qubits):
                 if node.parameters.use_state_discrimination:
                     state_st[i].buffer(len(times)).buffer(len(dfs)).average().save(f"state{i + 1}")
                 else:
                     I_st[i].buffer(len(times)).buffer(len(dfs)).average().save(f"I{i + 1}")
                     Q_st[i].buffer(len(times)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
+    node.namespace["qua_program"] = qua_prog
 
-# %% {Simulate}
+
+# %% {Simulate_qua_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP and simulate the QUA program"""
-    # Connect to the QOP
     qmm = node.machine.connect()
-    # Get the config from the machine
     config = node.machine.generate_config()
-    # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
-    # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
+    plt.show()
 
 
-# %% {Execute}
+# %% {Execute_qua_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
-    # Connect to the QOP
     qmm = node.machine.connect()
-    # Get the config from the machine
     config = node.machine.generate_config()
-    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-        # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter(
-                data_fetcher["n"],
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-            )
-        # Display the execution report to expose possible runtime errors
+            progress_counter(data_fetcher["n"], node.parameters.num_shots, start_time=data_fetcher.t_start)
         node.log(job.execution_report())
-    # Register the raw dataset
     node.results["ds_raw"] = dataset
 
 
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
-    """Load a previously acquired dataset."""
-    load_data_id = node.parameters.load_data_id
-    # Load the specified dataset
-    node.load_from_id(node.parameters.load_data_id)
-    node.parameters.load_data_id = load_data_id
-    # Get the active qubits from the loaded node parameters
+    load_id = node.parameters.load_data_id
+    node.load_from_id(load_id)
+    node.parameters.load_data_id = load_id
     node.namespace["qubits"] = get_qubits(node)
 
 
-# %% {Analyse_data}
+# %% {Process_raw}
 @node.run_action(skip_if=node.parameters.simulate)
-def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data and results."""
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+def process_raw(node: QualibrationNode[Parameters, Quam]):
+    ds_raw = node.results["ds_raw"]
+    ds_proc = process_raw_dataset(ds_raw, node)
+    node.results["ds_proc_input"] = ds_proc
 
-    # Log the relevant information extracted from the data analysis
+
+# %% {Analyze_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def analyze_data(node: QualibrationNode[Parameters, Quam]):
+    ds_in = node.results["ds_proc_input"]
+    ds, fit_results = fit_raw_data(ds_in, node)
+    node.results["ds_proc"] = ds
+    node.results["fit_results"] = fit_results
     log_fitted_results(fit_results, log_callable=node.log)
-    node.outcomes = {
-        qubit_name: ("successful" if fit_result.success else "failed") for qubit_name, fit_result in fit_results.items()
-    }
 
 
-# %% {Plot_data}
+# %% {Plot}
 @node.run_action(skip_if=node.parameters.simulate)
-def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+def plot_results(node: QualibrationNode[Parameters, Quam]):
+    if "ds_proc" not in node.results:
+        return
+    ds = node.results["ds_proc"]
+    qubits = node.namespace.get("qubits", get_qubits(node))
+    figures = plot_pi_flux(ds, qubits, node.results.get("fit_results"))
     plt.show()
-    # Store the generated figures
-    node.results["figures"] = {
-        "amplitude": fig_raw_fit,
-    }
-
-# # %% {Analyze_data_cascade}
-# @node.run_action(skip_if=node.parameters.simulate)
-# def analyze_data_cascade(node: QualibrationNode[Parameters, Quam]):
-#     """Analyze the data using the cascade method."""
-
-#     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-#     node.results["ds_cascade"], fit_results_cascade = fit_raw_data_cascade(node.results["ds_raw"], node)
-#     # Cascade results are already dictionaries, no need for asdict
-#     node.results["fit_results_cascade"] = fit_results_cascade
-
-#     # Log cascade fit results
-#     for qubit_name, fit_result in fit_results_cascade.items():
-#         if fit_result["fit_successful"]:
-#             node.log(f"Cascade fit for qubit {qubit_name}: SUCCESS!")
-#             node.log(f"\tBest RMS: {fit_result['best_rms']:.3e}")
-#             node.log(f"\tBest DC component: {fit_result['best_a_dc']:.3e}")
-#         else:
-#             node.log(f"Cascade fit for qubit {qubit_name}: FAILED!")
-    
-#     node.outcomes = {
-#         qubit_name: ("successful" if fit_result["fit_successful"] else "failed") for qubit_name, fit_result in fit_results_cascade.items()
-#     }
-
-# # %% {Plot_data_cascade}
-# @node.run_action(skip_if=node.parameters.simulate)
-# def plot_data_cascade(node: QualibrationNode[Parameters, Quam]):
-#     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-#     figures_cascade = plot_cascade_analysis(node.results["ds_cascade"], node.namespace["qubits"], node.results["fit_results_cascade"])
-    
-#     # Display all generated figures
-#     for fig_name, fig in figures_cascade.items():
-#         plt.figure(fig.number)
-#         plt.show()
-    
-#     # Store the generated figures
-#     node.results["figures"] = figures_cascade
-
-# # %% {Update_state}
-# @node.run_action(skip_if=node.parameters.simulate)
-# def update_state(node: QualibrationNode[Parameters, Quam]):
-#     """Update the system state with the cascade fit results for exponential filters."""
-#     node.log("Update_state function called")
-#     node.log(f"load_data_id: {node.parameters.load_data_id}")
-#     node.log(f"update_state parameter: {node.parameters.update_state}")
-    
-#     if node.parameters.load_data_id is None and node.parameters.update_state:
-#         node.log("Conditions met for state update")
-        
-#         if "fit_results_cascade" not in node.results:
-#             node.log("ERROR: fit_results_cascade not found in node.results")
-#             return
-            
-#         with node.record_state_updates():
-#             for q in node.namespace["qubits"]:
-#                 node.log(f"Checking qubit {q.name}")
-                
-#                 if (q.name in node.results["fit_results_cascade"] and 
-#                     node.results["fit_results_cascade"][q.name]["fit_successful"]):
-                    
-#                     node.log(f"Updating state for qubit {q.name}")
-                    
-#                     # Extract fit results
-#                     fit_result = node.results["fit_results_cascade"][q.name]
-#                     best_a_dc = fit_result["best_a_dc"]
-#                     best_components = fit_result["best_components"]
-                    
-#                     node.log(f"best_a_dc: {best_a_dc}")
-#                     node.log(f"best_components: {best_components}")
-                    
-#                     # Calculate normalized amplitudes and time constants
-#                     # The amplitudes should be normalized by the DC component
-#                     A_list = [component[0] / best_a_dc for component in best_components]
-#                     tau_list = [component[1] for component in best_components]
-                    
-#                     # Check if the normalization makes sense
-#                     total_amplitude = sum(abs(A) for A in A_list)
-#                     if total_amplitude > 10:
-#                         node.log(f"  WARNING: Total normalized amplitude is very large: {total_amplitude:.1f}")
-#                         node.log(f"  This may cause numerical instability in the decomposition.")
-#                         node.log(f"  Consider using a different fitting approach or data preprocessing.")
-                    
-#                     node.log(f"A_list: {A_list}")
-#                     node.log(f"tau_list: {tau_list}")
-                    
-#                     # Decompose to cascade format using cryoscope_tools
-#                     try:
-#                         # Add diagnostic information
-#                         node.log(f"Diagnostic info for decomposition:")
-#                         node.log(f"  A_list: {A_list}")
-#                         node.log(f"  tau_list: {tau_list}")
-#                         node.log(f"  A_dc: 1.0")
-                        
-#                         # Check for potential issues
-#                         for i, (A, tau) in enumerate(zip(A_list, tau_list)):
-#                             node.log(f"  Component {i}: A={A:.3f}, tau={tau:.1f}ns")
-#                             if tau <= 0:
-#                                 node.log(f"    WARNING: Negative or zero tau!")
-#                             if abs(A) > 1000:
-#                                 node.log(f"    WARNING: Very large amplitude!")
-                        
-#                         A_c, tau_c, scale = decompose_exp_sum_to_cascade(
-#                             A=A_list, tau=tau_list, A_dc=1.0
-#                         )
-                        
-#                         node.log(f"A_c: {A_c}")
-#                         node.log(f"tau_c: {tau_c}")
-#                         node.log(f"scale: {scale}")
-                        
-#                         # Update the exponential filter in the qubit's Z control
-#                         q.z.opx_output.exponential_filter = list(zip(A_c, tau_c))
-                        
-#                         node.log(f"Updated exponential filter for qubit {q.name}:")
-#                         node.log(f"  Cascade components: {list(zip(A_c, tau_c))}")
-#                         node.log(f"  Scale factor: {scale:.6f}")
-                        
-#                     except AssertionError as e:
-#                         node.log(f"Warning: Cascade decomposition failed for qubit {q.name}: {e}")
-#                         node.log("  This means the exponential fit cannot be converted to cascade format.")
-#                         node.log("  The fit parameters may be too complex or have numerical issues.")
-#                         node.log("  Consider using a simpler fit model or different fitting parameters.")
-                        
-#                         # Option 1: Use the original fit parameters directly (if supported by your system)
-#                         # This would require a different filter format that supports sum-of-exponentials
-#                         node.log("  Skipping state update - cascade decomposition not possible")
-                        
-#                         # Option 2: Use a simplified single-exponential approximation
-#                         # Find the dominant component (largest amplitude)
-#                         dominant_idx = np.argmax([abs(amp) for amp in A_list])
-#                         dominant_amp = A_list[dominant_idx]
-#                         dominant_tau = tau_list[dominant_idx]
-                        
-#                         # Create a single-pole filter as approximation
-#                         A_simple = [dominant_amp / best_a_dc]
-#                         tau_simple = [dominant_tau]
-                        
-#                         node.log(f"  Using simplified single-pole approximation:")
-#                         node.log(f"    A = {A_simple[0]:.3f}, tau = {tau_simple[0]:.1f} ns")
-                        
-#                         # Update with simplified filter
-#                         q.z.opx_output.exponential_filter = list(zip(A_simple, tau_simple))
-                        
-#                     except Exception as e:
-#                         node.log(f"Error in cascade decomposition for qubit {q.name}: {e}")
-#                         node.log("  Skipping state update due to decomposition error")
-#                 else:
-#                     if q.name not in node.results["fit_results_cascade"]:
-#                         node.log(f"Qubit {q.name} not found in fit_results_cascade")
-#                     else:
-#                         node.log(f"Fit for qubit {q.name} was not successful")
-#     else:
-#         if node.parameters.load_data_id is not None:
-#             node.log("Skipping state update because load_data_id is not None")
-#         if not node.parameters.update_state:
-#             node.log("Skipping state update because update_state parameter is False")
-
-# %%
+    node.results.setdefault("figures", {})
+    node.results["figures"].update(figures)
 
 
 # %% {Update_state}
-# @node.run_action(skip_if=node.parameters.simulate)
-# def update_state(node: QualibrationNode[Parameters, Quam]):
-#     """Update the relevant parameters if the qubit data analysis was successful."""
-#     with node.record_state_updates():
-#         for q in node.namespace["qubits"]:
-#             if node.outcomes[q.name] == "failed":
-#                 continue
+@node.run_action(skip_if=node.parameters.simulate)
+def update_state(node: QualibrationNode[Parameters, Quam]):
+    if node.parameters.load_data_id is not None:
+        return
+    if not node.parameters.update_state:
+        return
 
-#             operation = q.xy.operations[node.parameters.operation]
-#             operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
-#             if node.parameters.operation == "x180":
-#                 q.xy.operations["x90"].amplitude = node.results["fit_results"][q.name]["opt_amp"] / 2
+    qubits = node.namespace.get("qubits", get_qubits(node))
+    with node.record_state_updates():
+        for q in qubits:
+            res = node.results["fit_results"].get(q.name)
+            if not res:
+                continue
+            # Support dict or dataclass
+            fit_success = res.get("fit_successful") if isinstance(res, dict) else res.fit_successful
+            if not fit_success:
+                continue
+            best_a_dc = res["best_a_dc"] if isinstance(res, dict) else res.best_a_dc
+            components = res["best_components"] if isinstance(res, dict) else res.best_components
+            A_list = [amp / best_a_dc for amp, _ in components]
+            tau_list = [tau for _, tau in components]
+            try:
+                A_c, tau_c, _ = decompose_exp_sum_to_cascade(A=A_list, tau=tau_list, A_dc=1)
+                # Validate decomposition results before updating the state
+                A_c = np.asarray(A_c, dtype=float)
+                tau_c = np.asarray(tau_c, dtype=float)
+
+                if A_c.size == 0 or tau_c.size == 0:
+                    node.log(f"Skipping state update for {q.name}: empty A_c/tau_c from decomposition")
+                    continue
+
+                if not np.all((A_c > -2.0) & (A_c < 2.0)):
+                    node.log(f"Skipping state update for {q.name}: amplitudes out of (-2,2): {A_c}")
+                    continue
+
+                q.z.opx_output.exponential_filter = list(zip(A_c, tau_c))
+            except Exception as e:
+                node.log(f"Skipping state update for {q.name}: {e}")
 
 
 # %% {Save_results}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def save_results(node: QualibrationNode[Parameters, Quam]):
-    for qubit in node.namespace["tracked_qubits"]:
-        qubit.revert_changes()
+    # Ensure results are JSON-serializable (convert dataclasses to dicts)
+    if "fit_results" in node.results and isinstance(node.results["fit_results"], dict):
+        serialized: dict = {}
+        for k, v in node.results["fit_results"].items():
+            try:
+                # Supports both dict and dataclass entries
+                if hasattr(v, "__dataclass_fields__"):
+                    serialized[k] = asdict(v)
+                else:
+                    serialized[k] = v
+            except Exception:
+                serialized[k] = v
+        node.results["fit_results"] = serialized
+
+    for qubit in node.namespace.get("tracked_qubits", []):
+        try:
+            qubit.revert_changes()
+        except Exception:
+            pass
     node.save()
 
-# %%
