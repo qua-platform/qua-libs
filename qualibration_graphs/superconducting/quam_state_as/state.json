@@ -242,8 +242,8 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     },
                     "cz_square": {
-                        "id": "cz_square",
                         "length": "#/qubit_pairs/q1-2/macros/Cz/flux_pulse_control/length",
+                        "id": "cz_square",
                         "amplitude": "#/qubit_pairs/q1-2/macros/Cz/flux_pulse_control/amplitude",
                         "__class__": "quam.components.pulses.SquarePulse"
                     },
@@ -1253,15 +1253,15 @@
             "macros": {
                 "Cz_square_pulse_50": {
                     "flux_pulse_control": {
+                        "length": 200,
                         "id": "cz_square",
-                        "length": 52,
-                        "amplitude": 0.076145125,
+                        "amplitude": 0.07583692290071029,
                         "zero_padding": 2,
                         "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
                     },
                     "coupler_flux_pulse": {
+                        "length": 200,
                         "id": "cz_square",
-                        "length": 52,
                         "amplitude": 0.03255,
                         "zero_padding": 2,
                         "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
@@ -1284,19 +1284,21 @@
                 },
                 "cz_flattop": {
                     "flux_pulse_control": {
-                        "length": 72,
+                        "length": 220,
                         "id": "cz_flattop_pulse",
-                        "amplitude": 0.076145,
-                        "flat_length": 50,
+                        "amplitude": 0.07586677180619879,
+                        "flat_length": 200,
                         "__class__": "quam.components.pulses.FlatTopGaussianPulse"
                     },
                     "coupler_flux_pulse": {
-                        "length": 72,
+                        "length": 220,
                         "id": "cz_flattop_pulse",
                         "amplitude": 0.03255,
-                        "flat_length": 50,
+                        "flat_length": 200,
                         "__class__": "quam.components.pulses.FlatTopGaussianPulse"
                     },
+                    "phase_shift_control": -0.6348881111742558,
+                    "phase_shift_target": -0.5739152817805006,
                     "__class__": "quam_builder.architecture.superconducting.custom_gates.cz.CZGate"
                 }
             },
@@ -1320,8 +1322,8 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     },
                     "cz_square": {
-                        "id": "cz_square",
                         "length": "#/qubit_pairs/q1-2/macros/Cz/coupler_flux_pulse/length",
+                        "id": "cz_square",
                         "amplitude": "#/qubit_pairs/q1-2/macros/Cz/coupler_flux_pulse/amplitude",
                         "__class__": "quam.components.pulses.SquarePulse"
                     },
@@ -1340,7 +1342,6 @@
             },
             "detuning": 0.074,
             "extras": {
-                "coupler_qubit_crosstalk": 0.0275,
                 "flux_values": [
                     0.06,
                     0.065,

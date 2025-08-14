@@ -50,14 +50,14 @@ from qualibration_libs.legacy.lib.plot_utils import QubitPairGrid, grid_iter, gr
 
 # %% {Node_parameters}
 qubit_pair_indexes = [1]
-class Parameters(NodeParameters): 
+class Parameters(NodeParameters):
 
     qubit_pairs: Optional[List[str]] = ["q%s-%s"%(i,i+1) for i in qubit_pair_indexes]
-    num_shots: int = 2000
+    num_shots: int = 200
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
-    timeout: int = 100
+    timeout: int = 1000
     load_data_id: Optional[int] = None
 
 
@@ -117,7 +117,7 @@ def plot_3d_hist_with_frame(data,ideal, title = ''):
         else:
             dz = np.imag(data).ravel()
             dzi = np.imag(ideal).ravel()
-            axs[i].set_title('imaginary')            
+            axs[i].set_title('imaginary')
         axs[i].bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dz, alpha= 1, color=cmap(np.sign(dz)))
         axs[i].bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dzi, alpha= 0.1, edgecolor = 'k')
         # Set tick labels for x and y axes
@@ -130,7 +130,7 @@ def plot_3d_hist_with_frame(data,ideal, title = ''):
         axs[i].set_zlim([gmin,gmax])
     fig.suptitle(title)
     # Show the plot
-    
+
     return fig
 
 
@@ -151,7 +151,7 @@ def plot_3d_hist_with_frame_real(data,ideal, ax ):
     dz = np.real(data).ravel()
     dzi = np.real(ideal).ravel()
     ax.set_title('real')
-    
+
     ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dz, alpha= 1, color=cmap(np.sign(dz)))
     ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dzi, alpha= 0.1, edgecolor = 'k')
     # Set tick labels for x and y axes
@@ -181,7 +181,7 @@ def plot_3d_hist_with_frame_imag(data,ideal, axs):
     dz = np.imag(data).ravel()
     dzi = np.imag(ideal).ravel()
     ax.set_title('imaginary')
-    
+
     ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dz, alpha= 1, color=cmap(np.sign(dz)))
     ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dzi, alpha= 0.1, edgecolor = 'k')
     # Set tick labels for x and y axes
@@ -193,7 +193,7 @@ def plot_3d_hist_with_frame_imag(data,ideal, axs):
     ax.set_yticklabels(['00', '01', '10', '11'], rotation=45)
     ax.set_zlim([gmin,gmax])
     # Show the plot
-    
+
 
 def flatten(data):
     if isinstance(data, tuple):
@@ -203,8 +203,8 @@ def flatten(data):
             return flatten(data[0]) + flatten(data[1:])
     else:
         return (data,)
-    
-def generate_pauli_basis(n_qubits):    
+
+def generate_pauli_basis(n_qubits):
     pauli = np.array([0,1,2,3])
     paulis = pauli
     for i in range(n_qubits-1):
@@ -214,7 +214,7 @@ def generate_pauli_basis(n_qubits):
                 new_paulis.append(flatten((ps, p)))
         paulis = new_paulis
     return paulis
-        
+
 def gen_inverse_hadamard(n_qubits):
     H = np.array([[1,1],[1,-1]])/2
     for _ in range(n_qubits-1):
@@ -243,9 +243,9 @@ def get_pauli_data(da):
         for i, pauli in enumerate(paulis):
             paulis_data.value.loc[{'pauli_op': pauli}] += pauli_data[i]
             paulis_data.appearances.loc[{'pauli_op': pauli}] += 1
-        
+
     paulis_data = xr.where(paulis_data.appearances != 0, paulis_data.value / paulis_data.appearances, paulis_data.value)
-    
+
     return paulis_data
 
 
@@ -265,7 +265,7 @@ def get_density_matrix(paulis_data):
     for i, pauli_i in enumerate(pauli_matrices):
         for j, pauli_j in enumerate(pauli_matrices):
             rho = rho + 0.25*paulis_data.sel(pauli_op = f"{i},{j}").values * np.kron(pauli_i, pauli_j)
-    
+
     return rho
 
 # %% {QUA_program}
@@ -284,13 +284,13 @@ with program() as CPhase_Oscillations:
     state_st = [declare_stream() for _ in range(num_qubit_pairs)]
     # tomo_axis_control = declare(int)
     # tomo_axis_target = declare(int)
-    
+
     for i, qp in enumerate(qubit_pairs):
         # Bring the active qubits to the minimum frequency point
         machine.set_all_fluxes(flux_point, qp.qubit_control)
 
         with for_(n, 0, n < n_shots, n + 1):
-            save(n, n_st) 
+            save(n, n_st)
             # with for_(tomo_axis_control, 0, tomo_axis_control < 3, tomo_axis_control + 1):
                 # with for_(tomo_axis_target, 0, tomo_axis_target < 3, tomo_axis_target + 1):
             for tomo_axis_control in [0,1,2]:
@@ -298,10 +298,10 @@ with program() as CPhase_Oscillations:
                     # reset
                     if node.parameters.reset_type == "active":
                             wait(2*qp.qubit_control.thermalization_time * u.ns)
-                            active_reset_simple(qp.qubit_control)
-                            active_reset_simple(qp.qubit_target)
-                            active_reset_simple(qp.qubit_control)
-                            active_reset_simple(qp.qubit_target)   
+                            active_reset(qp.qubit_control)
+                            active_reset(qp.qubit_target)
+                            active_reset(qp.qubit_control)
+                            active_reset(qp.qubit_target)
                     else:
                         wait(5*qp.qubit_control.thermalization_time * u.ns)
                     qp.align()
@@ -309,7 +309,7 @@ with program() as CPhase_Oscillations:
                     qp.qubit_control.xy.play("-y90")
                     qp.qubit_target.xy.play("y90")
                     qp.align()
-                    qp.gates['Cz'].execute()
+                    qp.macros['cz_flattop'].apply()
                     qp.align()
                     qp.qubit_control.xy.play("y90")
                     qp.align()
@@ -330,7 +330,7 @@ with program() as CPhase_Oscillations:
                         qp.qubit_target.xy.play("y90")
                     if tomo_axis_target == 1:
                         qp.qubit_target.xy.play("x90")
-                    qp.align()            
+                    qp.align()
                     # readout
                     readout_state(qp.qubit_control, state_control[i])
                     readout_state(qp.qubit_target, state_target[i])
@@ -339,7 +339,7 @@ with program() as CPhase_Oscillations:
                     save(state_target[i], state_st_target[i])
                     save(state[i], state_st[i])
                 align()
-        
+
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubit_pairs):
@@ -374,9 +374,9 @@ if not node.parameters.simulate:
         ds = fetch_results_as_xarray(job.result_handles, qubit_pairs, {"tomo_axis_target": [0,1,2], "tomo_axis_control": [0,1,2], "N": np.linspace(1, n_shots, n_shots)})
     else:
         ds, machine = load_dataset(node.parameters.load_data_id)
-        
+
     node.results = {"ds": ds}
-    
+
 # %%
 import xarray as xr
 if not node.parameters.simulate:
@@ -385,7 +385,7 @@ if not node.parameters.simulate:
     results = []
     for state in states:
         results.append((ds.state == state).sum(dim = "N") / node.parameters.num_shots)
-        
+
 results_xr = xr.concat(results, dim=xr.DataArray(states, name="state"))
 results_xr = results_xr.rename({"dim_0": "state"})
 results_xr = results_xr.stack(
@@ -393,11 +393,11 @@ results_xr = results_xr.stack(
 
 corrected_results = []
 for qp in qubit_pairs:
-    corrected_results_qp = [] 
+    corrected_results_qp = []
     for tomo_axis_control in [0,1,2]:
         corrected_results_control = []
         for tomo_axis_target in [0,1,2]:
-            results = results_xr.sel(tomo_axis_control = tomo_axis_control, tomo_axis_target = tomo_axis_target, 
+            results = results_xr.sel(tomo_axis_control = tomo_axis_control, tomo_axis_target = tomo_axis_target,
                                      qubit = qp.name)
             results = np.linalg.inv(qp.confusion) @ results.data
             # results = np.linalg.inv(np.diag((1,1,1,1))) @ results.data
@@ -433,7 +433,7 @@ for qp in qubit_pairs:
     for qp in qubit_pairs:
         paulis_data[qp.name] = get_pauli_data(corrected_results_xr.sel(qubit = qp.name))
         rhos[qp.name] = get_density_matrix(paulis_data[qp.name])
-        
+
     # %%
     from scipy.linalg import sqrtm
     ideal_dat = np.array([[1,0,0,1],[0,0,0,0],[0,0,0,0],[1,0,0,1]])/2
@@ -451,12 +451,12 @@ for qp in qubit_pairs:
 
 # %%
 if not node.parameters.simulate:
-    
+
     for qp in qubit_pairs:
         ideal_dat = np.array([[1,0,0,1],[0,0,0,0],[0,0,0,0],[1,0,0,1]])/2
         fig = plot_3d_hist_with_frame(rhos[qp.name], ideal_dat, title = f"Fidelity of {qp.name}: {fidelity:.3f}")
         node.results[f"{qp.name}_figure_city"] = fig
-    
+
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
     grid = QubitPairGrid(grid_names, qubit_pair_names)
     for ax, qubit_pair in grid_iter(grid):
@@ -478,7 +478,7 @@ if not node.parameters.simulate:
         ax.set_yticklabels(['00', '01', '10', '11'])
     grid.fig.suptitle(f"Bell state tomography (real part)")
     node.results["figure_rho_real"] = grid.fig
-        
+
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
     grid = QubitPairGrid(grid_names, qubit_pair_names)
     for ax, qubit_pair in grid_iter(grid):
@@ -538,5 +538,5 @@ if not node.parameters.simulate:
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
-        
+
 # %%

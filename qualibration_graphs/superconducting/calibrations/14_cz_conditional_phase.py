@@ -76,8 +76,12 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
 
-    node.parameters.amp_range = 0.07
-    # node.parameters.load_data_id = 2119
+    node.parameters.amp_range = 0.03
+    node.parameters.amp_step = 0.001
+    node.parameters.operation = "Cz"
+    # node.parameters.load_data_id = 2517
+    # node.parameters.simulate = True
+    # node.parameters.simulation_duration_ns = 2000
     pass
 
 
@@ -117,6 +121,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         frame = declare(fixed)
         control_initial = declare(int)
         n = declare(int)
+        dummy = declare(fixed, value=1.001)
         n_st = declare_stream()
         I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
         I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
@@ -127,7 +132,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
 
         for qubit in node.machine.active_qubits:
-            node.machine.initialize_qpu(target=qubit)
+            node.machine.initialize_qpu(target=qubit, flux_point="joint")
+
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             with for_(n, 0, n < n_avg, n + 1):
@@ -146,7 +152,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qp.qubit_target.xy.play("x90")
                                 qp.align()
                                 # play the CZ gate
-                                qp.macros[operation].apply(amplitude_scale_control=amp)
+                                qp.macros[operation].apply(amplitude_scale_control=amp, amplitude_scale_coupler=dummy)
                                 # rotate the frame
                                 qp.qubit_target.xy.frame_rotation_2pi(frame)
                                 # return the target qubit before measurement
