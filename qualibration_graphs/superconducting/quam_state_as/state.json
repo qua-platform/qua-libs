@@ -1241,13 +1241,13 @@
                 "Cz_square_pulse_50": {
                     "flux_pulse_control": {
                         "length": 52,
-                        "amplitude": 0.1,
+                        "amplitude": 0.076145125,
                         "zero_padding": 2,
                         "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
                     },
                     "coupler_flux_pulse": {
                         "length": 52,
-                        "amplitude": 0.1,
+                        "amplitude": 0.03255,
                         "zero_padding": 2,
                         "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
                     },

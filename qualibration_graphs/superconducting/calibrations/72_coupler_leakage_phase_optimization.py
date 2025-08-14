@@ -5,6 +5,7 @@ from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
 
+from matplotlib.colors import LinearSegmentedColormap
 from qm import SimulationConfig
 from qm.qua import *
 from qualibrate import QualibrationNode, NodeParameters
@@ -35,14 +36,14 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
 
-    coupler_flux_min : float = -0.01 # relative to the coupler set point
-    coupler_flux_max : float = 0.01 # relative to the coupler set point
+    coupler_flux_min : float = -0.01/4 # relative to the coupler set point
+    coupler_flux_max : float = 0.0 # relative to the coupler set point
 
-    coupler_flux_step : float = 0.0002
+    coupler_flux_step : float = 0.0002/4
 
-    qubit_flux_min : float = -0.01 # relative to the qubit pair detuning
-    qubit_flux_max : float = 0.01 # relative to the qubit pair detuning
-    qubit_flux_step : float = 0.001
+    qubit_flux_min : float = 0 # relative to the qubit pair detuning
+    qubit_flux_max : float = 0.01/4 # relative to the qubit pair detuning
+    qubit_flux_step : float = 0.001/4
 
     use_state_discrimination: bool = True
     num_frames : int = 10#20
@@ -194,9 +195,9 @@ with program() as CPhase_Oscillations:
                                 save(I_target[i], I_st_target[i])
                                 save(Q_target[i], Q_st_target[i])
 
-        align(*([qp.control_qubit.xy.name for qp in qubit_pairs] +
-                [qp.control_qubit.z.name for qp in qubit_pairs] +
-                [qp.control_qubit.resonator.name for qp in qubit_pairs]))
+        align(*([qp.qubit_control.xy.name for qp in qubit_pairs] +
+                [qp.qubit_control.z.name for qp in qubit_pairs] +
+                [qp.qubit_control.resonator.name for qp in qubit_pairs]))
 
     with stream_processing():
         n_st.save("n")
@@ -257,7 +258,6 @@ if not node.parameters.simulate:
     ds = ds.assign_coords({"detuning": (["qubit", "flux_qubit"], detuning)})
     node.results = {"ds": ds}
 
-    # %%
     fit_data = fit_oscillation(ds.state_target, "frame")
     phase = fix_oscillation_phi_2pi(fit_data)
     phase_diff = phase.diff(dim="control_ax")
@@ -272,14 +272,26 @@ if not node.parameters.simulate:
     for q in phase_diff.qubit.values:
 
         min_coords[q] = leak_mask.sel(qubit=q).where(leak_mask.sel(qubit=q) == min_value.sel(qubit=q), drop=True)[0]
+
     node.results["results"] = {}
     for q in min_coords.keys():
         node.results["results"][q] = {}
         node.results["results"][q]["flux_coupler_Cz"] = float(min_coords[q].flux_coupler_full.values)
         node.results["results"][q]["flux_qubit_Cz"] = float(min_coords[q].flux_qubit_full.values)
 
-    # %%
-    node.results["results"] = {}
+# %% {What if we mask leakage first?}
+# mask = leak < 0.27
+# plt.figure()
+# (((phase_diff + 0.5) % 1 - 0.5) * 360).plot(cmap=LinearSegmentedColormap.from_list("", ["red", "white", "red"]))
+# # (abs((((phase_diff + 0.5) % 1 - 0.5) * 360)) * mask).plot(cmap=LinearSegmentedColormap.from_list("", ["white", "red"]))
+# data = abs((((phase_diff + 1.5) % 1 - 0.5) * 360)) * mask
+# flat_index = data.argmax()
+# indices = np.unravel_index(flat_index, data.shape)
+# plt.scatter(data[*indices].flux_qubit, data[*indices].flux_coupler, marker='x', color='k')
+# plt.show()
+# leak.plot()
+# plt.scatter(data[*indices].flux_qubit, data[*indices].flux_coupler, marker='x', color='k')
+# plt.show()
 
 # %% {Plotting}
 if not node.parameters.simulate:
@@ -287,7 +299,9 @@ if not node.parameters.simulate:
     grid = QubitPairGrid(grid_names, qubit_pair_names)    
     for ax, qp in grid_iter(grid):
         values_to_plot = ds.state_control_f.mean(dim = "frame").sel(control_ax = 1).sel(qubit = qp['qubit'])
-        values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(ax = ax, cmap = 'viridis', x = 'flux_qubit_mV', y = 'flux_coupler_mV')
+        values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(
+            ax = ax, cmap=LinearSegmentedColormap.from_list("", ["white", "black"]), x = 'flux_qubit_mV', y = 'flux_coupler_mV'
+        )
         qubit_pair = machine.qubit_pairs[qp['qubit']]
         ax.set_title(f"{qp['qubit']}, coupler set point: {qubit_pair.coupler.decouple_offset}", fontsize = 10)
         ax.axhline(1e3*node.results["results"][qp["qubit"]]["flux_coupler_Cz"], color = 'red', lw = 0.5, ls = '--')
@@ -332,8 +346,14 @@ if not node.parameters.simulate:
     for ax, qp in grid_iter(grid):
 
         values_to_plot = (((phase_diff+0.5 )% 1 -0.5)*360).sel(qubit = qp['qubit'])
-        
-        values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(ax = ax, x = 'flux_qubit_mV', y = 'flux_coupler_mV')
+
+
+        # values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(
+        #     ax = ax, cmap=LinearSegmentedColormap.from_list("", ["red", "white", "red"]), x = 'flux_qubit_mV', y = 'flux_coupler_mV'
+        # )
+        values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(
+            ax = ax, cmap='twilight_shifted', x = 'flux_qubit_mV', y = 'flux_coupler_mV'
+        )
         qubit_pair = machine.qubit_pairs[qp['qubit']]
         ax.set_title(f"{qp['qubit']}, coupler set point: {qubit_pair.coupler.decouple_offset}", fontsize = 10)
         ax.axhline(1e3*node.results["results"][qp["qubit"]]["flux_coupler_Cz"], color = 'k', lw = 0.5, ls = '--')
@@ -365,8 +385,9 @@ if not node.parameters.simulate:
     if not node.parameters.simulate:
         with node.record_state_updates():
             for qp in qubit_pairs:
-                qp.macros["Cz"].coupler_flux_pulse.amplitude = node.results["results"][qp.name]["flux_coupler_Cz"]
-                qp.macros["Cz"].flux_pulse_control.amplitude = node.results["results"][qp.name]["flux_qubit_Cz"]
+                flux_coupler = node.results["results"][qp.name]["flux_coupler_Cz"]
+                qp.macros["Cz"].coupler_flux_pulse.amplitude = flux_coupler
+                qp.macros["Cz"].flux_pulse_control.amplitude = node.results["results"][qp.name]["flux_qubit_Cz"] + qp.extras["coupler_qubit_crosstalk"] * flux_coupler
 
 # %% {Save_results}
 if not node.parameters.simulate:    
