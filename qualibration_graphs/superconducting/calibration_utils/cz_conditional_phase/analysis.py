@@ -76,12 +76,13 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
         Processed dataset with additional coordinates
     """
     qubit_pairs = node.namespace["qubit_pairs"]
+    operation = node.parameters.operation
 
     def abs_amp(qp, amp):
-        return amp * qp.macros["cz_unipolar"].flux_pulse_control.amplitude
+        return amp * qp.macros[operation].flux_pulse_control.amplitude
 
     def detuning(qp, amp):
-        amplitude_squared = (amp * qp.macros["cz_unipolar"].flux_pulse_control.amplitude) ** 2
+        amplitude_squared = (amp * qp.macros[operation].flux_pulse_control.amplitude) ** 2
         return -amplitude_squared * qp.qubit_control.freq_vs_flux_01_quad_term
 
     ds = ds.assign_coords({"amp_full": (["qubit_pair", "amp"], np.array([abs_amp(qp, ds.amp) for qp in qubit_pairs]))})
