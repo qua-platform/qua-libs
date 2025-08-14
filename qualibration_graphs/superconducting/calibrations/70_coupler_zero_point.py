@@ -78,6 +78,8 @@ class Parameters(NodeParameters):
     qubit_flux_step : float = 0.0002
     use_state_discrimination: bool = True
     pulse_duration_ns: int = 230
+    cz_or_iswap: Literal["cz", "iswap"] = "cz"
+    use_saved_detuning: bool = False
 
 
 node = QualibrationNode(
@@ -124,10 +126,12 @@ fluxes_qubit = np.arange(-node.parameters.qubit_flux_span / 2, node.parameters.q
 fluxes_qp = {}
 for qp in qubit_pairs:
     # estimate the flux shift to get the control qubit to the target qubit frequency
-    if qp.detuning is not None:
+    if node.parameters.use_saved_detuning:
         est_flux_shift = qp.detuning
-    else:
-        est_flux_shift = np.sqrt(-(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency) * 1e3/ qp.qubit_control.freq_vs_flux_01_quad_term) #TODO: figure out how to make this run properly after filters
+    elif node.parameters.cz_or_iswap == "iswap":
+        est_flux_shift = np.sqrt(-(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency) / qp.qubit_control.freq_vs_flux_01_quad_term) #TODO: figure out how to make this run properly after filters
+    elif node.parameters.cz_or_iswap == "cz":
+        est_flux_shift = np.sqrt(-(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency - qp.qubit_target.anharmonicity) / qp.qubit_control.freq_vs_flux_01_quad_term) #TODO: figure out how to make this run properly after filters
     fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
 
 pulse_duration = node.parameters.pulse_duration_ns // 4
@@ -186,7 +190,8 @@ with program() as CPhase_Oscillations:
                         assign(comp_flux_qubit, flux_qubit)
                     # setting both qubits ot the initial state
                     qp.qubit_control.xy.play("x180")
-                    # qp.qubit_target.xy.play("x180")
+                    if node.parameters.cz_or_iswap == "cz":
+                        qp.qubit_target.xy.play("x180")
                     align()
                     # wait(8)
                     qp.qubit_control.z.play("const", amplitude_scale = comp_flux_qubit / qp.qubit_control.z.operations["const"].amplitude, duration = qua_pulse_duration)
@@ -195,7 +200,10 @@ with program() as CPhase_Oscillations:
                     wait(20)
                     # readout
                     if node.parameters.use_state_discrimination:
-                        readout_state(qp.qubit_control, state_control[i])
+                        if node.parameters.cz_or_iswap == "cz":
+                            readout_state_gef(qp.qubit_control, state_control[i])
+                        else:
+                            readout_state(qp.qubit_control, state_control[i])
                         readout_state(qp.qubit_target, state_target[i])
                         assign(state[i], state_control[i]*2 + state_target[i])
                         save(state_control[i], state_st_control[i])
