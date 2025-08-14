@@ -105,13 +105,15 @@ def get_full_scale_power_dBm_and_amplitude(desired_power: float, max_amplitude: 
 
 # Resonator frequencies
 rr_freq = np.array([
-    7.05, 7.10, 7.15, 7.20,
-    8.05, 8.10, 8.15, 8.20,
+    # 7.05,
+    7.10, 7.15, 7.20,
+    7.30, 7.35, 7.40, 7.45,
 ]) * u.GHz
 
 rr_LO = np.array([
+    # 7.25,
+    7.25, 7.25, 7.25,
     7.25, 7.25, 7.25, 7.25,
-    8.25, 8.25, 8.25, 8.25,
 ]) * u.GHz
 
 rr_if = rr_freq - rr_LO  # The intermediate frequency is inferred from the LO and readout frequencies
@@ -152,13 +154,15 @@ for k, qubit in enumerate(machine.qubits.values()):
 
 # Qubit drive frequencies
 xy_freq = np.array([
-    5.05, 5.10, 5.15, 5.20,
-    5.05, 5.10, 5.15, 5.20,
+    # 4.70,
+    4.75, 4.80, 4.85,
+    4.90, 4.95, 5.00, 5.05,
 ]) * u.GHz
 
 xy_LO = np.array([
-    5.25, 5.25, 5.25, 5.25,
-    5.25, 5.25, 5.25, 5.25,
+    # 5.10,
+    5.10, 5.10, 5.10,
+    5.10, 5.10, 5.10, 5.10,
 ]) * u.GHz
 
 xy_if = xy_freq - xy_LO  # The intermediate frequency is inferred from the LO and qubit frequencies
@@ -170,7 +174,8 @@ assert np.all(np.abs(xy_if) < 400 * u.MHz), (
 )
 # Transmon anharmonicity
 anharmonicity = np.array([
-    250, 250, 250, 250,
+    # 250,
+    250, 250, 250,
     250, 250, 250, 250,
 ]) * u.MHz
 
@@ -324,6 +329,7 @@ for k, qp in enumerate(machine.qubit_pairs):
     print(f"{qp_name} - ZZ target_qubit_IF_frequency: {qb_pair.zz_drive.target_qubit_IF_frequency}")
     print(f"{qp_name} - ZZ LO_frequency: {qb_pair.zz_drive.LO_frequency}")
 
+
     # Cross Resonance
     qb_pair.macros["cr"] = cross_resonance.CRGate(qc_correction_phase=0.0)
     # square
@@ -358,7 +364,7 @@ for k, qp in enumerate(machine.qubit_pairs):
     # gauss
     qb_pair.cross_resonance.operations["gauss"] = pulses.DragGaussianPulse(
         length=100,
-        sigma=100 / 5,
+        sigma=16/5,
         amplitude=1.0,
         axis_angle=0.0,
         anharmonicity=260 * u.MHz,
@@ -368,7 +374,7 @@ for k, qp in enumerate(machine.qubit_pairs):
     )
     qb_pair.qubit_target.xy.operations[f"cr_gauss_{qb_pair.name}"]= pulses.DragGaussianPulse(
         length=100,
-        sigma=100 / 5,
+        sigma=16/5,
         amplitude=1.0,
         axis_angle=0.0,
         anharmonicity=260 * u.MHz,
@@ -390,6 +396,7 @@ for k, qp in enumerate(machine.qubit_pairs):
         flat_length=flattop_len,
         axis_angle=0.0, 
     )
+
 
     # Stark-induced ZZ
     qb_pair.macros["stark_cz"] = stark_induced_cz.StarkInducedCZGate(qc_correction_phase=0.0)

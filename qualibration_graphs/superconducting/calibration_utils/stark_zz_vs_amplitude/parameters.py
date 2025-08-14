@@ -25,8 +25,8 @@ class NodeSpecificParameters(RunnableParameters):
     time_step_in_ns: int = 16
     # zz_control_amp_scalings: Union[float, List[float]] = 1.0
     # zz_target_amp_scalings: Union[float, List[float]] = 1.0
-    zz_control_phases: Union[float, List[float]] = 0.0
-    zz_target_phases: Union[float, List[float]] = 0.0
+    # zz_control_phases: Union[float, List[float]] = 0.0
+    # zz_target_phases: Union[float, List[float]] = 0.0
     min_zz_drive_amp_scaling: float = 0.0
     max_zz_drive_amp_scaling: float = 1.0
     step_zz_drive_amp_scaling: float = 0.1

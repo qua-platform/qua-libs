@@ -48,14 +48,14 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubit_pairs = ["q1-2", "q3-4"]
-    node.parameters.use_state_discrimination = True
+    node.parameters.qubit_pairs = ["q1-2"]
+    node.parameters.use_state_discrimination = False
 
-    node.parameters.wf_type = "square"
-    # node.parameters.zz_control_amp_scalings = [0.5, 0.5]
-    # node.parameters.zz_target_amp_scalings = [0.5, 0.5]
-    node.parameters.zz_control_phases = [0.0, 0.0]
-    node.parameters.zz_target_phases = [0.5, 0.5]
+    node.parameters.wf_type = "flattop"
+
+    node.parameters.min_wait_time_in_ns = 100
+    node.parameters.max_wait_time_in_ns = 260
+    node.parameters.time_step_in_ns = 16
 
     node.parameters.min_zz_drive_amp_scaling = 0.2
     node.parameters.max_zz_drive_amp_scaling = 1.0
@@ -86,10 +86,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     n_avg = node.parameters.num_shots  # The number of averages
     state_discrimination = node.parameters.use_state_discrimination
     wf_type = node.parameters.wf_type
-    # zz_control_amp_scalings = node.parameters.zz_control_amp_scalings
-    # zz_target_amp_scalings = node.parameters.zz_target_amp_scalings
-    zz_control_phases = node.parameters.zz_control_phases
-    zz_target_phases = node.parameters.zz_target_phases
+
+    for qp in qubit_pairs:
+        assert (node.parameters.min_wait_time_in_ns >= qp.zz_drive.operations[wf_type].length), "zz drive pulse must be longer than the minimum idle time"
 
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
     idle_times = np.arange(
@@ -105,9 +104,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Control states
     control_state = np.array([0, 1])
-
-    if not state_discrimination:
-        raise ValueError("use_state_discrimination must be True for Hamiltonian Tomography!")
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -152,6 +148,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             for i, qp in multiplexed_qubit_pairs.items():
                                 qc = qp.qubit_control
                                 qt = qp.qubit_target
+                                zz = qp.zz_drive
 
                                 # Reset the qubits to the ground state
                                 qc.reset(
@@ -180,15 +177,23 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     qt.xy.play("x180")
                                 qp.align()
 
+
                                 # Play CZ
-                                qp.apply("stark_cz",
-                                    wf_type=wf_type,
-                                    zz_control_amp_scaling=a,
-                                    zz_target_amp_scaling=a,
-                                    # zz_control_phase=zz_control_phases[i],
-                                    # zz_target_phase=zz_target_phases[i],
-                                    zz_duration_clock_cycles=t,
-                                )                                
+                                # ZZ drive
+                                zz.play("flattop") # fixed amplitude
+                                qt.xy_detuned.play(f"zz_flattop_{qp.name}", amplitude_scale=a) # sweep amplitude
+                                # IZ, ZI correction
+                                # qc.xy.frame_rotation_2pi(qc_correction_phase)
+                                # qt.xy.frame_rotation_2pi(qt_correction_phase)
+
+                                # qp.apply("stark_cz",
+                                #     wf_type=wf_type,
+                                #     zz_control_amp_scaling=a,
+                                #     zz_target_amp_scaling=a,
+                                #     # zz_control_phase=zz_control_phases[i],
+                                #     # zz_target_phase=zz_target_phases[i],
+                                #     zz_duration_clock_cycles=t,
+                                # )                                                        
                                 qp.align()
 
                                 # idle - echo
@@ -216,7 +221,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                                 # Reset the frame of the qubits in order not to accumulate rotations
                                 reset_frame(qt.xy.name)
-                                reset_frame(qt.xy_detuned.name)
+                                reset_frame(qt.xy.name)
 
                                 # Wait for the qubit to decay to the ground state - Can be replaced by active reset
                                 qc.resonator.wait(qc.resonator.depletion_time * u.ns)
