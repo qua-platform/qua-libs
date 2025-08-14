@@ -338,7 +338,8 @@ with program() as CPhase_Oscillations:
                     save(state_control[i], state_st_control[i])
                     save(state_target[i], state_st_target[i])
                     save(state[i], state_st[i])
-                align()
+
+                # align()
 
     with stream_processing():
         n_st.save("n")
@@ -360,12 +361,12 @@ elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout ) as qm:
         job = qm.execute(CPhase_Oscillations)
 
-        results = fetching_tool(job, ["n"], mode="live")
-        while results.is_processing():
-            # Fetch results
-            n = results.fetch_all()[0]
-            # Progress bar
-            progress_counter(n, n_shots, start_time=results.start_time)
+        # results = fetching_tool(job, ["n"], mode="live")
+        # while results.is_processing():
+        #     # Fetch results
+        #     n = results.fetch_all()[0]
+        #     # Progress bar
+        #     progress_counter(n, n_shots, start_time=results.start_time)
 
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:

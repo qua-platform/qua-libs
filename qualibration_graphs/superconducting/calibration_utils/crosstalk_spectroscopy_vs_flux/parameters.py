@@ -20,6 +20,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Frequency step in MHz. Default is 0.1 MHz."""
     flux_offset_span_in_v: float = 0.05
     """Minimum flux bias offset in volts. Default is -0.02 V."""
+    expected_crosstalk: float = 0.03
+    """Change in target qubit flux per unit of aggressor qubit flux. """
     num_flux_points: int = 51
     """Number of flux points. Default is 51."""
     input_line_impedance_in_ohm: Optional[int] = 50
