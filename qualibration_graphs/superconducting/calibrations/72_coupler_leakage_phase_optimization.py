@@ -1,33 +1,33 @@
 description = """"""
 
 # %% {Imports}
+from typing import Literal, Optional, List
+import matplotlib.pyplot as plt
+import numpy as np
+
+from qm import SimulationConfig
+from qm.qua import *
 from qualibrate import QualibrationNode, NodeParameters
-from quam_libs.components import QuAM
-from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef, active_reset_simple
-from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+
+from quam_config.my_quam import Quam
+
+from qualibration_libs.legacy.macros import active_reset, readout_state, readout_state_gef, active_reset_gef, active_reset_simple
+from qualibration_libs.legacy.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
+from qualibration_libs.legacy.lib.save_utils import fetch_results_as_xarray, load_dataset
+
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
-from qm import SimulationConfig
-from qm.qua import *
-from typing import Literal, Optional, List
-import matplotlib.pyplot as plt
-import numpy as np
-import warnings
-from qualang_tools.bakery import baking
-from quam_libs.lib.fit import fit_oscillation, oscillation, fix_oscillation_phi_2pi
-from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-from scipy.optimize import curve_fit
-from quam_libs.components.gates.two_qubit_gates import CZGate
-from quam_libs.lib.pulses import FluxPulse
+
+from qualibration_libs.legacy.lib.fit import fit_oscillation, oscillation, fix_oscillation_phi_2pi
+from qualibration_libs.legacy.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
 
 # %% {Node_parameters}
 qubit_pair_indexes = [1]  # The indexes of the qubit pairs to measure
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ["coupler_q%s_q%s"%(i,i+1) for i in qubit_pair_indexes]
+    qubit_pairs: Optional[List[str]] = [f"q{i}-{i+1}" for i in qubit_pair_indexes]
     num_averages: int = 100
     flux_point_joint_or_independent_or_pairwise: Literal["joint", "independent", "pairwise"] = "joint"
     reset_type: Literal['active', 'thermal'] = "active"
@@ -35,15 +35,15 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
 
-    coupler_flux_min : float = 0.235 # relative to the coupler set point
-    coupler_flux_max : float = 0.245 # relative to the coupler set point
+    coupler_flux_min : float = -0.01 # relative to the coupler set point
+    coupler_flux_max : float = 0.01 # relative to the coupler set point
 
     coupler_flux_step : float = 0.0002
 
-    qubit_flux_min : float = -0.0675 # relative to the qubit pair detuning
-    qubit_flux_max : float = -0.0625 # relative to the qubit pair detuning
+    qubit_flux_min : float = -0.01 # relative to the qubit pair detuning
+    qubit_flux_max : float = 0.01 # relative to the qubit pair detuning
+    qubit_flux_step : float = 0.001
 
-    qubit_flux_step : float = 0.0002 
     use_state_discrimination: bool = True
     pulse_duration_ns: int = 90
     num_frames : int = 10#20
@@ -58,7 +58,7 @@ assert not (node.parameters.simulate and node.parameters.load_data_id is not Non
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()
+machine = Quam.load()
 
 # Get the relevant QuAM components
 if node.parameters.qubit_pairs is None or node.parameters.qubit_pairs == "":
@@ -76,7 +76,6 @@ octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
-# %%
 
 ####################
 # Helper functions #
@@ -181,6 +180,10 @@ with program() as CPhase_Oscillations:
                                 save(I_target[i], I_st_target[i])
                                 save(Q_target[i], Q_st_target[i])
 
+        align(*([qp.control_qubit.xy.name for qp in qubit_pairs] +
+                [qp.control_qubit.z.name for qp in qubit_pairs] +
+                [qp.control_qubit.resonator.name for qp in qubit_pairs]))
+
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubit_pairs):
@@ -248,13 +251,6 @@ if not node.parameters.simulate:
     # %%
     node.results["results"] = {}
 
-    # %%
-    ## HARD CODED FROM EXPERIMENT
-    # node.results["results"]["coupler_q1_q2"] = {"flux_coupler_Cz": 0.1641, "flux_qubit_Cz": 0.0710}
-    # node.results["results"]["coupler_q2_q3"] = {"flux_coupler_Cz": 0.1795, "flux_qubit_Cz": 0.0785}
-    # node.results["results"]["coupler_q3_q4"] = {"flux_coupler_Cz": 0.1580, "flux_qubit_Cz": 0.1277}
-    # node.results["results"]["coupler_q4_q5"] = {"flux_coupler_Cz": 0.235, "flux_qubit_Cz": 0.055}
-    
 # %% {Plotting}
 if not node.parameters.simulate:
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
@@ -324,9 +320,8 @@ if not node.parameters.simulate:
     if not node.parameters.simulate:
         with node.record_state_updates():
             for qp in qubit_pairs:
-                qp.extras["CZ_coupler_flux"] = node.results["results"][qp.name]["flux_coupler_Cz"]
-                qp.extras["CZ_qubit_flux"] = node.results["results"][qp.name]["flux_qubit_Cz"]
-                qp.extras["CZ_time"] = node.parameters.pulse_duration_ns
+                qp.macros["Cz"].coupler_flux_pulse.amplitude = node.results["results"][qp.name]["flux_coupler_Cz"]
+                qp.macros["Cz"].flux_pulse_control.amplitude = node.results["results"][qp.name]["flux_qubit_Cz"]
 
 # %% {Save_results}
 if not node.parameters.simulate:    
@@ -334,4 +329,3 @@ if not node.parameters.simulate:
     node.results['initial_parameters'] = node.parameters.model_dump()
     node.machine = machine
     node.save()
-# %%
