@@ -6,7 +6,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from qualibration_libs.legacy.lib.pulses import FluxPulse
 from quam_config.my_quam import Quam
 
-from qualibration_libs.legacy.macros import active_reset, readout_state, active_reset_simple
+from qualibration_libs.legacy.macros import active_reset, readout_state, active_reset_simple, readout_state_gef
 from qualibration_libs.legacy.lib.save_utils import fetch_results_as_xarray, load_dataset
 from qualibration_libs.legacy.lib.fit import extract_dominant_frequencies
 from qualibration_libs.legacy.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
@@ -47,7 +47,8 @@ class Parameters(NodeParameters):
     gate_time_in_ns: int = 50
 
     use_state_discrimination: bool = True
-    
+    cz_or_iswap: Literal["cz", "iswap"] = "cz"
+
 
 node = QualibrationNode(
     name="71_coupler_interaction_strength_calibration", parameters=Parameters()
@@ -110,14 +111,14 @@ with program() as CPhase_Oscillations:
         Q_st_control = [declare_stream() for _ in range(num_qubit_pairs)]
         I_st_target = [declare_stream() for _ in range(num_qubit_pairs)]
         Q_st_target = [declare_stream() for _ in range(num_qubit_pairs)]
-    
-    
+
+
     for i, qp in enumerate(qubit_pairs):
         # Bring the active qubits to the minimum frequency point
         machine.set_all_fluxes("joint", qp)
 
         with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st)         
+            save(n, n_st)
             with for_(*from_array(flux_coupler, fluxes_coupler)):
                 with for_(*from_array(idle_time, idle_times)):
                     # reset
@@ -128,27 +129,32 @@ with program() as CPhase_Oscillations:
                     else:
                         wait(qp.qubit_control.thermalization_time * u.ns)
                         wait(qp.qubit_target.thermalization_time * u.ns)
-                    
-                    
+
+
                     if "coupler_qubit_crosstalk" in qp.extras:
                         assign(comp_flux_qubit, qp.detuning  +  qp.extras["coupler_qubit_crosstalk"] * flux_coupler )
                     else:
                         assign(comp_flux_qubit, qp.detuning)
                     qp.align()
-                    
+
                     # setting both qubits ot the initial state
                     qp.qubit_control.xy.play("x180")
+                    if node.parameters.cz_or_iswap == "cz":
+                        qp.qubit_target.xy.play("x180")
                     qp.qubit_control.z.wait(qp.qubit_control.xy.operations["x180"].length >> 2)
-                    qp.coupler.wait(qp.qubit_control.xy.operations["x180"].length >> 2)             
-                    
+                    qp.coupler.wait(qp.qubit_control.xy.operations["x180"].length >> 2)
+
                     # Play the flux pulse on the qubit control and coupler
                     qp.qubit_control.z.play("const", amplitude_scale = comp_flux_qubit / qp.qubit_control.z.operations["const"].amplitude, duration = idle_time)
                     qp.coupler.play("const", amplitude_scale = flux_coupler / qp.coupler.operations["const"].amplitude, duration = idle_time)
-                    
+
                     qp.align()
                     # readout
                     if node.parameters.use_state_discrimination:
-                        readout_state(qp.qubit_control, state_control[i])
+                        if node.parameters.cz_or_iswap == "cz":
+                            readout_state_gef(qp.qubit_control, state_control[i])
+                        else:
+                            readout_state(qp.qubit_control, state_control[i])
                         readout_state(qp.qubit_target, state_target[i])
                         assign(state[i], state_control[i]*2 + state_target[i])
                         save(state_control[i], state_st_control[i])
@@ -162,7 +168,7 @@ with program() as CPhase_Oscillations:
                         save(I_target[i], I_st_target[i])
                         save(Q_target[i], Q_st_target[i])
         align()
-        
+
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubit_pairs):
