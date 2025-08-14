@@ -36,7 +36,7 @@ Pi vs Flux :
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="17a_pi_vs_flux",
+    name="16a_long_cryoscope",
     description=description,
     parameters=Parameters(),
 )

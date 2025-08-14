@@ -52,7 +52,6 @@ from qualang_tools.bakery import baking
 from qualibration_libs.legacy.lib.fit import fit_oscillation, oscillation, fix_oscillation_phi_2pi
 from qualibration_libs.legacy.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
 from scipy.optimize import curve_fit
-# from qualibration_libs.legacy.components.gates.two_qubit_gates import CZGate
 from qualibration_libs.legacy.lib.pulses import FluxPulse
 
 
@@ -60,18 +59,17 @@ from qualibration_libs.legacy.lib.pulses import FluxPulse
 qubit_pair_indexes = [1]
 class Parameters(NodeParameters):
     qubit_pairs: Optional[List[str]] = ["q%s-%s"%(i,i+1) for i in qubit_pair_indexes]
-    num_shots: int = 2000
+    circuit: str = "BELL2"  # "BELL1", "BELL2", "H", "CX"
+    num_shots: int = 64
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
-    plot_raw: bool = False
-    measure_leak: bool = False
 
 
 node = QualibrationNode(
-    name="39_2Q_confusion_matrix", parameters=Parameters()
+    name="21a_Bell_state_Zbasis", parameters=Parameters()
 )
 assert not (
             node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
@@ -87,8 +85,6 @@ if node.parameters.qubit_pairs is None or node.parameters.qubit_pairs == "":
     qubit_pairs = machine.active_qubit_pairs
 else:
     qubit_pairs = [machine.qubit_pairs[qp] for qp in node.parameters.qubit_pairs]
-# if any([qp.q1.z is None or qp.q2.z is None for qp in qubit_pairs]):
-#     warnings.warn("Found qubit pairs without a flux line. Skipping")
 
 num_qubit_pairs = len(qubit_pairs)
 
@@ -111,8 +107,6 @@ n_shots = node.parameters.num_shots  # The number of averages
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 
 with program() as CPhase_Oscillations:
-    control_initial = declare(int)
-    target_initial = declare(int)
     n = declare(int)
     n_st = declare_stream()
     state_control = [declare(int) for _ in range(num_qubit_pairs)]
@@ -135,43 +129,71 @@ with program() as CPhase_Oscillations:
 
         with for_(n, 0, n < n_shots, n + 1):
             save(n, n_st)
-            with for_(*from_array(control_initial, [0, 1])):
-                with for_(*from_array(target_initial, [0, 1])):
-                    # reset
-                    if node.parameters.reset_type == "active":
-                        # active_reset(qp.qubit_control)
-                        # active_reset(qp.qubit_target)
-                        wait(2 * qp.qubit_control.thermalization_time * u.ns)
-                        active_reset(qp.qubit_control)
-                        active_reset(qp.qubit_target)
-                        active_reset(qp.qubit_control)
-                        active_reset(qp.qubit_target)
-                    else:
-                        wait(5 * qp.qubit_control.thermalization_time * u.ns)
-                    qp.align()
+            # reset
+            if node.parameters.reset_type == "active":
+                # active_reset(qp.qubit_control)
+                # active_reset(qp.qubit_target)
+                # qp.align()
+                wait(2 * qp.qubit_control.thermalization_time * u.ns)
+                active_reset(qp.qubit_control)
+                active_reset(qp.qubit_target)
+                active_reset(qp.qubit_control)
+                active_reset(qp.qubit_target)
+            else:
+                wait(5 * qp.qubit_control.thermalization_time * u.ns)
+            qp.align()
+            # Bell state
+            if node.parameters.circuit == "BELL1":
+                # 1.
+                qp.qubit_control.xy.play("y90")
+                qp.qubit_target.xy.play("y90")
+                qp.macros['cz_flattop'].apply()
+                qp.qubit_control.xy.play("-y90")
+            if node.parameters.circuit == "BELL2":
+                # 2.
+                qp.qubit_control.xy.play("y90")
+                qp.qubit_target.xy.play("-y90")
+                qp.macros['cz_flattop'].apply()
+                qp.qubit_target.xy.play("y90")
 
-                    # setting both qubits ot the initial state
-                    with if_(control_initial == 1):
-                        qp.qubit_control.xy.play("x180")
-                    with if_(target_initial == 1):
-                        qp.qubit_target.xy.play("x180")
+            # Hadamard test
+            if node.parameters.circuit == "H":
+                qp.qubit_control.xy.play("y90")
+                qp.qubit_control.xy.play("x180")
+                for x in range(4):
+                    qp.qubit_target.xy.play("y90")
+                    qp.qubit_target.xy.play("x180")
+                    qp.qubit_target.xy.play("y90")
+                    qp.qubit_target.xy.play("x180")
 
-                    qp.align()
-                    # readout
-                    readout_state(qp.qubit_control, state_control[i])
-                    readout_state(qp.qubit_target, state_target[i])
-                    assign(state[i], state_control[i] * 2 + state_target[i])
-                    save(state_control[i], state_st_control[i])
-                    save(state_target[i], state_st_target[i])
-                    save(state[i], state_st[i])
-        align()
+            # CX test:
+            if node.parameters.circuit == "CX":
+                qp.qubit_control.xy.play("x180")
+                for x in range(1):
+                    qp.qubit_target.xy.play("y90")
+                    qp.qubit_target.xy.play("x180")
+                    qp.macros['cz_flattop'].apply()
+                    qp.qubit_target.xy.play("y90")
+                    qp.qubit_target.xy.play("x180")
+
+            qp.align()
+            # readout
+            qp.align()
+
+            readout_state(qp.qubit_control, state_control[i])
+            readout_state(qp.qubit_target, state_target[i])
+            assign(state[i], state_control[i] * 2 + state_target[i])
+            save(state_control[i], state_st_control[i])
+            save(state_target[i], state_st_target[i])
+            save(state[i], state_st[i])
+        # align()
 
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubit_pairs):
-            state_st_control[i].buffer(2).buffer(2).buffer(n_shots).save(f"state_control{i + 1}")
-            state_st_target[i].buffer(2).buffer(2).buffer(n_shots).save(f"state_target{i + 1}")
-            state_st[i].buffer(2).buffer(2).buffer(n_shots).save(f"state{i + 1}")
+            state_st_control[i].buffer(n_shots).save(f"state_control{i + 1}")
+            state_st_target[i].buffer(n_shots).save(f"state_target{i + 1}")
+            state_st[i].buffer(n_shots).save(f"state{i + 1}")
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
@@ -197,9 +219,7 @@ elif node.parameters.load_data_id is None:
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubit_pairs,
-                                     {"init_state_target": [0, 1], "init_state_control": [0, 1],
-                                      "N": np.linspace(1, n_shots, n_shots)})
+        ds = fetch_results_as_xarray(job.result_handles, qubit_pairs, {"N": np.linspace(1, n_shots, n_shots)})
     else:
         ds, machine = load_dataset(node.parameters.load_data_id)
 
@@ -209,17 +229,18 @@ if not node.parameters.simulate:
 if not node.parameters.simulate:
     states = [0, 1, 2, 3]
 
-    confusions = {}
+    results = {}
+    corrected_results = {}
     for qp in qubit_pairs:
-        conf = []
+        results[qp.name] = []
         for state in states:
-            row = []
-            for q1 in [0, 1]:
-                for q0 in [0, 1]:
-                    row.append((ds.sel(qubit=qp.name).state.sel(init_state_target=q0,
-                                                                init_state_control=q1) == state).sum().values)
-            conf.append(row)
-        confusions[qp.name] = np.array(conf) / node.parameters.num_shots
+            results[qp.name].append((ds.sel(qubit=qp.name).state == state).sum().values)
+        results[qp.name] = np.array(results[qp.name]) / node.parameters.num_shots
+
+        conf_mat = qp.confusion
+        # corrected_results[qp.name] = np.linalg.inv(conf_mat) @ results[qp.name]
+        corrected_results[qp.name] = results[qp.name]
+        print(f"{qp.name}: {corrected_results[qp.name]}")
 
 # %%
 if not node.parameters.simulate:
@@ -227,27 +248,20 @@ if not node.parameters.simulate:
     grid = QubitPairGrid(grid_names, qubit_pair_names)
     for ax, qubit_pair in grid_iter(grid):
         print(qubit_pair['qubit'])
-        conf = confusions[qubit_pair['qubit']]
-        ax.pcolormesh(['00', '01', '10', '11'], ['00', '01', '10', '11'], conf)
-        for i in range(4):
-            for j in range(4):
-                if i == j:
-                    ax.text(i, j, f"{100 * conf[i][j]:.1f}%", ha="center", va="center", color="k")
-                else:
-                    ax.text(i, j, f"{100 * conf[i][j]:.1f}%", ha="center", va="center", color="w")
-        ax.set_ylabel('prepared')
-        ax.set_xlabel('measured')
+        corrected_res = corrected_results[qubit_pair['qubit']]
+        ax.bar(['00', '01', '10', '11'], corrected_res, color='skyblue', edgecolor='navy')
+        ax.set_ylim(0, 1)
+        for i, v in enumerate(corrected_res):
+            ax.text(i, v, f'{v:.2f}', ha='center', va='bottom')
+        ax.set_ylabel('Probability')
+        ax.set_xlabel('State')
         ax.set_title(qubit_pair['qubit'])
     plt.show()
-    node.results["figure_confusion"] = grid.fig
+    node.results["figure"] = grid.fig
 # %%
 
 # %% {Update_state}
-if not node.parameters.simulate:
-    if node.parameters.load_data_id is None:
-        with node.record_state_updates():
-            for qp in qubit_pairs:
-                qp.confusion = confusions[qp.name].tolist()
+
 # %% {Save_results}
 if not node.parameters.simulate:
     node.outcomes = {qp.name: "successful" for qp in qubit_pairs}

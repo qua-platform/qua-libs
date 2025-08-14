@@ -62,7 +62,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(
-    name="40b_Bell_state_tomography", parameters=Parameters()
+    name="21b_Bell_state_tomography", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 

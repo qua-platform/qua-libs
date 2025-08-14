@@ -54,7 +54,7 @@ State Update:
 
 
 node = QualibrationNode[Parameters, Quam](
-    name="18_crosstalk_spectroscopy_vs_flux",
+    name="17_crosstalk_spectroscopy_vs_flux",
     description=description,
     parameters=Parameters(),
 )

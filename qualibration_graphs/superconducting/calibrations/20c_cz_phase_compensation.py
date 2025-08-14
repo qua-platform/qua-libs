@@ -31,7 +31,7 @@ A blank template for a calibration node.
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="14_cz_phase_compensation",  # Name should be unique
+    name="20c_cz_phase_compensation",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
@@ -43,7 +43,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubit_pairs = ["qA1-qA3"]
+    node.parameters.qubit_pairs = ["q1-2"]
     node.parameters.use_state_discrimination = True
     node.parameters.num_shots = 500
     node.parameters.operation = "cz_unipolar"
