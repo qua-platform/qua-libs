@@ -17,25 +17,17 @@ cluster_name = "CS_4"  # Name of the cluster
 # %%                                      Define the available instrument setup
 ########################################################################################################################
 instruments = Instruments()
-instruments.add_mw_fem(controller=1, slots=[1, 2])
+instruments.add_mw_fem(controller=1, slots=[2, 3])
 
 ########################################################################################################################
 # %%                                 Define which qubit ids are present in the system
 ########################################################################################################################
 qubits = [
-    # 0,
-    1, 2, 3,
-    4, 5, 6, 7, 
+    1, 2,
 ]
 qubit_idxes = {q: i for i, q in enumerate(qubits)}
 qubit_pairs = [
-    # (0, 1), (1, 0),
     (1, 2), (2, 1),
-    (2, 3), (3, 2),
-
-    (3, 4), (4, 3),    
-    (5, 6), (6, 5),
-    (6, 7), (7, 6),
 ]
 
 # Flatten the pairs
@@ -50,19 +42,13 @@ assert flattened_qubits.issubset(set(qubits))
 ########################################################################################################################
 con = 1
 rr_slots = [
-    # 2,
-    2, 2, 2,
-    2, 2, 2, 2,
+    2, 2,
 ]
 rr_out_ports = [
-    # 1,
-    1, 1, 1,
-    1, 1, 1, 1,
+    8, 8,
 ]
 rr_in_ports = [
-    # 2,
-    2, 2, 2,
-    2, 2, 2, 2,
+    1, 1,
 ]
 
 assert len(rr_slots) == len(qubits)
@@ -70,14 +56,10 @@ assert len(rr_out_ports) == len(qubits)
 assert len(rr_in_ports) == len(qubits)
 
 xy_slots = [
-    # 3,
-    2, 2, 2,
-    2, 3, 3, 3,
+    2, 2,
 ]
 xy_ports = [
-    # 5,
-    2, 3, 4,
-    5, 2, 3, 4,
+    3, 4,
 ]
 
 assert len(xy_slots) == len(qubits)

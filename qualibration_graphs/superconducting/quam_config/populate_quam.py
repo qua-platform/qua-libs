@@ -105,15 +105,11 @@ def get_full_scale_power_dBm_and_amplitude(desired_power: float, max_amplitude: 
 
 # Resonator frequencies
 rr_freq = np.array([
-    # 7.05,
-    7.10, 7.15, 7.20,
-    7.30, 7.35, 7.40, 7.45,
+    7.10, 7.15,
 ]) * u.GHz
 
 rr_LO = np.array([
-    # 7.25,
-    7.25, 7.25, 7.25,
-    7.25, 7.25, 7.25, 7.25,
+    7.25, 7.25,
 ]) * u.GHz
 
 rr_if = rr_freq - rr_LO  # The intermediate frequency is inferred from the LO and readout frequencies
@@ -126,12 +122,12 @@ assert np.all(np.abs(rr_if) < 400 * u.MHz), (
 )
 
 # Desired output power in dBm - Must be within [-80, 16] dBm
-readout_power = -11
-# Get the full_scale_power_dBm and waveform amplitude corresponding to the desired powers
-rr_full_scale, rr_amplitude = get_full_scale_power_dBm_and_amplitude(
-    readout_power, max_amplitude=0.25 / len(machine.qubits)
-)
-rr_full_scale = 10 if rr_full_scale > 10 else rr_full_scale
+readout_power = 1
+# # Get the full_scale_power_dBm and waveform amplitude corresponding to the desired powers
+# rr_full_scale, rr_amplitude = get_full_scale_power_dBm_and_amplitude(
+#     readout_power, max_amplitude=0.25 / len(machine.qubits)
+# )
+rr_full_scale = 1 #10 if rr_full_scale > 10 else rr_full_scale
 
 # Update qubit rr freq and power
 for k, qubit in enumerate(machine.qubits.values()):
@@ -154,15 +150,11 @@ for k, qubit in enumerate(machine.qubits.values()):
 
 # Qubit drive frequencies
 xy_freq = np.array([
-    # 4.70,
-    4.75, 4.80, 4.85,
-    4.90, 4.95, 5.00, 5.05,
+    4.75, 4.80,
 ]) * u.GHz
 
 xy_LO = np.array([
-    # 5.10,
-    5.10, 5.10, 5.10,
-    5.10, 5.10, 5.10, 5.10,
+    5.10, 5.10,
 ]) * u.GHz
 
 xy_if = xy_freq - xy_LO  # The intermediate frequency is inferred from the LO and qubit frequencies
@@ -174,13 +166,11 @@ assert np.all(np.abs(xy_if) < 400 * u.MHz), (
 )
 # Transmon anharmonicity
 anharmonicity = np.array([
-    # 250,
-    250, 250, 250,
-    250, 250, 250, 250,
+    250, 250,
 ]) * u.MHz
 
 # Desired output power in dBm
-drive_power = -11
+drive_power = 1
 # Get the full_scale_power_dBm and waveform amplitude corresponding to the desired powers
 xy_full_scale, xy_amplitude = get_full_scale_power_dBm_and_amplitude(drive_power)
 
@@ -189,16 +179,25 @@ for k, qubit in enumerate(machine.qubits.values()):
     qubit.f_01 = xy_freq.tolist()[k]  # Qubit 0 to 1 (|g> -> |e>) transition frequency
     qubit.xy.RF_frequency = qubit.f_01  # Qubit drive frequency
     qubit.xy.opx_output.full_scale_power_dbm = xy_full_scale  # Max drive power in dBm
-    qubit.xy.opx_output.upconverter_frequency = None # xy_LO.tolist()[k]  # Qubit drive up-converter frequency
-    qubit.xy.opx_output.upconverters = {
-        1: {"frequency": xy_LO.tolist()[k]},
-        2: {"frequency": 123.0},
-    }
+    qubit.xy.opx_output.upconverter_frequency = xy_LO.tolist()[k]  # Qubit drive up-converter frequency
+    # qubit.xy.opx_output.upconverters = {
+    #     1: {"frequency": xy_LO.tolist()[k]},
+    #     # 2: {"frequency": 123.0},
+    # }
     qubit.xy.opx_output.band = get_band(xy_LO.tolist()[k])  # Qubit drive band for the up-conversion
     print(f"{qubit.name} - .xy LO: {qubit.xy.LO_frequency}")
 
+
+
+
+
+
+
+
+
+
     qubit.xy_detuned.RF_frequency = f"#/qubits/{qubit.name}/xy/RF_frequency"
-    qubit.xy_detuned.upconverter = qubit.xy.upconverter
+    # qubit.xy_detuned.upconverter = qubit.xy.upconverter
 
 
 # Assign shared cores
@@ -232,8 +231,7 @@ for k, qp in enumerate(machine.qubit_pairs.values()):
 # Represented in row,major order from top row (3) to bottom row (0)
 
 grid_locations = [
-    "0,6", "0,5", "0,4", "0,3", "0,2", "0,1",
-    "1,6", "1,5", "1,4", "1,3", "1,2", "1,1",
+    "0,0", "0,1",
 ]
 for gd, qubit in zip(grid_locations, machine.qubits.values()):
     qubit.grid_location = gd  # Qubit grid location for plotting as "column,row"
@@ -254,21 +252,22 @@ for gd, qubit in zip(grid_locations, machine.qubits.values()):
 # )
 # e.g., machine.qubits[q].xy.operations["new_pulse"] = FlatTopGaussianPulse(...)
 
+
 ## Update pulses
 for k, q in enumerate(machine.qubits):
     # readout
     machine.qubits[q].resonator.operations["readout"].length = 1.0 * u.us
-    machine.qubits[q].resonator.operations["readout"].amplitude = rr_amplitude
+    machine.qubits[q].resonator.operations["readout"].amplitude = 0.1
     # Qubit saturation
     machine.qubits[q].xy.operations["saturation"].length = 30 * u.us
-    machine.qubits[q].xy.operations["saturation"].amplitude = 0.5 * xy_amplitude
+    machine.qubits[q].xy.operations["saturation"].amplitude = 0.1
     # Single qubit gates - DragCosine
     add_DragCosine_pulses(
         machine.qubits[q],
         amplitude=xy_amplitude,
-        length=40,
+        length=320,
         anharmonicity=anharmonicity.tolist()[k],
-        alpha=0.0,
+        alpha=0.5,
         detuning=0,
     )
     # # resonator const
@@ -303,10 +302,11 @@ for k, qp in enumerate(machine.qubit_pairs):
     qb_pair.cross_resonance.intermediate_frequency = f"#./inferred_intermediate_frequency"
 
     qc = qb_pair.qubit_control
-    qc.xy.opx_output.upconverters.parent = None
-    qc.xy.opx_output.upconverters[2]["frequency"] = f"#/qubits/{qt.name}/xy/LO_frequency"
+    # qc.xy.opx_output.upconverters.parent = None
+    # qc.xy.opx_output.upconverters[2]["frequency"] = f"#/qubits/{qt.name}/xy/LO_frequency"
     qb_pair.cross_resonance.opx_output.upconverter_frequency = None
-    qb_pair.cross_resonance.upconverter = 2
+    qb_pair.cross_resonance.opx_output.upconverter_frequency = f"#/qubits/{qc.name}/xy/LO_frequency"
+    # qb_pair.cross_resonance.upconverter = 2
 
     print(f"{qp_name} - CR LO: {qb_pair.cross_resonance.opx_output.upconverters[2]['frequency']}")
     print(f"{qp_name} - CR IF: {qb_pair.cross_resonance.intermediate_frequency}")
@@ -321,7 +321,8 @@ for k, qp in enumerate(machine.qubit_pairs):
     qt.detuning = -30 * u.MHz
     qb_pair.zz_drive.intermediate_frequency = f"#./inferred_intermediate_frequency"
     qb_pair.zz_drive.opx_output.upconverter_frequency = None
-    qb_pair.zz_drive.upconverter = 2
+    qb_pair.zz_drive.opx_output.upconverter_frequency = f"#/qubits/{qc.name}/xy/LO_frequency"
+    # qb_pair.zz_drive.upconverter = 2
 
     print(f"{qp_name} - ZZ LO: {qb_pair.zz_drive.opx_output.upconverters[2]['frequency']}")
     print(f"{qp_name} - ZZ IF: {qb_pair.zz_drive.intermediate_frequency}")
@@ -399,7 +400,7 @@ for k, qp in enumerate(machine.qubit_pairs):
 
 
     # Stark-induced ZZ
-    qb_pair.macros["stark_cz"] = stark_induced_cz.StarkInducedCZGate(qc_correction_phase=0.0)
+    qb_pair.macros["stark_cz"] = stark_induced_cz.StarkInducedCZGate(qc_correction_phase=0.0, qt_correction_phase=0.0)
     # square
     qb_pair.zz_drive.operations["square"] = pulses.SquarePulse(
         length=100,
@@ -458,7 +459,7 @@ for k, qp in enumerate(machine.qubit_pairs):
         flat_length=flattop_len,
         axis_angle=0.0,
     )
-    qb_pair.qubit_target.xy_detuned.operations["zz_flattop"] = pulses.FlatTopGaussianPulse(
+    qb_pair.qubit_target.xy_detuned.operations[f"zz_flattop_{qb_pair.name}"] = pulses.FlatTopGaussianPulse(
         amplitude=1.0,
         length=rise_fall_len + flattop_len + rise_fall_len,
         flat_length=flattop_len,

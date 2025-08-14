@@ -384,7 +384,7 @@ for k, qp in enumerate(machine.qubit_pairs):
         flat_length=flattop_len,
         axis_angle=0.0, 
     )
-    qb_pair.qubit_target.xy.operations["cr_flattop"] = pulses.FlatTopGaussianPulse(
+    qb_pair.qubit_target.xy.operations[f"cr_flattop{qb_pair.name}"] = pulses.FlatTopGaussianPulse(
         amplitude=1.0,
         length=rise_fall_len + flattop_len + rise_fall_len,
         flat_length=flattop_len,
@@ -451,7 +451,7 @@ for k, qp in enumerate(machine.qubit_pairs):
         flat_length=flattop_len,
         axis_angle=0.0,
     )
-    qb_pair.qubit_target.xy_detuned.operations["zz_flattop"] = pulses.FlatTopGaussianPulse(
+    qb_pair.qubit_target.xy_detuned.operations[f"zz_flattop_{qb_pair.name}"] = pulses.FlatTopGaussianPulse(
         amplitude=1.0,
         length=rise_fall_len + flattop_len + rise_fall_len,
         flat_length=flattop_len,
