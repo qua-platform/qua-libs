@@ -45,7 +45,6 @@ class Parameters(NodeParameters):
     qubit_flux_step : float = 0.001
 
     use_state_discrimination: bool = True
-    pulse_duration_ns: int = 90
     num_frames : int = 10#20
     
     
@@ -85,14 +84,27 @@ n_avg = node.parameters.num_averages  # The number of averages
 
 flux_point = node.parameters.flux_point_joint_or_independent_or_pairwise  # 'independent' or 'joint' or 'pairwise'
 # Loop parameters
-fluxes_coupler = np.arange(node.parameters.coupler_flux_min, node.parameters.coupler_flux_max+0.0001, node.parameters.coupler_flux_step)
-fluxes_qubit = np.arange(node.parameters.qubit_flux_min, node.parameters.qubit_flux_max+0.0001, node.parameters.qubit_flux_step)
+fluxes_coupler = (
+    np.arange(
+        node.parameters.coupler_flux_min,
+        node.parameters.coupler_flux_max + 0.0001,
+        node.parameters.coupler_flux_step
+    )
+    + qubit_pairs[0].macros["Cz"].coupler_flux_pulse.amplitude
+)
+
+fluxes_qubit = np.arange(
+    node.parameters.qubit_flux_min,
+    node.parameters.qubit_flux_max + 0.0001,
+    node.parameters.qubit_flux_step
+)
+
 fluxes_qp = {}
 for qp in qubit_pairs:
     # estimate the flux shift to get the control qubit to the target qubit frequency
     fluxes_qp[qp.name] = fluxes_qubit + qp.detuning
-    
-pulse_duration = node.parameters.pulse_duration_ns // 4
+    pulse_duration = qp.macros["Cz"].coupler_flux_pulse.length - qp.macros["Cz"].coupler_flux_pulse.zero_padding
+
 reset_coupler_bias = False
 frames = np.arange(0, 1, 1 / node.parameters.num_frames)
 
@@ -149,16 +161,18 @@ with program() as CPhase_Oscillations:
                             qp.align()
                             
                             if "coupler_qubit_crosstalk" in qp.extras:
-                                assign(comp_flux_qubit, flux_qubit  +  qp.extras["coupler_qubit_crosstalk"] * flux_coupler )
+                                assign(comp_flux_qubit, flux_qubit + qp.extras["coupler_qubit_crosstalk"] * flux_coupler )
                             else:
-                                assign(comp_flux_qubit, flux_qubit)   
+                                assign(comp_flux_qubit, flux_qubit)
                             # setting both qubits ot the initial state
                             with if_(control_initial == 1, unsafe = True):
                                 qp.qubit_control.xy.play("x180")
                             qp.qubit_target.xy.play("x90")
                             qp.align()
-                            qp.qubit_control.z.play("const", amplitude_scale = comp_flux_qubit / qp.qubit_control.z.operations["const"].amplitude, duration = qua_pulse_duration)                
+
+                            qp.qubit_control.z.play("const", amplitude_scale = comp_flux_qubit / qp.qubit_control.z.operations["const"].amplitude, duration = qua_pulse_duration)
                             qp.coupler.play("const", amplitude_scale = flux_coupler / qp.coupler.operations["const"].amplitude, duration = qua_pulse_duration)
+
                             qp.align()
                             frame_rotation_2pi(frame, qp.qubit_target.xy.name)
                             qp.qubit_target.xy.play("x90")
