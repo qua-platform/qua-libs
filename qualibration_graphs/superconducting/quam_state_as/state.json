@@ -155,12 +155,12 @@
                 "f_01": 5935745164.0,
                 "confusion_matrix": [
                     [
-                        0.856,
-                        0.144
+                        0.8595,
+                        0.1405
                     ],
                     [
-                        0.1715,
-                        0.8285
+                        0.1465,
+                        0.8535
                     ]
                 ],
                 "gef_centers": [
@@ -199,9 +199,9 @@
                     "readout": {
                         "length": 1200,
                         "amplitude": 0.019246130859190677,
-                        "threshold": 2.3878614121378934e-05,
-                        "rus_exit_threshold": 1.4213899168256309e-05,
-                        "integration_weights_angle": -4.915881591642252,
+                        "threshold": 2.474546231701847e-05,
+                        "rus_exit_threshold": 1.4831046261273203e-05,
+                        "integration_weights_angle": -5.0107971247865475,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     },
                     "const": {
@@ -413,12 +413,12 @@
                 "f_01": 6025657617.0,
                 "confusion_matrix": [
                     [
-                        0.8145,
-                        0.1855
+                        0.8795,
+                        0.1205
                     ],
                     [
-                        0.1685,
-                        0.8315
+                        0.197,
+                        0.803
                     ]
                 ],
                 "gef_centers": [
@@ -457,9 +457,9 @@
                     "readout": {
                         "length": 1200,
                         "amplitude": 0.01703386226790066,
-                        "threshold": 1.9209719336683262e-05,
-                        "rus_exit_threshold": 1.0278591668401814e-05,
-                        "integration_weights_angle": -9.983761205428925,
+                        "threshold": 2.286401495133067e-05,
+                        "rus_exit_threshold": 1.2369379740725877e-05,
+                        "integration_weights_angle": -16.26309894516683,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     },
                     "const": {
@@ -1286,7 +1286,7 @@
                     "flux_pulse_control": {
                         "length": 220,
                         "id": "cz_flattop_pulse",
-                        "amplitude": 0.07586677180619879,
+                        "amplitude": 0.07562750886027914,
                         "flat_length": 200,
                         "__class__": "quam.components.pulses.FlatTopGaussianPulse"
                     },

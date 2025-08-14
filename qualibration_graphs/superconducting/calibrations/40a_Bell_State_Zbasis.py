@@ -52,7 +52,6 @@ from qualang_tools.bakery import baking
 from qualibration_libs.legacy.lib.fit import fit_oscillation, oscillation, fix_oscillation_phi_2pi
 from qualibration_libs.legacy.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
 from scipy.optimize import curve_fit
-from qualibration_libs.legacy.components.gates.two_qubit_gates import CZGate
 from qualibration_libs.legacy.lib.pulses import FluxPulse
 
 
@@ -79,7 +78,7 @@ assert not (
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuaM.load()
+machine = Quam.load()
 
 # Get the relevant QuAM components
 if node.parameters.qubit_pairs is None or node.parameters.qubit_pairs == "":
@@ -136,10 +135,10 @@ with program() as CPhase_Oscillations:
                 # active_reset(qp.qubit_target)
                 # qp.align()
                 wait(2 * qp.qubit_control.thermalization_time * u.ns)
-                active_reset_simple(qp.qubit_control)
-                active_reset_simple(qp.qubit_target)
-                active_reset_simple(qp.qubit_control)
-                active_reset_simple(qp.qubit_target)
+                active_reset(qp.qubit_control)
+                active_reset(qp.qubit_target)
+                active_reset(qp.qubit_control)
+                active_reset(qp.qubit_target)
             else:
                 wait(5 * qp.qubit_control.thermalization_time * u.ns)
             qp.align()
@@ -148,13 +147,13 @@ with program() as CPhase_Oscillations:
                 # 1.
                 qp.qubit_control.xy.play("y90")
                 qp.qubit_target.xy.play("y90")
-                qp.gates['Cz'].execute()
+                qp.macros['cz_flattop'].apply()
                 qp.qubit_control.xy.play("-y90")
             if node.parameters.circuit == "BELL2":
                 # 2.
                 qp.qubit_control.xy.play("y90")
                 qp.qubit_target.xy.play("-y90")
-                qp.gates['Cz'].execute()
+                qp.macros['cz_flattop'].apply()
                 qp.qubit_target.xy.play("y90")
 
             # Hadamard test
@@ -173,7 +172,7 @@ with program() as CPhase_Oscillations:
                 for x in range(1):
                     qp.qubit_target.xy.play("y90")
                     qp.qubit_target.xy.play("x180")
-                    qp.gates['Cz'].execute()
+                    qp.macros['cz_flattop'].apply()
                     qp.qubit_target.xy.play("y90")
                     qp.qubit_target.xy.play("x180")
 
@@ -187,7 +186,7 @@ with program() as CPhase_Oscillations:
             save(state_control[i], state_st_control[i])
             save(state_target[i], state_st_target[i])
             save(state[i], state_st[i])
-        align()
+        # align()
 
     with stream_processing():
         n_st.save("n")
