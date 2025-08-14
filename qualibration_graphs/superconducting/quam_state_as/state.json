@@ -240,6 +240,19 @@
                         "length": 80,
                         "amplitude": -0.07009506167631502,
                         "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "cz_square": {
+                        "id": "cz_square",
+                        "length": "#/qubit_pairs/q1-2/macros/Cz/flux_pulse_control/length",
+                        "amplitude": "#/qubit_pairs/q1-2/macros/Cz/flux_pulse_control/amplitude",
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "cz_flattop_pulse": {
+                        "length": "#/qubit_pairs/q1-2/macros/cz_flattop/flux_pulse_control/length",
+                        "id": "cz_flattop_pulse",
+                        "amplitude": "#/qubit_pairs/q1-2/macros/cz_flattop/flux_pulse_control/amplitude",
+                        "flat_length": "#/qubit_pairs/q1-2/macros/cz_flattop/flux_pulse_control/flat_length",
+                        "__class__": "quam.components.pulses.FlatTopGaussianPulse"
                     }
                 },
                 "opx_output": "#/wiring/qubits/q1/z/opx_output",
@@ -1240,12 +1253,14 @@
             "macros": {
                 "Cz_square_pulse_50": {
                     "flux_pulse_control": {
+                        "id": "cz_square",
                         "length": 52,
                         "amplitude": 0.076145125,
                         "zero_padding": 2,
                         "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
                     },
                     "coupler_flux_pulse": {
+                        "id": "cz_square",
                         "length": 52,
                         "amplitude": 0.03255,
                         "zero_padding": 2,
@@ -1264,6 +1279,23 @@
                         "length": 40,
                         "amplitude": 0.1,
                         "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
+                    },
+                    "__class__": "quam_builder.architecture.superconducting.custom_gates.cz.CZGate"
+                },
+                "cz_flattop": {
+                    "flux_pulse_control": {
+                        "length": 72,
+                        "id": "cz_flattop_pulse",
+                        "amplitude": 0.076145,
+                        "flat_length": 50,
+                        "__class__": "quam.components.pulses.FlatTopGaussianPulse"
+                    },
+                    "coupler_flux_pulse": {
+                        "length": 72,
+                        "id": "cz_flattop_pulse",
+                        "amplitude": 0.03255,
+                        "flat_length": 50,
+                        "__class__": "quam.components.pulses.FlatTopGaussianPulse"
                     },
                     "__class__": "quam_builder.architecture.superconducting.custom_gates.cz.CZGate"
                 }
@@ -1286,6 +1318,19 @@
                         "length": 80,
                         "amplitude": -0.04662292425886875,
                         "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "cz_square": {
+                        "id": "cz_square",
+                        "length": "#/qubit_pairs/q1-2/macros/Cz/coupler_flux_pulse/length",
+                        "amplitude": "#/qubit_pairs/q1-2/macros/Cz/coupler_flux_pulse/amplitude",
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "cz_flattop_pulse": {
+                        "length": "#/qubit_pairs/q1-2/macros/cz_flattop/coupler_flux_pulse/length",
+                        "id": "cz_flattop_pulse",
+                        "amplitude": "#/qubit_pairs/q1-2/macros/cz_flattop/coupler_flux_pulse/amplitude",
+                        "flat_length": "#/qubit_pairs/q1-2/macros/cz_flattop/coupler_flux_pulse/flat_length",
+                        "__class__": "quam.components.pulses.FlatTopGaussianPulse"
                     }
                 },
                 "id": "coupler_q1_q2",
