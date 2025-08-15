@@ -147,13 +147,17 @@ with program() as CPhase_Oscillations:
                 # 1.
                 qp.qubit_control.xy.play("y90")
                 qp.qubit_target.xy.play("y90")
+                # qp.align()
                 qp.macros['cz_flattop'].apply()
+                # qp.align()
                 qp.qubit_control.xy.play("-y90")
             if node.parameters.circuit == "BELL2":
                 # 2.
                 qp.qubit_control.xy.play("y90")
                 qp.qubit_target.xy.play("-y90")
+                qp.align()
                 qp.macros['cz_flattop'].apply()
+                qp.align()
                 qp.qubit_target.xy.play("y90")
 
             # Hadamard test
@@ -172,7 +176,9 @@ with program() as CPhase_Oscillations:
                 for x in range(1):
                     qp.qubit_target.xy.play("y90")
                     qp.qubit_target.xy.play("x180")
+                    qp.align()
                     qp.macros['cz_flattop'].apply()
+                    qp.align()
                     qp.qubit_target.xy.play("y90")
                     qp.qubit_target.xy.play("x180")
 
