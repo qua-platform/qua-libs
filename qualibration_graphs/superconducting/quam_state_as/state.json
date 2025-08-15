@@ -1253,20 +1253,20 @@
             "macros": {
                 "Cz_square_pulse_50": {
                     "flux_pulse_control": {
-                        "length": 16,
-                        "id": "cz_square",
-                        "amplitude": 0.07599999999999998,
+                        "length": 52,
+                        "amplitude": 0.1,
+                        "zero_padding": 2,
                         "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
                     },
                     "coupler_flux_pulse": {
-                        "length": 16,
-                        "id": "cz_square",
-                        "amplitude": 0.031149999999999997,
+                        "length": 52,
+                        "amplitude": 0.1,
+                        "zero_padding": 2,
                         "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
                     },
                     "__class__": "quam_builder.architecture.superconducting.custom_gates.cz.CZGate"
                 },
-                "Cz": "#./Cz_square_pulse_64",
+                "Cz": "#./Cz_square_pulse_50",
                 "Cz_square_pulse_40": {
                     "flux_pulse_control": {
                         "length": 40,
@@ -1282,32 +1282,32 @@
                 },
                 "cz_flattop": {
                     "flux_pulse_control": {
-                        "length": 220,
+                        "length": 64,
                         "id": "cz_flattop_pulse",
-                        "amplitude": 0.07586739298441153,
-                        "flat_length": 200,
+                        "amplitude": 0.07060489408890817,
+                        "flat_length": 64,
                         "__class__": "quam.components.pulses.FlatTopGaussianPulse"
                     },
                     "coupler_flux_pulse": {
-                        "length": 220,
+                        "length": 64,
                         "id": "cz_flattop_pulse",
-                        "amplitude": 0.03255,
-                        "flat_length": 200,
+                        "amplitude": 0.0496,
+                        "flat_length": 64,
                         "__class__": "quam.components.pulses.FlatTopGaussianPulse"
                     },
-                    "phase_shift_control": -1.5371641964803306,
-                    "phase_shift_target": -1.544785507283351,
+                    "phase_shift_control": -1.8372486035181552,
+                    "phase_shift_target": -2.7219260711424793,
                     "__class__": "quam_builder.architecture.superconducting.custom_gates.cz.CZGate"
                 },
                 "Cz_square_pulse_64": {
                     "flux_pulse_control": {
                         "length": 64,
-                        "amplitude": 0.07505999999999999,
+                        "amplitude": 0.0784,
                         "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
                     },
                     "coupler_flux_pulse": {
                         "length": 64,
-                        "amplitude": 0.027000000000000086,
+                        "amplitude": 0.0496,
                         "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
                     },
                     "__class__": "quam_builder.architecture.superconducting.custom_gates.cz.CZGate"
@@ -1348,34 +1348,34 @@
                 },
                 "id": "coupler_q1_q2",
                 "opx_output": "#/wiring/qubit_pairs/q1-2/c/opx_output",
-                "decouple_offset": -0.204,
+                "decouple_offset": -0.109,
                 "__class__": "quam_builder.architecture.superconducting.components.tunable_coupler.TunableCoupler"
             },
             "detuning": 0.07306,
             "confusion": [
                 [
-                    0.8265,
-                    0.2285,
-                    0.9105,
-                    0.053
+                    0.973,
+                    0.7515,
+                    0.9905,
+                    0.6275
                 ],
                 [
-                    0.084,
-                    0.686,
-                    0.0895,
-                    0.171
+                    0.0145,
+                    0.239,
+                    0.0095,
+                    0.1875
                 ],
                 [
-                    0.07,
-                    0.02,
-                    0.0,
-                    0.2085
+                    0.0125,
+                    0.0075,
+                    0,
+                    0.1575
                 ],
                 [
-                    0.0195,
-                    0.0655,
-                    0.0,
-                    0.5675
+                    0,
+                    0.002,
+                    0,
+                    0.0275
                 ]
             ],
             "extras": {
