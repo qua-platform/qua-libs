@@ -29,7 +29,7 @@ qubit_pair_indexes = [1]  # The indexes of the qubit pairs to measure
 class Parameters(NodeParameters):
 
     qubit_pairs: Optional[List[str]] = [f"q{i}-{i+1}" for i in qubit_pair_indexes]
-    num_averages: int = 100
+    num_averages: int = 200
     flux_point_joint_or_independent_or_pairwise: Literal["joint", "independent", "pairwise"] = "joint"
     reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
@@ -37,12 +37,12 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
 
     coupler_flux_min : float = -0.01 # relative to the coupler set point
-    coupler_flux_max : float = 0.01 # relative to the coupler set point
+    coupler_flux_max : float = 0.03 # relative to the coupler set point
 
-    coupler_flux_step : float = 0.0002
+    coupler_flux_step : float = 0.001
 
-    qubit_flux_min : float = -0.01 # relative to the qubit pair detuning
-    qubit_flux_max : float = 0.01 # relative to the qubit pair detuning
+    qubit_flux_min : float = -0.03 # relative to the qubit pair detuning
+    qubit_flux_max : float = 0.03 # relative to the qubit pair detuning
     qubit_flux_step : float = 0.001
 
     use_state_discrimination: bool = True
@@ -115,7 +115,7 @@ with program() as CPhase_Oscillations:
     flux_qubit = declare(float)
     comp_flux_qubit = declare(float)
     n_st = declare_stream()
-    qua_pulse_duration = declare(int, value = pulse_duration)
+    qua_pulse_duration = declare(int, value = int(pulse_duration/4))
     frame = declare(fixed)
     control_initial = declare(int)
     
@@ -393,7 +393,7 @@ if not node.parameters.simulate:
                     qp.macros["Cz"].flux_pulse_control.amplitude = node.results["results"][qp.name]["flux_qubit_Cz"]
 
 # %% {Save_results}
-if not node.parameters.simulate:    
+if not node.parameters.simulate:
     node.outcomes = {q.name: "successful" for q in qubit_pairs}
     node.results['initial_parameters'] = node.parameters.model_dump()
     node.machine = machine
