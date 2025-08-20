@@ -2,20 +2,50 @@
 QUA-Config supporting OPX1000 w/ LF-FEM + MW-FEM
 """
 
-from pathlib import Path
-
 import numpy as np
 import plotly.io as pio
-from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-from qm import QuantumMachinesManager
-from qm import QopCaps
-
+import matplotlib.pyplot as plt
+from scipy.signal import savgol_filter
 
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
 u = unit(coerce_to_integer=True)
+
+def find_delay(adc):
+    # Filter the data to get the pulse arrival time
+    signal = savgol_filter(np.abs(adc), 11, 3)
+    # Detect the arrival of the readout signal
+    th = (np.mean(signal[:100]) + np.mean(signal[:-100])) / 2
+    delay = np.where(signal > th)[0][0]
+    delay = np.round(delay / 4) * 4  # Find the closest multiple integer of 4ns
+    print(f"delay = {delay}ns")
+    return delay
+
+def plot_adc(adc,adc_single_run,delay):
+    fig = plt.figure()
+    plt.subplot(121)
+    plt.title("Single run")
+    plt.plot(adc_single_run.real, "b", label="I")
+    plt.plot(adc_single_run.imag, "r", label="Q")
+    plt.axvline(delay, color="k", linestyle="--", label="TOF")
+    plt.fill_between(range(len(adc_single_run)), -0.5, 0.5, color="grey", alpha=0.2, label="ADC Range")
+    plt.xlabel("Time [ns]")
+    plt.ylabel("Signal amplitude [V]")
+    plt.legend()
+    plt.subplot(122)
+    plt.title("Averaged run")
+    plt.plot(adc.real, "b", label="I")
+    plt.plot(adc.imag, "r", label="Q")
+    plt.axvline(delay, color="k", linestyle="--", label="TOF")
+    plt.xlabel("Time [ns]")
+    plt.legend()
+    plt.grid("all")
+    plt.tight_layout()
+    plt.show()
+    return fig
+
 
 ######################
 # Network parameters #
@@ -51,60 +81,6 @@ const_amp = 0.35
 # Saturation_pulse
 saturation_len = 10 * u.us
 saturation_amp = 0.35
-# Pi pulse parameters
-pi_len = 40
-pi_sigma = pi_len / 5
-pi_amp_q1 = 0.35
-
-# DRAG coefficients
-drag_coef_q1 = 0
-anharmonicity_q1 = -200 * u.MHz
-AC_stark_detuning_q1 = 0 * u.MHz
-
-# DRAG waveforms
-x180_wf_q1, x180_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(
-        amplitude=pi_amp_q1,
-        length=pi_len,
-        sigma=pi_sigma,
-        alpha=drag_coef_q1,
-        anharmonicity=anharmonicity_q1,
-        detuning=AC_stark_detuning_q1,
-        sampling_rate=sampling_rate,
-    )
-)
-x180_I_wf_q1 = x180_wf_q1
-x180_Q_wf_q1 = x180_der_wf_q1
-
-# No DRAG when alpha=0, it's just a gaussian.
-x90_wf_q1, x90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(
-        pi_amp_q1 / 2,
-        pi_len,
-        pi_sigma,
-        drag_coef_q1,
-        anharmonicity_q1,
-        AC_stark_detuning_q1,
-        sampling_rate=sampling_rate,
-    )
-)
-x90_I_wf_q1 = x90_wf_q1
-x90_Q_wf_q1 = x90_der_wf_q1
-# No DRAG when alpha=0, it's just a gaussian.
-
-minus_x90_wf_q1, minus_x90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(
-        -pi_amp_q1 / 2,
-        pi_len,
-        pi_sigma,
-        drag_coef_q1,
-        anharmonicity_q1,
-        AC_stark_detuning_q1,
-        sampling_rate=sampling_rate,
-    )
-)
-minus_x90_I_wf_q1 = minus_x90_wf_q1
-minus_x90_Q_wf_q1 = minus_x90_der_wf_q1
 
 ##########################################
 #               Flux line                #
@@ -126,15 +102,11 @@ resonator_power = 1  # power in dBm at waveform_amp = 1 (steps of 3 dB)
 # Readout pulse parameters
 readout_len = 4000
 readout_amp_q1 = 0.35
-readout_amp_q2 = 0.35
 
 # TOF and depletion time
 time_of_flight = 28  # must be a multiple of 4
 depletion_time = 2 * u.us
 
-# state discrimination
-rotation_angle_q1 = (0.0 / 180) * np.pi
-ge_threshold_q1 = 0.0
 
 #############################################
 #                  Config                   #
@@ -214,8 +186,6 @@ logical_config = {
             "operations": {
                 "cw": "const_pulse",
                 "saturation": "saturation_pulse",
-                "x180": "x180_pulse_q1",
-                "x90": "x90_pulse_q1",
             },
         },
         "q1_z": {
@@ -251,22 +221,6 @@ logical_config = {
                 "Q": "zero_wf",
             },
         },
-        "x90_pulse_q1": {
-            "operation": "control",
-            "length": pi_len,
-            "waveforms": {
-                "I": "x90_I_wf_q1",
-                "Q": "x90_Q_wf_q1",
-            },
-        },
-        "x180_pulse_q1": {
-            "operation": "control",
-            "length": pi_len,
-            "waveforms": {
-                "I": "x180_I_wf_q1",
-                "Q": "x180_Q_wf_q1",
-            },
-        },
         "readout_pulse_q1": {
             "operation": "measurement",
             "length": readout_len,
@@ -277,10 +231,7 @@ logical_config = {
             "integration_weights": {
                 "cos": "cosine_weights",
                 "sin": "sine_weights",
-                "minus_sin": "minus_sine_weights",
-                "rotated_cos": "rotated_cosine_weights_q1",
-                "rotated_sin": "rotated_sine_weights_q1",
-                "rotated_minus_sin": "rotated_minus_sine_weights_q1",
+                "minus_sin": "minus_sine_weights"
             },
             "digital_marker": "ON",
         }
@@ -290,10 +241,6 @@ logical_config = {
         "saturation_wf": {"type": "constant", "sample": saturation_amp},
         "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
-        "x90_I_wf_q1": {"type": "arbitrary", "samples": x90_I_wf_q1.tolist()},
-        "x90_Q_wf_q1": {"type": "arbitrary", "samples": x90_Q_wf_q1.tolist()},
-        "x180_I_wf_q1": {"type": "arbitrary", "samples": x180_I_wf_q1.tolist()},
-        "x180_Q_wf_q1": {"type": "arbitrary", "samples": x180_Q_wf_q1.tolist()},
         "readout_wf_q1": {"type": "constant", "sample": readout_amp_q1}
     },
     "digital_waveforms": {
@@ -311,18 +258,6 @@ logical_config = {
         "minus_sine_weights": {
             "cosine": [(0.0, readout_len)],
             "sine": [(-1.0, readout_len)],
-        },
-        "rotated_cosine_weights_q1": {
-            "cosine": [(np.cos(rotation_angle_q1), readout_len)],
-            "sine": [(np.sin(rotation_angle_q1), readout_len)],
-        },
-        "rotated_sine_weights_q1": {
-            "cosine": [(-np.sin(rotation_angle_q1), readout_len)],
-            "sine": [(np.cos(rotation_angle_q1), readout_len)],
-        },
-        "rotated_minus_sine_weights_q1": {
-            "cosine": [(np.sin(rotation_angle_q1), readout_len)],
-            "sine": [(-np.cos(rotation_angle_q1), readout_len)],
         }
     },
 }

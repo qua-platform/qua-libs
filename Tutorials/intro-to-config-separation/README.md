@@ -1,9 +1,9 @@
-## Config Override Execution (QOP350)
+## config separation (QOP350)
 
-This tutorial explains the new **Config Override Execution** feature introduced in **QOP350**.
+This tutorial explains the new **config separation** feature introduced in **QOP350**.
 
 ### Overview
-In previous QOP versions, once you opened a qm (=qmm.open_qm(config)) with a specific configuration, it could only run with that limited modification of config. If you wanted to change the configuration in more field, you had to close and reopen with new config file.
+In previous QOP versions, once you opened a qm (=qmm.open_qm(config)) with a specific configuration, it could only run with that limited modification of config. If you wanted to change the configuration in more parameters, you had to close and reopen with new config file.
 
 In the new version, you can now:
 - Modify the job(=qm.execute()) throgh provding temporily different config **from job to job**.
