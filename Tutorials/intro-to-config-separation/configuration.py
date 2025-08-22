@@ -113,7 +113,6 @@ depletion_time = 2 * u.us
 #############################################
 
 controller_config = {
-    "version":1,
         "controllers": {
         con: {
             "type": "opx1000",
@@ -149,6 +148,10 @@ controller_config = {
                             "sampling_rate": sampling_rate,
                             "upsampling_mode": "pulse",
                             "delay": 141 * u.ns,
+                            "filter":{
+                                'feedforward': [0.8, 0.3], 
+                                "exponential": [(0.1, 0.1 * u.us)],
+                            }
                         },
                     },
                     "digital_outputs": {
