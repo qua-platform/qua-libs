@@ -265,8 +265,3 @@ logical_config = {
     },
 }
 full_config = controller_config | logical_config
-
-if __name__ == "__main__":
-    print(controller_config.keys())
-    print(logical_config.keys())
-    print(full_config.keys())
