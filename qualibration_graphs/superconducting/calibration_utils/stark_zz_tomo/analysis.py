@@ -79,48 +79,23 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     xr.Dataset
         Dataset containing the fit results.
     """
-    if node.parameters.use_state_discrimination:
-        fit = fit_oscillation_decay_exp(ds.state, "idle_time")
-    else:
-        fit = fit_oscillation_decay_exp(ds.I, "idle_time")
+    ds_fit = ds
+    # Extract the relevant fitted parameters
+    fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
+    return fit_data, fit_results
 
-    ds_fit = xr.merge([ds, fit.rename("fit")])
-
-    ds_fit, fit_results = _extract_relevant_fit_parameters(ds_fit)
-    return ds_fit, fit_results
-
-
-def _extract_relevant_fit_parameters(ds_fit: xr.Dataset) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
     """
     Post-process modified-echo fit results:
       - frequency (oscillation due to second-interval detuning)
       - T2_modified_echo = -1/decay
       - Error propagation from 'decay_decay' as in your echo code
     """
-    # --- Frequency of oscillation (DataArray)
-    # NOTE: Your other pipeline labels frequency as "MHz" but converts with 1e9 to Hz.
-    fitted_frequency = ds_fit.fit.sel(fit_vals="f")
-    fitted_frequency.attrs = {"long_name": "fitted fitted_frequency", "units": "MHz"}
-    # fitted_frequency = fitted_frequency.where(fitted_frequency > 0, drop=True)
 
-    # --- Decay (envelope) and its residual metric
-    decay = ds_fit.fit.sel(fit_vals="decay")
-    decay.attrs = {"long_name": "envelope decay coefficient", "units": "1/ns"}  # sign is typically negative
-    decay_res = ds_fit.fit.sel(fit_vals="decay_decay")
-    decay_res.attrs = {"long_name": "decay residual (variance-like)", "units": "1/ns^2"}
-
-    # T2_modified_echo-like time: match your standard echo convention (T2_modified_echo = -1/decay)
-    T2_modified_echo = -1.0 / decay
-    T2_modified_echo.attrs = {"long_name": "T2 echo (modified for CZ)", "units": "ns"}
-
-    # Propagate uncertainty similar to your echo code:
-    # T2_modified_echo_error = -T2 * (sqrt(decay_res) / decay)
-    T2_modified_echo_error = -T2_modified_echo * (np.sqrt(decay_res) / decay)
-    T2_modified_echo_error.attrs = {"long_name": "T2 echo (modified for CZ) error", "units": "ns"}
-
-    zz_coeff =\
-        fitted_frequency.sel(control_target="t", control_state=0) -\
-        fitted_frequency.sel(control_target="t", control_state=1)
+    bloch_t_c0 = 1 - 2 * ds_fit.sel(control_target="t", control_state=0)
+    bloch_t_c1 = 1 - 2 * ds_fit.sel(control_target="t", control_state=1)
+    
+    R = 0.5 * (bloch_t_c0 - bloch_t_c1) ** 2
 
     # Attach to dataset for convenience/plotting
     ds_fit = ds_fit.assign(

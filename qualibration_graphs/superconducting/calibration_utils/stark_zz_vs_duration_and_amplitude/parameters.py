@@ -19,14 +19,15 @@ class NodeSpecificParameters(RunnableParameters):
         target_peak_width (Optional[float]): Target peak width in Hz. Default is 3e6 Hz.
     """
 
-    num_shots: int = 3
-    min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 250
-    time_step_in_ns: int = 16
+    num_shots: int = 100
+    min_wait_time_in_ns: int = 100
+    max_wait_time_in_ns: int = 300
+    time_step_in_ns: int = 8
 
-    min_zz_drive_relative_phase_2pi: float = -1.0
-    max_zz_drive_relative_phase_2pi: float = +1.0
-    step_zz_drive_relative_phase_2pi: float = 0.1
+    min_zz_drive_amp_scaling: float = 0.2
+    max_zz_drive_amp_scaling: float = 1.0
+    step_zz_drive_amp_scaling: float = 0.2
+    calibrate_control_amp_scaling: bool = True
 
     wf_type: Literal["square", "cosine", "gauss", "flattop"] = "flattop"
     qc_correction_phase_2pi: Optional[Union[float, List[float]]] = None
@@ -36,15 +37,11 @@ class NodeSpecificParameters(RunnableParameters):
     zz_drive_target_amp_scaling: Optional[Union[float, List[float]]] = None
 
 
-class TwoQubitExperimentNodeParametersCustom(TwoQubitExperimentNodeParameters):
-    use_state_discrimination: bool = True
-
-
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
     # QubitsExperimentNodeParameters,
-    TwoQubitExperimentNodeParametersCustom,
+    TwoQubitExperimentNodeParameters,
 ):
     pass

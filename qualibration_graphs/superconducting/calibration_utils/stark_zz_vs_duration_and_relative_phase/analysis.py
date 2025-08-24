@@ -15,9 +15,10 @@ from ..data_process_utils import reshape_control_target_val2dim
 class FitParameters:
     """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
 
+    zz_drive_detuning: float
     zz_coeff: float
-    detuning_target_qc0: float
-    detuning_target_qc1: float
+    frequency_shift_target_qc0: float
+    frequency_shift_target_qc1: float
     T2_modified_echo_target_qc0: float
     T2_modified_echo_error_target_qc0: float
     T2_modified_echo_target_qc1: float
@@ -42,16 +43,17 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
     for qp in fit_results.keys():
         s_qubit_pair = f"Results for qubit pair {qp}: "
-        s_detuning = (
-            f"\tFitted detuning of target qubit with qc=|0>: {1e-6 * fit_results[qp]['detuning_target_qc0']:.3f} MHz\n"
-            + f"\tFitted detuning of target qubit with qc=|1>: {1e-6 * fit_results[qp]['detuning_target_qc1']:.3f} MHz\n"
-        )
+        s_detuning = f"\tmax zz_coeff at zz_drive_detuning={fit_results[qp]['zz_drive_detuning']}\n"
         s_zz_coeff = f"\tExtracted ZZ coefficient: {1e-6 * fit_results[qp]['zz_coeff']:.3f} MHz\n"
+        s_frequency_shift = (
+            f"\t\tFitted frequency shift of target qubit with qc=|0>: {1e-6 * fit_results[qp]['frequency_shift_target_qc0']:.3f} MHz\n"
+            + f"\t\tFitted frequency shift of target qubit with qc=|1>: {1e-6 * fit_results[qp]['frequency_shift_target_qc1']:.3f} MHz\n"
+        )
         if fit_results[qp]["success"]:
             s_qubit_pair += " SUCCESS!\n"
         else:
             s_qubit_pair += " FAIL!\n"
-        log_callable(s_qubit_pair + s_detuning + s_zz_coeff)
+        log_callable(s_qubit_pair + s_detuning + s_zz_coeff + s_frequency_shift)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
@@ -118,17 +120,23 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset) -> Tuple[xr.Dataset, Di
     T2_modified_echo_error = -T2_modified_echo * (np.sqrt(decay_res) / decay)
     T2_modified_echo_error.attrs = {"long_name": "T2 echo (modified for CZ) error", "units": "ns"}
 
-    zz_coeff =\
-        fitted_frequency.sel(control_target="t", control_state=0) -\
-        fitted_frequency.sel(control_target="t", control_state=1)
+    zz_coeff = fitted_frequency.sel(control_target="t", control_state=0) - fitted_frequency.sel(
+        control_target="t", control_state=1
+    )
+
+    # Best zz drive detuning per qubit_pair
+    best_detuning = zz_coeff.idxmax(dim="detuning").rename("best_detuning")
+    best_zz_coeff = zz_coeff.max(dim="detuning").rename("best_zz_coeff")
 
     # Attach to dataset for convenience/plotting
     ds_fit = ds_fit.assign(
         {
             "T2_modified_echo": T2_modified_echo,
             "T2_modified_echo_error": T2_modified_echo_error,
-            "freq_offset": fitted_frequency,
+            "freq_shift": fitted_frequency,
             "zz_coeff": zz_coeff,
+            "best_detuning": best_detuning,
+            "best_zz_coeff": best_zz_coeff,
         }
     )
 
@@ -140,25 +148,36 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset) -> Tuple[xr.Dataset, Di
     ds_fit = ds_fit.assign({"success": success_criteria})
 
     # --- Package into FitParameters (align with your previous keys)
-    # Reuse 'freq_offset' to carry the frequency shift (in Hz) for compatibility with Ramsey output
+    # Reuse 'freq_shift' to carry the frequency shift (in Hz) for compatibility with Ramsey output
+    def _sel_best(da, qp, *, control_state):
+        detuning = best_detuning.sel(qubit_pair=qp).item()
+        return (
+            da.sel(qubit_pair=qp, control_target="t", control_state=control_state)
+            .sel(detuning=detuning, method="nearest")
+            .squeeze(drop=True)
+            .item()
+        )
+
     fit_results: Dict[str, FitParameters] = {
         qp: FitParameters(
-            # frequency from fit ('f') — consistent with your Ramsey code using 1e9 multiplier
-            zz_coeff=1e9 * float(zz_coeff.sel(qubit_pair=qp)),
-            detuning_target_qc0=1e9 * float(fitted_frequency.sel(qubit_pair=qp, control_target="t", control_state=0)),
-            detuning_target_qc1=1e9 * float(fitted_frequency.sel(qubit_pair=qp, control_target="t", control_state=1)),
-            # also provide a T2_modified_echo-style time for the modified echo (convert to seconds)
-            T2_modified_echo_target_qc0=1e-9
-            * float(T2_modified_echo.sel(qubit_pair=qp, control_target="t", control_state=0)),
-            T2_modified_echo_error_target_qc0=1e-9
-            * float(T2_modified_echo_error.sel(qubit_pair=qp, control_target="t", control_state=0)),
-            T2_modified_echo_target_qc1=1e-9
-            * float(T2_modified_echo.sel(qubit_pair=qp, control_target="t", control_state=0)),
-            T2_modified_echo_error_target_qc1=1e-9
-            * float(T2_modified_echo_error.sel(qubit_pair=qp, control_target="t", control_state=0)),
-            success=bool(success_criteria.sel(qubit_pair=qp, control_target="t", control_state=1)),
+            zz_drive_detuning=best_detuning.sel(qubit_pair=qp).item(),
+            zz_coeff=1e9 * best_zz_coeff.sel(qubit_pair=qp).item(),
+            frequency_shift_target_qc0=1e9 * _sel_best(fitted_frequency, qp, control_state=0),
+            frequency_shift_target_qc1=1e9 * _sel_best(fitted_frequency, qp, control_state=1),
+            # qc0 should use control_state=0
+            T2_modified_echo_target_qc0=1e-9 * _sel_best(T2_modified_echo, qp, control_state=0),
+            T2_modified_echo_error_target_qc0=1e-9 * _sel_best(T2_modified_echo_error, qp, control_state=0),
+            # qc1 should use control_state=1
+            T2_modified_echo_target_qc1=1e-9 * _sel_best(T2_modified_echo, qp, control_state=1),
+            T2_modified_echo_error_target_qc1=1e-9 * _sel_best(T2_modified_echo_error, qp, control_state=1),
+            success=bool(
+                success_criteria.sel(qubit_pair=qp, control_target="t", control_state=1)
+                .sel(detuning=best_detuning.sel(qubit_pair=qp).item(), method="nearest")
+                .item()
+            ),
         )
-        for qp in ds_fit.qubit_pair.values
+        # iterate over the object that actually has the coord (adjust as needed)
+        for qp in fitted_frequency.qubit_pair.values
     }
 
     return ds_fit, fit_results

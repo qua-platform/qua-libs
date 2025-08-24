@@ -210,29 +210,6 @@ for k, qp in enumerate(machine.qubit_pairs.values()):
 for k, qp in enumerate(machine.qubit_pairs.values()):
     qc = qp.qubit_control
     qp.zz_drive.core = f"{qc.name}_{qc.xy.opx_output.controller_id}_slot{qc.xy.opx_output.fem_id}"
-    
-
-########################################################################################################################
-# %%                                        Plot parameters
-########################################################################################################################
-
-# Grid layout (2 columns: column 0 and column 1, from top to bottom)
-# Each entry is in the format "column-row" (i.e., "col-row")
-#
-#   0,3 | 1,3
-#   0,2 | 1,2
-#   0,1 | 1,1
-#   0,0 | 1,0
-#
-# Represented in row,major order from top row (3) to bottom row (0)
-
-grid_locations = [
-    "0,6", "0,5", "0,4", "0,3", "0,2", "0,1",
-    "1,6", "1,5", "1,4", "1,3", "1,2", "1,1",
-]
-for gd, qubit in zip(grid_locations, machine.qubits.values()):
-    qubit.grid_location = gd  # Qubit grid location for plotting as "column,row"
-
 
 
 ########################################################################################################################
@@ -457,6 +434,58 @@ for k, qp in enumerate(machine.qubit_pairs):
         flat_length=flattop_len,
         axis_angle=0.0,
     )
+
+
+
+########################################################################################################################
+# %%                                        Plot parameters
+########################################################################################################################
+
+# Grid layout (2 columns: column 0 and column 1, from top to bottom)
+# Each entry is in the format "column-row" (i.e., "col-row")
+#
+#   0,3 | 1,3
+#   0,2 | 1,2
+#   0,1 | 1,1
+#   0,0 | 1,0
+#
+# Represented in row,major order from top row (3) to bottom row (0)
+
+
+# qubits = [
+#     1, 2, 3, 4,
+#     5, 6, 7, 8,
+# ]
+grid_locations = [
+    "0,3", "0,2", "0,1", "0,0",
+    "1,3", "1,2", "1,1", "1,0",
+]
+for gd, qubit in zip(grid_locations, machine.qubits.values()):
+    qubit.grid_location = gd  # Qubit grid location for plotting as "column,row"
+
+
+# qubit_pairs = [
+#     (1, 2), (2, 1),
+#     (2, 3), (3, 2),
+#     (3, 4), (4, 3),
+
+#     (5, 6), (6, 5),
+#     (6, 7), (7, 6),
+#     (7, 8), (8, 7),
+# ]
+grid_locations = [
+    "0,3", "0,2",
+    "0,1", "0,0",
+
+    "1,3", "1,2",
+    "1,1", "1,0",
+
+    "2,3", "2,2",
+    "2,1", "2,0",
+]
+for gd, qp in zip(grid_locations, machine.qubit_pairs.values()):
+    qp.grid_location = gd
+
 
 ########################################################################################################################
 # %%                                         Save the updated QUAM

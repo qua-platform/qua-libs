@@ -36,15 +36,11 @@ class NodeSpecificParameters(RunnableParameters):
     zz_drive_target_amp_scaling: Optional[Union[float, List[float]]] = None
 
 
-class TwoQubitExperimentNodeParametersCustom(TwoQubitExperimentNodeParameters):
-    use_state_discrimination: bool = True
-
-
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
     # QubitsExperimentNodeParameters,
-    TwoQubitExperimentNodeParametersCustom,
+    TwoQubitExperimentNodeParameters,
 ):
     pass

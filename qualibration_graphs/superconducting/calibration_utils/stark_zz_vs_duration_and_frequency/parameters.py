@@ -23,6 +23,7 @@ class NodeSpecificParameters(RunnableParameters):
     min_wait_time_in_ns: int = 100
     max_wait_time_in_ns: int = 300
     time_step_in_ns: int = 8
+
     frequency_step_in_mhz: float = 4
     frequency_span_in_mhz: float = 100
     ramsey_freq_detuning_in_mhz: float = 1.0
@@ -35,15 +36,11 @@ class NodeSpecificParameters(RunnableParameters):
     zz_drive_target_amp_scaling: Optional[Union[float, List[float]]] = None
 
 
-class TwoQubitExperimentNodeParametersCustom(TwoQubitExperimentNodeParameters):
-    use_state_discrimination: bool = True
-
-
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
     # QubitsExperimentNodeParameters,
-    TwoQubitExperimentNodeParametersCustom,
+    TwoQubitExperimentNodeParameters,
 ):
     pass
