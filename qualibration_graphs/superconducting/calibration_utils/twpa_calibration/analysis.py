@@ -47,11 +47,24 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Add the amplitude and phase to the raw dataset
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     # Add the RF frequency as a coordinate of the raw dataset
-    full_freq = np.array([ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]])
+    full_freq = np.array(
+        [ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]]
+    )  # HARD coded, need to do this properly
     ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
+
+    # Add the RF frequency of the TWPA pump as a coordinate of the raw dataset
+    full_pump_freq = ds.pump_frequency + node.machine.twpas["twpa1"].pump.RF_frequency
+    ds = ds.assign_coords(full_pump_freq=("pump_frequency", full_pump_freq.data))
+    ds.full_pump_freq.attrs = {"long_name": "TWPA pump RF frequency", "units": "Hz"}
     # Normalize the IQ_abs with respect to the amplitude axis
     ds = ds.assign({"IQ_abs_norm": ds["IQ_abs"] / ds.IQ_abs.mean(dim=["detuning"])})
+
+    full_scale_power_dbm = node.machine.twpas["twpa1"].pump.opx_output.full_scale_power_dbm
+    pump_power_dBm = _amp_to_dbm(
+        full_scale_power_dbm, amp=ds["pump_amp"], offset_db=node.parameters.pumpline_attenuation
+    )
+    ds = ds.assign_coords(pump_power_dBm=("pump_amp", pump_power_dBm.data))
 
     # Calculate the SNR over the detuning axis
     snr = xr.apply_ufunc(
@@ -119,26 +132,34 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     return fit_data, fit_results
 
 
-def _extract_relevant_fit_parameters(fit: xr.Dataset):
+def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
     # Calculate max gain, and pump frequency and pump power corresponding to it
-    gain_max = fit["gain_db"].max().item()
-    gain_max_idx = fit["gain_db"].argmax()
-    gain_max_coords = {dim: fit[dim].values[gain_max_idx[dim]] for dim in gain_max_idx.dims}
+
+    # flatten gain to 1D
+    gain_stacked = fit["gain_db"].stack(z=fit["gain_db"].dims)
+    # index of global max
+    gain_imax = gain_stacked.argmax().item()
+    # keep only the real coordinates (exclude "z")
+    gain_max_coords = {dim: gain_stacked.isel(z=gain_imax)[dim].item() for dim in fit["gain_db"].dims}
+    # values at that point
+    gain_max = fit["gain_db"].sel(gain_max_coords).item()
 
     # Calculate max SNR, and pump frequency and pump power corresponding to it
-    snr_max = fit["snr_delta_db"].max()
-    snr_max_idx = fit["snr_delta_db"].argmax()
-    snr_max_coords = {dim: fit[dim].values[snr_max_idx[dim]] for dim in snr_max_idx.dims}
-    snr_at_optimal_point = fit["snr_delta_db"].values1[gain_max_idx.values]
-    fit.assign_coords(snr_max=snr_max.data)
-    fit.assign_coords(snr_max_coords)
+    snr_stacked = fit["snr_delta_db"].stack(z=fit["snr_delta_db"].dims)
+    # index of global max
+    snr_imax = snr_stacked.argmax().item()
+    # keep only the real coordinates (exclude "z")
+    snr_max_coords = {dim: snr_stacked.isel(z=snr_imax)[dim].item() for dim in fit["snr_delta_db"].dims}
+    # value at that point
+    snr_max = fit["snr_delta_db"].sel(snr_max_coords).item()
+    snr_at_optimal_point = fit["snr_delta_db"].sel(gain_max_coords).item()
 
     fit = fit.assign_coords(
-        snr_max_db=((), snr_max.item()),
+        snr_max_db=((), snr_max),
         snr_max_freq=((), snr_max_coords.get("pump_frequency")),
         snr_max_amp=((), snr_max_coords.get("pump_amp")),
-        gain_max_db=((), gain_max.item()),
+        gain_max_db=((), gain_max),
         gain_max_freq=((), gain_max_coords.get("pump_frequency")),
         gain_max_amp=((), gain_max_coords.get("pump_amp")),
     )
@@ -146,17 +167,19 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset):
     fit.gain_max_db.attrs = {"long_name": "Max Gain", "units": "dB"}
 
     nan_success = np.isnan(fit.gain_max_freq.data) | np.isnan(fit.gain_max_amp.data)
+    success_criteria = ~nan_success
+    fit = fit.assign_coords(success=(success_criteria))
 
     # Populate the FitParameters class with fitted values
-    fit_results = {
-        FitParameters(
-            success=False,
-            max_gain=gain_max.item(),
-            optimal_pump_frequency=gain_max_coords.get("pump_frequency"),
-            optimal_pump_power=gain_max_coords.get("pump_amp"),
-            snr_at_optimal_point=snr_at_optimal_point,
-        )
-    }
+    fit_results = FitParameters(
+        success=bool(fit.success.values),
+        max_gain=float(gain_max),
+        optimal_pump_frequency=float(gain_max_coords.get("pump_frequency")),
+        optimal_pump_power=float(gain_max_coords.get("pump_amp")),
+        snr_at_optimal_point=float(snr_at_optimal_point),
+    )
+    node.outcomes = {"successful" if fit_results.success else "fail"}
+
     return fit, fit_results
 
 
@@ -189,6 +212,47 @@ def _volt_to_dbm(v, R=50.0):
     p_w = np.maximum(p_w, 1e-20)  # avoid log of zero
     p_dbm = 10 * np.log10(p_w * 1e3)
     return p_dbm
+
+
+def _dbm_to_w(dbm):
+    """dBm -> Watts"""
+    return 10 ** (dbm / 10.0) / 1e3
+
+
+def _amp_to_dbm(
+    full_scale_power_dbm: float,
+    amp: float | np.ndarray,
+    R: float = 50.0,
+    offset_db: float = 0.0,
+) -> float | np.ndarray:
+    """
+    Convert a normalized amplitude 'amp' into output power in dBm,
+    given the instrument full-scale output power (in dBm) into R.
+
+    Parameters
+    ----------
+    full_scale_power_dbm : float
+        Full-scale average output power (into R) in dBm.
+    amp : float or array-like
+        Normalized amplitude (0..1 typically).
+    R : float
+        Load resistance (ohms).
+    offset_db : float
+        Additive calibration/attenuation offset in dB.
+
+    Returns
+    -------
+    dBm : float or ndarray
+        Output power in dBm at the given amplitude.
+    """
+    # Full-scale power -> RMS voltage
+    p_full_w = _dbm_to_w(full_scale_power_dbm)
+    v_full_rms = np.sqrt(p_full_w * R)
+
+    # Convert 'amp' to V_rms_out according to how the instrument defines amplitude
+    amp = np.asarray(amp)
+    v_out_rms = amp * v_full_rms
+    return _volt_to_dbm(v_out_rms, R=R) + offset_db
 
 
 def _get_snr(spec, mask_halfwidth=2):
