@@ -51,8 +51,6 @@ def plot_raw_data_with_fit(
 
                 # raw data
                 y = ds_pair.sel(control_target=ct, target_basis=bs, control_state=st)[val].data
-                # demo line
-                y = np.random.rand(*y.shape)
 
                 # Use a shared norm/cmap so all panels use the same color scale
                 ax.pcolor(

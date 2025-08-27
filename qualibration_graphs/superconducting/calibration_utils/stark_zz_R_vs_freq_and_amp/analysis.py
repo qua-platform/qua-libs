@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
 from qualibration_libs.analysis import fit_oscillation_decay_exp
-from ..data_process_utils import reshape_control_target_val2dim
+from calibration_utils.data_process_utils import reshape_control_target_val2dim
 
 
 @dataclass
@@ -112,6 +112,7 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode)
             "best_R": best_R,
         }
     )
+    ds_fit = ds_fit.drop_vars("search")
 
     # Reuse 'freq_offset' to carry the frequency shift (in Hz) for compatibility with Ramsey output
     fit_results: Dict[str, FitParameters] = {
@@ -119,7 +120,7 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode)
             best_detuning=best_detuning.sel(qubit_pair=qp).item(),
             best_amp_scaling=best_amp_scaling.sel(qubit_pair=qp).item(),
             best_R=best_R.sel(qubit_pair=qp).item(),
-            success=False,
+            success=True,
         )
         for qp in ds_fit.qubit_pair.values
     }

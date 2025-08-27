@@ -36,7 +36,7 @@ description = """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="40a_Stark_induced_ZZ_tomography",  # Name should be unique
+    name="41a_Stark_induced_ZZ_R_vs_frequency_and_amplitude",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
@@ -53,6 +53,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.simulate = True
     # node.parameters.simulation_duration_ns = 6000
 
+    node.parameters.num_shots = 3
     node.parameters.wf_type = "flattop"
     node.parameters.qc_correction_phase_2pi = [0.0, 0.0]
     node.parameters.qt_correction_phase_2pi = [0.0, 0.0]
@@ -111,7 +112,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     zz_target_amp_scalings = node.parameters.zz_drive_target_amp_scaling if node.parameters.zz_drive_target_amp_scaling else [None] * num_qubit_pairs
 
     # Control states
-    control_state = np.array([0, 1])
+    control_states = np.array([0, 1])
     tomography_basis = np.array([0, 1, 2]) # 0: x, 1: y, 2: z
 
     # Register the sweep axes to be added to the dataset when fetching data
@@ -120,7 +121,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "detuning": xr.DataArray(dfs, attrs={"long_name": "stark zz drive detuning frequency"}),
         "amp_scaling": xr.DataArray(amp_scalings, attrs={"long_name": "stark zz drive amplitude scaling"}),
         "target_basis": xr.DataArray(tomography_basis, attrs={"long_name": "tomography basis for target"}),
-        "control_state": xr.DataArray(control_state, attrs={"long_name": "control state"}),
+        "control_state": xr.DataArray(control_states, attrs={"long_name": "control state"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -315,11 +316,12 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     plt.show()
 
     # Store the generated figures
-    node.results["figures"] = {
-        f"raw_fit_{qp.name}": fig
-        for fig, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])
-    }.update(
+    node.results["figures"] = (
         {
+            f"raw_fit_{qp.name}": fig
+            for fig, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])
+        }
+        | {
             f"summary_fit_{qp.name}".replace(".", "-"): fig
             for fig, qp in zip(figs_fit_summary, node.namespace["qubit_pairs"])
         }
@@ -341,7 +343,24 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for i, qp in enumerate(node.namespace["qubit_pairs"]):
             if node.outcomes[qp.name] == "failed":
                 continue
-            pass
+
+            zz_control = qp.zz_drive
+            zz_target = qp.qubit_target.xy_detuned
+            wf_type = node.parameters.wf_type
+
+            zz_control_operation = zz_control.operations[wf_type]
+            zz_target_operation = zz_target.operations[f"zz_{wf_type}_{qp.name}"]
+
+            zz_control.detuning += node.results["fit_results"][qp.name]["best_detuning"]
+            # Note: common detuning for qp.qubit_target.name (e.g., q1-2, q3-2, where qt=q2)
+            zz_target.detuning += node.results["fit_results"][qp.name]["best_detuning"]
+            print(zz_control.detuning)
+            print(zz_target.detuning)
+
+            zz_control_operation.amplitude *= node.results["fit_results"][qp.name]["best_amp_scaling"]
+            zz_target_operation.amplitude *= node.results["fit_results"][qp.name]["best_amp_scaling"]
+            print(zz_control_operation.amplitude)
+            print(zz_target_operation.amplitude)
 
 
 # %% {Save_results}
