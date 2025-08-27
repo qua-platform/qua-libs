@@ -8,14 +8,14 @@ import matplotlib.pyplot as plt
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
 from qualibration_libs.analysis import fit_oscillation_decay_exp
-from ..data_process_utils import reshape_control_target_val2dim
+from calibration_utils.data_process_utils import reshape_control_target_val2dim
 
 
 @dataclass
 class FitParameters:
     """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
 
-    zz_drive_detuning: float
+    best_detuning: float
     zz_coeff: float
     frequency_shift_target_qc0: float
     frequency_shift_target_qc1: float
@@ -43,7 +43,7 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
     for qp in fit_results.keys():
         s_qubit_pair = f"Results for qubit pair {qp}: "
-        s_detuning = f"\tmax zz_coeff at zz_drive_detuning={fit_results[qp]['zz_drive_detuning']}\n"
+        s_detuning = f"\tmax zz_coeff at detuning={fit_results[qp]['best_detuning']}\n"
         s_zz_coeff = f"\tExtracted ZZ coefficient: {1e-6 * fit_results[qp]['zz_coeff']:.3f} MHz\n"
         s_frequency_shift = (
             f"\t\tFitted frequency shift of target qubit with qc=|0>: {1e-6 * fit_results[qp]['frequency_shift_target_qc0']:.3f} MHz\n"
@@ -160,7 +160,7 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset) -> Tuple[xr.Dataset, Di
 
     fit_results: Dict[str, FitParameters] = {
         qp: FitParameters(
-            zz_drive_detuning=best_detuning.sel(qubit_pair=qp).item(),
+            best_detuning=best_detuning.sel(qubit_pair=qp).item(),
             zz_coeff=1e9 * best_zz_coeff.sel(qubit_pair=qp).item(),
             frequency_shift_target_qc0=1e9 * _sel_best(fitted_frequency, qp, control_state=0),
             frequency_shift_target_qc1=1e9 * _sel_best(fitted_frequency, qp, control_state=1),
@@ -171,8 +171,9 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset) -> Tuple[xr.Dataset, Di
             T2_modified_echo_target_qc1=1e-9 * _sel_best(T2_modified_echo, qp, control_state=1),
             T2_modified_echo_error_target_qc1=1e-9 * _sel_best(T2_modified_echo_error, qp, control_state=1),
             success=bool(
-                success_criteria.sel(qubit_pair=qp, control_target="t", control_state=1)
+                success_criteria.sel(qubit_pair=qp, control_target="t")
                 .sel(detuning=best_detuning.sel(qubit_pair=qp).item(), method="nearest")
+                .all(dim="control_state")
                 .item()
             ),
         )
