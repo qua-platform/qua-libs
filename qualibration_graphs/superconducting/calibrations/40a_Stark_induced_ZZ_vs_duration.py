@@ -29,7 +29,17 @@ from qualibration_libs.core import tracked_updates
 
 # %% {Description}
 description = """
-        Stark-induced ZZ
+    STARK INDUCED ZZ VS DURATION
+This protocol measures Stark-induced ZZ interaction using a Ramsey-type protocol.  
+The control qubit (Qc) is prepared in |0⟩ or |1⟩, and the target qubit (Qt) is placed on the equator with an X/2 pulse.  
+A Stark-CZ gate of varying duration is applied, after which Qt is rotated back and measured.  
+The frequency offset difference between control states yields the ZZ interaction.
+
+Prerequisites:
+    - Resonator frequency identified (resonator_spectroscopy).
+    - Qubit π-pulse (x180) calibrated via spectroscopy, Rabi chevron, and power Rabi, with config updated.
+    - (Optional) Readout calibrated (frequency, amplitude, duration, IQ blobs) for improved SNR.
+    - Choice of drive frequency, relative phase, and amplitude set for ZZ drive on control and target qubits.
 """
 
 
@@ -53,11 +63,9 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.simulation_duration_ns = 6000
 
     node.parameters.wf_type = "flattop"
-    node.parameters.qc_correction_phase_2pi = [0.0, 0.0]
-    node.parameters.qt_correction_phase_2pi = [0.0, 0.0]
-    node.parameters.zz_drive_relative_phase_2pi = [0.0, 0.0]
-    node.parameters.zz_drive_control_amp_scaling = [0.0, 0.0]
-    node.parameters.zz_drive_target_amp_scaling = [0.0, 0.0]
+    node.parameters.zz_drive_relative_phase_2pi = [None, None]
+    node.parameters.zz_drive_control_amp_scaling = [None, None]
+    node.parameters.zz_drive_target_amp_scaling = [None, None]
 
     node.parameters.min_wait_time_in_ns = 100
     node.parameters.max_wait_time_in_ns = 300
@@ -89,8 +97,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     state_discrimination = node.parameters.use_state_discrimination
     wf_type = node.parameters.wf_type
 
-    qc_correction_phases = node.parameters.qc_correction_phase_2pi if node.parameters.qc_correction_phase_2pi else [None] * num_qubit_pairs
-    qt_correction_phases = node.parameters.qt_correction_phase_2pi if node.parameters.qt_correction_phase_2pi else [None] * num_qubit_pairs
     zz_relative_phases = node.parameters.zz_drive_relative_phase_2pi if node.parameters.zz_drive_relative_phase_2pi else [None] * num_qubit_pairs
     zz_control_amp_scalings = node.parameters.zz_drive_control_amp_scaling if node.parameters.zz_drive_control_amp_scaling else [None] * num_qubit_pairs
     zz_target_amp_scalings = node.parameters.zz_drive_target_amp_scaling if node.parameters.zz_drive_target_amp_scaling else [None] * num_qubit_pairs
@@ -105,18 +111,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.parameters.max_wait_time_in_ns // 4,
         node.parameters.time_step_in_ns // 4,
     )
-    # Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
-    delta_phase = 4e-9 * 1e6 * node.parameters.ramsey_freq_detuning_in_mhz * node.parameters.time_step_in_ns
-    detuning = int(1e6 * node.parameters.ramsey_freq_detuning_in_mhz)
 
     # Control states
-    control_state = np.array([0, 1])
+    control_states = np.array([0, 1])
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "idle_time": xr.DataArray(4 * idle_times, attrs={"long_name": "idle times", "units": "ns"}),
-        "control_state": xr.DataArray(control_state, attrs={"long_name": "control state"}),
+        "control_state": xr.DataArray(control_states, attrs={"long_name": "control state"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -129,7 +132,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
         t = declare(int)
         s = declare(int)
-        phase = declare(fixed)
 
         # Reset explicitly
         reset_global_phase()
@@ -145,15 +147,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(n, n_st)
 
                 with for_(*from_array(t, idle_times)):
-                    assign(phase, phase + delta_phase)
-                    
+
                     with for_(s, 0, s < 2, s + 1):  # states 0:g or 1:e
                         # Reset the qubits to the ground state
                         for i, qp in multiplexed_qubit_pairs.items():
                             qc = qp.qubit_control
                             qt = qp.qubit_target
                             zz = qp.zz_drive
-                            zz_elems = [zz.name, qc.xy.name, qt.xy.name, qc.xy_detuned.name, qt.xy_detuned.name]
+                            zz_elems = [zz.name, qc.xy.name, qt.xy.name, qt.xy_detuned.name]
 
                             # Reset the qubits to the ground state
                             qc.reset(node.parameters.reset_type, node.parameters.simulate, log_callable=node.log)
@@ -175,12 +176,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 zz_control_amp_scaling=zz_control_amp_scalings[i],
                                 zz_target_amp_scaling=zz_target_amp_scalings[i],
                                 zz_relative_phase=zz_relative_phases[i],
-                                qc_correction_phase=qc_correction_phases[i],
-                                qt_correction_phase=qt_correction_phases[i],
                                 zz_duration_clock_cycles=t,
                             )
-                            align(*zz_elems)
-                            qt.xy.frame_rotation_2pi(phase)
                             align(*zz_elems)
 
                             # Play pi/2 for Qt 
@@ -308,7 +305,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     figs_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
-    node.results["figures"] = {f"IQ_{qp.name}": fig for fig, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])}
+    node.results["figures"] = {f"raw_fit_{qp.name}": fig for fig, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])}
 
 
 # %% {Update_state}
