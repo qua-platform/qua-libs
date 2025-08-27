@@ -23,6 +23,7 @@ class NodeSpecificParameters(RunnableParameters):
     min_wait_time_in_ns: int = 100
     max_wait_time_in_ns: int = 300
     time_step_in_ns: int = 8
+    ramsey_freq_detuning_in_mhz: float = 1.0
 
     min_zz_drive_amp_scaling: float = 0.2
     max_zz_drive_amp_scaling: float = 1.0

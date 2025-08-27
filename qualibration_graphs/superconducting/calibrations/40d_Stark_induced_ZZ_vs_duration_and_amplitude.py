@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.stark_zz_vs_duration_and_frequency import (
+from calibration_utils.stark_zz_vs_duration_and_amplitude import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,
@@ -120,10 +120,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     )
     # Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
     delta_phase = 4e-9 * 1e6 * node.parameters.ramsey_freq_detuning_in_mhz * node.parameters.time_step_in_ns
-    detuning = int(1e6 * node.parameters.ramsey_freq_detuning_in_mhz)
 
     # Control states
-    control_state = np.array([0, 1])
+    control_states = np.array([0, 1])
     calibrate_control_amp_scaling = node.parameters.calibrate_control_amp_scaling
     
     # Register the sweep axes to be added to the dataset when fetching data
@@ -131,7 +130,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "amp_scaling": xr.DataArray(amp_scalings, attrs={"long_name": "stark zz drive amplitude scaling"}),
         "idle_time": xr.DataArray(4 * idle_times, attrs={"long_name": "idle times", "units": "ns"}),
-        "control_state": xr.DataArray(control_state, attrs={"long_name": "control state"}),
+        "control_state": xr.DataArray(control_states, attrs={"long_name": "control state"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -335,12 +334,13 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     plt.show()
 
     # Store the generated figures
-    node.results["figures"] = {
-        f"raw_fit_{qp.name}_detuning={df:6.5f}MHz".replace(".", "-"): fig
-        for figs, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])
-        for fig, df in zip(figs, node.results["ds_raw"].detuning.values)
-    }.update(
+    node.results["figures"] = (
         {
+            f"raw_fit_{qp.name}_amp_scaling={a:6.5f}MHz".replace(".", "-"): fig
+            for figs, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])
+            for fig, a in zip(figs, node.results["ds_raw"].amp_scaling.values)
+        }
+        | {
             f"summary_fit_{qp.name}".replace(".", "-"): fig
             for fig, qp in zip(figs_fit_summary, node.namespace["qubit_pairs"])
         }
@@ -362,7 +362,17 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for i, qp in enumerate(node.namespace["qubit_pairs"]):
             if node.outcomes[qp.name] == "failed":
                 continue
-            pass
+
+            zz_control = qp.zz_drive
+            zz_target = qp.qubit_target.xy_detuned
+            wf_type = node.parameters.wf_type
+
+            zz_control_operation = zz_control.operations[wf_type]
+            zz_target_operation = zz_target.operations[f"zz_{wf_type}_{qp.name}"]
+
+            zz_control_operation.amplitude *= node.results["fit_results"][qp.name]["best_amp_scaling"]
+            zz_target_operation.amplitude *= node.results["fit_results"][qp.name]["best_amp_scaling"]
+
 
 
 # %% {Save_results}
