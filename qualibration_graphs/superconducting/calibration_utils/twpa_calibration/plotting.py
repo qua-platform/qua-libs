@@ -33,32 +33,28 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     - The function creates a grid of subplots, one for each qubit.
     - Each subplot contains the raw data and the fitted curve.
     """
-    if hasattr(ds, "snr_delta_db"):
-        data_dsnr = "snr_delta_db"
-    elif hasattr(ds, "gain_db"):
-        data_gain = "gain_db"
-    else:
-        raise RuntimeError(
-            "The dataset must contain either 'snr_delta_db' or 'gain_db' for the plotting function to work."
+    data_dsnr = "snr_delta_db" if "snr_delta_db" in ds else None
+    data_gain = "gain_db" if "gain_db" in ds else None
+
+    to_plot = [d for d in (data_dsnr, data_gain) if d is not None]
+    ncols = len(to_plot)
+
+    if ncols == 0:
+        raise RuntimeError("The dataset must contain either 'snr_delta_db' or 'gain_db'.")
+
+    fig, axes = plt.subplots(1, ncols, figsize=(5 * ncols, 4), sharex=True, sharey=True)
+
+    # Ensure axes is iterable
+    if ncols == 1:
+        axes = [axes]
+
+    for ax, var in zip(axes, to_plot):
+        (ds.assign_coords(full_pump_freq_GHz=ds.full_pump_freq / u.GHz)[var]).plot(
+            ax=ax, y="pump_power_dBm", x="full_pump_freq_GHz", add_colorbar=True
         )
-
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
-
-    # Plot snr_delta_db
-    (ds.assign_coords(pump_frequency_GHz=ds.pump_frequency / u.GHz)[data_dsnr]).plot(
-        ax=axes[0], y="pump_amp", x="pump_frequency", add_colorbar=True
-    )
-    axes[0].set_title("ΔSNR [dB]")
-
-    # Plot gain_db
-    (ds.assign_coords(pump_frequency_GHz=ds.pump_frequency / u.GHz)[data_gain]).plot(
-        ax=axes[0], y="pump_amp", x="pump_frequency", add_colorbar=True
-    )
-    axes[1].set_title("Gain [dB]")
-
-    for ax in axes:
-        ax.set_xlabel("Pump frequency [GHz]")
-        ax.set_ylabel("Pump amplitude [dBm]")
+        ax.set_title("ΔSNR [dB]" if var == "snr_delta_db" else "Gain [dB]")
+        ax.set_xlabel("Pump tone frequency [GHz]")
+        ax.set_ylabel("Pump tone power [dBm]")
 
     fig.tight_layout()
     fig.suptitle("TWPA Pump Calibration")
