@@ -92,7 +92,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     resonator_frequency_span = node.parameters.frequency_span_in_mhz * u.MHz
     resonator_frequency_step = node.parameters.frequency_step_in_mhz * u.MHz
     amps = np.arange(min_amp_factor, max_amp_factor, amp_factor_step)
-    # amps = np.insert(amps, 0, 0)
+    amps = np.insert(amps, 0, 0)
     dfs = np.arange(-resonator_frequency_span / 2, +resonator_frequency_span / 2, resonator_frequency_step)
     dfps = np.arange(-pump_frequency_span / 2, +pump_frequency_span / 2, pump_frequency_step)
 
@@ -100,8 +100,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
-        "pump_frequency": xr.DataArray(dfps, attrs={"long_name": "TWPA pump frequency", "units": "Hz"}),
         "pump_amp": xr.DataArray(amps, attrs={"long_name": "TWPA pump amplitude", "units": "V"}),
+        "pump_frequency": xr.DataArray(dfps, attrs={"long_name": "TWPA pump frequency", "units": "Hz"}),
     }
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
@@ -117,7 +117,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
             align()
-
             with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
                 save(n, n_st)
                 with for_(*from_array(dfp, dfps)):  # QUA for_ loop for sweeping the pump frequency
@@ -126,7 +125,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Update the pump frequency
                         rr.twpa.pump.update_frequency(dfp + rr.twpa.pump.intermediate_frequency)
                         # QUA for_ loop for sweeping the pump amplitude
-                        with for_(*from_array(a, amps)):
+                        with for_each_(a, amps):
                             # play the pump pulse
                             rr.twpa.pump.play("const", amplitude_scale=a)
                             # wait 1us for pump to settle
@@ -145,8 +144,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubits):
-                I_st[i].buffer(len(dfs)).buffer(len(amps)).buffer(len(dfps)).average().save(f"I{i + 1}")
-                Q_st[i].buffer(len(dfs)).buffer(len(amps)).buffer(len(dfps)).average().save(f"Q{i + 1}")
+                I_st[i].buffer(len(dfps)).buffer(len(amps)).buffer(len(dfs)).average().save(f"I{i + 1}")
+                Q_st[i].buffer(len(dfps)).buffer(len(amps)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate}
@@ -207,14 +206,11 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+    node.results["fit_results"] = fit_results
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
-    node.outcomes = {
-        qubit_name: ("successful" if fit_result["success"] else "failed")
-        for qubit_name, fit_result in node.results["fit_results"].items()
-    }
+    node.outcomes = {"successful" if fit_results.success else "fail"}
 
 
 # %% {Plot_data}
@@ -249,127 +245,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         # q.resonator.pump.power =
 
 
-# %% {Plot_data}
-# @node.run_action(skip_if=node.parameters.simulate)
-# def plot_data(node: QualibrationNode[Parameters, Quam]):
-#     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-#     fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["qubits"])
-#     fig_fit_amplitude = plot_raw_amplitude_with_fit(
-#         node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
-#     )
-#     plt.show()
-#     # Store the generated figures
-#     node.results["figures"] = {
-#         "phase": fig_raw_phase,
-#         "amplitude": fig_fit_amplitude,
-#     }
-
-
-# # %% {Update_state}
-# @node.run_action(skip_if=node.parameters.simulate)
-# def update_state(node: QualibrationNode[Parameters, Quam]):
-#     """Update the relevant parameters if the qubit data analysis was successful."""
-#     with node.record_state_updates():
-#         for q in node.namespace["qubits"]:
-#             if node.outcomes[q.name] == "failed":
-#                 continue
-
-#             q.resonator.f_01 = float(node.results["fit_results"][q.name]["frequency"])
-#             q.resonator.RF_frequency = float(node.results["fit_results"][q.name]["frequency"])
-
-
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
-
-    # # %% {Data_analysis}
-    # print(
-    #     f'twpa calibration took {((machine.qubits["qC1"].resonator.operations["readout"].length+machine.qubits["qC1"].resonator.depletion_time)*len(dfs)*n_avg*len(dfps)*len(daps)*1e-9)}sec '
-    # )
-    # p_lo = twpas[0].pump.LO_frequency
-    # p_if = twpas[0].pump.intermediate_frequency
-    # # get pump point of max G
-    # pumpATmaxG = pump_maxgain(pumpon_signal_snr, dfps, daps)
-    # print(f"max Avg Gain at fp={np.round((p_lo+p_if+pumpATmaxG[0])*1e-9,3)}GHz,Pp={-50-10+pumpATmaxG[1]}")
-    # # get pump point of max dSNR
-    # pumpATmaxDSNR = pump_maxdsnr(pumpon_signal_snr, dfps, daps)
-    # print(f"max Avg dSNR at fp={np.round((p_lo+p_if+pumpATmaxDSNR[0])*1e-9,3)}GHz,Pp={-50-10+pumpATmaxDSNR[1]}")
-
-    # operation_point = {"fp": np.round((p_lo + p_if + pumpATmaxDSNR[0]), 3), "Pp": -50 - 10 + pumpATmaxDSNR[1]}
-    # node.results["pumping point"] = operation_point
-
-
-#     # %% {Plotting}
-#     # resonator
-#     full_scale_power_dbm=twpas[0].pump.opx_output.full_scale_power_dbm
-#     pump_frequency=machine.twpas['twpa1'].pump.LO_frequency+machine.twpas['twpa1'].pump.intermediate_frequency+dfps
-#     pump_power=dBm(full_scale_power_dbm,daps)+node.parameters.pumpline_attenuation
-#     pump_power[np.isneginf(pump_power)]=0
-#     indices=np.linspace(0, len(pump_frequency)-1,10, dtype=int)
-#     selected_frequencies=np.round(pump_frequency[indices]*1e-9,3)
-#     ytick_pos = np.linspace(0, len(dfps)-1, len(selected_frequencies))
-#     indices_=np.linspace(0, len(pump_power)-1,10, dtype=int)
-#     selected_powers=np.round(pump_power[indices_],2)
-#     xtick_pos = np.linspace(0, len(daps)-1, len(selected_powers))
-
-#     for i in range(len(qubits)):
-#         plt.figure(figsize=(3,3))  # Width=8 inches, Height=6 inches (adjust as needed)
-
-#         plt.plot(RF_freq[i]*1e-9, pumpoff_resspec[i], label='pumpoff')
-#         plt.plot(RF_freq[i]*1e-9, pumpon_resspec_maxG[i], label='pump @ maxG')
-#         plt.plot(RF_freq[i]*1e-9, pumpon_resspec_maxDsnr[i], label='pump @ maxDsnr',linestyle='--')
-
-#         plt.title(f'{qubits[i].name}', fontsize=20)
-#         plt.xlabel('Res.freq [GHz]', fontsize=16)
-#         plt.ylabel('Trans.amp. [mV]', fontsize=16)
-#         plt.legend(fontsize=7,loc='lower left')
-#         plt.tight_layout()
-#     ##
-#     gain_dsnr_avg=np.mean(gain_dsnr,axis=0)
-#     data_gain = gain_dsnr_avg[:, :, 0]
-#     data_dSNR = gain_dsnr_avg[:, :, 1]
-#     fig, axs = plt.subplots(1, 2, figsize=(12, 5))
-#     # plot gain vs pump
-#     im0 = axs[0].imshow(data_gain, origin='lower', aspect='auto',
-#                         extent=[0, len(daps)-1, 0, len(dfps)-1])
-#     axs[0].set_xticks(xtick_pos)
-#     axs[0].set_xticklabels(selected_powers,rotation=90)
-#     axs[0].set_yticks(ytick_pos)
-#     axs[0].set_yticklabels(selected_frequencies)
-#     axs[0].set_title('pump vs Gain', fontsize=20)
-#     axs[0].set_xlabel('pump amplitude', fontsize=20)
-#     axs[0].set_ylabel('pump frequency[GHz]', fontsize=20)
-#     cbar0 = fig.colorbar(im0, ax=axs[0])
-#     cbar0.set_label('Avg Gain [dB]', fontsize=14)
-
-#     # plot dSNR vs pump
-#     im1 = axs[1].imshow(data_dSNR, origin='lower', aspect='auto',
-#                         extent=[0, len(daps)-1, 0, len(dfps)-1])
-#     axs[1].set_xticks(xtick_pos)
-#     axs[1].set_xticklabels(selected_powers,rotation=90)
-#     axs[1].set_yticks(ytick_pos)
-#     axs[1].set_yticklabels(selected_frequencies)
-#     axs[1].set_title('pump vs dSNR', fontsize=20)
-#     axs[1].set_xlabel('pump amplitude', fontsize=20)
-#     axs[1].set_ylabel('pump frequency[GHz]', fontsize=20)
-#     cbar1 = fig.colorbar(im1, ax=axs[1])
-#     cbar1.set_label('Avg dSNR [dB]', fontsize=14)
-
-#     plt.tight_layout()
-#     plt.show()
-
-#     # %% {Update_state}
-#     # if not node.parameters.load_data_id:
-#     #     with node.record_state_updates():
-
-#     #         machine.twpas['twpa1'].pump.operations.pump.amplitude=pumpamp # need to find out how to update in the state file
-#     #         machine.twpas['twpa1'].pump.intermediate_frequency=pumpfreq
-
-#     #     # %% {Save_results}
-#     #     node.outcomes = {q.name: "successful" for q in qubits}
-#     #     node.results["initial_parameters"] = node.parameters.model_dump()
-#     #     node.machine = machine
-#     #     save_node(node)
-
-# # %%
