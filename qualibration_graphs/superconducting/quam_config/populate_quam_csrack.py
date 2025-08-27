@@ -290,7 +290,10 @@ for k, qp in enumerate(machine.qubit_pairs):
     qb_pair.zz_drive.target_qubit_IF_frequency = f"#/qubits/{qt.name}/xy/intermediate_frequency"
     qb_pair.zz_drive.LO_frequency = f"#/qubits/{qt.name}/xy/LO_frequency"
     qb_pair.zz_drive.detuning = -30 * u.MHz
-    qt.detuning = -30 * u.MHz
+    # qt.xy_detuned.RF_frequency = None
+    qt.xy_detuned.RF_frequency = f"#./inferred_RF_frequency"
+    qt.xy_detuned.intermediate_frequency = f"#./inferred_intermediate_frequency"
+    qt.xy_detuned.detuning = -30 * u.MHz
     qb_pair.zz_drive.intermediate_frequency = f"#./inferred_intermediate_frequency"
     qb_pair.zz_drive.opx_output.upconverter_frequency = None
     qb_pair.zz_drive.upconverter = 2

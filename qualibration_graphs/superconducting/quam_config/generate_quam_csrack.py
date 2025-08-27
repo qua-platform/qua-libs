@@ -11,7 +11,7 @@ from quam_config import Quam
 ########################################################################################################################
 host_ip = "172.16.33.115"  # QOP IP address
 port = None  # QOP Port
-cluster_name = "CS_3"  # Name of the cluster
+cluster_name = "CS_4"  # Name of the cluster
 
 ########################################################################################################################
 # %%                                      Define the available instrument setup
