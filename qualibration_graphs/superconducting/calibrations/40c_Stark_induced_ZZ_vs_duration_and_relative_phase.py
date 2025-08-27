@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.stark_zz_vs_duration_and_frequency import (
+from calibration_utils.stark_zz_vs_duration_and_relative_phase import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,
@@ -111,7 +111,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.parameters.max_wait_time_in_ns // 4,
         node.parameters.time_step_in_ns // 4,
     )
-
     relative_phases = np.arange(
         node.parameters.min_zz_drive_relative_phase_2pi,
         node.parameters.max_zz_drive_relative_phase_2pi,
@@ -121,17 +120,16 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     sines = np.sin(2 * np.pi * relative_phases)
     # Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
     delta_phase = 4e-9 * 1e6 * node.parameters.ramsey_freq_detuning_in_mhz * node.parameters.time_step_in_ns
-    detuning = int(1e6 * node.parameters.ramsey_freq_detuning_in_mhz)
 
     # Control states
-    control_state = np.array([0, 1])
+    control_states = np.array([0, 1])
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
-        "detuning": xr.DataArray(dfs, attrs={"long_name": "stark zz drive detuning frequency"}),
+        "relative_phase": xr.DataArray(relative_phases, attrs={"long_name": "stark zz drive relative phase"}),
         "idle_time": xr.DataArray(4 * idle_times, attrs={"long_name": "idle times", "units": "ns"}),
-        "control_state": xr.DataArray(control_state, attrs={"long_name": "control state"}),
+        "control_state": xr.DataArray(control_states, attrs={"long_name": "control state"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -335,12 +333,13 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     plt.show()
 
     # Store the generated figures
-    node.results["figures"] = {
-        f"raw_fit_{qp.name}_detuning={df:6.5f}MHz".replace(".", "-"): fig
-        for figs, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])
-        for fig, df in zip(figs, node.results["ds_raw"].detuning.values)
-    }.update(
+    node.results["figures"] = (
         {
+            f"raw_fit_{qp.name}_relative-phase={ph:6.5f}MHz".replace(".", "-"): fig
+            for figs, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])
+            for fig, ph in zip(figs, node.results["ds_raw"].relative_phase.values)
+        }
+        | {
             f"summary_fit_{qp.name}".replace(".", "-"): fig
             for fig, qp in zip(figs_fit_summary, node.namespace["qubit_pairs"])
         }
@@ -362,7 +361,15 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for i, qp in enumerate(node.namespace["qubit_pairs"]):
             if node.outcomes[qp.name] == "failed":
                 continue
-            pass
+
+            fit_result = node.results["fit_results"][qp.name]
+            relative_phase = fit_result["best_relative_phase"]
+
+            # update the waveform
+            qt = qp.qubit_target
+            wf_type = node.parameters.wf_type
+            operation = qt.xy_detuned.operations[f"zz_{wf_type}_{qp.name}"]
+            operation.axis_angle = relative_phase * 2 * np.pi
 
 
 # %% {Save_results}

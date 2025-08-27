@@ -33,7 +33,7 @@ def plot_raw_data_with_fit(
         # Slice once per pair
         ds_pair = ds.sel(qubit_pair=qp.name)
         ts_ns = ds_pair.idle_time.data  # time in ns
-        detunings = ds_pair.detuning.data / 1e6 # in MHz
+        rel_phases = ds_pair.relative_phase.data  # in 2pi
         data_c = ds_pair.sel(control_target="c")
         data_t = ds_pair.sel(control_target="t")
 
@@ -45,13 +45,13 @@ def plot_raw_data_with_fit(
             fit_t = None
 
         figs: List[Figure] = []
-        for df in detunings:
+        for ph in rel_phases:
             fig, axes = plt.subplots(2, 2, figsize=(6, 4), sharex=True)
-            fig.suptitle(f"Qc: {qc.name}, Qt: {qt.name} @ {df:6.5f}")
+            fig.suptitle(f"Qc: {qc.name}, Qt: {qt.name} @ {ph:6.5f}")
             for row, st in enumerate((0, 1)):
                 # raw data
-                y_c = data_c.sel(control_state=st).sel(detuning=df, method="nearest")[val].data
-                y_t = data_t.sel(control_state=st).sel(detuning=df, method="nearest")[val].data
+                y_c = data_c.sel(control_state=st).sel(relative_phase=ph, method="nearest")[val].data
+                y_t = data_t.sel(control_state=st).sel(relative_phase=ph, method="nearest")[val].data
 
                 axes[row, 0].plot(ts_ns, y_c, lw=1, label=f"raw (qc={st})")
                 axes[row, 1].plot(ts_ns, y_t, lw=1, label=f"raw (qc={st})")
@@ -139,12 +139,12 @@ def plot_fit_summary(
 ) -> List[plt.Figure]:
     """
     For each qubit pair, create a 1x2 figure:
-      (0) detuning vs freq offset for control_state = 0 and 1
-      (1) detuning vs zz_coeff
+      (0) relative phase vs freq offset for control_state = 0 and 1
+      (1) relative phase vs zz_coeff
 
     Uses variables prepared in ds_fit:
-      - detuning(qubit_pair, control_target, control_state, detuning) [MHz]
-      - zz_coeff(qubit_pair, detuning) [MHz if you convert, else same as detuning units]
+      - freq_offset(qubit_pair, control_target, control_state, relative_phase) [MHz]
+      - zz_coeff(qubit_pair, relative_phase) [MHz if you convert, else same as freq_offset units]
       - best_phase(qubit_pair)
       - best_zz_coeff(qubit_pair)
     """
@@ -154,26 +154,26 @@ def plot_fit_summary(
         qc, qt = qp.qubit_control, qp.qubit_target
 
         # --- Pull data for this pair
-        # detuning for target states
-        f0 = ds_fit.sel(qubit_pair=qp.name, control_target="t", control_state=0).detuning
-        f1 = ds_fit.sel(qubit_pair=qp.name, control_target="t", control_state=1).detuning
-        # ensure we're 1D over detuning
+        # freq offset for control states
+        f0 = ds_fit.freq_offset.sel(qubit_pair=qp.name, control_target="t", control_state=0)
+        f1 = ds_fit.freq_offset.sel(qubit_pair=qp.name, control_target="t", control_state=1)
+        # ensure we're 1D over relative_phase
         f0 = f0.squeeze(drop=True)
         f1 = f1.squeeze(drop=True)
 
         # Slice once per pair
         ds_pair = ds.sel(qubit_pair=qp.name)
         ts_ns = ds_pair.idle_time.data  # time in ns
-        detunings = ds_pair.detuning.data / 1e6 # in MHz
+        rel_phases = ds_pair.relative_phase.data  # in 2pi
         data_t = ds_pair.sel(control_target="t")
         val = "state" if "state" in ds.data_vars else "I"
 
         # zz coefficient
         zz = ds_fit.zz_coeff.sel(qubit_pair=qp.name).squeeze(drop=True)
 
-        # detunings and bests
-        # detunings = f0["detuning"].values  # same coord across arrays
-        best_df = float(ds_fit.best_detuning.sel(qubit_pair=qp.name).values)
+        # phases and bests
+        phases = f0["relative_phase"].values  # same coord across arrays
+        best_ph = float(ds_fit.best_phase.sel(qubit_pair=qp.name).values)
         best_zz = float(ds_fit.best_zz_coeff.sel(qubit_pair=qp.name).values)
 
         # --- Make figure
@@ -181,40 +181,40 @@ def plot_fit_summary(
         ax_c0, ax_f, ax_c1, ax_zz = axes.ravel()
         fig.suptitle(f"Qc: {qc.name}, Qt: {qt.name}")
 
-        ax_c0.pcolor(ts_ns, detunings, data_t.sel(control_state=0)[val].data, shading="auto")
+        ax_c0.pcolor(ts_ns, rel_phases, data_t.sel(control_state=0)[val].data, shading="auto")
         ax_c0.set_aspect("auto")
         ax_c0.set_xlabel("Idle times (ns)")
-        ax_c0.set_ylabel("Detuning (MHz)")
+        ax_c0.set_ylabel("Relative phase (×2π)")
         ax_c0.set_title(f"control_state = 0")
 
-        ax_c1.pcolor(ts_ns, detunings, data_t.sel(control_state=1)[val].data, shading="auto")
+        ax_c1.pcolor(ts_ns, rel_phases, data_t.sel(control_state=1)[val].data, shading="auto")
         ax_c1.set_aspect("auto")
         ax_c1.set_xlabel("Idle times (ns)")
-        ax_c1.set_ylabel("Detuning (MHz)")
+        ax_c1.set_ylabel("Relative phase (×2π)")
         ax_c1.set_title(f"control_state = 1")
 
         # Panel 1: freq offset vs phase, both control states
-        ax_f.plot(detunings, f0.values, lw=1.8, label="qc=0")
-        ax_f.plot(detunings, f1.values, lw=1.8, label="qc=1")
-        ax_f.axvline(best_df, ls="--", alpha=0.6)
-        ax_f.set_xlabel("Detuning (MHz)")
+        ax_f.plot(phases, f0.values, lw=1.8, label="qc=0")
+        ax_f.plot(phases, f1.values, lw=1.8, label="qc=1")
+        ax_f.axvline(best_ph, ls="--", alpha=0.6)
+        ax_f.set_xlabel("Relative phase (×2π)")
         ax_f.set_ylabel("Freq offset [MHz]")
         ax_f.set_title(f"Extracted frequency")
         ax_f.legend(frameon=False, fontsize=9)
         ax_f.set_aspect("auto")
 
         # Panel 3: zz_coeff vs phase
-        ax_zz.plot(zz["detuning"].values, zz.values, lw=1.8)
-        ax_zz.axvline(best_df, ls="--", alpha=0.6)
+        ax_zz.plot(zz["relative_phase"].values, zz.values, lw=1.8)
+        ax_zz.axvline(best_ph, ls="--", alpha=0.6)
         ax_zz.annotate(
             f"best={best_zz:.3f}",
             xy=(
-                best_df,
+                best_ph,
                 np.interp(
-                    best_df,
-                    zz["detuning"].values,
+                    best_ph,
+                    zz["relative_phase"].values,
                     np.interp(
-                        np.argsort(zz["detuning"].values), np.argsort(zz["detuning"].values), zz.values
+                        np.argsort(zz["relative_phase"].values), np.argsort(zz["relative_phase"].values), zz.values
                     ),
                 ),
             ),  # safe-ish placement; will move if NaNs
@@ -225,15 +225,15 @@ def plot_fit_summary(
             fontsize=9,
             annotation_clip=True,
         )
-        ax_zz.set_xlabel("detuning [MHz]")
+        ax_zz.set_xlabel("Relative phase (×2π)")
         ax_zz.set_ylabel("ZZ coeff [MHz]")
         ax_zz.set_title("ZZ coefficient")
         ax_zz.set_aspect("auto")
 
-        # shared x range if detunings exist
-        if detunings.size:
-            x_min = float(np.nanmin(detunings))
-            x_max = float(np.nanmax(detunings))
+        # shared x range if phases exist
+        if phases.size:
+            x_min = float(np.nanmin(phases))
+            x_max = float(np.nanmax(phases))
             ax_f.set_xlim(x_min, x_max)
             ax_zz.set_xlim(x_min, x_max)
 
