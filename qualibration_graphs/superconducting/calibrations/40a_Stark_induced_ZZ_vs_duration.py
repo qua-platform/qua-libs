@@ -110,13 +110,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     detuning = int(1e6 * node.parameters.ramsey_freq_detuning_in_mhz)
 
     # Control states
-    control_state = np.array([0, 1])
+    control_states = np.array([0, 1])
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "idle_time": xr.DataArray(4 * idle_times, attrs={"long_name": "idle times", "units": "ns"}),
-        "control_state": xr.DataArray(control_state, attrs={"long_name": "control state"}),
+        "control_state": xr.DataArray(control_states, attrs={"long_name": "control state"}),
     }
 
     with program() as node.namespace["qua_program"]:

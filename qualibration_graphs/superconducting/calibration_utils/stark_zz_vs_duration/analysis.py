@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
 from qualibration_libs.analysis import fit_oscillation_decay_exp
-from ..data_process_utils import reshape_control_target_val2dim
+from calibration_utils.data_process_utils import reshape_control_target_val2dim
 
 
 @dataclass
@@ -55,15 +55,26 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    if node.parameters.use_state_discrimination:
-        ds = reshape_control_target_val2dim(ds, state_discrimination=node.parameters.use_state_discrimination)
-    else:
-        ds = reshape_control_target_val2dim(ds, state_discrimination=node.parameters.use_state_discrimination)
-        ds = convert_IQ_to_V(ds, qubits=None, qubit_pairs=node.namespace["qubit_pairs"])
+    try:
+        if node.parameters.use_state_discrimination:
+            ds = reshape_control_target_val2dim(
+                ds, state_discrimination=node.parameters.use_state_discrimination
+            )
+        else:
+            ds = reshape_control_target_val2dim(
+                ds, state_discrimination=node.parameters.use_state_discrimination
+            )
+            ds = convert_IQ_to_V(
+                ds, qubits=None, qubit_pairs=node.namespace["qubit_pairs"]
+            )
+    except KeyError:
+        pass
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the frequency detuning and T2 decay of the Ramsey oscillations for each qubit.
 
@@ -90,7 +101,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     return ds_fit, fit_results
 
 
-def _extract_relevant_fit_parameters(ds_fit: xr.Dataset) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
     """
     Post-process modified-echo fit results:
       - frequency (oscillation due to second-interval detuning)
@@ -105,8 +116,11 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset) -> Tuple[xr.Dataset, Di
 
     # --- Decay (envelope) and its residual metric
     decay = ds_fit.fit.sel(fit_vals="decay")
-    decay.attrs = {"long_name": "envelope decay coefficient", "units": "1/ns"}  # sign is typically negative
-    decay_res = ds_fit.fit.sel(fit_vals="decay_decay")
+    decay.attrs = {
+        "long_name": "envelope decay coefficient",
+        "units": "1/ns",
+    }  # sign is typically negative
+    decay_res = fit.fit.sel(fit_vals="decay_decay")
     decay_res.attrs = {"long_name": "decay residual (variance-like)", "units": "1/ns^2"}
 
     # T2_modified_echo-like time: match your standard echo convention (T2_modified_echo = -1/decay)
@@ -116,11 +130,14 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset) -> Tuple[xr.Dataset, Di
     # Propagate uncertainty similar to your echo code:
     # T2_modified_echo_error = -T2 * (sqrt(decay_res) / decay)
     T2_modified_echo_error = -T2_modified_echo * (np.sqrt(decay_res) / decay)
-    T2_modified_echo_error.attrs = {"long_name": "T2 echo (modified for CZ) error", "units": "ns"}
+    T2_modified_echo_error.attrs = {
+        "long_name": "T2 echo (modified for CZ) error",
+        "units": "ns",
+    }
 
-    zz_coeff =\
-        fitted_frequency.sel(control_target="t", control_state=0) -\
-        fitted_frequency.sel(control_target="t", control_state=1)
+    zz_coeff = fitted_frequency.sel(
+        control_target="t", control_state=0
+    ) - fitted_frequency.sel(control_target="t", control_state=1)
 
     # Attach to dataset for convenience/plotting
     ds_fit = ds_fit.assign(
@@ -134,7 +151,9 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset) -> Tuple[xr.Dataset, Di
 
     # --- Success mask (finite values for both frequency and T2)
     nan_success = (
-        xr.ufuncs.isnan(fitted_frequency) | xr.ufuncs.isnan(T2_modified_echo) | xr.ufuncs.isnan(T2_modified_echo_error)
+        xr.ufuncs.isnan(fitted_frequency)
+        | xr.ufuncs.isnan(T2_modified_echo)
+        | xr.ufuncs.isnan(T2_modified_echo_error)
     )
     success_criteria = ~nan_success
     ds_fit = ds_fit.assign({"success": success_criteria})
@@ -145,18 +164,39 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset) -> Tuple[xr.Dataset, Di
         qp: FitParameters(
             # frequency from fit ('f') — consistent with your Ramsey code using 1e9 multiplier
             zz_coeff=1e9 * float(zz_coeff.sel(qubit_pair=qp)),
-            detuning_target_qc0=1e9 * float(fitted_frequency.sel(qubit_pair=qp, control_target="t", control_state=0)),
-            detuning_target_qc1=1e9 * float(fitted_frequency.sel(qubit_pair=qp, control_target="t", control_state=1)),
+            # zz_coeff=1e9 * float(zz_coeff.sel(qubit_pair=qp, control_target="t")),
+            detuning_target_qc0=1e9
+            * float(
+                fitted_frequency.sel(qubit_pair=qp, control_target="t", control_state=0)
+            ),
+            detuning_target_qc1=1e9
+            * float(
+                fitted_frequency.sel(qubit_pair=qp, control_target="t", control_state=1)
+            ),
             # also provide a T2_modified_echo-style time for the modified echo (convert to seconds)
             T2_modified_echo_target_qc0=1e-9
-            * float(T2_modified_echo.sel(qubit_pair=qp, control_target="t", control_state=0)),
+            * float(
+                T2_modified_echo.sel(qubit_pair=qp, control_target="t", control_state=0)
+            ),
             T2_modified_echo_error_target_qc0=1e-9
-            * float(T2_modified_echo_error.sel(qubit_pair=qp, control_target="t", control_state=0)),
+            * float(
+                T2_modified_echo_error.sel(
+                    qubit_pair=qp, control_target="t", control_state=0
+                )
+            ),
             T2_modified_echo_target_qc1=1e-9
-            * float(T2_modified_echo.sel(qubit_pair=qp, control_target="t", control_state=0)),
+            * float(
+                T2_modified_echo.sel(qubit_pair=qp, control_target="t", control_state=0)
+            ),
             T2_modified_echo_error_target_qc1=1e-9
-            * float(T2_modified_echo_error.sel(qubit_pair=qp, control_target="t", control_state=0)),
-            success=bool(success_criteria.sel(qubit_pair=qp, control_target="t", control_state=1)),
+            * float(
+                T2_modified_echo_error.sel(
+                    qubit_pair=qp, control_target="t", control_state=0
+                )
+            ),
+            success=bool(
+                success_criteria.sel(qubit_pair=qp, control_target="t", control_state=1)
+            ),
         )
         for qp in ds_fit.qubit_pair.values
     }

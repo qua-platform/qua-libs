@@ -4,21 +4,9 @@ import xarray as xr
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from qualang_tools.units import unit
-from qualibration_libs.plotting import QubitGrid, grid_iter
 
 from qualibration_libs.analysis import oscillation_decay_exp
 from quam_builder.architecture.superconducting.qubit_pair import AnyTransmonPair
-
-
-# grid = QubitGrid(ds, [q.grid_location for q in qubits])
-# for ax, qubit in grid_iter(grid):
-#     plot_individual_data_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
-
-# grid.fig.suptitle("Ramsey vs flux")
-# grid.fig.set_size_inches(15, 9)
-# grid.fig.tight_layout()
-# return grid.fig
 
 
 def plot_raw_data_with_fit(
@@ -95,7 +83,9 @@ def plot_raw_data_with_fit(
     return figs
 
 
-def _plot_fit_on_axis(ax: Axes, t_ns: np.ndarray, fit_slice: xr.Dataset, label: str = "fit") -> None:
+def _plot_fit_on_axis(
+    ax: Axes, t_ns: np.ndarray, fit_slice: xr.Dataset, label: str = "fit"
+) -> None:
     """
     Evaluate and plot the decaying-oscillation fit for one control_state on the given axis.
 
@@ -128,6 +118,7 @@ def _plot_fit_on_axis(ax: Axes, t_ns: np.ndarray, fit_slice: xr.Dataset, label: 
     # Build fitted curve. `oscillation_decay_exp` is assumed to accept t (ns) and scalar params.
     # If it expects SI units, convert here; currently we keep your convention:
     #   f in MHz, t in ns, decay in 1/ns, consistent with earlier code.
+    t_ns = np.linspace(t_ns[0], t_ns[-1], 100)
     y_fit = oscillation_decay_exp(
         xr.DataArray(t_ns),
         xr.DataArray(a),
