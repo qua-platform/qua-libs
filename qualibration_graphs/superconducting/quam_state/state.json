@@ -11,7 +11,7 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "RF_frequency": 6500000000,
+                "RF_frequency": 7164200000,
                 "opx_output": "#/wiring/twpas/twpa1/pump/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.xy_drive.XYDriveMW"
             },
@@ -1550,8 +1550,8 @@
                 },
                 "thread": "qB1",
                 "opx_input": "#/wiring/qubits/qB1/rr/opx_input",
-                "twpa": "#/twpas/twpa1",
                 "time_of_flight": 404,
+                "twpa": "#/twpas/twpa1",
                 "RF_frequency": 7164200000.0,
                 "opx_output": "#/wiring/qubits/qB1/rr/opx_output",
                 "__class__": "iqcc_calibration_tools.quam_config.components.readout_resonator.ReadoutResonatorMW"
@@ -5170,7 +5170,7 @@
                         "fem_id": 2,
                         "port_id": 8,
                         "band": 2,
-                        "upconverter_frequency": 6500000000,
+                        "upconverter_frequency": 7480000000,
                         "full_scale_power_dbm": 10,
                         "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
                     }

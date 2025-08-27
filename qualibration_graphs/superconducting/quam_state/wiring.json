@@ -263,7 +263,7 @@
         }
     },
     "network": {
-        "host": "10.1.1.6",
+        "host": "10.1.1.11",
         "port": null,
         "cloud": true,
         "octave_ips": [],
