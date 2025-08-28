@@ -26,6 +26,7 @@ from calibration_utils.twpa_calibration.plotting import plot_raw_data_with_fit
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
+from collections import defaultdict
 
 # %% {Node initialisation}
 description = """
@@ -62,7 +63,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1"]
+    node.parameters.qubits = ["qB1", "qB2"]
     pass
 
 
@@ -79,8 +80,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
-    # Get the TWPAs from the node
+    # Get the TWPAs from the node and group the qubits by TWPA
     node.namespace["twpas"] = twpas = node.machine.twpas
+    twpa_group = defaultdict(list)
+    for q in node.namespace["qubits"]:
+        twpa_id = getattr(q.resonator.twpa, "id", None)
+        twpa_group[twpa_id].append(q.name)
+    node.namespace["twpa_group"] = twpa_group
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_shots
     # The frequency sweep around the resonator resonance frequency
@@ -210,14 +216,13 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
-    node.outcomes = {"successful" if fit_results.success else "fail"}
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_fit"],node)
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
