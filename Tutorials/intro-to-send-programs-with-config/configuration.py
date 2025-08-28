@@ -13,6 +13,7 @@ from scipy.signal import savgol_filter
 #######################
 u = unit(coerce_to_integer=True)
 
+
 def find_delay(adc):
     # Filter the data to get the pulse arrival time
     signal = savgol_filter(np.abs(adc), 11, 3)
@@ -23,7 +24,8 @@ def find_delay(adc):
     print(f"delay = {delay}ns")
     return delay
 
-def plot_adc(adc,adc_single_run,delay):
+
+def plot_adc(adc, adc_single_run, delay):
     fig = plt.figure()
     plt.subplot(121)
     plt.title("Single run")
@@ -113,7 +115,7 @@ depletion_time = 2 * u.us
 #############################################
 
 controller_config = {
-        "controllers": {
+    "controllers": {
         con: {
             "type": "opx1000",
             "fems": {
@@ -131,7 +133,7 @@ controller_config = {
                             "band": 1,
                             "full_scale_power_dbm": qubit_power,
                             "upconverters": {1: {"frequency": qubit_LO_q1}},
-                        }
+                        },
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
@@ -148,10 +150,10 @@ controller_config = {
                             "sampling_rate": sampling_rate,
                             "upsampling_mode": "pulse",
                             "delay": 141 * u.ns,
-                            "filter":{
-                                'feedforward': [0.8, 0.3], 
+                            "filter": {
+                                "feedforward": [0.8, 0.3],
                                 "exponential": [(0.1, 0.1 * u.us)],
-                            }
+                            },
                         },
                     },
                     "digital_outputs": {
@@ -198,7 +200,7 @@ logical_config = {
             "operations": {
                 "const": "const_flux_pulse",
             },
-        }
+        },
     },
     "pulses": {
         "const_flux_pulse": {
@@ -231,20 +233,16 @@ logical_config = {
                 "I": "readout_wf_q1",
                 "Q": "zero_wf",
             },
-            "integration_weights": {
-                "cos": "cosine_weights",
-                "sin": "sine_weights",
-                "minus_sin": "minus_sine_weights"
-            },
+            "integration_weights": {"cos": "cosine_weights", "sin": "sine_weights", "minus_sin": "minus_sine_weights"},
             "digital_marker": "ON",
-        }
+        },
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
         "saturation_wf": {"type": "constant", "sample": saturation_amp},
         "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
-        "readout_wf_q1": {"type": "constant", "sample": readout_amp_q1}
+        "readout_wf_q1": {"type": "constant", "sample": readout_amp_q1},
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
@@ -261,7 +259,7 @@ logical_config = {
         "minus_sine_weights": {
             "cosine": [(0.0, readout_len)],
             "sine": [(-1.0, readout_len)],
-        }
+        },
     },
 }
 full_config = controller_config | logical_config
