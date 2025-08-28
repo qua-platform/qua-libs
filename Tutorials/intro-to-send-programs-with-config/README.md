@@ -1,6 +1,6 @@
-## Send program with config (QOP350)
+## Send programs with config (QOP350)
 
-This tutorial explains the new **Send program with config** feature introduced in **QOP350**.
+This tutorial explains the new **Send programs with config** feature introduced in **QOP350**.
 
 ### Overview
 In previous QOP versions, once you opened a qm (=qmm.open_qm(config)) with a specific configuration, it could only run with that limited modification of config. If you wanted to change the configuration in more parameters, you had to close and reopen with new config file.
@@ -20,7 +20,11 @@ You can still use the traditional workflow of opening a QM with a dedicated conf
 ---
 
 ### Configuration File Structure
-Conceptually, we draw a clear boundary between hardware and software. The controller config represents the hardware layer: it captures FEM input, output, and mixer settings—parameters that rarely change. The logical config represents the software (experiment) layer: it defines elements, pulses, waveforms, digital waveforms, and integration weights, which you adjust frequently while calibrating and optimizing experiments. By isolating experiment logic from hardware details, the configuration becomes easier to reason about, improving both efficiency and readability. In short, the controller config anchors the physical setup, while the logical config accelerates experimental development. Below is how we seperate the configuration:
+Conceptually, we draw a clear boundary between hardware and software. The controller config represents the hardware layer: it captures FEM input, output, and mixer settings—parameters that rarely change. The logical config represents the software (experiment) layer: it defines elements, pulses, waveforms, digital waveforms, and integration weights, which you adjust frequently while calibrating and optimizing experiments. By isolating experiment logic from hardware details, the configuration becomes easier to reason about, improving both efficiency and readability. 
+
+With opening the qm by a config, it allows OPX1000 idle values stay between program and do not reset to zero. This behavior is crucial for maintaining conditions such as keeping a CW wave or DC offset on without running a program, for example, to keep AOMs warm, preserve atoms/ions in a trap, sustain electron spin in a quantum dot, or keep a TWPA pumping. 
+
+In short, the controller config anchors the physical setup and idle values, while the logical config focuses on experimental development. Here is how we separate the configuration:
 
 1. **Controller Configuration**  
    Contains:
