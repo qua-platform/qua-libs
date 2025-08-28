@@ -6,56 +6,59 @@ import matplotlib.pyplot as plt
 from qualang_tools.units import unit
 from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
+from qualibrate import QualibrationNode
 
 u = unit(coerce_to_integer=True)
 
-
-def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+def plot_raw_data_with_fit(ds: xr.Dataset, node:QualibrationNode):
     """
-    Plots the raw data and optimal operation (power and frequency) point for the TWPA pump.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing the quadrature data.
-    qubits : list of AnyTransmon
-        A list of qubits to plot.
-    fits : xr.Dataset
-        The dataset containing the fit parameters.
-
-    Returns
-    -------
-    Figure
-        The matplotlib figure object containing the plots.
-
-    Notes
-    -----
-    - The function creates a grid of subplots, one for each qubit.
-    - Each subplot contains the raw data and the fitted curve.
+    Plot raw TWPA calibration data (ΔSNR, Gain), mark max gain point,
+    and show qubits attached to each TWPA in the titles.
     """
-    data_dsnr = "snr_delta_db" if "snr_delta_db" in ds else None
-    data_gain = "gain_db" if "gain_db" in ds else None
-
-    to_plot = [d for d in (data_dsnr, data_gain) if d is not None]
+    to_plot = [v for v in ("snr_delta_db", "gain_db") if v in ds]
     ncols = len(to_plot)
-
     if ncols == 0:
-        raise RuntimeError("The dataset must contain either 'snr_delta_db' or 'gain_db'.")
+        raise RuntimeError("Dataset must contain 'snr_delta_db' or 'gain_db'.")
 
-    fig, axes = plt.subplots(1, ncols, figsize=(5 * ncols, 4), sharex=True, sharey=True)
+    twpas = list(ds.coords["twpa"].values)
+    nrows = len(twpas)
+    fig, axes = plt.subplots(
+        nrows, ncols, figsize=(5 * ncols, 4 * nrows), sharex=True, sharey=True
+    )
 
-    # Ensure axes is iterable
-    if ncols == 1:
+    if nrows == 1 and ncols == 1:
+        axes = [[axes]]
+    elif nrows == 1:
         axes = [axes]
+    elif ncols == 1:
+        axes = [[ax] for ax in axes]
 
-    for ax, var in zip(axes, to_plot):
-        (ds.assign_coords(full_pump_freq_GHz=ds.full_pump_freq / u.GHz)[var]).plot(
-            ax=ax, y="pump_power_dBm", x="full_pump_freq_GHz", add_colorbar=True
-        )
-        ax.set_title("ΔSNR [dB]" if var == "snr_delta_db" else "Gain [dB]")
-        ax.set_xlabel("Pump tone frequency [GHz]")
-        ax.set_ylabel("Pump tone power [dBm]")
+    for i, twpa in enumerate(twpas):
+        qubits = node.namespace["twpa_group"].get(str(twpa), [])   # grab list of qubits
+        for j, var in enumerate(to_plot):
+            ax = axes[i][j]
+
+            data_to_plot = ds[var].sel(twpa=twpa).isel(pump_amp=slice(1, None))
+            data_to_plot = data_to_plot.assign_coords(
+                full_pump_freq_GHz=("pump_frequency", ds.full_pump_freq.sel(twpa=twpa).values / 1e9)
+            )
+
+            data_to_plot.plot(
+                ax=ax, y="pump_power_dBm", x="full_pump_freq_GHz", add_colorbar=True
+            )
+
+            if var == "gain_db" and "gain_max_freq" in ds and "gain_max_power" in ds:
+                opt_freq = ds["gain_max_freq"].sel(twpa=twpa).item() / 1e9
+                opt_power = ds["gain_max_power"].sel(twpa=twpa).item()
+                ax.scatter(opt_freq, opt_power, s=150, c="red", edgecolors="black", zorder=10)
+
+            label = "ΔSNR [dB]" if var == "snr_delta_db" else "Gain [dB]"
+            # 👉 TWPA name + qubit list in title
+            ax.set_title(f"{twpa} ({', '.join(qubits)}): {label}")
+
+            ax.set_xlabel("Pump frequency [GHz]")
+            ax.set_ylabel("Pump power [dBm]")
 
     fig.tight_layout()
-    fig.suptitle("TWPA Pump Calibration")
+    fig.suptitle("TWPA Pump Calibration", y=1.02)
     return fig
