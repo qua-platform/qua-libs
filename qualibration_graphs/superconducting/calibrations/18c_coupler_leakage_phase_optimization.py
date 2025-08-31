@@ -47,8 +47,8 @@ class Parameters(NodeParameters):
 
     use_state_discrimination: bool = True
     num_frames : int = 10#20
-    
-    
+
+
 node = QualibrationNode(
     name="18c_coupler_leakage_phase_optimization", parameters=Parameters()
 )
@@ -105,6 +105,7 @@ for qp in qubit_pairs:
     # estimate the flux shift to get the control qubit to the target qubit frequency
     fluxes_qp[qp.name] = fluxes_qubit + qp.detuning
     pulse_duration = qp.macros["Cz"].coupler_flux_pulse.length - qp.macros["Cz"].coupler_flux_pulse.zero_padding
+    assert pulse_duration % 4 == 0, f"Expected pulse_duration to be a multiple of 4, got {pulse_duration}"
 
 reset_coupler_bias = False
 frames = np.arange(0, 1, 1 / node.parameters.num_frames)
@@ -118,7 +119,7 @@ with program() as CPhase_Oscillations:
     qua_pulse_duration = declare(int, value = int(pulse_duration/4))
     frame = declare(fixed)
     control_initial = declare(int)
-    
+
     state_control = [declare(int) for _ in range(num_qubit_pairs)]
     state_target = [declare(int) for _ in range(num_qubit_pairs)]
     leakage_control = [declare(fixed) for _ in range(num_qubit_pairs)]
@@ -133,8 +134,8 @@ with program() as CPhase_Oscillations:
     Q_st_control = [declare_stream() for _ in range(num_qubit_pairs)]
     I_st_target = [declare_stream() for _ in range(num_qubit_pairs)]
     Q_st_target = [declare_stream() for _ in range(num_qubit_pairs)]
-    
-    
+
+
     for i, qp in enumerate(qubit_pairs):
         # Bring the active qubits to the minimum frequency point
         machine.set_all_fluxes(flux_point, qp)
@@ -143,15 +144,15 @@ with program() as CPhase_Oscillations:
         wait(1000)
 
         with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st)         
+            save(n, n_st)
             with for_(*from_array(flux_coupler, fluxes_coupler)):
                 with for_(*from_array(flux_qubit, fluxes_qp[qp.name])):
                     with for_(*from_array(frame, frames)):
-                        with for_(*from_array(control_initial, [0, 1])):      
+                        with for_(*from_array(control_initial, [0, 1])):
                             # reset
                             if node.parameters.use_state_discrimination:
                                 assign(leakage_control[i], 0)
-                            
+
                             if node.parameters.reset_type == "active":
                                 active_reset(qp.qubit_control)
                                 active_reset(qp.qubit_target)
@@ -160,7 +161,7 @@ with program() as CPhase_Oscillations:
                                 wait(qp.qubit_target.thermalization_time * u.ns)
 
                             qp.align()
-                            
+
                             if "coupler_qubit_crosstalk" in qp.extras:
                                 assign(comp_flux_qubit, flux_qubit + qp.extras["coupler_qubit_crosstalk"] * flux_coupler )
                             else:
@@ -240,8 +241,9 @@ if not node.parameters.simulate:
         flux_qubit_full = np.array([fluxes_qp[qp.name] for qp in qubit_pairs])
         ds = ds.assign_coords({"flux_qubit_full": (["qubit", "flux_qubit"], flux_qubit_full)})
     else:
-        ds, machine = load_dataset(node.parameters.load_data_id)
-        
+        ds, machine, _, qubit_pairs = load_dataset(node.parameters.load_data_id)
+        node = node.load_from_id(node.parameters.load_data_id)
+
     node.results = {"ds": ds}
 # %%
 detuning_mode = "quadratic" # "cosine" or "quadratic"
@@ -263,7 +265,7 @@ if not node.parameters.simulate:
     phase_diff = phase.diff(dim="control_ax")
 
     leak = ds.state_control_f.mean(dim = "frame").sel(control_ax = 1)
-    (((phase_diff+0.5 )% 1 -0.5)*360).plot()
+    # (((phase_diff+0.5 )% 1 -0.5)*360).plot()
 
     mask = (np.abs((np.abs(phase_diff)-0.5))<0.02)
     leak_mask = leak * mask + (1 - mask)
@@ -296,7 +298,7 @@ if not node.parameters.simulate:
 # %% {Plotting}
 if not node.parameters.simulate:
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
-    grid = QubitPairGrid(grid_names, qubit_pair_names)    
+    grid = QubitPairGrid(grid_names, qubit_pair_names)
     for ax, qp in grid_iter(grid):
         values_to_plot = ds.state_control_f.mean(dim = "frame").sel(control_ax = 1).sel(qubit = qp['qubit'])
         values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(
@@ -341,19 +343,15 @@ if not node.parameters.simulate:
     plt.tight_layout()
     plt.show()
     node.results['figure_leakage'] = grid.fig
-    
-    grid = QubitPairGrid(grid_names, qubit_pair_names)    
+
+    grid = QubitPairGrid(grid_names, qubit_pair_names)
     for ax, qp in grid_iter(grid):
 
         values_to_plot = (((phase_diff+0.5 )% 1 -0.5)*360).sel(qubit = qp['qubit'])
 
-
         values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(
-            ax = ax, cmap=LinearSegmentedColormap.from_list("", ["red", "white", "red"]), x = 'flux_qubit_mV', y = 'flux_coupler_mV'
+            ax = ax, cmap='twilight_shifted', x = 'flux_qubit_mV', y = 'flux_coupler_mV'
         )
-        # values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(
-        #     ax = ax, cmap='twilight_shifted', x = 'flux_qubit_mV', y = 'flux_coupler_mV'
-        # )
         qubit_pair = machine.qubit_pairs[qp['qubit']]
         ax.set_title(f"{qp['qubit']}, coupler set point: {qubit_pair.coupler.decouple_offset}", fontsize = 10)
         ax.axhline(1e3*node.results["results"][qp["qubit"]]["flux_coupler_Cz"], color = 'k', lw = 0.5, ls = '--')
