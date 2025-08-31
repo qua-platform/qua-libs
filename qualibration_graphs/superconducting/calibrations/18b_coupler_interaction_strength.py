@@ -44,8 +44,6 @@ class Parameters(NodeParameters):
     idle_time_max : int = 5000
     idle_time_step : int = 4
 
-    gate_time_in_ns: int = 50
-
     use_state_discrimination: bool = True
     cz_or_iswap: Literal["cz", "iswap"] = "cz"
 
@@ -208,7 +206,7 @@ if not node.parameters.simulate:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(job.result_handles, qubit_pairs, {  "idle_time": idle_times, "flux_coupler": fluxes_coupler})
     else:
-        ds, _, _, qubit_pairs = load_dataset(node.parameters.load_data_id)
+        ds, machine, _, qubit_pairs = load_dataset(node.parameters.load_data_id)
 
     node.results = {"ds": ds}
 
@@ -227,11 +225,13 @@ if not node.parameters.simulate:
     ds['dominant_frequency'] = extract_dominant_frequencies(ds.res_sum)
     ds.dominant_frequency.attrs['units'] = 'GHz'
 
-
     # %%
     # Plot the dominant frequencies
     # Find the values of flux_coupler_full for which the dominant frequencies are max and min
-    max_frequency = 1 / (2 * node.parameters.gate_time_in_ns)  # in GHz
+    target_gate_time = 50  # ns (fallback)
+    if node.parameters.cz_or_iswap  == "cz" and "Cz" in qubit_pairs[0].macros:
+        target_gate_time = qubit_pairs[0].macros["Cz"].coupler_flux_pulse.length
+    max_frequency = 1 / (2 * target_gate_time)  # in GHz
     interaction_max = (ds.dominant_frequency * (ds.dominant_frequency < max_frequency)).max(dim='flux_coupler')
     coupler_flux_pulse = ds.flux_coupler.isel(flux_coupler=(ds.dominant_frequency * (ds.dominant_frequency < max_frequency)).argmax(dim='flux_coupler'))
     coupler_flux_min = ds.flux_coupler_full.isel(flux_coupler=ds.dominant_frequency.argmin(dim='flux_coupler'))
@@ -271,44 +271,23 @@ if not node.parameters.simulate:
     for ax, qp in grid_iter(grid):
         (1e3*ds.dominant_frequency.sel(qubit=qp['qubit'])).plot(ax = ax, marker = '.', ls = 'None', x = 'flux_coupler')
         qubit_pair = machine.qubit_pairs[qp['qubit']]
-        ax.axvline(x = qubit_pair.coupler.decouple_offset, color = 'black')
-        ax.axvline(x = coupler_flux_pulse.sel(qubit=qp['qubit']), color = 'red', lw = 0.5, ls = '--')
+        ax.axvline(x = qubit_pair.coupler.decouple_offset, color = 'black', label="Decouple offset")
+        ax.axvline(x = coupler_flux_pulse.sel(qubit=qp['qubit']), color = 'red', lw = 0.5, ls = '--', label=f"Optimal frequency for {target_gate_time}ns pulse")
         ax.axvline(x = coupler_flux_min.sel(qubit=qp['qubit']) - qubit_pair.coupler.decouple_offset, color = 'green', lw = 0.5, ls = '--')
         ax.set_title(f"{qp['qubit']}, coupler set point: {qubit_pair.coupler.decouple_offset}", fontsize = 10)
         ax.set_xlabel('Flux Coupler')
         ax.set_ylabel('Frequency (MHz)')
+        ax.legend()
     grid.fig.suptitle('Dominant Frequency')
     plt.tight_layout()
     plt.show()
     node.results['figure_dominant_frequency'] = grid.fig
 
 
-for qp in qubit_pairs:
-    length = math.ceil(node.parameters.gate_time_in_ns / 4) * 4
-    zero_padding = length - node.parameters.gate_time_in_ns
-
-    macro_name = f"Cz_square_pulse_{node.parameters.gate_time_in_ns}"
-    qp.macros[macro_name] = CZGate(
-        flux_pulse_control=FluxPulse(
-            length=length,
-            amplitude=0.1,
-            zero_padding=zero_padding
-        ),
-        coupler_flux_pulse=FluxPulse(
-            length=length,
-            amplitude=0.1,
-            zero_padding=zero_padding
-        )
-    )
-    qp.macros["Cz"] = f"#./{macro_name}"
-
 # %% {Update_state}
 if not node.parameters.simulate:
     with node.record_state_updates():
         for qp in qubit_pairs:
-            # gate_time_ns = int(1/ (2 * interaction_max.sel(qubit = qp.name).values))
-            # gate_time_including_zeros = gate_time_ns - gate_time_ns % 4 + 4
-            # zero_padding = gate_time_including_zeros - gate_time_ns
             coupler_flux_pulse_amp = float(coupler_flux_pulse.sel(qubit = qp.name).values)
             if "coupler_qubit_crosstalk" in qp.extras:
                 qubit_flux_pulse_amp = qp.detuning + qp.extras["coupler_qubit_crosstalk"] * coupler_flux_pulse_amp
@@ -316,13 +295,12 @@ if not node.parameters.simulate:
                 qubit_flux_pulse_amp = qp.detuning
 
             # qp.macros["Cz"].flux_pulse_control.amplitude = qubit_flux_pulse_amp
-            qp.macros["Cz"].coupler_flux_pulse.amplitude = coupler_flux_pulse_amp
+            if node.parameters.cz_or_iswap == "cz":
+                qp.macros["Cz"].coupler_flux_pulse.amplitude = coupler_flux_pulse_amp
 
             # # qp.coupler.decouple_offset = float(coupler_flux_min.sel(qubit = qp.name).values)
             # # qp.gates['SWAP_Coupler'] = SWAP_Coupler_Gate(flux_pulse_control = FluxPulse(length = gate_time_including_zeros, amplitude = qubit_flux_pulse_amp, zero_padding = zero_padding, id = 'flux_pulse_control_' + qp.qubit_target.name),
             # #                                              coupler_pulse_control = FluxPulse(length = gate_time_including_zeros, amplitude = coupler_flux_pulse_amp, zero_padding = zero_padding, id = 'coupler_pulse_control_' + qp.qubit_target.name))
-            # qp.extras["flux_values"] = ds.flux_coupler.values.tolist()
-            # qp.extras["J_vs_flux"] = ds.dominant_frequency.sel(qubit = qp.name).values.tolist()
 # %% {Save_results}
 if not node.parameters.simulate:
     node.outcomes = {q.name: "successful" for q in qubit_pairs}
