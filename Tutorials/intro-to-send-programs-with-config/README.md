@@ -3,13 +3,11 @@
 This tutorial explains the new **Send programs with config** feature introduced in **QOP350**.
 
 ### Overview
-In previous QOP versions, once you opened a qm (=qmm.open_qm(config)) with a specific configuration, it could only run with that limited modification of config. If you wanted to change the configuration in more parameters, you had to close and reopen with new config file.
+In previous QOP versions, once you opened a qm (=qmm.open_qm(config)) with a specific configuration, there is only limited modifications that can be done with quantum machines API [opx1000](https://docs.quantum-machines.co/latest/docs/API_references/qm_opx1000_api/) and [opx+](https://docs.quantum-machines.co/latest/docs/API_references/qm_api/). If you wanted to change the configuration in more parameters, you had to close and reopen with new config file.
 
-From QOP350 onwards, you can:
-- Modify the job (i.e. `job=qm.execute()`) by providing a dedicated config that applies only to that job and can be changed **from job to job**..
-- Avoid reopening qm after every change of config.
-
-This makes testing and iterating on experiments much faster.  
+Starting wiht QOP350, you can:
+- Modify the qm (i.e. `job=qm.execute()`) by providing a dedicated config that applies only to that job and can be changed **from job to job**.
+- Avoid reopening qm after every changes of config.
 
 ---
 
@@ -20,11 +18,9 @@ You can still use the traditional workflow of opening a QM with a dedicated conf
 ---
 
 ### Configuration File Structure
-Conceptually, we draw a clear boundary between hardware and software. The controller config represents the hardware layer: it captures FEM input, output, and mixer settings—parameters that rarely change. The logical config represents the software (experiment) layer: it defines elements, pulses, waveforms, digital waveforms, and integration weights, which you adjust frequently while calibrating and optimizing experiments. By isolating experiment logic from hardware details, the configuration becomes easier to reason about, improving both efficiency and readability. 
+Conceptually, we draw a clear boundary between classical components and quantum device configurations. The controller config represents classical components: it specifies LO frequencies for upconversion, digital filter to shape pulse, and mixer to correct demodulated input signal. The logical config characterizes quantum device: it defines elements, pulses, waveforms, digital waveforms, and integration weights, which likes a data sheet showing the property of quantum device. By dividing config into controller and logical config, the config file becomes easier to reason about, improving both clarity and readability. By opening the qm with a config, it allows OPX1000 idle value(e.g. DC offset) stay between programs and do not reset to zero. 
 
-With opening the qm by a config, it allows OPX1000 idle values stay between program and do not reset to zero. This behavior is crucial for maintaining conditions such as keeping a CW wave or DC offset on without running a program, for example, to keep AOMs warm, preserve atoms/ions in a trap, sustain electron spin in a quantum dot, or keep a TWPA pumping. 
-
-In short, the controller config anchors the physical setup and idle values, while the logical config focuses on experimental development. Here is how we separate the configuration:
+In short, the controller config anchors the physical setup and idle values, while the logical config focuses on experimental development. “Here is a list of what the configuration includes:
 
 1. **Controller Configuration**  
    Contains:
@@ -35,15 +31,15 @@ In short, the controller config anchors the physical setup and idle values, whil
    Contains:
    - elements
    - pulses
-   - waveform
-   - difital_waveform
+   - waveforms
+   - difital_waveforms
    - integration_weights
 
 
 ---
 
-### Example
-   In the folder, we provide two example to guide you how to use this feature.
+### Examples
+   In the folder, we provide two examples to show how to use this feature.
 
    1. Modify config On-the-Fly Without Reopening– Shows how to open a qm with a full configuration (demonstrating backward compatibility), run a job, then modify settings like DC offsets or pulse lengths before re-running. No need to reopen the QM — you can change parameters on-the-fly for faster experiment cycles.
    2. Time of flight calibration: Demonstrates running a raw ADC acquisition program and adjusting time of flight through config overrides between runs. Perfect for quickly refining calibration settings without restarting the QM connection.
@@ -52,8 +48,8 @@ In short, the controller config anchors the physical setup and idle values, whil
 ---
 
 ### Limitations
-⚠ **Not compatible  with Octave** – If your configuration includes Octave, you must use the previous method of opening a QM.
+⚠ **Not compatible with Octave** – If your configuration includes Octave, you must use the previous method of opening a QM.
 
-⚠ **FEM port is not changeable**  – The FEM port in the elements field cannot be changed dynamically.
+⚠ **FEM port cannot be changed**  – The FEM port in the elements field cannot be changed dynamically.
 
 
