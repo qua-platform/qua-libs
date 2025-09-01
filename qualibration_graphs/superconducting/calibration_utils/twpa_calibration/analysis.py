@@ -45,11 +45,11 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Add the amplitude and phase to the raw dataset
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     # Add the RF frequency as a coordinate of the raw dataset
-    full_freq = np.array(
+    full_resonator_freq = np.array(
         [ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]]
     )  # HARD coded, need to do this properly
-    ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
-    ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
+    ds = ds.assign_coords(full_resonator_freq=(["qubit", "detuning"], full_resonator_freq))
+    ds.full_resonator_freq.attrs = {"long_name": "Resonator RF frequency", "units": "Hz"}
     # Normalize the IQ_abs with respect to the amplitude axis
     ds = ds.assign({"IQ_abs_norm": ds["IQ_abs"] / ds.IQ_abs.mean(dim=["detuning"])})
     ds = process_raw_dataset_per_twpa(ds, node.namespace["twpa_group"], node)
@@ -73,7 +73,7 @@ def process_raw_dataset_per_twpa(raw_data: xr.Dataset, twpa_group: dict, node):
         # SNR and gain calculations per TWPA
         snr = xr.apply_ufunc(
             _get_snr,
-            ds["I"],
+            ds["IQ_abs_norm"],
             input_core_dims=[["detuning"]],
             output_core_dims=[[]],
             vectorize=True,
@@ -87,7 +87,7 @@ def process_raw_dataset_per_twpa(raw_data: xr.Dataset, twpa_group: dict, node):
         snr_pump_off_db = snr_db.sel(pump_amp=0.0, method="nearest")
         snr_delta_db = snr_db - snr_pump_off_db
 
-        signal_lin = ds["I"].mean("detuning").mean("qubit")
+        signal_lin = ds["IQ_abs_norm"].mean("detuning").mean("qubit")
         signal_db = xr.apply_ufunc(
             u.volts2dBm, signal_lin, vectorize=True, dask="parallelized", output_dtypes=[float]
         )
