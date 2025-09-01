@@ -64,6 +64,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubits = ["qB1", "qB2"]
+    node.parameters.multiplexed = False
     pass
 
 
@@ -119,24 +120,36 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         a = declare(fixed)  # QUA variable for the pump amplitude
         df = declare(int)  # QUA variable for the readout frequency
         for multiplexed_qubits in qubits.batch():
+            twpa_ids = set()
+            max_readout = 0.0
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
-            align()
+                align()
+                twpa_ids.add(qubit.resonator.twpa.id)
+                ro_len = qubit.resonator.operations["readout"].length
+                if ro_len > max_readout:
+                    max_readout = ro_len
+            if len(twpa_ids) != 1:
+                raise ValueError(f"Qubits are attached to different TWPAs: {twpa_ids}")
+
+            twpa_id = twpa_ids.pop()
+            print(f"TWPA id: {twpa_id}, max readout length: {max_readout}")
+        
             with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
                 save(n, n_st)
                 with for_(*from_array(dfp, dfps)):  # QUA for_ loop for sweeping the pump frequency
-                    for i, qubit in multiplexed_qubits.items():
-                        rr = qubit.resonator
-                        # Update the pump frequency
-                        rr.twpa.pump.update_frequency(dfp + rr.twpa.pump.intermediate_frequency)
-                        # QUA for_ loop for sweeping the pump amplitude
-                        with for_each_(a, amps):
-                            # play the pump pulse
-                            rr.twpa.pump.play("const", amplitude_scale=a)
-                            # wait 1us for pump to settle
-                            # wait(250)
-                            with for_(*from_array(df, dfs)):
+                    # Update the pump frequency
+                    twpas[twpa_id].pump.update_frequency(dfp + twpas[twpa_id].pump.intermediate_frequency)
+                    #QUA for_ loop for sweeping the pump amplitude
+                    with for_each_(a, amps):
+                        # play the pump pulse
+                        twpas[twpa_id].pump.play("const", amplitude_scale=a, duration=max_readout * 2)
+                        # wait 1us for pump to settle
+                        wait(250)
+                        with for_(*from_array(df, dfs)):
+                            for i, qubit in multiplexed_qubits.items():
+                                rr = qubit.resonator                        #      
                                 # Update the resonator frequencies for all resonators
                                 rr.update_frequency(df + rr.intermediate_frequency)
                                 # Measure the resonator
@@ -146,6 +159,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 # save data
                                 save(I[i], I_st[i])
                                 save(Q[i], Q_st[i])
+                            align()
 
         with stream_processing():
             n_st.save("n")
