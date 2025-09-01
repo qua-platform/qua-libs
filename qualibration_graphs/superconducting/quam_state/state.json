@@ -1507,7 +1507,7 @@
             },
             "resonator": {
                 "depletion_time": 3000,
-                "f_01": 7164200000.0,
+                "f_01": 7164300000.0,
                 "confusion_matrix": [
                     [
                         0.946,
@@ -1533,6 +1533,7 @@
                     ]
                 ],
                 "GEF_frequency_shift": 0,
+                "twpa": "#/twpas/twpa1",
                 "operations": {
                     "const": {
                         "length": 100,
@@ -1551,8 +1552,7 @@
                 "thread": "qB1",
                 "opx_input": "#/wiring/qubits/qB1/rr/opx_input",
                 "time_of_flight": 404,
-                "twpa": "#/twpas/twpa1",
-                "RF_frequency": 7164200000.0,
+                "RF_frequency": 7164300000.0,
                 "opx_output": "#/wiring/qubits/qB1/rr/opx_output",
                 "__class__": "iqcc_calibration_tools.quam_config.components.readout_resonator.ReadoutResonatorMW"
             },
@@ -1731,7 +1731,7 @@
             },
             "resonator": {
                 "depletion_time": 3000,
-                "f_01": 7430300000,
+                "f_01": 7428300000.0,
                 "confusion_matrix": [
                     [
                         0.979,
@@ -1757,6 +1757,7 @@
                     ]
                 ],
                 "GEF_frequency_shift": 0,
+                "twpa": "#/twpas/twpa1",
                 "operations": {
                     "const": {
                         "length": 100,
@@ -1775,7 +1776,7 @@
                 "thread": "qB2",
                 "opx_input": "#/wiring/qubits/qB2/rr/opx_input",
                 "time_of_flight": 404,
-                "RF_frequency": 7430300000,
+                "RF_frequency": 7428300000.0,
                 "opx_output": "#/wiring/qubits/qB2/rr/opx_output",
                 "__class__": "iqcc_calibration_tools.quam_config.components.readout_resonator.ReadoutResonatorMW"
             },
