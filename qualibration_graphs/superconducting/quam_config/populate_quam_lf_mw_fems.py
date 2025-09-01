@@ -127,6 +127,31 @@ for k, qubit in enumerate(machine.qubits.values()):
     qubit.resonator.opx_input.band = get_band(rr_LO)  # Readout band for the up-conversion
     qubit.resonator.opx_output.band = get_band(rr_LO)  # Readout band for the down-conversion
 
+########################################################################################################################
+# %%                                    TWPA parameters
+########################################################################################################################
+# Update TWPA gain for each qubit
+
+# TWPA gain for qubit
+gain = np.array([4.395, 4.412, 4.521, 4.728, 4.915, 5.000, 5.050, 5.100]) * u.GHz
+
+# Desired output power in dBm - Must be within [-80, 16] dBm
+readout_power = -40
+# Get the full_scale_power_dBm and waveform amplitude corresponding to the desired powers
+rr_full_scale, rr_amplitude = get_full_scale_power_dBm_and_amplitude(
+    readout_power, max_amplitude=0.125 / len(machine.qubits)
+)
+
+# Update qubit rr freq and power
+for k, qubit in enumerate(machine.qubits.values()):
+    qubit.resonator.f_01 = rr_freq.tolist()[k]  # Resonator frequency optimized for discriminating 0 (|g>) and 1 (|e>)
+    qubit.resonator.RF_frequency = qubit.resonator.f_01  # Readout frequency
+    qubit.resonator.opx_output.full_scale_power_dbm = rr_full_scale  # Max readout power in dBm
+    qubit.resonator.opx_output.upconverter_frequency = rr_LO  # Readout up-converter frequency
+    qubit.resonator.opx_input.band = get_band(rr_LO)  # Readout band for the up-conversion
+    qubit.resonator.opx_output.band = get_band(rr_LO)  # Readout band for the down-conversion
+
+
 
 ########################################################################################################################
 # %%                                    Qubit parameters
