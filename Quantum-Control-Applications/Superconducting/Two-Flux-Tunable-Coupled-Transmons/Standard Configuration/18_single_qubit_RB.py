@@ -23,7 +23,8 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from scipy.optimize import curve_fit
-from configuration import *
+from configuration_with_lf_fem_and_mw_fem import *
+import time
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
@@ -59,7 +60,7 @@ inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "config": config,
+    "config": full_config,
 }
 
 
@@ -171,7 +172,7 @@ def play_sequence(sequence_list, depth, qubit):
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "config": config,
+    "config": full_config,
 }
 
 with program() as rb:
@@ -271,7 +272,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, rb, simulation_config)
+    job = qmm.simulate(full_config, rb, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -284,30 +285,29 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(rb)
-    # Get results from QUA program
-    if state_discrimination:
-        results = fetching_tool(job, data_list=["state_avg", "iteration"], mode="live")
-    else:
-        results = fetching_tool(job, data_list=["I_avg", "Q_avg", "iteration"], mode="live")
+    # Creates a result handle to fetch data from the OPX
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     # data analysis
     x = np.arange(1, max_circuit_depth + 0.1, delta_clifford)
-    while results.is_processing():
-        # data analysis
+    while res_handles.is_processing():
+        # Get results from QUA program
         if state_discrimination:
-            state_avg, iteration = results.fetch_all()
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["state_avg", "iteration"])
+            state_avg, iteration = results.get("state_avg"), results.get("iteration")
             value_avg = state_avg
         else:
-            I, Q, iteration = results.fetch_all()
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["I_avg", "Q_avg", "iteration"])
+            I, Q, iteration = results.get("I"), results.get("Q"), results.get("iteration")
             value_avg = I
 
         # Progress bar
-        progress_counter(iteration, num_of_sequences, start_time=results.get_start_time())
+        progress_counter(iteration, num_of_sequences, start_time=time.time())
         # Plot averaged values
         plt.cla()
         plt.plot(x, value_avg, marker=".")

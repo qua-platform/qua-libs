@@ -1,7 +1,6 @@
 import random
 from typing import List
 
-import cirq
 import matplotlib.pyplot as plt
 from qm.qua import *
 from qm import QuantumMachinesManager

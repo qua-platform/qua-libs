@@ -250,8 +250,7 @@ ge_threshold_q2 = 0.0
 #############################################
 #                  Config                   #
 #############################################
-config = {
-    "version": 1,
+full_config = {
     "controllers": {
         "con1": {
             "analog_outputs": {

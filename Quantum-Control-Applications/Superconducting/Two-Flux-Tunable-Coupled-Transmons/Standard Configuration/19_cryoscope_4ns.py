@@ -40,7 +40,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from configuration import *
 from macros import multiplexed_readout, qua_declaration
-from qm import QuantumMachinesManager, SimulationConfig
+from qm import QuantumMachinesManager
+from qm import SimulationConfig
+import time
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.plot import interrupt_on_close
@@ -123,7 +125,7 @@ save_data_dict = {
     "n_avg": n_avg,
     "durations": durations,
     "flux_waveform": flux_waveform,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -198,7 +200,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, cryoscope, simulation_config)
+    job = qmm.simulate(full_config, cryoscope, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -211,22 +213,24 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(cryoscope)
+    # Creates a result handle to fetch data from the OPX
+    res_handles = job.result_handles
     # Get results from QUA program
     results = fetching_tool(job, ["n", "I1", "Q1", "state1", "I2", "Q2", "state2"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
-    while results.is_processing():
+    while res_handles.is_processing():
         # Fetch results
         n, I1, Q1, state1, I2, Q2, state2 = results.fetch_all()
         # Convert the results into Volts
         I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
         I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
         # Progress bar
-        progress_counter(n, n_avg, start_time=results.start_time)
+        progress_counter(n,n_avg,start_time=time.time())
         # Bloch vector Sx + iSy
         if qubit == 1:
             Sxx = state1[:, 0] * 2 - 1

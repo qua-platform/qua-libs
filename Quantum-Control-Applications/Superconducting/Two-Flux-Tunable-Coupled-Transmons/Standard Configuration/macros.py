@@ -31,7 +31,6 @@ def multiplexed_readout(I, I_st, Q, Q_st, resonators, sequential=False, amplitud
         measure(
             "readout" * amp(amplitude),
             f"rr{res}",
-            None,
             dual_demod.full(weights + "cos", weights + "sin", I[ind]),
             dual_demod.full(weights + "minus_sin", weights + "cos", Q[ind]),
         )

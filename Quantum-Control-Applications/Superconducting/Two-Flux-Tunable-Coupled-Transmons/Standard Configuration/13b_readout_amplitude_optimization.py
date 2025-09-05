@@ -18,6 +18,7 @@ Next steps before going to the next node:
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
+import time
 from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
@@ -42,7 +43,7 @@ amplitudes = np.arange(a_min, a_max + da / 2, da)  # The amplitude vector +da/2 
 save_data_dict = {
     "n_runs": n_runs,
     "amplitudes": amplitudes,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -99,7 +100,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, ro_amp_opt, simulation_config)
+    job = qmm.simulate(full_config, ro_amp_opt, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -112,13 +113,15 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_amp_opt)  # execute QUA program
+    # Creates a result handle to fetch data from the OPX
+    res_handles = job.result_handles
     # Get results from QUA program
     results = fetching_tool(job, data_list=["iteration"], mode="live")
     # Get progress counter to monitor runtime of the program
-    while results.is_processing():
+    while res_handles.is_processing():
         # Fetch results
         iteration = results.fetch_all()
         # Progress bar
