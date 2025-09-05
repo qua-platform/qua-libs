@@ -13,8 +13,7 @@ Starting with QOP350, you can:
 ---
 
 ### Backward Compatibility
-This feature is **fully backward compatible**.  
-You can still use the traditional workflow of opening a QM with a dedicated configuration for each program execution if you prefer.
+This feature is fully backward compatible. You can still use the traditional workflow of opening a QM with a dedicated configuration for each program execution if you prefer.
 
 ---
 
@@ -31,11 +30,10 @@ The new division is as follows,
    - mixers
 
 2. **Logical Configuration**  
-   Contains:
    - elements
    - pulses
    - waveforms
-   - difital_waveforms
+   - digital_waveforms
    - integration_weights
 
 
