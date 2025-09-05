@@ -210,7 +210,7 @@ ge_threshold = 0.0
 #############################################
 
 
-config = {
+full_config = {
     "version": 1,
     "controllers": {
         con: {

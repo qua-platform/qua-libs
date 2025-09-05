@@ -179,7 +179,7 @@ ge_threshold = 0.0
 #############################################
 #                  Config                   #
 #############################################
-config = {
+controller_config = {
     "version": 1,
     "controllers": {
         con: {
@@ -220,6 +220,8 @@ config = {
             },
         },
     },
+}
+logical_config = {    
     "elements": {
         "resonator": {
             "MWInput": {
@@ -418,3 +420,4 @@ config = {
         },
     },
 }
+full_config = controller_config | logical_config

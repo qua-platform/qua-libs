@@ -1,12 +1,13 @@
 from qm.qua import *
 from qm import QuantumMachinesManager
+import time
 from macros import qubit_frequency_tracking
 from configuration import *
 import matplotlib.pyplot as plt
 import time
-from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results.data_handler import DataHandler
+from qualang_tools.results import progress_counter
 
 ######################################
 #  Open Communication with the QOP  #
@@ -14,7 +15,7 @@ from qualang_tools.results.data_handler import DataHandler
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 # Open quantum machine
-qm = qmm.open_qm(config)
+qm = qmm.open_qm(full_config)
 
 # Initialize object
 freq_track_obj = qubit_frequency_tracking("qubit", "resonator", qubit_IF, ge_threshold, frame_rotation_flag=False)
@@ -64,7 +65,7 @@ oscillation = 1
 save_data_dict = {
     "n_avg": n_avg,
     "tau_vec": tau_vec,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -126,8 +127,7 @@ with program() as prog:
 # Execute the program
 job = qm.execute(prog)
 # Handle results
-results = fetching_tool(job, ["Pe_td_ref", "Pe_td_corr", "iteration", "f_res_corr", "corr"], mode="live")
-
+res_handles = job.result_handles
 # Starting time
 t0 = time.time()
 t_ = t0
@@ -140,9 +140,10 @@ t = []
 # Live plotting
 fig = plt.figure()
 interrupt_on_close(fig, job)
-while results.is_processing():
+while res_handles.is_processing():
     if cond:
         # Fetch results
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         Pe_td_ref_, Pe_td_corr_, iteration, f_res_corr, corr = results.fetch_all()
         # Progress bar
         progress_counter(iteration, int(minutes / (time_between_two_runs / 60)), start_time=t0)

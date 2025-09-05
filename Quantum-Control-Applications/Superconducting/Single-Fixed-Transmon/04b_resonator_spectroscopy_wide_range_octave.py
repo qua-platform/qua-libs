@@ -20,6 +20,7 @@ Before proceeding to the next node:
 
 from qm.qua import *
 from qm import QuantumMachinesManager
+import time
 from configuration_with_octave import *
 from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
@@ -39,7 +40,7 @@ f_max = 271 * u.MHz
 df = 500 * u.kHz
 IFs = np.arange(f_min, f_max + 0.1, df)  # The intermediate frequency vector (+ 0.1 to add f_max to IFs)
 # This is to make sure that the center IF is the one used in the config for the correction parameters to be updated.
-config["elements"]["resonator"]["intermediate_frequency"] = IFs[len(IFs) // 2]
+full_config["elements"]["resonator"]["intermediate_frequency"] = IFs[len(IFs) // 2]
 
 # The LO frequency sweep parameters
 f_min_lo = 4.0e9
@@ -54,7 +55,7 @@ save_data_dict = {
     "IF_frequencies": IFs,
     "LO_frequencies": LOs,
     "frequencies": frequency,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -109,7 +110,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Run Program #
 ###############
 # Open the quantum machine
-qm = qmm.open_qm(config)
+qm = qmm.open_qm(full_config)
 
 # Calibrate the element for each LO frequency of the sweep and the central intermediate frequency
 calibrate = True

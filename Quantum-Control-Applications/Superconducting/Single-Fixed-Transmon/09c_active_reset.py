@@ -20,6 +20,7 @@ Prerequisites:
 
 from qm.qua import *
 from qm import QuantumMachinesManager
+import time
 from qm import SimulationConfig, LoopbackInterface
 from configuration import *
 from qualang_tools.analysis.discriminator import two_state_discriminator
@@ -44,7 +45,7 @@ max_tries = 2
 # Data to save
 save_data_dict = {
     "n_shot": n_shot,
-    "config": config,
+    "config": full_config,
 }
 
 
@@ -234,7 +235,7 @@ if simulation:
         duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
     )
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, active_reset_prog, simulation_config)
+    job = qmm.simulate(full_config, active_reset_prog, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -247,18 +248,18 @@ if simulation:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
 else:
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     job = qm.execute(active_reset_prog)
     # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
-    # Waits (blocks the Python console) until all results have been acquired
-    res_handles.wait_for_all_values()
+    # Get results from QUA program
+    data_list = ["I_g", "Q_g", "I_e", "Q_e"]
+    # fetch data
+    results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
+    res = [results.get(data)['value'] for data in data_list]
     # Fetch the 'I' & 'Q' points for the qubit in the ground and excited states
-    Ig = res_handles.get("I_g").fetch_all()["value"]
-    Qg = res_handles.get("Q_g").fetch_all()["value"]
-    Ie = res_handles.get("I_e").fetch_all()["value"]
-    Qe = res_handles.get("Q_e").fetch_all()["value"]
-    average_tries = res_handles.get("average_tries").fetch_all()
+    Ig, Qg, Ie, Qe = res
+    average_tries = results.get("average_tries")
     # Plot the IQ blobs, rotate them to get the separation along the 'I' quadrature, estimate a threshold between them
     # for state discrimination and derive the fidelity matrix
     angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(Ig, Qg, Ie, Qe, b_print=True, b_plot=True)

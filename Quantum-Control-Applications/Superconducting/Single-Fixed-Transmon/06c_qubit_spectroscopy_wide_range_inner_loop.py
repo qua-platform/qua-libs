@@ -16,6 +16,7 @@ Before proceeding to the next node:
 
 from qm.qua import *
 from qm import QuantumMachinesManager
+import time
 from configuration import *
 from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
@@ -48,7 +49,7 @@ save_data_dict = {
     "IF_frequencies": frequencies,
     "external_frequencies": freqs_external,
     "frequencies": frequency,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -107,7 +108,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Run Program #
 ###############
 # Open the quantum machine
-qm = qmm.open_qm(config)
+qm = qmm.open_qm(full_config)
 # Send the QUA program to the OPX, which compiles and executes it. It will stop at the 'pause' statement.
 job = qm.execute(qubit_spec)
 # Creates results handles to fetch the data
