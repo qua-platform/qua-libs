@@ -18,8 +18,8 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"  # Write the QM router IP address
-cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_ip = "172.16.33.114"  # Write the QM router IP address
+cluster_name = "CS_4"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
 #############
@@ -194,8 +194,7 @@ ge_threshold = 0.0
 #############################################
 #                  Config                   #
 #############################################
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         con: {
             "type": "opx1000",
@@ -266,6 +265,8 @@ config = {
             },
         },
     },
+}
+logical_config = {    
     "elements": {
         "qubit": {
             # MWInput corresponds to an OPX physical output port
@@ -499,3 +500,5 @@ config = {
         },
     },
 }
+
+full_config = controller_config | logical_config
