@@ -14,7 +14,7 @@ Before proceeding to the next node, take the following steps:
 
 from qm import QuantumMachinesManager
 from qm.qua import *
-from configuration_with_lf_fem import *
+from configuration import *
 import time
 
 ###################

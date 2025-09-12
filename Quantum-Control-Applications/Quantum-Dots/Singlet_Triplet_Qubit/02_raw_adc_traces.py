@@ -11,7 +11,7 @@ correcting any non-zero DC offsets, and estimating the SNR.
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration_with_lf_fem import *
+from configuration import *
 import time
 import matplotlib.pyplot as plt
 

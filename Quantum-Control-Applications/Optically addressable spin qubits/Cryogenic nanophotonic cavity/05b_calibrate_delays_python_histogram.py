@@ -8,6 +8,7 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
+import time
 from qualang_tools.results.data_handler import DataHandler
 
 ##################
@@ -30,7 +31,7 @@ assert (laser_len_cycles - mw_len_cycles) > 4, "The MW must be shorter than the 
 save_data_dict = {
     "n_avg": n_avg,
     "t_vec": t_vec,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -68,7 +69,7 @@ with program() as calib_delays:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-qm = qmm.open_qm(config)
+qm = qmm.open_qm(full_config,close_other_machines=True)
 
 job = qm.execute(calib_delays)
 

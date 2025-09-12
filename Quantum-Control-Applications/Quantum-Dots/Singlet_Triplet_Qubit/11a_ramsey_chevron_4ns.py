@@ -24,7 +24,7 @@ Before proceeding to the next node:
 """
 
 import matplotlib.pyplot as plt
-from configuration_with_lf_fem import *
+from configuration import *
 import time
 from macros import DC_current_sensing_macro, RF_reflectometry_macro
 from qm import QuantumMachinesManager, SimulationConfig
