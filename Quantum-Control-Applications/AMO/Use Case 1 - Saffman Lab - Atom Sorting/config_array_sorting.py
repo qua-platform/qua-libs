@@ -104,7 +104,7 @@ mw_I = 3
 mw_Q = 4
 
 
-config = {
+full_config = {
     "version": 1,
     "controllers": {
         "con1": {
@@ -285,7 +285,7 @@ config = {
 }
 # Iteratively add the column tweezers
 for i in range(1, n_tweezers + 1):
-    config["elements"][f"column_{i}"] = {
+    full_config["elements"][f"column_{i}"] = {
         "singleInput": {
             "port": ("con1", column_channel),
         },

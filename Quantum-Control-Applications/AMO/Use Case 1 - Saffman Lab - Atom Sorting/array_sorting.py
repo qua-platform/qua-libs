@@ -50,7 +50,7 @@ target_frequencies_full_python = [
 target_frequencies_1d = [j for sub in target_frequencies_full_python for j in sub]
 
 # Get all relevant elements in a list for easy align
-elements = list(config["elements"].keys())
+elements = list(full_config["elements"].keys())
 elements.remove("qubit")
 
 
@@ -608,7 +608,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 
 if not Simulation:
     # Open a quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config)
 
     job = qm.execute(atom_sorting)  # order_atoms
     # job = qm.execute(freq_calibration)
@@ -672,7 +672,7 @@ if not Simulation:
 else:
     simulation_duration = 300  # simulate for 2e4 clock cycles or 120µs
     job = qmm.simulate(
-        config,
+        full_config,
         atom_sorting,
         SimulationConfig(
             simulation_duration,

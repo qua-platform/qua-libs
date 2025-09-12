@@ -243,15 +243,13 @@ if __name__ == "__main__":
     # clear the results to free the memory
     qmm.clear_all_job_results()
 
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config)
 
     # Send the QUA program to the OPX, which compiles and executes it - Execute does not block python!
     job = qm.execute(prog)
-
+    res_handles = job.result_handles
     # Debugging: Show PID Parameters and Target
-    results = fetching_tool(
-        job,
-        [
+    data_list = [
             "error",
             "integration_error",
             "derivative_error",
@@ -263,9 +261,7 @@ if __name__ == "__main__":
             "gain_D",
             "target_fetch",
             "timestamps",
-        ],
-        mode="live",
-    )
+        ]
 
     fig = plt.figure(figsize=(12, 8))
     interrupt_on_close(fig, job)  # ensures that the infinite loop is stopped when the figure is closed
@@ -283,8 +279,8 @@ if __name__ == "__main__":
     timestamps_data = np.array([])
 
     t0 = time.time()
-    while results.is_processing():
-
+    while res_handles.is_processing():
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         (
             error,
             integration_error,
@@ -297,7 +293,7 @@ if __name__ == "__main__":
             gain_D_fetched,
             target_fetched,
             timestamps_fetched,
-        ) = results.fetch_all()
+        ) = [results.get(data)['value'] for data in data_list]
 
         # convert single_shot to voltage
         single_shot_DC_volts = -u.demod2volts(
