@@ -25,7 +25,8 @@ Before proceeding to the next node:
 """
 
 import matplotlib.pyplot as plt
-from configuration import *
+from configuration_with_lf_fem import *
+import time
 from macros import DC_current_sensing_macro, RF_reflectometry_macro
 from qdac2_driver import QDACII, load_voltage_list
 from qm import QuantumMachinesManager, SimulationConfig
@@ -50,7 +51,7 @@ N = (int((readout_len + 1_000) / (2 * step_length)) + 1) * n_points_fast * n_poi
 level_empty = [-0.2, 0.0]
 duration_empty = 5000
 
-seq = VoltageGateSequence(config, ["P1_sticky", "P2_sticky"])
+seq = VoltageGateSequence(full_config, ["P1_sticky", "P2_sticky"])
 seq.add_points("empty", level_empty, duration_empty)
 seq.add_points("initialization", level_init, duration_init)
 seq.add_points("readout", level_readout, duration_readout)
@@ -66,7 +67,7 @@ save_data_dict = {
     "N_coulomb_pulses": N,
     "voltage_values_slow": voltage_values_slow,
     "voltage_values_fast": voltage_values_fast,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -169,7 +170,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PSB_search_prog, simulation_config)
+    job = qmm.simulate(full_config, PSB_search_prog, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -182,17 +183,20 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(PSB_search_prog)
     # Get results from QUA program and initialize live plotting
-    results = fetching_tool(job, data_list=["I", "Q", "dc_signal", "iteration"], mode="live")
+    data_list=["I", "Q", "dc_signal", "iteration"]
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
+    while res_handles.is_processing():
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
-        I, Q, DC_signal, iteration = results.fetch_all()
+        I, Q, DC_signal = [results.get(data)['value'] for data in data_list]
+        iteration = results.get("iteration")
         # Convert results into Volts
         min_idx = min(I.shape[0], Q.shape[0])
         S = u.demod2volts(I[:min_idx, :] + 1j * Q[:min_idx, :], reflectometry_readout_length, single_demod=True)
