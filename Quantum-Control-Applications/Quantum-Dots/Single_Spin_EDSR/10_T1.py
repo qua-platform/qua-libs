@@ -27,7 +27,8 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+import time
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.addons.variables import assign_variables_to_element
@@ -45,7 +46,7 @@ n_avg = 100
 durations = np.arange(16, 2000, 100)
 
 # Add the relevant voltage points describing the "slow" sequence (no qubit pulse)
-seq = VoltageGateSequence(config, ["P1_sticky", "P2_sticky"])
+seq = VoltageGateSequence(full_config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
 seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, readout_len)
@@ -54,7 +55,7 @@ seq.add_points("readout", level_readout, readout_len)
 save_data_dict = {
     "n_avg": n_avg,
     "durations": durations,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -108,7 +109,7 @@ with program() as T1_prog:
 #  Open Communication with the QOP  #
 #####################################
 # qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
-qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_83")
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -119,7 +120,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, T1_prog, simulation_config)
+    job = qmm.simulate(full_config, T1_prog, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -158,17 +159,19 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(T1_prog)
     # Get results from QUA program and initialize live plotting
-    results = fetching_tool(job, data_list=["I", "Q", "dc_signal", "iteration"], mode="live")
+    data_list=["I", "Q", "dc_signal", "iteration"]
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
+    while res_handles.is_processing():
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
-        I, Q, DC_signal, iteration = results.fetch_all()
+        I, Q, DC_signal, iteration = [results.get(data) for data in data_list]
         # Convert results into Volts
         S = u.demod2volts(I + 1j * Q, reflectometry_readout_length, single_demod=True)
         R = np.abs(S)  # Amplitude
