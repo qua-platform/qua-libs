@@ -19,6 +19,7 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
+import time
 from qm import SimulationConfig
 
 ##################
@@ -58,7 +59,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, TimeTagging_calibration, simulation_config)
+    job = qmm.simulate(full_config, TimeTagging_calibration, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -71,7 +72,7 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open Quantum Machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     # Execute program
     job = qm.execute(TimeTagging_calibration)
     # create a handle to get results

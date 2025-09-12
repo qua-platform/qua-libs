@@ -14,6 +14,7 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
+import time
 from qm import SimulationConfig
 from qualang_tools.results.data_handler import DataHandler
 
@@ -37,7 +38,7 @@ assert (initialization_len - mw_len) > 4, "The MW must be shorter than the laser
 save_data_dict = {
     "n_avg": n_avg,
     "t_vec": t_vec,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -90,7 +91,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, calib_delays, simulation_config)
+    job = qmm.simulate(full_config, calib_delays, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -103,7 +104,7 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(calib_delays)
     # Get results from QUA program
@@ -116,6 +117,7 @@ else:
     counts_vec = np.zeros(meas_len, int)
     old_count = 0
 
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
