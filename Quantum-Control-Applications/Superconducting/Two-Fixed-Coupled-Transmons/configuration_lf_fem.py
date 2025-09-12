@@ -304,8 +304,7 @@ ge_threshold_q2 = 0.0
 #############################################
 #                  Config                   #
 #############################################
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         con: {
             "type": "opx1000",
@@ -379,6 +378,8 @@ config = {
             },
         }
     },
+}
+logical_config = {
     "elements": {
         "rr1": {
             "mixInputs": {
@@ -840,4 +841,4 @@ config = {
     },
 }
 
-# %%
+full_config = controller_config | logical_config
