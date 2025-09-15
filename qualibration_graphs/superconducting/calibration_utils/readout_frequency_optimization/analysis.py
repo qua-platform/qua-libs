@@ -1,9 +1,9 @@
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Dict
+from typing import Dict, Tuple
+
 import numpy as np
 import xarray as xr
-
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
 
@@ -45,7 +45,7 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Convert IQ data into volts
-    ds = convert_IQ_to_V(ds, node.namespace["qubits"], ["I_g", "Q_g", "I_e", "Q_e"])
+    ds = convert_IQ_to_V(ds, node.namespace["qubits"], IQ_list=["I_g", "Q_g", "I_e", "Q_e"])
     # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2) for |g> and |e> as well as the distance between the two blobs D
     ds = ds.assign(
         {
