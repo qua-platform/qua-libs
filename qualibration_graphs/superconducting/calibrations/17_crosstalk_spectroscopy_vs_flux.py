@@ -13,11 +13,8 @@ from qualang_tools.units import unit
 
 from qualang_tools.loops import from_array
 
-# from qualibrate import QualibrationNode
-# from quam_config import Quam
-
-from iqcc_calibration_tools.qualibrate_config.qualibrate.node import QualibrationNode
-from iqcc_calibration_tools.quam_config.components.quam_root import Quam
+from qualibrate import QualibrationNode
+from quam_config import Quam
 
 from calibration_utils.crosstalk_spectroscopy_vs_flux.program import (
     get_expected_frequency_at_flux_detuning,
@@ -26,7 +23,7 @@ from calibration_utils.crosstalk_spectroscopy_vs_flux.program import (
 from calibration_utils.crosstalk_spectroscopy_vs_flux import (
     Parameters, process_raw_dataset, fit_raw_data, log_fitted_results
 )
-from calibration_utils.crosstalk_spectroscopy_vs_flux.plotting import plot_analysis
+from calibration_utils.crosstalk_spectroscopy_vs_flux.plotting import plot_analysis, add_node_info_subtitle
 
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
@@ -80,8 +77,8 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.flux_span_in_v = 0.4
     node.parameters.num_shots = 200
     node.parameters.expected_crosstalk = 0.003
-    # node.parameters.load_data_id = 384
     node.parameters.flux_detuning_mode = "auto_for_linear_response"
+    node.parameters.simulate = True
     assert node.parameters.multiplexed == False
 
 
@@ -109,7 +106,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # pre-factor to the value defined in the config - restricted to [-2; 2)
     operation_amp = node.parameters.operation_amplitude_factor
 
-    xy_vs_z_delay_padding = 2000  # ns
+    flux_pulse_padding = node.parameters.flux_pulse_padding_in_ns
 
     # Setting the flux point of the qubits
     for qubit in qubits:
@@ -179,10 +176,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             aggressor_qubit.z.play(
                                 "const",
                                 amplitude_scale=dc / aggressor_qubit.z.operations["const"].amplitude,
-                                duration=duration + 2 * xy_vs_z_delay_padding
+                                duration=duration + 2 * (flux_pulse_padding // 4)
                             )
                             # add some padding in case xy vs z delay is wrong
-                            wait(xy_vs_z_delay_padding //4, target_qubit.xy.name)
+                            wait(flux_pulse_padding // 4, target_qubit.xy.name)
                             # Apply saturation pulse to all qubits
                             target_qubit.xy.play(
                                 operation,
@@ -295,9 +292,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     # Plot raw data
     fig = plot_analysis(
         node.results["ds_raw"], node.results["peak_results"], node.results["fit_results"],
-        node.results["flux_detunings"], node.machine.qubits
+        node.results.get("flux_detunings"), node.machine.qubits
     )
-    node.add_node_info_subtitle(fig)
+    add_node_info_subtitle(node, fig)
 
     node.results["figures"] = {"main": fig}
 

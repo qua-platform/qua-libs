@@ -28,6 +28,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Target qubit's flux detuning when the mode is set to manual."""
     expected_crosstalk: float = 0.01
     """Change in target qubit flux per unit of aggressor qubit flux. """
+    flux_pulse_padding_in_ns: float = 2000
+    """Extra padding time between the flux pulse and pi-pulse, which is also doubled and added to the duration of the flux pulse"""
     input_line_impedance_in_ohm: Optional[int] = 50
     """Input line impedance in ohms. Default is 50 Ohm."""
     line_attenuation_in_db: Optional[int] = 0

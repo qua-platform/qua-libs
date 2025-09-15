@@ -11,6 +11,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from qualang_tools.units import unit
 
+from qualibrate import QualibrationNode
+
 from calibration_utils.crosstalk_spectroscopy_vs_flux.program import get_expected_frequency_at_flux_detuning
 
 u = unit(coerce_to_integer=True)
@@ -58,11 +60,16 @@ def plot_analysis(ds: xr.Dataset, peak_results: Dict, fit_results: Dict, flux_de
             plot_individual_peak_frequencies(ax, fit_result, peak_result)
             plot_individual_linear_fit(ax, fit_result, peak_result)
 
-            delta_f =  get_expected_frequency_at_flux_detuning(qubits[target_qubit], flux_detunings[target_qubit]) - \
-                       qubits[target_qubit].xy.RF_frequency
+            if flux_detunings is not None:
+                delta_phi = flux_detunings[target_qubit]
+                delta_f =  get_expected_frequency_at_flux_detuning(qubits[target_qubit], flux_detunings[target_qubit]) - \
+                           qubits[target_qubit].xy.RF_frequency
+            else:
+                delta_phi = np.nan
+                delta_f = np.nan
 
             ax.set_title(f"{aggressor_qubit} acting on {target_qubit}\n"
-                         f"$\Delta\phi_{{{target_qubit}}} = {1000*flux_detunings[target_qubit]:.1f}\,$mV, "
+                         f"$\Delta\phi_{{{target_qubit}}} = {1000*delta_phi:.1f}\,$mV, "
                          f"$\Delta f_{{{target_qubit}}} = {delta_f/1e6:.0f}\,$MHz")
             ax.set_xlabel(f"{aggressor_qubit} Flux Bias (V)")
     fig.suptitle("Crosstalk Spectroscopy")
@@ -121,12 +128,18 @@ def plot_individual_peak_frequencies(ax: Axes, fit_result: dict, peak_result: xr
     """
     # Plot with error bars - use bright colors to stand out against heatmap
     mask = xr.DataArray(fit_result["linear_fit_inlier_mask"], dims="flux_bias")
-    peak_result = peak_result.dropna("flux_bias").where(mask, drop=True)
-    ax.errorbar(peak_result.flux_bias, peak_result.peak_frequencies,
-                yerr=peak_result.peak_frequency_errors,
+    peak_result_inliers = peak_result.dropna("flux_bias").where(mask, drop=True)
+    peak_result_outliers = peak_result.dropna("flux_bias").where(~mask, drop=True)
+    ax.errorbar(peak_result_inliers.flux_bias, peak_result_inliers.peak_frequencies,
+                yerr=peak_result_inliers.peak_frequency_errors,
                 fmt='s', capsize=2, capthick=1, markersize=3,
                 color='r', markerfacecolor='r', markeredgecolor='r',
                 markeredgewidth=1, label='Peak Frequencies')
+    ax.errorbar(peak_result_outliers.flux_bias, peak_result_outliers.peak_frequencies,
+                yerr=peak_result_outliers.peak_frequency_errors,
+                fmt='s', capsize=2, capthick=1, markersize=3,
+                color='C1', markerfacecolor='C1', markeredgecolor='C1',
+                markeredgewidth=1, label='Outliers')
 
     ax.set_ylabel("Detuning (Hz)")
     ax.legend(loc='upper right')
@@ -159,3 +172,46 @@ def plot_individual_linear_fit(ax: Axes, fit_result: dict, peak_result: dict):
     
     # Update legend to include the linear fit
     ax.legend(loc='upper right')
+
+
+def add_node_info_subtitle(node: QualibrationNode, fig: Figure = None, additional_info=None):
+    """
+    Add a standardized subtitle with node information to a matplotlib figure.
+    If a suptitle already exists, the node info will be appended to it.
+
+    Args:
+        fig: matplotlib figure object. If None, uses plt.gcf()
+        additional_info: Optional string with additional information to include
+
+    Returns:
+        str: The subtitle text that was added
+    """
+    import matplotlib.pyplot as plt
+
+    if fig is None:
+        fig = plt.gcf()
+
+    # Build the base subtitle
+    subtitle_parts = [f"#{node.storage_manager.snapshot_idx}"]
+
+    # Add any additional info
+    if additional_info:
+        subtitle_parts.append(additional_info)
+
+    # Join all parts with newlines
+    node_info_text = "\n".join(subtitle_parts)
+
+    # Check if there's an existing suptitle
+    existing_suptitle = fig._suptitle
+    if existing_suptitle is not None and existing_suptitle.get_text().strip():
+        # Append node info to existing suptitle
+        combined_text = f"{existing_suptitle.get_text()}\n{node_info_text}"
+    else:
+        # No existing suptitle, use just the node info
+        combined_text = node_info_text
+
+    # Add the subtitle to the figure
+    fig.suptitle(combined_text, fontsize=10, y=0.98)
+    fig.tight_layout(rect=[0, 0, 1, 0.97])  # Adjust layout to prevent overlap with less spacing
+
+    return node_info_text
