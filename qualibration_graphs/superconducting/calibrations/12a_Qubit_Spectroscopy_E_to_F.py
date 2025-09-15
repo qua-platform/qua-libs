@@ -59,7 +59,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qA1"]
+    node.parameters.qubits = ["qD1"]
     # node.parameters.load_data_id = 2624
     pass
 
@@ -233,21 +233,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-
             # Update the readout frequency for the given flux point
             q.anharmonicity -= node.results["fit_results"][q.name]["relative_freq"]
-            # q.xy.RF_frequency = node.results["fit_results"][q.name]["frequency"]
-
-            # fit_result = node.results["fit_results"][q.name]
-            # # Update the integration weight angle
-            # q.resonator.operations["readout"].integration_weights_angle = fit_result["iw_angle"]
-            # if node.parameters.update_pulses_amplitude:
-            #     # Update the saturation amplitude
-            #     q.xy.operations["saturation"].amplitude = fit_result["saturation_amp"]
-            #     # Update the x180 and x90 amplitudes
-            #     q.xy.operations["x180"].amplitude = fit_result["x180_amp"]
-            #     q.xy.operations["x90"].amplitude = fit_result["x180_amp"] / 2
-
 
 # %% {Save_results}
 @node.run_action()
