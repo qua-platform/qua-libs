@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Literal
 
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
@@ -16,14 +16,18 @@ class NodeSpecificParameters(RunnableParameters):
     """Length of the operation in ns. Default is the predefined pulse length."""
     frequency_span_in_mhz: float = 100.0
     """Frequency span in MHz. Default is 100 MHz."""
-    frequency_step_in_mhz: float = 0.1
+    frequency_num_points: float = 51
     """Frequency step in MHz. Default is 0.1 MHz."""
-    flux_offset_span_in_v: float = 0.05
+    flux_span_in_v: float = 0.2
     """Minimum flux bias offset in volts. Default is -0.02 V."""
-    expected_crosstalk: float = 0.03
-    """Change in target qubit flux per unit of aggressor qubit flux. """
-    num_flux_points: int = 51
+    flux_num_points: int = 51
     """Number of flux points. Default is 51."""
+    flux_detuning_mode: Literal["auto_for_linear_response", "auto_fill_sweep_window", "manual"] = "auto_for_linear_response"
+    """Strategy for choosing the target qubit's flux detuning."""
+    manual_flux_detuning_in_v: float = None
+    """Target qubit's flux detuning when the mode is set to manual."""
+    expected_crosstalk: float = 0.01
+    """Change in target qubit flux per unit of aggressor qubit flux. """
     input_line_impedance_in_ohm: Optional[int] = 50
     """Input line impedance in ohms. Default is 50 Ohm."""
     line_attenuation_in_db: Optional[int] = 0

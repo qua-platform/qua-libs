@@ -1,32 +1,39 @@
 # %% {Imports}
 import warnings
-from dataclasses import asdict
 
-import matplotlib.pyplot as plt
-import numpy as np
 import xarray as xr
+import numpy as np
+import matplotlib.pyplot as plt
+
 from qm.qua import *
-from qualang_tools.loops import from_array
+
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-from qualibrate import QualibrationNode
 
-from calibration_utils.crosstalk_spectroscopy_vs_flux.program import get_target_slope_from_parameter_ranges, \
-    get_qubit_flux_detuning_for_target_slope, get_expected_frequency_at_flux_detuning
-from quam_config import Quam
-from calibration_utils.crosstalk_spectroscopy_vs_flux import (
-    Parameters,
-    fit_raw_data,
-    log_fitted_results,
-    plot_raw_data_with_fit,
-    process_raw_dataset,
+from qualang_tools.loops import from_array
+
+# from qualibrate import QualibrationNode
+# from quam_config import Quam
+
+from iqcc_calibration_tools.qualibrate_config.qualibrate.node import QualibrationNode
+from iqcc_calibration_tools.quam_config.components.quam_root import Quam
+
+from calibration_utils.crosstalk_spectroscopy_vs_flux.program import (
+    get_expected_frequency_at_flux_detuning,
+    get_flux_detuning_in_v
 )
+from calibration_utils.crosstalk_spectroscopy_vs_flux import (
+    Parameters, process_raw_dataset, fit_raw_data, log_fitted_results
+)
+from calibration_utils.crosstalk_spectroscopy_vs_flux.plotting import plot_analysis
+
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
 # %% {Description}
+
 description = """
 Qubit Spectroscopy for Crosstalk Calibration
 This experiment performs qubit spectroscopy while sweeping the flux bias of a neighboring qubit or tunable coupler,
@@ -65,22 +72,21 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1", "q3"]
+    node.parameters.qubits = ["qC1", "qC4"]
     node.parameters.multiplexed = False
-    node.parameters.frequency_step_in_mhz = 0.2
-    node.parameters.frequency_span_in_mhz = 5
-    node.parameters.num_flux_points = 19
-    node.parameters.flux_offset_span_in_v = 0.2
-    node.parameters.num_shots = 1000
-    node.parameters.qubits = ["q1", "q2"]
-    node.parameters.use_state_discrimination = True
+    node.parameters.frequency_num_points = 41
+    node.parameters.frequency_span_in_mhz = 2
+    node.parameters.flux_num_points = 19
+    node.parameters.flux_span_in_v = 0.4
+    node.parameters.num_shots = 200
+    node.parameters.expected_crosstalk = 0.003
+    # node.parameters.load_data_id = 384
+    node.parameters.flux_detuning_mode = "auto_for_linear_response"
     assert node.parameters.multiplexed == False
-    pass
 
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
-
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
@@ -102,29 +108,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     operation_len = node.parameters.operation_len_in_ns
     # pre-factor to the value defined in the config - restricted to [-2; 2)
     operation_amp = node.parameters.operation_amplitude_factor
-    # Qubit detuning sweep with respect to their resonance frequencies
-    span = node.parameters.frequency_span_in_mhz * u.MHz
-    step = node.parameters.frequency_step_in_mhz * u.MHz
-    dfs = np.arange(-span / 2, +span / 2, step)
-    # Flux bias sweep in V
-    span = node.parameters.flux_offset_span_in_v * u.V
-    num = node.parameters.num_flux_points
-    dcs = np.linspace(-span / 2, +span / 2, num)
 
     xy_vs_z_delay_padding = 2000  # ns
-    target_slope = get_target_slope_from_parameter_ranges(node.parameters)
 
     # Setting the flux point of the qubits
     for qubit in qubits:
         qubit.z.flux_point = "joint"
-
-    # Register the sweep axes to be added to the dataset when fetching data
-    node.namespace["sweep_axes"] = {
-        "qubit": xr.DataArray(target_qubits.get_names()),
-        "aggressor": xr.DataArray(aggressor_qubits.get_names()),
-        "detuning": xr.DataArray(dfs, attrs={"long_name": "qubit frequency", "units": "Hz"}),
-        "flux_bias": xr.DataArray(dcs, attrs={"long_name": "flux bias", "units": "V"}),
-    }
 
     with program() as node.namespace["qua_program"]:
         # Macro to declare I, Q, n and their respective streams for a given number of qubit
@@ -132,30 +121,39 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         df = declare(int)  # QUA variable for the qubit frequency
         dc = declare(fixed)  # QUA variable for the flux dc level
 
+        # Qubit detuning sweep with respect to their resonance frequencies
+        freq_span = node.parameters.frequency_span_in_mhz * u.MHz
+        num_points = node.parameters.frequency_num_points
+        dfs = np.linspace(-freq_span / 2, freq_span / 2, num_points)
+
+        # Flux bias sweep in V
+        flux_span = node.parameters.flux_span_in_v * u.V
+        num_points = node.parameters.flux_num_points
+        dcs = np.linspace(-flux_span / 2, +flux_span / 2, num_points)
+
+        # Target qubit flux detunings
+        node.namespace["flux_detunings"] = {
+            q.name: get_flux_detuning_in_v(node.parameters, q) for q in target_qubits
+        }
+
         for i, target_qubit in enumerate(target_qubits):
+            flux_detuning = node.namespace["flux_detunings"][target_qubit.name]
+            # set target qubit frequency to expected frequency at flux-sensitive point
+            expected_frequency = get_expected_frequency_at_flux_detuning(target_qubit, flux_detuning)
+            expected_frequency_offset = expected_frequency - target_qubit.xy.RF_frequency
+
             for j, aggressor_qubit in enumerate(aggressor_qubits):
                 # Initialize the QPU in terms of flux points (flux-tunable transmons and/or tunable couplers)
                 for qubit in qubits:
                     node.machine.initialize_qpu(target=qubit, flux_point=qubit.z.flux_point)
 
-                # set target qubit to just-right flux-sensitive point
-                flux_detuning = get_qubit_flux_detuning_for_target_slope(
-                    target_qubit=target_qubit,
-                    target_slope_in_hz_per_v=target_slope,
-                    expected_crosstalk=1 if i==j else node.parameters.expected_crosstalk,
-                )
+                if target_qubit.name == aggressor_qubit.name: continue
+
                 if target_qubit.z.flux_point == "joint":
                     set_dc_offset(target_qubit.z.name, "single", target_qubit.z.joint_offset + flux_detuning)
                 else:
                     raise NotImplementedError()
 
-                # set target qubit frequency to expected frequency at flux-sensitive point
-                expected_frequency = get_expected_frequency_at_flux_detuning(target_qubit, flux_detuning)
-                expected_frequency_offset = expected_frequency - target_qubit.xy.RF_frequency
-                # print("target: " + target_qubit.name)
-                # print("aggressor: " + aggressor_qubit.name)
-                # print(f"intermediate freq offset: {expected_frequency_offset/1e6} MHz")
-                # print(f"flux_detuning: {flux_detuning} V")
                 assert abs(target_qubit.xy.intermediate_frequency + expected_frequency_offset) < 500e6
 
                 target_qubit.align()
@@ -211,6 +209,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 I_st[i].buffer(len(dcs)).buffer(len(dfs)).buffer(len(aggressor_qubits)).average().save(f"I{i + 1}")
                 Q_st[i].buffer(len(dcs)).buffer(len(dfs)).buffer(len(aggressor_qubits)).average().save(f"Q{i + 1}")
 
+    # Register the sweep axes to be added to the dataset when fetching data
+    node.namespace["sweep_axes"] = {
+        "qubit": xr.DataArray(target_qubits.get_names()),
+        "aggressor": xr.DataArray(aggressor_qubits.get_names()),
+        "detuning": xr.DataArray(dfs, attrs={"long_name": "qubit frequency", "units": "Hz"}),
+        "flux_bias": xr.DataArray(dcs, attrs={"long_name": "flux bias", "units": "V"}),
+    }
+
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
@@ -261,7 +267,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
-    # node.namespace["qubits"] = get_qubits(node)
+    node.namespace["qubits"] = node.namespace["target_qubits"] = node.namespace["aggressor_qubits"] = get_qubits(node)
     # ds_processed = process_raw_dataset(node.results["ds_raw"], node)
     # ds_processed.IQ_abs.plot()
 
@@ -271,34 +277,31 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-
-    for target_qubit in node.namespace["target_qubits"]:
-        for aggressor_qubit in node.namespace["aggressor_qubits"]:
-            plt.figure()
-            node.results["ds_raw"].sel(qubit=target_qubit.name).sel(aggressor=aggressor_qubit.name).IQ_abs.plot()
-            plt.show()
-    
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-
+    node.results["fit_results"] = {k: v for k, v in fit_results.items()}
+    if "flux_detunings" in node.namespace:
+        node.results["flux_detunings"] = node.namespace["flux_detunings"]
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
-    node.outcomes = {
-        qubit_name: ("successful" if fit_result["success"] else "failed")
-        for qubit_name, fit_result in node.results["fit_results"].items()
-    }
-
+    # node.outcomes = {
+    #     pair_key: ("successful" if fit_result.success else "failed")
+    #     for pair_key, fit_result in node.results["fit_results"].items()
+    # }
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    # Plot raw data
+    fig = plot_analysis(
+        node.results["ds_raw"], node.results["peak_results"], node.results["fit_results"],
+        node.results["flux_detunings"], node.machine.qubits
+    )
+    node.add_node_info_subtitle(fig)
+
+    node.results["figures"] = {"main": fig}
+
     plt.show()
-    # Store the generated figures
-    node.results["figures"] = {
-        "amplitude": fig_raw_fit,
-    }
 
 
 # %% {Update_state}
@@ -306,21 +309,34 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
-        for q in node.namespace["qubits"]:
-            if node.outcomes[q.name] == "failed":
-                continue
-            else:
-                fit_results = node.results["fit_results"][q.name]
-                if q.z.flux_point == "independent":
-                    q.z.independent_offset = fit_results["idle_offset"]
-                elif q.z.flux_point == "joint":
-                    q.z.joint_offset += fit_results["idle_offset"]
-                q.xy.RF_frequency = fit_results["qubit_frequency"]
-                q.f_01 = fit_results["qubit_frequency"]
-                # q.freq_vs_flux_01_quad_term = fit_results["quad_term"]
+        for target_qubit_name, target_qubit_results in node.results["fit_results"].items():
+            for aggressor_qubit_name, fit_result in target_qubit_results.items():
+                if target_qubit_name == aggressor_qubit_name:
+                    continue
 
+                # Find the qubit objects
+                target_qubit = node.machine.qubits[target_qubit_name]
+                aggressor_qubit = node.machine.qubits[aggressor_qubit_name]
+
+                target_output = target_qubit.z.opx_output
+                aggressor_output = aggressor_qubit.z.opx_output
+
+                # Update crosstalk coefficients
+                if target_output.fem_id == aggressor_output.fem_id and target_output.controller_id == aggressor_output.controller_id:
+                    if not target_output.crosstalk:
+                        target_output.crosstalk = {}
+                    if not aggressor_output.port_id in target_output.crosstalk or np.isnan(target_output.crosstalk[aggressor_output.port_id]):
+                        target_output.crosstalk[aggressor_output.port_id] = 0
+                    target_output.crosstalk[aggressor_output.port_id] += fit_result["crosstalk_coefficient"]
+
+                else:
+                    node.log(f"Couldn't compensate crosstalk between {target_qubit.name} and {aggressor_qubit.name}, "
+                             f"since they are on different fems ({target_output.controller_id, target_output.fem_id} and "
+                             f"{aggressor_output.controller_id, aggressor_output.fem_id}) respectively.")
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    # Xarray can't yet serialize multi-index dimension "pair", so need to reset before saving
+    node.results['peak_results'] = node.results['peak_results'].reset_index('pair')
     node.save()
