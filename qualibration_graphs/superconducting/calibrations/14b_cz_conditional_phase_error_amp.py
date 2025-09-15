@@ -26,8 +26,6 @@ from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
-from quam.core import operation
-
 # %% {Initialisation}
 description = """
 CALIBRATION OF THE CONTROLLED-PHASE (CPHASE) OF THE CZ GATE
@@ -74,11 +72,11 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.qubit_pairs = ["qD1-qD2"]
-    node.parameters.num_averages = 200
+    node.parameters.num_averages = 100
     node.parameters.operation = "cz_flattop"
     node.parameters.number_of_operations = 10
-    node.parameters.amp_range = 0.015
-    node.parameters.amp_step = 0.0002
+    node.parameters.amp_range = 0.03
+    node.parameters.amp_step = 0.0003
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
     node.parameters.num_frames = 11
@@ -162,12 +160,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                         # play the CZ gate
                                         qp.macros[operation_name].apply(amplitude_scale_control=amp)
                                         qp.wait(10)
-                                    # rotate the frame
-                                    with if_(n_op % 2 == 0):
-                                        qp.qubit_target.xy.frame_rotation_2pi(frame)
-                                    with else_:
-                                        assign(frame_odd, frame + 0.5)
+                                    # # rotate the frame
+                                    with if_(((n_op & 1) == 0) & (control_initial == 1)):
+                                        assign(frame_odd, frame - 0.5)
                                         qp.qubit_target.xy.frame_rotation_2pi(frame_odd)
+                                    with else_():
+                                        qp.qubit_target.xy.frame_rotation_2pi(frame)
                                     # return the target qubit before measurement
                                     qp.qubit_target.xy.play("x90")
                                     qp.align()
@@ -279,9 +277,9 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     cyclic_cmap = mcolors.LinearSegmentedColormap.from_list("custom_cyclic", colors, N=256)
     fig, ax = plt.subplots()
     # Base plot in greyscale
-    phase_diff_da = np.abs((node.results["ds_fit"].phase_diff.isel(qubit_pair=0) - 0.5))
-    # phase_diff_da = node.results["ds_fit"].phase_diff.isel(qubit_pair=0)
-    phase_diff_da.plot(cmap=cyclic_cmap, ax=ax)
+    # phase_diff_da = np.abs((node.results["ds_fit"].phase_diff.isel(qubit_pair=0) - 0.5))
+    phase_diff_da = node.results["ds_fit"].phase_diff.isel(qubit_pair=0)
+    phase_diff_da.plot(cmap="twilight_shifted", ax=ax)
 
     # tol = 0.03
     # # Build a mask for values within ±0.02 of 0.5
