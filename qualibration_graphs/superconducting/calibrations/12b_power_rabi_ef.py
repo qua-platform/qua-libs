@@ -156,9 +156,7 @@ def create_qua_program(node: QualibrationNode[EfParameters, Quam]):
             n_st.save("n")
             for i, qubit in enumerate(qubits):
                 if node.parameters.use_state_discrimination:
-                    state_st[i].buffer(len(amps)).buffer(
-                        np.ceil(node.parameters.max_number_pulses_per_sweep / 2)
-                    ).average().save(f"state{i + 1}")
+                    state_st[i].buffer(len(amps)).buffer(N_pi_vec).average().save(f"state{i + 1}")
                 else:
                     I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")
                     Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")

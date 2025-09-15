@@ -30,6 +30,7 @@ class NodeSpecificParameters(BasePowerRabiParameters):
     """Flag to update the x90 pulse amplitude after calibrating x180. Default is True."""
 
 
+
 class EfNodeSpecificParameters(BasePowerRabiParameters):
     """12b EF-specific parameters (no operation choice / error amplification knobs)."""
 
