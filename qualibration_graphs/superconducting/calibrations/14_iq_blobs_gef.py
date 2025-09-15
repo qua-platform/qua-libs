@@ -79,6 +79,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     Create the sweep axes and generate the QUA program from the pulse sequence and the
     node parameters.
     """
+    if node.parameters.reset_type != "thermal":
+        raise ValueError("Only 'thermal' reset is supported")
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
@@ -114,7 +116,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Ground state iq blobs for all qubits
                 # Qubit initialization
                 for i, qubit in multiplexed_qubits.items():
-
                     qubit.wait(3 * qubit.thermalization_time * u.ns)
                 align()
                 # Qubit readout
@@ -273,8 +274,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             #     continue
             operation = q.resonator.operations[node.parameters.operation]
             node.machine.qubits[q.name].resonator.gef_centers = (
-                (node.results["ds_fit"].sel(qubit=q.name).center_matrix.data * operation.length / 2**12).tolist()
-            )
+                node.results["ds_fit"].sel(qubit=q.name).center_matrix.data * operation.length / 2**12
+            ).tolist()
 
 
 # %% {Save_results}
