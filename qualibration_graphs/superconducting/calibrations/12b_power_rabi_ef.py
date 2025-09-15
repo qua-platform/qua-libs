@@ -1,71 +1,65 @@
 # %% {Imports}
+import dataclasses
+from dataclasses import asdict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
-
+from calibration_utils.power_rabi import (
+    EfParameters,
+    fit_raw_data,
+    get_number_of_pulses,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+    process_raw_dataset,
+)
 from qm.qua import *
-
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-
 from qualibrate import QualibrationNode
-from quam_config import Quam
-from calibration_utils.power_rabi import (
-    Parameters,
-    get_number_of_pulses,
-    process_raw_dataset,
-    fit_raw_data,
-    log_fitted_results,
-    plot_raw_data_with_fit,
-)
+from qualibration_libs import data
+from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher
-
+from quam_config import Quam
 
 # %% {Description}
 description = """
-        POWER RABI WITH ERROR AMPLIFICATION
-This sequence involves repeatedly executing the qubit pulse (such as x180) 'N' times and
-measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
-By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
-amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
-
+                EF POWER RABI CALIBRATION
+This node calibrates the pi pulse operation between the |e> and |f> states of a superconducting
+qubit by populating the |e> state with a previously calibrated pi pulse and applying a varying
+amplitude detuned pulse at the |e> -> |f> transition frequency.
 Prerequisites:
-    - Having calibrated the mixer or the Octave (nodes 01a or 01b).
-    - Having calibrated the qubit frequency (node 03a_qubit_spectroscopy.py).
-    - Having set the qubit gates duration (qubit.xy.operations["x180"].length).
-    - Having specified the desired flux point if relevant (qubit.z.flux_point).
+        - Having calibrated a pi pulse operation between the |g> and |e> states of the qubit (x180).
+            (04_power_rabi.py)
+        - Having calibrated the readout resonator dispersive shift (chi).
+            (08a_readout_frequency_optimization.py)
+        - Having calibrated the qubit anharmonicity.
 
 State update:
-    - The qubit pulse amplitude corresponding to the specified operation (x180, x90...)
-    (qubit.xy.operations[operation].amplitude).
+        - The qubit pulse amplitude corresponding to the EF_x180 operation
+            (qubit.xy.operations["EF_x180"].amplitude).
 """
 
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
-node = QualibrationNode[Parameters, Quam](
-    name="04b_power_rabi",  # Name should be unique
+node = QualibrationNode[EfParameters, Quam](
+    name="12b_power_rabi_ef",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
-    parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
+    parameters=EfParameters(),  # EF-specific parameters set
 )
 
-node.namespace["Rabi_ef"] = None
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[Parameters, Quam]):
+def custom_param(node: QualibrationNode[EfParameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1", "q2"]
-    # node.parameters.max_number_pulses_per_sweep = 100
-    # node.parameters.min_amp_factor = 0.8
-    # node.parameters.max_amp_factor = 1.2
-    # node.parameters.amp_factor_step = 0.01
+    node.parameters.use_state_discrimination = False
+    node.parameters.qubits = ["qD1", "qD2"]
     pass
 
 
@@ -75,8 +69,11 @@ node.machine = Quam.load()
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
-def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+def create_qua_program(node: QualibrationNode[EfParameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+
+    if node.parameters.reset_type == "active":
+        raise ValueError("'active' is not supported, use 'thermal' or 'active_gef' instead")
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
@@ -84,7 +81,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num_qubits = len(qubits)
 
     n_avg = node.parameters.num_shots  # The number of averages
-    operation = node.parameters.operation  # The qubit operation to play
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
     amps = np.arange(
         node.parameters.min_amp_factor,
@@ -99,6 +95,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "nb_of_pulses": xr.DataArray(N_pi_vec, attrs={"long_name": "number of pulses"}),
         "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "pulse amplitude prefactor"}),
     }
+    for qubit in qubits:
+        # Check if the qubit has the required operations
+        if hasattr(qubit.xy.operations, "EF_x180"):
+            continue
+        else:
+            x180 = qubit.xy.operations["x180"]
+            qubit.xy.operations["EF_x180"] = dataclasses.replace(x180, alpha=0.0)
 
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
@@ -113,6 +116,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
+                qubit.resonator.update_frequency(
+                    qubit.resonator.intermediate_frequency
+                    + (qubit.resonator.GEF_frequency_shift if node.parameters.use_state_discrimination else qubit.chi)
+                )
             align()
 
             with for_(n, 0, n < n_avg, n + 1):
@@ -121,20 +128,23 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     with for_(*from_array(a, amps)):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                            qubit.reset(reset_type=node.parameters.reset_type, simulate=node.parameters.simulate)
+                            if node.parameters.reset_type == "thermal":
+                                qubit.wait(2 * qubit.thermalization_time // 2)
                         align()
-
-                        # Qubit manipulation
                         for i, qubit in multiplexed_qubits.items():
+                            qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
+                            qubit.xy.play("x180")
+                            qubit.xy.update_frequency(qubit.xy.intermediate_frequency - qubit.anharmonicity)
                             # Loop for error amplification (perform many qubit pulses)
                             with for_(count, 0, count < npi, count + 1):
-                                qubit.xy.play(operation, amplitude_scale=a)
+                                qubit.xy.play("EF_x180", amplitude_scale=a)
                         align()
 
                         # Qubit readout
                         for i, qubit in multiplexed_qubits.items():
                             if node.parameters.use_state_discrimination:
-                                qubit.readout_state(state[i])
+                                qubit.readout_state_gef(state[i])
                                 save(state[i], state_st[i])
                             else:
                                 qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
@@ -145,28 +155,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for i, qubit in enumerate(qubits):
-                if operation == "x180":
-                    if node.parameters.use_state_discrimination:
-                        state_st[i].buffer(len(amps)).buffer(
-                            np.ceil(node.parameters.max_number_pulses_per_sweep / 2)
-                        ).average().save(f"state{i + 1}")
-                    else:
-                        I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")
-                        Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")
-
-                elif operation in ["x90", "-x90", "y90", "-y90"]:
-                    if node.parameters.use_state_discrimination:
-                        state_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"state{i + 1}")
-                    else:
-                        I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")
-                        Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")
+                if node.parameters.use_state_discrimination:
+                    state_st[i].buffer(len(amps)).buffer(
+                        np.ceil(node.parameters.max_number_pulses_per_sweep / 2)
+                    ).average().save(f"state{i + 1}")
                 else:
-                    raise ValueError(f"Unrecognized operation {operation}.")
+                    I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")
+                    Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
-def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+def simulate_qua_program(node: QualibrationNode[EfParameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -180,8 +180,8 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
-def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+def execute_qua_program(node: QualibrationNode[EfParameters, Quam]):
+    """Connect, execute QUA program, fetch raw data and store as dataset 'ds_raw'."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -206,7 +206,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
-def load_data(node: QualibrationNode[Parameters, Quam]):
+def load_data(node: QualibrationNode[EfParameters, Quam]):
     """Load a previously acquired dataset."""
     load_data_id = node.parameters.load_data_id
     # Load the specified dataset
@@ -218,8 +218,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+def analyse_data(node: QualibrationNode[EfParameters, Quam]):
+    """Analyse raw data -> store fitted dataset 'ds_fit' and dict 'fit_results'."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
@@ -234,7 +234,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def plot_data(node: QualibrationNode[Parameters, Quam]):
+def plot_data(node: QualibrationNode[EfParameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
@@ -246,20 +246,21 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def update_state(node: QualibrationNode[Parameters, Quam]):
+def update_state(node: QualibrationNode[EfParameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-
-            operation = q.xy.operations[node.parameters.operation]
-            operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
-            if node.parameters.operation == "x180":
-                q.xy.operations["x90"].amplitude = node.results["fit_results"][q.name]["opt_amp"] / 2
+            else:
+                operation = q.xy.operations["EF_x180"]
+                operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
 
 
 # %% {Save_results}
 @node.run_action()
-def save_results(node: QualibrationNode[Parameters, Quam]):
+def save_results(node: QualibrationNode[EfParameters, Quam]):
     node.save()
+
+
+# %%
