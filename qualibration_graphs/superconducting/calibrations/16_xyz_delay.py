@@ -164,7 +164,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
-                for init_state in ["x180", "I"]:
+                for init_state in ["e", "g"]:
                     with for_(segment, 0, segment < number_of_segments, segment + 1):
 
                         # qubit reset
@@ -172,9 +172,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                             qubit.align()
 
-                            if init_state == "x180":
+                            if init_state == "e":
                                 qubit.xy.play("x180")
-                            elif init_state == "I":
+                            elif init_state == "g":
                                 qubit.xy.wait(qubit.xy.operations["x180"].length)
 
                             qubit.align()
