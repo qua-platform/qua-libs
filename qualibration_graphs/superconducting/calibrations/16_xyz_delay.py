@@ -24,9 +24,24 @@ from qualibration_libs.parameters import get_idle_times_in_clock_cycles, get_qub
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
-# %% {Initialisation}
+# %% {Description}
 description = """
-        XY-Z delay as describe in page 108 at https://web.physics.ucsb.edu/~martinisgroup/theses/Chen2018.pdf
+        XY-Z DELAY CALIBRATION
+This calibration determines the relative delay between the microwave XY control line (e.g. x180) and the Z line (flux)
+for each qubit. The goal is to ensure that the flux pulse reaches the qubit at the same time as the XY drive and correct
+for any latency differences between the two control lines. By applying the XY and Z pulses simultaneously, the qubit
+frequency is shifted during the XY rotation, which can lead to incomplete rotations if the pulses are not properly aligned
+in time. By inserting variable leading / trailing zeros around the fixed XY and Z pulse shapes, the sequence scans the
+relative timing at 1ns resolution and measures the qubit state for two initial preparations
+(|e> created by an initial x180 and |g> with identity). The resulting population (or I/Q) versus relative timing is
+fitted to extract the optimal flux delay that best aligns the Z pulse with the XY drive (see Chen PhD thesis, p.108).
+
+Prerequisites:
+    - Having calibrated a pi-pulse (x180) for the given qubit.
+    - (Optional) State discrimination calibrated if use_state_discrimination = True.
+
+State update:
+    - Adds extracted flux delay (fit_results[qubit]["flux_delay"]) to q.z.opx_output.delay per successful qubit.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
