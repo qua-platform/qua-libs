@@ -57,13 +57,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["qA1", "qA2", "qA3", "qA4", "qA5"]  # Qubits to calibrate
-    node.parameters.qubits = ["qA1"]  # Qubits to calibrate
-    node.parameters.num_shots = 500
-    node.parameters.reset_type = "active"
-    node.parameters.use_state_discrimination = True
-    node.parameters.zeros_before_after_pulse = 100
-    # node.parameters.load_data_id = 2505
+    # node.parameters.qubits = ["q1", "q2"]
     pass
 
 
