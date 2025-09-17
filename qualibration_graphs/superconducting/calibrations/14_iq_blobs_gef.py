@@ -12,7 +12,6 @@ from calibration_utils.iq_blobs_ef import (
     plot_iq_blobs,
     process_raw_dataset,
 )
-from calibration_utils.iq_blobs_ef.plotting import plot_historams
 from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
@@ -59,7 +58,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     execution in the Python IDE.
     """
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qD2"]
+    node.parameters.qubits = ["qD1", "qD2"]
     pass
 
 
