@@ -27,7 +27,7 @@ from quam_config import Quam
 
 # %% {Description}
 description = """
-                EF POWER RABI CALIBRATION
+        EF POWER RABI CALIBRATION
 This node calibrates the pi pulse operation between the |e> and |f> states of a superconducting
 qubit by populating the |e> state with a previously calibrated pi pulse and applying a varying
 amplitude detuned pulse at the |e> -> |f> transition frequency.
@@ -58,8 +58,7 @@ node = QualibrationNode[EfParameters, Quam](
 def custom_param(node: QualibrationNode[EfParameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.use_state_discrimination = False
-    node.parameters.qubits = ["qD1", "qD2"]
+    # node.parameters.qubits = ["q1", "q2"]
     pass
 
 
@@ -76,8 +75,7 @@ def create_qua_program(node: QualibrationNode[EfParameters, Quam]):
         raise ValueError("'active' is not supported, use 'thermal' or 'active_gef' instead")
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
-    # Get the active qubits from the node and organize them by batches
-    node.namespace["qubits"] = qubits = get_qubits(node)
+    node.namespace["qubits"] = qubits = get_qubits(node) # Get qubits to calibrate
     num_qubits = len(qubits)
 
     n_avg = node.parameters.num_shots  # The number of averages
@@ -92,7 +90,6 @@ def create_qua_program(node: QualibrationNode[EfParameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "nb_of_pulses": xr.DataArray(N_pi_vec, attrs={"long_name": "number of pulses"}),
         "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "pulse amplitude prefactor"}),
     }
     for qubit in qubits:
@@ -124,44 +121,43 @@ def create_qua_program(node: QualibrationNode[EfParameters, Quam]):
 
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
-                with for_(*from_array(npi, N_pi_vec)):
-                    with for_(*from_array(a, amps)):
-                        # Qubit initialization
-                        for i, qubit in multiplexed_qubits.items():
-                            qubit.reset(reset_type=node.parameters.reset_type, simulate=node.parameters.simulate)
-                            if node.parameters.reset_type == "thermal":
-                                qubit.wait(2 * qubit.thermalization_time // 2)
-                        align()
-                        for i, qubit in multiplexed_qubits.items():
-                            qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
-                            qubit.xy.play("x180")
-                            qubit.xy.update_frequency(qubit.xy.intermediate_frequency - qubit.anharmonicity)
-                            # Loop for error amplification (perform many qubit pulses)
-                            with for_(count, 0, count < npi, count + 1):
-                                qubit.xy.play("EF_x180", amplitude_scale=a)
-                        align()
+                with for_(*from_array(a, amps)):
+                    # Qubit initialization
+                    for i, qubit in multiplexed_qubits.items(): # Reset the qubit to ground state
+                        qubit.reset(reset_type=node.parameters.reset_type, simulate=node.parameters.simulate)
+                        if node.parameters.reset_type == "thermal": # Wait twice the regular thermal time
+                            qubit.wait(2 * qubit.thermalization_time // 2)
+                    align()
+                    for i, qubit in multiplexed_qubits.items():
+                        # Set the XY channel to the |g> -> |e> transition (GE) intermediate frequency
+                        qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
+                        # Apply previously calibrated pi pulse to populate |e>
+                        qubit.xy.play("x180")
+                        # Shift drive to the |e> -> |f> (EF) transition by subtracting the anharmonicity
+                        qubit.xy.update_frequency(qubit.xy.intermediate_frequency - qubit.anharmonicity)
+                        # Apply EF pi pulse with swept amplitude scaling factor 'a'
+                        qubit.xy.play("EF_x180", amplitude_scale=a)
+                    align()
 
-                        # Qubit readout
-                        for i, qubit in multiplexed_qubits.items():
-                            if node.parameters.use_state_discrimination:
-                                qubit.readout_state_gef(state[i])
-                                save(state[i], state_st[i])
-                            else:
-                                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                                save(I[i], I_st[i])
-                                save(Q[i], Q_st[i])
-                        align()
+                    # Qubit readout
+                    for i, qubit in multiplexed_qubits.items():
+                        if node.parameters.use_state_discrimination:
+                            qubit.readout_state_gef(state[i]) # Need to calibrate gef readout first 
+                            save(state[i], state_st[i])
+                        else:
+                            qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                            save(I[i], I_st[i])
+                            save(Q[i], Q_st[i])
+                    align()
 
         with stream_processing():
             n_st.save("n")
             for i, qubit in enumerate(qubits):
                 if node.parameters.use_state_discrimination:
-                    state_st[i].buffer(len(amps)).buffer(
-                        np.ceil(node.parameters.max_number_pulses_per_sweep / 2)
-                    ).average().save(f"state{i + 1}")
+                    state_st[i].buffer(len(amps)).average().save(f"state{i + 1}")
                 else:
-                    I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")
-                    Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")
+                    I_st[i].buffer(len(amps)).average().save(f"I{i + 1}")
+                    Q_st[i].buffer(len(amps)).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate}

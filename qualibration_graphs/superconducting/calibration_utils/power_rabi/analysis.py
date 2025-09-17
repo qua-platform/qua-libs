@@ -84,7 +84,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     max_pulses = getattr(node.parameters, "max_number_pulses_per_sweep", 1)
     operation = getattr(node.parameters, "operation", "EF_x180" if node.name == "12b_power_rabi_ef" else "x180")
     if max_pulses == 1:
-        ds_fit = ds.sel(nb_of_pulses=1)
+        ds_fit = ds.sel(nb_of_pulses=1) if node.name != "12b_power_rabi_ef" else ds
         # Fit the power Rabi oscillations
         if node.parameters.use_state_discrimination:
             fit_vals = fit_oscillation(ds_fit.state, "amp_prefactor")
