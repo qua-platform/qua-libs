@@ -33,15 +33,11 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
-        s = f"IW angle: {fit_results[q]['iw_angle'] * 180 / np.pi:.1f} deg | "
-        s += f"ge_threshold: {fit_results[q]['ge_threshold'] * 1e3:.1f} mV | "
-        s += f"rus_threshold: {fit_results[q]['rus_threshold'] * 1e3:.1f} mV | "
-        s += f"readout fidelity: {fit_results[q]['readout_fidelity']:.1f} % \n "
         if fit_results[q]["success"]:
             s_qubit += " SUCCESS!\n"
         else:
             s_qubit += " FAIL!\n"
-        log_callable(s_qubit + s)
+        log_callable(s_qubit)
 
 
 def find_biggest_gaussian(da):
@@ -144,44 +140,10 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         Dataset containing the fit results.
     """
     ds_fit = fit_gaussian_centers(ds, node)
-
-    # node.results["results"][q.name]["center_matrix"] = np.array(
-    #     [[I_g_cent, Q_g_cent], [I_e_cent, Q_e_cent], [I_f_cent, Q_f_cent]]
-    # )
-    # # Derive the confusion matrix
-    # confusion = np.zeros((3, 3))
-    # for p, prep_state in enumerate(["g", "e", "f"]):
-    #     dist_g = np.sqrt(
-    #         (I_g_cent - ds[f"I_{prep_state}"].sel(qubit=q.name)) ** 2
-    #         + (Q_g_cent - ds[f"Q_{prep_state}"].sel(qubit=q.name)) ** 2
-    #     )
-    #     dist_e = np.sqrt(
-    #         (I_e_cent - ds[f"I_{prep_state}"].sel(qubit=q.name)) ** 2
-    #         + (Q_e_cent - ds[f"Q_{prep_state}"].sel(qubit=q.name)) ** 2
-    #     )
-    #     dist_f = np.sqrt(
-    #         (I_f_cent - ds[f"I_{prep_state}"].sel(qubit=q.name)) ** 2
-    #         + (Q_f_cent - ds[f"Q_{prep_state}"].sel(qubit=q.name)) ** 2
-    #     )
-    #     dist = np.stack([dist_g, dist_e, dist_f], axis=0)
-    #     counts = np.argmin(dist, axis=0)
-    #     confusion[p][0] = np.sum(counts == 0) / len(counts)
-    #     confusion[p][1] = np.sum(counts == 1) / len(counts)
-    #     confusion[p][2] = np.sum(counts == 2) / len(counts)
-    #     node.results["results"][q.name]["confusion_matrix"] = confusion
     # Extract the relevant fitted parameters
     fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
     # return fit_data, fit_results
     return fit_data, fit_results
-
-
-def _false_detections(threshold, Ig, Ie):
-    if np.mean(Ig) < np.mean(Ie):
-        false_detections_var = np.sum(Ig > threshold) + np.sum(Ie < threshold)
-    else:
-        false_detections_var = np.sum(Ig < threshold) + np.sum(Ie > threshold)
-    return false_detections_var
-
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""

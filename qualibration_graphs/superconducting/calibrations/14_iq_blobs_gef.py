@@ -25,25 +25,21 @@ from quam_config import Quam
 
 # %% {Description}
 description = """
-        IQ BLOBS
+        IQ BLOBS GEF
 This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit in
-the |g> state) and then after applying a x180 (pi) pulse to the qubit (bringing the qubit to the |e> state).
+the |g> state), then after applying a x180 (pi) pulse to the qubit (bringing the qubit to the |e> state) and finally
+after applying a x180 (pi) pulse plus an EF_180 pulse (bringing the qubit to the |f> state).
 The resulting IQ blobs are displayed, and the data is processed to determine:
-    - The rotation angle required for the integration weights, ensuring that the
-      separation between |g> and |e> states aligns with the 'I' quadrature.
-    - The threshold along the 'I' quadrature for effective qubit state discrimination (at the center between the two blobs).
-    - The repeat-until-success threshold along the 'I' quadrature for effective active reset (at the center of the |g> blob).
-    - The readout confusion matrix, which is also influenced by the x180 pulse fidelity.
+    - The centers of the |g>, |e> and |f> state IQ blobs.
+    - The readout confusion matrix, which is also influenced by the x180 and EF_180 pulses fidelities.
 
 Prerequisites:
     - Having calibrated the readout parameters (nodes 02a, 02b and/or 02c).
-    - Having calibrated the qubit x180 pulse parameters (nodes 03a_qubit_spectroscopy.py and 04b_power_rabi.py).
+    - Having calibrated the qubit x180 pulse parameters.
+    - Having calibrated the qubit EF_180 pulse parameters.
 
 State update:
-    - The integration weight angle: qubit.resonator.operations["readout"].integration_weights_angle
-    - the ge discrimination threshold: qubit.resonator.operations["readout"].threshold
-    - the Repeat Until Success threshold: qubit.resonator.operations["readout"].rus_exit_threshold
-    - The confusion matrix: qubit.resonator.operations["readout"].confusion_matrix
+    - The gef centers positions: qubit.resonator.gef_centers
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -63,8 +59,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     execution in the Python IDE.
     """
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qA1", "qA3"]
-    # node.parameters.load_data_id = 1524
+    node.parameters.qubits = ["qD2"]
     pass
 
 
@@ -108,7 +103,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             for i, qubit in multiplexed_qubits.items():
                 shift = qubit.resonator.GEF_frequency_shift if qubit.resonator.GEF_frequency_shift is not None else 0
-                qubit.resonator.update_frequency(qubit.resonator.intermediate_frequency + shift)
+                qubit.resonator.update_frequency(
+                    qubit.resonator.intermediate_frequency + shift
+                )  # resonator frequency shift for GEF
 
             with for_(n, 0, n < n_runs, n + 1):
                 save(n, n_st)
@@ -116,9 +113,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Ground state iq blobs for all qubits
                 # Qubit initialization
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.wait(3 * qubit.thermalization_time * u.ns)
+                    qubit.wait(2 * qubit.thermalization_time * u.ns)  # longer wait for |f> thermalization
                 align()
-                # Qubit readout
+                # |g> state readout
                 for i, qubit in multiplexed_qubits.items():
                     qubit.resonator.measure(operation, qua_vars=(I_g[i], Q_g[i]))
                     qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
@@ -130,10 +127,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Excited state iq blobs for all qubits
                 # Qubit initialization
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.wait(3 * qubit.thermalization_time * u.ns)
+                    qubit.wait(2 * qubit.thermalization_time * u.ns)  # longer wait for |f> thermalization
                 align()
-
-                # Qubit readout
+                # |e> state readout
                 for i, qubit in multiplexed_qubits.items():
                     qubit.xy.play("x180")
                     qubit.resonator.measure(operation, qua_vars=(I_e[i], Q_e[i]))
@@ -143,14 +139,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     save(Q_e[i], Q_e_st[i])
 
                 # Second excited state iq blobs for all qubits
-                # Qubit initialization
+                # Qubit reset
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.reset(node.parameters.reset_type, node.parameters.simulate)
-                    if node.parameters.reset_type == "thermal":
-                        qubit.wait(3 * qubit.thermalization_time * u.ns)
+                    qubit.wait(2 * qubit.thermalization_time * u.ns)  # longer wait for |f> thermalization
                 align()
-
-                # Qubit readout
+                # |f> state readout
                 for i, qubit in multiplexed_qubits.items():
                     qubit.xy.play("x180")
                     update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity)
@@ -221,10 +214,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
-    load_data_id = node.parameters.load_data_id
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
-    node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
 
@@ -239,12 +230,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-    # # Log the relevant information extracted from the data analysis
-    # log_fitted_results(node.results["fit_results"], log_callable=node.log)
-    # node.outcomes = {
-    #     qubit_name: ("successful" if fit_result["success"] else "failed")
-    #     for qubit_name, fit_result in node.results["fit_results"].items()
-    # }
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plot_data}
@@ -270,18 +261,15 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
-            # if node.outcomes[q.name] == "failed":
-            #     continue
+            if node.outcomes[q.name] == "failed":
+                continue
             operation = q.resonator.operations[node.parameters.operation]
             node.machine.qubits[q.name].resonator.gef_centers = (
                 node.results["ds_fit"].sel(qubit=q.name).center_matrix.data * operation.length / 2**12
-            ).tolist()
+            ).tolist() # convert to raw adc units
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
-
-
-# %%
