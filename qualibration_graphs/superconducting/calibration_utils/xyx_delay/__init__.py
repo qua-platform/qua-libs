@@ -1,4 +1,4 @@
-from .analysis import fit_raw_data, log_fitted_results, process_raw_dataset
+from .analysis import fit_raw_data, log_fitted_results, process_raw_dataset, baked_flux_xy_segments
 from .parameters import Parameters
 from .plotting import plot_raw_data_with_fit
 
@@ -8,4 +8,5 @@ __all__ = [
     "fit_raw_data",
     "log_fitted_results",
     "plot_raw_data_with_fit",
+    "baked_flux_xy_segments",
 ]

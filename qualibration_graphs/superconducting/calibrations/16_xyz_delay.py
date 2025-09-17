@@ -10,17 +10,15 @@ from calibration_utils.xyx_delay import (
     log_fitted_results,
     plot_raw_data_with_fit,
     process_raw_dataset,
+    baked_flux_xy_segments,
 )
-from matplotlib.figure import figaspect
-from pydantic_core.core_schema import ExtraBehavior
 from qm.qua import *
-from qualang_tools.bakery import baking
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.parameters import get_idle_times_in_clock_cycles, get_qubits
+from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
@@ -46,7 +44,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="14_XY_Z_delay",  # Name should be unique
+    name="16_XY_Z_delay",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
@@ -75,57 +73,29 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Class containing tools to help handling units and conversions.
     u = unit(coerce_to_integer=True)
     # Generate the OPX and Octave configurations
-    node.namespace["qubits"] = qubits = get_qubits(node)
-    num_qubits = len(qubits)
+    node.namespace["qubits"] = qubits = get_qubits(node)  # Get active qubit objects and store them in the node namespace
+    num_qubits = len(qubits)  # Count how many qubits are involved in this calibration
 
-    config = node.machine.generate_config()
+    config = node.machine.generate_config()  # Generate the QM configuration from the current machine state
 
-    n_avg = node.parameters.num_shots  # Number of averages
-    total_zeros = 2 * node.parameters.zeros_before_after_pulse
+    n_avg = node.parameters.num_shots  # Number of averages (used in the QUA averaging loop)
+    total_zeros = 2 * node.parameters.zeros_before_after_pulse  # Total number of delay positions scanned (± range)
 
-    flux_waveform_list = {}
+    flux_waveform_list = {}  # Will store per-qubit flux pulse sample lists prior to baking
 
     for qubit in qubits:
         flux_waveform_list[qubit.xy.name] = [node.parameters.z_pulse_amplitude] * qubit.xy.operations["x180"].length
-
-    def baked_waveform(waveform, qb):
-        pulse_segments = []  # Stores the baking objects
-        # Create the different baked sequences, each one corresponding to a different truncated duration
-
-        for i in range(0, 2 * node.parameters.zeros_before_after_pulse):
-            with baking(config, padding_method="none") as b:
-                wf = [0.0] * i + waveform + [0.0] * (2 * node.parameters.zeros_before_after_pulse - i)
-                I_wf = (
-                    [0.0] * (node.parameters.zeros_before_after_pulse)
-                    + config["waveforms"][qb.xy.name + ".x180_DragCosine.wf.I"]["samples"]
-                    + [0.0] * (node.parameters.zeros_before_after_pulse)
-                )
-                Q_wf = (
-                    [0.0] * (node.parameters.zeros_before_after_pulse)
-                    + config["waveforms"][qb.xy.name + ".x180_DragCosine.wf.Q"]["samples"]
-                    + [0.0] * (node.parameters.zeros_before_after_pulse)
-                )
-
-                assert (
-                    len(wf) == len(I_wf) == len(Q_wf)
-                ), f"Lengths of wf ({len(wf)}), I_wf ({len(I_wf)}), and Q_wf ({len(Q_wf)}) must be the same."
-
-                b.add_op("flux_pulse", qb.z.name, wf)
-                b.add_op("x180", qb.xy.name, [I_wf, Q_wf])
-
-                b.play("flux_pulse", qb.z.name)
-                b.play("x180", qb.xy.name)
-
-            # Append the baking object in the list to call it from the QUA program
-            pulse_segments.append(b)
-
-        return pulse_segments
 
     delay_segments = {}
     # Baked flux pulse segments with 1ns resolution
 
     for i, qubit in enumerate(qubits):
-        delay_segments[qubit.xy.name] = baked_waveform(flux_waveform_list[qubit.xy.name], qubit)
+        delay_segments[qubit.xy.name] = baked_flux_xy_segments(
+            config,
+            flux_waveform_list[qubit.xy.name],
+            qubit,
+            node.parameters.zeros_before_after_pulse,
+        )
         print(f"Baked waveform for {qubit.xy.name}")
 
     node.namespace["config"] = config
@@ -155,36 +125,44 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         npi = declare(int)  # QUA variable for the number of qubit pulses
         count = declare(int)  # QUA variable for counting the qubit pulses
 
+        # --- Batch over qubits (allows time-multiplexed execution respecting hardware constraints)
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
-            align()
+            align()  # Ensure all elements start aligned before the averaging loop
 
+            # --- Averaging loop
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st)
+                save(n, n_st)  # Save current average index for live progress
 
+                # --- Initial state preparation loop: prepare |e> (via x180) and |g> (idle) for contrast
                 for init_state in ["e", "g"]:
+                    # --- Relative delay scan loop (index over baked XY+Z aligned segments)
                     with for_(segment, 0, segment < number_of_segments, segment + 1):
 
-                        # qubit reset
+                        # 1. Reset qubits to ground state
                         for i, qubit in multiplexed_qubits.items():
                             qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                             qubit.align()
 
+                            # 2. State preparation: excited (x180) or ground (wait same duration)
                             if init_state == "e":
                                 qubit.xy.play("x180")
                             elif init_state == "g":
                                 qubit.xy.wait(qubit.xy.operations["x180"].length)
 
                             qubit.align()
+                            # 3. Optional coarse pre-wait (accounts for leading padding before fine scan)
                             qubit.wait(node.parameters.zeros_before_after_pulse // 4)
+                            # 4. Apply baked XY+Z segment with specific relative shift
                             with switch_(segment):
                                 for j in range(0, number_of_segments):
                                     with case_(j):
                                         delay_segments[qubit.xy.name][j].run()
 
                             qubit.align()
+                            # 5. Measurement (state discrimination or I/Q acquisition)
                             if node.parameters.use_state_discrimination:
                                 qubit.readout_state(state[i])
                                 save(state[i], state_st[i])
@@ -193,7 +171,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 save(I[i], I_st[i])
                                 save(Q[i], Q_st[i])
 
-            align()
+            align()  # Final alignment after batch completes
 
         with stream_processing():
             n_st.save("n")
@@ -281,7 +259,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
-        "amplitude": fig_raw_fit,
+        "delay_scan": fig_raw_fit,
     }
 
 
