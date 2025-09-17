@@ -4,7 +4,7 @@ In this tutorial we will present a experimental set up based on trapped ion and 
 
 The system of interest is based on the recent work on the global single-qubit addressing using composite microwave pulse sequences [[4](#references)]. A simplified case will be presented here for clarity. The overall trap and the relevant fields are shown in the figure below.
 
-![](../images/ion_trap.png){height=420}
+<img src="../images/ion_trap.png" width=50% height=50%>
 
 To trap an ion in an electric field, one require both the RF and DC applied on their respective electrode. The presence of multiple DC electrodes is to facilitate the shuttling and re-arrangement of the ions. The qubit is defined by the hyperfine levels due to the static magnetic field (labelled B) which determines the quantization axis. 
 
@@ -15,25 +15,28 @@ Finally, a readout laser incoherently excites the ion to a fast-decaying state a
 ## Qubit scheme
 A more detailed qubit scheme is presented in the figure. In addition to the coherent microwave drive and the readout operation, an optical shelving operation is necessary for the state discrimination. The optical shelving typically maps one of the qubit state to an intermediate state $\ket{i}$ which in turn decays and shelved in a meta-stable $\ket{r}$ state. The $\ket{i}$ state is chosen such that decay to other states are forbidden to ensure high shelving fidelity.
 
-![](../images/ion_energy_level.png){height=420}
+<img src="../images/ion_energy_level.png" width=35% height=35%>
 
 For the rest of the tutorial, we will aim perform a single qubit gate using a global microwave drive and performing a readout from a two qubit system.
 
 ## Global single-qubit addressing gate
 
 The global rotation operator $R_1 \otimes R_2$ acting on the two qubits driven by a single resonant microwave pulse with amplitude $A$ and phase $\phi$ is given by
+
 $$
 R_k =
-\begin{pmatrix}
+\begin{bmatrix}
 \cos\left(\frac{\pi A}{2 A_k^\pi}\right) &
-e^{i\phi} \sin\left(\frac{\pi A}{2 A_k^\pi}\right) \\
-e^{-i\phi} \sin\left(\frac{\pi A}{2 A_k^\pi}\right) &
+e^{i\phi}\sin\left(\frac{\pi A}{2 A_k^\pi}\right) \\
+e^{-i\phi}\sin\left(\frac{\pi A}{2 A_k^\pi}\right) &
 \cos\left(\frac{\pi A}{2 A_k^\pi}\right)
-\end{pmatrix}
+\end{bmatrix}
 $$
-with the qubit index $k\isin\{1, 2\}$. The rotation angle $\theta_k$ about an axis on the Bloch sphere is determined by the relative amplitude $A/A_k^\pi$ where the amplitude $A_k^\pi$ is required for a $\pi$ rotation. Note that $A_k^\pi$ is also a measure of the Rabi frequency. By adjusting the DC confinement, the ions can displaced such that each of the ion experienced a different  magnetic-field gradient and thus different $A_k^\pi$.
 
-![](../images/ion_global_rot.png){height=420}
+
+with the qubit index $k\in\{1, 2\}$. The rotation angle $\theta_k$ about an axis on the Bloch sphere is determined by the relative amplitude $A/A_k^\pi$ where the amplitude $A_k^\pi$ is required for a $\pi$ rotation. Note that $A_k^\pi$ is also a measure of the Rabi frequency. By adjusting the DC confinement, the ions can displaced such that each of the ion experienced a different  magnetic-field gradient and thus different $A_k^\pi$.
+
+<img src="../images/ion_global_rot.png" width=50% height=50%>
 
 Consider a case where $A_1^\pi/A_2^\pi = 2$ and $\phi=0$. An $X_\pi I$ gate can be applied by driving at $A=2A_2^\pi$. Similarly, any arbitrary single qubit gate can be realized by using composite pulses with appropriate $A$ and $\phi$.
 
@@ -42,7 +45,7 @@ For simplicity, let us consider only the implementation of $X_\pi$ gate on the q
 ## Control Hardware
 To begin with, let us define our control hardware stack. The  MW and RF signals are generated from [OPX-1000](https://www.quantum-machines.co/products/opx1000/), DC signals from [QDAC-II](https://www.quantum-machines.co/products/qdac/). The fluorescence readout signal is outputted from a PMT into the OPX1000 LF-FEM input.
 
-![](../images/ion_system.png){height=420}
+<img src="../images/ion_system.png" width=70% height=70%>
 
 We will refrain from discussing the specific implementation of the DC electrode signal other than they are being triggered from OPX1000 MW-FEM in conjunction prior to the MW gate operation to adjust the ions' position to obtain the desire Rabi frequency.
 
@@ -58,11 +61,11 @@ Having discussed the hardware, we can now proceed to provide their abstraction i
 
 ## 4. Implementing the protocol
 
-![](../images/protocol.png){height=420}
+<img src="../images/protocol.png" width=50% height=50%>
 
 ## 5. Optimizing parameters
 
-![](../images/error_amplification.png){height=420}
+<img src="../images/error_amplification.png" width=40% height=40%>
 
 # References
 1. Leibfried, D., Blatt, R., Monroe, C., & Wineland, D. (2003). Quantum dynamics of single trapped ions. Reviews of Modern Physics, 75(1), 281. https://doi.org/10.1103/RevModPhys.75.281
