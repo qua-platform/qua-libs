@@ -111,9 +111,9 @@ def fit_routine(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
         }
     )
 
-    ds["D"] = ds[["Dge", "Def", "Dgf"]].to_array().min("variable")
+    ds["Distance"] = ds[["Dge", "Def", "Dgf"]].to_array().min("variable")
 
-    detuning = ds.D.rolling({"frequency": 3}).mean("frequency").idxmax("frequency")
+    detuning = ds.Distance.rolling({"frequency": 3}).mean("frequency").idxmax("frequency")
 
     ds = ds.assign(
         {

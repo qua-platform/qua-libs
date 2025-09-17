@@ -1,8 +1,8 @@
 from typing import List
+
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-
 from qualang_tools.units import unit
 from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
@@ -62,8 +62,6 @@ def plot_individual_distance_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    fit.D.plot(ax=ax)
+    fit.Distance.plot(ax=ax)
     ax.axvline(fit.optimal_detuning, color="k", linestyle="--", lw=0.5, label="Optimal detuning")
     ax.set_title(qubit["qubit"])
-
-
