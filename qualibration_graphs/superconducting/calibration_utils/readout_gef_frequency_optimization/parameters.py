@@ -8,7 +8,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Number of averages to perform. Default is 100."""
     frequency_span_in_mhz: float = 2
     """Span of frequencies to sweep in MHz. Default is 2 MHz."""
-    frequency_step_in_mhz: float = 0.05
+    frequency_step_in_mhz: float = 0.01
     """Step size for frequency sweep in MHz. Default is 0.05 MHz."""
     operation: str = "readout"
     """Operation to perform, e.g., 'readout'. Default is 'readout'."""

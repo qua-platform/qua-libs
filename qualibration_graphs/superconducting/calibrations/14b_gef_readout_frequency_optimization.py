@@ -24,7 +24,39 @@ from quam_config import Quam
 
 # %% {Description}
 description = """
-        ...
+        G-E-F READOUT FREQUENCY OPTIMIZATION
+This sequence sweeps the readout resonator intermediate frequency around the current operating point while preparing
+the qubit successively in |g>, |e>, and |f> states. For every tested detuning, three IQ blobs (g, e, f) are acquired.
+The distances between the three centroids are computed and fitted to identify the optimal frequency shift that
+maximizes simultaneous separation (e.g. maximizes the minimum of {d_ge, d_ef, d_gf}). The resulting optimal detuning
+is then added to the stored `GEF_frequency_shift` parameter.
+
+Purpose:
+    - Optimize a single readout frequency for high-fidelity three-level (g/e/f) state discrimination
+        (including leakage monitoring).
+    - Improve discrimination robustness against slow frequency drifts or residual mis-calibration.
+
+Measurement flow:
+    1. For each qubit, loop over the readout frequency detuning values.
+    2. For every detuning value acquire ground state response (idle), excited state response (after x180), and second
+       excited state response (after x180, frequency hop to f transition, EF_x180, hop back).
+    3. Average IQ samples over all shots for each state & detuning.
+    4. Compute centroid distances vs detuning and fit to extract the optimal detuning.
+
+Prerequisites:
+    - Resonator frequency & power calibrated (nodes 02a, 08a, 08b as relevant).
+    - Qubit ge and ef pi pulses calibrated.
+    - EF transition pulse `EF_x180` defined & roughly calibrated (requires anharmonicity knowledge).
+    - Proper reset / thermalization parameters set (qubit.thermalization_time, reset_type).
+    - An initial (possibly zero) value of `qubit.resonator.GEF_frequency_shift` present in the state.
+
+State update:
+    - Adds the fitted optimal detuning to `qubit.resonator.GEF_frequency_shift` for each qubit whose fit is successful.
+
+Notes:
+    - A fit can fail if the sweep span is too small or SNR too low; such qubits are flagged as 'failed' and not updated.
+    - Increase span, number of shots, or readout power if separation is insufficient.
+    - Ensure EF_x180 pulse and anharmonicity are accurate enough to reliably populate |f>.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -44,7 +76,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     execution in the Python IDE.
     """
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qB1", "qB2"]
+    node.parameters.qubits = ["qD1", "qD2"]
     pass
 
 
