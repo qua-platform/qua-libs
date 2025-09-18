@@ -5,7 +5,7 @@
             "macros": {
                 "measure": {
                     "threshold": 10,
-                    "__class__": "MeasureMacro"
+                    "__class__": "trapped_ion.custom_macros.MeasureMacro"
                 }
             },
             "shelving": {
@@ -20,7 +20,7 @@
                 "opx_output": {
                     "controller_id": "con1",
                     "fem_id": 1,
-                    "port_id": 1,
+                    "port_id": 3,
                     "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
                 },
                 "__class__": "quam.components.channels.SingleChannel"
@@ -48,14 +48,14 @@
                 },
                 "__class__": "quam.components.channels.InOutSingleChannel"
             },
-            "__class__": "HyperfineQubit"
+            "__class__": "trapped_ion.custom_components.HyperfineQubit"
         },
         "q2": {
             "id": "q2",
             "macros": {
                 "measure": {
                     "threshold": 10,
-                    "__class__": "MeasureMacro"
+                    "__class__": "trapped_ion.custom_macros.MeasureMacro"
                 }
             },
             "shelving": {
@@ -66,11 +66,11 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": 250000000.0,
+                "intermediate_frequency": 300000000.0,
                 "opx_output": {
                     "controller_id": "con1",
                     "fem_id": 1,
-                    "port_id": 1,
+                    "port_id": 3,
                     "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
                 },
                 "__class__": "quam.components.channels.SingleChannel"
@@ -83,7 +83,7 @@
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     }
                 },
-                "intermediate_frequency": 250000000.0,
+                "intermediate_frequency": 300000000.0,
                 "opx_input": {
                     "controller_id": "con1",
                     "fem_id": 1,
@@ -98,19 +98,18 @@
                 },
                 "__class__": "quam.components.channels.InOutSingleChannel"
             },
-            "__class__": "HyperfineQubit"
+            "__class__": "trapped_ion.custom_components.HyperfineQubit"
         }
     },
     "global_op": {
         "macros": {
             "X": {
-                "__class__": "DoubleXMacro"
+                "__class__": "trapped_ion.custom_macros.SingleXMacro"
+            },
+            "N_XX": {
+                "__class__": "trapped_ion.custom_macros.DoubleXMacro"
             }
         },
-        "normalized_rabi_freqs": [
-            1.0,
-            2.0
-        ],
         "global_mw": {
             "operations": {
                 "x180": {
@@ -129,7 +128,7 @@
             "intermediate_frequency": 100000000.0,
             "opx_output": {
                 "controller_id": "con1",
-                "fem_id": 5,
+                "fem_id": 8,
                 "port_id": 1,
                 "band": 1,
                 "upconverter_frequency": 3000000000.0,
@@ -158,7 +157,7 @@
                 "ttl": {
                     "opx_output": {
                         "controller_id": "con1",
-                        "fem_id": 5,
+                        "fem_id": 8,
                         "port_id": 1,
                         "__class__": "quam.components.ports.digital_outputs.FEMDigitalOutputPort"
                     },
@@ -169,7 +168,7 @@
             },
             "__class__": "quam.components.channels.Channel"
         },
-        "__class__": "GlobalOperations"
+        "__class__": "trapped_ion.custom_components.GlobalOperations"
     },
-    "__class__": "Quam"
+    "__class__": "trapped_ion.custom_components.Quam"
 }

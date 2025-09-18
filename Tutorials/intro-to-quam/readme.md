@@ -67,7 +67,7 @@ To install QUAM and prepare your environment, follow the official instructions:
 
 ## 4. 🚀 Get started
 While there is no constraint on the experimental setup that can be implemented on QUAM, we will demonstrate the abstraction on the following system:
- - [Trapped ion](./trapped%20ion/readme.md)
+ - [Trapped ion](./trapped_ion/readme.md)
 
 
 ### 5. 🔄 Migrating to QUAM

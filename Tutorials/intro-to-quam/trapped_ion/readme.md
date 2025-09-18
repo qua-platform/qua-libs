@@ -56,7 +56,8 @@ The specific implementation of the DC signal for shuttling and re-arrangement is
 # QUAM Description
 Having discussed the hardware, we can now proceed to provide their abstraction in QUAM.
 
-## 1. Describing the root object
+## 1. Describing the root QUAM object and components
+In QUAM, 
 
 ```python
 @quam_dataclass
