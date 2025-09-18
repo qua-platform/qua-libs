@@ -405,7 +405,7 @@ machine = Quam.load("state_after.json")
 ```
 
 # Last word
-In this tutorial, we realized the abstraction of a physical experiment using QUAM for an operation-centric and readable structure. For physicist, this is an ideal framework for describing an experiment and book-keeping. The implementation of the code here is found in the [`trapped_ion`](Tutorials\intro-to-quam\trapped_ion) directory with `machine.py` serves as an entry point for the code.
+In this tutorial, we realized the abstraction of a physical experiment using QUAM for an operation-centric and readable structure. For physicist, this is an ideal framework for describing an experiment and book-keeping. The implementation of the code here is found in the [`machine.py`](machine.py) which serves as an entry point.
 
 # References
 1. Leibfried, D., Blatt, R., Monroe, C., & Wineland, D. (2003). Quantum dynamics of single trapped ions. Reviews of Modern Physics, 75(1), 281. https://doi.org/10.1103/RevModPhys.75.281
