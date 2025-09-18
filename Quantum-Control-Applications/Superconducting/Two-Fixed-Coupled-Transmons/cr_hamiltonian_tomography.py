@@ -57,7 +57,7 @@ class CRHamiltonianTomographyFunctions:
         """
         m2 = self._compute_omega_squared(d, mx, my)
         m = np.sqrt(m2)
-        return (-d * mx + d * mx * np.cos(m * ts) + m * my * np.sin(m * ts)) / m2
+        return (+d * mx - d * mx * np.cos(m * ts) + m * my * np.sin(m * ts)) / m2
 
     def _compute_Y(self, ts, d, mx, my):
         """
