@@ -109,7 +109,7 @@ machine.save("state_before.json")
 from qm import generate_qua_script
 
 n_avg = 10
-optimize_qubit_idx = 1
+optimize_qubit_idx = 2
 
 with program() as prog:
     n = declare(int)
@@ -159,8 +159,8 @@ waveform_report.create_plot(samples, plot=True, save_path=None)
 # %%
 optimize_qubit_idx = 1
 XX_rep = 1
-n_avg = 1
-amp_scan = np.linspace(0.5, 1.5, 3)
+n_avg = 10
+amp_scan = np.linspace(0.5, 1.5, 10)
 
 with program() as prog:
     n = declare(int)

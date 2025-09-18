@@ -57,7 +57,16 @@ The specific implementation of the DC signal for shuttling and re-arrangement is
 Having discussed the hardware, we can now proceed to provide their abstraction in QUAM.
 
 ## 1. Describing the root QUAM object and components
-In QUAM, 
+In QUAM, the data or the state of the experiment setup (e.g. pulse amplitude, DC offset, etc) is represented by `quam_dataclass`. A root container holds all the different `quam_dataclass` and serves as an entrypoint for all the operation. The root container is defined by extending the `QuamRoot` class with variables associated with the qubits or components (in this example, our MW drive). This is defined as `Quam.qubits` and `Quam.global_op` respectively.
+
+```python
+@quam_dataclass
+class Quam(QuamRoot):
+    qubits: Dict[str, HyperfineQubit] = field(default_factory=dict)
+    global_op: GlobalOperations = None
+```
+
+For each of the corresponding components (within QUAM, `Qubit` is a subclass of the component `QuantumComponent`), we describe the channels. The `Channel` described the physical connections to the quantum hardware, and can be of [different types](https://qua-platform.github.io/quam/components/channels/) describing the analog input/output and the digital output.
 
 ```python
 @quam_dataclass
@@ -68,22 +77,133 @@ class HyperfineQubit(Qubit):
 
 @quam_dataclass
 class GlobalOperations(Qubit):
-    normalized_rabi_freqs: List[float] = field(default_factory=list)
     global_mw: MWChannel = None
     ion_displacement: Channel = None
+```
+
+In our setup, we require for the following operation:
+- Shelving: Analog output
+- Readout: Analog input and output
+- Global MW: Microwave analog output
+- Ion displacement: Digital output
+
+## 2. Operation macros
+When translating a physical operation to code, an important aspect is readability. This is part of the core design principle for QUAM, in which an $X$ gate acting on a qubit can be called by writing for example `qubit.play("X")` where we can assign an associated `X` pulse to the quantum hardware.
+
+However, not all gates can be described by a simple pulse and may require a more advanced setup. This is taken care by declaring `QubitMacro`. Here, we define the measurement `MeasureMacro` and the single-qubit addressing $X$ gate from a global MW drive `SingleXMacro` for 2 qubits with relative Rabi frequency of $\Omega_1/\Omega_2=1/2$.
+
+
+```python
+@quam_dataclass
+class MeasureMacro(QubitMacro):
+    threshold: float
+
+    def apply(self):
+        # perform shelving operation
+        self.qubit.shelving.play("const")
+        self.qubit.align()
+
+        # integrating the PMT signal
+        I = self.qubit.readout.measure_integrated("const")
+
+        # We declare a QUA variable to store the boolean result of thresholding the I value.
+        qubit_state = declare(int)
+        # Since |1> is shelved, high fluorescence corresponds to |0>
+        # i.e. I < self.threshold implies |1> and vice versa
+        assign(qubit_state, Cast.to_int(I < self.threshold))
+        return qubit_state
 
 
 @quam_dataclass
-class Quam(QuamRoot):
-    qubits: Dict[str, HyperfineQubit] = field(default_factory=dict)
-    global_op: GlobalOperations = None
+class SingleXMacro(QubitMacro):
+    def apply(self, qubit_idx: int):
+        self.qubit.ion_displacement.play("ttl")
+        align()
+        with switch_(qubit_idx):
+            with case_(1):
+                self.qubit.global_mw.play("x180")
+            with case_(2):
+                self.qubit.global_mw.play("y180")
+                self.qubit.global_mw.play("x180")
+                self.qubit.global_mw.play("y180")
+        align()
+        self.qubit.ion_displacement.play("ttl")
+        align()
 ```
+<details>
+<summary>⚠️ <code>measure_integrated</code> is a custom function added to <code>InOutSingleChannel</code> following the code below. The default <code>measure</code> implemented in QUAM performs demodulation at the IF frequency which is unnecessary for fluorescence measurement.
+</summary>
 
-## 2. Pulses and channels
+Instead, we implemented the integration of the TTL photon counting singal of the PMT to obtain the total fluorescence count. When the fluorescence exceeds a threshold in a pre-calibrated timeframe, we can discriminate the state.
+
+```python
+def measure_integrated(
+    self,
+    pulse_name: str,
+    amplitude_scale: Optional[Union[ScalarFloat, Sequence[ScalarFloat]]] = None,
+    qua_var: QuaVariableFloat = None,
+    stream=None,
+) -> QuaVariableFloat:
+    pulse: BaseReadoutPulse = self.operations[pulse_name]
+
+    if qua_var is None:
+        qua_var = declare(fixed)
+
+    pulse_name_with_amp_scale = add_amplitude_scale_to_pulse_name(
+        pulse_name, amplitude_scale
+    )
+
+    integration_weight_labels = list(pulse.integration_weights_mapping)
+    measure(
+        pulse_name_with_amp_scale,
+        self.name,
+        integration.full(integration_weight_labels, qua_var),
+        adc_stream=stream,
+    )
+    return qua_var
+
+
+InOutSingleChannel.measure_integrated = measure_integrated
+```
+</details>
+
+## 3. Installing custom components and macros
+After defining the custom components and macros, they are to be install as Python module such that the saved state JSON file can be loaded within the virtual environment.
+
+This is done by following the installation steps in QUAM documentation for [Custom QUAM Components](https://qua-platform.github.io/quam/components/custom-components/?h=module#creating-a-custom-python-module).
+
+<details>
+<summary>⚠️ When using <code>uv</code> or encountering issue with <code>setuptools</code>.</summary>
+An alternative is to switch to `hatchling` by updating the <code>pyproject.toml</code> to the following:
+
+```toml
+[project]
+name = "custom-quam"
+version = "0.1.0"
+description = "User QUAM repository"
+authors = [{ name = "Jane Doe", email = "jane.doe@quantum-machines.co" }]
+requires-python = ">=3.9"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["trapped_ion"]
+```
+</details>
+
+While it is possible to skip this step, the saved state JSON can not be loaded for the custom components.
+
+## 4. Pulses and channels initialization
+With the data structure of our setup defined, we can now initialize the QUAM object, starting from the container.
 
 ```python
 machine = Quam()
 ```
+
+Another feature of QUAM is the scalability, here we will show that for $N$ qubits, we can simply run a python loop for generating a readable configuration that associates the quantum component to its corresponding hardware and pulse.
 
 ```python
 n_qubits = 2
@@ -116,10 +236,13 @@ for i in range(n_qubits):
     machine.qubits[qubit_id] = qubit
 ```
 
+Here, the deflection of the lasers to the spatial position of the ion is controlled by the frequency applied to the AOM. A simple `SquarePulse` is assigned to the laser operation. For readout, the `SquareReadoutPulse` is to be used in conjunction with the `measure` method defined in the `MeasureMacro`.
+
+The global MW drive is implemented in the same way by defining the hardware through `opx_output` and the [digital-only output](https://qua-platform.github.io/quam/components/channels/#digital-channels). An additional delay is added to the digital output to synchronize with the analog output.
+
 ```python
 # set global properties
 machine.global_op = GlobalOperations(
-    normalized_rabi_freqs=np.linspace(1, 2, n_qubits).tolist(),
     global_mw=MWChannel(
         id="global_mw",
         opx_output=MWFEMAnalogOutputPort(
@@ -135,9 +258,7 @@ machine.global_op = GlobalOperations(
         },
     ),
 )
-```
 
-```python
 machine.global_op.global_mw.operations["x180"] = SquarePulse(amplitude=0.2, length=1000)
 machine.global_op.global_mw.operations["y180"] = SquarePulse(
     amplitude=0.2, length=1000, axis_angle=90
@@ -150,103 +271,47 @@ machine.global_op.ion_displacement.operations["ttl"] = Pulse(
 machine.global_op.macros["X"] = SingleXMacro()
 ```
 
-## 3. Operation macros
+Here, the $X$ and $Y$ gate relative to the first qubit is defined. An additional TTL digital pulse is defined to trigger the ion offset before the MW operation and restoring the idle position.
+
+Finally, the setup can be saved in JSON for future reference or updated during the optimization process. This ensures proper book-keeping built directly within QUAM.
 
 ```python
-@quam_dataclass
-class MeasureMacro(QubitMacro):
-    threshold: float
-
-    def apply(self):
-        # perform shelving operation
-        self.qubit.shelving.play("const")
-        self.qubit.align()
-
-        # integrating the PMT signal
-        I = self.qubit.readout.measure_integrated("const")
-
-        # We declare a QUA variable to store the boolean result of thresholding the I value.
-        qubit_state = declare(int)
-        # Since |1> is shelved, high fluorescence corresponds to |0>
-        # i.e. I < self.threshold implies |1> and vice versa
-        assign(qubit_state, Cast.to_int(I < self.threshold))
-        return qubit_state
-
-
-@quam_dataclass
-class SingleXMacro(QubitMacro):
-    # n_qubits: int
-    # normalized_rabi_freqs: List[float]
-
-    def apply(self, qubit_idx: int):
-        # assert n_qubits == 2, "implemented for only 2 qubits"
-        # assert np.allclose(normalized_rabi_freqs, [1, 2])
-        self.qubit.ion_displacement.play("ttl")
-        self.qubit.align()
-        with switch_(qubit_idx):
-            with case_(1):
-                self.qubit.global_mw.play("x180")
-            with case_(2):
-                self.qubit.global_mw.play("y180")
-                self.qubit.global_mw.play("x180")
-                self.qubit.global_mw.play("y180")
-        self.qubit.align()
-        self.qubit.ion_displacement.play("ttl")
-        wait(100)
-        align()
-```
-
-```python
-def measure_integrated(
-    self,
-    pulse_name: str,
-    amplitude_scale: Optional[Union[ScalarFloat, Sequence[ScalarFloat]]] = None,
-    qua_var: QuaVariableFloat = None,
-    stream=None,
-) -> QuaVariableFloat:
-    pulse: BaseReadoutPulse = self.operations[pulse_name]
-
-    if qua_var is None:
-        qua_var = declare(fixed)
-
-    pulse_name_with_amp_scale = add_amplitude_scale_to_pulse_name(
-        pulse_name, amplitude_scale
-    )
-
-    integration_weight_labels = list(pulse.integration_weights_mapping)
-    measure(
-        pulse_name_with_amp_scale,
-        self.name,
-        integration.full(integration_weight_labels, qua_var),
-        adc_stream=stream,
-    )
-    return qua_var
-
-
-InOutSingleChannel.measure_integrated = measure_integrated
+machine.save("state_before.json")
 ```
 
 ## 4. Implementing the protocol
+To implement the single-qubit addressing $X$ gate protocol, we will write the [QUA code](https://docs.quantum-machines.co/latest/docs/Introduction/qua_overview/#overview-of-qua). In spite of the QUAM framework, the overall code is written similarly, sharing most of the syntax. A major difference when using the QUAM macro, is the use of `apply`. For a quantum component, calling the `apply` method calls the underlying macros and passes any arguments to the method as well.
+
 ```python
-n_avg = 2
+n_avg = 10
 optimize_qubit_idx = 2
 
 with program() as prog:
     n = declare(int)
-    es_st = declare_stream()
+    state_st = declare_stream()
     qubit_idx = declare(int, optimize_qubit_idx)
 
     with for_(n, 0, n < n_avg, n + 1):
-        machine.global_op.apply("X", qubit_idx)
+        machine.global_op.apply("X", qubit_idx=qubit_idx)
         for i, qubit in enumerate(machine.qubits.values()):
-            es = qubit.apply("measure")
-            save(es, es_st)
+            state = qubit.apply("measure")
+            save(state, state_st)
             align()
             wait(1_000)
 
     with stream_processing():
-        es_st.buffer(n_avg).average().save_all("es")
+        state_st.buffer(n_qubits).average().save_all("state")
 ```
+
+The above protocol performs the single-qubit $X$ on the `optimize_qubit_idx` followed by the state measurement of all the qubits over an `n_avg` attempt. The resulting simulated waveform of the protocol is shown below.
+
+
+<img src="../images/protocol.png" width=50% height=50%>
+
+Here, we see that gate operation is sandwiched between two TTL signal that triggers the ion offset only during the MW gate. We chose the $X$ gate to operate on the second qubit, as such, we will apply the global $Y_\theta X_\theta Y_\theta$ where $\theta_1=\pi/2$ and $\theta_2=\pi$ for the first and second qubit. After the gate operation, the ions' idle position is restored and readout operation is performed sequentially on the qubits. A total of $N_{avg}$ repetition is performed to obtain statistical significance.
+
+
+With QUAM, the [configuration](https://docs.quantum-machines.co/latest/docs/Introduction/config/#the-configuration) is automatically generated with `generate_config`. With the configuration, the execution on the Quantum Machine device follows the usual syntax.
 
 ```python
 qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
@@ -255,41 +320,92 @@ qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 qua_config = machine.generate_config()
 
 qm = qmm.open_qm(qua_config)
-qm.execute(active_reset_prog)
+qm.execute(prog)
 ```
 
-<img src="../images/protocol.png" width=50% height=50%>
-
 ## 5. Optimizing parameters
+Finally, we will perform an optimization of pulse parameters and demonstrate the need for a abstraction database for book-keeping. For starters, let us implement an error amplification scheme for characterizing the amplitude calibration. That is, to optimize the amplitude $A_1^\pi$ required for the first qubit to undergo an $\pi$ rotation.
+
+<img src="../images/error_amplification.png" width=40% height=40%>
+
+The error amplification protocol involves performing $(X_\pi)^{2N}$ gate on the qubit with scanned parameter (in this case, the amplitude). When the parameters are tuned appropriately, the net effect on the qubit will be an identity $(X_\pi)^{2N}=I$. As such, we will perform the measurement across a range and amplitude and choose the amplitude that corresponds to the $I$ gate acting on the qubit.
+
+The $(X_\pi)^{2N}$ gate is implemented in the following with `amp_scale` is the amplitude multiplication factor on top of the original set value, `XX_rep` defined as $N$. These two variables can be parsed through the `apply` method for the `QubitMacro`.
 
 ```python
 @quam_dataclass
 class DoubleXMacro(QubitMacro):
-    # n_qubits: int
-    # normalized_rabi_freqs: List[float]
-
-    def apply(self, qubit_idx: int, amp_scale=1, N_double_X=1):
+    def apply(self, qubit_idx: int, amp_scale=1, XX_rep=1):
         i = declare(int)
         self.qubit.ion_displacement.play("ttl")
-        self.qubit.align()
+        align()
         with switch_(qubit_idx):
             with case_(1):
-                with for_(i, 0, i < N_double_X * 2, i + 1):
+                with for_(i, 0, i < XX_rep * 2, i + 1):
                     self.qubit.global_mw.play("x180", amplitude_scale=amp_scale)
             with case_(2):
-                with for_(i, 0, i < N_double_X * 2, i + 1):
+                with for_(i, 0, i < XX_rep * 2, i + 1):
                     self.qubit.global_mw.play("y180", amplitude_scale=amp_scale)
                     self.qubit.global_mw.play("x180", amplitude_scale=amp_scale)
                     self.qubit.global_mw.play("y180", amplitude_scale=amp_scale)
-        self.qubit.align()
+        align()
         self.qubit.ion_displacement.play("ttl")
-        wait(100)
         align()
 
 machine.global_op.macros["N_XX"] = DoubleXMacro()
 ```
 
-<img src="../images/error_amplification.png" width=40% height=40%>
+The implemented program is similar to the case of a single addressing gate with the addition of amplitude scan range.
+
+```python
+optimize_qubit_idx = 1
+XX_rep = 1
+n_avg = 10
+amp_scan = np.linspace(0.5, 1.5, 10)
+
+with program() as prog:
+    n = declare(int)
+    state_st = declare_stream()
+    qubit_idx = declare(int, optimize_qubit_idx)
+    amp_i = declare(fixed)
+
+    with for_(n, 0, n < n_avg, n + 1):
+        with for_each_(amp_i, amp_scan):
+            machine.global_op.apply(
+                "N_XX", qubit_idx=qubit_idx, amp_scale=amp_i, XX_rep=XX_rep
+            )
+            for i, qubit in enumerate(machine.qubits.values()):
+                state = qubit.apply("measure")
+                save(state, state_st)
+                align()
+                wait(1_000)
+
+    with stream_processing():
+        state_st.buffer(n_qubits).buffer(len(amp_scan)).average().save_all("state")
+```
+
+In the `stream_processing`, we obtain an 2D matrix corresponding to the final state for different amplitude factor and the qubits. Choosing the best amplitude that lead to $I$ in the observation, we can update the QUAM directly without the need of recording the data manually.
+
+```python
+state = job.result_handles.get("state").fetch_all()["value"]
+state_scan = state[0, :, optimize_qubit_idx - 1]
+best_amp_scan = amp_scan[np.argmin(state_scan)]
+original_amplitude = machine.global_op.global_mw.operations["x180"].amplitude
+machine.global_op.global_mw.operations["x180"].amplitude *= best_amp_scan
+machine.global_op.global_mw.operations["y180"].amplitude *= best_amp_scan
+```
+
+The optimal value can be saved and loaded in the future experiment which makes organization of the experiment parameters intuitive.
+
+```python
+machine.save("state_after.json")
+
+# Load the QUAM configuration
+machine = Quam.load("state_after.json")
+```
+
+# Last word
+In this tutorial, we realized the abstraction of a physical experiment using QUAM for an operation-centric and readable structure. For physicist, this is an ideal framework for describing an experiment and book-keeping. The implementation of the code here is found in the [`trapped_ion`](Tutorials\intro-to-quam\trapped_ion) directory with `machine.py` serves as an entry point for the code.
 
 # References
 1. Leibfried, D., Blatt, R., Monroe, C., & Wineland, D. (2003). Quantum dynamics of single trapped ions. Reviews of Modern Physics, 75(1), 281. https://doi.org/10.1103/RevModPhys.75.281
