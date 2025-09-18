@@ -175,11 +175,10 @@ class DoubleXMacro(QubitMacro):
 machine = Quam()
 
 n_qubits = 2
-aom_position = np.linspace(200e6, 250e6, n_qubits)
+aom_position = np.linspace(200e6, 300e6, n_qubits)
 mw_IF = 100e6
 mw_LO = 3e9
 mw_band = 1
-assert n_qubits <= 4, "This setup supports up to 4 qubits."
 
 # for each qubit
 for i in range(n_qubits):
@@ -237,7 +236,7 @@ machine.global_op.ion_displacement.operations["ttl"] = Pulse(
 
 # operation macro
 machine.global_op.macros["X"] = SingleXMacro()
-machine.global_op.macros["X"] = DoubleXMacro()
+machine.global_op.macros["N_XX"] = DoubleXMacro()
 
 machine.print_summary()
 
