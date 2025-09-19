@@ -226,8 +226,7 @@ ge_threshold = 0.0
 #############################################
 #                  Config                   #
 #############################################
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         con: {
             "type": "opx1000",
@@ -294,6 +293,8 @@ config = {
             },
         }
     },
+}
+logical_config = {
     "elements": {
         "qubit": {
             "mixInputs": {
@@ -545,3 +546,4 @@ config = {
         ],
     },
 }
+full_config = controller_config | logical_config

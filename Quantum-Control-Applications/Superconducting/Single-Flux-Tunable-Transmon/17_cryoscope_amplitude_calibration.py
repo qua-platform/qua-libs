@@ -22,6 +22,7 @@ Prerequisites:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
+import time
 from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
@@ -45,7 +46,7 @@ flux_amp_array = np.linspace(0, -0.2, 101)
 save_data_dict = {
     "n_avg": n_avg,
     "flux_amp_array": flux_amp_array,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -139,7 +140,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, cryoscope_amp, simulation_config)
+    job = qmm.simulate(full_config, cryoscope_amp, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -152,22 +153,24 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(cryoscope_amp)
     # Get results from QUA program
     if state_discrimination:
-        results = fetching_tool(job, data_list=["I", "Q", "state", "iteration"], mode="live")
+        data_list=["I", "Q", "state", "iteration"]
     else:
-        results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg", "iteration"], mode="live")
+        data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg", "iteration"]
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     xplot = flux_amp_array * const_flux_amp
-    while results.is_processing():
+    while res_handles.is_processing():
         # Fetch results
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         if state_discrimination:
-            I, Q, state, iteration = results.fetch_all()
+            I, Q, state, iteration = [results.get(data) for data in data_list]
             # Convert the results into Volts
             I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Convert the results into Volts
@@ -175,7 +178,7 @@ else:
             # Bloch vector Sx + iSy
             qubit_state = (state[:, 0] * 2 - 1) + 1j * (state[:, 1] * 2 - 1)
         else:
-            I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
+            I, Q, Ie, Qe, Ig, Qg, iteration = [results.get(data) for data in data_list]
             # Phase of ground and excited states
             phase_g = np.angle(Ig + 1j * Qg)
             phase_e = np.angle(Ie + 1j * Qe)
@@ -199,7 +202,7 @@ else:
         # Quadratic fit of detuning versus flux pulse amplitude
         pol = np.polyfit(xplot, detuning, deg=2)
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, time.time())
         # Plots
         plt.subplot(221)
         plt.cla()

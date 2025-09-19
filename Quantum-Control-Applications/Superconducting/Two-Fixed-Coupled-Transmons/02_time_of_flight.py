@@ -18,7 +18,7 @@ from qm.qua import *
 from qm import QuantumMachinesManager, SimulationConfig
 from qm import SimulationConfig
 
-from configuration_mw_fem import *
+from configuration import *
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 
@@ -71,7 +71,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=1_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job = qmm.simulate(full_config, PROGRAM, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -85,7 +85,7 @@ if simulate:
 else:
     try:
         # Open a quantum machine to execute the QUA program
-        qm = qmm.open_qm(config)
+        qm = qmm.open_qm(full_config, close_other_machines=True)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
         # Creates a result handle to fetch data from the OPX

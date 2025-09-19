@@ -18,6 +18,7 @@ Before proceeding to the next node:
 from qm.qua import *
 from qm import QuantumMachinesManager, SimulationConfig
 from configuration import *
+import time
 from qualang_tools.results import fetching_tool
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
@@ -43,7 +44,7 @@ save_data_dict = {
     "resonator_LO": resonator_LO,
     "frequencies": frequencies,
     "n_avg": n_avg,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -95,7 +96,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=1_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job = qmm.simulate(full_config, PROGRAM, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -109,14 +110,16 @@ if simulate:
 else:
     try:
         # Open a quantum machine to execute the QUA program
-        qm = qmm.open_qm(config)
+        qm = qmm.open_qm(full_config, close_other_machines=True)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
         # Get results from QUA program
-        results = fetching_tool(job, data_list=["I", "Q"])  # this one already waits for all values
+        data_list =["I", "Q"]  # this one already waits for all values
         # plotting
         fig = plt.figure()
-        I, Q = results.fetch_all()
+        res_handles = job.result_handles
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+        I, Q = [results.get(data) for data in data_list]
         # Convert results into Volts
         S = I + 1j * Q
         R = np.abs(S)  # Amplitude

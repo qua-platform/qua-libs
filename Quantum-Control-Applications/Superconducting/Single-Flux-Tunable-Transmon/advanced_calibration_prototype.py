@@ -21,7 +21,7 @@ outs = ["out1", "out2"]
 
 # Initialize the calibration API with the relevant configuration parameters
 my_calib = QUA_calibrations(
-    configuration=config,
+    configuration=full_config,
     readout=(resonator_element, resonator_operation),
     qubit=(qubit_element, qubit_operation),
     integration_weights=int_w,
@@ -67,7 +67,7 @@ scans_ramsey = [
 # Open communication with QOP
 #############################################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
-qm = qmm.open_qm(config)
+qm = qmm.open_qm(full_config,close_other_machines=True)
 
 # Run calibrations
 options = {

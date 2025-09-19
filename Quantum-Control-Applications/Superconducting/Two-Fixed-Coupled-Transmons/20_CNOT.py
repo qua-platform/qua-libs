@@ -15,6 +15,7 @@ Prerequisites:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from configuration import *
+import time
 import matplotlib.pyplot as plt
 from qm import SimulationConfig
 from qualang_tools.loops import from_array
@@ -65,7 +66,7 @@ save_data_dict = {
     "cr_drive_phase": cr_drive_phase,
     "cr_drive_phase_ZI_correct": cr_drive_phase_ZI_correct,
     "n_shots": n_shots,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -163,7 +164,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=3_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job = qmm.simulate(full_config, PROGRAM, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -178,29 +179,30 @@ if simulate:
 else:
     try:
         # Open the quantum machine
-        qm = qmm.open_qm(config)
+        qm = qmm.open_qm(full_config, close_other_machines=True)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
         # Prepare the figure for live plotting
         fig = plt.figure()
         interrupt_on_close(fig, job)
         # Tool to easily fetch results from the OPX (results_handle used in it)
-        fetch_names = ["iteration", "I1", "Q1", "state1", "I2", "Q2", "state2"]
-        results = fetching_tool(job, fetch_names, mode="live")
+        data_list = ["iteration", "I1", "Q1", "state1", "I2", "Q2", "state2"]
+        res_handles = job.result_handles
         # Live plotting
-        while results.is_processing():
+        while res_handles.is_processing():
             # Fetch results
-            res = results.fetch_all()
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+            res = [results.get(data) for data in data_list]
             iterations, I1, Q1, state_c, I2, Q2, state_t = res
             # Progress bar
-            progress_counter(iterations, n_shots, start_time=results.start_time)
+            progress_counter(iterations, n_shots, start_time=time.time())
             # Convert the results into Volts
             I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
             I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
 
         # Save data
         save_data_dict.update({"fig_live": fig})
-        for fname, r in zip(fetch_names[1:], res[1:]):
+        for fname, r in zip(data_list[1:], res[1:]):
             save_data_dict[fname] = r
 
         data = []

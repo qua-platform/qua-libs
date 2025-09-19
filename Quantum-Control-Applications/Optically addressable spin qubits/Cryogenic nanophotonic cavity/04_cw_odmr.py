@@ -7,6 +7,7 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+import time
 from qualang_tools.results.data_handler import DataHandler
 
 ##################
@@ -23,7 +24,7 @@ n_avg = 1e6  # number of averages
 save_data_dict = {
     "n_avg": n_avg,
     "IF_frequencies": f_vec,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -78,7 +79,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=5_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, cw_odmr, simulation_config)
+    job = qmm.simulate(full_config, cw_odmr, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -90,7 +91,7 @@ if simulate:
     # Visualize and save the waveform report
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
 
     job = qm.execute(cw_odmr)  # execute QUA program
 
@@ -101,19 +102,21 @@ else:
     # iteration_handle.wait_for_values(1)
 
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
+    data_list=["counts", "iteration"]
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
-    while results.is_processing():
+    while res_handles.is_processing():
         # counts = counts_handle.fetch_all()
         # iteration = iteration_handle.fetch_all()
 
         # Fetch results
-        counts, iteration = results.fetch_all()
+        results =res_handles.fetch_results(wait_until_done=False, timeout=60)
+        counts, iteration = [results.get(data) for data in data_list]
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot((Yb_LO_freq * 0 + f_vec) / u.MHz, counts / 1000 / (long_meas_len * 1e-9))

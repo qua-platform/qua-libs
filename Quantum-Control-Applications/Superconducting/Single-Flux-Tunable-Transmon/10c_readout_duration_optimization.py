@@ -33,16 +33,16 @@ from qualang_tools.results.data_handler import DataHandler
 # Helper functions #
 ####################
 def update_readout_length(new_readout_length, ringdown_length):
-    config["pulses"]["readout_pulse"]["length"] = new_readout_length
-    config["integration_weights"]["cosine_weights"] = {
+    full_config["pulses"]["readout_pulse"]["length"] = new_readout_length
+    full_config["integration_weights"]["cosine_weights"] = {
         "cosine": [(1.0, new_readout_length + ringdown_length)],
         "sine": [(0.0, new_readout_length + ringdown_length)],
     }
-    config["integration_weights"]["sine_weights"] = {
+    full_config["integration_weights"]["sine_weights"] = {
         "cosine": [(0.0, new_readout_length + ringdown_length)],
         "sine": [(1.0, new_readout_length + ringdown_length)],
     }
-    config["integration_weights"]["minus_sine_weights"] = {
+    full_config["integration_weights"]["minus_sine_weights"] = {
         "cosine": [(0.0, new_readout_length + ringdown_length)],
         "sine": [(-1.0, new_readout_length + ringdown_length)],
     }
@@ -73,7 +73,7 @@ save_data_dict = {
     "ringdown_len": ringdown_len,
     "division_length": division_length,
     "number_of_divisions": number_of_divisions,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -182,7 +182,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, ro_duration_opt, simulation_config)
+    job = qmm.simulate(full_config, ro_duration_opt, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -195,7 +195,7 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_duration_opt)
     # Get results from QUA program

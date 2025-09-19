@@ -7,6 +7,7 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+import time
 
 ##################
 #   Parameters   #
@@ -48,7 +49,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=5_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, counter, simulation_config)
+    job = qmm.simulate(full_config, counter, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -60,8 +61,7 @@ if simulate:
     # Visualize and save the waveform report
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
-    qm = qmm.open_qm(config)
-
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     job = qm.execute(counter)
     # Get results from QUA program
     res_handles = job.result_handles
@@ -69,6 +69,7 @@ else:
     counts_handle.wait_for_values(1)
     time = []
     counts = []
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
