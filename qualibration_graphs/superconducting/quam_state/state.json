@@ -93,10 +93,12 @@
                 "opx_input": "#/wiring/qubits/qA1/rr/opx_input",
                 "time_of_flight": 32,
                 "RF_frequency": 7127500000.0,
+                "GEF_frequency_shift":1000000,
                 "opx_output": "#/wiring/qubits/qA1/rr/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
             },
-            "f_01": 5066841863.193546,
+            "freq_vs_flux_01_quad_term": 5066841863.193546,
+            "anharmonicity": 200000000.0,
             "grid_location": "0,0",
             "z": {
                 "operations": {
@@ -204,10 +206,13 @@
                 "opx_input": "#/wiring/qubits/qA2/rr/opx_input",
                 "time_of_flight": 32,
                 "RF_frequency": 7395770000.0,
+                "GEF_frequency_shift": 1000000,
                 "opx_output": "#/wiring/qubits/qA2/rr/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
             },
-            "f_01": 5706880265.373203,
+            "freq_vs_flux_01_quad_term": 5706880265.373203,
+            "anharmonicity": 200000000.0,
+
             "grid_location": "1,0",
             "z": {
                 "operations": {
