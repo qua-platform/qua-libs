@@ -28,7 +28,7 @@ with program() as calib_delays:
     n_st = declare_stream()  # stream for 'iteration'
 
     with for_(n, 0, n < n_avg, n + 1):
-        reset_phase("A_transition")
+        reset_if_phase("A_transition")
         play("laser_ON", "A_transition", duration=AC_len)
 
         wait(ttl_wait, "AOM")  # AOM is dummy channel for the TTL switch
@@ -38,7 +38,7 @@ with program() as calib_delays:
         wait(258, "SNSPD")  # 258 cycles is the time it takes for the photon signal to arrive to the OPX input
 
         play("laser_ON", "AOM", duration=40 // 4)
-        measure("readout", "SNSPD", None, time_tagging.high_res(times, meas_len, counts))
+        measure("readout", "SNSPD", time_tagging.high_res(times, meas_len, counts))
 
         with for_(i, 0, i < counts, i + 1):
             save(times[i], times_st)  # save time tags to stream

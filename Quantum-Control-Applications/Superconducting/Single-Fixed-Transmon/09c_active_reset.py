@@ -89,7 +89,7 @@ def active_reset_one_threshold(threshold_g: float, max_tries: int):
     align("resonator", "qubit")
     with while_((I_reset > threshold_g) & (counter < max_tries)):
         # Measure the state of the resonator
-        measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_reset))
+        measure("readout", "resonator", dual_demod.full("rotated_cos", "rotated_sin", I_reset))
         align("resonator", "qubit")
         # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "qubit")
@@ -120,7 +120,7 @@ def active_reset_two_thresholds(threshold_g: float, threshold_e: float, max_trie
     align("resonator", "qubit")
     with while_((I_reset > threshold_g) & (counter < max_tries)):
         # Measure the state of the resonator
-        measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_reset))
+        measure("readout", "resonator", dual_demod.full("rotated_cos", "rotated_sin", I_reset))
         align("resonator", "qubit")
         # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "qubit")
@@ -144,7 +144,7 @@ def active_reset_fast(threshold_g: float):
     I_reset = declare(fixed)
     align("resonator", "qubit")
     # Measure the state of the resonator
-    measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_reset))
+    measure("readout", "resonator", dual_demod.full("rotated_cos", "rotated_sin", I_reset))
     align("resonator", "qubit")
     # Wait for the resonator to deplete
     wait(depletion_time * u.ns, "qubit")

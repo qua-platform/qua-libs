@@ -82,9 +82,9 @@ with program() as cryoscope:
         with for_(segment, 0, segment <= total_len, segment + 1):
             with for_each_(flag, [True, False]):
                 # Cooldown
-                measure("readout", res_name, None, dual_demod.full("rotated_cos", "rotated_sin", I_g))
+                measure("readout", res_name, dual_demod.full("rotated_cos", "rotated_sin", I_g))
                 with while_(I_g > initialization_threshold):
-                    measure("readout", res_name, None, dual_demod.full("rotated_cos", "rotated_sin", I_g))
+                    measure("readout", res_name, dual_demod.full("rotated_cos", "rotated_sin", I_g))
                 align()
                 wait(500)
                 # Cryoscope protocol
