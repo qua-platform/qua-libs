@@ -75,7 +75,7 @@ def create_qua_program(node: QualibrationNode[EfParameters, Quam]):
         raise ValueError("'active' is not supported, use 'thermal' or 'active_gef' instead")
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
-    node.namespace["qubits"] = qubits = get_qubits(node) # Get qubits to calibrate
+    node.namespace["qubits"] = qubits = get_qubits(node)  # Get qubits to calibrate
     num_qubits = len(qubits)
 
     n_avg = node.parameters.num_shots  # The number of averages
@@ -98,7 +98,7 @@ def create_qua_program(node: QualibrationNode[EfParameters, Quam]):
             continue
         else:
             x180 = qubit.xy.operations["x180"]
-            qubit.xy.operations["EF_x180"] = dataclasses.replace(x180, alpha=0.0)
+            qubit.xy.operations["EF_x180"] = dataclasses.replace(x180, alpha=0.0) if hasattr(x180, "alpha") else dataclasses.replace(x180)
 
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
@@ -123,10 +123,12 @@ def create_qua_program(node: QualibrationNode[EfParameters, Quam]):
                 save(n, n_st)
                 with for_(*from_array(a, amps)):
                     # Qubit initialization
-                    for i, qubit in multiplexed_qubits.items(): # Reset the qubit to ground state
+                    for i, qubit in multiplexed_qubits.items():  # Reset the qubit to ground state
                         qubit.reset(reset_type=node.parameters.reset_type, simulate=node.parameters.simulate)
-                        if node.parameters.reset_type == "thermal": # Wait twice the regular thermal time
-                            qubit.wait(2 * qubit.thermalization_time // 2)
+                        if (
+                            node.parameters.reset_type == "thermal"
+                        ):  # Wait twice the regular thermal time for proper |f> state reset
+                            qubit.wait(qubit.thermalization_time * u.ns)
                     align()
                     for i, qubit in multiplexed_qubits.items():
                         # Set the XY channel to the |g> -> |e> transition (GE) intermediate frequency
@@ -142,7 +144,7 @@ def create_qua_program(node: QualibrationNode[EfParameters, Quam]):
                     # Qubit readout
                     for i, qubit in multiplexed_qubits.items():
                         if node.parameters.use_state_discrimination:
-                            qubit.readout_state_gef(state[i]) # Need to calibrate gef readout first 
+                            qubit.readout_state_gef(state[i])  # Need to calibrate gef readout first
                             save(state[i], state_st[i])
                         else:
                             qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
