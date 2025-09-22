@@ -59,25 +59,6 @@ def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
         log_callable(log_message)
 
 
-def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    """
-    Process the raw dataset by adding amplitude and detuning coordinates.
-
-    Parameters:
-    -----------
-    ds : xr.Dataset
-        Raw dataset from the experiment
-    node : QualibrationNode
-        The calibration node containing qubit pairs information
-
-    Returns:
-    --------
-    xr.Dataset
-        Processed dataset with additional coordinates
-    """
-    return ds
-
-
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitResults]]:
     """
     Fit the CZ conditional phase data for each qubit pair.
