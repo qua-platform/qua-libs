@@ -56,6 +56,16 @@ The specific implementation of the DC signal for shuttling and re-arrangement is
 # QUAM Description
 Having discussed the hardware components, we can now proceed to provide their abstraction in QUAM.
 
+In each step, we provide only the snippet of relevant code. The full implementation of the code of each steps can be found in the above files.
+
+| File                        | Step |
+| --------------------------- | ---- |
+| `custom_components.py`      | 1    |
+| `custom_macros.py`          | 2    |
+| `01_init_quam.py`           | 4    |
+| `02_single_gate.py`         | 5    |
+| `03_optimize_and_update.py` | 6    |
+
 ## 1. Describing the root QUAM object and components
 In QUAM, the data or the state of the experiment (e.g. pulse amplitude, DC offset, etc) is represented by a `quam_dataclass`. A root container holds all the different `quam_dataclass` and serves as an entry point for all the operations. The root container is defined by extending the `QuamRoot` class with variables associated with the qubits or components (in this example, our MW drive). This is defined as `Quam.qubits` and `Quam.global_op` respectively.
 
@@ -165,6 +175,20 @@ def measure_integrated(
 
 InOutSingleChannel.measure_integrated = measure_integrated
 ```
+
+Alternatively, one can also extend `InOutSingleChannel` as follows
+
+```python
+@quam_dataclass  
+class IonReadoutChannel(InOutSingleChannel):  
+    def measure_integrated():  
+        ...
+
+@quam_dataclass  
+class HyperfineQubit(Qubit):  
+    shelving: SingleChannel = None  
+    readout: IonReadoutChannel = None  
+```
 </details>
 
 ## 3. Installing custom components and macros
@@ -200,6 +224,8 @@ While it is possible to skip this step, the saved state JSON can not be loaded f
 With the data structure of our setup defined, we can now initialize the QUAM object, starting from the container.
 
 ```python
+from trapped_ion.custom_components import Quam
+
 machine = Quam()
 ```
 
@@ -235,6 +261,8 @@ for i in range(n_qubits):
     # add to quam
     machine.qubits[qubit_id] = qubit
 ```
+
+While not directly applicable to every qubit configuration, we can address the $N$ qubits using only a fixed number of channels. This is achieved by a global gate targeting all ions and laser angle deflection for single ion readout.
 
 Here, the deflection of the lasers to the spatial position of the ion is controlled by the frequency applied to the AOM. A simple `SquarePulse` is assigned to the laser operation. For readout, the `SquareReadoutPulse` is to be used in conjunction with the `measure` method defined in the `MeasureMacro`.
 
@@ -405,7 +433,7 @@ machine = Quam.load("state_after.json")
 ```
 
 # Last word
-In this tutorial, we realized the abstraction of a physical experiment using QUAM for an operation-centric and readable structure. For physicists, this is an ideal framework for describing an experiment and book-keeping. The implementation of the code here is found in the [`machine.py`](machine.py) which serves as an entry point.
+In this tutorial, we realized the abstraction of a physical experiment using QUAM for an operation-centric and readable structure. For physicists, this is an ideal framework for describing an experiment and book-keeping. 
 
 # References
 1. Leibfried, D., Blatt, R., Monroe, C., & Wineland, D. (2003). Quantum dynamics of single trapped ions. Reviews of Modern Physics, 75(1), 281. https://doi.org/10.1103/RevModPhys.75.281
