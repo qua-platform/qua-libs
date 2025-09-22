@@ -64,6 +64,8 @@ description = """
     Prerequisites:
         - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
         - Having calibrated qubit gates (x90 and y90) by running qubit spectroscopy, rabi_chevron, power_rabi, Ramsey and updated the configuration.
+        - Calibrated XYZ delay
+        - (Optional) Run long cryoscope to determine long time filters if necessary.
 
     Next steps before going to the next node:
         - Update the FIR and IIR filter taps in the configuration:
@@ -85,8 +87,8 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.simulate = False
     node.parameters.simulation_duration_ns = 1000
-    node.parameters.qubits = ["q0"]
-    node.parameters.num_shots = 10
+    node.parameters.qubits = ["qA2"]
+    node.parameters.num_shots = 1000
     pass
 
 
@@ -266,7 +268,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
-                data_fetcher["n"],
+                data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
@@ -386,7 +388,7 @@ def plot_advanced_data(node: QualibrationNode[Parameters, Quam]):
     # Store the figures
     node.results["advanced_figures"] = figures
     
-    # Show all figures at once instead of individually
+    # Show all figures
     print(f"Created {len(figures)} advanced analysis figures:")
     for fig_name in figures.keys():
         print(f"  - {fig_name}")
@@ -456,47 +458,9 @@ def update_state_with_filters(node: QualibrationNode[Parameters, Quam]):
                 print(f"No advanced results available for {qubit_name}")
 
 
-
-# %% {Update_state}
-# @node.run_action(skip_if=node.parameters.simulate)
-# def update_state(node: QualibrationNode[Parameters, Quam]):
-#     """Update the relevant parameters if the qubit data analysis was successful."""
-#     with node.record_state_updates():
-#         for q in node.namespace["qubits"]:
-#             if node.outcomes[q.name] == "failed":
-#                 continue
-
-#             if node.parameters.number_of_exponents == 1:
-#                 if node.results["fit_results"][q.name]["fit1_success"]:
-#                     node.machine.qubits[q.name].z.opx_output.exponential_filter = [
-#                         (
-#                             node.results["fit_results"][q.name]["fit1_A"],
-#                             node.results["fit_results"][q.name]["fit1_tau"],
-#                         ),
-#                     ]
-#                 else:
-#                     node.log(f"Warning: fit_1exp for qubit {q.name} was not successful. No filter will be applied.")
-
-#             elif node.parameters.number_of_exponents == 2:
-#                 if node.results["fit_results"][q.name]["fit2_success"]:
-#                     node.machine.qubits[q.name].z.opx_output.exponential_filter = [
-#                         (
-#                             node.results["fit_results"][q.name]["fit2_A1"],
-#                             node.results["fit_results"][q.name]["fit2_tau1"],
-#                         ),
-#                         (
-#                             node.results["fit_results"][q.name]["fit2_A2"],
-#                             node.results["fit_results"][q.name]["fit2_tau2"],
-#                         ),
-#                     ]
-#                 else:
-#                     node.log(f"Warning: fit_2exp for qubit {q.name} was not successful. No filter will be applied.")
-
-
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save the node results and state."""
     node.save()
     print('\033[1m\033[32m RESULTS SAVED \033[0m')
-plt.show()

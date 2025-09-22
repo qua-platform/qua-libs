@@ -32,7 +32,27 @@ from calibration_utils.pi_flux import (
 
 
 description = """
-Pi vs Flux :
+Long cryoscope (π vs flux) calibration.
+
+This protocol measures the effective flux-line step response per qubit by sweeping the XY-drive detuning and the Z-flux pulse duration, then extracting the instantaneous qubit frequency versus time.
+It then Processes and fits the extracted flux response to model it as a sum of decaying exponentials and converts to usable filters.
+
+Workflow:
+For each qubit, sweep detuning over the configured span and flux-pulse duration over the configured time axis; play a constant Z pulse with amplitude `flux_amp`, then a chosen XY operation (default π), and measure I/Q or state.
+Analysis: convert raw data to volts and extract the center frequency vs detuning at each time; derive the flux response using each qubit’s `freq_vs_flux_01_quad_term`; fit a sum of exponentials and determine the best components and DC term.
+State update (optional): convert the fitted sum-of-exponentials to a cascade representation and write it to the state.json.
+
+
+Prerequisites
+- A valid rotation angle and threshold if using state discrimination
+- Calibrated XYZ delay
+- A calibrated pi-pulse
+- Each qubit must have a known `freq_vs_flux_01_quad_term` stored in the state (obtained via (09)Ramsey vs flux calibration).
+
+Outputs and state updates
+- Results: processed dataset, fit results, and figures are saved under `node.results`.
+- If `update_state=True` and fits succeed, the script updates `state.json` per qubit at `z.opx_output.exponential_filter` with the cascade coefficients `(A_c, tau_c)` derived from the fit.
+REMINDER: Adding digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold) and (15)XYZ_delay. It is also worth looking at (09) Ramsey vs Flux as well
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -45,8 +65,7 @@ node = QualibrationNode[Parameters, Quam](
 # %% {Custom_param}
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    node.parameters.qubits = ["q0"]
-    node.parameters.num_shots = 10
+    node.parameters.qubits = ["qA2"]
     node.parameters.update_lo = True
     node.parameters.frequency_span_in_mhz = 200
     node.parameters.frequency_step_in_mhz = 1
@@ -58,7 +77,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.flux_amp = 0.06
     node.parameters.fitting_base_fractions = [0.4, 0.15, 0.05]
     node.parameters.update_state = True
-    node.parameters.use_state_discrimination = False
+    node.parameters.use_state_discrimination = True
     node.parameters.load_data_id = None
     node.parameters.simulate = False
     node.parameters.use_waveform_report = False
@@ -218,7 +237,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter(data_fetcher["n"], node.parameters.num_shots, start_time=data_fetcher.t_start)
+            progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         node.log(job.execution_report())
     node.results["ds_raw"] = dataset
 
