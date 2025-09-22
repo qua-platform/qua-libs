@@ -82,6 +82,7 @@
             "resonator": {
                 "depletion_time": 1000,
                 "f_01": 7127500000.0,
+                "GEF_frequency_shift": 1000000,
                 "operations": {
                     "readout": {
                         "length": 2500,
@@ -93,11 +94,9 @@
                 "opx_input": "#/wiring/qubits/qA1/rr/opx_input",
                 "time_of_flight": 32,
                 "RF_frequency": 7127500000.0,
-                "GEF_frequency_shift":1000000,
                 "opx_output": "#/wiring/qubits/qA1/rr/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
             },
-            "freq_vs_flux_01_quad_term": 5066841863.193546,
             "anharmonicity": 200000000.0,
             "grid_location": "0,0",
             "z": {
@@ -106,11 +105,18 @@
                         "length": 100,
                         "amplitude": 0.1,
                         "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "Cz_square_pulse_232": {
+                        "length": 232,
+                        "id": "Cz_square_pulse_232",
+                        "amplitude": 0.1,
+                        "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
                     }
                 },
                 "opx_output": "#/wiring/qubits/qA1/z/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.flux_line.FluxLine"
             },
+            "freq_vs_flux_01_quad_term": 5066841863.193546,
             "__class__": "quam_builder.architecture.superconducting.qubit.flux_tunable_transmon.FluxTunableTransmon"
         },
         "qA2": {
@@ -195,6 +201,7 @@
             "resonator": {
                 "depletion_time": 1000,
                 "f_01": 7395770000.0,
+                "GEF_frequency_shift": 1000000,
                 "operations": {
                     "readout": {
                         "length": 2500,
@@ -206,13 +213,10 @@
                 "opx_input": "#/wiring/qubits/qA2/rr/opx_input",
                 "time_of_flight": 32,
                 "RF_frequency": 7395770000.0,
-                "GEF_frequency_shift": 1000000,
                 "opx_output": "#/wiring/qubits/qA2/rr/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
             },
-            "freq_vs_flux_01_quad_term": 5706880265.373203,
             "anharmonicity": 200000000.0,
-
             "grid_location": "1,0",
             "z": {
                 "operations": {
@@ -225,12 +229,21 @@
                 "opx_output": "#/wiring/qubits/qA2/z/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.flux_line.FluxLine"
             },
+            "freq_vs_flux_01_quad_term": 5706880265.373203,
             "__class__": "quam_builder.architecture.superconducting.qubit.flux_tunable_transmon.FluxTunableTransmon"
         }
     },
     "qubit_pairs": {
         "qA1-qA2": {
             "id": "qA1-qA2",
+            "macros": {
+                "Cz_square_pulse_232": {
+                    "flux_pulse_control": "#/qubits/qA1/z/operations/Cz_square_pulse_232",
+                    "coupler_flux_pulse": "#/qubit_pairs/qA1-qA2/coupler/operations/Cz_square_pulse_232",
+                    "__class__": "quam_builder.architecture.superconducting.custom_gates.cz.CZGate"
+                },
+                "Cz": "#./Cz_square_pulse_232"
+            },
             "qubit_control": "#/qubits/qA1",
             "qubit_target": "#/qubits/qA2",
             "coupler": {
@@ -239,12 +252,20 @@
                         "length": 100,
                         "amplitude": 0.1,
                         "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "Cz_square_pulse_232": {
+                        "length": 232,
+                        "id": "Cz_square_pulse_232",
+                        "amplitude": 0.3949748031080551,
+                        "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
                     }
                 },
                 "id": "coupler_qA1_qA2",
                 "opx_output": "#/wiring/qubit_pairs/qA1-qA2/c/opx_output",
+                "decouple_offset": -0.06320000000000023,
                 "__class__": "quam_builder.architecture.superconducting.components.tunable_coupler.TunableCoupler"
             },
+            "detuning": 0.3949748031080551,
             "__class__": "quam_builder.architecture.superconducting.qubit_pair.flux_tunable_transmon_pair.FluxTunableTransmonPair"
         }
     },

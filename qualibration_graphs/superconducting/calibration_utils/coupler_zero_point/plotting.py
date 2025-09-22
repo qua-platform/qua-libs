@@ -1,55 +1,14 @@
 from typing import List
 import xarray as xr
 from matplotlib.axes import Axes
-from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
+import numpy as np
 
 from qualang_tools.units import unit
-from qualibration_libs.plotting import QubitGrid, grid_iter
-from qualibration_libs.analysis import lorentzian_dip
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
-
 u = unit(coerce_to_integer=True)
 
-
-def plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> Figure:
-    """
-    Plots the raw phase data for the given qubits.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing the quadrature data.
-    qubits : list
-        A list of qubits to plot.
-
-    Returns
-    -------
-    Figure
-        The matplotlib figure object containing the plots.
-
-    Notes
-    -----
-    - The function creates a grid of subplots, one for each qubit.
-    - Each subplot contains two x-axes: one for the full frequency in GHz and one for the detuning in MHz.
-    """
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax1, qubit in grid_iter(grid):
-        # Create a first x-axis for full_freq_GHz
-        ds.assign_coords(full_freq_GHz=ds.full_freq / u.GHz).loc[qubit].phase.plot(ax=ax1, x="full_freq_GHz")
-        ax1.set_xlabel("RF frequency [GHz]")
-        ax1.set_ylabel("phase [rad]")
-        # Create a second x-axis for detuning_MHz
-        ax2 = ax1.twiny()
-        ds.assign_coords(detuning_MHz=ds.detuning / u.MHz).loc[qubit].phase.plot(ax=ax2, x="detuning_MHz")
-        ax2.set_xlabel("Detuning [MHz]")
-    grid.fig.suptitle("Resonator spectroscopy (phase)")
-    grid.fig.set_size_inches(15, 9)
-    grid.fig.tight_layout()
-
-    return grid.fig
-
-
-def plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+def plot_raw_data_with_fit(ds: xr.Dataset, qubit_pairs: List[AnyTransmon], fits: xr.Dataset):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
 
@@ -72,17 +31,29 @@ def plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits:
     - The function creates a grid of subplots, one for each qubit.
     - Each subplot contains the raw data and the fitted curve.
     """
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        plot_individual_amplitude_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+    fig, axs = plt.subplots(nrows=len(qubit_pairs), ncols=1, figsize=(15, 9))
+    for ii, qp in enumerate(qubit_pairs):
+        ax = axs[ii] if len(qubit_pairs) > 1 else axs
 
-    grid.fig.suptitle("Resonator spectroscopy (amplitude + fit)")
-    grid.fig.set_size_inches(15, 9)
-    grid.fig.tight_layout()
-    return grid.fig
+        # Try to get fit data for this qubit pair, handle if missing
+        try:
+            fit_data = fits[qp.id] if fits is not None else None
+        except (KeyError, ValueError):
+            # If this qubit pair is not in the fit results, set fit_data to None
+            fit_data = None
+
+        plot_individual_data_with(ax, ds, qp.id, fit_data)
+
+    fig.suptitle("coupler zero point")
+    fig.set_size_inches(15, 9)
+    fig.tight_layout()
+
+    return fig
 
 
-def plot_individual_amplitude_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+
+
+def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit_pair: str, fit: xr.Dataset = None):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -101,31 +72,43 @@ def plot_individual_amplitude_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    if fit:
-        fitted_data = lorentzian_dip(
-            ds.detuning,
-            float(fit.amplitude.values),
-            float(fit.position.values),
-            float(fit.width.values) / 2,
-            float(fit.base_line.mean().values),
-        )
+
+    if hasattr(ds, "state_target"):
+        # If the dataset has 'state_target', use it for plotting
+        data = ds.state_target.sel(qubit_pair=qubit_pair)
     else:
-        fitted_data = None
+        data = ds.I_target.sel(qubit_pair=qubit_pair)
 
-    # Create a first x-axis for full_freq_GHz
-    (ds.assign_coords(full_freq_GHz=ds.full_freq / u.GHz).loc[qubit].IQ_abs / u.mV).plot(ax=ax, x="full_freq_GHz")
-    ax.set_xlabel("RF frequency [GHz]")
-    ax.set_ylabel(r"$R=\sqrt{I^2 + Q^2}$ [mV]")
-    # Create a second x-axis for detuning_MHz
-    ax2 = ax.twiny()
-    (ds.assign_coords(detuning_MHz=ds.detuning / u.MHz).loc[qubit].IQ_abs / u.mV).plot(ax=ax2, x="detuning_MHz")
-    ax2.set_xlabel("Detuning [MHz]")
-    # Plot the fitted data
-    if fitted_data is not None:
-        ax2.plot(ds.detuning / u.MHz, fitted_data / u.mV, "r--")
+    data.assign_coords({"qubit_flux_mV": 1e3*data.qubit_flux_full, "coupler_flux_mV": 1e3*data.coupler_flux_full}).plot(x='qubit_flux_mV',y='coupler_flux_mV')
 
+    # Only plot fit results if they exist and are valid
+    if fit is not None:
+        try:
+            # Check if fit values exist and are valid (not NaN)
+            qubit_flux_max = float(fit['qubit_flux_max'])
+            coupler_flux_min = float(fit['coupler_flux_min'])
+            if not (np.isnan(qubit_flux_max) or np.isnan(coupler_flux_min)):
+                ax.axhline(1e3*coupler_flux_min, color = 'red', lw = 0.5, ls = '--')
+                #ax.axhline(1e3*machine.qubit_pairs[qp['qubit']].coupler.decouple_offset, color = 'blue', lw =0.5, ls = '--')
+                ax.axvline(1e3*qubit_flux_max, color = 'red', lw =0.5, ls = '--')
+            else:
+                ax.set_title(f"{qubit_pair} - Fit Failed (Invalid Parameters)")
+        except (ValueError, TypeError, AttributeError):
+            ax.set_title(f"{qubit_pair} - Fit Failed")
+    else:
+        ax.set_title(f"{qubit_pair} - No Fit Data")
+    detuning_data = ds.sel(qubit_pair=qubit_pair).detuning.values * 1e-6
+    def flux_to_detuning(x):
+        return np.interp(x, 1e3*data.qubit_flux_full, detuning_data)
+    
+    def detuning_to_flux(y):
+        return np.interp(y, detuning_data, 1e3*data.qubit_flux_full)
 
+    sec_ax = ax.secondary_xaxis('top', functions=(flux_to_detuning, detuning_to_flux))
+    sec_ax.set_xlabel('Detuning [MHz]')
 
+    ax.set_xlabel("qubit flux [mV]")
+    ax.set_ylabel("coupler flux [mV]")
 
 """
 # %% {Plotting}
