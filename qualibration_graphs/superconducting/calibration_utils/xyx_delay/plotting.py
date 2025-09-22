@@ -13,7 +13,7 @@ u = unit(coerce_to_integer=True)
 
 def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     """
-    Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
+    Plots the relative delay scans between the XY and Z pulses with the fitted center.
 
     Parameters
     ----------

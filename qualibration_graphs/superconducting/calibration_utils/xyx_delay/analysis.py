@@ -1,20 +1,17 @@
 import logging
 from dataclasses import dataclass
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple
 
 import numpy as np
 import xarray as xr
-from matplotlib import pyplot as plt
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
-from qualang_tools.bakery import baking
 
 __all__ = [
     "FitParameters",
     "process_raw_dataset",
     "fit_raw_data",
     "log_fitted_results",
-    "baked_flux_xy_segments",
 ]
 
 
@@ -119,43 +116,3 @@ def fit_routine(da, node):
     print(f"Flux delay for {da.qubit.data}: {flux_delay:.2f} ns")
 
     return da
-
-
-def baked_flux_xy_segments(config: dict, waveform: List[float], qb, zeros_each_side: int):
-    """Create baked XY+Z (flux) pulse segments for all relative shifts.
-
-    Parameters
-    ----------
-    config : dict
-        Full QUA configuration dict.
-    waveform : list[float]
-        Flux (Z) pulse samples (without padding) matching x180 length.
-    qb : AnyTransmon-like
-        Qubit object providing access to xy and z channels.
-    zeros_each_side : int
-        Number of zeros before and after (total scan range = 2 * zeros_each_side).
-
-    Returns
-    -------
-    list
-        List of baking objects, each representing one relative timing segment.
-    """
-    pulse_segments = []
-    total = 2 * zeros_each_side
-    i_key = qb.xy.name + ".x180_DragCosine.wf.I"
-    q_key = qb.xy.name + ".x180_DragCosine.wf.Q"
-    I_samples = config["waveforms"][i_key]["samples"]
-    Q_samples = config["waveforms"][q_key]["samples"]
-    for i in range(total):
-        with baking(config, padding_method="none") as b:
-            wf = [0.0] * i + waveform + [0.0] * (total - i)
-            zeros = [0.0] * zeros_each_side
-            I_wf = zeros + I_samples + zeros
-            Q_wf = zeros + Q_samples + zeros
-            assert len(wf) == len(I_wf) == len(Q_wf), "Flux and XY padded waveforms must have identical length"
-            b.add_op("flux_pulse", qb.z.name, wf)
-            b.add_op("x180", qb.xy.name, [I_wf, Q_wf])
-            b.play("flux_pulse", qb.z.name)
-            b.play("x180", qb.xy.name)
-        pulse_segments.append(b)
-    return pulse_segments
