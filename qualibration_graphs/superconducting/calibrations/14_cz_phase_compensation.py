@@ -26,7 +26,24 @@ from quam.core import operation
 
 # %% {Description}
 description = """
-A blank template for a calibration node.
+        CZ PHASE COMPENSATION
+This program calibrates and compensates the residual single-qubit (local Z) phase shifts induced by a CZ gate.
+For each selected qubit pair, the sequence prepares either the control or the target qubit in a Ramsey-like
+fragment (x90 – CZ – x90) while sweeping an additional virtual frame rotation (fractional phase in [0,1) → 2π) that
+is added on top of the currently stored phase compensation term (phase_shift_control / phase_shift_target).
+The resulting oscillations versus frame rotation are sinusoidal; fitting their phase gives the residual phase error.
+
+From the fitted phases, updated compensation values are computed and written back so that future executions of the
+CZ macro implicitly cancel these local phases, leaving only the intended conditional phase.
+
+Prerequisites:
+    - Having calibrated single-qubit gates and readout.
+    - The CZ macro (e.g. "cz_unipolar") must be calibrated and produce a conditional phase near π.
+    - (Optional) Prior coarse conditional phase calibration (e.g. separate CZ phase characterization) improves fit robustness.
+
+State update:
+    - qp.macros[operation].phase_shift_control
+    - qp.macros[operation].phase_shift_target
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -43,13 +60,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubit_pairs = ["qA1-qA3"]
-    node.parameters.use_state_discrimination = True
-    node.parameters.num_shots = 500
-    node.parameters.operation = "cz_unipolar"
-    node.parameters.num_frames = 21
-    # node.parameters.load_data_id = 2593
-    # node.parameters.reset_type = "active"
+    node.parameters.qubit_pairs = ["qD1-qD2"]
     pass
 
 
@@ -71,7 +82,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_shots
     frames = np.arange(0, 1, 1 / node.parameters.num_frames)
-    operation = node.parameters.operation
+    cz_operation = node.parameters.operation
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -93,22 +104,27 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         extra_phase_c = declare(fixed)
         extra_phase_t = declare(fixed)
 
-        for target in list(node.machine.active_qubits) + [
-            qp.coupler for qp in node.machine.active_qubit_pairs if hasattr(qp, "coupler") and qp.coupler is not None
-        ]:
-            node.machine.initialize_qpu(target=target)
-
         for multiplexed_qubit_pairs in qubit_pairs.batch():
+            # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
+            for qp in multiplexed_qubit_pairs.values():
+                node.machine.initialize_qpu(target=qp.qubit_control)
+                node.machine.initialize_qpu(target=qp.qubit_target)
+            align()
+            # Loop over the number of averages
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
+                # Loop over the virtual frame rotations for phase tomography
                 with for_(*from_array(frame, frames)):
                     for ii, qp in multiplexed_qubit_pairs.items():
-                        assign(extra_phase_c, qp.macros[operation].phase_shift_control)
-                        assign(extra_phase_t, qp.macros[operation].phase_shift_target)
+                        # Add the current compensation from the active state
+                        assign(extra_phase_c, qp.macros[cz_operation].phase_shift_control)
+                        assign(extra_phase_t, qp.macros[cz_operation].phase_shift_target)
+                        # Loop over the state preparations for control and target qubits
                         for qubit, state_q, state_st in [
                             (qp.qubit_control, state_c[ii], state_c_st[ii]),
                             (qp.qubit_target, state_t[ii], state_t_st[ii]),
                         ]:
+                            # Reset both qubits and align
                             qp.qubit_control.reset(
                                 reset_type=node.parameters.reset_type, simulate=node.parameters.simulate
                             )
@@ -116,15 +132,19 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 reset_type=node.parameters.reset_type, simulate=node.parameters.simulate
                             )
                             qp.align()
+                            # Prepare the qubit in a superposition state with an x90 pulse
                             qubit.xy.play("x90")
                             qubit.align()
+                            # Apply the CZ gate with the added frame rotation for phase tomography of the corresponding qubit
                             if qubit is qp.qubit_control:
-                                qp.macros[operation].apply(phase_shift_control=frame + extra_phase_c)
+                                qp.macros[cz_operation].apply(phase_shift_control=frame + extra_phase_c)
                             elif qubit is qp.qubit_target:
-                                qp.macros[operation].apply(phase_shift_target=frame + extra_phase_t)
+                                qp.macros[cz_operation].apply(phase_shift_target=frame + extra_phase_t)
+                            # Final x90 pulse to complete the Ramsey sequence
                             qubit.xy.play("x90")
                             qp.align()
 
+                            # Measure the corresponding qubit and save the results in the appropriate stream
                             if node.parameters.use_state_discrimination:
                                 # measure both qubits
                                 qubit.readout_state(state_q)
@@ -246,19 +266,19 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
-    operation = node.parameters.operation
+    cz_operation = node.parameters.operation
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
                 continue
-            old_phase_control = qp.macros[operation].phase_shift_control
-            old_phase_target = qp.macros[operation].phase_shift_target
-            qp.macros[operation].phase_shift_control = (old_phase_control - float(
-                node.results["ds_fit"].sel(qubit_pair=qp.name).fitted_control_phase.values
-            )) % 1
-            qp.macros[operation].phase_shift_target = (old_phase_target - float(
-                node.results["ds_fit"].sel(qubit_pair=qp.name).fitted_target_phase.values
-            )) % 1
+            old_phase_control = qp.macros[cz_operation].phase_shift_control
+            old_phase_target = qp.macros[cz_operation].phase_shift_target
+            qp.macros[cz_operation].phase_shift_control = (
+                old_phase_control - float(node.results["ds_fit"].sel(qubit_pair=qp.name).fitted_control_phase.values)
+            ) % 1
+            qp.macros[cz_operation].phase_shift_target = (
+                old_phase_target - float(node.results["ds_fit"].sel(qubit_pair=qp.name).fitted_target_phase.values)
+            ) % 1
 
 
 # %% {Save_results}
