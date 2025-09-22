@@ -76,7 +76,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     execution in the Python IDE.
     """
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qD1", "qD2"]
+    # node.parameters.qubits = ["q1", "q2"]
     pass
 
 
@@ -100,15 +100,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     n_runs = node.parameters.num_shots  # Number of runs
     operation = node.parameters.operation
 
+    # Frequency sweep in MHz
     frequencies = np.arange(
         -node.parameters.frequency_span_in_mhz * u.MHz / 2,
         node.parameters.frequency_span_in_mhz * u.MHz / 2,
         node.parameters.frequency_step_in_mhz * u.MHz,
-    )  # Frequency sweep in MHz
+    )
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        # "n_runs": xr.DataArray(np.linspace(1, n_runs, n_runs), attrs={"long_name": "number of shots"}),
         "frequency": xr.DataArray(frequencies, attrs={"long_name": "readout frequency shift in MHz"}),
     }
 
@@ -134,8 +134,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Ground state iq blobs for all qubits
                     # Qubit initialization
                     for i, qubit in multiplexed_qubits.items():
-
-                        qubit.wait(3 * qubit.thermalization_time * u.ns)
+                        qubit.wait(2 * qubit.thermalization_time * u.ns)
                     align()
                     # Qubit readout
                     for i, qubit in multiplexed_qubits.items():
