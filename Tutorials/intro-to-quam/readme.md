@@ -27,10 +27,10 @@ Welcome to your Quantum Abstract Machine (QUAM) introductory tutorial! This exam
 
 Using QUAM, you can:
 
-- **Model Quantum Systems** with standardized components like `Mixers` and `IQChannels`, representing your quantum environment digitally.
+- **Model Physics-oriented Components Directly** via QUAM components, which provides an abstraction of the elements which is part of, or interact with the quantum system (such as resonators, lasers, qubits) by handling the association to the relevant hardware (such as `IQChannel` and `Mixer`) intuitively.
 - **Automate QUA Configuration** by generating hardware-level QUA configs directly from your QUAM setup.
 - **Extend the Framework** with custom Python classes to support specialized quantum experiments.
-- **Manage State** by saving and loading complete QUAM configurations for reproducibility and consistency.
+- **Manage the State of your QPU** by saving and loading complete QUAM configurations for reproducibility and consistency.
 
 QUAM bridges the gap between hardware-centric control and physicist-friendly abstraction, streamlining experiment design, configuration, and execution.
 
@@ -53,7 +53,7 @@ This higher level of abstraction offers several advantages:
 - **Reusability**: Supports saving and loading complete system configurations, enabling reproducible experiments across hardware generations.
 - **Extensibility**: Facilitates integration of new components and experimental paradigms with minimal disruption.
 
-By transitioning from an hardware-centric to a operation-centric paradigm, QUAM provides a more maintainable, flexible, and physicist-friendly framework for managing modern quantum experiments.
+By transitioning from an hardware-centric to a operation-centric paradigm, QUAM provides a more maintainable, flexible, and physicist-friendly framework for managing modern quantum experiments. Looking forward, we also extend QUAM to a higher-level graph-based framework which defines scalable and robust calibration protocols -- [QUAlibrate](https://qua-platform.github.io/qualibrate/). An introductory tutorial to QUAlibrate can be found [here](../intro-to-QUAlibrate).
 
 
 ---
@@ -68,6 +68,7 @@ To install QUAM and prepare your environment, follow the official instructions:
 ## 4. 🚀 Get started
 While there is no constraint on the experimental setup that can be implemented on QUAM, we will demonstrate the abstraction on the following system:
  - [Trapped ion](./trapped_ion/readme.md)
+ - [Superconducting qubit](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs/superconducting)
 
 
 ### 5. 🔄 Migrating to QUAM

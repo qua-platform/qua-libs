@@ -114,12 +114,12 @@
             "operations": {
                 "x180": {
                     "length": 1000,
-                    "amplitude": 0.05,
+                    "amplitude": 0.1,
                     "__class__": "quam.components.pulses.SquarePulse"
                 },
                 "y180": {
                     "length": 1000,
-                    "amplitude": 0.05,
+                    "amplitude": 0.1,
                     "axis_angle": 90,
                     "__class__": "quam.components.pulses.SquarePulse"
                 }

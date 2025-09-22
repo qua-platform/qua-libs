@@ -1,23 +1,23 @@
 
 # Microwave-driven Trapped Ion Qubits
-In this tutorial we will present a experimental set up based on trapped ion and demonstrate its abstraction using QUAM. Readers interested in the comprehensive introduction trapped ion and its application in quantum computation can be found [[1-3](#references)].
+In this tutorial we will present a experimental set up based on trapped ions and demonstrate its abstraction using QUAM. Readers interested in the comprehensive introduction of the trapped ions and its application in quantum computing can refer to [[1-3](#references)].
 
 The system of interest is based on the recent work on the global single-qubit addressing using composite microwave pulse sequences [[4](#references)]. A simplified case will be presented here for clarity. The overall trap and the relevant fields are shown in the figure below.
 
 <img src="../images/ion_trap.png" width=50% height=50%>
 
-To trap an ion in an electric field, one require both the RF (~10 MHz) and DC applied on their respective electrode. The presence of multiple DC electrodes is to facilitate the shuttling and re-arrangement of the ions. The qubit is defined by the hyperfine levels due to the static magnetic field (labelled B) which determines the quantization axis. 
+To trap an ion in an electric field, one requires both the RF (~10 MHz) and DC signals applied on their respective electrode. The presence of multiple DC electrodes is to facilitate the shuttling and re-arrangement of the ions. The qubit is defined by the hyperfine levels due to the static magnetic field (labelled B) which determines the quantization axis. 
 
-The coherent operation in this scheme is achieved by the application of near-field microwave via two counter-propagating electrode such that the magnetic-field parallel to the quantization axis drives the qubit transition. Adjusting the DC allows for the controlled displacement of the ion, and the magnetic field gradient acting on each ion leading to tunable Rabi frequencies.
+The coherent operation in this scheme is achieved by the application of near-field microwave via two counter-propagating electrodes such that the magnetic-field parallel to the quantization axis drives the qubit transition. Adjusting the DC voltage allows for the controlled displacement of the ion, and the magnetic field gradient acting on each ion leading to tunable Rabi frequencies.
 
 Finally, a readout laser incoherently excites the ion to a fast-decaying state and the fluorescence count is used for state discrimination.
 
 ## Qubit scheme
-A more detailed qubit scheme is presented in the figure. In addition to the coherent microwave drive and the readout operation, an optical shelving operation is necessary for the state discrimination. The optical shelving typically maps one of the qubit state to an intermediate state $\ket{i}$ which in turn decays and shelved in a meta-stable $\ket{r}$ state during the readout. The $\ket{i}$ state is chosen such that decay to other states are forbidden to ensure high shelving fidelity.
+A more detailed scheme of the energy levels is presented in the figure below. In addition to the coherent microwave drive and the readout operation, an optical shelving operation is necessary for the state discrimination. The optical shelving typically maps one of the qubit state to an intermediate state $\ket{i}$ which in turn decays to be shelved in a meta-stable $\ket{r}$ state during the readout. The $\ket{i}$ state is chosen such that decay to other states are forbidden to ensure high shelving fidelity.
 
 <img src="../images/ion_energy_level.png" width=35% height=35%>
 
-For the rest of the tutorial, we will aim perform a single qubit gate using a global microwave drive and performing a readout from a two qubit system.
+For the rest of the tutorial, we will aim at implementing a single qubit gate using a global microwave drive and performing a readout from a two qubit system.
 
 ## Global single-qubit addressing gate
 
@@ -43,9 +43,9 @@ Consider a case where $A_1^\pi/A_2^\pi = 2$ and $\phi=0$. An $X_\pi I$ gate can 
 For simplicity, let us consider only the implementation of $X_\pi$ gate on the qubits with pre-calibrated DC that produces ion displacement that gives $A_1^\pi/A_2^\pi = 2$, or in terms of Rabi frequency $\Omega_1/\Omega_2 = 1/2$. The $X_\pi I$ gate is trivial when the microwave pulse drives exactly a $\pi$ rotation on the first qubit. This reproduces the example shown in the figure. The $I X_\pi$ gate on the other hand is decomposed into a sequence $(Y_{\pi/2}X_{-\pi/2}Y_{\pi/2}) \otimes (Y_{\pi}X_{-\pi}Y_{\pi})=IX_\pi$. Note that the global gate implements the same rotation axis, but at different Rabi frequency on each qubit. Readers should verify the solution and find that it is equivalent up to a global phase.
 
 ## Control Hardware
-Before the QUAM abstraction, let us define our control hardware stack. The  MW and RF signals are generated from [OPX-1000](https://www.quantum-machines.co/products/opx1000/), DC signals from [QDAC-II](https://www.quantum-machines.co/products/qdac/). The fluorescence readout signal is outputted from a PMT into the OPX1000 LF-FEM input.
+Before the QUAM abstraction, let us define our control hardware stack. The MW and RF signals are generated from the [OPX-1000](https://www.quantum-machines.co/products/opx1000/), and the DC signals from the [QDAC-II](https://www.quantum-machines.co/products/qdac/). The fluorescence readout signal is captured by a photmultiplier tube (PMT) and transmitted into an OPX1000 LF-FEM input.
 
-The DC applied to the electrodes is set to have two configuration: idle and the displaced position. The configurations can be switched via a trigger with TTL signal. The shelving and readout operation is performed in the idle configuration with two lasers targeting their corresponding transition. To spatially select the ion, an AOM is used to deflect the laser beams by modulating the RF frequency supplied to the AOM. The readout is performed by sequentially measuring the fluorescence count on an PMT. An integration of the TTL signal outputted from the PMT gives the total fluorescence count.
+The DC signal applied to the electrodes is set to have two configurations: "idle" and "displaced". The configurations can be switched via a trigger with TTL signal. The shelving and readout operations are performed in the idle configuration with two lasers targeting their corresponding transition. To spatially select the ion, an AOM is used to deflect the laser beams by modulating the RF frequency supplied to the accouto-optical modulator (AOM). The readout is performed by sequentially measuring the fluorescence counts on an PMT. An integration of the signal outputted from the PMT gives the total fluorescence count.
 
 
 <img src="../images/ion_system.png" width=70% height=70%>
@@ -54,10 +54,10 @@ The specific implementation of the DC signal for shuttling and re-arrangement is
 
 
 # QUAM Description
-Having discussed the hardware, we can now proceed to provide their abstraction in QUAM.
+Having discussed the hardware components, we can now proceed to provide their abstraction in QUAM.
 
 ## 1. Describing the root QUAM object and components
-In QUAM, the data or the state of the experiment setup (e.g. pulse amplitude, DC offset, etc) is represented by `quam_dataclass`. A root container holds all the different `quam_dataclass` and serves as an entrypoint for all the operation. The root container is defined by extending the `QuamRoot` class with variables associated with the qubits or components (in this example, our MW drive). This is defined as `Quam.qubits` and `Quam.global_op` respectively.
+In QUAM, the data or the state of the experiment (e.g. pulse amplitude, DC offset, etc) is represented by a `quam_dataclass`. A root container holds all the different `quam_dataclass` and serves as an entry point for all the operations. The root container is defined by extending the `QuamRoot` class with variables associated with the qubits or components (in this example, our MW drive). This is defined as `Quam.qubits` and `Quam.global_op` respectively.
 
 ```python
 @quam_dataclass
@@ -66,7 +66,7 @@ class Quam(QuamRoot):
     global_op: GlobalOperations = None
 ```
 
-For each of the corresponding components (within QUAM, `Qubit` is a subclass of the component `QuantumComponent`), we describe the channels. The `Channel` described the physical connections to the quantum hardware, and can be of [different types](https://qua-platform.github.io/quam/components/channels/) describing the analog input/output and the digital output.
+For each of the corresponding components (within QUAM, `Qubit` is a subclass of the component `QuantumComponent`), we describe the channels. The `Channel` describes the physical connections to the quantum hardware, and can be of [different types](https://qua-platform.github.io/quam/components/channels/).
 
 ```python
 @quam_dataclass
@@ -82,10 +82,10 @@ class GlobalOperations(Qubit):
 ```
 
 In our setup, we require for the following operation:
-- Shelving: Analog output
-- Readout: Analog input and output
-- Global MW: Microwave analog output
-- Ion displacement: Digital output
+- Shelving: Analog output --> `SingleChannel`
+- Readout: Analog input and output --> `InOutSingleChannel`
+- Global MW: Microwave analog output --> `MWChannel`
+- Ion displacement: Digital output --> `Channel`
 
 ## 2. Operation macros
 When translating a physical operation to code, an important aspect is readability. This is part of the core design principle for QUAM, in which an $X$ gate acting on a qubit can be called by writing for example `qubit.play("X")` where we can assign an associated `X` pulse to the quantum hardware.
@@ -134,7 +134,7 @@ class SingleXMacro(QubitMacro):
 <summary>⚠️ <code>measure_integrated</code> is a custom function added to <code>InOutSingleChannel</code> following the code below. The default <code>measure</code> implemented in QUAM performs demodulation at the IF frequency which is unnecessary for fluorescence measurement.
 </summary>
 
-Instead, we implemented the integration of the TTL photon counting singal of the PMT to obtain the total fluorescence count. When the fluorescence exceeds a threshold in a pre-calibrated timeframe, we can discriminate the state.
+Instead, we implemented the integration of the TTL photon counting signal of the PMT to obtain the total fluorescence count. When the fluorescence exceeds a threshold in a pre-calibrated timeframe, we can discriminate the state.
 
 ```python
 def measure_integrated(
@@ -355,7 +355,7 @@ class DoubleXMacro(QubitMacro):
 machine.global_op.macros["N_XX"] = DoubleXMacro()
 ```
 
-The implemented program is similar to the case of a single addressing gate with the addition of amplitude scan range.
+The implemented program is similar to the case of a single addressing gate with the addition of amplitude scan.
 
 ```python
 optimize_qubit_idx = 1
@@ -405,7 +405,7 @@ machine = Quam.load("state_after.json")
 ```
 
 # Last word
-In this tutorial, we realized the abstraction of a physical experiment using QUAM for an operation-centric and readable structure. For physicist, this is an ideal framework for describing an experiment and book-keeping. The implementation of the code here is found in the [`machine.py`](machine.py) which serves as an entry point.
+In this tutorial, we realized the abstraction of a physical experiment using QUAM for an operation-centric and readable structure. For physicists, this is an ideal framework for describing an experiment and book-keeping. The implementation of the code here is found in the [`machine.py`](machine.py) which serves as an entry point.
 
 # References
 1. Leibfried, D., Blatt, R., Monroe, C., & Wineland, D. (2003). Quantum dynamics of single trapped ions. Reviews of Modern Physics, 75(1), 281. https://doi.org/10.1103/RevModPhys.75.281
