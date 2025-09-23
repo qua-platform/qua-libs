@@ -14,6 +14,12 @@ from scipy.optimize import curve_fit, minimize
 class FitParameters:
     """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
 
+    I_g_center: float
+    Q_g_center: float
+    I_e_center: float
+    Q_e_center: float
+    I_f_center: float
+    Q_f_center: float
     success: bool
 
 
@@ -32,12 +38,18 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
-        s_qubit = f"Results for qubit {q}: "
-        if fit_results[q]["success"]:
-            s_qubit += " SUCCESS!\n"
+        s_qubit = f"GEF center positions for qubit {q}: "
+        fp = fit_results[q]
+        centers_str = (
+            f"g:({fp.I_g_center * 1e3:.1f},{fp.Q_g_center * 1e3:.1f}) mV | "
+            f"e:({fp.I_e_center * 1e3:.1f},{fp.Q_e_center * 1e3:.1f}) mV | "
+            f"f:({fp.I_f_center * 1e3:.1f},{fp.Q_f_center * 1e3:.1f}) mV"
+        )
+        if fp.success:
+            s_qubit += "SUCCESS! "
         else:
-            s_qubit += " FAIL!\n"
-        log_callable(s_qubit)
+            s_qubit += "FAIL! "
+        log_callable(s_qubit + centers_str)
 
 
 def find_biggest_gaussian(da):
@@ -145,11 +157,18 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     # return fit_data, fit_results
     return fit_data, fit_results
 
+
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
 
     fit_results = {
         q: FitParameters(
+            I_g_center=float(fit.sel(qubit=q).I_g_center),
+            Q_g_center=float(fit.sel(qubit=q).Q_g_center),
+            I_e_center=float(fit.sel(qubit=q).I_e_center),
+            Q_e_center=float(fit.sel(qubit=q).Q_e_center),
+            I_f_center=float(fit.sel(qubit=q).I_f_center),
+            Q_f_center=float(fit.sel(qubit=q).Q_f_center),
             success=True,
         )
         for q in fit.qubit.values
@@ -161,9 +180,11 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
 
 def center_matrix(da: xr.DataArray) -> xr.DataArray:
-    center = np.array([
-        [da.I_g_center.item(), da.Q_g_center.item()],
-        [da.I_e_center.item(), da.Q_e_center.item()],
-        [da.I_f_center.item(), da.Q_f_center.item()],
-    ])
+    center = np.array(
+        [
+            [da.I_g_center.item(), da.Q_g_center.item()],
+            [da.I_e_center.item(), da.Q_e_center.item()],
+            [da.I_f_center.item(), da.Q_f_center.item()],
+        ]
+    )
     return da.assign(center_matrix=(["I", "Q"], center))

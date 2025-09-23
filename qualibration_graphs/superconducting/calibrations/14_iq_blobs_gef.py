@@ -227,13 +227,14 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     and the fitted results in the "fit_results" dictionary.
     """
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    # Keep a dict version for persistence, but use the original dataclass objects for logging
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-    # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    # Log using the dataclass objects (they have attribute access expected by log_fitted_results)
+    log_fitted_results(fit_results, log_callable=node.log)
     node.outcomes = {
-        qubit_name: ("successful" if fit_result["success"] else "failed")
-        for qubit_name, fit_result in node.results["fit_results"].items()
+        qubit_name: ("successful" if fit_result_dict["success"] else "failed")
+        for qubit_name, fit_result_dict in node.results["fit_results"].items()
     }
 
 
@@ -265,7 +266,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             operation = q.resonator.operations[node.parameters.operation]
             node.machine.qubits[q.name].resonator.gef_centers = (
                 node.results["ds_fit"].sel(qubit=q.name).center_matrix.data * operation.length / 2**12
-            ).tolist() # convert to raw adc units
+            ).tolist()  # convert to raw adc units
 
 
 # %% {Save_results}
