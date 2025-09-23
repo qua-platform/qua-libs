@@ -125,9 +125,8 @@ def create_qua_program(node: QualibrationNode[EfParameters, Quam]):
                     # Qubit initialization
                     for i, qubit in multiplexed_qubits.items():  # Reset the qubit to ground state
                         qubit.reset(reset_type=node.parameters.reset_type, simulate=node.parameters.simulate)
-                        if (
-                            node.parameters.reset_type == "thermal"
-                        ):  # Wait twice the regular thermal time for proper |f> state reset
+                        # Wait twice the regular thermal time for proper |f> state reset
+                        if node.parameters.reset_type == "thermal":
                             qubit.wait(qubit.thermalization_time * u.ns)
                     align()
                     for i, qubit in multiplexed_qubits.items():
