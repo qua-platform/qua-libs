@@ -72,12 +72,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubit_pairs = ["qA1-qA3"]
-    node.parameters.use_state_discrimination = True
-    node.parameters.reset_type = "active"
-
-    node.parameters.amp_range = 0.07
-    # node.parameters.load_data_id = 2119
+    # node.parameters.qubit_pairs = ["q1-q2"]
     pass
 
 
@@ -101,6 +96,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
     frames = np.arange(0, 1, 1 / node.parameters.num_frames)
 
+    # Select the CZ operation type
     operation = node.parameters.operation
 
     # Register the sweep axes to be added to the dataset when fetching data
@@ -126,19 +122,26 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
             state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
 
-        for qubit in node.machine.active_qubits:
-            node.machine.initialize_qpu(target=qubit)
-
         for multiplexed_qubit_pairs in qubit_pairs.batch():
+            # Initialize the qubits
+            for qp in multiplexed_qubit_pairs.values():
+                node.machine.initialize_qpu(target=qp.qubit_control)
+                node.machine.initialize_qpu(target=qp.qubit_target)
+            # Loop for averaging
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
+                # Loop over the amplitude scale
                 with for_(*from_array(amp, amplitudes)):
+                    # Loop over the frame rotations
                     with for_(*from_array(frame, frames)):
+                        # Loop over the initial state of the control qubit
                         with for_(*from_array(control_initial, [0, 1])):
                             for ii, qp in multiplexed_qubit_pairs.items():
+                                # Reset the qubits
                                 qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
                                 qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
                                 qp.align()
+                                # Reset the frames of both qubits
                                 reset_frame(qp.qubit_target.xy.name)
                                 reset_frame(qp.qubit_control.xy.name)
                                 # setting both qubits to the initial state
@@ -149,7 +152,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qp.macros[operation].apply(amplitude_scale_control=amp)
                                 # rotate the frame
                                 qp.qubit_target.xy.frame_rotation_2pi(frame)
-                                # return the target qubit before measurement
+                                # Tomographic rotation on the target qubit
                                 qp.qubit_target.xy.play("x90")
                                 qp.align()
 

@@ -18,7 +18,7 @@ class FitResults:
 
 
 def fix_oscillation_phi_2pi(fit_data):
-    """Extract and fix the phase parameter from oscillation fit data."""
+    """Extract the phase parameter from oscillation fit data."""
     # Extract the phase parameter from the fit results
     phase = fit_data.sel(fit_vals="phi")
     # Normalize phase to [0, 1] range (representing 0 to 2π)
