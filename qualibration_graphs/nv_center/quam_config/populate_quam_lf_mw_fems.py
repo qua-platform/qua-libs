@@ -114,15 +114,14 @@ readout_time = 400  # in ns
 laser_length = 3000  # in ns
 
 # add laser
-digital_output = {"DO1": DigitalOutputChannel(
-    opx_output=("con1", 1, 1),  # controller, slot, port
-    delay=57,  # 57ns for QOP222 and above
-    buffer=18,  # 18ns for QOP222 and above
-)
+digital_output = {
+    "DO1": DigitalOutputChannel(
+        opx_output=("con1", 1, 1),  # controller, slot, port
+        delay=57,  # 57ns for QOP222 and above
+        buffer=18,  # 18ns for QOP222 and above
+    )
 }
-machine.qubits.q1.laser = LaserLFDigital(
-    digital_outputs=digital_output, laser_length=laser_length
-)
+machine.qubits.q1.laser = LaserLFDigital(digital_outputs=digital_output, laser_length=laser_length)
 
 # Update qubit readout parameters
 for k, qubit in enumerate(machine.qubits.values()):
@@ -211,9 +210,7 @@ for k, q in enumerate(machine.qubits):
     machine.qubits[q].xy.operations["cw"].length = 20 * u.us
     machine.qubits[q].xy.operations["cw"].amplitude = 0.1 * x180_amplitudes.tolist()[k]
     # Square drive pulses
-    machine.qubits[q].xy.operations["x180"] = SquarePulse(
-        amplitude=x180_amplitudes.tolist()[k], length=x180_lengths[k]
-    )
+    machine.qubits[q].xy.operations["x180"] = SquarePulse(amplitude=x180_amplitudes.tolist()[k], length=x180_lengths[k])
     machine.qubits[q].xy.operations["x90"] = SquarePulse(
         amplitude=x180_amplitudes.tolist()[k] / 2, length=x180_lengths[k]
     )
