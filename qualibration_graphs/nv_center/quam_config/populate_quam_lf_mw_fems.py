@@ -14,7 +14,6 @@ readout and saturation pulses.
 import json
 from qualang_tools.units import unit
 from my_quam import Quam
-from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
 from quam_builder.architecture.nv_center.components.spcm import SPCM
 from quam.components.pulses import Pulse, SquarePulse, GaussianPulse, ReadoutPulse
 from quam.components.channels import TimeTaggingAddon
@@ -26,13 +25,6 @@ from quam_builder.architecture.nv_center.components.laser import (
     LaserLFDigital,
 )
 from quam.components import Channel, DigitalOutputChannel
-
-
-class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super().default(obj)
 
 
 ########################################################################################################################
@@ -139,31 +131,31 @@ for k, qubit in enumerate(machine.qubits.values()):
     # qubit.laser.opx_output.output_mode = "direct"
     # qubit.laser.opx_output.upsampling_mode = "pulse"
 
-# add second spcm
-opx_input = LFFEMAnalogInputPort(
-    controller_id="con1", fem_id=3, port_id=2
-),
-opx_output = LFFEMAnalogOutputPort(
-    controller_id="con1", fem_id=3, port_id=4
-)
-time_tagging = TimeTaggingAddon(
-    signal_threshold=f"#/qubits/q1/spcm1/time_tagging/signal_threshold",
-    signal_polarity=f"#/qubits/q1/spcm1/time_tagging/signal_polarity",
-    derivative_threshold=f"#/qubits/q1/spcm1/time_tagging/derivative_threshold",
-    derivative_polarity=f"#/qubits/q1/spcm1/time_tagging/derivative_polarity",
-    enabled=True,
-)
-machine.qubits.q1.spcm2 = SPCM(
-    opx_output=opx_output,
-    opx_input=opx_input[0],  # why is this a tuple?
-    opx_input_offset=0.0,
-    time_of_flight=f"#/qubits/q1/spcm1/time_of_flight",
-    readout_time=f"#/qubits/q1/spcm1/readout_time",
-    time_tagging=time_tagging,
-)
-machine.qubits.q1.spcm2.operations["readout"] = ReadoutPulse(
-    length=machine.qubits.q1.spcm2.readout_time, digital_marker=None
-)
+# add second spcm if necessary
+# opx_input = LFFEMAnalogInputPort(
+#     controller_id="con1", fem_id=3, port_id=2
+# ),
+# opx_output = LFFEMAnalogOutputPort(
+#     controller_id="con1", fem_id=3, port_id=4
+# )
+# time_tagging = TimeTaggingAddon(
+#     signal_threshold=f"#/qubits/q1/spcm1/time_tagging/signal_threshold",
+#     signal_polarity=f"#/qubits/q1/spcm1/time_tagging/signal_polarity",
+#     derivative_threshold=f"#/qubits/q1/spcm1/time_tagging/derivative_threshold",
+#     derivative_polarity=f"#/qubits/q1/spcm1/time_tagging/derivative_polarity",
+#     enabled=True,
+# )
+# machine.qubits.q1.spcm2 = SPCM(
+#     opx_output=opx_output,
+#     opx_input=opx_input[0],  # why is this a tuple?
+#     opx_input_offset=0.0,
+#     time_of_flight=f"#/qubits/q1/spcm1/time_of_flight",
+#     readout_time=f"#/qubits/q1/spcm1/readout_time",
+#     time_tagging=time_tagging,
+# )
+# machine.qubits.q1.spcm2.operations["readout"] = ReadoutPulse(
+#     length=machine.qubits.q1.spcm2.readout_time, digital_marker=None
+# )
 
 
 ########################################################################################################################
@@ -242,4 +234,4 @@ machine.save()
 # Visualize the QUA config and save it
 print(machine.generate_config())
 with open("qua_config.json", "w+") as f:
-    json.dump(machine.generate_config(), f, indent=4, cls=NumpyEncoder)
+    json.dump(machine.generate_config(), f, indent=4)
