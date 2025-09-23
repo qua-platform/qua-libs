@@ -43,7 +43,7 @@ Consider a case where $A_1^\pi/A_2^\pi = 2$ and $\phi=0$. An $X_\pi I$ gate can 
 For simplicity, let us consider only the implementation of $X_\pi$ gate on the qubits with pre-calibrated DC that produces ion displacement that gives $A_1^\pi/A_2^\pi = 2$, or in terms of Rabi frequency $\Omega_1/\Omega_2 = 1/2$. The $X_\pi I$ gate is trivial when the microwave pulse drives exactly a $\pi$ rotation on the first qubit. This reproduces the example shown in the figure. The $I X_\pi$ gate on the other hand is decomposed into a sequence $(Y_{\pi/2}X_{-\pi/2}Y_{\pi/2}) \otimes (Y_{\pi}X_{-\pi}Y_{\pi})=IX_\pi$. Note that the global gate implements the same rotation axis, but at different Rabi frequency on each qubit. Readers should verify the solution and find that it is equivalent up to a global phase.
 
 ## Control Hardware
-Before the QUAM abstraction, let us define our control hardware stack. The MW and RF signals are generated from the [OPX-1000](https://www.quantum-machines.co/products/opx1000/), and the DC signals from the [QDAC-II](https://www.quantum-machines.co/products/qdac/). The fluorescence readout signal is captured by a photmultiplier tube (PMT) and transmitted into an OPX1000 LF-FEM input.
+Before the QUAM abstraction, let us define our control hardware stack. The MW and RF signals are generated from the [OPX-1000](https://www.quantum-machines.co/products/opx1000/), and the DC signals from the [QDAC-II](https://www.quantum-machines.co/products/qdac/). The fluorescence readout signal is captured by a photomultiplier tube (PMT) and transmitted into an OPX1000 LF-FEM input.
 
 The DC signal applied to the electrodes is set to have two configurations: "idle" and "displaced". The configurations can be switched via a trigger with TTL signal. The shelving and readout operations are performed in the idle configuration with two lasers targeting their corresponding transition. To spatially select the ion, an AOM is used to deflect the laser beams by modulating the RF frequency supplied to the accouto-optical modulator (AOM). The readout is performed by sequentially measuring the fluorescence counts on an PMT. An integration of the signal outputted from the PMT gives the total fluorescence count.
 
@@ -96,6 +96,24 @@ In our setup, we require for the following operation:
 - Readout: Analog input and output --> `InOutSingleChannel`
 - Global MW: Microwave analog output --> `MWChannel`
 - Ion displacement: Digital output --> `Channel`
+<details>
+<summary>📝 In addition to the channels which represents the physical connections to the quantum hardware, the <code>quam_dataclass</code> also allows for normal variables and methods.
+</summary>
+For example, one could define a method for generating <code>arbitrary_rotation</code> under a constraint of <code>max_amplitude</code> allowed by the hardware.
+
+```python
+@quam_dataclass
+class GlobalOperations(Qubit):
+    ...
+    max_amplitude: float
+
+    def arbitrary_rotation(rx_2pi: float, ry_2pi: float):
+        """Calculate the pulse shape require to generate the rotation"""
+        ...
+```
+
+This allows for the full declaration of associated variables and methods under a single `quam_dataclass`.
+</details>
 
 ## 2. Operation macros
 When translating a physical operation to code, an important aspect is readability. This is part of the core design principle for QUAM, in which an $X$ gate acting on a qubit can be called by writing for example `qubit.play("X")` where we can assign an associated `X` pulse to the quantum hardware.
@@ -140,11 +158,14 @@ class SingleXMacro(QubitMacro):
         self.qubit.ion_displacement.play("ttl")
         align()
 ```
+
+We used macros here instead of defining the method under the `HyperfineQubit` because of reusability. For instance, the `MeasureMacro` can also be used for optical qubits. This reduces overall redundancy in the code.
+
 <details>
-<summary>⚠️ <code>measure_integrated</code> is a custom function added to <code>InOutSingleChannel</code> following the code below. The default <code>measure</code> implemented in QUAM performs demodulation at the IF frequency which is unnecessary for fluorescence measurement.
+<summary>📝 <code>measure_integrated</code> is a custom function added to <code>InOutSingleChannel</code> following the code below. The default <code>measure</code> implemented in QUAM performs demodulation at the IF frequency which is unnecessary for fluorescence measurement.
 </summary>
 
-Instead, we implemented the integration of the TTL photon counting signal of the PMT to obtain the total fluorescence count. When the fluorescence exceeds a threshold in a pre-calibrated timeframe, we can discriminate the state.
+Instead, we implemented the integration of the TTL photon counting signal of the PMT to obtain the total fluorescence count. When the fluorescence exceeds a threshold in a pre-calibrated time frame, we can discriminate the state.  
 
 ```python
 def measure_integrated(
@@ -198,7 +219,7 @@ This is done by following the installation steps in QUAM documentation for [Cust
 
 <details>
 <summary>⚠️ When using <code>uv</code> or encountering issue with <code>setuptools</code>.</summary>
-An alternative is to switch to `hatchling` by updating the <code>pyproject.toml</code> to the following:
+An alternative is to switch to <code>hatchling</code> by updating the <code>pyproject.toml</code> to the following:
 
 ```toml
 [project]
