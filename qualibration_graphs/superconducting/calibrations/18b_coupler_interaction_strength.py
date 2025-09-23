@@ -35,6 +35,8 @@ from calibration_utils.coupler_interaction_strength import (
 # %% {Initialisation}
 description = """ auto geenrate by chatgpt, need to check again!!!!!
         COUPLER INTERACTION-STRENGTH CALIBRATION
+
+        
 This routine characterizes the effective ZZ/XX interaction activated by a tunable coupler
 when both qubits are flux-biased near their entangling configuration. The goal is to find
 the coupler flux amplitude that produces the desired oscillation rate for a fast, high-fidelity
