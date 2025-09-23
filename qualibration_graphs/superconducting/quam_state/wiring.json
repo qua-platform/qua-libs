@@ -37,11 +37,11 @@
         }
     },
     "network": {
-        "host": "172.16.33.115",
+        "host": "172.16.33.114",
         "port": null,
         "cloud": false,
         "octave_ips": [],
-        "cluster_name": "CS_3",
+        "cluster_name": "CS_4",
         "octave_ports": []
     }
 }

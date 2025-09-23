@@ -1,7 +1,5 @@
 # %% {Imports}
-import math
-from typing import Literal, Optional, List
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,10 +9,10 @@ from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from qualang_tools.loops import from_array
 
-from qualibrate import QualibrationNode, NodeParameters
+from qualibrate import QualibrationNode
 from quam_config import Quam
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -26,17 +24,11 @@ from calibration_utils.coupler_zero_point import (
     log_fitted_results,
     plot_raw_data_with_fit
 )
-from qualibration_libs.parameters import get_qubit_pairs, get_qubits
-
-from qualibration_libs.legacy.lib.pulses import FluxPulse
-from qualibration_libs.legacy.macros import active_reset, readout_state, readout_state_gef, active_reset_gef, active_reset_simple
-from qualibration_libs.legacy.lib.save_utils import fetch_results_as_xarray, load_dataset
+from qualibration_libs.parameters import get_qubit_pairs
+from quam.components.pulses import FluxPulse
 
 from qm import SimulationConfig
 
-from qualibration_libs.legacy.lib.fit import fit_oscillation, oscillation, fix_oscillation_phi_2pi
-from qualibration_libs.legacy.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
-#from quam_libs.components import CZMacro
 from quam_builder.architecture.superconducting.custom_gates.cz import CZGate
 
 # %% {Initialisation}
@@ -158,14 +150,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         comp_flux_qubit = declare(float)
         n_st = declare_stream()
         qua_pulse_duration = declare(int, value = pulse_duration_ns // 4)
-        I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
-        I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
         if node.parameters.use_state_discrimination:
             state_c = [declare(int) for _ in range(num_qubit_pairs)]
             state_t = [declare(int) for _ in range(num_qubit_pairs)]
             state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
             state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
-
+        else:
+            I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
+            I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
         for qubit in node.machine.active_qubits:
             node.machine.initialize_qpu(target=qubit)
             align()
@@ -183,20 +175,16 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     save(n, n_st)
                     with for_(*from_array(flux_coupler, fluxes_coupler)):
                         with for_(*from_array(flux_qubit, fluxes_qp[qp.name])):
-                            # reset
-                            if node.parameters.reset_type == "active":
-                                active_reset_simple(qp.qubit_control)
-                                active_reset_simple(qp.qubit_target)
-                                qp.align()
-                            else:
-                                wait(qp.qubit_control.thermalization_time * u.ns)
-                                wait(qp.qubit_target.thermalization_time * u.ns)
+                            # Qubit initialization
+                            qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
+                            qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
                             align()
                             if "coupler_qubit_crosstalk" in qp.extras:
                                 assign(comp_flux_qubit, flux_qubit  +  qp.extras["coupler_qubit_crosstalk"] * flux_coupler )
                             else:
                                 print("No crosstalk compensated")
                                 assign(comp_flux_qubit, flux_qubit)
+                            qp.align()
                             # setting both qubits ot the initial state
                             qp.qubit_control.xy.play("x180")
                             if node.parameters.cz_or_iswap == "cz":
@@ -308,7 +296,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["fit_results"])
     plt.show()
-
+    node.results["figures"] = {"raw_fit": fig_raw_fit}
+    
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):

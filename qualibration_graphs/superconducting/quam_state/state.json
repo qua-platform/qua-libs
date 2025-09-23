@@ -256,7 +256,7 @@
                     "Cz_square_pulse_232": {
                         "length": 232,
                         "id": "Cz_square_pulse_232",
-                        "amplitude": 0.3949748031080551,
+                        "amplitude": 0.06000000000000014,
                         "__class__": "qualibration_libs.legacy.lib.pulses.FluxPulse"
                     }
                 },
