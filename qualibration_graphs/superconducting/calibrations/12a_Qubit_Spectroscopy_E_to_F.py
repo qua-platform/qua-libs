@@ -25,23 +25,22 @@ from quam_config import Quam
 # %% {Initialisation}
 description = """
         QUBIT SPECTROSCOPY E TO F
-This sequence involves preparing the excited state then sending a saturation pulse to the qubit, placing it in a mixed state,
+This sequence involves preparing the excited state then sending a saturation pulse to the qubit around its e->f transition,
 and then measuring the state of the resonator across various qubit drive frequencies.
 In order to facilitate the qubit search, the qubit pulse duration and amplitude can be changed manually
 from the node parameters.
 
-The data is post-processed to determine the qubit resonance frequency and the width of the peak.
+The data is post-processed to determine the qubit second transition resonance frequency.
 
 Note that it can happen that the qubit is excited by the image sideband or LO leakage instead of the desired sideband.
 This is why calibrating the qubit mixer is highly recommended when using external mixers or the Octave.
 
 Prerequisites:
-    - Having calibrated the mixer or the Octave (nodes 01a or 01b).
+    - Having calibrated single qubit gates.
     - Having calibrated the readout parameters (nodes 02a, 02b and/or 02c).
-    - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
 State update:
-    - The qubit 1->2 frequency: qubit.anharmonicity.
+    - The qubit e->f frequency: qubit.anharmonicity.
 """
 
 
@@ -59,8 +58,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qD1"]
-    # node.parameters.load_data_id = 2624
+    # node.parameters.qubits = ["q1", "q2"]
     pass
 
 
@@ -112,7 +110,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     for i, qubit in multiplexed_qubits.items():
                         # Get the duration of the operation from the node parameters or the state
                         duration = operation_len if operation_len is not None else qubit.xy.operations[operation].length
-                        # Update the qubit frequency
+                        # Wait for the qubit to thermalize
                         qubit.xy.wait(2 * qubit.thermalization_time * u.ns)
                         # Reset the qubit frequency
                         qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
@@ -124,7 +122,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.xy.play(
                             operation,
                             amplitude_scale=operation_amp,
-                            duration=duration // 4,
+                            duration=duration
+                            >> 2,  # Bit shift by 2 as a fast division by 4 to convert from ns to clock cycles
                         )
                     align()
 
@@ -233,12 +232,14 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            # Update the readout frequency for the given flux point
+            # Update the qubit anharmonicity based on the fitted results
             q.anharmonicity -= node.results["fit_results"][q.name]["relative_freq"]
+
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
 
 # %%
