@@ -37,12 +37,11 @@
         }
     },
     "network": {
-        "host": "10.1.1.6",
+        "host": "172.16.33.114",
         "port": null,
-        "cloud": true,
+        "cloud": false,
         "octave_ips": [],
-        "cluster_name": "galil_arbel",
-        "octave_ports": [],
-        "quantum_computer_backend": "arbel"
+        "cluster_name": "CS_4",
+        "octave_ports": []
     }
 }
