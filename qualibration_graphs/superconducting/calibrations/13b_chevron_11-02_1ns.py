@@ -353,10 +353,15 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
             else:
                 qp.macros["cz_unipolar"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
-                qp.macros["cz_unipolar"].flux_pulse_control.length = node.results["fit_results"][qp.name]["cz_len"]
+                # Round up to the upper 4 ns to be compatible with the hardware time resolution
+                qp.macros["cz_unipolar"].flux_pulse_control.length = int(
+                    np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4
+                )
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
+# %%

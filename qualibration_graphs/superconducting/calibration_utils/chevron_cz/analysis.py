@@ -13,6 +13,7 @@ from quam.components.quantum_components import qubit
 
 
 def rabi_chevron_model(ft, J, f0, a, offset):
+    """Model the Rabi chevron response for a driven two-level (or effective two-qubit CZ) system."""
     f, t = ft
     J = J
     det = (f - f0) / 2
@@ -23,6 +24,7 @@ def rabi_chevron_model(ft, J, f0, a, offset):
 
 
 def fit_rabi_chevron(ds_qp, init_length, init_detuning):
+    """Fit a Rabi chevron dataset to extract coupling (J), resonance frequency (f0), amplitude, and offset."""
     if hasattr(ds_qp, "state_target"):
         data = ds_qp.state_target
     else:
@@ -72,7 +74,34 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
-    pass
+
+    for qp_name, fit_result in fit_results.items():
+        # Support both dataclass instances and plain dictionaries (after asdict)
+        def _get(field, default=np.nan):
+            if hasattr(fit_result, field):
+                return getattr(fit_result, field)
+            if isinstance(fit_result, dict):
+                return fit_result.get(field, default)
+            return default
+
+        success = bool(_get("success", False))
+        cz_len_val = _get("cz_len", 0)
+        cz_amp_val = _get("cz_amp", np.nan)
+
+        s_qubit = f"Results for qubit pair {qp_name}: "
+        s_qubit += "SUCCESS!\n" if success else "FAIL!\n"
+
+        if isinstance(cz_len_val, (int, float)) and cz_len_val not in (None, np.nan):
+            cz_len_str = f"\tOptimal CZ duration: {int(cz_len_val)} ns"
+        else:
+            cz_len_str = "\tOptimal CZ duration: N/A"
+
+        if isinstance(cz_amp_val, (int, float)) and not np.isnan(cz_amp_val):
+            cz_amp_str = f"\tOptimal CZ amplitude: {cz_amp_val:.6f} V"
+        else:
+            cz_amp_str = "\tOptimal CZ amplitude: N/A"
+
+        log_callable(s_qubit + cz_len_str + "\n" + cz_amp_str)
 
 
 def fit_chevron_cz(ds, dim):
