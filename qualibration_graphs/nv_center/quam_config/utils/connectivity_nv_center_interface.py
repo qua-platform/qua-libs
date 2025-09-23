@@ -118,7 +118,6 @@ class Connectivity(ConnectivityBase):
             shared_line=True,
         )
 
-    # Todo
     def add_qubit_pair_cross_resonance_lines(
         self, qubit_pairs: QubitPairsType, triggered: bool = False, constraints: ChannelSpec = None
     ):
@@ -145,7 +144,6 @@ class Connectivity(ConnectivityBase):
         # )
         pass
 
-    # Todo
     def add_qubit_pair_zz_drive_lines(
         self, qubit_pairs: QubitPairsType, triggered: bool = False, constraints: ChannelSpec = None
     ):
