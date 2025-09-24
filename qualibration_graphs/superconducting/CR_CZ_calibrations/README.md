@@ -15,12 +15,13 @@ This repository gathers our **fixed‑frequency transmon** routines for
 ---
 
 # CR Gate (Cross Resonance)
+The cross-resonance (CR) gate is implemented by driving the control qubit at or near the resonance frequency of the target qubit. As shown in the figure, the control qubit has transition frequencies $\omega_c^0$ and $\omega_c^1$ (red), while the target qubit resonates at $\omega_t$ (blue). When a microwave drive at frequency $\omega_d$ is applied to the control, the qubit-qubit coupling $J$ mediates an effective conditional drive $\varepsilon$ on the target. The detuning $\Delta$ between the drive and control resonance, along with the control’s response amplitude $\eta_c$, determines the strength of this interaction. The result is a conditional Rabi oscillation of the target qubit, where the rotation axis and frequency depend on the control state, giving rise to an entangling two-qubit gate described by the $ZX$ interaction.
 
 <img src="../.img/CR_CZ_calibrations/CR_energy_level.jpeg" width="500">
 
 
 ## Standard (echo) CR gate
-The driven Hamiltonian is approximately  [3]
+The driven Hamiltonian is approximately [3]
 
 $$
 \frac{H_D}{\hbar} \approx \epsilon(t)\left( m\,IX - \mu\,ZX + \eta\,ZI \right),
@@ -44,10 +45,32 @@ where:
 
 
 ## CR gate with cancellation pulse
+However, the Hamiltonian equation in the previous section assumes a simple qubit model. In the presence of higher levels of the transmon and microwave crosstalk on the device, the complete Hamiltonian is described by [4]
+$$
+\hat{H}_{\mathrm{CR}} = I \otimes A + Z \otimes B,
+$$
+in which $A$ and $B$ are generic sum of Pauli operators. Indeed, measuring the expectation values $\langle X \rangle$, $\langle Y \rangle$, and $\langle Z \rangle$ revealed that oscillation is present for the target qubit as characterized by $A$ and $B$ depending on the state of the control qubit.
 
-<img src="../.img/CR_CZ_calibrations/CR_pauli_contrib.png" width="800" /> 
+<img src="../.img/CR_CZ_calibrations/CR_pauli_contrib1.png" width="500" /> 
+
+The Bloch vector $\|\vec{R}\|$ characterizes the distance of the target qubit state when control qubit in $\ket{0}$ and $\ket{1}$ as
+$$
+\|\vec{R}\| =
+\sqrt{(\langle X \rangle_0 + \langle X \rangle_1)^2 +
+      (\langle Y \rangle_0 + \langle Y \rangle_1)^2 +
+      (\langle Z \rangle_0 + \langle Z \rangle_1)^2}.
+$$
+The state can be maximally entangled at $\|\vec{R}\| = 0$. While this is conceptually straightforward, the exact interaction strength of the Pauli terms depend on the system.
+
+<img src="../.img/CR_CZ_calibrations/CR_pauli_contrib2.png" width="500" /> 
+
+Here, we observed dominant interaction of $IX$, $IY$ and $ZX$ dependent on the CR amplitude in a measurement [4]. While others are negligible in terms of magnitude, they can still compromise the gate fidelity. More importantly, we observe the additional contribution of $IY$ and $ZY$. This is attributed to the classical crosstalk.
+
+For an ideal CR gate, the goal is to produce only $ZX$ interaction with the rest echoed away. However, this only works for the $IX$, $ZZ$, and $ZI$ since they commute with $ZX$. As such, a calibration scheme that cancels these error is necessary. The proposed method is to apply a cancellation pulse on the target qubit [4].
 
 <img src="../.img/CR_CZ_calibrations/CR_cancel.png" width="500" /> 
+
+Extending this upon the echo scheme, the evolution on the Bloch sphere reveals ...
 
 <img src="../.img/CR_CZ_calibrations/CR_compare_scheme.png" width="500" /> 
 
@@ -56,18 +79,25 @@ where:
 </p> -->
 
 
-## 4 types of CR gate
-Within the calibration node, we could select the `cr_type` parameter as one of the following: `direct`, `direct+cancel`, `direct+echo`, `direct+cancel+echo`.
+## Implementation of the CR gate
+Within the calibration node, we could select the `cr_type` parameter as one of the following: `direct`, `direct+cancel`, `direct+echo`, `direct+cancel+echo`. The naming of each should be self-explanatory. For example, `direct+cancel+echo` implied that a CR pulse (on control qubit) and cancellation pulse (on target qubit) is implemented with echo.
 
 
-## Calibration
+## Calibration node
+...
 
 `30_CR_time_rabi_QST`
+
 `31a_CR_hamiltonian_tomography_vs_cr_drive_amp`
+
 `31b_CR_hamiltonian_tomography_vs_cr_drive_phase`
+
 `31c_CR_hamiltonian_tomography_vs_cr_cancel_phase`
+
 `31d_CR_hamiltonian_tomography_vs_cr_cancel_amp`
+
 `31e_CR_phase_correction`
+
 `31g_CR_error_amplification`
 
 ## References
@@ -77,9 +107,10 @@ Within the calibration node, we could select the `cr_type` parameter as one of t
 [2] Investigating Microwave-Activated Entangling Gates on Superconducting Quantum
 Processors https://escholarship.org/uc/item/5sp8n6st
 
-[3] Procedure for systematically tuning up crosstalk in the cross resonance gate https://arxiv.org/pdf/1603.04821
+[3] Process verification of two-qubit quantum gates by randomized benchmarking https://arxiv.org/abs/1210.7011
 
-[4] Process verification of two-qubit quantum gates by randomized benchmarking https://arxiv.org/abs/1210.7011
+[4] Procedure for systematically tuning up crosstalk in the cross resonance gate https://arxiv.org/pdf/1603.04821
+
 
 
 ---

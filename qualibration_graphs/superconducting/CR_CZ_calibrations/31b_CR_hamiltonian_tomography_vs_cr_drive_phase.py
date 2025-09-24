@@ -30,20 +30,24 @@ from qualibration_libs.core import tracked_updates
 
 # %% {Description}
 description = """
-        Cross-Resonance Time Rabi
-The sequence consists two consecutive pulse sequences with the qubit's thermal decay in between.
-In the first sequence, we set the control qubit in |g> and play a rectangular cross-resonance pulse to
-the target qubit; the cross-resonance pulse has a variable duration. In the second sequence, we initialize the control
-qubit in |e> and play the variable duration cross-resonance pulse to the target qubit. Note that in
-the second sequence after the cross-resonance pulse we send a x180_c pulse. With it, the target qubit starts
-in |g> in both sequences when CR lenght -> zero.
+        Cross-Resonance Time Rabi with Quantum State Tomography (QST) + drive phase optimization
+This experiment measures the target qubit response under a variable-length cross-resonance (CR) drive, 
+with quantum state tomography for both control states. The sequence has two parts, separated by qubit relaxation:
+1. Control qubit prepared in |g>, apply a CR pulse of variable duration to the target.  
+2. Control qubit prepared in |e>, apply the same CR pulse to the target, then a corrective x180 on the control.  
+   (Ensures the target effectively starts in |g> at zero CR length in both cases.)
+QST is performed by projecting the target onto X, Y, and Z bases before measurement. We can then calculate the
+interaction strengths of ["IX", "IY", "IZ", "ZX", "ZY", "ZZ"] from the evolution.
+
+The optimal drive phase is chosen such that the ZX component is maximized and ZY is zero
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
-    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
+    - Resonator spectroscopy (to locate resonator frequency).
+    - Qubit spectroscopy, Rabi chevron, and power Rabi (to calibrate the qubit π pulse and update the config).
+    - State discrimination
+    - (Optional) Readout calibration (frequency, amplitude, duration optimization, IQ blobs) for improved SNR.
 
-Reference: A. D. Corcoles et al., Phys. Rev. A 87, 030301 (2013)
+Reference: A. D. Córcoles et al., Phys. Rev. A 87, 030301(R) (2013).
 
 """
 
@@ -99,7 +103,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     wf_type = node.parameters.wf_type
     cr_type = node.parameters.cr_type
     cr_drive_amp_scaling = node.parameters.cr_drive_amp_scaling
-    cr_drive_phase = node.parameters.cr_drive_phase
     cr_cancel_amp_scaling = node.parameters.cr_cancel_amp_scaling
     cr_cancel_phase = node.parameters.cr_cancel_phase
 
@@ -160,16 +163,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     qc, qt, cr, cr_elems = get_cr_elements(qp)
 
                                     # Reset the qubits to the ground state
-                                    qp.qubit_control.reset(
+                                    qc.reset(
                                         node.parameters.reset_type,
                                         node.parameters.simulate,
                                         log_callable=node.log,
                                     )
-                                    qp.qubit_target.reset(
+                                    qt.reset(
                                         node.parameters.reset_type,
                                         node.parameters.simulate,
                                         log_callable=node.log,
                                     )
+                                    align(*cr_elems)
 
                                     # Prepare Qc at 0/1
                                     with if_(s == 1):
@@ -187,9 +191,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                         cr_cancel_phase=cr_cancel_phase[i],
                                         cr_duration_clock_cycles=t,
                                     )
-                                    align(*cr_elems)
 
                                     # QST on Qt
+                                    align(*cr_elems)
                                     with switch_(c):
                                         with case_(0):  # projection along X
                                             qc.xy.play("-y90")
@@ -215,12 +219,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for i, qp in enumerate(qubit_pairs):
-                state_c_st[i].buffer(2).buffer(3).buffer(len(pulse_durations)).buffer(len(phases)).average().save(
-                    f"state_c{i + 1}"
-                )
-                state_t_st[i].buffer(2).buffer(3).buffer(len(pulse_durations)).buffer(len(phases)).average().save(
-                    f"state_t{i + 1}"
-                )
+                state_c_st[i].buffer(len(control_state)).buffer(len(qst_basis)).buffer(len(pulse_durations)).buffer(
+                    len(phases)
+                ).average().save(f"state_c{i + 1}")
+                state_t_st[i].buffer(len(control_state)).buffer(len(qst_basis)).buffer(len(pulse_durations)).buffer(
+                    len(phases)
+                ).average().save(f"state_t{i + 1}")
 
 
 # %% {Simulate}
@@ -316,18 +320,19 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         tracked_qubit_pair.qubit_target.revert_changes()
 
     with node.record_state_updates():
-        for i, qp in enumerate(node.namespace["qubit_pairs"]):
-            if node.outcomes[qp.name] == "failed":
-                continue
+        for multiplexed_qubit_pairs in node.namespace["qubit_pairs"].batch():
+            for i, qp in multiplexed_qubit_pairs.items():
+                if node.outcomes[qp.name] == "failed":
+                    continue
 
-            # cr drive
-            operation_c = qp.cross_resonance.operations[node.parameters.wf_type]
-            operation_c.amplitude = node.parameters.cr_drive_amp_scaling[i] * operation_c.amplitude
-            operation_c.axis_angle = node.parameters.cr_drive_phase[i] * 2 * np.pi
-            # cr cancel
-            operation_t = qp.qubit_target.xy.operations[f"cr_{node.parameters.wf_type}_{qp.name}"]
-            operation_t.amplitude = node.parameters.cr_cancel_amp_scaling[i] * operation_t.amplitude
-            operation_t.axis_angle = node.parameters.cr_cancel_phase[i] * 2 * np.pi
+                # cr drive
+                operation_c = qp.cross_resonance.operations[node.parameters.wf_type]
+                operation_c.amplitude = node.parameters.cr_drive_amp_scaling[i] * operation_c.amplitude
+                operation_c.axis_angle = node.parameters.cr_drive_phase[i] * 2 * np.pi
+                # cr cancel
+                operation_t = qp.qubit_target.xy.operations[f"cr_{node.parameters.wf_type}_{qp.name}"]
+                operation_t.amplitude = node.parameters.cr_cancel_amp_scaling[i] * operation_t.amplitude
+                operation_t.axis_angle = node.parameters.cr_cancel_phase[i] * 2 * np.pi
 
 
 # %% {Save_results}

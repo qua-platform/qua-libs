@@ -30,20 +30,24 @@ from qualibration_libs.core import tracked_updates
 
 # %% {Description}
 description = """
-        Cross-Resonance Time Rabi
-The sequence consists two consecutive pulse sequences with the qubit's thermal decay in between.
-In the first sequence, we set the control qubit in |g> and play a rectangular cross-resonance pulse to
-the target qubit; the cross-resonance pulse has a variable duration. In the second sequence, we initialize the control
-qubit in |e> and play the variable duration cross-resonance pulse to the target qubit. Note that in
-the second sequence after the cross-resonance pulse we send a x180_c pulse. With it, the target qubit starts
-in |g> in both sequences when CR lenght -> zero.
+        Cross-Resonance Time Rabi with Quantum State Tomography (QST) + amplitude scanning
+This experiment measures the target qubit response under a variable-length cross-resonance (CR) drive, 
+with quantum state tomography for both control states. The sequence has two parts, separated by qubit relaxation:
+1. Control qubit prepared in |g>, apply a CR pulse of variable duration to the target.  
+2. Control qubit prepared in |e>, apply the same CR pulse to the target, then a corrective x180 on the control.  
+   (Ensures the target effectively starts in |g> at zero CR length in both cases.)
+QST is performed by projecting the target onto X, Y, and Z bases before measurement. We can then calculate the
+interaction strengths of ["IX", "IY", "IZ", "ZX", "ZY", "ZZ"] from the evolution.
+
+The amplitude scanning allows us to look at the evolution of the CR Hamiltonian as a function of the CR drive amplitude.
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
-    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
+    - Resonator spectroscopy (to locate resonator frequency).
+    - Qubit spectroscopy, Rabi chevron, and power Rabi (to calibrate the qubit π pulse and update the config).
+    - State discrimination
+    - (Optional) Readout calibration (frequency, amplitude, duration optimization, IQ blobs) for improved SNR.
 
-Reference: A. D. Corcoles et al., Phys. Rev. A 87, 030301 (2013)
+Reference: A. D. Córcoles et al., Phys. Rev. A 87, 030301(R) (2013).
 
 """
 
@@ -200,6 +204,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                         cr_cancel_phase=cr_cancel_phase[i],
                                         cr_duration_clock_cycles=t,
                                     )
+
                                     # QST on Qt
                                     align(*cr_elems)
                                     with switch_(c):
