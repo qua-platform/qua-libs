@@ -7,15 +7,19 @@ import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 
 
-CONTROL_STATES = ["0", "1"] # control state: 0 or 1
-TARGET_BASES = ["x", "y", "z"] # target basiss x, y, z
+CONTROL_STATES = ["0", "1"]  # control state: 0 or 1
+TARGET_BASES = ["x", "y", "z"]  # target bases x, y, z
 PARAM_NAMES = ["delta", "omega_x", "omega_y"]
 PAULI_2Q = ["IX", "IY", "IZ", "ZX", "ZY", "ZZ"]
 
 # generate a set of points on sphere for initial values for delta, omega_x, omega_y
 signss = itertools.product([-1, 1], repeat=3)
 # pick a non polar point
-p0_center = [np.cos(np.pi/4), np.sin(np.pi/4) * np.cos(np.pi/4), np.sin(np.pi/4) * np.sin(np.pi/4)]
+p0_center = [
+    np.cos(np.pi / 4),
+    np.sin(np.pi / 4) * np.cos(np.pi / 4),
+    np.sin(np.pi / 4) * np.sin(np.pi / 4),
+]
 p0_centers = [np.array(signs) * p0_center for signs in signss]
 # polar points
 p0_poles = [np.array(p0) * sign for p0 in [(1, 0, 0), (0, 1, 0), (0, 0, 1)] for sign in [-1, 1]]
@@ -174,21 +178,15 @@ class CRHamiltonianTomographyAnalysis(CRHamiltonianTomographyFunctions):
         if data.shape[0] != self.ts.shape[0]:
             raise ValueError("Length of each tomographic data must be the same as the length of cr durations")
 
-        return {
-            st: {
-                bss: data[:, j, i]
-                for j, bss in enumerate(TARGET_BASES)
-            }
-            for i, st in enumerate(CONTROL_STATES)
-        }
+        return {st: {bss: data[:, j, i] for j, bss in enumerate(TARGET_BASES)} for i, st in enumerate(CONTROL_STATES)}
 
     def _bloch_vec_evolution(self, ts, d, mx, my):
         """
-        Calculate the expected evolution of the Bloch vector basiss over time.
+        Calculate the expected evolution of the Bloch vector bases over time.
 
         :param ts: durations of CR drive.
         :param d, mx, my: Hamiltonian parameters.
-        :return: Array of expected 'x', 'y', and 'z' basiss concatenated.
+        :return: Array of expected 'x', 'y', and 'z' bases concatenated.
         """
         ts_len = len(ts) // len(TARGET_BASES)
         xyz = self.compute_XYZ(ts[:ts_len], *[d, mx, my])
@@ -198,7 +196,7 @@ class CRHamiltonianTomographyAnalysis(CRHamiltonianTomographyFunctions):
         """
         Fit the model to the data using non-linear least squares.
 
-        :param xyz: Measured data for the Bloch vector basiss.
+        :param xyz: Measured data for the Bloch vector bases.
         :param p0: Initial guess for the parameters.
         :return: Fitted parameters and the covariance of the parameters.
         """
@@ -235,7 +233,7 @@ class CRHamiltonianTomographyAnalysis(CRHamiltonianTomographyFunctions):
         """
         Choose initial parameter estimates for the fitting process based on frequency analysis.
 
-        :param xyz: Measured Bloch vector basiss.
+        :param xyz: Measured Bloch vector bases.
         :return: Array of initial parameter guesses.
         """
         freq_inits = [self._find_dominant_frequency(data=xyz[c]) for c in TARGET_BASES]
@@ -256,8 +254,11 @@ class CRHamiltonianTomographyAnalysis(CRHamiltonianTomographyFunctions):
         """
         for st in CONTROL_STATES:
             # prepare a set of initial values
-            p0s = self._pick_params_inits(xyz=self.data_dict[st])
-            
+            if params_init is not None:
+                p0s = params_init
+            else:
+                p0s = self._pick_params_inits(xyz=self.data_dict[st])
+
             # fit the model
             errs = []
             params_fitted_list = []
@@ -268,10 +269,12 @@ class CRHamiltonianTomographyAnalysis(CRHamiltonianTomographyFunctions):
                 )
                 crqst_fitted_dict = self.compute_XYZ(self.ts, *params_fitted)
                 # squared error
-                err = np.array([((crqst_fitted_dict[bss] - self.data_dict[st][bss]) ** 2).sum() for bss in TARGET_BASES]).sum()
+                err = np.array(
+                    [((crqst_fitted_dict[bss] - self.data_dict[st][bss]) ** 2).sum() for bss in TARGET_BASES]
+                ).sum()
                 errs.append(err)
                 params_fitted_list.append(params_fitted)
-            
+
             # pick the best fitted (minimal error)
             idx_best_fit = np.argmin(np.array(errs))
             self.params_fitted[st] = params_fitted_list[idx_best_fit]
@@ -335,29 +338,29 @@ class CRHamiltonianTomographyAnalysis(CRHamiltonianTomographyFunctions):
             ax.scatter(self.ts, v0, s=20, color="b", label="ctrl in |0>")
             ax.scatter(self.ts, v1, s=20, color="r", label="ctrl in |1>")
             ax.set_ylabel(f"<{bss}(t)>", fontsize=16)
-   
+
         # plot "R"
-        if len(axs) == 4:  
+        if len(axs) == 4:
             ax = axs[3]
             ax.cla()
             R = self.compute_R(self.data_dict["0"], self.data_dict["1"])
             ax.plot(self.ts, R, "k")
             ax.set_xlabel("time")
             ax.set_ylabel("R", fontsize=16)
-        
+
         if show:
             plt.tight_layout()
             plt.show(block=False)
 
         return fig
 
-    def plot_fit_result(self, fig, axs, do_show=False):
+    def plot_fit_result(self, fig, axs):
         """
         Plot the original measurement data along with the fitted data and interaction rates.
 
         :return: The matplotlib figure object containing the plots.
         """
-        
+
         if self.params_fitted["0"] is None or self.params_fitted["1"] is None:
             raise RuntimeError("fitting has not been done yet")
 
@@ -426,14 +429,14 @@ def plot_interaction_coeffs(coeffs, xaxis, xlabel="amplitude", fig=None):
 
     :return: The matplotlib figure object containing the plots.
     """
-    if fig is None: 
+    if fig is None:
         fig, ax = plt.subplots(1, 1, figsize=(6, 5))
 
     coeffs_array_dict = {p: np.array([coeff[p] for coeff in coeffs]) for p in PAULI_2Q}
     for p in PAULI_2Q:
         filt = ~np.isnan(xaxis)
         ax.plot(xaxis[filt], coeffs_array_dict[p][filt], ".-")
-    ax.axhline(y=0, color='k', alpha=0.3, linestyle='--')
+    ax.axhline(y=0, color="k", alpha=0.3, linestyle="--")
     ax.set_xlabel(xlabel)
     ax.set_ylabel("interaction coefficients [MHz]")
     ax.legend(PAULI_2Q)
@@ -476,23 +479,23 @@ def plot_crqst_result_3D(ts_ns, data_t, title):
     # Axes properties
     conf = {
         "projection": "3d",
-        "proj_type": "persp", # ortho or persp
+        "proj_type": "persp",  # ortho or persp
         "box_aspect": (1, 1, 1),
         "elev": 20,
         "azim": 30,
         "roll": 0,
         "axisbelow": True,
-        "facecolor": "w", 
+        "facecolor": "w",
         "xticks": [],
         "yticks": [],
         "zticks": [],
-        }
+    }
 
     # Create the figure and 3D subplots
     fig = plt.figure(figsize=(16, 10))
     fig.suptitle(title)
 
-    # Create two 3D subplots
+    # Create two 3D subplots corresponding to control states 0 and 1
     ax1 = fig.add_subplot(121, projection=conf["projection"])
     ax2 = fig.add_subplot(122, projection=conf["projection"])
     ax1.set_title("Qc = 0")
@@ -500,21 +503,21 @@ def plot_crqst_result_3D(ts_ns, data_t, title):
 
     # Generate data for the wireframe of the sphere
     u = np.linspace(0, 2 * np.pi, 100)  # Longitude values
-    v = np.linspace(0, np.pi, 50)       # Latitude values
+    v = np.linspace(0, np.pi, 50)  # Latitude values
     x_sphere = np.outer(np.cos(u), np.sin(v))  # X coordinates of the sphere
     y_sphere = np.outer(np.sin(u), np.sin(v))  # Y coordinates of the sphere
     z_sphere = np.outer(np.ones(np.size(u)), np.cos(v))  # Z coordinates of the sphere
 
     # Define the colors in the colormap
-    colors = ['blue', 'purple', 'red']
+    colors = ["blue", "purple", "red"]
     # Create a colormap with a smooth transition between the specified colors
     cmap = mcolors.LinearSegmentedColormap.from_list("BlueRedPurple", colors)
-    colors = cmap(np.linspace(0, 1, len(ts_ns))) 
+    colors = cmap(np.linspace(0, 1, len(ts_ns)))
 
     for i, ax in enumerate([ax1, ax2]):
         # Plot the wireframe of the sphere
-        ax.plot_wireframe(x_sphere, y_sphere, z_sphere, color='k', linewidth=1, alpha=0.05)
-        
+        ax.plot_wireframe(x_sphere, y_sphere, z_sphere, color="k", linewidth=1, alpha=0.05)
+
         # Get the data
         x, y, z = data_t[:, 0, i], data_t[:, 1, i], data_t[:, 2, i]
 
@@ -523,8 +526,12 @@ def plot_crqst_result_3D(ts_ns, data_t, title):
 
         # Quiver plot - arrows from the origin to each point (x, y, z)
         ax.quiver(
-            np.zeros_like(x), np.zeros_like(y), np.zeros_like(z),  # Origins (all zeros)
-            x, y, z,  # Directions (end points)
+            np.zeros_like(x),
+            np.zeros_like(y),
+            np.zeros_like(z),  # Origins (all zeros)
+            x,
+            y,
+            z,  # Directions (end points)
             color=colors,  # Color mapping based on t
             arrow_length_ratio=0.1,
             length=1.0,
@@ -532,14 +539,14 @@ def plot_crqst_result_3D(ts_ns, data_t, title):
         )
 
         # Label the axes
-        ax.text(1.5, 0, 0.1, 'X', color='k', fontsize=12)
-        ax.text(0, 1.5, 0.1, 'Y', color='k', fontsize=12)
-        ax.text(0, 0.1, 1.5, 'Z', color='k', fontsize=12)
+        ax.text(1.5, 0, 0.1, "X", color="k", fontsize=12)
+        ax.text(0, 1.5, 0.1, "Y", color="k", fontsize=12)
+        ax.text(0, 0.1, 1.5, "Z", color="k", fontsize=12)
 
         # x, y, z axes
-        ax.quiver(0, 0, 0, 1.6, 0, 0, color='k', alpha=0.1, arrow_length_ratio=0.05)
-        ax.quiver(0, 0, 0, 0, 1.6, 0, color='k', alpha=0.1, arrow_length_ratio=0.05)
-        ax.quiver(0, 0, 0, 0, 0, 1.6, color='k', alpha=0.1, arrow_length_ratio=0.08)
+        ax.quiver(0, 0, 0, 1.6, 0, 0, color="k", alpha=0.1, arrow_length_ratio=0.05)
+        ax.quiver(0, 0, 0, 0, 1.6, 0, color="k", alpha=0.1, arrow_length_ratio=0.05)
+        ax.quiver(0, 0, 0, 0, 0, 1.6, color="k", alpha=0.1, arrow_length_ratio=0.08)
 
         # Remove the x, y, z panes (spines)
         ax.xaxis.pane.fill = False
