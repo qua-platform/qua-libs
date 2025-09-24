@@ -29,7 +29,7 @@ from qualibration_libs.core import tracked_updates
 
 
 # %% {Description}
-description =  """
+description = """
         Cross-Resonance Time Rabi
 The sequence consists two consecutive pulse sequences with the qubit's thermal decay in between.
 In the first sequence, we set the control qubit in |g> and play a rectangular cross-resonance pulse to
@@ -67,10 +67,22 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
     node.parameters.wf_type = "square"
     node.parameters.cr_type = "direct+cancel+echo"
-    node.parameters.cr_drive_amp_scaling = [1.0, 1.0,] # None : setting None to use the amp from the config
-    node.parameters.cr_drive_phase = [0.0, 0.0,] # None : setting None to use the amp from the config
-    node.parameters.cr_cancel_amp_scaling = [0.1, 0.1,] # None : setting None to use the amp from the config
-    node.parameters.cr_cancel_phase = [0.0, 0.0,] # None : setting None to use the amp from the config
+    node.parameters.cr_drive_amp_scaling = [
+        1.0,
+        1.0,
+    ]  # None : setting None to use the amp from the config
+    node.parameters.cr_drive_phase = [
+        0.0,
+        0.0,
+    ]  # None : setting None to use the amp from the config
+    node.parameters.cr_cancel_amp_scaling = [
+        0.1,
+        0.1,
+    ]  # None : setting None to use the amp from the config
+    node.parameters.cr_cancel_phase = [
+        0.0,
+        0.0,
+    ]  # None : setting None to use the amp from the config
 
 
 # Instantiate the QUAM class from the state file
@@ -98,7 +110,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     state_discrimination = node.parameters.use_state_discrimination
     wf_type = node.parameters.wf_type
     cr_type = node.parameters.cr_type
-    cr_drive_amp_scaling = node.parameters.cr_drive_amp_scaling
     cr_drive_phase = node.parameters.cr_drive_phase
     cr_cancel_amp_scaling = node.parameters.cr_cancel_amp_scaling
     cr_cancel_phase = node.parameters.cr_cancel_phase
@@ -156,7 +167,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     with for_(*from_array(t, pulse_durations)):
                         with for_(c, 0, c < 3, c + 1):  # bases
                             with for_(s, 0, s < 2, s + 1):  # states
-                            
                                 # Reset the qubits to the ground state
                                 for i, qp in multiplexed_qubit_pairs.items():
                                     qc, qt, cr, cr_elems = get_cr_elements(qp)
@@ -179,7 +189,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                         align(*cr_elems)
 
                                     # Play CR
-                                    qp.apply("cr",
+                                    qp.apply(
+                                        "cr",
                                         cr_type=cr_type,
                                         wf_type=wf_type,
                                         cr_drive_amp_scaling=amp_scaling_qua,
@@ -216,8 +227,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for i, qp in enumerate(qubit_pairs):
-                state_c_st[i].buffer(2).buffer(3).buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"state_c{i + 1}")
-                state_t_st[i].buffer(2).buffer(3).buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"state_t{i + 1}")
+                state_c_st[i].buffer(len(control_state)).buffer(len(qst_basis)).buffer(len(pulse_durations)).buffer(
+                    len(amp_scalings)
+                ).average().save(f"state_c{i + 1}")
+                state_t_st[i].buffer(len(control_state)).buffer(len(qst_basis)).buffer(len(pulse_durations)).buffer(
+                    len(amp_scalings)
+                ).average().save(f"state_t{i + 1}")
 
 
 # %% {Simulate}
@@ -298,10 +313,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     figs_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
-    node.results["figures"] = {
-        f"IQ_{qp.name}": fig
-        for fig, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])
-    }
+    node.results["figures"] = {f"IQ_{qp.name}": fig for fig, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])}
 
 
 # %% {Update_state}
@@ -324,7 +336,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             operation_c = qp.cross_resonance.operations[node.parameters.wf_type]
             operation_c.amplitude = node.parameters.cr_drive_amp_scaling[i] * operation_c.amplitude
             operation_c.axis_angle = node.parameters.cr_drive_phase[i] * 2 * np.pi
-            # cr cancel 
+            # cr cancel
             operation_t = qp.qubit_target.xy.operations[f"cr_{node.parameters.wf_type}_{qp.name}"]
             operation_t.amplitude = node.parameters.cr_cancel_amp_scaling[i] * operation_t.amplitude
             operation_t.axis_angle = node.parameters.cr_cancel_phase[i] * 2 * np.pi
@@ -334,5 +346,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
 
 # %%
