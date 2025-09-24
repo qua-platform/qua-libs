@@ -172,16 +172,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     qc, qt, cr, cr_elems = get_cr_elements(qp)
 
                                     # Reset the qubits to the ground state
-                                    qp.qubit_control.reset(
+                                    qc.reset(
                                         node.parameters.reset_type,
                                         node.parameters.simulate,
                                         log_callable=node.log,
                                     )
-                                    qp.qubit_target.reset(
+                                    qt.reset(
                                         node.parameters.reset_type,
                                         node.parameters.simulate,
                                         log_callable=node.log,
                                     )
+                                    align(*cr_elems)
 
                                     # Prepare Qc at 0/1
                                     with if_(s == 1):
@@ -199,9 +200,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                         cr_cancel_phase=cr_cancel_phase[i],
                                         cr_duration_clock_cycles=t,
                                     )
-                                    align(*cr_elems)
-
                                     # QST on Qt
+                                    align(*cr_elems)
                                     with switch_(c):
                                         with case_(0):  # projection along X
                                             qc.xy.play("-y90")
@@ -328,18 +328,19 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         tracked_qubit_pair.qubit_target.revert_changes()
 
     with node.record_state_updates():
-        for i, qp in enumerate(node.namespace["qubit_pairs"]):
-            if node.outcomes[qp.name] == "failed":
-                continue
+        for multiplexed_qubit_pairs in node.namespace["qubit_pairs"].batch():
+            for i, qp in multiplexed_qubit_pairs.items():
+                if node.outcomes[qp.name] == "failed":
+                    continue
 
-            # cr drive
-            operation_c = qp.cross_resonance.operations[node.parameters.wf_type]
-            operation_c.amplitude = node.parameters.cr_drive_amp_scaling[i] * operation_c.amplitude
-            operation_c.axis_angle = node.parameters.cr_drive_phase[i] * 2 * np.pi
-            # cr cancel
-            operation_t = qp.qubit_target.xy.operations[f"cr_{node.parameters.wf_type}_{qp.name}"]
-            operation_t.amplitude = node.parameters.cr_cancel_amp_scaling[i] * operation_t.amplitude
-            operation_t.axis_angle = node.parameters.cr_cancel_phase[i] * 2 * np.pi
+                # cr drive
+                operation_c = qp.cross_resonance.operations[node.parameters.wf_type]
+                operation_c.amplitude = node.parameters.cr_drive_amp_scaling[i] * operation_c.amplitude
+                operation_c.axis_angle = node.parameters.cr_drive_phase[i] * 2 * np.pi
+                # cr cancel
+                operation_t = qp.qubit_target.xy.operations[f"cr_{node.parameters.wf_type}_{qp.name}"]
+                operation_t.amplitude = node.parameters.cr_cancel_amp_scaling[i] * operation_t.amplitude
+                operation_t.axis_angle = node.parameters.cr_cancel_phase[i] * 2 * np.pi
 
 
 # %% {Save_results}

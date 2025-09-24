@@ -197,7 +197,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     cr_duration_clock_cycles=t,
                                 )
 
-                                # QST on qt
+                                # QST on Qt
                                 align(*cr_elems)
                                 with switch_(c):
                                     with case_(0):  # projection along X
@@ -268,11 +268,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
-    node.results["simulation"] = {
-        "figure": fig,
-        "wf_report": wf_report,
-        "samples": samples,
-    }
+    node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
 # %% {Execute}
@@ -336,10 +332,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     figs_raw_fit = plot_raw_data_with_fit(
-        node,
-        node.results["ds_raw"],
-        node.namespace["qubit_pairs"],
-        node.results["ds_fit"],
+        node, node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"]
     )
     plt.show()
     # Store the generated figures

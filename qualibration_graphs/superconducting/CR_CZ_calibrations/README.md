@@ -57,7 +57,7 @@ where:
 
 
 ## 4 types of CR gate
-"direct", "direct+cancel", "direct+echo", "direct+cancel+echo"
+Within the calibration node, we could select the `cr_type` parameter as one of the following: `direct`, `direct+cancel`, `direct+echo`, `direct+cancel+echo`.
 
 
 ## Calibration
