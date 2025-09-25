@@ -94,7 +94,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_averages
     amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
-    frames = np.arange(0, 1, 1 / node.parameters.num_frames)
+    frames = np.arange(0, 1, 1 / node.parameters.num_frame_rotations)
 
     # Select the CZ operation type
     operation = node.parameters.operation
