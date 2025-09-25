@@ -1,0 +1,14 @@
+[project]
+name = "custom-quam"
+version = "0.1.0"
+description = "User QUAM repository"
+authors = [{ name = "Jane Doe", email = "jane.doe@quantum-machines.co" }]
+requires-python = ">=3.9"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["trapped_ion"]
