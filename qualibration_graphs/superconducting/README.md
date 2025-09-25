@@ -91,6 +91,8 @@ The QUAlibrate framework needs some initial configuration to know where to find 
 
     If this command does not work, you may need to first restart your terminal or IDE.
 
+    **Note**: If you receive a `Permission Denied` error, the script may have been installed with the wrong permissions. This has been observed when installing using Anaconda environments. In this case, you can also run the setup using `python -c "import qualibration_libs.config.setup_qualibrate as m; m.setup_qualibrate_config()"`
+
 2.  **Follow Prompts:** The script will interactively ask for the following details:
 
     - `project name`: A unique name for your project or QPU chip (e.g., `MyQPU_Chip1`).  
