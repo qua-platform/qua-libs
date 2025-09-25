@@ -326,27 +326,29 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             if node.parameters.number_of_exponents == 1:
                 if node.results["fit_results"][q.name]["fit1_success"]:
-                    node.machine.qubits[q.name].z.opx_output.exponential_filter = [
+                    node.machine.qubits[q.name].z.opx_output.exponential_filter.append(
                         (
                             node.results["fit_results"][q.name]["fit1_A"],
                             node.results["fit_results"][q.name]["fit1_tau"],
-                        ),
-                    ]
+                        )
+                    )
                 else:
                     node.log(f"Warning: fit_1exp for qubit {q.name} was not successful. No filter will be applied.")
 
             elif node.parameters.number_of_exponents == 2:
                 if node.results["fit_results"][q.name]["fit2_success"]:
-                    node.machine.qubits[q.name].z.opx_output.exponential_filter = [
+                    node.machine.qubits[q.name].z.opx_output.exponential_filter.append(
                         (
                             node.results["fit_results"][q.name]["fit2_A1"],
                             node.results["fit_results"][q.name]["fit2_tau1"],
-                        ),
+                        )
+                    )
+                    node.machine.qubits[q.name].z.opx_output.exponential_filter.append(
                         (
                             node.results["fit_results"][q.name]["fit2_A2"],
                             node.results["fit_results"][q.name]["fit2_tau2"],
-                        ),
-                    ]
+                        )
+                    )
                 else:
                     node.log(f"Warning: fit_2exp for qubit {q.name} was not successful. No filter will be applied.")
 
