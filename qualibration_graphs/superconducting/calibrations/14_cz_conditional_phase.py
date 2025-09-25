@@ -109,13 +109,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
+        I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
+        I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
         amp = declare(fixed)
         frame = declare(fixed)
         control_initial = declare(int)
-        n = declare(int)
-        n_st = declare_stream()
-        I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
-        I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
         if node.parameters.use_state_discrimination:
             state_c = [declare(int) for _ in range(num_qubit_pairs)]
             state_t = [declare(int) for _ in range(num_qubit_pairs)]
