@@ -326,7 +326,7 @@ for qb_name, qubit in machine.qubits.items():
         kv = wires[qb_name]["z"]
         con, slot, out_port = kv.get("con"), kv.get("slot"), kv.get("out_port")
         state_z_out_port = latest_state["ports"]["analog_outputs"][f"con{con}"][str(slot)][str(out_port)]
-        
+
         z.opx_output.output_mode = state_z_out_port.get("output_mode", "direct")
         z.opx_output.upsampling_mode = state_z_out_port.get("upsampling_mode")
         # z - qubit
@@ -420,7 +420,7 @@ for qp_name, qb_pair in machine.qubit_pairs.items():
     print(f"{qp_name} - ZZ LO_frequency: {qb_pair.zz_drive.LO_frequency}")
 
     try:
-        qb_pair.macros["cr"] = cross_resonance.CRGate(qc_correction_phase=0.0)
+        qb_pair.macros["cr"] = cross_resonance.CRGate(zz_correction_phase=0.0)
 
         # square
         qb_pair.cross_resonance.operations["square"] = pulses.SquarePulse(
@@ -488,7 +488,6 @@ for qp_name, qb_pair in machine.qubit_pairs.items():
                 flat_length=flattop_len,
                 axis_angle=0.0,
             )
-
 
         # Stark-induced ZZ
         qb_pair.macros["stark_zz"] = stark_induced_zz.StarkZZGate(qc_correction_phase=0.0)

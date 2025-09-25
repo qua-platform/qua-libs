@@ -71,22 +71,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
     node.parameters.wf_type = "square"
     node.parameters.cr_type = "direct+cancel+echo"
-    node.parameters.cr_drive_amp_scaling = [
-        1.0,
-        1.0,
-    ]  # None : setting None to use the amp from the config
-    node.parameters.cr_drive_phase = [
-        0.0,
-        0.0,
-    ]  # None : setting None to use the amp from the config
-    node.parameters.cr_cancel_amp_scaling = [
-        0.1,
-        0.1,
-    ]  # None : setting None to use the amp from the config
-    node.parameters.cr_cancel_phase = [
-        0.0,
-        0.0,
-    ]  # None : setting None to use the amp from the config
+    node.parameters.cr_drive_amp_scaling = [1.0, 1.0]  # None : setting None to use the amp from the config
+    node.parameters.cr_drive_phase = [0.0, 0.0]  # None : setting None to use the amp from the config
+    node.parameters.cr_cancel_amp_scaling = [0.1, 0.1]  # None : setting None to use the amp from the config
+    node.parameters.cr_cancel_phase = [0.0, 0.0]  # None : setting None to use the amp from the config
 
 
 # Instantiate the QUAM class from the state file

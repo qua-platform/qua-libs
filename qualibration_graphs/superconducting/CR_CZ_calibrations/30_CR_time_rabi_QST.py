@@ -356,14 +356,16 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 if node.outcomes[qp.name] == "failed":
                     continue
 
-                # cr drive
-                operation_c = qp.cross_resonance.operations[node.parameters.wf_type]
-                operation_c.amplitude = node.parameters.cr_drive_amp_scaling[i] * operation_c.amplitude
-                operation_c.axis_angle = node.parameters.cr_drive_phase[i] * 2 * np.pi
-                # cr cancel
-                operation_t = qp.qubit_target.xy.operations[f"cr_{node.parameters.wf_type}_{qp.name}"]
-                operation_t.amplitude = node.parameters.cr_cancel_amp_scaling[i] * operation_t.amplitude
-                operation_t.axis_angle = node.parameters.cr_cancel_phase[i] * 2 * np.pi
+                # # cr drive
+                # operation_c = qp.cross_resonance.operations[node.parameters.wf_type]
+                # operation_c.amplitude = node.parameters.cr_drive_amp_scaling[i] * operation_c.amplitude
+                # operation_c.axis_angle = node.parameters.cr_drive_phase[i] * 2 * np.pi
+                # # cr cancel
+                # operation_t = qp.qubit_target.xy.operations[f"cr_{node.parameters.wf_type}_{qp.name}"]
+                # operation_t.amplitude = node.parameters.cr_cancel_amp_scaling[i] * operation_t.amplitude
+                # operation_t.axis_angle = node.parameters.cr_cancel_phase[i] * 2 * np.pi
+
+        print("No parameters are updated in this node.")
 
 
 # %% {Save_results}

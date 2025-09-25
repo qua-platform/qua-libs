@@ -92,7 +92,6 @@ def get_full_scale_power_dBm_and_amplitude(desired_power: float, max_amplitude: 
         )
 
 
-
 ########################################################################################################################
 # %%                                    Resonator parameters
 ########################################################################################################################
@@ -104,15 +103,37 @@ def get_full_scale_power_dBm_and_amplitude(desired_power: float, max_amplitude: 
 # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, and O8 & I2 must be in the same band.
 
 # Resonator frequencies
-rr_freq = np.array([
-    7.05, 7.10, 7.15, 7.20,
-    8.05, 8.10, 8.15, 8.20,
-]) * u.GHz
+rr_freq = (
+    np.array(
+        [
+            7.05,
+            7.10,
+            7.15,
+            7.20,
+            8.05,
+            8.10,
+            8.15,
+            8.20,
+        ]
+    )
+    * u.GHz
+)
 
-rr_LO = np.array([
-    7.25, 7.25, 7.25, 7.25,
-    8.25, 8.25, 8.25, 8.25,
-]) * u.GHz
+rr_LO = (
+    np.array(
+        [
+            7.25,
+            7.25,
+            7.25,
+            7.25,
+            8.25,
+            8.25,
+            8.25,
+            8.25,
+        ]
+    )
+    * u.GHz
+)
 
 rr_if = rr_freq - rr_LO  # The intermediate frequency is inferred from the LO and readout frequencies
 
@@ -151,15 +172,37 @@ for k, qubit in enumerate(machine.qubits.values()):
 # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, and O8 & I2 must be in the same band.
 
 # Qubit drive frequencies
-xy_freq = np.array([
-    5.05, 5.10, 5.15, 5.20,
-    5.05, 5.10, 5.15, 5.20,
-]) * u.GHz
+xy_freq = (
+    np.array(
+        [
+            5.05,
+            5.10,
+            5.15,
+            5.20,
+            5.05,
+            5.10,
+            5.15,
+            5.20,
+        ]
+    )
+    * u.GHz
+)
 
-xy_LO = np.array([
-    5.25, 5.25, 5.25, 5.25,
-    5.25, 5.25, 5.25, 5.25,
-]) * u.GHz
+xy_LO = (
+    np.array(
+        [
+            5.25,
+            5.25,
+            5.25,
+            5.25,
+            5.25,
+            5.25,
+            5.25,
+            5.25,
+        ]
+    )
+    * u.GHz
+)
 
 xy_if = xy_freq - xy_LO  # The intermediate frequency is inferred from the LO and qubit frequencies
 assert np.all(np.abs(xy_if) < 400 * u.MHz), (
@@ -169,10 +212,21 @@ assert np.all(np.abs(xy_if) < 400 * u.MHz), (
     f"Qubit drive IF frequencies: {xy_if} \n"
 )
 # Transmon anharmonicity
-anharmonicity = np.array([
-    250, 250, 250, 250,
-    250, 250, 250, 250,
-]) * u.MHz
+anharmonicity = (
+    np.array(
+        [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+        ]
+    )
+    * u.MHz
+)
 
 # Desired output power in dBm
 drive_power = -11
@@ -184,7 +238,7 @@ for k, qubit in enumerate(machine.qubits.values()):
     qubit.f_01 = xy_freq.tolist()[k]  # Qubit 0 to 1 (|g> -> |e>) transition frequency
     qubit.xy.RF_frequency = qubit.f_01  # Qubit drive frequency
     qubit.xy.opx_output.full_scale_power_dbm = xy_full_scale  # Max drive power in dBm
-    qubit.xy.opx_output.upconverter_frequency = None # xy_LO.tolist()[k]  # Qubit drive up-converter frequency
+    qubit.xy.opx_output.upconverter_frequency = None  # xy_LO.tolist()[k]  # Qubit drive up-converter frequency
     qubit.xy.opx_output.upconverters = {
         1: {"frequency": xy_LO.tolist()[k]},
         2: {"frequency": 123.0},
@@ -257,8 +311,7 @@ for k, q in enumerate(machine.qubits):
     )
 
 
-
-# %%                       
+# %%
 for k, qp in enumerate(machine.qubit_pairs):
     add_default_transmon_pair_pulses(qp)
     qb_pair = machine.qubit_pairs[qp]
@@ -305,7 +358,7 @@ for k, qp in enumerate(machine.qubit_pairs):
     print(f"{qp_name} - ZZ LO_frequency: {qb_pair.zz_drive.LO_frequency}")
 
     # Cross Resonance
-    qb_pair.macros["cr"] = cross_resonance.CRGate(qc_correction_phase=0.0)
+    qb_pair.macros["cr"] = cross_resonance.CRGate(zz_correction_phase=0.0)
     # square
     qb_pair.cross_resonance.operations["square"] = pulses.SquarePulse(
         length=100,
@@ -327,7 +380,7 @@ for k, qp in enumerate(machine.qubit_pairs):
         detuning=0,
         # correction_phase=0.0,
     )
-    qb_pair.qubit_target.xy.operations[f"cr_cosine_{qb_pair.name}"]= pulses.DragCosinePulse(
+    qb_pair.qubit_target.xy.operations[f"cr_cosine_{qb_pair.name}"] = pulses.DragCosinePulse(
         length=100,
         amplitude=1.0,
         axis_angle=0.0,
@@ -346,7 +399,7 @@ for k, qp in enumerate(machine.qubit_pairs):
         detuning=0,
         # correction_phase=0.0,
     )
-    qb_pair.qubit_target.xy.operations[f"cr_gauss_{qb_pair.name}"]= pulses.DragGaussianPulse(
+    qb_pair.qubit_target.xy.operations[f"cr_gauss_{qb_pair.name}"] = pulses.DragGaussianPulse(
         length=100,
         sigma=100 / 5,
         amplitude=1.0,
@@ -357,18 +410,18 @@ for k, qp in enumerate(machine.qubit_pairs):
     )
     # flattop
     rise_fall_len = 8
-    flattop_len = 84 # must be python list (not numpy array)
+    flattop_len = 84  # must be python list (not numpy array)
     qb_pair.cross_resonance.operations["flattop"] = pulses.FlatTopGaussianPulse(
         amplitude=1.0,
         length=rise_fall_len + flattop_len + rise_fall_len,
         flat_length=flattop_len,
-        axis_angle=0.0, 
+        axis_angle=0.0,
     )
     qb_pair.qubit_target.xy.operations[f"cr_flattop{qb_pair.name}"] = pulses.FlatTopGaussianPulse(
         amplitude=1.0,
         length=rise_fall_len + flattop_len + rise_fall_len,
         flat_length=flattop_len,
-        axis_angle=0.0, 
+        axis_angle=0.0,
     )
 
     # Stark-induced ZZ
@@ -439,7 +492,6 @@ for k, qp in enumerate(machine.qubit_pairs):
     )
 
 
-
 ########################################################################################################################
 # %%                                        Plot parameters
 ########################################################################################################################
@@ -460,8 +512,14 @@ for k, qp in enumerate(machine.qubit_pairs):
 #     5, 6, 7, 8,
 # ]
 grid_locations = [
-    "0,3", "0,2", "0,1", "0,0",
-    "1,3", "1,2", "1,1", "1,0",
+    "0,3",
+    "0,2",
+    "0,1",
+    "0,0",
+    "1,3",
+    "1,2",
+    "1,1",
+    "1,0",
 ]
 for gd, qubit in zip(grid_locations, machine.qubits.values()):
     qubit.grid_location = gd  # Qubit grid location for plotting as "column,row"
@@ -477,14 +535,18 @@ for gd, qubit in zip(grid_locations, machine.qubits.values()):
 #     (7, 8), (8, 7),
 # ]
 grid_locations = [
-    "0,3", "0,2",
-    "0,1", "0,0",
-
-    "1,3", "1,2",
-    "1,1", "1,0",
-
-    "2,3", "2,2",
-    "2,1", "2,0",
+    "0,3",
+    "0,2",
+    "0,1",
+    "0,0",
+    "1,3",
+    "1,2",
+    "1,1",
+    "1,0",
+    "2,3",
+    "2,2",
+    "2,1",
+    "2,0",
 ]
 for gd, qp in zip(grid_locations, machine.qubit_pairs.values()):
     qp.grid_location = gd
