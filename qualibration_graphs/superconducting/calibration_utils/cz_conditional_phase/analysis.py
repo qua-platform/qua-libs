@@ -76,8 +76,8 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
         Processed dataset with additional coordinates
     """
     qubit_pairs = node.namespace["qubit_pairs"]
-    
-    operation = node.parameters["operation"]
+
+    operation = node.parameters.operation
 
     def abs_amp(qp, amp):
         return amp * qp.macros[operation].flux_pulse_control.amplitude
