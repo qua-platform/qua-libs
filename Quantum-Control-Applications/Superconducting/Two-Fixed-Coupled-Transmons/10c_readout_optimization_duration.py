@@ -31,7 +31,7 @@ save_data_dict = {
     "division_length": division_length,
     "number_of_divisions": number_of_divisions,
     "pulse_duration": pulse_duration,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -144,7 +144,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job = qmm.simulate(full_config, PROGRAM, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -158,7 +158,7 @@ if simulate:
 else:
     try:
         # Open the quantum machine
-        qm = qmm.open_qm(config)
+        qm = qmm.open_qm(full_config)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
         # Get results from QUA program

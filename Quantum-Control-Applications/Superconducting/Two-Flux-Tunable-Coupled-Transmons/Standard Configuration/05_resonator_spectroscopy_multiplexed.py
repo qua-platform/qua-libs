@@ -18,19 +18,21 @@ Before proceeding to the next node:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+import time
+from configuration_with_lf_fem_and_mw_fem import *
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from scipy import signal
 from qualang_tools.results.data_handler import DataHandler
+import time
 
 ##################
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 1000  # The number of averages
+n_avg = 10000  # The number of averages
 # The frequency sweep parameters (for both resonators)
 span = 12 * u.MHz  # the span around the resonant frequencies
 step = 100 * u.kHz
@@ -40,7 +42,7 @@ dfs = np.arange(-span, span, step)
 save_data_dict = {
     "n_avg": n_avg,
     "dfs": dfs,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -82,7 +84,6 @@ with program() as multi_res_spec:
             measure(
                 "readout",
                 "rr2",
-                None,
                 dual_demod.full("cos", "sin", I[1]),
                 dual_demod.full("minus_sin", "cos", Q[1]),
             )
@@ -116,7 +117,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, multi_res_spec, simulation_config)
+    job = qmm.simulate(full_config, multi_res_spec, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -130,19 +131,21 @@ if simulate:
 
 else:
     # Open a quantum machine to execute the QUA program
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config)
     # Execute the QUA program
     job = qm.execute(multi_res_spec)
     # Tool to easily fetch results from the OPX (results_handle used in it)
-    results = fetching_tool(job, ["I1", "Q1", "I2", "Q2", "iteration"], mode="live")
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
+    while res_handles.is_processing():
+        # Get results from QUA program
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["I1", "Q1", "I2", "Q2", "iteration"])
         # Fetch results
-        I1, Q1, I2, Q2, iteration = results.fetch_all()
+        I1, Q1, I2, Q2, iteration =  results.get("I1"), results.get("Q1"),results.get("I2"), results.get("Q2"), results.get("iteration")
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Data analysis
         S1 = u.demod2volts(I1 + 1j * Q1, readout_len)
         S2 = u.demod2volts(I2 + 1j * Q2, readout_len)

@@ -6,6 +6,7 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from scipy.optimize import curve_fit
 from configuration import *
+import time
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
@@ -125,7 +126,7 @@ def play_sequence(sequence_list, depth):
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -193,7 +194,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, rb, simulation_config)
+    job = qmm.simulate(full_config, rb, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -206,7 +207,7 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
 else:
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     job = qm.execute(rb)
     res_handles = job.result_handles
     res_handles.wait_for_all_values()

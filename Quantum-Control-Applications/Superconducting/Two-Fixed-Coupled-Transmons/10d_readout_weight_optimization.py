@@ -5,6 +5,7 @@ READOUT OPTIMISATION: INTEGRATION WEIGHTS
 from qm import QuantumMachinesManager, SimulationConfig
 from qm.qua import *
 from configuration import *
+import time
 import matplotlib.pyplot as plt
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
@@ -75,7 +76,7 @@ save_data_dict = {
     "division_length": division_length,
     "number_of_divisions": number_of_divisions,
     "x_plot": x_plot,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -172,7 +173,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job = qmm.simulate(full_config, PROGRAM, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -186,21 +187,23 @@ if simulate:
 else:
     try:
         # Open the quantum machine
-        qm = qmm.open_qm(config)
+        qm = qmm.open_qm(full_config, close_other_machines=True)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
-        fetch_names = ["iteration", "I_g", "Q_g", "I_e", "Q_e"]
+        data_list = ["iteration", "I_g", "Q_g", "I_e", "Q_e"]
         # Tool to easily fetch results from the OPX (results_handle used in it)
-        results = fetching_tool(job, fetch_names, mode="live")
+
+        res_handles = job.result_handles
         # Prepare the figure for live plotting
         fig, axs = plt.subplots(1, 3, figsize=(15, 5))
         interrupt_on_close(fig, job)
         # Live plotting
-        while results.is_processing():
+        while res_handles.is_processing():
             # Fetch results
-            res = results.fetch_all()
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+            res = [results.get(data) for data in data_list]
             # Progress bar
-            progress_counter(res[0], n_avg, start_time=results.start_time)
+            progress_counter(res[0], n_avg, start_time=time.time())
 
             save_data_dict["I_g"] = res[1]
             save_data_dict["Q_g"] = res[2]

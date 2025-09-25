@@ -88,7 +88,7 @@ detection_delay = 136
 mw_delay = 0
 laser_delay = 0
 
-config = {
+full_config = {
     "version": 1,
     "controllers": {
         con: {

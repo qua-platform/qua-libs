@@ -19,6 +19,7 @@ Next steps before going to the next node:
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
+import time
 from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
@@ -38,7 +39,7 @@ dfs = np.arange(-10e6, 10e6, 0.1e6)
 save_data_dict = {
     "n_avg": n_avg,
     "dfs": dfs,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -112,7 +113,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, ro_freq_opt, simulation_config)
+    job = qmm.simulate(full_config, ro_freq_opt, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -125,7 +126,7 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_freq_opt)
     # Get results from QUA program

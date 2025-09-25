@@ -108,8 +108,7 @@ rf_delay = 0 * u.ns
 
 wait_between_runs = 100
 
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         con: {
             "type": "opx1000",
@@ -168,6 +167,8 @@ config = {
             },
         }
     },
+}
+logical_config = {
     "elements": {
         "NV": {
             "mixInputs": {"I": (con, fem, 1), "Q": (con, fem, 2), "lo_frequency": NV_LO_freq, "mixer": "mixer_NV"},
@@ -354,3 +355,4 @@ config = {
         ],
     },
 }
+full_config = controller_config | logical_config

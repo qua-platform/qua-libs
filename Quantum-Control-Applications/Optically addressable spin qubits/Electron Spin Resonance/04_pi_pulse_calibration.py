@@ -8,6 +8,7 @@ from qm.qua import *
 from qm import LoopbackInterface
 from qm import QuantumMachinesManager
 from configuration import *
+import time
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from macros import get_c2c_time
@@ -31,7 +32,7 @@ n_avg = 100
 save_data_dict = {
     "n_avg": n_avg,
     "pulse1_vec": pulse1_vec,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -138,7 +139,7 @@ if simulate:
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, pi_pulse_cal, simulate_config)
+    job = qmm.simulate(full_config, pi_pulse_cal, simulate_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -164,15 +165,17 @@ if simulate:
     )
 
 else:
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     job = qm.execute(pi_pulse_cal)  # execute QUA program
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+    data_list=["I", "Q", "iteration"]
+    res_handles = job.result_handles
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
+    while res_handles.is_processing():
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch results
-        I, Q, iteration = results.fetch_all()
+        I, Q, iteration = [results.get(data) for data in data_list]
         # Convert I & Q to Volts
         I = u.demod2volts(I, readout_len)
         Q = u.demod2volts(Q, readout_len)

@@ -119,8 +119,7 @@ triangle_wf = [triangle_flux_amp * i / 7 for i in range(8)] + [triangle_flux_amp
 initialization_len = 1 * u.us  # in ns
 activation_len = 320  # in ns
 
-config = {
-    "version": 1,
+full_config = {
     "controllers": {
         "con1": {
             "type": "opx1",

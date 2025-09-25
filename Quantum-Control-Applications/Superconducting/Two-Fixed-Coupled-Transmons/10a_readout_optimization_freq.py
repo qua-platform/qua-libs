@@ -19,6 +19,7 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 from configuration import *
+import time
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter
@@ -42,7 +43,7 @@ iq_blobs_analysis_method = "snr"  # "snr" "fidelity" or "overlap"
 save_data_dict = {
     "n_avg": n_avg,
     "dfs": dfs,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -118,7 +119,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job = qmm.simulate(full_config, PROGRAM, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -132,7 +133,7 @@ if simulate:
 else:
     try:
         # Open the quantum machine
-        qm = qmm.open_qm(config)
+        qm = qmm.open_qm(full_config, close_other_machines=True)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
         # Prepare the figure for live plotting
@@ -158,9 +159,9 @@ else:
             "Qe2_var",
             "iteration",
         ]
-        results = fetching_tool(job, data_list=data_list, mode="live")
-
-        while results.is_processing():
+        res_handles = job.result_handles
+        while res_handles.is_processing():
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60)
             (
                 Ig1_avg,
                 Qg1_avg,
@@ -179,9 +180,9 @@ else:
                 Ie2_var,
                 Qe2_var,
                 iteration,
-            ) = results.fetch_all()
+            ) = [results.get(data) for data in data_list]
             # Progress bar
-            progress_counter(iteration, n_avg, start_time=results.get_start_time())
+            progress_counter(iteration, n_avg, start_time=time.time())
             # Derive the SNR
             Z1 = (Ie1_avg - Ig1_avg) + 1j * (Qe1_avg - Qg1_avg)
             var1 = (Ig1_var + Qg1_var + Ie1_var + Qe1_var) / 4
