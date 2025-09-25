@@ -1,8 +1,10 @@
-from typing import Optional, Literal, List
+from typing import List, Literal, Optional
+
 import numpy as np
+from qualang_tools.bakery import baking
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import TwoQubitExperimentNodeParameters, CommonNodeParameters
+from qualibration_libs.parameters import CommonNodeParameters, TwoQubitExperimentNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -18,6 +20,7 @@ class NodeSpecificParameters(RunnableParameters):
         operation_len_in_ns (Optional[int]): Length of the operation in nanoseconds. Default is None.
         target_peak_width (Optional[float]): Target peak width in Hz. Default is 3e6 Hz.
     """
+
     num_shots: int = 100
     max_time_in_ns: int = 160
     amp_range: float = 0.1
@@ -31,3 +34,30 @@ class Parameters(
     TwoQubitExperimentNodeParameters,
 ):
     pass
+
+
+def baked_waveform(qubit, baked_config, base_level: float = 0.5, max_samples: int = 16):
+    """Create truncated baked waveforms for the chevron CZ calibration.
+
+    Generates a list of baking objects, each containing an incrementally longer flux pulse
+    (1..max_samples samples) at the specified base_level. Each baked pulse is registered
+    as an operation named "flux_pulse{i}" on the provided qubit z line.
+
+    Args:
+        qubit: The qubit object whose z line is used.
+        baked_config: A mutable QM configuration object to which baked operations are added.
+        base_level (float): The constant waveform level used for the short baked segments.
+        max_samples (int): The maximum number of samples (and thus baked variants) to generate.
+
+    Returns:
+        List of baking objects, index i corresponds to pulse length i+1 samples.
+    """
+    pulse_segments = []
+    waveform = [base_level] * max_samples
+    for i in range(1, max_samples + 1):
+        with baking(baked_config, padding_method="right") as b:
+            wf = waveform[:i]
+            b.add_op(f"flux_pulse{i}", qubit.z.name, wf)
+            b.play(f"flux_pulse{i}", qubit.z.name)
+        pulse_segments.append(b)
+    return pulse_segments
