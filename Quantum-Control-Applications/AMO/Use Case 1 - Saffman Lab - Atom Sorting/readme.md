@@ -98,7 +98,7 @@ This sequence is repeated until the full occupation has been transmitted, as sho
 atom_location_full = declare(int, size=number_of_columns * number_of_rows)
 with while_(~received_full_array):
 	wait_for_trigger('fpga')
-	measure('readout_fpga', 'fpga', None, integration.full('constant', data, 'out1'))
+	measure('readout_fpga', 'fpga', integration.full('constant', data, 'out1'))
 	with if_(data < threshold):
 		assign(atom_location_full[counter], 1)
 	with else_():

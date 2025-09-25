@@ -29,7 +29,7 @@ with program() as counter:
     with infinite_loop_():
         with for_(n, 0, n < n_count, n + 1):
             play("laser_ON", "AOM", duration=single_integration_time_cycles)
-            measure("readout", "SNSPD", None, time_tagging.analog(times, single_integration_time_ns, counts))
+            measure("readout", "SNSPD", time_tagging.analog(times, single_integration_time_ns, counts))
             assign(total_counts, total_counts + counts)
         save(total_counts, counts_st)
         assign(total_counts, 0)

@@ -64,8 +64,8 @@ with program() as time_rabi:
             # do not wash out. Furthermore, because the control signal is associated with
             # 'ensemble' and demodulated in 'resonator', we reset the phase of the 'resonator'
             # as well so that there is no random phase in the demodulation stage
-            reset_phase("ensemble")
-            reset_phase("resonator")
+            reset_if_phase("ensemble")
+            reset_if_phase("resonator")
             reset_frame("ensemble")
 
             assign(pulse_delay, safe_delay - Cast.mul_int_by_fixed(pulse1_len, 0.5) - pi_len // 2 - 4)
@@ -92,7 +92,6 @@ with program() as time_rabi:
             measure(
                 "readout",
                 "resonator",
-                None,
                 dual_demod.full("cos", "out1", "sin", "out2", I),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
             )
