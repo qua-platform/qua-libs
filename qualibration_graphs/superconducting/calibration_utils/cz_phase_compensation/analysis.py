@@ -60,7 +60,9 @@ def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Convert IQ data into volts
     if hasattr(ds, "I_control"):
-        ds = convert_IQ_to_V(ds, node.namespace["qubits"], IQ_list=["I_control", "Q_control", "I_target", "Q_target"])
+        ds = convert_IQ_to_V(
+            ds, qubit_pairs=node.namespace["qubit_pairs"], IQ_list=["I_control", "Q_control", "I_target", "Q_target"]
+        )
     return ds
 
 
