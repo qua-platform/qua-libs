@@ -15,6 +15,7 @@ class FitParameters:
     """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
 
     frequency: float
+    relative_freq: float
     fwhm: float
     iw_angle: float
     saturation_amp: float
@@ -102,7 +103,9 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     # Get the fitted resonator frequency
     full_freq = np.array([q.xy.RF_frequency for q in node.namespace["qubits"]])
     res_freq = fit.position + full_freq
+    rel_freq = fit.position
     fit = fit.assign({"res_freq": ("qubit", res_freq.data)})
+    fit = fit.assign({"relative_freq": ("qubit", rel_freq.data)})
     fit.res_freq.attrs = {"long_name": "qubit xy frequency", "units": "Hz"}
     # Get the fitted FWHM
     fwhm = np.abs(fit.width)
@@ -139,6 +142,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     fit_results = {
         q: FitParameters(
             frequency=fit.sel(qubit=q).res_freq.values.__float__(),
+            relative_freq=fit.sel(qubit=q).relative_freq.values.__float__(),
             fwhm=fit.sel(qubit=q).fwhm.values.__float__(),
             iw_angle=fit.sel(qubit=q).iw_angle.values.__float__(),
             saturation_amp=fit.sel(qubit=q).saturation_amplitude.values.__float__(),
