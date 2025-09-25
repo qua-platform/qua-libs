@@ -9,8 +9,6 @@ from qualibration_libs.analysis import fit_oscillation, oscillation
 from qualibration_libs.data import convert_IQ_to_V
 from scipy.optimize import curve_fit
 
-from quam.core import operation
-
 
 @dataclass
 class FitResults:
@@ -57,6 +55,13 @@ def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
         log_message = s_qubit + s_control + s_target
 
         log_callable(log_message)
+
+
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
+    # Convert IQ data into volts
+    if hasattr(ds, "I_control"):
+        ds = convert_IQ_to_V(ds, node.namespace["qubits"], IQ_list=["I_control", "Q_control", "I_target", "Q_target"])
+    return ds
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitResults]]:

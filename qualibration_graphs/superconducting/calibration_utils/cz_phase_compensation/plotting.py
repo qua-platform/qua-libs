@@ -10,7 +10,6 @@ def plot_raw_data_with_fit(ds_raw: xr.Dataset, qubit_pairs: Quam, ds_fit: xr.Dat
     """
     Plot the raw data with the fit for each qubit pair in a single figure.
     """
-    # qubit_pairs = list(ds_raw.qubit_pair.values)
     n_pairs = len(qubit_pairs)
 
     fig, axes = plt.subplots(1, n_pairs, figsize=(5 * n_pairs, 4))

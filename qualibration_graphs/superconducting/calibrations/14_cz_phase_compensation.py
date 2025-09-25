@@ -9,6 +9,7 @@ from calibration_utils.cz_phase_compensation import (
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
+    process_raw_dataset,
 )
 from qm.qua import *
 from qualang_tools.loops import from_array
@@ -235,6 +236,8 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted
     results in the "fit_results" dictionary.
     """
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+    # Fit the raw data and extract the relevant fitted parameters
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
