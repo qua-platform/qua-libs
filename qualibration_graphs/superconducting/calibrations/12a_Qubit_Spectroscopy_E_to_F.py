@@ -110,7 +110,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     for i, qubit in multiplexed_qubits.items():
                         # Get the duration of the operation from the node parameters or the state
                         duration = operation_len if operation_len is not None else qubit.xy.operations[operation].length
-                        # Wait for the qubit to thermalize
+                        # Wait for the qubit to thermalize (longer for proper |f> state thermalization)
                         qubit.xy.wait(2 * qubit.thermalization_time * u.ns)
                         # Reset the qubit frequency
                         qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
