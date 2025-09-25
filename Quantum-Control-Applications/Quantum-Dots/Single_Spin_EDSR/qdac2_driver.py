@@ -26,13 +26,14 @@ class QDACII:
         rm = visa.ResourceManager(lib)  # To use pyvisa-py backend, use argument '@py'
         if communication_type == "Ethernet":
             self._visa = rm.open_resource(f"TCPIP::{IP_address}::{port}::SOCKET")
-            self._visa.baud_rate = 921600
-            # self._visa.send_end = False
         elif communication_type == "USB":
             self._visa = rm.open_resource(f"ASRL{USB_device}::INSTR")
 
         self._visa.write_termination = "\n"
         self._visa.read_termination = "\n"
+        self._visa.baud_rate = 921600
+        # self._visa.send_end = False
+
         print(self._visa.query("*IDN?"))
         print(self._visa.query("syst:err:all?"))
 
@@ -44,6 +45,9 @@ class QDACII:
 
     def write_binary_values(self, cmd, values):
         self._visa.write_binary_values(cmd, values)
+
+    def close(self):
+        self._visa.close()
 
     def __exit__(self):
         self._visa.close()
