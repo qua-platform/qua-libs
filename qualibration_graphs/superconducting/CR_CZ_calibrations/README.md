@@ -414,12 +414,24 @@ This repository documents and implements a **Microwave crosstalk characterizatio
 ---
 
 ## Introduction on microwave crosstalk
-Achieving high-fidelity 2 qubit gates requires a comprehensive understanding of the device’s strengths and weaknesses to avoid hidden errors. For fixed-frequency devices, systematic microwave (MW) crosstalk characterization is as essential as flux-crosstalk and distortion calibration in flux-tunable devices, enabling informed and “smart” calibration rather than blind adjustments. Integrating these protocols into the calibration graph lays the groundwork for reliable, high-fidelity CR and CZ gates. Therefore, the immediate action item is to implement an MW-crosstalk characterization script to establish a baseline understanding of the device’s microwave environment.
+Achieving high-fidelity 2 qubit gates requires a comprehensive understanding of the device’s strengths and weaknesses to avoid hidden errors. For fixed-frequency devices, systematic microwave (MW) crosstalk characterization is as essential. Integrating these protocols into the calibration graph lays the groundwork for reliable, high-fidelity CR and CZ gates. Therefore, the immediate action item is to implement an MW-crosstalk characterization script to establish a baseline understanding of the device’s microwave environment.
+
+<img src="../.img/XY_crosstalk_scheme.png" width="500">
+
+Coupling between control lines or imperfections in the sample packaging allows a drive signal sent to a target qubit to leak and create unwanted fields on probed qubits. These leaked fields can further induce effects like accidental CR interactions, adding extra dynamics to coupled qubits.
 
 ---
 
 ## How to characterize crosstalk in the lab (experiments)
-For microwave (MW) crosstalk compensation. Beyond simple mapping, this means quantifying how drive tones on one qubit subtly shift frequencies or induce spurious couplings on neighboring qubits, then applying calibrated counter-drives or digital predistortion to cancel those effects in real time. Integrating this detailed crosstalk model directly into the calibration graph ensures that every subsequent tuning step—amplitude, phase, or pulse-shape optimization—starts from an accurately corrected baseline. 
+Effective crosstalk compensation starts with a detailed characterization of the unwanted interactions between qubits.
+This involves performing Rabi and Ramsey experiments on a probe qubit while driving the target qubit to measure the induced field’s amplitude and phase. Using these measurements, a crosstalk matrix can be built, enabling precise cancellation by applying counter-drives with calibrated amplitude and phase.
+
+<img src="../.img/XY_crosstalk_matrix.png" width="500">
+
+By applying carefully calibrated counter-drives or using digital predistortion to cancel these effects in real time—and integrating this detailed crosstalk model directly into the calibration workflow—each subsequent tuning step, from amplitude and phase adjustments to pulse-shape optimization, begins from a thoroughly corrected baseline.
+
+<img src="../.img/XY_crosstalk_fidelity.png" width="500">
+With crosstalk compensating drives, simultaneous single-qubit operations exhibit error rates half of those of isolated operations, boosting overall gate fidelity.
 
 ### Crosstalk magnitude characterization (entangling strength)
 
@@ -443,14 +455,12 @@ c measures the phase of XY crosstalk.
 
   * Updates frequency of pulse applied on drive qubit to probed_qubit frequency and  **sweeps pulse_durations**
 
-* **Pulse sequence (echo‑style)**
+* **Pulse sequence**
 
-  1. Reset IF frequency of drive_qubit element to wd
-  2. Reset qubits into ground states either by thermal or active reset.
-  3. Set IF frequency of drive_qubit element to wp
-  4. Apply **x180** on **Qd**
-  5. **Measure** **Qd** and **Qp**
-  6. wait for depletion
+  1. update frequency of drive_qubit element with probe_qubit frequency
+  2. **x180** on **Qd**
+  3. **Measure** **Qd** and **Qp** optional state discrimination
+  4. Reset frames and wait
 
   This yields an **oscillation vs `pulse_duration`**; 
 
@@ -475,8 +485,6 @@ c measures the phase of XY crosstalk.
 > **Not implemented in this repo yet** (intentionally left for follow‑up).
 
 **Planned approach (matching the paper’s procedure):**
-
-
   1. XY crosstalk's phase characterization and create crosstalk matrix.
   2. Error amplification with cancellation tone for XY
   3. Z crosstalk characterization 
@@ -499,10 +507,8 @@ cz-stark/
 ## References
 
 * **Main reference (with figures to place in this README):**
-  B. K. Mitchell *et al.*, “Hardware‑Efficient Microwave‑Activated Tunable Coupling Between Superconducting Qubits,” incl. Supplement. Use: **Fig. 1** (drive scheme), **Fig. 2** (ZZ vs phase/ampl.), **Fig. 3** (R‑map), **Fig. S2** (local‑Z calibration).&#x20;
-* **Slide deck (placeholders for visuals & code snippets):**
-  “CZ Gate Implementation”—matrix & decomposition, tuning steps, and a “How to implement with QUA” code/pulse sketch.&#x20;
-
+  B. K. Mitchell *et al.*, “Investigating Microwave-Activated Entangling Gates on Superconducting Quantum
+Processors”, Use: **Fig. 1** (crosstalk scheme), **Fig. 2** (matrix), **Fig. 3** (fidelity), **Fig. 4** (experiment).&#x20;
 
 ---
 
