@@ -414,10 +414,12 @@ This repository documents and implements a **Microwave crosstalk characterizatio
 ---
 
 ## Introduction on microwave crosstalk
+Achieving high-fidelity 2 qubit gates requires a comprehensive understanding of the device’s strengths and weaknesses to avoid hidden errors. For fixed-frequency devices, systematic microwave (MW) crosstalk characterization is as essential as flux-crosstalk and distortion calibration in flux-tunable devices, enabling informed and “smart” calibration rather than blind adjustments. Integrating these protocols into the calibration graph lays the groundwork for reliable, high-fidelity CR and CZ gates. Therefore, the immediate action item is to implement an MW-crosstalk characterization script to establish a baseline understanding of the device’s microwave environment.
 
 ---
 
 ## How to characterize crosstalk in the lab (experiments)
+For microwave (MW) crosstalk compensation. Beyond simple mapping, this means quantifying how drive tones on one qubit subtly shift frequencies or induce spurious couplings on neighboring qubits, then applying calibrated counter-drives or digital predistortion to cancel those effects in real time. Integrating this detailed crosstalk model directly into the calibration graph ensures that every subsequent tuning step—amplitude, phase, or pulse-shape optimization—starts from an accurately corrected baseline. 
 
 ### Crosstalk magnitude characterization (entangling strength)
 
@@ -425,8 +427,8 @@ This repository documents and implements a **Microwave crosstalk characterizatio
 
 * **What to measure**: Change in probability of probed qubit vs magnitude
 
-<img src="../.img/XY_crosstalk" width="500">
-where a and b measures magnitude of XY crosstalk when probed_qubit (spectator qubit) is either in ground or excited states.
+<img src="../.img/XY_crosstalk.png" width="500">
+where a and b measures magnitude of XY crosstalk when probed_qubit (spectator qubit) is either in ground or excited states. 
 c measures the phase of XY crosstalk.
 
 ---
@@ -443,13 +445,12 @@ c measures the phase of XY crosstalk.
 
 * **Pulse sequence (echo‑style)**
 
-  0. Reset IF frequency of drive_qubit element to wd
-  1. Reset qubits into ground states either by thermal or active reset.
-  2. Set IF frequency of drive_qubit element to wp
-  3. Apply **x180** on **Qd**
-  4. **Measure** **Qd** and **Qp**
-  5. wait for depletion
-  6. repeat
+  1. Reset IF frequency of drive_qubit element to wd
+  2. Reset qubits into ground states either by thermal or active reset.
+  3. Set IF frequency of drive_qubit element to wp
+  4. Apply **x180** on **Qd**
+  5. **Measure** **Qd** and **Qp**
+  6. wait for depletion
 
   This yields an **oscillation vs `pulse_duration`**; 
 
@@ -475,7 +476,7 @@ c measures the phase of XY crosstalk.
 
 **Planned approach (matching the paper’s procedure):**
 
-* 
+
   1. XY crosstalk's phase characterization and create crosstalk matrix.
   2. Error amplification with cancellation tone for XY
   3. Z crosstalk characterization 
