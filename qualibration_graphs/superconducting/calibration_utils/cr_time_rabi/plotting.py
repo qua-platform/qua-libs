@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from qualang_tools.units import unit
 from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit_pair import AnyTransmonPair
-# from cr_utils import
+# from cr_utils import 
 
 
 u = unit(coerce_to_integer=True)
@@ -36,7 +36,7 @@ def plot_raw_data_with_fit(node, ds: xr.Dataset, qubit_pairs: List[AnyTransmonPa
     - The function creates a grid of subplots, one for each qubit.
     - Each subplot contains the raw data and the fitted curve.
     """
-
+    
     figs = []
     for qp in qubit_pairs:
         qc = qp.qubit_control
@@ -48,28 +48,12 @@ def plot_raw_data_with_fit(node, ds: xr.Dataset, qubit_pairs: List[AnyTransmonPa
             for j, stc in enumerate(["g", "e"]):
                 ds_sliced = ds.sel(qubit_pair=qp.name, qst_basis=i, control_state=j)
                 if node.parameters.use_state_discrimination:
-                    axs[0].plot(
-                        ds_sliced.pulse_duration.data,
-                        ds_sliced.sel(control_target="c")["state"].data,
-                        label=[f"qc=|{stc}>"],
-                    )
-                    axs[1].plot(
-                        ds_sliced.pulse_duration.data,
-                        ds_sliced.sel(control_target="t")["state"].data,
-                        label=[f"qt=|{stc}>"],
-                    )
+                    axs[0].plot(ds_sliced.pulse_duration.data, ds_sliced.sel(control_target="c")["state"].data, label=[f"qc=|{stc}>"])
+                    axs[1].plot(ds_sliced.pulse_duration.data, ds_sliced.sel(control_target="t")["state"].data, label=[f"qt=|{stc}>"])
                     axs[0].set_ylabel(f"State in <{bss}>")
                 else:
-                    axs[0].plot(
-                        ds_sliced.pulse_duration.data,
-                        ds_sliced.sel(control_target="c")["I"].data,
-                        label=[f"qc=|{stc}>"],
-                    )
-                    axs[1].plot(
-                        ds_sliced.pulse_duration.data,
-                        ds_sliced.sel(control_target="t")["I"].data,
-                        label=[f"qt=|{stc}>"],
-                    )
+                    axs[0].plot(ds_sliced.pulse_duration.data, ds_sliced.sel(control_target="c")["I"].data, label=[f"qc=|{stc}>"])
+                    axs[1].plot(ds_sliced.pulse_duration.data, ds_sliced.sel(control_target="t")["I"].data, label=[f"qt=|{stc}>"])
                     axs[0].set_ylabel(f"rotated 'I' quadrature <{bss}>")
                 axs[0].set_title(f"control: {qp.qubit_control.name}") if i == 0 else None
                 axs[1].set_title(f"target: {qp.qubit_target.name}") if i == 0 else None

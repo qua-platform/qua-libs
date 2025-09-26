@@ -53,8 +53,10 @@ def plot_raw_data_with_fit(
                     ax.plot(amp_scalings, y, label=f"q{ct}=|{st}>", marker="o", linestyle="-")
                 ax.set_ylim([-0.05, 1.05])
                 if cq == "c" and ct == "c":
+                    print(cq, ct, fits_pair.best_amp_scaling_cc.item())
                     ax.vlines(x=fits_pair.best_amp_scaling_cc.item(), ymin=-0.05, ymax=1.05, color="g", alpha=0.5)
                 elif cq == "t" and ct == "t":
+                    print(cq, ct, fits_pair.best_amp_scaling_tt.item())
                     ax.vlines(x=fits_pair.best_amp_scaling_tt.item(), ymin=-0.05, ymax=1.05, color="g", alpha=0.5)
 
                 # y-labels on left

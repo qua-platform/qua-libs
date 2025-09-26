@@ -58,7 +58,6 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-
 # ---------------------------------------------------------------
 # Data models
 # ---------------------------------------------------------------
@@ -177,7 +176,9 @@ def collect_wiring(latest_wiring: dict) -> Tuple[Instruments, Connectivity, Dict
         # RR (readout) bidirectional path
         connectivity.add_resonator_line(
             qubits=qb_name,
-            constraints=mw_fem_spec(con=w.rr_con, slot=w.rr_slot, in_port=w.rr_in_port, out_port=w.rr_out_port),
+            constraints=mw_fem_spec(
+                con=w.rr_con, slot=w.rr_slot, in_port=w.rr_in_port, out_port=w.rr_out_port
+            ),
         )
         allocate_wiring(connectivity, instruments, block_used_channels=False)
 
@@ -387,13 +388,11 @@ def configure_two_qubit_ops(machine: Quam) -> None:
 
         # Macros & pulse library
         try:
-            qb_pair.macros["cr"] = cross_resonance.CRGate(zz_correction_phase=0.0)
+            qb_pair.macros["cr"] = cross_resonance.CRGate(qc_correction_phase=0.0)
 
             # Square / Cosine / Gaussian variants on CR and target XY side
             qb_pair.cross_resonance.operations["square"] = pulses.SquarePulse(length=100, amplitude=1.0, axis_angle=0.0)
-            qbt.xy.operations[f"cr_square_{qb_pair.name}"] = pulses.SquarePulse(
-                length=100, amplitude=1.0, axis_angle=0.0
-            )
+            qbt.xy.operations[f"cr_square_{qb_pair.name}"] = pulses.SquarePulse(length=100, amplitude=1.0, axis_angle=0.0)
 
             qb_pair.cross_resonance.operations["cosine"] = pulses.DragCosinePulse(
                 length=100, amplitude=1.0, axis_angle=0.0, anharmonicity=260 * u.MHz, alpha=0.0, detuning=0

@@ -2,15 +2,9 @@
 
 This repository gathers our **fixed‑frequency transmon** routines for
 
-* **CR (Cross‑Resonance) gate**,
-* **Stark‑induced CZ** (microwave‑activated, tunable **ZZ**) gate, and
-* **Microwave drive‑line crosstalk** characterization/compensation.
-
-### Quick Links
-
-* 👉 **[CR Gate (Cross Resonance)](#cr-gate-cross-resonance)** — *placeholder; owner **Soon** (nodes {30–31g}).*
-* 👉 **[Stark‑Induced CZ Gate (Microwave‑Activated Tunable ZZ)](#stark-induced-cz-gate-microwave-activated-tunable-zz)** 
-* 👉 **[Microwave Crosstalk Characterization & Compensation](#microwave-crosstalk-characterization--compensation)** — *placeholder; owner **Ingu** (nodes {20–21}).*
+> 👉 **[Cross Resonance(CR) Gate](#cr-gate-cross-resonance)**  
+> 👉 **[Stark-Induced Controlled-Z(CZ) Gate](#stark-induced-cz-gate-with-microwave-activated-tunable-zz)**  
+> 👉 **[Microwave Crosstalk Characterization & Compensation](#microwave-crosstalk-characterization--compensation)** 
 
 ---
 
@@ -124,13 +118,19 @@ Processors https://escholarship.org/uc/item/5sp8n6st
 
 ---
 
-# Stark‑Induced **CZ** Gate (Microwave‑Activated Tunable ZZ)
+# Stark-Induced **CZ** Gate (with microwave-activated tunable ZZ) 
 
-This repository documents and implements a **hardware‑efficient CZ gate** based on a *microwave‑activated, tunable ZZ interaction* between fixed‑frequency, fixed‑coupling transmons. It explains the physics, the experimental tuning flow, and how the provided **QUA** nodes realize the ZZ calibration.
+The Stark-induced CZ gate is implemented by simultaneously driving two fixed-frequency, fixed-coupling transmons with off-resonant microwaves, which generates state-dependent Stark shifts and thus a tunable ZZ interaction. <U>Instead of relying on flux-tunable couplers</U>, this approach amplifies or cancels the residual ZZ coupling by adjusting the drive frequency, amplitude, and relative phase.  
 
-> **Paper basis** – Bradley K. Mitchell *et al.*,  
+**Experiments in the paper**: The ZZ interaction is characterized with Ramsey experiment to observe conditional frequency shifts, and the CZ pulse is calibrated by sweeping the drive parameters and then applying virtual Z corrections to figure out IZ, ZI coefficients.  
+  
+**Code differences from the paper**:
+1. ZZ interaction is characterized with Echo experiment.
+2. IZ, ZI coeffiecients are characterized with error amplification experiments.
+
+> **Ref. Paper** – Bradley K. Mitchell *et al.*,  
 > “[Hardware-Efficient Microwave-Activated Tunable Coupling Between Superconducting Qubits](https://arxiv.org/abs/2105.05384),” 2021.  
-> We cite it throughout and point to specific figures for visuals you can place in this README.
+
 
 ---
 
@@ -150,7 +150,7 @@ This repository documents and implements a **hardware‑efficient CZ gate** base
 
 ---
 
-## Concept of the CZ gate
+## CZ Gate Representation
 
 **Matrix form.**
 
@@ -166,67 +166,65 @@ $$
 
 (Used explicitly in the paper when calibrating the gate.)&#x20;
 
-The CZ gate can be understood both from its **matrix form** and from its **generator in terms of Pauli operators**.  
-This decomposition shows how the conditional phase arises via the **ZZ interaction**, while ZI/IZ terms represent single-qubit phase shifts to be compensated.
 
-> **Figure:** Effective Hamiltonian used in the paper, showing coefficients for ZI, IZ, and ZZ contributions.  
-> **Experiemental Goal** Tune-up for these coefficients. 
+Each term shows how the conditional phase arises via the **ZZ interaction**, while ZI/IZ terms represent single-qubit phase shifts to be compensated.  
+**Experimental goal**: Extract $\alpha$, $\beta$, $J$ coefficients of the effective hamiltonian as below.
+  
 > ![CZ gate representation](../.img/CR_CZ_calibrations/cz_eff_hamiltonian.png)
 
 ---
 
-## How tunable **ZZ**, **ZI**, **IZ** arise (physics)
+## How tunable **ZZ**, **ZI**, **IZ** arise
 
-### System Hamiltonian (drive frame, Duffing model)
+### System Hamiltonian (Duffing model)
 
-Two coupled transmons (control **Qc**, target **Qt**) driven simultaneously near‑but‑off resonance:
+Two coupled transmons (control **$Q_c$**, target **$Q_t$**) driven simultaneously near‑but‑off resonance:
 
 $$
 H=\sum_{i=c,t}\Big[(\omega_i-\omega_d)a_i^\dagger a_i + \frac{\eta_i}{2}a_i^\dagger a_i^\dagger a_i a_i + \epsilon_i a_i+\epsilon_i^\ast a_i^\dagger\Big]
 +J\,(a_c^\dagger a_t+a_c a_t^\dagger).
 $$
 
-Here \$J\$ is the exchange coupling, \$\epsilon\_i\$ are complex drive amplitudes, \$\eta\_i\$ are anharmonicities.&#x20;
+Here $J$ is the exchange coupling, $\omega_d$, $\omega_c$, $\omega_t$ are drive/control/target frequencies respectively, $\epsilon_i$ are complex drive amplitudes, $\eta_i$ are anharmonicities. Drive scheme with energy levels for the Stark‑induced ZZ interaction are shown below.
 
-> ![Drive scheme for the Stark‑induced ZZ interaction](../.img/CR_CZ_calibrations/cz_E_levels.png)
+> ![Drive scheme for the Stark‑induced ZZ interaction](../.img/CR_CZ_calibrations/CZ_drive_schme_with_E_diagram.png)
 
 ### Conditional Stark picture → tunable **ZZ**
 
-* Off‑resonant driving of **Qt** when **Qc** is also driven produces **state‑dependent Stark shifts** on **Qt**:
+Off‑resonant driving on **$Q_c$** at the frequency $w_d$ induces Stark shifts on the target qubit **$Q_t$** with the rate $\tilde{\delta}_n$ depending on control qubit state, $n$:
 
-  $$
-  \tilde{\delta}_n=\frac{|\tilde{\epsilon}_n|^2}{\Delta_t}\quad (n\in\{0,1\}),
-  $$
+$$
+\tilde{\delta}_n=\frac{|\tilde{\epsilon}_n|^2}{\Delta_t}\quad (n\in\{0,1\}),
+$$
 
-  with \$\Delta\_t=\omega\_t-\omega\_d\$. The **ZZ rate** is \$\zeta=\tilde{\delta}\_0-\tilde{\delta}\_1\$.&#x20;
-* Driving **both** transmons enhances and controls \$\zeta\$. To first order, adding a drive on **Qt** makes
+with $\Delta_t=\omega_t-\omega_d$. The **ZZ interaction rate** is $\zeta=\tilde{\delta}_0-\tilde{\delta}_1$.
 
-  $$
-  \zeta \propto \frac{2\mu}{\Delta_t}(\tilde{\epsilon}_0+\tilde{\epsilon}_1+2\epsilon_t)+\mathcal{O}(|\epsilon_t|^2),
-  $$
+Because $\zeta$ with a single drive tone is too weak, driving **both** transmons enhances and controls $\zeta$. To first order, adding a drive on **$Q_t$** makes
 
-  where \$\mu\$ is the CR‑like conditional drive rate. **Amplitude** and **relative phase** between drives tune \$\zeta\$ smoothly and even allow sign reversal (cancellation of idle ZZ).&#x20;
+$$
+\zeta \propto \frac{2\mu}{\Delta_t}(\tilde{\epsilon}_0+\tilde{\epsilon}_1+2\epsilon_t)+\mathcal{O}(|\epsilon_t|^2),
+$$
 
-> **Optional deep‑dive**
->
-> <details><summary>Third‑order expression and phase dependence (from supplement)</summary>
-> The third‑order contribution shows \(\zeta\) scales as \( \propto \epsilon_t \epsilon_c \cos\phi \) (relative phase \(\phi\)), on top of the static second‑order term—matching the observed sinusoidal dependence on relative phase and linear scaling with amplitude. :contentReference[oaicite:10]{index=10}
+where $\mu$ is the CR‑like conditional drive rate. **Amplitude** and **relative phase** between drives tune $\zeta$ smoothly and even allow sign reversal (cancellation of idle ZZ) as shown in the figure below.
+
+> **Optional**<details><summary>Third-order expression and phase dependence (from supplement)</summary>
+> The third-order contribution shows $\zeta$ scales as $\propto \epsilon_t \epsilon_c \cos\phi$ (relative phase $\phi$), on top of the static second-order term—matching the observed sinusoidal dependence on relative phase and linear scaling with amplitude.
 > </details>
 
 ---
 
-## How to tune **ZZ/ZI/IZ** in the lab (experiments)
+## Experiment: how to tune **ZZ/ZI/IZ** 
 
-### **ZZ** tuning (entangling strength)
+### **ZZ** interaction tuning
 
-* **What to vary**: Drive frequency \$\omega\_d\$, amplitudes on both qubits \$A\_c, A\_t\$, and **relative phase** \$\varphi\_d\$.
-* **What to measure**: Frequency shift of **Qt** *conditioned* on the state of **Qc** (i.e., \$\zeta\$).
-  The paper does this with **Ramsey** on **Qt** while preparing **Qc** in \$|0\rangle\$ or \$|1\rangle\$; \$\zeta\$ vs \$\varphi\_d\$ and vs amplitudes matches simulation including crosstalk.&#x20;
+* **What to vary**: Drive pulse duration $\tau$, Drive frequency $\omega_d$, amplitudes on both qubits $A_c, A_t$, and **relative phase** $\varphi_d$.
+* **What to measure**: Frequency shift $\zeta$ of **$Q_t$** *conditioned* on the state of **$Q_c$**.
+  The paper does this with **Ramsey**(while **Echo** in the code) on **$Q_t$** while preparing **$Q_c$** in $|0\rangle$ or $|1\rangle$; $\zeta$ vs $\varphi_d$ and vs amplitudes.
 
-> **Place figure here**
-> 📎 *Paper Fig. 2 (p.3)*: \$\zeta(\varphi\_d)\$ for several \$|A|\$ (asymmetry with crosstalk) and \$\zeta(A\_t)\$ for several \$A\_c\$ (linear scaling).&#x20;
+> ![ZZ interation w.r.t amplitude and phase](../.img/CR_CZ_calibrations/CZ_zz_interaction.png)
+> 📎 *Paper Fig. 2 (p.3)*: $\zeta(\varphi_d)$ for varying $|\epsilon_c|+|\epsilon_t|$ (asymmetry with crosstalk) and $\zeta(A_t)$ for varying $A_c$ (linear scaling).
 
-### Gate‑level calibration (**ZZ** then **ZI/IZ**)
+### Calibration of **ZZ**
 
 1. **Choose pulse shape and coarse \$\tau\_p\$.** Use a **cosine‑ramp flattop**; pick \$\tau\_p\$ from an amplitude/phase sweep that yields strong entanglement. The paper maximizes $R=\tfrac{1}{2}\lVert \mathbf{r}_0-\mathbf{r}_1\rVert^2$.&#x20;
 2. **Calibrate \$\omega\_d, A\$** by scanning drive **detuning** and **amplitude** to maximize $R$ (broad usable detuning band; off‑resonant interaction).&#x20;
@@ -401,15 +399,123 @@ In **40b**, the detuned **Qt** tone uses a 2×2 rotation \([ \cos\phi, -\sin\phi
 
 ---
 
-## Microwave Crosstalk Characterization & Compensation
 
-> ***Placeholder — Ingu** to add content for nodes {20–21} (code review + README section).*
+---
 
-**To be included by owner:**
+# Microwave Crosstalk Characterization & Compensation
 
-* Brief purpose (drive‑line crosstalk matrix identification & compensation knobs).
-* Minimal experiment flow and analysis hooks.
-* Image placeholders (pulse layouts, matrix view).
+This repository documents and implements a **Microwave crosstalk characterization and compensation** between two neighboring qubits. Microwave corsstalk occurs when a control signal meant for one qubit drives other neighboring qubits. Understanding and mitigating this effect is crucial for high-fidelity gate operations and scalable quantum computing. 
+
+---
+
+## Table of Contents
+
+1. [Introduction on microwave crosstalk](#Introduction-on-microwave-crosstalk)
+2. [How to characterize crosstalk in the lab (experiments)](#how-to-characterizae-crosstalk-in-the-lab-experiments)
+3. [QUA implementation](#qua-implementation)
+   * [Node **20a\_XY\_crosstalk\_coupling\_magnitude** (detailed)](#node-20a_XY_crosstalk_coupling_magnitude-detailed)
+4. [Future work – QUA nodes](#future-work-qua-nodes)
+5. [Project structure](#project-structure)
+6. [References](#references)
+
+---
+
+## Introduction on microwave crosstalk
+Achieving high-fidelity 2 qubit gates requires a comprehensive understanding of the device’s strengths and weaknesses to avoid hidden errors. For fixed-frequency devices, systematic microwave (MW) crosstalk characterization is as essential. Integrating these protocols into the calibration graph lays the groundwork for reliable, high-fidelity CR and CZ gates. Therefore, the immediate action item is to implement an MW-crosstalk characterization script to establish a baseline understanding of the device’s microwave environment.
+
+<img src="../.img/XY_crosstalk_scheme.png" width="500">
+
+Coupling between control lines or imperfections in the sample packaging allows a drive signal sent to a target qubit to leak and create unwanted fields on probed qubits. These leaked fields can further induce effects like accidental CR interactions, adding extra dynamics to coupled qubits.
+
+---
+
+## How to characterize crosstalk in the lab (experiments)
+Effective crosstalk compensation starts with a detailed characterization of the unwanted interactions between qubits.
+This involves performing Rabi and Ramsey experiments on a probe qubit while driving the target qubit to measure the induced field’s amplitude and phase. Using these measurements, a crosstalk matrix can be built, enabling precise cancellation by applying counter-drives with calibrated amplitude and phase.
+
+<img src="../.img/XY_crosstalk_matrix.png" width="500">
+
+By applying carefully calibrated counter-drives or using digital predistortion to cancel these effects in real time—and integrating this detailed crosstalk model directly into the calibration workflow—each subsequent tuning step, from amplitude and phase adjustments to pulse-shape optimization, begins from a thoroughly corrected baseline.
+
+<img src="../.img/XY_crosstalk_fidelity.png" width="500">
+With crosstalk compensating drives, simultaneous single-qubit operations exhibit error rates half of those of isolated operations, boosting overall gate fidelity.
+
+### Crosstalk magnitude characterization (entangling strength)
+
+* **What to vary**: Magnitude of pulse applied on drive qubit at probed qubit frequency either by adjusting pulse amplitude or duration. In this experiment, adjusting pulse duration.
+
+* **What to measure**: Change in probability of probed qubit vs magnitude
+
+<img src="../.img/XY_crosstalk.png" width="500">
+where a and b measures magnitude of XY crosstalk when probed_qubit (spectator qubit) is either in ground or excited states. 
+c measures the phase of XY crosstalk.
+
+---
+
+## QUA implementation
+
+### Node **20a\_XY\_crosstalk\_coupling\_magnitude** (detailed)
+
+#### `def create_qua_program(node):` — what it does
+
+* **Setup & sweeps**
+
+  * Updates frequency of pulse applied on drive qubit to probed_qubit frequency and  **sweeps pulse_durations**
+
+* **Pulse sequence**
+
+  1. update frequency of drive_qubit element with probe_qubit frequency
+  2. **x180** on **Qd**
+  3. **Measure** **Qd** and **Qp** optional state discrimination
+  4. Reset frames and wait
+
+  This yields an **oscillation vs `pulse_duration`**; 
+
+* **Streams & buffering**
+
+  * Buffers shaped `[control_state, pulse_duration]`, shot‑averaged.
+
+#### `def analyse_data(node):` — what it does
+
+* **Reshape & IQ→V** via `process_raw_dataset(...)`.
+* **Fit oscillation** via `fit_oscillation(...)`, extracting:
+
+  * **frequency** `f`,
+  * **Rabi_rate** (target):
+
+  Results saved in `ds_fit` and `fit_results`.
+
+---
+
+## Future work – QUA nodes
+
+> **Not implemented in this repo yet** (intentionally left for follow‑up).
+
+**Planned approach (matching the paper’s procedure):**
+  1. XY crosstalk's phase characterization and create crosstalk matrix.
+  2. Error amplification with cancellation tone for XY
+  3. Z crosstalk characterization 
+  4. Error amplification with cancellation tone for Z
+---
+
+## Project structure
+
+```
+cz-stark/
+├── calibrations/
+│   ├── 20a_XY_crosstalk_coupling_magnitude.py
+├── calibration_utils/   # baking, analysis, plotting, helpers (imported by nodes)
+├── quam_config/         # QUAM state generation / loading
+└── README.md            # this file
+```
+
+---
+
+## References
+
+* **Main reference (with figures to place in this README):**
+  B. K. Mitchell *et al.*, “Investigating Microwave-Activated Entangling Gates on Superconducting Quantum
+Processors”, Use: **Fig. 1** (crosstalk scheme), **Fig. 2** (matrix), **Fig. 3** (fidelity), **Fig. 4** (experiment).&#x20;
 
 ---
 

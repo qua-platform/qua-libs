@@ -55,7 +55,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.multiplexed = True
-    node.parameters.qubits = ["q1", "q2", "q3", "q4"]
+    node.parameters.qubits = ["qB1", "qB2", "qB3", "qB4"]
     node.parameters.num_shots = 100
     node.parameters.use_state_discrimination = True
     # node.parameters.min_wait_time_in_ns = 24

@@ -51,7 +51,7 @@ node = QualibrationNode[Parameters, Quam](name="06b_echo", description=descripti
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.multiplexed = True
-    node.parameters.qubits = ["q1", "q2", "q3", "q4"]
+    node.parameters.qubits = ["qB1", "qB2", "qB3", "qB4"]
 
 
 # Instantiate the QUAM class from the state file

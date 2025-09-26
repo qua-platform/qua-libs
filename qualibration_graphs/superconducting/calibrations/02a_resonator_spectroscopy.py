@@ -59,7 +59,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.multiplexed = True
-    node.parameters.qubits = ["q1", "q2", "q3", "q4"]
+    node.parameters.qubits = ["qB1", "qB2", "qB3", "qB4"]
     node.parameters.frequency_span_in_mhz = 15
     node.parameters.frequency_step_in_mhz = 0.1
 

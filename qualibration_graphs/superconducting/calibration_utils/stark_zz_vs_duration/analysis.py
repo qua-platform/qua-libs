@@ -97,7 +97,7 @@ def fit_raw_data(
 
     ds_fit = xr.merge([ds, fit.rename("fit")])
 
-    ds_fit, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
+    ds_fit, fit_results = _extract_relevant_fit_parameters(ds_fit)
     return ds_fit, fit_results
 
 
@@ -120,7 +120,7 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode)
         "long_name": "envelope decay coefficient",
         "units": "1/ns",
     }  # sign is typically negative
-    decay_res = ds_fit.fit.sel(fit_vals="decay_decay")
+    decay_res = fit.fit.sel(fit_vals="decay_decay")
     decay_res.attrs = {"long_name": "decay residual (variance-like)", "units": "1/ns^2"}
 
     # T2_modified_echo-like time: match your standard echo convention (T2_modified_echo = -1/decay)

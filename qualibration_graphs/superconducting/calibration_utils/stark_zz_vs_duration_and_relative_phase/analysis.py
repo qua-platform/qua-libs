@@ -75,9 +75,8 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
         pass
     return ds
 
-def fit_raw_data(
-    ds_fit: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+
+def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
     """
     Fit the frequency detuning and T2 decay of the Ramsey oscillations for each qubit.
 
@@ -94,11 +93,11 @@ def fit_raw_data(
         Dataset containing the fit results.
     """
     if node.parameters.use_state_discrimination:
-        fit = fit_oscillation_decay_exp(ds_fit.state, "idle_time")
+        fit = fit_oscillation_decay_exp(ds.state, "idle_time")
     else:
-        fit = fit_oscillation_decay_exp(ds_fit.I, "idle_time")
+        fit = fit_oscillation_decay_exp(ds.I, "idle_time")
 
-    ds_fit = xr.merge([ds_fit, fit.rename("fit")])
+    ds_fit = xr.merge([ds, fit.rename("fit")])
 
     ds_fit, fit_results = _extract_relevant_fit_parameters(ds_fit)
     return ds_fit, fit_results

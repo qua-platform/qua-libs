@@ -24,9 +24,9 @@ class NodeSpecificParameters(RunnableParameters):
     max_wait_time_in_ns: int = 250
     time_step_in_ns: int = 4
     cr_type: Literal["direct", "direct+cancel", "direct+echo", "direct+cancel+echo"] = "direct"
-    cr_drive_amp_scaling: Union[float, List[float]] = None
-    cr_drive_phase: Union[float, List[float]] = None
-    cr_cancel_amp_scaling: Union[float, List[float]] = None
+    cr_drive_amp_scaling: Union[float, List[float]] = 1.0
+    cr_drive_phase: Union[float, List[float]] = 1.0
+    cr_cancel_amp_scaling: Union[float, List[float]] = 0.0
     cr_cancel_phase: Union[float, List[float]] = 0.0
     min_corr_phase: float = 0.0
     max_corr_phase: float = 1.0

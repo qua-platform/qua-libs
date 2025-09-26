@@ -26,6 +26,7 @@ class NodeSpecificParameters(RunnableParameters):
     min_wait_time_in_ns: int = 100
     max_wait_time_in_ns: int = 300
     time_step_in_ns: int = 8
+    ramsey_freq_detuning_in_mhz: float = 1.0
 
     wf_type: Literal["square", "cosine", "gauss", "flattop"] = "flattop"
     qc_correction_phase_2pi: Optional[Union[float, List[float]]] = None

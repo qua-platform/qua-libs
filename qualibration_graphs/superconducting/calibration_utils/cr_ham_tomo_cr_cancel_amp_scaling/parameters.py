@@ -2,11 +2,7 @@ from typing import Optional, Literal, Union, List
 import numpy as np
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import (
-    QubitsExperimentNodeParameters,
-    TwoQubitExperimentNodeParameters,
-    CommonNodeParameters,
-)
+from qualibration_libs.parameters import QubitsExperimentNodeParameters, TwoQubitExperimentNodeParameters, CommonNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -28,10 +24,10 @@ class NodeSpecificParameters(RunnableParameters):
     max_wait_time_in_ns: int = 250
     time_step_in_ns: int = 4
     cr_type: Literal["direct", "direct+cancel", "direct+echo", "direct+cancel+echo"] = "direct"
-    cr_drive_amp_scaling: Union[float, List[float]] = None
-    cr_drive_phase: Union[float, List[float]] = None
+    cr_drive_amp_scaling: Union[float, List[float]] = 1.0
+    cr_drive_phase: Union[float, List[float]] = 1.0
     cr_cancel_amp_scaling: Union[float, List[float]] = 0.0
-    cr_cancel_phase: Union[float, List[float]] = None
+    cr_cancel_phase: Union[float, List[float]] = 0.0
     min_cr_drive_amp_scaling: float = 0.0
     max_cr_drive_amp_scaling: float = 1.0
     step_cr_drive_amp_scaling: float = 0.1

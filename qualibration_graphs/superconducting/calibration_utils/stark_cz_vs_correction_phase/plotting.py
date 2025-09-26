@@ -53,8 +53,10 @@ def plot_raw_data_with_fit(
                     ax.plot(corr_phases, y, label=f"q{ct}=|{st}>", marker="o", linestyle="-")
                 ax.set_ylim([-0.05, 1.05])
                 if tt == "ZI" and ct == "c":
+                    print(tt, ct, fits_pair.best_correction_phase_zi_c.item())
                     ax.vlines(x=fits_pair.best_correction_phase_zi_c.item(), ymin=-0.05, ymax=1.05, color="g", alpha=0.5)
                 elif tt == "IZ" and ct == "t":
+                    print(tt, ct, fits_pair.best_correction_phase_iz_t.item())
                     ax.vlines(x=fits_pair.best_correction_phase_iz_t.item(), ymin=-0.05, ymax=1.05, color="g", alpha=0.5)
 
                 # y-labels on left

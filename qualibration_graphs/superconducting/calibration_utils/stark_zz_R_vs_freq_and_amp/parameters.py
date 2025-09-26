@@ -22,12 +22,11 @@ class NodeSpecificParameters(RunnableParameters):
         operation_len_in_ns (Optional[int]): Length of the operation in nanoseconds. Default is None.
         target_peak_width (Optional[float]): Target peak width in Hz. Default is 3e6 Hz.
     """
-    num_shots: int = 3
+    num_shots: int = 100
 
     min_zz_drive_amp_scaling: float = 0.2
     max_zz_drive_amp_scaling: float = 1.0
     step_zz_drive_amp_scaling: float = 0.2
-    calibrate_qc: bool = True
 
     frequency_step_in_mhz: float = 4
     frequency_span_in_mhz: float = 100

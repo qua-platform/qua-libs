@@ -46,14 +46,14 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     for qp in fit_results.keys():
         s_qubit_pair = f"Results for qubit pair {qp}: "
         s_amp_scaling_cc = (
-            f"\toptimal amp scaling at qc_amp_scaling={fit_results[qp]['best_amp_scaling_cc']}\n"
+            f"\toptimal amp scaling for ZI at qc_amp_scaling={fit_results[qp]['best_amp_scaling_cc']}\n"
         )
         s_state_cc0 = f"\t\texpectation of Qt state with qc=|0>: {fit_results[qp]['best_state_cc0']:.3f}\n"
         s_state_cc1 = f"\t\texpectation of Qt state with qc=|1>: {fit_results[qp]['best_state_cc1']:.3f}\n"
         s_state_cc_mse = f"\t\tresidual MSE: {fit_results[qp]['residual_mse_cc']:.3f}\n"
 
         s_amp_scaling_tt = (
-            f"\toptimal amp scaling at qt_amp_scaling={fit_results[qp]['best_amp_scaling_tt']}\n"
+            f"\toptimal amp scaling for ZI at qc_amp_scaling={fit_results[qp]['best_amp_scaling_tt']}\n"
         )
         s_state_tt0 = f"\t\texpectation of Qt state with qc=|0>: {fit_results[qp]['best_state_tt0']:.3f}\n"
         s_state_tt1 = f"\t\texpectation of Qt state with qc=|1>: {fit_results[qp]['best_state_tt1']:.3f}\n"

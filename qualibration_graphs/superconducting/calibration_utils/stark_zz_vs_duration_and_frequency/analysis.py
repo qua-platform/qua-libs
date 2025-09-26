@@ -92,7 +92,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     return ds_fit, fit_results
 
 
-def _extract_relevant_fit_parameters(ds_fit: xr.Dataset) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
     """
     Post-process modified-echo fit results:
       - frequency (oscillation due to second-interval detuning)
