@@ -98,8 +98,8 @@ The CR drive phase is optimized to $\phi_0$ in which the $ZX$ component is maxim
 
 <img src="../.img/CR_CZ_calibrations/CR_calibrate_phase.png" width="500" /> 
 
-`31c_CR_hamiltonian_tomography_vs_cr_cancel_phase`
-The ideal cancellation phase is $\phi_0-\phi_1$, but we manually scan the phase.
+<!-- `31c_CR_hamiltonian_tomography_vs_cr_cancel_phase`
+The ideal cancellation phase is $\phi_0-\phi_1$, but we manually scan the phase. -->
 
 `31d_CR_hamiltonian_tomography_vs_cr_cancel_amp`
 For the calibrated phases, an optimized cancellation amplitude can lead to the interaction strength zero crossing of the other components.
