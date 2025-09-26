@@ -15,9 +15,11 @@ This repository gathers our **fixed‑frequency transmon** routines for
 ---
 
 # CR Gate (Cross Resonance)
-The cross-resonance (CR) gate is implemented by driving the control qubit at or near the resonance frequency of the target qubit. As shown in the figure, the control qubit has transition frequencies $\omega_c^0$ and $\omega_c^1$ (red), while the target qubit resonates at $\omega_t$ (blue). When a microwave drive at frequency $\omega_d$ is applied to the control, the qubit-qubit coupling $J$ mediates an effective conditional drive $\varepsilon$ on the target. The detuning $\Delta$ between the drive and control resonance, along with the control’s response amplitude $\eta_c$, determines the strength of this interaction. The result is a conditional Rabi oscillation of the target qubit, where the rotation axis and frequency depend on the control state, giving rise to an entangling two-qubit gate described by the $ZX$ interaction.
+The cross-resonance (CR) gate is implemented on fixed-frequency qubit with exchange coupling $J$ by driving the control qubit at or near the resonance frequency of the target qubit ($\omega_d=\omega_t$) [1]. The figure shows the resulting drive amplitude $\tilde{\varepsilon}$ on the target qubit as a function of drive frequency $\omega_d$ [2]. The drive strength depends on the control state which gives the state-dependent interaction necessary to generate entanglement between the qubits.
 
 <img src="../.img/CR_CZ_calibrations/CR_energy_level.jpeg" width="500">
+
+This forms the basis of the cross-resonance (CR) gate, with the tuned CR gate resulting in only a ZX interaction on the qubits.
 
 
 ## Standard (echo) CR gate
@@ -27,22 +29,24 @@ $$
 \frac{H_D}{\hbar} \approx \epsilon(t)\left( m\,IX - \mu\,ZX + \eta\,ZI \right),
 $$
 
-where:
+where qubit 1 (2) is the control (target), and:
 
 - $\{I, X, Y, Z\}^{\otimes 2}$: two-qubit Pauli operators.  
-- $\epsilon(t)$: drive amplitude.  
+- $\epsilon(t)$: drive amplitude on the control qubit.  
 - $\mu \approx J/\Delta$: coupling parameter ($J$ = qubit-qubit coupling energy, $\Delta$ = frequency detuning).  
 - $m$: accounts for spurious crosstalk and higher-level effects.  
 - $\eta$: magnitude of Stark shift from off-resonant driving.  
 
-**Physical meaning of each term:**
+The physical meaning of each term is as follows:
 - $mIX$: Rabi-like oscillations of qubit 2.  
 - $-\mu ZX$: slower conditional rotation of qubit 2, depending on qubit 1’s state.  
 - $\eta ZI$: Stark shift on qubit 1.  
 
+Within this picure, an ideal ZX interaction can be obtained by performing an echo protocol.
 
 <img src="../.img/CR_CZ_calibrations/CR_direct_echo.png" width="500">
 
+The figure shows the evolution of the qubit states depending on the control qubit state (red: $\ket{1}$, blue: $\ket{0}$) prior to the CR pulse. When applying directly a CR $\pi$ pulse (Fig. a), the resultant signals deviate rapidly due to the additional terms, which lead to poor gate fidelity. An echo scheme is implemented by a sequential CR $\pm \pi/2$ sandwiching a $\pi$ pulse on the control. This standard implementation echoed away the fast-rotating $IX$ and $ZI$ to obtain the desired $ZX$ gate.
 
 ## CR gate with cancellation pulse
 However, the Hamiltonian equation in the previous section assumes a simple qubit model. In the presence of higher levels of the transmon and microwave crosstalk on the device, the complete Hamiltonian is described by [4]
@@ -68,37 +72,42 @@ Here, we observed dominant interaction of $IX$, $IY$ and $ZX$ dependent on the C
 
 For an ideal CR gate, the goal is to produce only $ZX$ interaction with the rest echoed away. However, this only works for the $IX$, $ZZ$, and $ZI$ since they commute with $ZX$. As such, a calibration scheme that cancels these error is necessary. The proposed method is to apply a cancellation pulse on the target qubit [4].
 
-<img src="../.img/CR_CZ_calibrations/CR_cancel.png" width="500" /> 
+<img src="../.img/CR_CZ_calibrations/CR_cancel.png" width="500" id="CR_cancel"/> 
 
-Extending this upon the echo scheme, the evolution on the Bloch sphere reveals ...
+Extending this upon the echo scheme, the evolution on the Bloch sphere shows a more circular trajectory as expected from an ideal Rabi oscillation of the ZX interaction (up to a small error).
 
 <img src="../.img/CR_CZ_calibrations/CR_compare_scheme.png" width="500" /> 
 
-<!-- <p float="left">
-    <img src="../.img/CR_CZ_calibrations/CR_cancel.png" width="500" />
-</p> -->
-
-
 ## Implementation of the CR gate
-Within the calibration node, we could select the `cr_type` parameter as one of the following: `direct`, `direct+cancel`, `direct+echo`, `direct+cancel+echo`. The naming of each should be self-explanatory. For example, `direct+cancel+echo` implied that a CR pulse (on control qubit) and cancellation pulse (on target qubit) is implemented with echo.
+Within the calibration node, we could select the `cr_type` parameter as one of the following: `direct`, `direct+cancel`, `direct+echo`, `direct+cancel+echo`. The naming of each should be self-explanatory. For example, `direct+cancel+echo` implied that a CR pulse (on control qubit) and cancellation pulse (on target qubit) is implemented with echo. Here, we will describe the full calibration scheme for the `direct+cancel+echo` CR gate.
 
 
 ## Calibration node
-...
+
+Here, we describe the protocols implemented in each node.
 
 `30_CR_time_rabi_QST`
+While this is not a calibration node, the node measures the evolution of $\langle X \rangle$, $\langle Y \rangle$ and $\langle Z \rangle$ with respect to the CR drive duration. The interaction strength of the two Pauli gates (see <a href="#CR_cancel">figure</a> for reference) are calculated. The analysis used here is used for the rest of the nodes.
 
 `31a_CR_hamiltonian_tomography_vs_cr_drive_amp`
+Is used to determine the required CR drive amplitude to achieve the desired $ZX$ interaction strength.
+
 
 `31b_CR_hamiltonian_tomography_vs_cr_drive_phase`
+The CR drive phase is optimized to $\phi_0$ in which the $ZX$ component is maximized and $ZY$ is zero. $\phi_1$ is also obtained which minimizes $IY$.
+
+<img src="../.img/CR_CZ_calibrations/CR_calibrate_phase.png" width="500" /> 
 
 `31c_CR_hamiltonian_tomography_vs_cr_cancel_phase`
+The ideal cancellation phase is $\phi_0-\phi_1$, but we manually scan the phase.
 
 `31d_CR_hamiltonian_tomography_vs_cr_cancel_amp`
+For the calibrated phases, an optimized cancellation amplitude can lead to the interaction strength zero crossing of the other components.
+
+<img src="../.img/CR_CZ_calibrations/CR_calibrate_amplitude.png" width="500" /> 
 
 `31e_CR_phase_correction`
-
-`31g_CR_error_amplification`
+As there is residual $ZZ$ from the implemented CR gate (in general), we correct for them.
 
 ## References
 
