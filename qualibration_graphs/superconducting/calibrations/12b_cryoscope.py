@@ -7,6 +7,7 @@ from calibration_utils.cryoscope import (
     Parameters,
     fit_raw_data,
     log_fitted_results,
+    plot_new_fit,
     plot_normalized_flux,
     plot_raw_data_only,
     process_raw_dataset,
@@ -73,6 +74,14 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.qubits = ["qD2"]
+    node.parameters.use_state_discrimination = True
+    node.parameters.num_shots = 500
+    node.parameters.num_frames = 17
+    node.parameters.cryoscope_len = 250
+    node.parameters.detuning_target_in_MHz = 400
+    node.parameters.exponential_fit_time_fractions = [0.4, 0.2, 0.01]
+    node.parameters.load_data_id = 3886
     pass
 
 
@@ -89,6 +98,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
+
+    assert num_qubits == 1, "This node only supports one qubit at the time."
 
     n_avg = node.parameters.num_shots  # The number of averages
     cryoscope_len = node.parameters.cryoscope_len  # The length of the cryoscope in nanoseconds
@@ -281,7 +292,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-
+    node.parameters.exponential_fit_time_fractions = [0.15, 0.05]
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
 
@@ -295,22 +306,15 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     }
 
 
-# %% {Plot_data}
+# % {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """
     Plot the raw and fitted data in specific figures whose shape is given by
     qubit.grid_location.
     """
-    # Check if we have any successful fits
-    any_fits_successful = any(outcome == "successful" for outcome in node.outcomes.values())
 
-    if any_fits_successful:
-        # Plot with fits (handles both successful and failed cases gracefully)
-        fig_flux = plot_normalized_flux(node.results["ds_raw"], node.namespace["qubits"], fits=node.results["ds_fit"])
-    else:
-        # All fits failed, plot raw data only
-        fig_flux = plot_raw_data_only(node.results["ds_raw"], node.namespace["qubits"])
+    fig_flux = plot_new_fit(node.results["ds_raw"], node.namespace["qubits"], fits=node.results["ds_fit"])
 
     node.results["figure_flux"] = fig_flux
 
@@ -324,36 +328,14 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.outcomes[q.name] == "failed":
                 continue
 
-            if node.parameters.number_of_exponents == 1:
-                if node.results["fit_results"][q.name]["fit1_success"]:
-                    node.machine.qubits[q.name].z.opx_output.exponential_filter.append(
-                        (
-                            node.results["fit_results"][q.name]["fit1_A"],
-                            node.results["fit_results"][q.name]["fit1_tau"],
-                        )
-                    )
-                else:
-                    node.log(f"Warning: fit_1exp for qubit {q.name} was not successful. No filter will be applied.")
-
-            elif node.parameters.number_of_exponents == 2:
-                if node.results["fit_results"][q.name]["fit2_success"]:
-                    node.machine.qubits[q.name].z.opx_output.exponential_filter.append(
-                        (
-                            node.results["fit_results"][q.name]["fit2_A1"],
-                            node.results["fit_results"][q.name]["fit2_tau1"],
-                        )
-                    )
-                    node.machine.qubits[q.name].z.opx_output.exponential_filter.append(
-                        (
-                            node.results["fit_results"][q.name]["fit2_A2"],
-                            node.results["fit_results"][q.name]["fit2_tau2"],
-                        )
-                    )
-                else:
-                    node.log(f"Warning: fit_2exp for qubit {q.name} was not successful. No filter will be applied.")
+        fitted_exponentials = node.results["fit_results"][q.name]["components"]
+        node.machine.qubits[q.name].z.opx_output.exponential_filter.extend(fitted_exponentials)
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
+
+# %%
