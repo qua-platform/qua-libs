@@ -111,12 +111,13 @@ Processors https://escholarship.org/uc/item/5sp8n6st
 
 # Stark-Induced **CZ** Gate (with microwave-activated tunable ZZ) 
 
-The Stark-induced CZ gate is implemented by simultaneously driving two fixed-frequency, fixed-coupling transmons with off-resonant microwaves, which generates state-dependent Stark shifts and thus a tunable ZZ interaction.  
-Instead of relying on flux-tunable couplers, this approach cancels or amplifies the residual ZZ coupling by adjusting the drive frequency, amplitude, and relative phase.  
+The Stark-induced CZ gate is implemented by simultaneously driving two fixed-frequency, fixed-coupling transmons with off-resonant microwaves, which generates state-dependent Stark shifts and thus a tunable ZZ interaction. <U>Instead of relying on flux-tunable couplers</U>, this approach amplifies or cancels the residual ZZ coupling by adjusting the drive frequency, amplitude, and relative phase.  
+
 **Experiments in the paper**: The ZZ interaction is characterized with Ramsey experiment to observe conditional frequency shifts, and the CZ pulse is calibrated by sweeping the drive parameters and then applying virtual Z corrections to figure out IZ, ZI coefficients.  
-> **Code differences from the paper**:  
-> 1. ZZ interaction is characterized with Echo experiment.
-> 2. IZ, ZI coeffiecients are characterized with error amplification experiments.
+  
+**Code differences from the paper**:
+1. ZZ interaction is characterized with Echo experiment.
+2. IZ, ZI coeffiecients are characterized with error amplification experiments.
 
 > **Ref. Paper** – Bradley K. Mitchell *et al.*,  
 > “[Hardware-Efficient Microwave-Activated Tunable Coupling Between Superconducting Qubits](https://arxiv.org/abs/2105.05384),” 2021.  
@@ -157,17 +158,16 @@ $$
 (Used explicitly in the paper when calibrating the gate.)&#x20;
 
 
-Each term shows how the conditional phase arises via the **ZZ interaction**, while ZI/IZ terms represent single-qubit phase shifts to be compensated.
-
-> **Figure:** Effective Hamiltonian  
-> **Experiemental Goal** Extract $\alpha,\beta, J $ coefficients 
+Each term shows how the conditional phase arises via the **ZZ interaction**, while ZI/IZ terms represent single-qubit phase shifts to be compensated.  
+**Experimental goal**: Extract $\alpha$, $\beta$, $J$ coefficients of the effective hamiltonian as below.
+  
 > ![CZ gate representation](../.img/CR_CZ_calibrations/cz_eff_hamiltonian.png)
 
 ---
 
 ## How tunable **ZZ**, **ZI**, **IZ** arise
 
-### System Hamiltonian (drive frame, Duffing model)
+### System Hamiltonian (Duffing model)
 
 Two coupled transmons (control **$Q_c$**, target **$Q_t$**) driven simultaneously near‑but‑off resonance:
 
@@ -176,26 +176,27 @@ H=\sum_{i=c,t}\Big[(\omega_i-\omega_d)a_i^\dagger a_i + \frac{\eta_i}{2}a_i^\dag
 +J\,(a_c^\dagger a_t+a_c a_t^\dagger).
 $$
 
-Here $J$ is the exchange coupling, $\epsilon_i$ are complex drive amplitudes, $\eta_i$ are anharmonicities. Drive scheme with energy levels for the Stark‑induced ZZ interaction are shown below.
+Here $J$ is the exchange coupling, $\omega_d$, $\omega_c$, $\omega_t$ are drive/control/target frequencies respectively, $\epsilon_i$ are complex drive amplitudes, $\eta_i$ are anharmonicities. Drive scheme with energy levels for the Stark‑induced ZZ interaction are shown below.
 
 > ![Drive scheme for the Stark‑induced ZZ interaction](../.img/CR_CZ_calibrations/CZ_drive_schme_with_E_diagram.png)
 
 ### Conditional Stark picture → tunable **ZZ**
 
-* Off‑resonant driving on **$Q_c$** at the frequency $w_d$ induces Stark shifts on the target qubit **$Q_t$** with the rate $\tilde{\delta}_n$ depending on control qubit state, $n$:
+Off‑resonant driving on **$Q_c$** at the frequency $w_d$ induces Stark shifts on the target qubit **$Q_t$** with the rate $\tilde{\delta}_n$ depending on control qubit state, $n$:
 
-  $$
-  \tilde{\delta}_n=\frac{|\tilde{\epsilon}_n|^2}{\Delta_t}\quad (n\in\{0,1\}),
-  $$
+$$
+\tilde{\delta}_n=\frac{|\tilde{\epsilon}_n|^2}{\Delta_t}\quad (n\in\{0,1\}),
+$$
 
-  with $\Delta_t=\omega_t-\omega_d$. The **ZZ interaction rate** is $\zeta=\tilde{\delta}_0-\tilde{\delta}_1$.
-* Because $\zeta$ with a single drive tone is too weak, driving **both** transmons enhances and controls $\zeta$. To first order, adding a drive on **$Q_t$** makes
+with $\Delta_t=\omega_t-\omega_d$. The **ZZ interaction rate** is $\zeta=\tilde{\delta}_0-\tilde{\delta}_1$.
 
-  $$
-  \zeta \propto \frac{2\mu}{\Delta_t}(\tilde{\epsilon}_0+\tilde{\epsilon}_1+2\epsilon_t)+\mathcal{O}(|\epsilon_t|^2),
-  $$
+Because $\zeta$ with a single drive tone is too weak, driving **both** transmons enhances and controls $\zeta$. To first order, adding a drive on **$Q_t$** makes
 
-  where $\mu$ is the CR‑like conditional drive rate. **Amplitude** and **relative phase** between drives tune $\zeta$ smoothly and even allow sign reversal (cancellation of idle ZZ) as shown in the figure below.
+$$
+\zeta \propto \frac{2\mu}{\Delta_t}(\tilde{\epsilon}_0+\tilde{\epsilon}_1+2\epsilon_t)+\mathcal{O}(|\epsilon_t|^2),
+$$
+
+where $\mu$ is the CR‑like conditional drive rate. **Amplitude** and **relative phase** between drives tune $\zeta$ smoothly and even allow sign reversal (cancellation of idle ZZ) as shown in the figure below.
 
 > **Optional**<details><summary>Third-order expression and phase dependence (from supplement)</summary>
 > The third-order contribution shows $\zeta$ scales as $\propto \epsilon_t \epsilon_c \cos\phi$ (relative phase $\phi$), on top of the static second-order term—matching the observed sinusoidal dependence on relative phase and linear scaling with amplitude.
