@@ -232,7 +232,7 @@ While the ZZ term creates entanglement, the off-resonant drives also induce **un
 - Process repeated analogously for $\phi_{IZ}$ with roles of control/target swapped
 
   The paper calibrates these by preparing $Q_c$ in $|+\rangle$ (via Y90), applying CZ with varied $\phi_{ZI}$, and measuring expectation $\langle Z \rangle$.
-> ![Local Z Gate Calibration](../.img/CR_CZ_calibrations/CZ_local_z_calibration.png)
+> ![Local Z Gate Calibration](../.img/CR_CZ_calibrations/CZ_local_z_calibration_sequence.png)
 > 📎 *Paper Fig. S2*: Local phase calibration circuit and expected oscillations vs correction phase.
 
 ---  
