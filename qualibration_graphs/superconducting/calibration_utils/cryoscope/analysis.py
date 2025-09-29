@@ -82,10 +82,10 @@ def cryoscope_frequency(ds, stable_time_indices, quad_term=-1, sg_range=3, sg_or
 
     flux_cryoscope = np.sqrt(np.abs(1e9 * freq_cryoscope / quad_term)).fillna(0)
 
-    if quad_term == -1:
-        flux_cryoscope = flux_cryoscope / flux_cryoscope.sel(
-            time=slice(stable_time_indices[0], stable_time_indices[1])
-        ).mean(dim="time")
+    # if quad_term == -1:
+    #     flux_cryoscope = flux_cryoscope / flux_cryoscope.sel(
+    #         time=slice(stable_time_indices[0], stable_time_indices[1])
+    #     ).mean(dim="time")
 
     ds["flux"] = flux_cryoscope
     return ds
@@ -210,16 +210,19 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
         sg_order = 2
         sg_range = 3
 
+        qubit_name = node.parameters.qubits[0]
+        qubit = node.machine.qubits[qubit_name]
+
         ds_fit = cryoscope_frequency(
             daphi,
-            quad_term=-1,
+            quad_term=qubit.freq_vs_flux_01_quad_term,
             stable_time_indices=(node.parameters.cryoscope_len - 20, node.parameters.cryoscope_len),
             sg_order=sg_order,
             sg_range=sg_range,
         )
 
-        first_vals = ds_fit.flux.sel(time=slice(0, 1)).mean()
-        final_vals = ds_fit.flux.sel(time=slice(node.parameters.cryoscope_len - 20, None)).mean()
+        # first_vals = ds_fit.flux.sel(time=slice(0, 1)).mean()
+        # final_vals = ds_fit.flux.sel(time=slice(node.parameters.cryoscope_len - 20, None)).mean()
 
         qubit = node.namespace["qubits"][0].name  # TODO: support multiple qubits
 
@@ -230,7 +233,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
 
         fitting_start_fractions = node.parameters.exponential_fit_time_fractions
         success, best_fractions, components, a_dc, best_rms = optimize_start_fractions(
-            time_vals, flux_vals, fitting_start_fractions
+            time_vals, flux_vals, fitting_start_fractions, bounds_scale=0.2
         )
         # range_vals = final_vals - first_vals
         # guess_val = 0.37 * range_vals + first_vals
@@ -711,7 +714,7 @@ def optimize_start_fractions(t, y, start_fractions, bounds_scale=0.5, fixed_taus
         x0=start_fractions,
         bounds=bounds,
         method="Nelder-Mead",  # This method works well for non-smooth functions
-        options={"disp": True, "maxiter": 200},
+        options={"disp": True, "maxiter": 1000},
     )
 
     # Get final results

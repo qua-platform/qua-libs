@@ -4,32 +4,30 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import List, Literal, Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-import matplotlib.pyplot as plt
+from calibration_utils.pi_flux import (
+    Parameters,
+    decompose_exp_sum_to_cascade,
+    fit_raw_data,
+    log_fitted_results,
+    plot_new_fit,
+    plot_pi_flux,
+    process_raw_dataset,
+)
 from qm import SimulationConfig
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.units import unit
-
 from qualibrate import QualibrationNode
 from qualibration_libs.core import tracked_updates
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
-
-from calibration_utils.pi_flux import (
-    Parameters,
-    process_raw_dataset,
-    fit_raw_data,
-    plot_pi_flux,
-    log_fitted_results,
-    decompose_exp_sum_to_cascade
-)
-
 
 description = """
 Long cryoscope (π vs flux) calibration.
@@ -65,8 +63,7 @@ node = QualibrationNode[Parameters, Quam](
 # %% {Custom_param}
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    node.parameters.qubits = ["qA2"]
-    node.parameters.update_lo = True
+    node.parameters.qubits = ["qD1", "qD2", "qD3", "qD4", "qD5"]
     node.parameters.frequency_span_in_mhz = 200
     node.parameters.frequency_step_in_mhz = 1
     node.parameters.operation_amplitude_factor = 1.0
@@ -74,11 +71,11 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.time_axis = "linear"
     node.parameters.time_step_in_ns = 60
     node.parameters.multiplexed = False
-    node.parameters.flux_amp = 0.06
+    node.parameters.detuning_in_mhz = 800
     node.parameters.fitting_base_fractions = [0.4, 0.15, 0.05]
     node.parameters.update_state = True
     node.parameters.use_state_discrimination = True
-    node.parameters.load_data_id = 3900
+    # node.parameters.load_data_id = 3900
     node.parameters.simulate = False
     node.parameters.use_waveform_report = False
     node.parameters.reset_type_active_or_thermal = "thermal"
@@ -127,7 +124,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         )
         times = np.unique(times)
 
-    detuning_offsets = [q.freq_vs_flux_01_quad_term * node.parameters.flux_amp ** 2 for q in qubits]
+    # detuning_offsets = [q.freq_vs_flux_01_quad_term * node.parameters.flux_amp ** 2 for q in qubits]
+    flux_amps = [np.sqrt(-node.parameters.detuning_in_mhz * 1e6 / q.freq_vs_flux_01_quad_term) for q in qubits]
+    print(flux_amps)
 
     # Sweep axes for data fetcher
     node.namespace["sweep_axes"] = {
@@ -138,26 +137,29 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # LO retune for headroom
     tracked_qubits = []
-    if node.parameters.update_lo:
-        for q in qubits:
+    if_update = []
+
+    for q in qubits:
+        if (q.xy.intermediate_frequency - node.parameters.detuning_in_mhz * 1e6) < -400e6:
+            node.parameters.reset_type = "thermal" # Active reset will not work if the lo is changed
+            if_update.append(0)
             with tracked_updates(q, auto_revert=False, dont_assign_to_none=False) as q_upd:
                 rf_frequency = q_upd.xy.intermediate_frequency + q_upd.xy.opx_output.upconverter_frequency
-                lo_frequency = rf_frequency - 400e6
+                lo_frequency = q_upd.xy.opx_output.upconverter_frequency - node.parameters.detuning_in_mhz
                 if (q_upd.xy.opx_output.band == 3) and (lo_frequency < 6.5e9):
                     lo_frequency = 6.5e9
                 elif (q_upd.xy.opx_output.band == 2) and (lo_frequency < 4.5e9):
                     lo_frequency = 4.5e9
                 try:
-                    q_upd.xy.intermediate_frequency = None
-                except Exception:
-                    pass
-                try:
                     q_upd.xy.opx_output.upconverter_frequency = None
                 except Exception:
                     pass
-                q_upd.xy.intermediate_frequency = rf_frequency - lo_frequency
                 q_upd.xy.opx_output.upconverter_frequency = lo_frequency
                 tracked_qubits.append(q_upd)
+        else:
+            if_update.append(int(node.parameters.detuning_in_mhz))
+
+    node.namespace["if_update"] = if_update
     node.namespace["tracked_qubits"] = tracked_qubits
 
     with program() as qua_prog:
@@ -184,11 +186,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
 
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency + detuning_offsets[i])
+                            qubit.xy.update_frequency(
+                                df + qubit.xy.intermediate_frequency - if_update[i]
+                            )
                             qubit.align()
                             qubit.z.play(
                                 "const",
-                                amplitude_scale=node.parameters.flux_amp / qubit.z.operations["const"].amplitude,
+                                amplitude_scale=flux_amps[i] / qubit.z.operations["const"].amplitude,
                                 duration=t_delay + 200,
                             )
                             qubit.xy.wait(t_delay)
@@ -276,10 +280,11 @@ def plot_results(node: QualibrationNode[Parameters, Quam]):
         return
     ds = node.results["ds_proc"]
     qubits = node.namespace.get("qubits", get_qubits(node))
-    figures = plot_pi_flux(ds, qubits, node.results.get("fit_results"))
-    plt.show()
-    node.results.setdefault("figures", {})
-    node.results["figures"].update(figures)
+    fig = plot_new_fit(ds, qubits, node.results["fit_results"])
+    # figures = plot_pi_flux(ds, qubits, node.results.get("fit_results"))
+    # plt.show()
+    # node.results.setdefault("figures", {})
+    # node.results["figures"].update(figures)
 
 
 # %% {Update_state}
@@ -346,4 +351,3 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
         except Exception:
             pass
     node.save()
-

@@ -81,7 +81,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.cryoscope_len = 250
     node.parameters.detuning_target_in_MHz = 400
     node.parameters.exponential_fit_time_fractions = [0.4, 0.2, 0.01]
-    node.parameters.load_data_id = 3886
+    node.parameters.load_data_id = 1640
     pass
 
 
@@ -292,7 +292,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    node.parameters.exponential_fit_time_fractions = [0.15, 0.05]
+    node.parameters.exponential_fit_time_fractions = [0.2, 0.1, 0.01]
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
 
@@ -314,7 +314,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     qubit.grid_location.
     """
 
-    fig_flux = plot_new_fit(node.results["ds_raw"], node.namespace["qubits"], fits=node.results["ds_fit"])
+    fig_flux = plot_new_fit(node.results["ds_fit"], node.namespace["qubits"], fits=node.results["ds_fit"])
 
     node.results["figure_flux"] = fig_flux
 

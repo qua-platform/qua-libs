@@ -1,14 +1,14 @@
-from .parameters import Parameters
 from .analysis import (
     PiFluxParameters,
-    process_raw_dataset,
-    fit_raw_data,
-    extract_center_freqs_state,
+    decompose_exp_sum_to_cascade,
     extract_center_freqs_iq,
+    extract_center_freqs_state,
+    fit_raw_data,
     log_fitted_results,
-    decompose_exp_sum_to_cascade
+    process_raw_dataset,
 )
-from .plotting import plot_pi_flux
+from .parameters import Parameters
+from .plotting import plot_new_fit, plot_pi_flux
 
 __all__ = [
     "Parameters",
@@ -19,6 +19,6 @@ __all__ = [
     "extract_center_freqs_iq",
     "log_fitted_results",
     "plot_pi_flux",
-    "decompose_exp_sum_to_cascade"
+    "decompose_exp_sum_to_cascade",
+    "plot_new_fit",
 ]
-

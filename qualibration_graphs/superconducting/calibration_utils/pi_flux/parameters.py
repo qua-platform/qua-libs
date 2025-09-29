@@ -1,13 +1,13 @@
+from typing import List, Literal, Optional
+
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonNodeParameters
-from typing import Optional, Literal
-from typing import List, Literal, Optional
+from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
-    """Parameters for 16a_long_cryoscope
-    """
+    """Parameters for 16a_long_cryoscope"""
+
     num_shots: int = 30
     """Number of shots to acquire."""
     qubits: Optional[List[str]] = None
@@ -30,10 +30,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Frequency span in MHz."""
     frequency_step_in_mhz: float = 0.4
     """Frequency step in MHz."""
-    flux_amp: float = 0.06
+    detuning_in_mhz: int = 500
     """Flux amplitude in volts."""
-    update_lo: bool = True
-    """Whether to update the LO. This is useful if you detune your qubit frequency outside of the original band for the OPX1K"""
     fitting_base_fractions: List[float] = [0.4, 0.15, 0.05]
     """Base fractions for the fitting of the exponential sum."""
     update_state: bool = False
@@ -48,7 +46,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Extra time in microseconds for the thermal reset."""
     use_state_discrimination: bool = False
     """Whether to use state discrimination. Requires a calibrated rotation angle and threshold."""
-
 
 
 class Parameters(
