@@ -1,6 +1,7 @@
 # %%
 from __future__ import annotations
 
+import warnings
 from dataclasses import asdict
 from typing import List, Literal, Optional
 
@@ -63,19 +64,20 @@ node = QualibrationNode[Parameters, Quam](
 # %% {Custom_param}
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    node.parameters.qubits = ["qD1", "qD2", "qD3", "qD4", "qD5"]
+    node.parameters.qubits = ["qD4"]
     node.parameters.frequency_span_in_mhz = 200
     node.parameters.frequency_step_in_mhz = 1
-    node.parameters.operation_amplitude_factor = 1.0
+    node.parameters.operation_amplitude_factor = 1.2
     node.parameters.duration_in_ns = 9000
-    node.parameters.time_axis = "linear"
-    node.parameters.time_step_in_ns = 60
+    node.parameters.time_axis = "log"
+    node.parameters.time_step_in_ns = 10
+    node.parameters.time_step_num = 100
     node.parameters.multiplexed = False
     node.parameters.detuning_in_mhz = 800
     node.parameters.fitting_base_fractions = [0.4, 0.15, 0.05]
     node.parameters.update_state = True
-    node.parameters.use_state_discrimination = True
-    # node.parameters.load_data_id = 3900
+    node.parameters.use_state_discrimination = False
+    # node.parameters.load_data_id = 3910
     node.parameters.simulate = False
     node.parameters.use_waveform_report = False
     node.parameters.reset_type_active_or_thermal = "thermal"
@@ -140,12 +142,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     if_update = []
 
     for q in qubits:
-        if (q.xy.intermediate_frequency - node.parameters.detuning_in_mhz * 1e6) < -400e6:
-            node.parameters.reset_type = "thermal" # Active reset will not work if the lo is changed
+        if (q.xy.intermediate_frequency - node.parameters.detuning_in_mhz * 1e6 - node.parameters.frequency_span_in_mhz * 1e6 / 2) < -400e6:
+            node.parameters.reset_type = "thermal"  # Active reset will not work if the lo is changed
+            warnings.warn(
+                "Qubit LO has been changed to reach desired detuning, active reset will not work. Reset type changed to thermal."
+            )
             if_update.append(0)
             with tracked_updates(q, auto_revert=False, dont_assign_to_none=False) as q_upd:
                 rf_frequency = q_upd.xy.intermediate_frequency + q_upd.xy.opx_output.upconverter_frequency
-                lo_frequency = q_upd.xy.opx_output.upconverter_frequency - node.parameters.detuning_in_mhz
+                lo_frequency = q_upd.xy.opx_output.upconverter_frequency - node.parameters.detuning_in_mhz * 1e6
                 if (q_upd.xy.opx_output.band == 3) and (lo_frequency < 6.5e9):
                     lo_frequency = 6.5e9
                 elif (q_upd.xy.opx_output.band == 2) and (lo_frequency < 4.5e9):
@@ -154,7 +159,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     q_upd.xy.opx_output.upconverter_frequency = None
                 except Exception:
                     pass
+                print(f"Updating {q_upd.name} LO to {lo_frequency}")
                 q_upd.xy.opx_output.upconverter_frequency = lo_frequency
+                q_upd.xy.RF_frequency -= node.parameters.detuning_in_mhz * 1e6
                 tracked_qubits.append(q_upd)
         else:
             if_update.append(int(node.parameters.detuning_in_mhz))
@@ -186,9 +193,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
 
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.xy.update_frequency(
-                                df + qubit.xy.intermediate_frequency - if_update[i]
-                            )
+                            qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency - if_update[i])
                             qubit.align()
                             qubit.z.play(
                                 "const",
@@ -197,6 +202,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             )
                             qubit.xy.wait(t_delay)
                             qubit.xy.play(operation_name, amplitude_scale=operation_amp_scale)
+                            qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
                             qubit.align()
                             qubit.wait(200)
 
@@ -309,23 +315,24 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             components = res["best_components"] if isinstance(res, dict) else res.best_components
             A_list = [amp / best_a_dc for amp, _ in components]
             tau_list = [tau for _, tau in components]
-            try:
-                A_c, tau_c, _ = decompose_exp_sum_to_cascade(A=A_list, tau=tau_list, A_dc=1)
-                # Validate decomposition results before updating the state
-                A_c = np.asarray(A_c, dtype=float)
-                tau_c = np.asarray(tau_c, dtype=float)
+            # try:
+                # A_c, tau_c, _ = decompose_exp_sum_to_cascade(A=A_list, tau=tau_list, A_dc=1)
+                # # Validate decomposition results before updating the state
+                # A_c = np.asarray(A_c, dtype=float)
+                # tau_c = np.asarray(tau_c, dtype=float)
 
-                if A_c.size == 0 or tau_c.size == 0:
-                    node.log(f"Skipping state update for {q.name}: empty A_c/tau_c from decomposition")
-                    continue
+                # if A_c.size == 0 or tau_c.size == 0:
+                #     node.log(f"Skipping state update for {q.name}: empty A_c/tau_c from decomposition")
+                #     continue
 
-                if not np.all((A_c > -2.0) & (A_c < 2.0)):
-                    node.log(f"Skipping state update for {q.name}: amplitudes out of (-2,2): {A_c}")
-                    continue
+                # if not np.all((A_c > -2.0) & (A_c < 2.0)):
+                #     node.log(f"Skipping state update for {q.name}: amplitudes out of (-2,2): {A_c}")
+                #     continue
 
-                q.z.opx_output.exponential_filter = list(zip(A_c, tau_c))
-            except Exception as e:
-                node.log(f"Skipping state update for {q.name}: {e}")
+                # q.z.opx_output.exponential_filter = list(zip(A_c, tau_c))
+            q.z.opx_output.exponential_filter = list(zip(A_list, tau_list))
+            # except Exception as e:
+            #     node.log(f"Skipping state update for {q.name}: {e}")
 
 
 # %% {Save_results}
@@ -351,3 +358,5 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
         except Exception:
             pass
     node.save()
+
+# %%

@@ -428,17 +428,17 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, PiFluxPara
         {
             "freq_full": (
                 ["qubit", "detuning"],
-                np.array([dfs + q.xy.RF_frequency + q.freq_vs_flux_01_quad_term * node.parameters.flux_amp ** 2 for q in qubits]),
+                np.array([dfs + q.xy.RF_frequency - node.parameters.detuning_in_mhz * 1e6 for q in qubits]),
             ),
             "detuning": (
                 ["qubit", "detuning"],
-                np.array([dfs + q.freq_vs_flux_01_quad_term * node.parameters.flux_amp ** 2 for q in qubits]),
+                np.array([dfs - node.parameters.detuning_in_mhz * 1e6 for q in qubits]),
             ),
             "flux": (
                 ["qubit", "detuning"],
                 np.array([
                     (
-                        np.sqrt(np.maximum(0.0, dfs / q.freq_vs_flux_01_quad_term + node.parameters.flux_amp ** 2))
+                        np.sqrt(np.maximum(0.0, dfs / node.parameters.detuning_in_mhz * 1e6))
                         if q.freq_vs_flux_01_quad_term != 0
                         else np.full_like(dfs, np.nan, dtype=float)
                     )
@@ -451,7 +451,7 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, PiFluxPara
     # Add flux-induced static shift as in example
     times = ds["time"].values
     center_freqs = center_freqs + np.array(
-        [q.freq_vs_flux_01_quad_term * node.parameters.flux_amp ** 2 * np.ones_like(times) for q in qubits]
+        [- node.parameters.detuning_in_mhz * 1e6 * np.ones_like(times) for q in qubits]
     )
 
     quad_terms = xr.DataArray([q.freq_vs_flux_01_quad_term for q in qubits], coords={"qubit": [q.name for q in qubits]}, dims=["qubit"])

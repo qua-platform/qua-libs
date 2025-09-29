@@ -74,14 +74,15 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qD2"]
+    node.parameters.qubits = ["qD4"]
     node.parameters.use_state_discrimination = True
     node.parameters.num_shots = 500
     node.parameters.num_frames = 17
-    node.parameters.cryoscope_len = 250
+    node.parameters.cryoscope_len = 50
     node.parameters.detuning_target_in_MHz = 400
     node.parameters.exponential_fit_time_fractions = [0.4, 0.2, 0.01]
-    node.parameters.load_data_id = 1640
+    node.parameters.reset_type = "active"
+    # node.parameters.load_data_id = 3916
     pass
 
 
@@ -158,31 +159,44 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             # Outer loop for averaging
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
-
+                # Loop over the cryoscope pulse time duration (idx represents the duration in ns)
                 with for_(idx, 1, idx <= cryoscope_len, idx + 1):
+                    # Loop over the phase of the second ramsey x90 pulse to reconstruct the qubit phase
                     with for_each_(frame, frames):
                         # Qubit initialization
                         for i, qubit in multiplexed_qubits.items():
                             qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                         align()
-
+                        ################################################################################################
+                        # The duration argument in the play command can only produce pulses with duration multiple of  #
+                        # 4ns. To overcome this limitation we use the baking tool from the qualang-tools package to    #
+                        # generate pulses with 1ns granularity. To avoid creating custom waveforms for each iteration  #
+                        # we combine baked pulses with dynamically stretched (multiple of 4ns) pulses.                 #
+                        ################################################################################################
+                        # For the first 16ns we play baked pulses exclusively. Loop the time idx counter until 16.
                         with if_(idx <= 16):
+                            # Swich case to select the baked pulse with duration idx ns
                             with switch_(idx):
                                 for j in range(1, 17):
+                                    # The Ramsey sequence is embedded in the switch case to allow gapless execution
                                     with case_(j):
                                         align()
                                         for i, qubit in multiplexed_qubits.items():
                                             qubit.xy.play("x90")
                                             qubit.z.wait((qubit.xy.operations["x90"].length + 16) // 4)
-                                            baked_signals[qubit.name][j - 1].run()
-                                            qubit.xy.wait((cryoscope_len + 16) // 4)  # 16ns buffer between pulses
+                                            baked_signals[qubit.name][j - 1].run()  # Play the baked pulse
+                                            qubit.xy.wait((cryoscope_len + 16) >> 2)  # 16ns buffer between pulses
                                             qubit.xy.frame_rotation_2pi(frame)
                                             qubit.xy.play("x90")
-
+                        # For pulse durations above 16ns we combine baking with regular play statements.
                         with else_():
+                            # We calculate the closest lower multiple of 4 of the time index
                             assign(t_cycles, idx >> 2)  # Right shift by 2 is a quick way to divide by 4
+                            # Calculate the duration to add to pulse multiple of 4.
                             assign(t_left_ns, idx - (t_cycles << 2))  # left shift by 2 is a quick way to multiply by 4
+                            # Switch case with the 4 possible sequences:
                             with switch_(t_left_ns):
+                                # Play only the pulse multiple of 4
                                 with case_(0):
                                     align()
                                     for i, qubit in multiplexed_qubits.items():
@@ -196,6 +210,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                         qubit.xy.wait((cryoscope_len + 16) // 4)
                                         qubit.xy.frame_rotation_2pi(frame)
                                         qubit.xy.play("x90")
+                                # Play the pulse multiple of 4 followed by the baked pulse of the missing duration
                                 for j in range(1, 4):
                                     with case_(j):
                                         align()
@@ -292,7 +307,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    node.parameters.exponential_fit_time_fractions = [0.2, 0.1, 0.01]
+    node.parameters.exponential_fit_time_fractions = [0.01] #TODO: remove it
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
 
