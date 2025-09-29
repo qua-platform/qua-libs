@@ -141,54 +141,76 @@ The Stark-induced CZ gate is implemented by simultaneously driving two fixed-fre
 6. [Project structure](#project-structure)
 ---
 ## CZ Gate Representation
-**Matrix form**
+**Matrix form**  
+
 $$
 \mathrm{CZ}=\mathrm{diag}(1,1,1,-1)
-$$
-**Generator (Pauli decomposition)**: In our context the CZ is realized by accumulating a conditional phase via **ZZ**, while compensating single‑qubit phases (**ZI, IZ**):
+$$  
+
+**Generator (Pauli decomposition)**: In our context the CZ is realized by accumulating a conditional phase via **ZZ**, while compensating single‑qubit phases (**ZI, IZ**):  
+
 $$
 \mathrm{CZ}=\exp\left[-\frac{i}{2}\frac{\pi}{2}(-\mathrm{ZI}-\mathrm{IZ}+\mathrm{ZZ})\right].
 $$
+
 (Used explicitly in the paper when calibrating the gate.)&#x20;
 Each term shows how the conditional phase arises via the **ZZ interaction**, while ZI/IZ terms represent single-qubit phase shifts to be compensated.  
+
 **Experimental goal**: Extract $\alpha$, $\beta$, $J$ coefficients of the effective hamiltonian as below.
   
 > ![CZ gate representation](../.img/CR_CZ_calibrations/cz_eff_hamiltonian.png)
 ---
 ## How tunable **ZZ**, **ZI**, **IZ** arise
 ### System Hamiltonian (Duffing model)
-Two coupled transmons (control **$Q_c$**, target **$Q_t$**) driven simultaneously near‑but‑off resonance:
+Two coupled transmons (control **$Q_c$**, target **$Q_t$**) are driven simultaneously with near‑but‑off resonant pulses:  
+
 $$
 H=\sum_{i=c,t}\Big[(\omega_i-\omega_d)a_i^\dagger a_i + \frac{\eta_i}{2}a_i^\dagger a_i^\dagger a_i a_i + \epsilon_i a_i+\epsilon_i^\ast a_i^\dagger\Big]
 +J\,(a_c^\dagger a_t+a_c a_t^\dagger).
 $$
-Here $J$ is the exchange coupling, $\omega_d$, $\omega_c$, $\omega_t$ are drive/control/target frequencies respectively, $\epsilon_i$ are complex drive amplitudes, $\eta_i$ are anharmonicities. Drive scheme with energy levels for the Stark‑induced ZZ interaction are shown below.
+
+Here $J$ is the exchange coupling, $\omega_d$, $\omega_c$, $\omega_t$ are drive/control/target frequencies respectively, $\epsilon_i$ are complex drive amplitudes, $\eta_i$ are anharmonicities. Drive scheme with energy levels for the Stark‑induced ZZ interaction are shown below.  
+
 > ![Drive scheme for the Stark‑induced ZZ interaction](../.img/CR_CZ_calibrations/CZ_drive_schme_with_E_diagram.png)
+
 ### Conditional Stark picture → tunable **ZZ**
-**ZZ interaction**: Off‑resonant driving on **$Q_c$** at the frequency $w_d$ induces Stark shifts on the target qubit **$Q_t$** with the rate $\tilde{\delta}_n$ depending on control qubit state $n$:
+
+**ZZ interaction**: Off‑resonant driving on **$Q_c$** at the frequency $w_d$ induces Stark shifts on the target qubit **$Q_t$** with the rate $\tilde{\delta}_n$ depending on control qubit state $n$:  
+
 $$
 \tilde{\delta}_n=\frac{|\tilde{\epsilon}_n|^2}{\Delta_t}.
 $$
-with $\Delta_t=\omega_t-\omega_d$ and $n\in\{0,1\}$. The **ZZ interaction rate** $\zeta$ is defined as $\zeta=\tilde{\delta}_0-\tilde{\delta}_1$, which can be described in terms of $\mu$. 
+
+with $\Delta_t=\omega_t-\omega_d$ and $n\in\{0,1\}$. The **ZZ interaction rate** $\zeta$ is defined as $\zeta=\tilde{\delta}_0-\tilde{\delta}_1$, which can be described in terms of $\mu$.  
+
 $$
 \zeta = 2\mu(\tilde{\epsilon}_0 + \tilde{\epsilon}_1)/\Delta_t.
 $$
-where $\mu$ is the CR‑like conditional drive rate $\mu$ = $(\tilde{\epsilon}_0-\tilde{\epsilon}_1)/2$. 
-**Driving $Q_c$ and $Q_t$ simultaneously**: Since a single drive tone on **$Q_c$** does not induce sufficiently large interaction to realize CZ gate, the paper proposes driving target qubit simultaneously. To first order, adding a drive on **$Q_t$** makes
+
+where $\mu$ is the CR‑like conditional drive rate $\mu$ = $(\tilde{\epsilon}_0-\tilde{\epsilon}_1)/2$.   
+
+**Driving $Q_c$ and $Q_t$ simultaneously**: Since a single drive tone on **$Q_c$** does not induce sufficiently large interaction to realize CZ gate, the paper proposes driving target qubit simultaneously. To first order, adding a drive on **$Q_t$** makes  
+
 $$
 \zeta \propto \frac{2\mu}{\Delta_t}(\tilde{\epsilon}_0+\tilde{\epsilon}_1+2\epsilon_t)+\mathcal{O}(|\epsilon_t|^2),
-$$
-**Tunability of ZZ interaction $\zeta$**: By varying **Amplitude** and **relative phase** of drive pulses, the ZZ interaction $\zeta$ can be tuned smoothly and even allowed to be sign reversal (cancellation of idle ZZ) as shown in the figure of the following section.
+$$  
+
+**Tunability of ZZ interaction**: By varying **Amplitude** and **relative phase** of drive pulses, the ZZ interaction $\zeta$ can be tuned smoothly and even allowed to be sign reversal (cancellation of idle ZZ) as shown in the figure of the following section.
 
 ### Single-qubit Z rotations → **ZI** and **IZ**  
 While the ZZ term creates entanglement, the off-resonant drives also induce **unconditional single-qubit Z rotations** (ZI and IZ terms) that must be compensated. These arise from AC Stark shifts that affect each qubit independently of the other's state. The correction phases $\phi_{ZI}$ and $\phi_{IZ}$ are calibrated to transform the raw operation into a pure CZ gate.
+
 > **Optional**<details><summary>Third-order expression and phase dependence (from supplement)</summary>
 > The third-order contribution shows $\zeta$ scales as $\propto \epsilon_t \epsilon_c \cos\phi$ (relative phase $\phi$), on top of the static second-order term—matching the observed sinusoidal dependence on relative phase and linear scaling with amplitude.
 > </details>
+
 ---
 ## Experiment: how to tune **ZZ/ZI/IZ** 
+
 ### **ZZ** interaction tuning
+
 * **What to vary**: Drive pulse duration $\tau$, Drive frequency $\omega_d$, amplitudes on both qubits $A_c, A_t$, and **relative phase** $\varphi_d$.
+
 * **What to measure**: Frequency shift $\zeta$ of **$Q_t$** *conditioned* on the state of **$Q_c$**.
   The paper does this with **Ramsey** on **$Q_t$** while preparing **$Q_c$** in $|0\rangle$ or $|1\rangle$; $\zeta$ vs $\varphi_d$ and vs amplitudes.
 
@@ -213,7 +235,7 @@ While the ZZ term creates entanglement, the off-resonant drives also induce **un
 - Optimal operating point found where |ζ| is maximized
 - Crosstalk effects must be included for accurate modeling
 
-> ![ZZ interation w.r.t amplitude and phase](../.img/CR_CZ_calibrations/CZ_zz_interaction.png)
+> ![ZZ interation w.r.t amplitude and phase](../.img/CR_CZ_calibrations/CZ_zz_interaction_exp.png)
 > 📎 *Paper Fig. 2 (p.3)*: $\zeta(\varphi_d)$ for varying $|\epsilon_c|+|\epsilon_t|$ (asymmetry with crosstalk) and $\zeta(A_t)$ for varying $A_c$ (linear scaling).
 
 ### **ZI/IZ** phase correction  
@@ -261,14 +283,20 @@ While the ZZ term creates entanglement, the off-resonant drives also induce **un
 * **Reshape & process**: `process_raw_dataset(...)` reshapes control/target data and converts IQ→V if needed
 * **Fit oscillation**: `fit_oscillation_decay_exp(...)` extracts:
   * **frequency** `f` for each control state
-  * **decay** → **T2 echo** $T_{2,\text{echo}}=-1/\text{decay}$
-  * **ZZ coefficient** (target):
+  * **decay** → **T2 echo**  
+  
+  $$T_{2,\text{echo}}=-1/\text{decay}$$
+
+  * **ZZ coefficient** (target):  
+
     $$
     \zeta = f_{\text{target}\,|\,\text{Qc}=0}-f_{\text{target}\,|\,\text{Qc}=1}.
-    $$
+    $$  
+
   Results saved in `ds_fit` and `fit_results`.
 > **Why Ramsey + ⟨Z⟩ works here**
 > The Ramsey sequence converts the **conditional frequency shift** into a measurable phase oscillation visible in $\langle Z\rangle$ after the second $x_{90}$. This directly yields the **$\zeta$** observable matching the paper's approach.
+
 ---
 ### How **40b** differs (frequency sweep)
 **File:** `40b_Stark_induced_ZZ_vs_duration_and_frequency`
@@ -287,6 +315,7 @@ While the ZZ term creates entanglement, the off-resonant drives also induce **un
   * Updates `zz_control.detuning` and `zz_target.detuning` with the best detuning
 > **Why**: Finds the optimal drive frequency to maximize ZZ interaction strength
 ---
+
 ### How **40c** differs (relative phase sweep)  
 **File:** `40c_Stark_induced_ZZ_vs_duration_and_relative_phase`
 * **What's new in `create_qua_program`**
@@ -300,6 +329,7 @@ While the ZZ term creates entanglement, the off-resonant drives also induce **un
   * Updates `qt.xy_detuned.operations[f"zz_{wf_type}_{qp.name}"].axis_angle` with optimal phase
 > **Why**: Matches the paper's **sinusoidal** phase dependence of $\zeta$ and enables ZZ sign control/cancellation
 ---
+
 ### How **40d** differs (amplitude sweep)
 **File:** `40d_Stark_induced_ZZ_vs_duration_and_amplitude`  
 * **What's new in `create_qua_program`**
@@ -378,7 +408,7 @@ After calibrating the **ZZ** interaction strength, the final step is compensatin
   * $\phi_{IZ}$: Phase where target qubit correction minimizes error
 * **State update**:
   ```python
-  qp.macros.stark_cz.qc_correction_phase = fit_result["best_correction_phase_zi_c"]
+  qp.macros.stark_cz.qc_correction_phase = fit_result["best_correction_phase_zi_c"]  
   qp.macros.stark_cz.qt_correction_phase = fit_result["best_correction_phase_iz_t"]
   ```
 
@@ -397,7 +427,8 @@ After calibrating the **ZZ** interaction strength, the final step is compensatin
     - State preparation similar to 42a but with amplitude sweep:
         
         ```python
-        zz_control_amp_scaling=a if cal_qb == "c" else fixed_value,zz_target_amp_scaling=a if cal_qb == "t" else fixed_value,
+        zz_control_amp_scaling=a if cal_qb == "c" else fixed_value,  
+        zz_target_amp_scaling=a if cal_qb == "t" else fixed_value,
         ```
         
     - Adds sweep axis `calibrated_qubit`, `amp_scaling`
@@ -421,30 +452,27 @@ After calibrating the **ZZ** interaction strength, the final step is compensatin
     - Sweeps **relative phase** between drives for final optimization
     - No correction target loop—applies same phase to both drives
     - Simplified state preparation: always $Q_c$ in $|0\rangle/|1\rangle$, $Q_t$ on equator
-    - Phase sweep applied:
-        
+    - Phase sweep applied:          
         ```python
-        qp.apply("stark_cz",    zz_relative_phase=ph,    qc_correction_phase=fixed_value,    qt_correction_phase=fixed_value,)
-        ```
-        
+        qp.apply("stark_cz", zz_relative_phase=ph, qc_correction_phase=fixed_value, qt_correction_phase=fixed_value, ...)
+        ```  
     - Adds sweep axis `relative_phase`; buffers `[control_state, relative_phase]`
+
 - **What's new in `analyse_data`**
     - Fits population vs relative phase
-    - Identifies phase minimizing gate error
+    - Identifies phase minimizing gate error  
+
 - **State update**
-    - Updates relative phase in target operation:
-        
+    - Updates relative phase in target operation:          
         ```python
-        operation = qt.xy_detuned.operations[f"zz_{wf_type}_{qp.name}"]operation.axis_angle = best_relative_phase * 2 * np.pi
-        ```
-        
+        operation = qt.xy_detuned.operations[f"zz_{wf_type}_{qp.name}"]  
+        operation.axis_angle = best_relative_phase * 2 * np.pi
+        ```  
 
 > **Why**: Final fine-tuning of the relative phase optimizes gate fidelity by minimizing both ZZ and single-qubit errors simultaneously
 
 ---
-
 ## Project structure
-
 ```
 cz-stark/
 ├── calibrations/
