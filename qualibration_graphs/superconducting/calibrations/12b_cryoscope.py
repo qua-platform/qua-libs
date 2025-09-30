@@ -73,7 +73,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1"]
-    node.parameters.load_data_id = 4031
     pass
 
 
