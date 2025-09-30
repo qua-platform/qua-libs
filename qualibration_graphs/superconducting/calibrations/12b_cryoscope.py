@@ -78,7 +78,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.use_state_discrimination = True
     node.parameters.num_shots = 500
     node.parameters.num_frames = 17
-    node.parameters.cryoscope_len = 50
+    node.parameters.cryoscope_len = 100
     node.parameters.detuning_target_in_MHz = 400
     node.parameters.exponential_fit_time_fractions = [0.4, 0.2, 0.01]
     node.parameters.reset_type = "active"
@@ -307,7 +307,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    node.parameters.exponential_fit_time_fractions = [0.01] #TODO: remove it
+    node.parameters.exponential_fit_time_fractions = [0.1, 0.01] #TODO: remove it
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
 

@@ -61,31 +61,34 @@ node = QualibrationNode[Parameters, Quam](
 )
 
 
+
 # %% {Custom_param}
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    node.parameters.qubits = ["qD4"]
-    node.parameters.frequency_span_in_mhz = 200
-    node.parameters.frequency_step_in_mhz = 1
-    node.parameters.operation_amplitude_factor = 1.2
-    node.parameters.duration_in_ns = 9000
-    node.parameters.time_axis = "log"
-    node.parameters.time_step_in_ns = 10
-    node.parameters.time_step_num = 100
-    node.parameters.multiplexed = False
-    node.parameters.detuning_in_mhz = 800
-    node.parameters.fitting_base_fractions = [0.4, 0.15, 0.05]
+    # node.parameters.qubits = ["qD4"]
+    # node.parameters.frequency_span_in_mhz = 200
+    # node.parameters.frequency_step_in_mhz = 1
+    # node.parameters.operation_amplitude_factor = 1.2
+    # node.parameters.duration_in_ns = 5000
+    # node.parameters.time_axis = "log"
+    # node.parameters.time_step_in_ns = 10
+    # node.parameters.time_step_num = 100
+    # node.parameters.multiplexed = False
+    # node.parameters.detuning_in_mhz = 800
+    node.parameters.fitting_base_fractions = [0.8, 0.7, 0.1]
     node.parameters.update_state = True
-    node.parameters.use_state_discrimination = False
-    # node.parameters.load_data_id = 3910
-    node.parameters.simulate = False
-    node.parameters.use_waveform_report = False
-    node.parameters.reset_type_active_or_thermal = "thermal"
+    # node.parameters.use_state_discrimination = False
+    node.parameters.load_data_id = 3936
+    # node.parameters.simulate = False
+    # node.parameters.use_waveform_report = False
+    node.parameters.update_state_from_GUI = True
 
 
 # Instantiate machine
-node.machine = Quam.load()
+node.machine = stored_machine = Quam.load()
 
+loaded_fractions = node.parameters.fitting_base_fractions
+stored_gui_update_flag = node.parameters.update_state_from_GUI
 
 # %% {Create_qua_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
@@ -142,7 +145,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     if_update = []
 
     for q in qubits:
-        if (q.xy.intermediate_frequency - node.parameters.detuning_in_mhz * 1e6 - node.parameters.frequency_span_in_mhz * 1e6 / 2) < -400e6:
+        if (
+            q.xy.intermediate_frequency
+            - node.parameters.detuning_in_mhz * 1e6
+            - node.parameters.frequency_span_in_mhz * 1e6 / 2
+        ) < -400e6:
             node.parameters.reset_type = "thermal"  # Active reset will not work if the lo is changed
             warnings.warn(
                 "Qubit LO has been changed to reach desired detuning, active reset will not work. Reset type changed to thermal."
@@ -189,7 +196,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 with for_(*from_array(df, dfs)):
                     with for_each_(t_delay, times):
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.reset(node.parameters.reset_type_active_or_thermal, node.parameters.simulate)
+                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                         align()
 
                         for i, qubit in multiplexed_qubits.items():
@@ -259,6 +266,12 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(load_id)
     node.parameters.load_data_id = load_id
     node.namespace["qubits"] = get_qubits(node)
+    node.parameters.fitting_base_fractions = loaded_fractions
+    node.parameters.update_state_from_GUI = stored_gui_update_flag
+    if node.parameters.update_state_from_GUI:
+        node.machine = stored_machine
+        node.parameters.update_state = True
+        print("State update from GUI is enabled")
 
 
 # %% {Process_raw}
@@ -274,8 +287,9 @@ def process_raw(node: QualibrationNode[Parameters, Quam]):
 def analyze_data(node: QualibrationNode[Parameters, Quam]):
     ds_in = node.results["ds_proc_input"]
     ds, fit_results = fit_raw_data(ds_in, node)
+
     node.results["ds_proc"] = ds
-    node.results["fit_results"] = fit_results
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_fitted_results(fit_results, log_callable=node.log)
 
 
@@ -287,70 +301,64 @@ def plot_results(node: QualibrationNode[Parameters, Quam]):
     ds = node.results["ds_proc"]
     qubits = node.namespace.get("qubits", get_qubits(node))
     fig = plot_new_fit(ds, qubits, node.results["fit_results"])
+    plt.show()
     # figures = plot_pi_flux(ds, qubits, node.results.get("fit_results"))
     # plt.show()
     # node.results.setdefault("figures", {})
-    # node.results["figures"].update(figures)
+    node.results["fitted_data"] = fig
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    if node.parameters.load_data_id is not None:
-        return
+    # if node.parameters.load_data_id is not None:
+    #     return
     if not node.parameters.update_state:
         return
+    qubits = node.namespace["qubits"]
 
-    qubits = node.namespace.get("qubits", get_qubits(node))
+    for q in qubits:
+        z_out = node.machine.qubits[q.name].z.opx_output
+        if z_out.exponential_filter is None:
+            z_out.exponential_filter = []
+
     with node.record_state_updates():
         for q in qubits:
-            res = node.results["fit_results"].get(q.name)
+            res = node.results["fit_results"][q.name]
             if not res:
                 continue
             # Support dict or dataclass
-            fit_success = res.get("fit_successful") if isinstance(res, dict) else res.fit_successful
+            fit_success = res["fit_successful"]
             if not fit_success:
                 continue
-            best_a_dc = res["best_a_dc"] if isinstance(res, dict) else res.best_a_dc
-            components = res["best_components"] if isinstance(res, dict) else res.best_components
+            best_a_dc = res["best_a_dc"]
+            components = res["best_components"]
             A_list = [amp / best_a_dc for amp, _ in components]
             tau_list = [tau for _, tau in components]
             # try:
-                # A_c, tau_c, _ = decompose_exp_sum_to_cascade(A=A_list, tau=tau_list, A_dc=1)
-                # # Validate decomposition results before updating the state
-                # A_c = np.asarray(A_c, dtype=float)
-                # tau_c = np.asarray(tau_c, dtype=float)
+            # A_c, tau_c, _ = decompose_exp_sum_to_cascade(A=A_list, tau=tau_list, A_dc=1)
+            # # Validate decomposition results before updating the state
+            # A_c = np.asarray(A_c, dtype=float)
+            # tau_c = np.asarray(tau_c, dtype=float)
 
-                # if A_c.size == 0 or tau_c.size == 0:
-                #     node.log(f"Skipping state update for {q.name}: empty A_c/tau_c from decomposition")
-                #     continue
+            # if A_c.size == 0 or tau_c.size == 0:
+            #     node.log(f"Skipping state update for {q.name}: empty A_c/tau_c from decomposition")
+            #     continue
 
-                # if not np.all((A_c > -2.0) & (A_c < 2.0)):
-                #     node.log(f"Skipping state update for {q.name}: amplitudes out of (-2,2): {A_c}")
-                #     continue
+            # if not np.all((A_c > -2.0) & (A_c < 2.0)):
+            #     node.log(f"Skipping state update for {q.name}: amplitudes out of (-2,2): {A_c}")
+            #     continue
 
-                # q.z.opx_output.exponential_filter = list(zip(A_c, tau_c))
-            q.z.opx_output.exponential_filter = list(zip(A_list, tau_list))
+            # q.z.opx_output.exponential_filter = list(zip(A_c, tau_c))
+            node.machine.qubits[q.name].z.opx_output.exponential_filter.extend(list(zip(A_list, tau_list)))
+            print(f"Updated {q.name} filter to: {node.machine.qubits[q.name].z.opx_output.exponential_filter}")
             # except Exception as e:
             #     node.log(f"Skipping state update for {q.name}: {e}")
 
 
 # %% {Save_results}
-@node.run_action(skip_if=node.parameters.load_data_id is not None)
+@node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
-    # Ensure results are JSON-serializable (convert dataclasses to dicts)
-    if "fit_results" in node.results and isinstance(node.results["fit_results"], dict):
-        serialized: dict = {}
-        for k, v in node.results["fit_results"].items():
-            try:
-                # Supports both dict and dataclass entries
-                if hasattr(v, "__dataclass_fields__"):
-                    serialized[k] = asdict(v)
-                else:
-                    serialized[k] = v
-            except Exception:
-                serialized[k] = v
-        node.results["fit_results"] = serialized
 
     for qubit in node.namespace.get("tracked_qubits", []):
         try:

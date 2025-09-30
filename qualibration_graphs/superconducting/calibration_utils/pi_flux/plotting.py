@@ -35,8 +35,8 @@ def plot_new_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fit_results: Dict):
         t_data = ds.time.values
         y_data = ds.flux_response.sel(qubit=q.name).values
 
-        components = fit_results[q.name].best_components
-        a_dc = fit_results[q.name].best_a_dc
+        components = fit_results[q.name]["best_components"]
+        a_dc = fit_results[q.name]["best_a_dc"]
 
         # Guard against NaN or None DC term for formatting & model building
         if a_dc is None or (isinstance(a_dc, (float, np.floating)) and np.isnan(a_dc)):

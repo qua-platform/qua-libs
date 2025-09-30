@@ -22,13 +22,13 @@ class NodeSpecificParameters(RunnableParameters):
     """Time axis for the operation."""
     time_step_in_ns: int = 48
     """Time step in nanoseconds. For linear time axis."""
-    time_step_num: int = 200
+    time_step_num: int = 100
     """Number of time steps. Used for log time axis."""
     min_wait_time_in_ns: int = 32
     """Minimum wait time in nanoseconds."""
     frequency_span_in_mhz: float = 200
     """Frequency span in MHz."""
-    frequency_step_in_mhz: float = 0.4
+    frequency_step_in_mhz: float = 1
     """Frequency step in MHz."""
     detuning_in_mhz: int = 500
     """Flux amplitude in volts."""
@@ -36,16 +36,13 @@ class NodeSpecificParameters(RunnableParameters):
     """Base fractions for the fitting of the exponential sum."""
     update_state: bool = False
     """Whether to update the state."""
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    """Whether to use a joint or independent flux point for the fitting."""
     multiplexed: bool = False
     """Whether to use a multiplexed program."""
-    reset_type_active_or_thermal: Literal["active", "thermal"] = "active"
-    """Whether to use an active or thermal reset."""
     thermal_reset_extra_time_in_us: int = 10_000
     """Extra time in microseconds for the thermal reset."""
     use_state_discrimination: bool = False
     """Whether to use state discrimination. Requires a calibrated rotation angle and threshold."""
+    update_state_from_GUI: bool = False
 
 
 class Parameters(
