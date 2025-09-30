@@ -1,58 +1,182 @@
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Optional
 
+import matplotlib.pylab as plt
 import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation, unwrap_phase
 from qualibration_libs.data import convert_IQ_to_V
 from scipy.optimize import curve_fit, minimize
+from scipy.signal import deconvolve, savgol_filter
+
+
+def transform_to_circle(x, y):
+    def ellipse_residuals(params, x, y):
+        a, b, cx, cy, angle = params
+        cos_angle = np.cos(angle)
+        sin_angle = np.sin(angle)
+        x_rot = cos_angle * (x - cx) + sin_angle * (y - cy)
+        y_rot = -sin_angle * (x - cx) + cos_angle * (y - cy)
+        residuals = (x_rot / a) ** 2 + (y_rot / b) ** 2 - 1
+        return np.sum(residuals**2)  # Return the sum of squared residuals
+
+    # Fit ellipse to points
+    initial_guess = [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.0,
+    ]  # Initial guess for ellipse parameters including angle
+    result = minimize(ellipse_residuals, initial_guess, args=(x, y))
+    a_fit, b_fit, cx_fit, cy_fit, angle_fit = result.x
+
+    # Transform ellipse to circle
+    scale_factor = max(a_fit, b_fit)
+    a_circle = scale_factor
+    b_circle = scale_factor
+    cx_circle = cx_fit
+    cy_circle = cy_fit
+
+    # Rotate the ellipse points
+    cos_angle = np.cos(angle_fit)
+    sin_angle = np.sin(angle_fit)
+
+    # Apply transform to xy points
+    # Step 1: Rotate the original points to align with the ellipse's axes
+    x_rot = cos_angle * (x - cx_fit) + sin_angle * (y - cy_fit)
+    y_rot = -sin_angle * (x - cx_fit) + cos_angle * (y - cy_fit)
+
+    # Step 2: Scale the rotated points to transform the ellipse into a circle
+    x_scaled = x_rot / a_fit * a_circle
+    y_scaled = y_rot / b_fit * b_circle
+
+    # Step 3: Rotate the scaled points back to the original orientation
+    x_transformed = cos_angle * x_scaled - sin_angle * y_scaled + cx_circle
+    y_transformed = sin_angle * x_scaled + cos_angle * y_scaled + cy_circle
+
+    return x_transformed, y_transformed
+
+
+def savgol(da, dim, range=3, order=2):
+    def diff_func(x):
+        return savgol_filter(x, range, order, deriv=0, delta=1)
+
+    return xr.apply_ufunc(diff_func, da, input_core_dims=[[dim]], output_core_dims=[[dim]])
+
+
+def diff_savgol(da, dim, range=3, order=2):
+    def diff_func(x):
+        return savgol_filter(x / (2 * np.pi), range, order, deriv=1, delta=1)
+
+    return xr.apply_ufunc(diff_func, da, input_core_dims=[[dim]], output_core_dims=[[dim]])
+
+
+def cryoscope_frequency(ds, stable_time_indices, quad_term=-1, sg_range=3, sg_order=2):
+    ds = ds.copy()
+
+    freq_cryoscope = diff_savgol(ds, "time", range=sg_range, order=sg_order)
+
+    ds["freq"] = freq_cryoscope
+
+    flux_cryoscope = np.sqrt(np.abs(1e9 * freq_cryoscope / quad_term)).fillna(0)
+
+    # if quad_term == -1:
+    #     flux_cryoscope = flux_cryoscope / flux_cryoscope.sel(
+    #         time=slice(stable_time_indices[0], stable_time_indices[1])
+    #     ).mean(dim="time")
+
+    ds["flux"] = flux_cryoscope
+    return ds
+
+
+def expdecay(x, s, a, t):
+    """Exponential decay defined as 1 + a * np.exp(-x / t).
+    :param x: numpy array for the time vector in ns
+    :param a: float for the exponential amplitude
+    :param t0: time shift
+    :param t: float for the exponential decay time in ns
+    :return: numpy array for the exponential decay
+    """
+    return s * (1 + a * np.exp(-(x) / t))
+
+
+def two_expdecay(x, s, a, t, a2, t2):
+    """Double exponential decay defined as s * (1 + a * np.exp(-x / t) + a2 * np.exp(-x / t2)).
+    :param x: numpy array for the time vector in ns
+    :param s: float for the scaling factor
+    :param a: float for the first exponential amplitude
+    :param t: float for the first exponential decay time in ns
+    :param a2: float for the second exponential amplitude
+    :param t2: float for the second exponential decay time in ns
+    :return: numpy array for the double exponential decay
+    """
+    return s * (1 + a * np.exp(-(x) / t) + a2 * np.exp(-(x) / t2))
+
+
+def single_exp(da, plot=True):
+    first_vals = da.sel(time=slice(0, 1)).mean().values
+    final_vals = da.sel(time=slice(20, None)).mean().values
+    print(first_vals, final_vals)
+
+    fit = da.curvefit(
+        "time",
+        expdecay,
+        p0={"a": 1 - first_vals / final_vals, "t": 50, "s": final_vals},
+    ).curvefit_coefficients
+
+    fit_vals = {k: v for k, v in zip(fit.to_dict()["coords"]["param"]["data"], fit.to_dict()["data"])}
+
+    t_s = 1
+    alpha = np.exp(-t_s / fit_vals["t"])
+    A = fit_vals["a"]
+    fir = [1 / (1 + A), -alpha / (1 + A)]
+    iir = [(A + alpha) / (1 + A)]
+
+    if plot:
+        fig, ax = plt.subplots()
+        ax.plot(da.time, da, label="data")
+        ax.plot(da.time, expdecay(da.time, **fit_vals), label="fit")
+        ax.grid("all")
+        ax.legend()
+        print(f"Qubit - FIR: {fir}\nIIR: {iir}")
+    else:
+        fig = None
+        ax = None
+    return fir, iir, fig, ax, (da.time, expdecay(da.time, **fit_vals))
+
+
+def estimate_fir_coefficients(convolved_signal, step_response, num_coefficients):
+    """
+    Estimate the FIR filter coefficients from a convolved signal.
+
+    :param convolved_signal: The signal after being convolved with the FIR filter.
+    :param step_response: The original step response signal.
+    :param num_coefficients: Number of coefficients of the FIR filter to estimate.
+    :return: Estimated FIR coefficients.
+    """
+    # Deconvolve to estimate the impulse response
+    estimated_impulse_response, _ = deconvolve(convolved_signal, step_response)
+
+    # Truncate or zero-pad the estimated impulse response to match the desired number of coefficients
+    if len(estimated_impulse_response) > num_coefficients:
+        # Truncate if the estimated response is longer than the desired number of coefficients
+        estimated_coefficients = estimated_impulse_response[:num_coefficients]
+    else:
+        # Zero-pad if shorter
+        estimated_coefficients = np.pad(
+            estimated_impulse_response,
+            (0, num_coefficients - len(estimated_impulse_response)),
+            "constant",
+        )
+
+    return estimated_coefficients
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     if not node.parameters.use_state_discrimination:
         ds = convert_IQ_to_V(ds, node.namespace["qubits"])
-    return ds
-
-
-def _diff_savgol_phase(da, dim, window=3, order=2):
-    """Simple central-difference derivative with small Savitzky-Golay style smoothing via convolution.
-
-    We intentionally avoid importing scipy.signal.savgol_filter to keep the pruned dependency surface minimal.
-    The original implementation used a true Savitzky-Golay; here we approximate with a padded moving average
-    followed by np.gradient which is sufficient for downstream exponential fitting robustness.
-    """
-    data = da.values
-    if window > 1:
-        kernel = np.ones(window) / window
-        smoothed = np.convolve(data, kernel, mode="same")
-    else:
-        smoothed = data
-    deriv = np.gradient(smoothed)
-    return xr.DataArray(deriv, coords=da.coords, dims=da.dims)
-
-
-def cryoscope_frequency(phase_da: xr.DataArray, quad_term: float, stable_time_indices, sg_range=3, sg_order=2):
-    """Reconstruct flux vs time from the unwrapped phase data.
-
-    Parameters
-    ----------
-    phase_da : xr.DataArray
-        Unwrapped phase vs time & qubit (and optionally other dims)
-    quad_term : float
-        Quadratic coefficient relating frequency shift to flux^2.
-    stable_time_indices : tuple
-        (start, stop) indices for the region considered stable (retained for API compatibility).
-    sg_range, sg_order : int
-        Kept for backward compatibility; minimally used in lightweight derivative approximation.
-    """
-    # Differentiate phase to get frequency (phase assumed in radians)
-    freq = _diff_savgol_phase(phase_da, "time", window=sg_range, order=sg_order)
-    # Convert to flux using quadratic model: freq ~ quad_term * flux^2 / 1e9 (Hz to per ns assumptions)
-    flux = np.sqrt(np.abs(1e9 * freq / quad_term)).fillna(0)
-    ds = xr.Dataset()
-    ds["freq"] = freq
-    ds["flux"] = flux
     return ds
 
 
@@ -100,7 +224,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
         # first_vals = ds_fit.flux.sel(time=slice(0, 1)).mean()
         # final_vals = ds_fit.flux.sel(time=slice(node.parameters.cryoscope_len - 20, None)).mean()
 
-        qubit = node.namespace["qubits"][0].name
+        qubit = node.namespace["qubits"][0].name  # TODO: support multiple qubits
 
         # Find the index where ds_fit.flux is closest to 1/e
         qubit_flux = ds_fit.flux.sel(qubit=qubit)
@@ -176,7 +300,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
 
         ds["fit_results"] = ds_fit
 
-        fit, fit_results = _extract_relevant_fit_parameters(ds, node)
+        fit, fit_results = _extract_relevant_fit_parameters_new(ds, node)
 
         return fit, fit_results
 
@@ -216,6 +340,50 @@ def _extract_relevant_fit_parameters(ds: xr.Dataset, node: QualibrationNode):
         qubit_names = [q.name for q in node.namespace["qubits"]]
 
     for q in qubit_names:
+        fit1_success = fit.attrs.get("fit_1exp_success", False)
+        fit2_success = fit.attrs.get("fit_2exp_success", False)
+
+        # Determine overall success based on the number of exponents requested
+        if node.parameters.number_of_exponents == 1:
+            success = fit1_success
+        elif node.parameters.number_of_exponents == 2:
+            success = fit2_success
+        else:
+            success = fit1_success or fit2_success  # Default fallback
+
+        fit_results[q] = FitParameters(
+            success=success,
+            fit1_success=fit1_success,
+            fit2_success=fit2_success,
+            fit1_A=fit.attrs.get("fit_1exp", [None, None, None])[1] if fit1_success else None,
+            fit1_tau=fit.attrs.get("fit_1exp", [None, None, None])[2] if fit1_success else None,
+            fit2_A1=(fit.attrs.get("fit_2exp", [None, None, None, None, None])[1] if fit2_success else None),
+            fit2_tau1=(fit.attrs.get("fit_2exp", [None, None, None, None, None])[2] if fit2_success else None),
+            fit2_A2=(fit.attrs.get("fit_2exp", [None, None, None, None, None])[3] if fit2_success else None),
+            fit2_tau2=(fit.attrs.get("fit_2exp", [None, None, None, None, None])[4] if fit2_success else None),
+        )
+    return ds, fit_results
+
+
+def _extract_relevant_fit_parameters_new(ds: xr.Dataset, node: QualibrationNode):
+    """Extract relevant fit parameters from the dataset and add metadata."""
+    # Assess whether the fit was successful or not
+
+    # Check if ds has fit_results (normal case) or use ds directly (error case)
+    if "fit_results" in ds:
+        fit = ds["fit_results"]
+    else:
+        fit = ds
+
+    fit_results = {}
+
+    # Get qubit names from the node if qubit dimension doesn't exist
+    if hasattr(fit, "qubit") and hasattr(fit.qubit, "values"):
+        qubit_names = fit.qubit.values
+    else:
+        qubit_names = [q.name for q in node.namespace["qubits"]]
+
+    for q in qubit_names:
         success = fit.attrs.get("fit_success", False)
         # Reconstruct components from stored 1D arrays if available
         if "fit_component_amps" in fit.attrs and "fit_component_taus_ns" in fit.attrs:
@@ -230,7 +398,7 @@ def _extract_relevant_fit_parameters(ds: xr.Dataset, node: QualibrationNode):
             components = fit.attrs.get("fit_components", [])
         a_dc = fit.attrs.get("fit_a_dc", None)
 
-        fit_results[q] = FitParameters(success=success, components=components, a_dc=a_dc)
+        fit_results[q] = FitParametersNEW(success=success, components=components, a_dc=a_dc)
     return ds, fit_results
 
 
@@ -292,6 +460,19 @@ def log_fitted_results(fit_results: dict, log_callable=print):
 
 @dataclass
 class FitParameters:
+    success: bool = False
+    fit1_success: bool = False
+    fit2_success: bool = False
+    fit1_A: Optional[float] = None
+    fit1_tau: Optional[float] = None
+    fit2_A1: Optional[float] = None
+    fit2_tau1: Optional[float] = None
+    fit2_A2: Optional[float] = None
+    fit2_tau2: Optional[float] = None
+
+
+@dataclass
+class FitParametersNEW:
     # List of (amplitude, tau) tuples for each exponential component
     components: list
     # Constant (DC) term
@@ -300,7 +481,25 @@ class FitParameters:
     success: bool = False
 
 
+from typing import List, Tuple
+
+# (Re)used below, already imported earlier in file; avoid duplicate imports
+# import matplotlib.pyplot as plt
+# import numpy as np
+# from scipy.optimize import curve_fit, minimize
+
+
 def single_exp_decay(t: np.ndarray, amp: float, tau: float) -> np.ndarray:
+    """Single exponential decay without offset
+
+    Args:
+        t (array): Time points
+        amp (float): Amplitude of the decay
+        tau (float): Time constant of the decay
+
+    Returns:
+        array: Exponential decay values
+    """
     return amp * np.exp(-t / tau)
 
 
@@ -547,3 +746,67 @@ def optimize_start_fractions(t, y, start_fractions, bounds_scale=0.5, fixed_taus
         print("Optimized components [(a1, tau1), (a2, tau2)...]:")
         print(components)
     return result.success, best_fractions, components, a_dc, best_rms
+
+
+def plot_fit(t_data: np.ndarray, y_data: np.ndarray, components: List[Tuple[float, float]], a_dc: float):
+    """Plot exponential fit results with both linear and log scales.
+
+    Args:
+        t_data (np.ndarray): Time points in nanoseconds
+        y_data (np.ndarray): Measured flux response data
+        components (List[Tuple[float, float]]): List of (amplitude, tau) pairs for each fitted component
+        a_dc (float): Constant term
+
+    Returns:
+        tuple: (fig, axs) where:
+            - fig: Figure object
+            - axs: List of axes objects
+    """
+
+    fit_text = f"a_dc = {a_dc:.3f}\n"
+    y_fit = np.ones_like(t_data, dtype=float) * a_dc
+    for i, (amp, tau) in enumerate(components):
+        y_fit += amp * np.exp(-t_data / tau)
+        fit_text += f"a{i + 1} = {amp / a_dc:.3f}, τ{i + 1} = {tau:.0f}ns\n"
+
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+
+    # First subplot - linear scale
+    axs[0].plot(t_data, y_data, label="Data")
+    axs[0].plot(t_data, y_fit, label="Fit")
+    axs[0].text(
+        0.98,
+        0.5,
+        fit_text,
+        transform=axs[0].transAxes,
+        fontsize=10,
+        horizontalalignment="right",
+        verticalalignment="center",
+    )
+    axs[0].set_xlabel("Time (ns)")
+    axs[0].set_ylabel("Flux Response")
+    axs[0].legend()
+    axs[0].grid(True)
+    axs[0].ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
+
+    # Second subplot - log scale
+    axs[1].plot(t_data, y_data, label="Data")
+    axs[1].plot(t_data, y_fit, label="Fit")
+    axs[1].text(
+        0.98,
+        0.5,
+        fit_text,
+        transform=axs[1].transAxes,
+        fontsize=10,
+        horizontalalignment="right",
+        verticalalignment="center",
+    )
+    axs[1].set_xlabel("Time (ns)")
+    axs[1].set_ylabel("Flux Response")
+    axs[1].set_xscale("log")
+    axs[1].legend(loc="best")
+    axs[1].grid(True)
+
+    fig.tight_layout()
+
+    return fig, axs
