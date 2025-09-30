@@ -10,15 +10,13 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 30
     """Number of shots to acquire."""
-    qubits: Optional[List[str]] = None
-    """Qubits to calibrate."""
-    operation: str = "x180_Gaussian"
-    """Operation to perform."""
+    operation: str = "x180"
+    """Operation to excite the qubit"""
     operation_amplitude_factor: float = 1.0
     """Amplitude factor for the operation."""
-    duration_in_ns: int = 5000
-    """Duration of the operation in nanoseconds."""
-    time_axis: Literal["linear", "log"] = "linear"
+    duration_in_ns: int = 8000
+    """Maximum duration of the sequence."""
+    time_axis: Literal["linear", "log"] = "log"
     """Time axis for the operation."""
     time_step_in_ns: int = 48
     """Time step in nanoseconds. For linear time axis."""
@@ -27,22 +25,19 @@ class NodeSpecificParameters(RunnableParameters):
     min_wait_time_in_ns: int = 32
     """Minimum wait time in nanoseconds."""
     frequency_span_in_mhz: float = 200
-    """Frequency span in MHz."""
+    """Frequency span in MHz for the qubit spectroscopy tone"""
     frequency_step_in_mhz: float = 1
-    """Frequency step in MHz."""
+    """Frequency step in MHz for the qubit spectroscopy tone"""
     detuning_in_mhz: int = 500
-    """Flux amplitude in volts."""
+    """Objective qubit detuning in MHz"""
     fitting_base_fractions: List[float] = [0.4, 0.15, 0.05]
     """Base fractions for the fitting of the exponential sum."""
     update_state: bool = False
-    """Whether to update the state."""
+    """Whether to update the state. CAUTION: assumes fitting will be acceptable"""
     multiplexed: bool = False
     """Whether to use a multiplexed program."""
-    thermal_reset_extra_time_in_us: int = 10_000
-    """Extra time in microseconds for the thermal reset."""
-    use_state_discrimination: bool = False
-    """Whether to use state discrimination. Requires a calibrated rotation angle and threshold."""
     update_state_from_GUI: bool = False
+    """Whether to update the state from the GUI, select when fitting is successful"""
 
 
 class Parameters(

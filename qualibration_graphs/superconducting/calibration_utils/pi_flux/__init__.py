@@ -8,7 +8,7 @@ from .analysis import (
     process_raw_dataset,
 )
 from .parameters import Parameters
-from .plotting import plot_new_fit, plot_pi_flux
+from .plotting import plot_fit
 
 __all__ = [
     "Parameters",
@@ -18,7 +18,6 @@ __all__ = [
     "extract_center_freqs_state",
     "extract_center_freqs_iq",
     "log_fitted_results",
-    "plot_pi_flux",
     "decompose_exp_sum_to_cascade",
-    "plot_new_fit",
+    "plot_fit",
 ]

@@ -10,18 +10,15 @@ import numpy as np
 import xarray as xr
 from calibration_utils.pi_flux import (
     Parameters,
-    decompose_exp_sum_to_cascade,
     fit_raw_data,
     log_fitted_results,
-    plot_new_fit,
-    plot_pi_flux,
+    plot_fit,
     process_raw_dataset,
 )
-from qm import SimulationConfig
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from qualibration_libs.core import tracked_updates
@@ -65,28 +62,15 @@ node = QualibrationNode[Parameters, Quam](
 # %% {Custom_param}
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    # node.parameters.qubits = ["qD4"]
-    # node.parameters.frequency_span_in_mhz = 200
-    # node.parameters.frequency_step_in_mhz = 1
-    # node.parameters.operation_amplitude_factor = 1.2
-    # node.parameters.duration_in_ns = 5000
-    # node.parameters.time_axis = "log"
-    # node.parameters.time_step_in_ns = 10
-    # node.parameters.time_step_num = 100
-    # node.parameters.multiplexed = False
-    # node.parameters.detuning_in_mhz = 800
-    node.parameters.fitting_base_fractions = [0.8, 0.7, 0.1]
-    node.parameters.update_state = True
-    # node.parameters.use_state_discrimination = False
-    node.parameters.load_data_id = 3936
-    # node.parameters.simulate = False
-    # node.parameters.use_waveform_report = False
-    node.parameters.update_state_from_GUI = True
+    # node.parameters.qubits = ["q1"]
+    node.parameters.load_data_id = 3989
+    pass
 
 
 # Instantiate machine
 node.machine = stored_machine = Quam.load()
 
+# store fitting fractions set from GUI
 loaded_fractions = node.parameters.fitting_base_fractions
 stored_gui_update_flag = node.parameters.update_state_from_GUI
 
@@ -99,11 +83,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     operation_name = node.parameters.operation
 
-    # Ensure operation exists
+    # Ensure operation exists and default to x180 if not
     for qubit in qubits:
         if hasattr(qubit.xy.operations, operation_name):
             continue
-        qubit.xy.operations[operation_name] = qubit.xy.operations["x180"]
+        operation_name = "x180"
 
     operation_amp_scale = node.parameters.operation_amplitude_factor or 1.0
 
@@ -112,7 +96,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span // 2, span // 2, step, dtype=np.int32)
 
-    # Time sweep
+    # Time sweep linear of log scale
     if node.parameters.time_axis == "linear":
         times = np.arange(
             node.parameters.min_wait_time_in_ns // 4,
@@ -140,11 +124,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "time": xr.DataArray(4 * times, attrs={"long_name": "Flux pulse duration", "units": "ns"}),
     }
 
-    # LO retune for headroom
+    # Track LO updates
     tracked_qubits = []
     if_update = []
 
     for q in qubits:
+        # Decide if updating the LO is needed depending on the detuning request
         if (
             q.xy.intermediate_frequency
             - node.parameters.detuning_in_mhz * 1e6
@@ -155,13 +140,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 "Qubit LO has been changed to reach desired detuning, active reset will not work. Reset type changed to thermal."
             )
             if_update.append(0)
+            # track the LO and IF changes to revert later
             with tracked_updates(q, auto_revert=False, dont_assign_to_none=False) as q_upd:
                 rf_frequency = q_upd.xy.intermediate_frequency + q_upd.xy.opx_output.upconverter_frequency
                 lo_frequency = q_upd.xy.opx_output.upconverter_frequency - node.parameters.detuning_in_mhz * 1e6
                 if (q_upd.xy.opx_output.band == 3) and (lo_frequency < 6.5e9):
-                    lo_frequency = 6.5e9
+                    raise ValueError("Requested detuning is too large for the given MW FEM band")
                 elif (q_upd.xy.opx_output.band == 2) and (lo_frequency < 4.5e9):
-                    lo_frequency = 4.5e9
+                    raise ValueError("Requested detuning is too large for the given MW FEM band")
                 try:
                     q_upd.xy.opx_output.upconverter_frequency = None
                 except Exception:
@@ -186,28 +172,35 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         t_delay = declare(int)
 
         for multiplexed_qubits in qubits.batch():
+            # Place qubits to their respective flux point
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
             align()
-
+            # Averaging loop
             with for_(n, 0, n < node.parameters.num_shots, n + 1):
                 save(n, n_st)
-
+                # Qubit spectroscopy frequency loop
                 with for_(*from_array(df, dfs)):
+                    # Time delay loop
                     with for_each_(t_delay, times):
+                        # Reset the qubits
                         for i, qubit in multiplexed_qubits.items():
                             qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                         align()
 
                         for i, qubit in multiplexed_qubits.items():
+                            # Step the qubit spectroscopy tone frequency
                             qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency - if_update[i])
                             qubit.align()
+                            # Play the flux pulse
                             qubit.z.play(
                                 "const",
                                 amplitude_scale=flux_amps[i] / qubit.z.operations["const"].amplitude,
                                 duration=t_delay + 200,
                             )
+                            # Wait for a variable time
                             qubit.xy.wait(t_delay)
+                            # Play the qubit spectroscopy pulse
                             qubit.xy.play(operation_name, amplitude_scale=operation_amp_scale)
                             qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
                             qubit.align()
@@ -266,6 +259,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(load_id)
     node.parameters.load_data_id = load_id
     node.namespace["qubits"] = get_qubits(node)
+
+    # Overwrite the loaded node parrameters with the ones defined from the GUI
     node.parameters.fitting_base_fractions = loaded_fractions
     node.parameters.update_state_from_GUI = stored_gui_update_flag
     if node.parameters.update_state_from_GUI:
@@ -300,19 +295,14 @@ def plot_results(node: QualibrationNode[Parameters, Quam]):
         return
     ds = node.results["ds_proc"]
     qubits = node.namespace.get("qubits", get_qubits(node))
-    fig = plot_new_fit(ds, qubits, node.results["fit_results"])
+    fig = plot_fit(ds, qubits, node.results["fit_results"])
     plt.show()
-    # figures = plot_pi_flux(ds, qubits, node.results.get("fit_results"))
-    # plt.show()
-    # node.results.setdefault("figures", {})
     node.results["fitted_data"] = fig
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    # if node.parameters.load_data_id is not None:
-    #     return
     if not node.parameters.update_state:
         return
     qubits = node.namespace["qubits"]
@@ -335,25 +325,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             components = res["best_components"]
             A_list = [amp / best_a_dc for amp, _ in components]
             tau_list = [tau for _, tau in components]
-            # try:
-            # A_c, tau_c, _ = decompose_exp_sum_to_cascade(A=A_list, tau=tau_list, A_dc=1)
-            # # Validate decomposition results before updating the state
-            # A_c = np.asarray(A_c, dtype=float)
-            # tau_c = np.asarray(tau_c, dtype=float)
-
-            # if A_c.size == 0 or tau_c.size == 0:
-            #     node.log(f"Skipping state update for {q.name}: empty A_c/tau_c from decomposition")
-            #     continue
-
-            # if not np.all((A_c > -2.0) & (A_c < 2.0)):
-            #     node.log(f"Skipping state update for {q.name}: amplitudes out of (-2,2): {A_c}")
-            #     continue
-
-            # q.z.opx_output.exponential_filter = list(zip(A_c, tau_c))
             node.machine.qubits[q.name].z.opx_output.exponential_filter.extend(list(zip(A_list, tau_list)))
             print(f"Updated {q.name} filter to: {node.machine.qubits[q.name].z.opx_output.exponential_filter}")
-            # except Exception as e:
-            #     node.log(f"Skipping state update for {q.name}: {e}")
 
 
 # %% {Save_results}
