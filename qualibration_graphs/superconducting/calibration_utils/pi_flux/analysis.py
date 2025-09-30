@@ -1,15 +1,12 @@
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from functools import reduce
+from typing import Dict, List, Sequence, Tuple
 
 import numpy as np
-from quam.components.quantum_components import qubit
 import xarray as xr
-from scipy.optimize import curve_fit
-from typing import List, Tuple, Sequence
-from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
-from functools import reduce
 from numpy.polynomial import Polynomial as P
-from scipy.optimize import minimize
+from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
+from scipy.optimize import curve_fit, minimize
 
 
 @dataclass
@@ -38,13 +35,13 @@ def process_raw_dataset(ds: xr.Dataset, node) -> xr.Dataset:
         ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     if "detuning" in ds.coords:
         full_freq = np.array([ds.detuning + q.xy.RF_frequency for q in node.namespace["qubits"]])
-        ds = ds.assign_coords(full_freq=( ["qubit", "detuning"], full_freq))
+        ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
         ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     return ds
 
 
 def gaussian(x, a, x0, sigma, offset):
-    return a * np.exp(-(x - x0) ** 2 / (2 * sigma ** 2)) + offset
+    return a * np.exp(-((x - x0) ** 2) / (2 * sigma**2)) + offset
 
 
 def fit_gaussian(freqs, states):
@@ -100,6 +97,7 @@ def extract_center_freqs_iq(ds: xr.Dataset, freqs: np.ndarray) -> xr.DataArray:
 
 def single_exp_decay(t, amp, tau):
     return amp * np.exp(-t / tau)
+
 
 def sequential_exp_fit(
     t: np.ndarray,
@@ -241,6 +239,7 @@ def sequential_exp_fit_old(t: np.ndarray, y: np.ndarray, start_fractions: List[f
 
     return components, a_dc, y_res
 
+
 def optimize_start_fractions(t, y, start_fractions, bounds_scale=0.5, fixed_taus=None, a_dc=None, verbose=1):
     """
         Optimize the start fractions for a sum of exponentials fit to data by minimizing the RMS error
@@ -372,6 +371,7 @@ def optimize_start_fractions(t, y, start_fractions, bounds_scale=0.5, fixed_taus
         print(components)
     return result.success, best_fractions, components, a_dc, best_rms
 
+
 def optimize_start_fractions_old(t: np.ndarray, y: np.ndarray, base_fractions: List[float], bounds_scale: float = 0.5):
     from scipy.optimize import minimize
 
@@ -381,7 +381,7 @@ def optimize_start_fractions_old(t: np.ndarray, y: np.ndarray, base_fractions: L
         components, _, residual = sequential_exp_fit(t, y, list(x))
         if len(components) != len(base_fractions):
             return 1e6
-        return float(np.sqrt(np.nanmean(residual ** 2)))
+        return float(np.sqrt(np.nanmean(residual**2)))
 
     bounds = []
     for base in base_fractions:
@@ -389,16 +389,22 @@ def optimize_start_fractions_old(t: np.ndarray, y: np.ndarray, base_fractions: L
         bmax = base * (1 + bounds_scale)
         bounds.append((bmin, bmax))
 
-    result = minimize(objective, x0=np.array(base_fractions, dtype=float), bounds=bounds, method="Nelder-Mead", options={"disp": False, "maxiter": 200})
+    result = minimize(
+        objective,
+        x0=np.array(base_fractions, dtype=float),
+        bounds=bounds,
+        method="Nelder-Mead",
+        options={"disp": False, "maxiter": 200},
+    )
 
     if result.success:
         best_fractions = list(result.x)
         components, a_dc, residual = sequential_exp_fit(t, y, best_fractions)
-        best_rms = float(np.sqrt(np.nanmean(residual ** 2)))
+        best_rms = float(np.sqrt(np.nanmean(residual**2)))
         return True, best_fractions, components, float(a_dc), best_rms
     else:
         components, a_dc, residual = sequential_exp_fit(t, y, base_fractions)
-        best_rms = float(np.sqrt(np.nanmean(residual ** 2)))
+        best_rms = float(np.sqrt(np.nanmean(residual**2)))
         return False, base_fractions, components, float(a_dc), best_rms
 
 
@@ -436,14 +442,16 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, PiFluxPara
             ),
             "flux": (
                 ["qubit", "detuning"],
-                np.array([
-                    (
-                        np.sqrt(np.maximum(0.0, dfs / node.parameters.detuning_in_mhz * 1e6))
-                        if q.freq_vs_flux_01_quad_term != 0
-                        else np.full_like(dfs, np.nan, dtype=float)
-                    )
-                    for q in qubits
-                ]),
+                np.array(
+                    [
+                        (
+                            np.sqrt(np.maximum(0.0, dfs / node.parameters.detuning_in_mhz * 1e6))
+                            if q.freq_vs_flux_01_quad_term != 0
+                            else np.full_like(dfs, np.nan, dtype=float)
+                        )
+                        for q in qubits
+                    ]
+                ),
             ),
         }
     )
@@ -451,10 +459,12 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, PiFluxPara
     # Add flux-induced static shift as in example
     times = ds["time"].values
     center_freqs = center_freqs + np.array(
-        [- node.parameters.detuning_in_mhz * 1e6 * np.ones_like(times) for q in qubits]
+        [-node.parameters.detuning_in_mhz * 1e6 * np.ones_like(times) for q in qubits]
     )
 
-    quad_terms = xr.DataArray([q.freq_vs_flux_01_quad_term for q in qubits], coords={"qubit": [q.name for q in qubits]}, dims=["qubit"])
+    quad_terms = xr.DataArray(
+        [q.freq_vs_flux_01_quad_term for q in qubits], coords={"qubit": [q.name for q in qubits]}, dims=["qubit"]
+    )
     flux_response = xr.where(quad_terms != 0, np.sqrt(center_freqs / quad_terms), np.nan)
 
     ds = ds.copy()
@@ -477,9 +487,10 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, PiFluxPara
         )
     return ds, fit_results
 
-def decompose_exp_sum_to_cascade(A: Sequence, tau: Sequence, A_dc: float=1.,
-                             compensate_v34_fpga_scale: bool=True, Ts: float=0.5) -> \
-        tuple[np.ndarray, np.ndarray, float]:
+
+def decompose_exp_sum_to_cascade(
+    A: Sequence, tau: Sequence, A_dc: float = 1.0, compensate_v34_fpga_scale: bool = True, Ts: float = 0.5
+) -> tuple[np.ndarray, np.ndarray, float]:
     """decompose_exp_sum_to_cascade
     Translate from filters configuration as defined in QUA for version 3.5 (sum of exponents) to the
     definition of version 3.4.1 (cascade of single exponents filters).
@@ -505,13 +516,14 @@ def decompose_exp_sum_to_cascade(A: Sequence, tau: Sequence, A_dc: float=1.,
     zeros = np.sort(np.roots(b))
     poles = np.sort(np.roots(a))
 
-    assert np.all(np.isreal(zeros)) and np.all(np.isreal(poles)), \
-        "Got complex zeros; this configuration can't be inverted or decomposed to cascade of single pole stages"
+    assert np.all(np.isreal(zeros)) and np.all(
+        np.isreal(poles)
+    ), "Got complex zeros; this configuration can't be inverted or decomposed to cascade of single pole stages"
 
     tau_c = -1 / poles
-    A_c = poles/zeros - 1
+    A_c = poles / zeros - 1
 
-    scale = 1/A_dc
+    scale = 1 / A_dc
 
     if compensate_v34_fpga_scale:
         scale *= get_scaling_of_v34_fpga_filter(A_c, tau_c, Ts)
@@ -528,13 +540,14 @@ def get_scaling_of_v34_fpga_filter(A_c: np.ndarray, tau_c: np.ndarray, Ts) -> fl
     :param Ts: Sampling period
     :return: scale
     """
-    return float(np.prod((Ts + 2*tau_c) / (Ts + 2*tau_c*(1+A_c))))
+    return float(np.prod((Ts + 2 * tau_c) / (Ts + 2 * tau_c * (1 + A_c))))
 
 
 def get_rational_filter_single_exp_cont_time(A: float, tau: float) -> tuple[np.ndarray, np.ndarray]:
-    a = np.array([1, 1/tau])
+    a = np.array([1, 1 / tau])
     b = np.array([A])
     return b, a
+
 
 # The functions below are used to decompose the sum of exponentials to a cascade of single
 # exponent filters, as implemented in QOP 3.4.
@@ -556,4 +569,3 @@ def add_rational_terms(terms: List[Tuple[np.array, np.array]]) -> Tuple[np.array
 
     # Return as coefficient lists
     return final_numerator.coef, common_den.coef
-

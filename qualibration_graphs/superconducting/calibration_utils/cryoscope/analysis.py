@@ -156,10 +156,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
 
     fitting_start_fractions = node.parameters.exponential_fit_time_fractions
     success, best_fractions, components, a_dc, best_rms = optimize_start_fractions(
-        time_vals, flux_vals, fitting_start_fractions, bounds_scale=0.2
+        time_vals, flux_vals, fitting_start_fractions
     )
 
-    # Save fit results as attributes (ensure NetCDF compatibility: only 1D arrays / scalars)
     ds_fit.attrs["fit_success"] = success
     if components is not None:
         try:

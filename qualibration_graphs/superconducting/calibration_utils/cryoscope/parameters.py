@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional
+from typing import List
 
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
@@ -14,10 +14,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Length of the cryoscope operation in microseconds. Default is 240."""
     num_frames: int = 17
     """Number of frames to use in the cryoscope experiment. Default is 17."""
-    number_of_exponents: Literal[1, 2] = 1
-    """Number of exponents to use in the cryoscope experiment. One or two, default is 1."""
-    exp_1_tau_guess: Optional[float] = None
-    """Initial guess for the time constant of the first exponential decay. Default is None."""
     exponential_fit_time_fractions: List[float] = [0.5, 0.01]
     """List of time fractions for the exponential fit. Default is [0.5, 0.01]."""
     update_state_from_GUI: bool = False

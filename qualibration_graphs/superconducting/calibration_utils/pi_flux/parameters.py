@@ -34,8 +34,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Base fractions for the fitting of the exponential sum."""
     update_state: bool = False
     """Whether to update the state. CAUTION: assumes fitting will be acceptable"""
-    multiplexed: bool = False
-    """Whether to use a multiplexed program."""
     update_state_from_GUI: bool = False
     """Whether to update the state from the GUI, select when fitting is successful"""
 

@@ -3,18 +3,11 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import asdict
-from typing import List, Literal, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.pi_flux import (
-    Parameters,
-    fit_raw_data,
-    log_fitted_results,
-    plot_fit,
-    process_raw_dataset,
-)
+from calibration_utils.pi_flux import Parameters, fit_raw_data, log_fitted_results, plot_fit, process_raw_dataset
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -58,12 +51,10 @@ node = QualibrationNode[Parameters, Quam](
 )
 
 
-
 # %% {Custom_param}
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubits = ["q1"]
-    node.parameters.load_data_id = 3989
     pass
 
 
@@ -73,6 +64,7 @@ node.machine = stored_machine = Quam.load()
 # store fitting fractions set from GUI
 loaded_fractions = node.parameters.fitting_base_fractions
 stored_gui_update_flag = node.parameters.update_state_from_GUI
+
 
 # %% {Create_qua_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
@@ -339,5 +331,6 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
         except Exception:
             pass
     node.save()
+
 
 # %%

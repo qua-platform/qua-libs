@@ -3,10 +3,7 @@ from typing import Dict, List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
-
-from quam import components
 
 
 def plot_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fit_results: Dict):
@@ -45,7 +42,7 @@ def plot_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fit_results: Dict):
             # If we can't determine DC term, approximate from tail of data
             a_dc = float(y_data[-5:].mean()) if len(y_data) >= 5 else float(y_data.mean())
 
-        fig, axs = plot_individual_fit(t_data, y_data, components=components, a_dc=a_dc)
+        fig, _ = plot_individual_fit(t_data, y_data, components=components, a_dc=a_dc)
 
     return fig
 

@@ -3,15 +3,11 @@ from typing import List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.cryoscope import expdecay, two_expdecay
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 from qualang_tools.units import unit
-from qualibration_libs.analysis import oscillation
-from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
+
 
 def plot_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     """
@@ -66,7 +62,7 @@ def plot_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
             # If we can't determine DC term, approximate from tail of data
             a_dc = float(y_data[-5:].mean()) if len(y_data) >= 5 else float(y_data.mean())
 
-        fig, axs = plot_individual_fit(t_data, y_data, components=components, a_dc=a_dc)
+        fig, _ = plot_individual_fit(t_data, y_data, components=components, a_dc=a_dc)
 
     return fig
 
