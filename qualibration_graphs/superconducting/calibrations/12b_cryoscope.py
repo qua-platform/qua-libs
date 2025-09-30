@@ -7,9 +7,7 @@ from calibration_utils.cryoscope import (
     Parameters,
     fit_raw_data,
     log_fitted_results,
-    plot_new_fit,
-    plot_normalized_flux,
-    plot_raw_data_only,
+    plot_fit,
     process_raw_dataset,
 )
 from qm.qua import *
@@ -75,6 +73,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1"]
+    node.parameters.load_data_id = 4031
     pass
 
 
@@ -329,7 +328,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     qubit.grid_location.
     """
 
-    fig_flux = plot_new_fit(node.results["ds_fit"], node.namespace["qubits"], fits=node.results["ds_fit"])
+    fig_flux = plot_fit(node.results["ds_fit"], node.namespace["qubits"], fits=node.results["ds_fit"])
 
     node.results["figure_flux"] = fig_flux
 
