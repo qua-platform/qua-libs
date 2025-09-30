@@ -19,6 +19,11 @@ class NodeSpecificParameters(RunnableParameters):
     exp_1_tau_guess: Optional[float] = None
     """Initial guess for the time constant of the first exponential decay. Default is None."""
     exponential_fit_time_fractions: List[float] = [0.5, 0.01]
+    """List of time fractions for the exponential fit. Default is [0.5, 0.01]."""
+    update_state_from_GUI: bool = False
+    """Whether to update the state from the GUI. Default is False."""
+    update_state: bool = False
+    """Whether to update the state. Default is False."""
 
 
 class Parameters(

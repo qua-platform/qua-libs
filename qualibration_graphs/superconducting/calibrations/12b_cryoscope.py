@@ -74,20 +74,15 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qD4"]
-    node.parameters.use_state_discrimination = True
-    node.parameters.num_shots = 500
-    node.parameters.num_frames = 17
-    node.parameters.cryoscope_len = 100
-    node.parameters.detuning_target_in_MHz = 400
-    node.parameters.exponential_fit_time_fractions = [0.4, 0.2, 0.01]
-    node.parameters.reset_type = "active"
-    # node.parameters.load_data_id = 3916
+    # node.parameters.qubits = ["q1"]
     pass
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load()
+node.machine = stored_machine = Quam.load()
+
+loaded_fractions = node.parameters.exponential_fit_time_fractions
+stored_gui_update_flag = node.parameters.update_state_from_GUI
 
 
 # %% {Create_QUA_program}
@@ -301,13 +296,18 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
+    node.parameters.exponential_fit_time_fractions = loaded_fractions
+    node.parameters.update_state_from_GUI = stored_gui_update_flag
+    if node.parameters.update_state_from_GUI:
+        node.machine = stored_machine
+        node.parameters.update_state = True
+        print("State update from GUI is enabled")
 
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    node.parameters.exponential_fit_time_fractions = [0.1, 0.01] #TODO: remove it
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
 
@@ -338,13 +338,18 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
+    if not node.parameters.update_state:
+        return
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
 
-        fitted_exponentials = node.results["fit_results"][q.name]["components"]
-        node.machine.qubits[q.name].z.opx_output.exponential_filter.extend(fitted_exponentials)
+        components = node.results["fit_results"][q.name]["components"]
+        a_dc = node.results["fit_results"][q.name]["a_dc"]
+        A_list = [amp / a_dc for amp, _ in components]
+        tau_list = [tau for _, tau in components]
+        node.machine.qubits[q.name].z.opx_output.exponential_filter.extend(list(zip(A_list, tau_list)))
 
 
 # %% {Save_results}
