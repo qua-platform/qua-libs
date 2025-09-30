@@ -7,13 +7,11 @@ from calibration_utils.cryoscope import (
     Parameters,
     fit_raw_data,
     log_fitted_results,
-    plot_new_fit,
-    plot_normalized_flux,
-    plot_raw_data_only,
+    plot_fitted_data,
     process_raw_dataset,
 )
+from calibration_utils.cryoscope.parameters import baked_waveform
 from qm.qua import *
-from qualang_tools.bakery import baking
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
@@ -23,7 +21,7 @@ from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
-# %% {Node_parameters}
+# %% {Description}
 description = """
         CRYOSCOPE
     The goal of this protocol is to measure the step response of the flux line and design proper FIR and IIR filters
@@ -62,6 +60,8 @@ description = """
             - For OPX1000: (config/controllers/con1/analog_outputs/"filter": {"feedforward": [], "exponential": [(A, tau)]}).
         - WARNING: the digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold).
 """
+
+
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
     name="12b_cryoscope",  # Name should be unique
@@ -75,12 +75,14 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1"]
+    node.parameters.load_data_id = 4031
     pass
 
 
 # Instantiate the QUAM class from the state file
 node.machine = stored_machine = Quam.load()
 
+# Store the loaded parameters to restore them after loading a dataset from GUI
 loaded_fractions = node.parameters.exponential_fit_time_fractions
 stored_gui_update_flag = node.parameters.update_state_from_GUI
 
@@ -95,44 +97,39 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    assert num_qubits == 1, "This node only supports one qubit at the time."
+    assert (
+        num_qubits == 1
+    ), "This node needs to be run on a single qubit at a time for better data quality and fit convergence."
 
     n_avg = node.parameters.num_shots  # The number of averages
     cryoscope_len = node.parameters.cryoscope_len  # The length of the cryoscope in nanoseconds
 
-    # Absolute amplitude of the Cryoscope pulse
+    # Calculate absolute amplitude of the Cryoscope pulse
     amplitude = float(np.sqrt(-node.parameters.detuning_target_in_MHz * 1e6 / qubits[0].freq_vs_flux_01_quad_term))
 
-    cryoscope_time = np.arange(1, cryoscope_len + 1, 1)  # x-axis for plotting - must be in ns
+    # Cryoscope pulse time array in ns
+    cryoscope_time = np.arange(1, cryoscope_len + 1, 1)
 
+    # Frame rotation values for the second Ramsey pulse
     frames = np.linspace(0, 1, node.parameters.num_frames)
 
+    # Save the baked config to the node namespace to be used in the QUA program
     baked_config = node.machine.generate_config()
 
-    def baked_waveform(waveform_amp, qubit):
-        pulse_segments = []  # Stores the baking objects
-        # Create the different baked sequences, each one corresponding to a different truncated duration
-        waveform = [waveform_amp] * 16
+    # Generate the baked waveforms
+    baked_signals = {qubit.name: baked_waveform(amplitude, qubit, baked_config) for qubit in qubits}
 
-        for i in range(1, 17):  # from first item up to pulse_duration (16)
-            with baking(baked_config, padding_method="right") as b:
-                wf = waveform[:i]
-                b.add_op(f"flux_pulse{i}", qubit.z.name, wf)
-                b.play(f"flux_pulse{i}", qubit.z.name)
-            # Append the baking object in the list to call it from the QUA program
-            pulse_segments.append(b)
-
-        return pulse_segments
-
-    baked_signals = {qubit.name: baked_waveform(amplitude, qubit) for qubit in qubits}
-
+    # Save the baked config to the node namespace to be used in the QUA program
     node.namespace["baked_config"] = baked_config
 
+    # Define the sweep axes for the dataset
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "time": xr.DataArray(cryoscope_time, attrs={"long_name": "Cryoscope pulse duration", "units": "ns"}),
         "frame": xr.DataArray(frames, attrs={"long_name": "Frame rotation index"}),
     }
+
+    # The QUA program
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         if node.parameters.use_state_discrimination:
@@ -296,6 +293,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
+    # Overwrite the parameters of the loaded node with the ones set from the GUI
     node.parameters.exponential_fit_time_fractions = loaded_fractions
     node.parameters.update_state_from_GUI = stored_gui_update_flag
     if node.parameters.update_state_from_GUI:
@@ -329,7 +327,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     qubit.grid_location.
     """
 
-    fig_flux = plot_new_fit(node.results["ds_fit"], node.namespace["qubits"], fits=node.results["ds_fit"])
+    fig_flux = plot_fitted_data(node.results["ds_fit"], node.namespace["qubits"], fits=node.results["ds_fit"])
 
     node.results["figure_flux"] = fig_flux
 

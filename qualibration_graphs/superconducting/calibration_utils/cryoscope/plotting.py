@@ -3,7 +3,6 @@ from typing import List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.cryoscope import expdecay, two_expdecay
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from qualang_tools.units import unit
@@ -116,7 +115,7 @@ def plot_normalized_flux(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dat
     return grid.fig
 
 
-def plot_new_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+def plot_fitted_data(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
 
