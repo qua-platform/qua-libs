@@ -4,14 +4,6 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.ramsey_versus_flux_calibration import (
-    Parameters,
-    fit_raw_data,
-    log_fitted_results,
-    plot_parabolas_with_fit,
-    plot_raw_data_with_fit,
-    process_raw_dataset,
-)
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -19,9 +11,17 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
+from quam_config import Quam
+from calibration_utils.ramsey_versus_flux_calibration import (
+    Parameters,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+    plot_parabolas_with_fit,
+    process_raw_dataset,
+)
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
-from quam_config import Quam
 
 # %% {Initialisation}
 description = """
@@ -260,7 +260,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 raise RuntimeError("Unknown flux_point")
             q.f_01 += freq_offset
             q.xy.RF_frequency += freq_offset
-            q.freq_vs_flux_01_quad_term = float(node.results["ds_fit"].quad_term.sel(qubit=q.name).values * 1e3)
 
 
 # %% {Save_results}
