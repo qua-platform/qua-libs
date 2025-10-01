@@ -116,7 +116,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
                         # Drive the qubit to the excited state
                         qubit.xy.play("x180")
-                        # Update the qubit frequency to scan around the excepted f_01
+                        # Update the qubit frequency to scan around the expected f_01
                         qubit.xy.update_frequency(df - qubit.anharmonicity + qubit.xy.intermediate_frequency)
                         # Play the saturation pulse
                         qubit.xy.play(
