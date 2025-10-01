@@ -86,6 +86,7 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode)
 
     return ds_fit, fit_results
 
+
 def fit_routine(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """
     Fit routine for a single qubit.
