@@ -177,7 +177,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # For the first 16ns we play baked pulses exclusively. Loop the time index until 16.
                             with if_(t <= 16):
                                 with switch_(t):
-                                    # Swich case to select the baked pulse with duration t ns
+                                    # Switch case to select the baked pulse with duration t ns
                                     for j in range(1, 17):
                                         with case_(j):
                                             baked_signals[qp.qubit_control.name][j - 1].run(
