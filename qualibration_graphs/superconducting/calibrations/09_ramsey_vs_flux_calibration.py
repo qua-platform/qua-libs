@@ -260,6 +260,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 raise RuntimeError("Unknown flux_point")
             q.f_01 += freq_offset
             q.xy.RF_frequency += freq_offset
+            q.freq_vs_flux_01_quad_term = float(node.results["ds_fit"].quad_term.sel(qubit=q.name).values * 1e3)
 
 
 # %% {Save_results}
