@@ -289,7 +289,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             qp.macros[operation].flux_pulse_control.amplitude = fit_results[qp.name]["optimal_amplitude"]
 
 
-
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
