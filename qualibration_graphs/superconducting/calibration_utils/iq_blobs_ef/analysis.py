@@ -137,19 +137,21 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
-    Fit the qubit frequency and FWHM for each qubit in the dataset.
+    Fit Gaussian centers for IQ blob data for each qubit in the dataset.
 
     Parameters:
     -----------
     ds : xr.Dataset
-        Dataset containing the raw data.
-    node_parameters : Parameters
-        Parameters related to the node, including whether state discrimination is used.
+        Dataset containing the raw IQ data.
+    node : QualibrationNode
+        Node containing parameters and configuration for the fit.
 
     Returns:
     --------
     xr.Dataset
-        Dataset containing the fit results.
+        Dataset containing the fitted IQ centers for each qubit.
+    dict[str, FitParameters]
+        Dictionary mapping qubit names to their fit parameters.
     """
     ds_fit = fit_gaussian_centers(ds, node)
     # Extract the relevant fitted parameters
