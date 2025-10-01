@@ -7,7 +7,7 @@ from qualibration_libs.parameters import CommonNodeParameters, TwoQubitExperimen
 
 class NodeSpecificParameters(RunnableParameters):
     num_averages: int = 100
-    """Number of averages to perform. Default is 50."""
+    """Number of averages to perform. Default is 100."""
     amp_range: float = 0.030
     """Range of amplitude variation around the nominal value. Default is 0.030."""
     amp_step: float = 0.001
