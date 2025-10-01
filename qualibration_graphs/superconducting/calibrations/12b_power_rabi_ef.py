@@ -98,7 +98,9 @@ def create_qua_program(node: QualibrationNode[EfParameters, Quam]):
             continue
         else:
             x180 = qubit.xy.operations["x180"]
-            qubit.xy.operations["EF_x180"] = dataclasses.replace(x180, alpha=0.0) if hasattr(x180, "alpha") else dataclasses.replace(x180)
+            qubit.xy.operations["EF_x180"] = (
+                dataclasses.replace(x180, alpha=0.0) if hasattr(x180, "alpha") else dataclasses.replace(x180)
+            )
 
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
