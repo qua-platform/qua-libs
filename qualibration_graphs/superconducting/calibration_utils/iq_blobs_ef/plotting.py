@@ -118,6 +118,7 @@ def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fi
     ax.set_ylabel("Q [mV]")
     ax.set_title(qubit["qubit"])
 
+
 def plot_confusion_matrices(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     """
     Plots the confusion matrix for the given qubits.
