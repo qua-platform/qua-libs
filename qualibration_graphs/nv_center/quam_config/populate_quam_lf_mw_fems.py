@@ -121,12 +121,10 @@ digital_output = {
         buffer=18,  # 18ns for QOP222 and above
     )
 }
-machine.qubits.q1.laser = LaserLFDigital(digital_outputs=digital_output, laser_length=laser_length)
+machine.qubits.q1.laser = LaserLFDigital(digital_outputs=digital_output)
 
 # Update qubit readout parameters
 for k, qubit in enumerate(machine.qubits.values()):
-    qubit.spcm1.readout_time = readout_time
-    # qubit.laser.laser_length = laser_length
     # qubit.laser.opx_output.output_mode = "direct"
     # qubit.laser.opx_output.upsampling_mode = "pulse"
 
@@ -149,11 +147,10 @@ for k, qubit in enumerate(machine.qubits.values()):
 #     opx_input=opx_input[0],  # why is this a tuple?
 #     opx_input_offset=0.0,
 #     time_of_flight=f"#/qubits/q1/spcm1/time_of_flight",
-#     readout_time=f"#/qubits/q1/spcm1/readout_time",
 #     time_tagging=time_tagging,
 # )
 # machine.qubits.q1.spcm2.operations["readout"] = ReadoutPulse(
-#     length=machine.qubits.q1.spcm2.readout_time, digital_marker=None
+#     length=readout_time, digital_marker=None
 # )
 
 
@@ -204,7 +201,7 @@ for k, q in enumerate(machine.qubits):
     if hasattr(machine.qubits[q], "laser") and machine.qubits[q].laser is not None:
         machine.qubits[q].laser.operations["laser_on"] = Pulse(length=laser_length, digital_marker="ON")
         machine.qubits[q].laser.operations["laser_off"] = Pulse(length="#../laser_on/length", digital_marker=[[0, 0]])
-    machine.qubits[q].spcm1.operations["readout"].length = machine.qubits[q].spcm1.readout_time
+    machine.qubits[q].spcm1.operations["readout"].length = readout_time
 
     # Qubit cw pulse
     machine.qubits[q].xy.operations["cw"].length = 20 * u.us
