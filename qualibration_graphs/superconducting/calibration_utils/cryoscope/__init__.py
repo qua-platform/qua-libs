@@ -9,7 +9,7 @@ from .analysis import (
     single_exp,
     two_expdecay,
 )
-from .parameters import Parameters
+from .parameters import Parameters, baked_waveform
 from .plotting import plot_fit
 
 __all__ = [
@@ -24,4 +24,5 @@ __all__ = [
     "two_expdecay",
     "single_exp",
     "plot_fit",
+    "baked_waveform",
 ]

@@ -3,7 +3,14 @@ from dataclasses import asdict
 
 import numpy as np
 import xarray as xr
-from calibration_utils.cryoscope import Parameters, fit_raw_data, log_fitted_results, plot_fit, process_raw_dataset
+from calibration_utils.cryoscope import (
+    Parameters,
+    baked_waveform,
+    fit_raw_data,
+    log_fitted_results,
+    plot_fit,
+    process_raw_dataset,
+)
 from qm.qua import *
 from qualang_tools.bakery import baking
 from qualang_tools.multi_user import qm_session
@@ -17,42 +24,50 @@ from quam_config import Quam
 
 # %% {Node_parameters}
 description = """
-        CRYOSCOPE
-    The goal of this protocol is to measure the step response of the flux line and design proper FIR and IIR filters
-    (implemented on the OPX) to pre-distort the flux pulses and improve the two-qubit gates fidelity.
-    Since the flux line ends on the qubit chip, it is not possible to measure the flux pulse after propagation through the
-    fridge. The idea is to exploit the flux dependency of the qubit frequency, measured with a modified Ramsey sequence, to
-    estimate the flux amplitude received by the qubit as a function of time.
+CRYOSCOPE
+The goal of this protocol is to measure the step response of the flux line and design
+proper FIR and IIR filters (implemented on the OPX) to pre-distort the flux pulses and
+improve the two-qubit gates fidelity. Since the flux line ends on the qubit chip, it is
+not possible to measure the flux pulse after propagation through the fridge. The idea is
+to exploit the flux dependency of the qubit frequency, measured with a modified Ramsey
+sequence, to estimate the flux amplitude received by the qubit as a function of time.
 
-    The sequence consists of a Ramsey sequence ("x90" - idle time - "x90" or "y90") with a fixed dephasing time.
-    A flux pulse with varying duration is played during the idle time. The Sx and Sy components of the Bloch vector are
-    measured by alternatively closing the Ramsey sequence with a "x90" or "y90" gate in order to extract the qubit dephasing
-    as a function of the flux pulse duration.
+The sequence consists of a Ramsey sequence ("x90" - idle time - "x90" or "y90") with a
+fixed dephasing time. A flux pulse with varying duration is played during the idle time.
+The Sx and Sy components of the Bloch vector are measured by alternatively closing the
+Ramsey sequence with a "x90" or "y90" gate in order to extract the qubit dephasing as a
+function of the flux pulse duration.
 
-    The results are then post-processed to retrieve the step function of the flux line which is fitted with an exponential
-    function. The corresponding exponential parameters are then used to derive the FIR and IIR filter taps that will
-    compensate for the distortions introduced by the flux line (wiring, bias-tee...).
-    Such digital filters are then implemented on the OPX. Note that these filters will introduce a global delay on all the
-    output channels that may rotate the IQ blobs so that you may need to recalibrate them for state discrimination or
-    active reset protocols for instance. You can read more about these filters here:
-    https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/output_filter/?h=filter#hardware-implementation
+The results are then post-processed to retrieve the step function of the flux line which
+is fitted with an exponential function. The corresponding exponential parameters are
+then used to derive the FIR and IIR filter taps that will compensate for the distortions
+introduced by the flux line (wiring, bias-tee...). Such digital filters are then
+implemented on the OPX. Note that these filters will introduce a global delay on all the
+output channels that may rotate the IQ blobs so that you may need to recalibrate them for
+state discrimination or active reset protocols. More details on these filters:
+https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/output_filter/?h=filter#hardware-implementation
 
-    The protocol is inspired from https://doi.org/10.1063/1.5133894, which contains more details about the sequence and
-    the post-processing of the data.
+The protocol is inspired from https://doi.org/10.1063/1.5133894, which contains more
+details about the sequence and the post-processing of the data.
 
-    This version sweeps the flux pulse duration using the baking tool, which means that the flux pulse can be scanned with
-    a 1ns resolution, but must be shorter than ~260ns. If you want to measure longer flux pulse, you can either reduce the
-    resolution (do 2ns steps instead of 1ns) or use the 4ns version (cryoscope_4ns.py).
+This version sweeps the flux pulse duration using the baking tool, which means that the
+flux pulse can be scanned with a 1ns resolution, but must be shorter than ~260ns. For
+longer pulses either reduce the resolution (2ns steps) or use the 4ns version
+(`cryoscope_4ns.py`).
 
-    Prerequisites:
-        - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-        - Having calibrated qubit gates (x90 and y90) by running qubit spectroscopy, rabi_chevron, power_rabi, Ramsey and updated the configuration.
+Prerequisites:
+        - Resonator spectroscopy performed.
+        - Qubit gates (x90, y90) calibrated: spectroscopy, rabi_chevron, power_rabi, Ramsey
+            and configuration updated.
 
-    Next steps before going to the next node:
+Next steps before going to the next node:
         - Update the FIR and IIR filter taps in the configuration:
-            - For OPX+: (config/controllers/con1/analog_outputs/"filter": {"feedforward": fir, "feedback": iir}).
-            - For OPX1000: (config/controllers/con1/analog_outputs/"filter": {"feedforward": [], "exponential": [(A, tau)]}).
-        - WARNING: the digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold).
+                - OPX+: config/controllers/con1/analog_outputs/"filter": {"feedforward": fir,
+                    "feedback": iir}
+                - OPX1000: config/controllers/con1/analog_outputs/"filter": {"feedforward": [],
+                    "exponential": [(A, tau)]}
+        - WARNING: digital filters add a global delay: recalibrate IQ blobs (rotation_angle &
+            ge_threshold).
 """
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
@@ -101,22 +116,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     baked_config = node.machine.generate_config()
 
-    def baked_waveform(waveform_amp, qubit):
-        pulse_segments = []  # Stores the baking objects
-        # Create the different baked sequences, each one corresponding to a different truncated duration
-        waveform = [waveform_amp] * 16
-
-        for i in range(1, 17):  # from first item up to pulse_duration (16)
-            with baking(baked_config, padding_method="right") as b:
-                wf = waveform[:i]
-                b.add_op(f"flux_pulse{i}", qubit.z.name, wf)
-                b.play(f"flux_pulse{i}", qubit.z.name)
-            # Append the baking object in the list to call it from the QUA program
-            pulse_segments.append(b)
-
-        return pulse_segments
-
-    baked_signals = {qubit.name: baked_waveform(amplitude, qubit) for qubit in qubits}
+    baked_signals = {qubit.name: baked_waveform(baked_config, amplitude, qubit, max_length=16) for qubit in qubits}
 
     node.namespace["baked_config"] = baked_config
 
@@ -255,7 +255,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    """Connect to the QOP, execute the QUA program, fetch the raw data and store it
+    in an xarray dataset called "ds_raw".
+    """
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -299,7 +301,9 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """Analyse the raw data, store the fitted data in an xarray dataset "ds_fit" and
+    the fitted results in the "fit_results" dictionary.
+    """
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
 
