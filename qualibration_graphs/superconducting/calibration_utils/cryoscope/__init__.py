@@ -17,7 +17,6 @@ __all__ = [
     "process_raw_dataset",
     "fit_raw_data",
     "log_fitted_results",
-    "plot_raw_data_with_fit",
     "cryoscope_frequency",
     "diff_savgol",
     "expdecay",
