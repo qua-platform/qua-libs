@@ -8,6 +8,7 @@ import numpy as np
 import xarray as xr
 from calibration_utils.chevron_cz import (
     Parameters,
+
     baked_waveform,
     fit_raw_data,
     log_fitted_results,
@@ -69,7 +70,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="13b_chevron_cz_1ns",  # Name should be unique
+    name="19_chevron_11-02",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )

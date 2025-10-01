@@ -46,7 +46,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[EfParameters, Quam](
-    name="12b_power_rabi_ef",  # Name should be unique
+    name="13_power_rabi_ef",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=EfParameters(),  # EF-specific parameters set
 )
