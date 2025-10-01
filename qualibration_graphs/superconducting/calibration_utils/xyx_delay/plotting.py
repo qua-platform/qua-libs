@@ -66,5 +66,5 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
 
     fit.difference.plot(ax=ax)
     if fit.success.data:
-        ax.axvline(fit.flux_delay.data, color='red', linestyle='--', label='fitted center')
+        ax.axvline(fit.flux_delay.data, color="red", linestyle="--", label="fitted center")
         ax.legend()

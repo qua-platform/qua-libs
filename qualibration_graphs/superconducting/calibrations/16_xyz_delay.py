@@ -73,7 +73,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Class containing tools to help handling units and conversions.
     u = unit(coerce_to_integer=True)
     # Get the config from the machine
-    node.namespace["qubits"] = qubits = get_qubits(node)  # Get active qubit objects and store them in the node namespace
+    node.namespace["qubits"] = qubits = get_qubits(
+        node
+    )  # Get active qubit objects and store them in the node namespace
     num_qubits = len(qubits)  # Count how many qubits are involved in this calibration
 
     config = node.machine.generate_config()  # Generate the QM configuration from the current machine state
