@@ -172,7 +172,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     for i, qubit in multiplexed_qubits.items():
                         qubit.xy.play("x180")
                         update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity)
-                        qubit.wait(10)
                         qubit.xy.play("EF_x180")
                         update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
                         qubit.resonator.measure(operation, qua_vars=(I_f[i], Q_f[i]))
