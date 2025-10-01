@@ -128,17 +128,6 @@ def fit_routine(da):
                 )
             }
         )
-        da = da.assign(
-            {
-                "fitted_target": oscillation(
-                    da.frame,
-                    fit_target.sel(fit_vals="a"),
-                    fit_target.sel(fit_vals="f"),
-                    fit_target.sel(fit_vals="phi"),
-                    fit_target.sel(fit_vals="offset"),
-                )
-            }
-        )
 
         # Extract phase and calculate phase difference
         phase_control = fix_oscillation_phi_2pi(fit_control)
