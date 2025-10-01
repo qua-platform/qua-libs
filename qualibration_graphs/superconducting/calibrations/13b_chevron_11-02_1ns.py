@@ -131,7 +131,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["baked_config"] = baked_config
 
     with program() as node.namespace["qua_program"]:
-        t = declare(int)  # QUA variable for the flux pulse segment indexz
+        t = declare(int)  # QUA variable for the flux pulse segment index
         a = declare(fixed)
         n = declare(int)
         n_st = declare_stream()
