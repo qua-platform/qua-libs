@@ -128,6 +128,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(n, n_st)
 
                 with for_(*from_array(df, frequencies)):
+                    if qubit.resonator.GEF_frequency_shift is None:
+                        qubit.resonator.GEF_frequency_shift = 0
                     qubit.resonator.update_frequency(
                         qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift + df
                     )

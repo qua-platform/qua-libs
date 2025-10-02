@@ -52,7 +52,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     if not node.parameters.use_state_discrimination:
         ds = convert_IQ_to_V(ds, node.namespace["qubits"])
 
-    if node.name == "12b_power_rabi_ef":
+    if node.name == "13_power_rabi_ef":
         full_amp = np.array([ds.amp_prefactor * q.xy.operations["EF_x180"].amplitude for q in node.namespace["qubits"]])
     else:
         full_amp = np.array(
@@ -60,7 +60,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
         )
     ds = ds.assign_coords(full_amp=(["qubit", "amp_prefactor"], full_amp))
     ds.full_amp.attrs = {"long_name": "pulse amplitude", "units": "V"}
-    if node.name == "12b_power_rabi_ef" and hasattr(ds, "I"):
+    if node.name == "13_power_rabi_ef" and hasattr(ds, "I"):
         ds = add_amplitude_and_phase(ds, "amp_prefactor", subtract_slope_flag=True)
     return ds
 
@@ -82,14 +82,14 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         Dataset containing the fit results.
     """
     max_pulses = getattr(node.parameters, "max_number_pulses_per_sweep", 1)
-    operation = getattr(node.parameters, "operation", "EF_x180" if node.name == "12b_power_rabi_ef" else "x180")
+    operation = getattr(node.parameters, "operation", "EF_x180" if node.name == "13_power_rabi_ef" else "x180")
     if max_pulses == 1:
-        ds_fit = ds.sel(nb_of_pulses=1) if node.name != "12b_power_rabi_ef" else ds
+        ds_fit = ds.sel(nb_of_pulses=1) if node.name != "13_power_rabi_ef" else ds
         # Fit the power Rabi oscillations
         if node.parameters.use_state_discrimination:
             fit_vals = fit_oscillation(ds_fit.state, "amp_prefactor")
         else:
-            if node.name == "12b_power_rabi_ef":
+            if node.name == "13_power_rabi_ef":
                 fit_vals = fit_oscillation(ds_fit.IQ_abs, "amp_prefactor")
             else:
                 fit_vals = fit_oscillation(ds_fit.I, "amp_prefactor")
@@ -118,7 +118,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
     limits = [instrument_limits(q.xy) for q in node.namespace["qubits"]]
     max_pulses = getattr(node.parameters, "max_number_pulses_per_sweep", 1)
-    operation = getattr(node.parameters, "operation", "EF_x180" if node.name == "12b_power_rabi_ef" else "x180")
+    operation = getattr(node.parameters, "operation", "EF_x180" if node.name == "13_power_rabi_ef" else "x180")
     if max_pulses == 1:
         # Process the fit parameters to get the right amplitude
         phase = fit.fit.sel(fit_vals="phi") - np.pi * (fit.fit.sel(fit_vals="phi") > np.pi / 2)
@@ -128,7 +128,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             "long_name": "factor to get a pi pulse",
             "units": "Hz",
         }
-        if node.name == "12b_power_rabi_ef":
+        if node.name == "13_power_rabi_ef":
             current_amps = xr.DataArray(
                 [q.xy.operations["EF_x180"].amplitude for q in node.namespace["qubits"]],
                 coords=dict(qubit=fit.qubit.data),
