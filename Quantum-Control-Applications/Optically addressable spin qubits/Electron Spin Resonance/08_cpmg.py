@@ -147,7 +147,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Simulate or execute #
 #######################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulate blocks python until the simulation is done
@@ -197,7 +197,7 @@ else:
         # Fetch results
         i_echo, tau, I, Q, iteration = [results.get(data) for data in data_list]
         # Display progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot(i_echo, I, ".", label="I")

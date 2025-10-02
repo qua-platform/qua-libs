@@ -86,7 +86,6 @@ else:
     counts_handle.wait_for_values(1)
     time = []
     counts = []
-    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure

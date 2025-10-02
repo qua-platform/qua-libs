@@ -160,6 +160,7 @@ else:
     data_list=["I", "Q", "iteration"]
     res_handles = job.result_handles
     fig = plt.figure()
+    print(res_handles.is_processing())
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
@@ -169,7 +170,7 @@ else:
         I = u.demod2volts(I, readout_len)
         Q = u.demod2volts(Q, readout_len)
         # Display progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot(delay_vec * 4, I, label="I")

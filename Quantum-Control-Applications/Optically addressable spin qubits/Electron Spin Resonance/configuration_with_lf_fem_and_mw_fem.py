@@ -516,4 +516,4 @@ logical_config={
         },
     },
 }
-full__config = controller_config | logical_config
+full_config = controller_config | logical_config

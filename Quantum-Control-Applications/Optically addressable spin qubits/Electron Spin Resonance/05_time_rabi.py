@@ -28,7 +28,7 @@ pulse1_vec = np.arange(pulse1_min, pulse1_max + 0.1, dpulse1)
 
 cooldown_time = 10 * u.ms // 4
 
-n_avg = 1000
+n_avg = 10000
 # This delay is defined as the duration between the center of the pi pulse and the center of the readout pulse
 readout_delay = safe_delay - (pi_len + readout_len // 4) // 2 - 5
 
@@ -117,7 +117,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Simulate or execute #
 #######################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -162,11 +162,10 @@ else:
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
-
         # Fetch results
         I, Q, iteration = [results.get(data) for data in data_list]
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot(pulse1_vec * 4, I, label="I")
