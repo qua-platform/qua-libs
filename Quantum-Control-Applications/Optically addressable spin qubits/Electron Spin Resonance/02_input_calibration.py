@@ -7,7 +7,6 @@ from qm.qua import *
 from qm import LoopbackInterface
 from qm import QuantumMachinesManager
 from configuration import *
-import time
 import matplotlib.pyplot as plt
 
 ##################

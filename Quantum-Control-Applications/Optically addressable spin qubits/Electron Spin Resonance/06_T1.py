@@ -22,12 +22,12 @@ pi_half_len = 160 // 4  # Calibrated pi/2 pulse
 
 wait_min = 1500 // 4
 wait_max = 20 * u.us // 4
-dwait = 1000 // 4
+dwait = 100 // 4
 wait_vec = np.arange(wait_min, wait_max + 0.1, dwait)
 
 cooldown_time = 10 * u.ms // 4
 
-n_avg = 10000
+n_avg = 5000
 
 pulse_delay = safe_delay - (pi_half_len + pi_len) // 2
 readout_delay = safe_delay - (pi_len + readout_len // 4) // 2

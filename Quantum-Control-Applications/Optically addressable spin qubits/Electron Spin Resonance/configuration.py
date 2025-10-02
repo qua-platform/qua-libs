@@ -4,6 +4,8 @@ from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 # These packages are imported here so that we don't have to import them in all the other files
 import plotly.io as pio
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.results import progress_counter
 
 pio.renderers.default = "browser"
 

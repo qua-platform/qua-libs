@@ -22,12 +22,12 @@ pi_half_len = 160 // 4  # Calibrated pi/2 pulse
 
 delay_min = safe_delay
 delay_max = 20000 // 4
-d_delay = 1000 // 4
+d_delay = 100 // 4
 delay_vec = np.arange(delay_min, delay_max + 0.1, d_delay)
 
 cooldown_time = 10e6 // 4
 
-n_avg = 100
+n_avg = 5000
 
 # Data to save
 save_data_dict = {
@@ -160,7 +160,6 @@ else:
     data_list=["I", "Q", "iteration"]
     res_handles = job.result_handles
     fig = plt.figure()
-    print(res_handles.is_processing())
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)

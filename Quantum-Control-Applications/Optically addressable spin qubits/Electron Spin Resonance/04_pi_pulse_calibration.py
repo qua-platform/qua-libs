@@ -26,7 +26,7 @@ pulse1_vec = np.arange(pulse1_min, pulse1_max + 0.1, dpulse1)  # Pi/2 pulse dura
 # Resonator or qubit relaxation time
 cooldown_time = 10 * u.ms // 4
 
-n_avg = 100
+n_avg = 1000
 
 # Data to save
 save_data_dict = {
