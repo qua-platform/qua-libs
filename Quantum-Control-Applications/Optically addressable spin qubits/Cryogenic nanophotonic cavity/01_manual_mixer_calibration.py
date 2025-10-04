@@ -4,7 +4,7 @@
 
 from qm import QuantumMachinesManager
 from qm.qua import *
-from configuration import *
+from configuration_with_lf_fem_and_mw_fem import *
 import time
 
 ###################

@@ -3,11 +3,11 @@
 this allows checking that the ADC is not saturated, correct for DC offsets and define the time of flight and
 threshold for time-tagging.
 """
-
+#%%
 from qm import QuantumMachinesManager, SimulationConfig
 from qm.qua import *
 import matplotlib.pyplot as plt
-from configuration import *
+from configuration_with_lf_fem_and_mw_fem import *
 import time
 
 ##################
@@ -85,5 +85,7 @@ else:
     plt.xlabel("Time [ns]")
     plt.legend()
     plt.tight_layout()
-
+    plt.show()
     print(f"\nInput1 mean: {np.mean(adc1)} V")
+
+# %%

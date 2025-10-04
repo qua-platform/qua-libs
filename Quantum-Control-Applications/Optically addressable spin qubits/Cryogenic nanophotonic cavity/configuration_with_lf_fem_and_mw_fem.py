@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter,fetching_tool
 import plotly.io as pio
 
 pio.renderers.default = "browser"
@@ -21,8 +21,8 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"  # Write the QM router IP address
-cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_ip = "172.16.33.115"  # Write the QM router IP address
+cluster_name = "CS_3"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
 #############

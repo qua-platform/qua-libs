@@ -6,7 +6,7 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
-from configuration import *
+from configuration_with_lf_fem_and_mw_fem import *
 import time
 from qualang_tools.results.data_handler import DataHandler
 
@@ -18,7 +18,7 @@ f_min = 270 * u.MHz  # start of freq sweep
 f_max = 280 * u.MHz  # end of freq sweep
 df = 2 * u.MHz  # freq step
 f_vec = np.arange(f_min, f_max + 0.1, df)  # f_max + 0.1 so that f_max is included
-n_avg = 1e6  # number of averages
+n_avg = 1e4  # number of averages
 
 # Data to save
 save_data_dict = {
@@ -74,7 +74,7 @@ with program() as cw_odmr:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-simulate = True
+simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=5_000)  # In clock cycles = 4ns
@@ -94,13 +94,6 @@ else:
     qm = qmm.open_qm(full_config,close_other_machines=True)
 
     job = qm.execute(cw_odmr)  # execute QUA program
-
-    # res_handles = job.result_handles  # get access to handles
-    # counts_handle = res_handles.get("counts")
-    # iteration_handle = res_handles.get("iteration")
-    # counts_handle.wait_for_values(1)
-    # iteration_handle.wait_for_values(1)
-
     # Get results from QUA program
     data_list=["counts", "iteration"]
     res_handles = job.result_handles
@@ -109,9 +102,6 @@ else:
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     while res_handles.is_processing():
-        # counts = counts_handle.fetch_all()
-        # iteration = iteration_handle.fetch_all()
-
         # Fetch results
         results =res_handles.fetch_results(wait_until_done=False, timeout=60)
         counts, iteration = [results.get(data) for data in data_list]

@@ -6,7 +6,7 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
-from configuration import *
+from configuration_with_lf_fem_and_mw_fem import *
 import time
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
@@ -19,7 +19,7 @@ t_min = 16 // 4  # in clock cycles units (must be >= 4)
 t_max = 1000 // 4  # in clock cycles units
 dt = 40 // 4  # in clock cycles units
 t_vec = np.arange(t_min, t_max + 0.1, dt)  # +0.1 to include t_max in array
-n_avg = 1e6
+n_avg = 1e4
 
 # Data to save
 save_data_dict = {

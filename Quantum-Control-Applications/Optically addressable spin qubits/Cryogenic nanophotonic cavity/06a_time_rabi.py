@@ -1,12 +1,12 @@
 """
 A Rabi experiment sweeping the duration of the MW pulse.
 """
-
+#%%
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
-from configuration import *
+from configuration_with_lf_fem_and_mw_fem import *
 import time
 from qualang_tools.results.data_handler import DataHandler
 
@@ -18,7 +18,7 @@ t_min = 16 // 4  # in clock cycles units (must be >= 4)
 t_max = 400 // 4  # in clock cycles units
 dt = 4 // 4  # in clock cycles units
 t_vec = np.arange(t_min, t_max + 0.1, dt)  # +0.1 to include t_max in array
-n_avg = 1e6
+n_avg = 1e4
 
 # Data to save
 save_data_dict = {
@@ -101,7 +101,6 @@ else:
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-
     while res_handles.is_processing():
         # Fetch results
         results =res_handles.fetch_results(wait_until_done=False, timeout=60)
@@ -121,4 +120,5 @@ else:
     save_data_dict.update({"counts_data": counts})
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    #%%
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

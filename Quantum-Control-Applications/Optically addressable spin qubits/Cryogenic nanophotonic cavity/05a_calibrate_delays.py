@@ -4,12 +4,12 @@ This allows measuring all the delays in the system, as well as the NV initializa
 If the counts are too high, the program might hang. In this case reduce the resolution or use
 05b_calibrate_delays_python_histogram.py if high resolution is needed.
 """
-
+#%%
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
-from configuration import *
+from configuration_with_lf_fem_and_mw_fem import *
 import time
 from qualang_tools.results.data_handler import DataHandler
 
@@ -69,7 +69,7 @@ with program() as calib_delays:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-simulate = True
+simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=28_000)  # In clock cycles = 4ns
@@ -87,7 +87,6 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     qm = qmm.open_qm(full_config,close_other_machines=True)
-
     job = qm.execute(calib_delays)
     # Get results from QUA program
     data_list=["times_hist", "iteration"]
@@ -95,7 +94,7 @@ else:
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-
+    #%%
     while res_handles.is_processing():
         # Fetch results
         results =res_handles.fetch_results(wait_until_done=False, timeout=60)

@@ -6,7 +6,7 @@ import time
 from qm import SimulationConfig, LoopbackInterface
 from qm.qua import *
 from qm import QuantumMachinesManager
-from configuration import *
+from configuration_with_lf_fem_and_mw_fem import *
 import time
 
 ###################
@@ -61,7 +61,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Run or Simulate Program #
 ###########################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration

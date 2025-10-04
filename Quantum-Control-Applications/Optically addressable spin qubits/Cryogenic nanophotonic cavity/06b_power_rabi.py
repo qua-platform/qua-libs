@@ -6,7 +6,7 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
-from configuration import *
+from configuration_with_lf_fem_and_mw_fem import *
 import time
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
@@ -19,7 +19,7 @@ a_min = 0.1  # proportional factor to the pulse amplitude
 a_max = 1  # proportional factor to the pulse amplitude
 da = 0.02
 a_vec = np.arange(a_min, a_max + da / 2, da)  # +da/2 to include a_max
-n_avg = 1e6  # number of iterations
+n_avg = 1e4  # number of iterations
 
 # Data to save
 save_data_dict = {
