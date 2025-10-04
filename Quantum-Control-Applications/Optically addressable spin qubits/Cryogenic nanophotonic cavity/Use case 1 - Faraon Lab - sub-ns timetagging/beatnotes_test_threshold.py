@@ -63,7 +63,7 @@ config["elements"]["SNSPD"]["outputPulseParameters"]["signalThreshold"] = new_si
 qm = qmm.open_qm(full_config,close_other_machines=True)
 # Execute the QUA program
 job = qm.execute(calib_delays)
-
+res_handles = job.result_handles
 # Get results from QUA program
 data_list=["times_hist", "iteration"]
 # Live plotting
@@ -71,6 +71,7 @@ fig = plt.figure()
 interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
 while res_handles.is_processing():
+    results = res_handles.fetch_results(wait_until_done=True,timeout=60)
     # Fetch results
     times_hist, iteration = [results.get(data) for data in data_list]
     # Progress bar

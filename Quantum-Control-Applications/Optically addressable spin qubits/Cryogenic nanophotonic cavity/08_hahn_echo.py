@@ -7,7 +7,7 @@ from qm.qua import *
 from qm import SimulationConfig
 from qm import LoopbackInterface
 import matplotlib.pyplot as plt
-from configuration_with_lf_fem_and_mw_fem import *
+from configuration import *
 import time
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler

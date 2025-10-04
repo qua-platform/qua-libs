@@ -7,7 +7,7 @@ This version process the data in Python, which makes it slower but works better 
 from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
-from configuration_with_lf_fem_and_mw_fem import *
+from configuration import *
 import time
 from qualang_tools.results.data_handler import DataHandler
 

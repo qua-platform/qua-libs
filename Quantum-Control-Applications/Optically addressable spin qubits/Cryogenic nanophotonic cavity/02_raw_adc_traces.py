@@ -7,7 +7,7 @@ threshold for time-tagging.
 from qm import QuantumMachinesManager, SimulationConfig
 from qm.qua import *
 import matplotlib.pyplot as plt
-from configuration_with_lf_fem_and_mw_fem import *
+from configuration import *
 import time
 
 ##################
