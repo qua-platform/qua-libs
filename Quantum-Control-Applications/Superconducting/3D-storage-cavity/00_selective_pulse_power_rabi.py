@@ -30,7 +30,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 100  # The number of averages
+n_avg = 1000  # The number of averages
 
 a_min = 0
 a_max = 1.0

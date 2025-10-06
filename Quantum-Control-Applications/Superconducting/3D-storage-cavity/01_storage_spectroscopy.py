@@ -37,11 +37,11 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 1000  # The number of averages
+n_avg = 100  # The number of averages
 
 center = 100 * u.MHz
 span = 0.5 * u.MHz
-df = 1 * u.kHz
+df = 10 * u.kHz
 dfs = np.arange(-span, +span + 0.1, df)  # Storage detuning sweep
 
 # Data to save
@@ -104,7 +104,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration

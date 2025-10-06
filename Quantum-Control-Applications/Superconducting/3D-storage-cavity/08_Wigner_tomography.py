@@ -77,7 +77,7 @@ with program() as wigner_tomography:
                 # Prepare the cavity in the desired state, for example Fock state=1 using SNAP
                 play("beta1", "storage")
                 align()
-                play("x360", "qubit")
+                play("x360_long", "qubit")
                 align()
                 play("beta2", "storage")
                 align()
@@ -107,7 +107,7 @@ with program() as wigner_tomography:
                 # Prepare the cavity in the desired state, for example Fock state=1 using SNAP
                 play("beta1", "storage")
                 align()
-                play("x360", "qubit")
+                play("x360_long", "qubit")
                 align()
                 play("beta2", "storage")
                 align()
@@ -155,7 +155,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -186,18 +186,18 @@ else:
         # Fetch results 
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         I, Q, state, iteration = results.get("I"), results.get("Q"), results.get("state"), results.get("iteration")
-        # Convert the results into Volts
-        I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=time.time())
-        # Plot results
-        wigner = 2 / np.pi * state  # derive the wigner function
-        plt.cla()
-        plt.pcolor(aIs, aQs, wigner, cmap="magma")
-        plt.xlabel("Real")
-        plt.ylabel("Imaginary")
-        plt.title("Wigner tomography for Fock state n=0")
-        plt.pause(1)
+        #progress_counter(iteration, n_avg, start_time=time.time())        
+    # Convert the results into Volts
+    I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
+    # Plot results
+    wigner = 2 / np.pi * state  # derive the wigner function
+    plt.cla()
+    plt.pcolor(aIs, aQs, wigner, cmap="magma")
+    plt.xlabel("Real")
+    plt.ylabel("Imaginary")
+    plt.title("Wigner tomography for Fock state n=0")
+        # plt.pause(1)
     # Save results
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
