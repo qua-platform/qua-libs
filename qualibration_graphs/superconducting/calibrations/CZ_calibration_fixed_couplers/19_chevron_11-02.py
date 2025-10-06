@@ -26,7 +26,7 @@ from qualibrate import NodeParameters, QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
-from quam_builder.architecture.superconducting.custom_gates.cz import CZGate
+from quam_builder.architecture.superconducting.custom_gates.flux_tunable_transmon_pair.two_qubit_gates import CZGate
 from quam_config import Quam
 from scipy.optimize import curve_fit
 
