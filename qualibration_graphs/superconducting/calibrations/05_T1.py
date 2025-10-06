@@ -12,7 +12,6 @@ from qualang_tools.results import progress_counter
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from qualibration_libs.data import XarrayDataFetcher
-from calibration_utils.data_process_utils import *
 from qualibration_libs.parameters import get_qubits, get_idle_times_in_clock_cycles
 from qualibration_libs.runtime import simulate_and_plot
 from calibration_utils.T1 import (
@@ -24,7 +23,7 @@ from calibration_utils.T1 import (
 )
 
 
-# %% {Initialisation}
+# %% {Node initialisation}
 description = """
         T1 MEASUREMENT
 The sequence consists in putting the qubit in the excited stated by playing the x180 pulse and measuring the resonator
@@ -54,12 +53,8 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.multiplexed = True
-    node.parameters.qubits = ["qB1", "qB2", "qB3", "qB4"]
-    node.parameters.num_shots = 100
-    node.parameters.use_state_discrimination = True
-    # node.parameters.min_wait_time_in_ns = 24
-
+    # node.parameters.qubits = ["q1", "q2"]
+    pass
 
 
 # Instantiate the QUAM class from the state file
@@ -77,7 +72,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num_qubits = len(node.namespace["qubits"])
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_shots
-    # print(node.parameters)
     idle_times = get_idle_times_in_clock_cycles(node.parameters)
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -97,8 +91,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             for qubit in multiplexed_qubits.values():
                 node.machine.initialize_qpu(target=qubit)
-
-            align()
 
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
@@ -147,7 +139,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
@@ -162,7 +153,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
@@ -177,12 +167,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
 
-# %% {Load_data}
+# %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""

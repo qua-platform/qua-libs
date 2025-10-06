@@ -18,7 +18,6 @@ from calibration_utils.T2echo import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from calibration_utils.data_process_utils import *
 from qualibration_libs.parameters import get_qubits, get_idle_times_in_clock_cycles
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -50,8 +49,8 @@ node = QualibrationNode[Parameters, Quam](name="06b_echo", description=descripti
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.multiplexed = True
-    node.parameters.qubits = ["qB1", "qB2", "qB3", "qB4"]
+    # node.parameters.qubits = ["q1", "q2"]
+    pass
 
 
 # Instantiate the QUAM class from the state file
@@ -101,7 +100,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         for i, qubit in multiplexed_qubits.items():
                             reset_frame(qubit.xy.name)
                             qubit.reset(node.parameters.reset_type, node.parameters.simulate)
-                            qubit.align()
+                        align()
 
                         # Qubit manipulation
                         for i, qubit in multiplexed_qubits.items():
@@ -111,7 +110,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qubit.xy.wait(t)
                             qubit.xy.play("-x90")
                             qubit.align()
-                        #align()
+                        align()
 
                         # Qubit readout
                         for i, qubit in multiplexed_qubits.items():
@@ -143,7 +142,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
@@ -158,7 +156,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
@@ -173,12 +170,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
 
-# %% {Load_data}
+# %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""

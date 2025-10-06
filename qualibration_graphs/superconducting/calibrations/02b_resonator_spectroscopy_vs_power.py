@@ -20,15 +20,14 @@ from calibration_utils.resonator_spectroscopy_vs_amplitude import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from calibration_utils.data_process_utils import *
+from quam_builder.tools.power_tools import calculate_voltage_scaling_factor
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.hardware.power_tools import calculate_voltage_scaling_factor
 from qualibration_libs.core import tracked_updates
 
 
-# %% {Initialisation}
+# %% {Node initialisation}
 description = """
         RESONATOR SPECTROSCOPY VERSUS READOUT POWER
 This sequence involves measuring the resonator by sending a readout pulse and
@@ -64,18 +63,8 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.multiplexed = True
-    node.parameters.qubits = ["qB1", "qB2", "qB3", "qB4"]
-    node.parameters.num_shots = 20
-
-    node.parameters.num_power_points = 51
-    node.parameters.max_power_dbm = 10
-    node.parameters.min_power_dbm = -50
-    node.parameters.max_amp = 0.9
-
-    node.parameters.frequency_span_in_mhz = 6
-    node.parameters.frequency_step_in_mhz = 0.2
-    # pass
+    # node.parameters.qubits = ["q1", "q2", "q3"]
+    pass
 
 
 # Instantiate the QUAM class from the state file
@@ -114,7 +103,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # The frequency sweep around the resonator resonance frequency
     span = node.parameters.frequency_span_in_mhz * u.MHz
     step = node.parameters.frequency_step_in_mhz * u.MHz
-    dfs = np.arange(-span/2, +span/2, step)
+    dfs = np.arange(-span / 2, +span / 2, step)
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -170,7 +159,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
@@ -185,7 +173,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
@@ -200,12 +187,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
 
-# %% {Load_data}
+# %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
@@ -259,6 +245,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
+
             # Update the readout power
             q.resonator.set_output_power(
                 power_in_dbm=node.results["fit_results"][q.name]["optimal_power"],

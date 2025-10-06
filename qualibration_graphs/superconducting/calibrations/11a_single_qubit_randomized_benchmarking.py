@@ -20,13 +20,12 @@ from calibration_utils.single_qubit_randomized_benchmarking import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from calibration_utils.data_process_utils import *
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
 
-# %% {Initialisation}
+# %% {Node initialisation}
 description = """
         SINGLE QUBIT RANDOMIZED BENCHMARKING
 The program consists in playing random sequences of Clifford gates and measuring the
@@ -68,12 +67,8 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.multiplexed = True
-    node.parameters.qubits = ["qB1", "qB2", "qB3", "qB4"]
-    node.parameters.use_state_discrimination = True
-    node.parameters.delta_clifford = 40
-    node.parameters.max_circuit_depth = 1600
-    
+    # node.parameters.qubits = ["q1", "q2"]
+    pass
 
 
 # Instantiate the QUAM class from the state file
@@ -240,7 +235,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             for i, qubit in multiplexed_qubits.items():
                                 qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                                 # Align the two elements to play the sequence after qubit initialization
-                                qubit.align()
+                            align()
                             # Manipulate the qubits
                             for i, qubit in multiplexed_qubits.items():
                                 # The strict_timing ensures that the sequence will be played without gaps
@@ -250,7 +245,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                         play_sequence(sequence_list, depth, qubit)
                                 else:
                                     play_sequence(sequence_list, depth, qubit)
-                                qubit.align()
+                            align()
                             # Readout the qubits
                             for i, qubit in multiplexed_qubits.items():
                                 if node.parameters.use_state_discrimination:
@@ -260,7 +255,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                                     save(I[i], I_st[i])
                                     save(Q[i], Q_st[i])
-                            # align()
+                            align()
                         # Go to the next depth
                         assign(depth_target, depth_target + delta_clifford)
                     # Reset the last gate of the sequence back to the original Clifford gate
@@ -291,7 +286,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
@@ -306,7 +300,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
@@ -316,17 +309,16 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         for dataset in data_fetcher:
             progress_counter(
                 data_fetcher["n"],
-                node.parameters.num_shots,
+                node.parameters.num_random_sequences,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
 
-# %% {Load_data}
+# %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""

@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from qualang_tools.multi_user import qm_session
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.data_process_utils import *
 from qualibration_libs.parameters import get_qubits
 from calibration_utils.mixer_calibration import (
     Parameters,
@@ -43,7 +42,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
