@@ -80,7 +80,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
     node.parameters.num_frames = 15
-    node.parameters.load_data_id = 3698
+    # node.parameters.load_data_id = 3698
     pass
 
 
@@ -476,7 +476,7 @@ plt.plot(X, C)
 plt.axvline(x_star, lw=2)
 plt.xlabel('amp'); plt.ylabel('robust cost to 0.5'); plt.title('Column-wise cost')
 
-
+print(f"Fitted value: {x_star}")
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
