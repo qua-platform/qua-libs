@@ -15,7 +15,7 @@ The workflow is as follows:
 import matplotlib.pyplot as plt
 from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, allocate_wiring, visualize
-from utils.connectivity_nv_center_interface import Connectivity
+from qualang_tools.wirer.connectivity.connectivity_nv_center_interface import Connectivity
 from quam_builder.builder.qop_connectivity import build_quam_wiring
 from quam_builder.builder.nv_center.build_quam import build_quam
 from my_quam import Quam
@@ -46,19 +46,17 @@ qubits = [1]
 # qubit drive channel
 q1_drive_ch = mw_fem_spec(con=1, slot=1, out_port=2)
 # qubit laser channel
-# Todo: add digital-only channels
-# q1_laser_ch = ChannelSpecLfFemDigital(con=1, slot=3, out_port=3)
+q1_laser_ch = lf_fem_dig_spec(con=1, slot=3, out_port=3)
 # qubit readout (SPCM) input channel
-q1_spcm1_in_ch = lf_fem_spec(con=1, out_slot=3, out_port=2, in_slot=3, in_port=1)
-# q1_spcm2_in_ch = lf_fem_spec(con=1, out_slot=3, out_port=4, in_slot=3, in_port=2)
+q1_spcm1_in_ch = lf_fem_spec(con=1, in_slot=3, in_port=1)
 
 ########################################################################################################################
 # %%                Allocate the wiring to the connectivity object based on the available instruments
 ########################################################################################################################
 connectivity = Connectivity()
-# The readout lines
-# connectivity.add_laser(qubits=qubits, constraints=q1to2_laser_ch)
-connectivity.add_readout(qubits=qubits, constraints=q1_spcm1_in_ch)
+# The laser and SPCM lines
+connectivity.add_laser(qubits=qubits, triggered=True, constraints=q1_laser_ch)
+connectivity.add_spcm(qubits=qubits, constraints=q1_spcm1_in_ch)
 # The xy drive lines
 connectivity.add_qubit_drive(qubits=qubits, constraints=q1_drive_ch)
 # Allocate the wiring
