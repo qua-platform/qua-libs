@@ -14,17 +14,8 @@ readout and saturation pulses.
 import json
 from qualang_tools.units import unit
 from my_quam import Quam
-from quam_builder.architecture.nv_center.components.spcm import SPCM
-from quam.components.pulses import Pulse, SquarePulse, GaussianPulse, ReadoutPulse
-from quam.components.channels import TimeTaggingAddon
-from quam.components.ports import LFFEMAnalogInputPort, LFFEMAnalogOutputPort
+from quam.components.pulses import Pulse, SquarePulse, GaussianPulse
 import numpy as np
-
-from quam_builder.architecture.nv_center.components.laser import (
-    LaserLFAnalog,
-    LaserLFDigital,
-)
-from quam.components import Channel, DigitalOutputChannel
 
 
 ########################################################################################################################
@@ -113,46 +104,11 @@ def get_full_scale_power_dBm_and_amplitude(desired_power: float, max_amplitude: 
 readout_time = 400  # in ns
 laser_length = 3000  # in ns
 
-# add laser
-# digital_output = {
-#     "DO1": DigitalOutputChannel(
-#         opx_output=("con1", 1, 1),  # controller, slot, port
-#         delay=57,  # 57ns for QOP222 and above
-#         buffer=18,  # 18ns for QOP222 and above
-#     )
-# }
-# machine.qubits.q1.laser = LaserLFDigital(digital_outputs=digital_output)
-
 # Update qubit readout parameters
 for k, qubit in enumerate(machine.qubits.values()):
     pass
     # qubit.laser.opx_output.output_mode = "direct"
     # qubit.laser.opx_output.upsampling_mode = "pulse"
-
-# add second spcm if necessary
-# opx_input = LFFEMAnalogInputPort(
-#     controller_id="con1", fem_id=3, port_id=2
-# ),
-# opx_output = LFFEMAnalogOutputPort(
-#     controller_id="con1", fem_id=3, port_id=4
-# )
-# time_tagging = TimeTaggingAddon(
-#     signal_threshold=f"#/qubits/q1/spcm1/time_tagging/signal_threshold",
-#     signal_polarity=f"#/qubits/q1/spcm1/time_tagging/signal_polarity",
-#     derivative_threshold=f"#/qubits/q1/spcm1/time_tagging/derivative_threshold",
-#     derivative_polarity=f"#/qubits/q1/spcm1/time_tagging/derivative_polarity",
-#     enabled=True,
-# )
-# machine.qubits.q1.spcm2 = SPCM(
-#     opx_output=opx_output,
-#     opx_input=opx_input[0],  # why is this a tuple?
-#     opx_input_offset=0.0,
-#     time_of_flight=f"#/qubits/q1/spcm1/time_of_flight",
-#     time_tagging=time_tagging,
-# )
-# machine.qubits.q1.spcm2.operations["readout"] = ReadoutPulse(
-#     length=readout_time, digital_marker=None
-# )
 
 
 ########################################################################################################################
@@ -201,7 +157,9 @@ for k, q in enumerate(machine.qubits):
     # readout
     if machine.qubits[q].laser.trigger is not None:
         machine.qubits[q].laser.trigger.operations["laser_on"] = Pulse(length=laser_length, digital_marker="ON")
-        machine.qubits[q].laser.trigger.operations["laser_off"] = Pulse(length="#../laser_on/length", digital_marker=[[0, 0]])
+        machine.qubits[q].laser.trigger.operations["laser_off"] = Pulse(
+            length="#../laser_on/length", digital_marker=[[0, 0]]
+        )
     machine.qubits[q].spcm1.operations["readout"].length = readout_time
 
     # Qubit cw pulse
