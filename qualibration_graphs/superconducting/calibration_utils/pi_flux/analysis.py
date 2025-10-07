@@ -21,9 +21,7 @@ class PiFluxParameters:
 def log_fitted_results(fit_results: Dict[str, PiFluxParameters], log_callable=print) -> None:
     for qb, res in fit_results.items():
         if res.fit_successful:
-            log_callable(
-                f"{qb}: SUCCESS, a_dc={res.a_dc:.3e}, rms={res.rms_error:.3e}, comps={res.a_tau_tuple}"
-            )
+            log_callable(f"{qb}: SUCCESS, a_dc={res.a_dc:.3e}, rms={res.rms_error:.3e}, comps={res.a_tau_tuple}")
         else:
             log_callable(f"{qb}: FAILED")
 
