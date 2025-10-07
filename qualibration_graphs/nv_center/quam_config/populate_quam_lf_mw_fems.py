@@ -199,9 +199,9 @@ x180_lengths = [64 * u.ns]
 ## Update pulses
 for k, q in enumerate(machine.qubits):
     # readout
-    if hasattr(machine.qubits[q], "laser") and machine.qubits[q].laser is not None:
-        machine.qubits[q].laser.operations["laser_on"] = Pulse(length=laser_length, digital_marker="ON")
-        machine.qubits[q].laser.operations["laser_off"] = Pulse(length="#../laser_on/length", digital_marker=[[0, 0]])
+    if machine.qubits[q].laser.trigger is not None:
+        machine.qubits[q].laser.trigger.operations["laser_on"] = Pulse(length=laser_length, digital_marker="ON")
+        machine.qubits[q].laser.trigger.operations["laser_off"] = Pulse(length="#../laser_on/length", digital_marker=[[0, 0]])
     machine.qubits[q].spcm1.operations["readout"].length = readout_time
 
     # Qubit cw pulse
