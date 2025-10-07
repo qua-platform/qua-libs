@@ -71,7 +71,7 @@ Next steps before going to the next node:
 """
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="12b_cryoscope",  # Name should be unique
+    name="18_cryoscope",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )

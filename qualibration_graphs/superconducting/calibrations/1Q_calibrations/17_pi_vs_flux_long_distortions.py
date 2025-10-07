@@ -45,7 +45,7 @@ REMINDER: Adding digital filters will add a global delay --> need to recalibrate
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="16a_pi_vs_flux_long_distortions",
+    name="17_pi_vs_flux_long_distortions",
     description=description,
     parameters=Parameters(),
 )
