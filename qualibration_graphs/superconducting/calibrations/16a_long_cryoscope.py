@@ -79,7 +79,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     for qubit in qubits:
         if hasattr(qubit.xy.operations, operation_name):
             continue
+        warnings.warn(f"Qubit {qubit.name} has no operation '{operation_name}', defaulting to 'x180'")
         operation_name = "x180"
+
 
     operation_amp_scale = node.parameters.operation_amplitude_factor or 1.0
 
@@ -305,8 +307,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     with node.record_state_updates():
         for q in qubits:
             res = node.results["fit_results"][q.name]
-            if not res:
-                continue
             # Support dict or dataclass
             fit_success = res["fit_successful"]
             if not fit_success:

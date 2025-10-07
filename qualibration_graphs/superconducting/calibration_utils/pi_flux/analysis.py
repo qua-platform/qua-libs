@@ -212,34 +212,6 @@ def sequential_exp_fit(
     return components, a_dc, y_residual
 
 
-def sequential_exp_fit_old(t: np.ndarray, y: np.ndarray, start_fractions: List[float]):
-    components: List[Tuple[float, float]] = []
-    t = np.asarray(t, dtype=float)
-    y = np.asarray(y, dtype=float)
-    t_offset = t - t[0]
-
-    # Estimate constant term from tail
-    tail_start = max(1, int(0.9 * t.size))
-    a_dc = float(np.nanmean(y[tail_start:])) if t.size > 2 else float(y[-1])
-    y_res = y - a_dc
-
-    for start_frac in start_fractions:
-        start_idx = int(len(t) * start_frac)
-        if start_idx >= len(t):
-            break
-        try:
-            p0 = [float(y_res[start_idx]), max(0.1, (t_offset[-1] - t_offset[start_idx]) / 3)]
-            bounds = ([-np.inf, 0.1], [np.inf, np.inf])
-            popt, _ = curve_fit(single_exp_decay, t_offset[start_idx:], y_res[start_idx:], p0=p0, bounds=bounds)
-            amp, tau = float(popt[0]), float(popt[1])
-            components.append((amp, tau))
-            y_res = y_res - amp * np.exp(-t_offset / tau)
-        except Exception:
-            break
-
-    return components, a_dc, y_res
-
-
 def optimize_start_fractions(t, y, start_fractions, bounds_scale=0.5, fixed_taus=None, a_dc=None, verbose=1):
     """
         Optimize the start fractions for a sum of exponentials fit to data by minimizing the RMS error
@@ -370,42 +342,6 @@ def optimize_start_fractions(t, y, start_fractions, bounds_scale=0.5, fixed_taus
         print("Optimized components [(a1, tau1), (a2, tau2)...]:")
         print(components)
     return result.success, best_fractions, components, a_dc, best_rms
-
-
-def optimize_start_fractions_old(t: np.ndarray, y: np.ndarray, base_fractions: List[float], bounds_scale: float = 0.5):
-    from scipy.optimize import minimize
-
-    def objective(x):
-        if not np.all(np.diff(x) < 0):
-            return 1e6
-        components, _, residual = sequential_exp_fit(t, y, list(x))
-        if len(components) != len(base_fractions):
-            return 1e6
-        return float(np.sqrt(np.nanmean(residual**2)))
-
-    bounds = []
-    for base in base_fractions:
-        bmin = base * (1 - bounds_scale)
-        bmax = base * (1 + bounds_scale)
-        bounds.append((bmin, bmax))
-
-    result = minimize(
-        objective,
-        x0=np.array(base_fractions, dtype=float),
-        bounds=bounds,
-        method="Nelder-Mead",
-        options={"disp": False, "maxiter": 200},
-    )
-
-    if result.success:
-        best_fractions = list(result.x)
-        components, a_dc, residual = sequential_exp_fit(t, y, best_fractions)
-        best_rms = float(np.sqrt(np.nanmean(residual**2)))
-        return True, best_fractions, components, float(a_dc), best_rms
-    else:
-        components, a_dc, residual = sequential_exp_fit(t, y, base_fractions)
-        best_rms = float(np.sqrt(np.nanmean(residual**2)))
-        return False, base_fractions, components, float(a_dc), best_rms
 
 
 def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, PiFluxParameters]]:

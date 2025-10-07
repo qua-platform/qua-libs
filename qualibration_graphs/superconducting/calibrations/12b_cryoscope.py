@@ -101,6 +101,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
+    qubit = qubits[0]
 
     assert num_qubits == 1, "This node only supports one qubit at the time."
 
@@ -132,110 +133,104 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state_st = [declare_stream() for _ in range(num_qubits)]
         state = [declare(int) for _ in range(num_qubits)]
         state_st = [declare_stream() for _ in range(num_qubits)]
-        t_left_ns = declare(int)  # QUA variable for the flux pulse segment index
-        t_cycles = declare(int)  # QUA variable for the flux pulse segment index
+        t_left_ns = declare(int)  # QUA variable for the remainding ns to add to the flux pulse multiple of 4
+        t_cycles = declare(int)  # QUA variable for the flux pulse multiple of 4
         idx = declare(int)
         frame = declare(fixed)
 
-        for multiplexed_qubits in qubits.batch():
-            # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
-            for qubit in multiplexed_qubits.values():
-                node.machine.initialize_qpu(target=qubit)
-            align()
+        # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
 
-            # Outer loop for averaging
-            with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st)
-                # Loop over the cryoscope pulse time duration (idx represents the duration in ns)
-                with for_(idx, 1, idx <= cryoscope_len, idx + 1):
-                    # Loop over the phase of the second ramsey x90 pulse to reconstruct the qubit phase
-                    with for_each_(frame, frames):
-                        # Qubit initialization
-                        for i, qubit in multiplexed_qubits.items():
-                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
-                        align()
-                        ################################################################################################
-                        # The duration argument in the play command can only produce pulses with duration multiple of  #
-                        # 4ns. To overcome this limitation we use the baking tool from the qualang-tools package to    #
-                        # generate pulses with 1ns granularity. To avoid creating custom waveforms for each iteration  #
-                        # we combine baked pulses with dynamically stretched (multiple of 4ns) pulses.                 #
-                        ################################################################################################
-                        # For the first 16ns we play baked pulses exclusively. Loop the time idx counter until 16.
-                        with if_(idx <= 16):
-                            # Swich case to select the baked pulse with duration idx ns
-                            with switch_(idx):
-                                for j in range(1, 17):
-                                    # The Ramsey sequence is embedded in the switch case to allow gapless execution
-                                    with case_(j):
-                                        align()
-                                        for i, qubit in multiplexed_qubits.items():
-                                            qubit.xy.play("x90")
-                                            qubit.z.wait((qubit.xy.operations["x90"].length + 16) // 4)
-                                            baked_signals[qubit.name][j - 1].run()  # Play the baked pulse
-                                            qubit.xy.wait((cryoscope_len + 16) >> 2)  # 16ns buffer between pulses
-                                            qubit.xy.frame_rotation_2pi(frame)
-                                            qubit.xy.play("x90")
-                        # For pulse durations above 16ns we combine baking with regular play statements.
-                        with else_():
-                            # We calculate the closest lower multiple of 4 of the time index
-                            assign(t_cycles, idx >> 2)  # Right shift by 2 is a quick way to divide by 4
-                            # Calculate the duration to add to pulse multiple of 4.
-                            assign(t_left_ns, idx - (t_cycles << 2))  # left shift by 2 is a quick way to multiply by 4
-                            # Switch case with the 4 possible sequences:
-                            with switch_(t_left_ns):
-                                # Play only the pulse multiple of 4
-                                with case_(0):
+        node.machine.initialize_qpu(target=qubit)
+        align()
+
+        # Outer loop for averaging
+        with for_(n, 0, n < n_avg, n + 1):
+            save(n, n_st)
+            # Loop over the cryoscope pulse time duration (idx represents the duration in ns)
+            with for_(idx, 1, idx <= cryoscope_len, idx + 1):
+                # Loop over the phase of the second ramsey x90 pulse to reconstruct the qubit phase
+                with for_each_(frame, frames):
+                    # Qubit initialization
+                    qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                    align()
+                    ################################################################################################
+                    # The duration argument in the play command can only produce pulses with duration multiple of  #
+                    # 4ns. To overcome this limitation we use the baking tool from the qualang-tools package to    #
+                    # generate pulses with 1ns granularity. To avoid creating custom waveforms for each iteration  #
+                    # we combine baked pulses with dynamically stretched (multiple of 4ns) pulses.                 #
+                    ################################################################################################
+                    # For the first 16ns we play baked pulses exclusively. Loop the time idx counter until 16.
+                    with if_(idx <= 16):
+                        # Swich case to select the baked pulse with duration idx ns
+                        with switch_(idx):
+                            for j in range(1, 17):
+                                # The Ramsey sequence is embedded in the switch case to allow gapless execution
+                                with case_(j):
                                     align()
-                                    for i, qubit in multiplexed_qubits.items():
-                                        qubit.xy.play("x90")
-                                        qubit.z.wait((qubit.xy.operations["x90"].length + 16) // 4)
-                                        qubit.z.play(
-                                            "const",
-                                            duration=t_cycles,
-                                            amplitude_scale=amplitude / qubit.z.operations["const"].amplitude,
-                                        )
-                                        qubit.xy.wait((cryoscope_len + 16) // 4)
-                                        qubit.xy.frame_rotation_2pi(frame)
-                                        qubit.xy.play("x90")
-                                # Play the pulse multiple of 4 followed by the baked pulse of the missing duration
-                                for j in range(1, 4):
-                                    with case_(j):
-                                        align()
-                                        for i, qubit in multiplexed_qubits.items():
-                                            qubit.xy.play("x90")
-                                            qubit.z.wait((qubit.xy.operations["x90"].length + 16) // 4)
-                                            qubit.z.play(
-                                                "const",
-                                                duration=t_cycles,
-                                                amplitude_scale=amplitude / qubit.z.operations["const"].amplitude,
-                                            )
-                                            baked_signals[qubit.name][j - 1].run()
-                                            qubit.xy.wait((cryoscope_len + 16) // 4)
-                                            qubit.xy.frame_rotation_2pi(frame)
-                                            qubit.xy.play("x90")
-                        # Wait for the idle time set slightly above the maximum flux pulse duration
-                        # to ensure that the 2nd x90 pulse arrives after the longest flux pulse
+                                    qubit.xy.play("x90")
+                                    qubit.z.wait((qubit.xy.operations["x90"].length + 16) // 4)
+                                    baked_signals[qubit.name][j - 1].run()  # Play the baked pulse
+                                    qubit.xy.wait((cryoscope_len + 16) >> 2)  # 16ns buffer between pulses
+                                    qubit.xy.frame_rotation_2pi(frame)
+                                    qubit.xy.play("x90")
+                    # For pulse durations above 16ns we combine baking with regular play statements.
+                    with else_():
+                        # We calculate the closest lower multiple of 4 of the time index
+                        assign(t_cycles, idx >> 2)  # Right shift by 2 is a quick way to divide by 4
+                        # Calculate the duration to add to pulse multiple of 4.
+                        assign(t_left_ns, idx - (t_cycles << 2))  # left shift by 2 is a quick way to multiply by 4
+                        # Switch case with the 4 possible sequences:
+                        with switch_(t_left_ns):
+                            # Play only the pulse multiple of 4
+                            with case_(0):
+                                align()
+                                qubit.xy.play("x90")
+                                qubit.z.wait((qubit.xy.operations["x90"].length + 16) // 4)
+                                qubit.z.play(
+                                    "const",
+                                    duration=t_cycles,
+                                    amplitude_scale=amplitude / qubit.z.operations["const"].amplitude,
+                                )
+                                qubit.xy.wait((cryoscope_len + 16) // 4)
+                                qubit.xy.frame_rotation_2pi(frame)
+                                qubit.xy.play("x90")
+                            # Play the pulse multiple of 4 followed by the baked pulse of the missing duration
+                            for j in range(1, 4):
+                                with case_(j):
+                                    align()
+                                    qubit.xy.play("x90")
+                                    qubit.z.wait((qubit.xy.operations["x90"].length + 16) // 4)
+                                    qubit.z.play(
+                                        "const",
+                                        duration=t_cycles,
+                                        amplitude_scale=amplitude / qubit.z.operations["const"].amplitude,
+                                    )
+                                    baked_signals[qubit.name][j - 1].run()
+                                    qubit.xy.wait((cryoscope_len + 16) // 4)
+                                    qubit.xy.frame_rotation_2pi(frame)
+                                    qubit.xy.play("x90")
+                    # Wait for the idle time set slightly above the maximum flux pulse duration
+                    # to ensure that the 2nd x90 pulse arrives after the longest flux pulse
 
-                        # Measure resonator state after the sequence
-                        align()
-                        for i, qubit in multiplexed_qubits.items():
-                            if node.parameters.use_state_discrimination:
-                                qubit.readout_state(state[i])
-                                save(state[i], state_st[i])
-                            else:
-                                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                                save(I[i], I_st[i])
-                                save(Q[i], Q_st[i])
+                    # Measure resonator state after the sequence
+                    align()
+
+                    if node.parameters.use_state_discrimination:
+                        qubit.readout_state(state[0])
+                        save(state[0], state_st[0])
+                    else:
+                        qubit.resonator.measure("readout", qua_vars=(I[0], Q[0]))
+                        save(I[0], I_st[0])
+                        save(Q[0], Q_st[0])
 
         with stream_processing():
             # for the progress counter
             n_st.save("n")
-            for i in range(num_qubits):
-                if node.parameters.use_state_discrimination:
-                    state_st[i].buffer(len(frames)).buffer(cryoscope_len).average().save(f"state{i + 1}")
-                else:
-                    I_st[i].buffer(len(frames)).buffer(cryoscope_len).average().save(f"I{i + 1}")
-                    Q_st[i].buffer(len(frames)).buffer(cryoscope_len).average().save(f"Q{i + 1}")
+            if node.parameters.use_state_discrimination:
+                state_st[0].buffer(len(frames)).buffer(cryoscope_len).average().save("state1")
+            else:
+                I_st[0].buffer(len(frames)).buffer(cryoscope_len).average().save("I1")
+                Q_st[0].buffer(len(frames)).buffer(cryoscope_len).average().save("Q1")
 
 
 # %% {Simulate}
