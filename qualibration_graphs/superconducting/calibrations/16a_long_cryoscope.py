@@ -105,9 +105,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         )
         times = np.unique(times)
 
-    # detuning_offsets = [q.freq_vs_flux_01_quad_term * node.parameters.flux_amp ** 2 for q in qubits]
     flux_amps = [np.sqrt(-node.parameters.detuning_in_mhz * 1e6 / q.freq_vs_flux_01_quad_term) for q in qubits]
-    print(flux_amps)
 
     # Sweep axes for data fetcher
     node.namespace["sweep_axes"] = {
