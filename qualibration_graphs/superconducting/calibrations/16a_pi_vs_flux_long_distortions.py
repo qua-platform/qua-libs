@@ -45,7 +45,7 @@ REMINDER: Adding digital filters will add a global delay --> need to recalibrate
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="16a_long_cryoscope",
+    name="16a_pi_vs_flux_long_distortions",
     description=description,
     parameters=Parameters(),
 )
@@ -81,7 +81,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             continue
         warnings.warn(f"Qubit {qubit.name} has no operation '{operation_name}', defaulting to 'x180'")
         operation_name = "x180"
-
 
     operation_amp_scale = node.parameters.operation_amplitude_factor or 1.0
 
@@ -311,8 +310,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             fit_success = res["fit_successful"]
             if not fit_success:
                 continue
-            best_a_dc = res["best_a_dc"]
-            components = res["best_components"]
+            best_a_dc = res["a_dc"]
+            components = res["a_tau_tuple"]
             A_list = [amp / best_a_dc for amp, _ in components]
             tau_list = [tau for _, tau in components]
             node.machine.qubits[q.name].z.opx_output.exponential_filter.extend(list(zip(A_list, tau_list)))

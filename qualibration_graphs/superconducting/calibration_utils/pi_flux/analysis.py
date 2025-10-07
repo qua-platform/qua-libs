@@ -12,17 +12,17 @@ from scipy.optimize import curve_fit, minimize
 @dataclass
 class PiFluxParameters:
     fit_successful: bool
-    best_fractions: List[float]
-    best_components: List[Tuple[float, float]]
-    best_a_dc: float
-    best_rms: float
+    optimized_fractions: List[float]
+    a_tau_tuple: List[Tuple[float, float]]
+    a_dc: float
+    rms_error: float
 
 
 def log_fitted_results(fit_results: Dict[str, PiFluxParameters], log_callable=print) -> None:
     for qb, res in fit_results.items():
         if res.fit_successful:
             log_callable(
-                f"{qb}: SUCCESS, a_dc={res.best_a_dc:.3e}, rms={res.best_rms:.3e}, comps={res.best_components}"
+                f"{qb}: SUCCESS, a_dc={res.a_dc:.3e}, rms={res.rms_error:.3e}, comps={res.a_tau_tuple}"
             )
         else:
             log_callable(f"{qb}: FAILED")
@@ -416,10 +416,10 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, PiFluxPara
         )
         fit_results[q.name] = PiFluxParameters(
             fit_successful=fit_successful,
-            best_fractions=best_fractions,
-            best_components=best_components,
-            best_a_dc=best_a_dc,
-            best_rms=best_rms,
+            optimized_fractions=best_fractions,
+            a_tau_tuple=best_components,
+            a_dc=best_a_dc,
+            rms_error=best_rms,
         )
     return ds, fit_results
 
