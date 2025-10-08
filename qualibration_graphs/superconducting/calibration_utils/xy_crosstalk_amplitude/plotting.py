@@ -33,17 +33,21 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     - The function creates a grid of subplots, one for each qubit.
     - Each subplot contains the raw data and the fitted curve.
     """
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        plot_individual_data_with(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+    figs = []
+    for role in ds["role"]:
+        grid = QubitGrid(ds, [q.grid_location for q in qubits])
+        for ax, qubit in grid_iter(grid):
+            plot_individual_data(ax, ds.sel(role=role, drop=True), qubit, fits.sel(qubit=qubit["qubit"], role=role))
 
-    grid.fig.suptitle("Rabi chevron")
-    grid.fig.set_size_inches(15, 9)
-    grid.fig.tight_layout()
-    return grid.fig
+        st_ = "Driven Qubit" if role == "d" else "Probed Qubit"
+        grid.fig.suptitle(f"XY Crosstalk Amplitude - {st_}")
+        # grid.fig.set_size_inches(15, 9)
+        grid.fig.tight_layout()
+        figs.append(grid.fig)
+    return figs
 
 
-def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_data(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -69,16 +73,18 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], f
         data = "state"
     else:
         raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
+    ds.sel(qubit).drop_vars("amp_ratio_p2d")[data].plot(
+        ax=ax, add_colorbar=False, x="pulse_duration", y="amp_scaling", robust=True
+    )
+    ax.set_ylabel(f"Amplitude scaling")
+    ax.set_xlabel("Pulse duration [ns]")
 
-    # Create a first x-axis for full_freq_GHz
-    (fit.assign_coords(full_freq_GHz=fit.full_freq / u.GHz)[data] / u.mV).plot(
-        ax=ax, y="pulse_duration", x="full_freq_GHz", add_colorbar=False
+    # compute k for this qubit (constant scale factor)
+    k = float(ds.loc[qubit].amp_ratio_p2d.values)
+
+    # add right y-axis that converts scaling <-> ratio
+    axr = ax.secondary_yaxis(
+        "right",
+        functions=(lambda s: s * k, lambda r: r / k)  # (left->right, right->left)
     )
-    ax.set_xlabel("RF frequency [GHz]")
-    ax.set_ylabel("Pulse duration [ns]")
-    # Create a second x-axis for detuning_MHz
-    ax2 = ax.twiny()
-    (fit.assign_coords(detuning_MHz=fit.detuning / u.MHz)[data] / u.mV).plot(
-        ax=ax2, y="pulse_duration", x="detuning_MHz", add_colorbar=False
-    )
-    ax2.set_xlabel("Detuning [MHz]")
+    axr.set_ylabel("Amplitude ratio (probe/driven)")

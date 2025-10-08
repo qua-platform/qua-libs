@@ -12,7 +12,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.xy_crosstalk_coupling_magnitude import (
+from calibration_utils.xy_crosstalk_amplitude import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,
@@ -25,22 +25,31 @@ from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
 
-# TODO: Implement this protocol
-
 
 # %% {Description}
 description = """
-Characterizes the magnitude component of the microwave crosstalk matrix.
+RF crosstalk-cancellation via amplitude sweep.
+We estimate (and cancel) the effective microwave crosstalk from a driven qubit Qd
+onto a probed qubit Qp by finding an amplitude on Qp that destructively interferes
+with the leaked drive from Qd.
 
-The experiment is Rabi-type: the driven qubit (Qd) is pulsed at the resonance
-frequency of the probed qubit (Qp), and the induced Rabi rate on Qp is fitted.
-By normalizing this rate to the self-Rabi rate obtained when driving Qp
-directly, the relative crosstalk strength |C_ij| can be extracted.
+Protocol (driven-Ramsey style)
+1) Prepare both qubits. Qd is driven on-resonance; this induces an unintended
+   drive on Qp through RF crosstalk.
+2) Simultaneously drive Qp at Qd’s RF (frequency-translated to Qp’s hardware chain),
+   with a variable amplitude scale `amp_scaling`.
+3) Sweep pulse duration `pulse_duration` and `amp_scaling` while applying:
+      Qd: Xπ (duration = t)
+      Qp: Xπ (duration = t, amplitude_scale = amp_scaling)
+   with π/2 wrappers and re-phasing as needed (driven-Ramsey envelope).
+4) Measure I/Q (or state) on both qubits and reset frames/frequencies each shot.
+5) For each (Qd,Qp) pair, find the amplitude on Qp that minimizes the signal induced
+   by Qd on Qp — this is the cancellation point (besides adjusting the phase).
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="20a_XY_crosstalk_coupling_magnitude",  # Name should be unique
+    name="20a_XY_crosstalk_amplitude",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
@@ -55,6 +64,8 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.multiplexed = False
     node.parameters.qubits = ["q1", "q2", "q3"]
     node.parameters.use_state_discrimination = False
+
+    node.parameters.probed_qubit_idx = 0 # e.g. node.parameters.qubits.index("q1")
 
     node.parameters.num_shots = 10
 
@@ -72,7 +83,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
-    num_qubit_pairs = num_qubits ** 2
+
+    # Get probed qubit
+    qb_probed = qubits[node.parameters.probed_qubit_idx]
+    node.namespace["qubit_probed"] = qb_probed
 
     n_avg = node.parameters.num_shots  # The number of averages
     state_discrimination = node.parameters.use_state_discrimination
@@ -81,23 +95,33 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.parameters.max_wait_time_in_ns,
         node.parameters.time_step_in_ns,
     )
+    amp_scalings = np.arange(
+        node.parameters.min_cancel_drive_amp_scaling,
+        node.parameters.max_cancel_drive_amp_scaling,
+        node.parameters.step_cancel_drive_amp_scaling,
+    )
+    cancel_drive_phase_2pi = node.parameters.cancel_drive_phase_2pi
+    if not isinstance(cancel_drive_phase_2pi, list):
+        cancel_drive_phase_2pi = [cancel_drive_phase_2pi] * num_qubits
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "qubit_probed": xr.DataArray(qubits.get_names()),
+        "amp_scaling": xr.DataArray(amp_scalings, attrs={"long_name": "cancel drive amplitude scaling"}),
         "pulse_duration": xr.DataArray(pulse_durations, attrs={"long_name": "qubit pulse duration", "units": "ns"}),
     }
 
     with program() as node.namespace["qua_program"]:
-        I_d, I_d_st, Q_d, Q_d_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
-        I_p, I_p_st, Q_p, Q_p_st, _, _ = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
         if state_discrimination:
-            state_d = [declare(int) for _ in range(num_qubit_pairs)]
-            state_p = [declare(int) for _ in range(num_qubit_pairs)]
-            state_d_st = [declare_stream() for _ in range(num_qubit_pairs)]
-            state_p_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state_d = [declare(int) for _ in range(num_qubits)]
+            state_p = [declare(int) for _ in range(num_qubits)]
+            state_d_st = [declare_stream() for _ in range(num_qubits)]
+            state_p_st = [declare_stream() for _ in range(num_qubits)]
+        else:
+            I_d, I_d_st, Q_d, Q_d_st, n, n_st = node.machine.declare_qua_variables()
+            I_p, I_p_st, Q_p, Q_p_st, _, _ = node.machine.declare_qua_variables()
         t = declare(int)
+        amp_scaling_qua = declare(fixed)
 
         # Reset explicitly
         reset_global_phase()
@@ -109,36 +133,63 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # TODO:
         # ebable to iterate over subset of qubits and generate consistent xarray accordingly
         # not necessarily having to iterate over num_qubits ** 2 number of pairs  
-        for j, qb_driven in enumerate(qubits):
+        for i, qb_driven in enumerate(qubits):
+            assign(n, i)
+            save(n, n_st)
+            
+            if i == node.parameters.probed_qubit_idx:       
+                if state_discrimination:
+                    assign(state_d[i], 1)
+                    assign(state_p[i], 1)
+                    save(state_d[i], state_d_st[i])
+                    save(state_p[i], state_p_st[i])
+                else:
+                    assign(I_d[i], 0)
+                    assign(Q_d[i], 0)
+                    assign(I_p[i], 0)
+                    assign(Q_p[i], 0)
+                    save(I_d[i], I_d_st[i])
+                    save(Q_d[i], Q_d_st[i])
+                    save(I_p[i], I_p_st[i])
+                    save(Q_p[i], Q_p_st[i])
+                continue
 
-            for k, qb_probed in enumerate(qubits):
+            with for_(n, 0, n < n_avg, n + 1):
 
-                i = j * num_qubits + k
-                assign(n, i)
-                save(n, n_st)
-                
-                # Set the xy drive frequency back to the qubit frequency for active reset
-                qb_driven.xy.update_frequency(
-                    qb_probed.xy.upconverter_frequency + \
-                    qb_probed.xy.intermediate_frequency - \
-                    qb_driven.xy.upconverter_frequency
-                )
+                with for_(*from_array(amp_scaling_qua, amp_scalings)):
 
-                with for_(n, 0, n < n_avg, n + 1):
- 
                     with for_(*from_array(t, pulse_durations // 4)):
+                        # Set the probed Qubit's IF to on-resonance
+                        qb_probed.xy.update_frequency(qb_probed.xy.upconverter_frequency)
 
                         # Qubit initialization
                         qb_driven.reset(node.parameters.reset_type, node.parameters.simulate)
                         qb_probed.reset(node.parameters.reset_type, node.parameters.simulate)
 
                         align(qb_driven.xy.name, qb_probed.xy.name)
+                        qb_probed.xy.play("x90")
+
+                        align(qb_driven.xy.name, qb_probed.xy.name)
+                        # Set the probed Qubit's RF to match the driven Qubit's RF
+                        qb_probed.xy.update_frequency(
+                            qb_driven.xy.upconverter_frequency + \
+                            qb_driven.xy.intermediate_frequency - \
+                            qb_probed.xy.upconverter_frequency
+                        )
                         
+                        if cancel_drive_phase_2pi[i] is not None:
+                            qb_probed.xy.frame_rotation_2pi(cancel_drive_phase_2pi)
+
                         # Qubit manipulation
                         qb_driven.xy.play("x180", duration=t)
+                        qb_probed.xy.play("x180", duration=t, amplitude_scale=amp_scaling_qua)
 
-                        align(qb_driven.xy.name, qb_driven.resonator.name, qb_probed.resonator.name)
-
+                        # Set the probed Qubit's IF to on-resonance
+                        qb_probed.xy.update_frequency(qb_probed.xy.upconverter_frequency)
+                        align(qb_driven.xy.name, qb_probed.xy.name)
+                        qb_probed.xy.play("x90")
+                        
+                        align(qb_driven.xy.name, qb_probed.xy.name, qb_driven.resonator.name, qb_probed.resonator.name)
                         # Measure the state of the resonators
                         if state_discrimination:
                             qb_driven.readout_state(state_d[i])
@@ -164,15 +215,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         with stream_processing():
             n_st.save("n")
-            for i in range(num_qubit_pairs):
+            for i in range(num_qubits):
                 if state_discrimination:
-                    state_d_st[i].buffer(len(pulse_durations)).average().save(f"state_d{i + 1}")
-                    state_p_st[i].buffer(len(pulse_durations)).average().save(f"state_p{i + 1}")
+                    state_d_st[i].buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"state_d{i + 1}")
+                    state_p_st[i].buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"state_p{i + 1}")
                 else:
-                    I_d_st[i].buffer(len(pulse_durations)).average().save(f"I_d{i + 1}")
-                    Q_d_st[i].buffer(len(pulse_durations)).average().save(f"Q_d{i + 1}")
-                    I_p_st[i].buffer(len(pulse_durations)).average().save(f"I_p{i + 1}")
-                    Q_p_st[i].buffer(len(pulse_durations)).average().save(f"Q_p{i + 1}")
+                    I_d_st[i].buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"I_d{i + 1}")
+                    Q_d_st[i].buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"Q_d{i + 1}")
+                    I_p_st[i].buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"I_p{i + 1}")
+                    Q_p_st[i].buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"Q_p{i + 1}")
 
 
 # %% {Simulate}
@@ -254,7 +305,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
-        "amplitude": fig_raw_fit,
+        "driven_qubit_amplitude": fig_raw_fit[0],
+        "probed_qubit_amplitude": fig_raw_fit[1],
     }
 
 

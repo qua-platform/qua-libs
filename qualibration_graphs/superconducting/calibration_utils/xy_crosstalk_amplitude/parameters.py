@@ -1,4 +1,4 @@
-from typing import Optional, Literal
+from typing import Optional, Literal, Union, List
 import numpy as np
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
@@ -23,6 +23,13 @@ class NodeSpecificParameters(RunnableParameters):
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 250
     time_step_in_ns: int = 4
+
+    min_cancel_drive_amp_scaling: float = -1.0
+    max_cancel_drive_amp_scaling: float = 1.0
+    step_cancel_drive_amp_scaling: float = 0.2
+    cancel_drive_phase_2pi: Optional[Union[float, List[float]]] = None
+    
+    probed_qubit_idx: int = 0
 
 
 class Parameters(
