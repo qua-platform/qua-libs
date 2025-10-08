@@ -1,5 +1,4 @@
-from qm import QuantumMachinesManager
-from quam_builder.architecture.superconducting.qpu import FluxTunableQuam
+from quam_builder.architecture.superconducting.qpu import FixedFrequencyQuam, FluxTunableQuam
 
 
 # Define the QUAM class that will be used in all calibration nodes
