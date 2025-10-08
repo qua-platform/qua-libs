@@ -6,6 +6,7 @@ import xarray as xr
 
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
+from calibration_utils.data_process_utils import reshape_control_target_val2dim 
 
 
 @dataclass
@@ -32,11 +33,15 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
+    ds = reshape_control_target_val2dim(
+        ds,
+        suffixes=["d", "p"],
+        suffix_dim_name="role",
+        leading_dims=("qubit", "role"),
+        # prefixes defaults to ["I","Q"], which matches your I_*/Q_* vars
+    )
     if not node.parameters.use_state_discrimination:
         ds = convert_IQ_to_V(ds, node.namespace["qubits"])
-    full_freq = np.array([ds.detuning + q.xy.RF_frequency for q in node.namespace["qubits"]])
-    ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
-    ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     return ds
 
 
