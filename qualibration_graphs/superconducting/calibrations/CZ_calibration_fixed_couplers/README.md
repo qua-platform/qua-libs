@@ -2,124 +2,143 @@
 
 This folder contains routines for implementing and calibrating the **flux-activated CZ gate** on **fixed-frequency transmons**.
 
-The gate relies on the precise activation of the non-computational state **|11⟩ ↔ |02⟩ avoided-crossing interaction** to accumulate a conditional phase. This protocol relies on precise control of the qubit frequency through a short baseband flux pulse on the higher frequency qubit flux line.
+The gate relies on the precise activation of the non-computational state **|11⟩ ↔ |02⟩ avoided-crossing interaction** to accumulate a conditional phase. This protocol requires fine control of the qubit frequency through a short baseband flux pulse on the higher-frequency qubit’s flux line.
 
 ---
 
 ## Table of Contents
-1. [Physics of the CZ based on 11–02 Interaction](#physics-of-the-cz-based-on-11-02-interaction)
+1. [Physics of the CZ gate based on 11–02 Interaction](#physics-of-the-cz-gate-based-on-11-02-interaction)
 2. [Calibration Procedure](#calibration-procedure)
    - [Distortions: Cryoscope and Spectroscopy](#distortions-cryoscope-and-spectroscopy)
    - [Finding Initial Parameters – Amplitude and Duration Sweep](#finding-initial-parameters--amplitude-and-duration-sweep)
-   - [Amplitude Sweep for 90° Phase Point](#amplitude-sweep-for-90-phase-point)
-   - [Single-Qubit Phase Compensation – Virtual Z Rotations](#singlequbit-phase-compensation--virtual-z-rotations)
+   - [Amplitude Sweep for 90° Phase Point](#conditional-phase-calibration)
+   - [Single-Qubit Phase Compensation – Virtual Z Rotations](#single-qubit-phase-compensation--virtual-z-rotations)
 3. [Project Structure](#project-structure)
 4. [References](#references)
 
 ---
 
-# Physics of the CZ based on 11–02 Interaction
+# Physics of the CZ gate based on 11–02 Interaction
 
 The **controlled-Z (CZ) gate** for fixed-frequency superconducting qubits operates via the *|11⟩ ↔ |02⟩* avoided crossing between two transmons coupled with exchange rate **J**.
 
-- **Mechanism**
+### Mechanism
 
-  The CZ gate is realized by pulsing the qubit frequencies to an avoided crossing at a specific operating point (Point II).
+The CZ gate is realized by pulsing the qubit frequencies to an avoided crossing at a specific operating point (Point II).
 
-  <img src="../.img/spectrum_cz.png" width="500" alt="Alt text">
+<img src="../.img/spectrum_cz.png" width="500" alt="Spectrum illustration">
 
-  At this point II, a useful two-qubit interaction is revealed in the two-excitation spectrum. The interaction involves a large cavity-mediated avoided crossing between the computational state |11⟩ and the non-computational higher-level transmon excitation |02⟩.
+At Point II, a useful two-qubit interaction appears in the two-excitation spectrum. This involves a large cavity-mediated avoided crossing between the computational state |11⟩ and the non-computational higher-level transmon excitation |02⟩.
 
-  This avoided crossing causes a frequency shift, $\zeta/2\pi$, in the transition frequency of the |11⟩ state. A CZ is specifically implemented by selecting a voltage pulse $V_R$ into Point II such that the time integral of the frequency shift satisfies $\int \zeta(t) dt = (2n+1)\pi$ (where $n$ is an integer). The $\zeta(t)$ frequency shift is directly mediated by the waveform amplitude, shape and duration.
+This avoided crossing causes a frequency shift, $\zeta/2\pi$, in the transition frequency of the |11⟩ state. A CZ gate is implemented by selecting a voltage pulse $V_R$ into Point II such that the time integral of the frequency shift satisfies:
 
-- **Gate Condition**
+$$
+\int \zeta(t) dt = (2n+1)\pi
+$$
 
-  A **π phase accumulation** on the |11⟩ state realizes an ideal CZ:
-  $$
-  U_\mathrm{CZ} = \mathrm{diag}(1, 1, 1, -1).
-  $$
+(where *n* is an integer). The $\zeta(t)$ frequency shift is directly determined by the waveform amplitude, shape, and duration.
 
-- **Key References**
-  - **DiCarlo et al.**, *Nature* (2009) – first demonstration of CZ via 11–02 transition.
+### Gate Condition
+
+A **π phase accumulation** on the |11⟩ state realizes an ideal CZ:
+$$
+U_\mathrm{CZ} = \mathrm{diag}(1, 1, 1, -1).
+$$
+
+**Key Reference:**
+- **DiCarlo et al.**, *Nature* (2009) – first demonstration of a CZ gate via the 11–02 transition.
 
 ---
 
 # Calibration Procedure
 
-The calibration sequence ensures accurate compensation of intrinsic distortions caused by non-ideal cabling and components, precise conditional phase calibration and single qubit virtual phase compensations.
+The calibration sequence ensures accurate compensation of intrinsic distortions caused by non-ideal cabling and components, as well as precise conditional-phase calibration and single-qubit virtual phase compensation.
 
 ---
 
 ## Distortions: Cryoscope and Spectroscopy
 
-To achieve high-fidelity operation, flux lines tuning the qubit frequency must be characterized and corrected for distortion. Two methods are used to characterize long and short time scale distortions. The fitting parameters for the exponential fit time start fractions can be tuned interactively by loading the dataset via it's id and commiting the changes with the update state from GUI flag.
+To achieve high-fidelity operation, flux lines tuning the qubit frequency must be characterized and corrected for distortion. Two complementary methods are used to characterize long- and short-timescale distortions.
 
-- **Qubit Spectroscopy vs flux delay** [(17_pi_vs_flux_long_distortions)](../1Q_calibrations/17_pi_vs_flux_long_distortions.py)
+The fitting parameters for the exponential-fit time constants can be tuned interactively by loading the dataset via its ID and committing the changes using the `update_state_from_GUI` flag.
 
-  This method proposed in [1] consist of detuning the qubit via a flux pulse and probing it's frequency via a short microwave pulse. By sweeping the delay between the two pulses (t) one can reconstruct the pulse amplitude time evolution by tracking the qubit frequency.
+### Qubit Spectroscopy vs. Flux Delay
+[(17_pi_vs_flux_long_distortions)](../1Q_calibrations/17_pi_vs_flux_long_distortions.py)
 
-  <img src="../.img/long_distortions_method.png" width="500" alt="Alt text">
+This method, proposed in [1], consists of detuning the qubit via a flux pulse and probing its frequency via a short microwave pulse. By sweeping the delay between the two pulses (*t*), one can reconstruct the pulse amplitude time evolution by tracking the qubit frequency.
 
-  We can then fit a set of exponential filter corrections to compensate for the long time scale distortions.
+<img src="../.img/long_distortions_method.png" width="500" alt="Method diagram">
 
-  <img src="../.img/long_distortions_fit.png" width="500" alt="Alt text">
+Exponential filter corrections are then fitted to compensate for long-timescale distortions.
 
-- **Cryoscope Calibration**
+<img src="../.img/long_distortions_fit.png" width="500" alt="Fit result">
 
-    This  method introduced in [2] consists of sweeping the duration of a square flux pulse between a fixed time Ramsey sequence. The Ramsey sequence allow to measure the detuning of the qubit for each pulse duration thus allowing the reconstruction on the pulse shape with 1ns resolution. We can then use this information to fit to a second set of short term exponentials to compensate for short time scales distortions.
+### Cryoscope Calibration
+[(18_cryoscope)](../1Q_calibrations/18_cryoscope.py)
 
-    <img src="../.img/cryoscope_fit.png" width="500" alt="Alt text">
+This method, introduced in [2], consists of sweeping the duration of a square flux pulse within a fixed-time Ramsey sequence. The Ramsey experiment allows measurement of the qubit detuning for each pulse duration, enabling reconstruction of the pulse shape with 1 ns resolution. This data is then used to fit another set of exponential corrections for short-timescale distortions.
 
-### **INTENDED USAGE:**
+<img src="../.img/cryoscope_fit.png" width="500" alt="Cryoscope fit">
 
-These two nodes are designed so that the user can modify the fitting parameters interactively and accept the changes from the QUAlibrate GUI once the fitted results are judged to be good by the user.
+### Intended Usage
 
-The intended usage is as follows:
+These two nodes are designed for interactive parameter fitting through the **QUAlibrate GUI**:
 
-- User acquires data with the `update_state` flag set to `False`.
-- If the data is judged to be good for fitting the user then loads the dataset via it's load id <span style="color:red">(1)</span> and starts interating with the fitting parameters <span style="color:red">(2)</span>.
-- Once a good set of parameters is found, the user can set `update_state_from_GUI` to `True` <span style="color:red">(3)</span> and press RUN <span style="color:red">(4)</span> to update the fitted filters to the Quam state.
+1. Acquire data with `update_state=False`.
+2. If the data is suitable, load it by its ID and adjust the fitting parameters interactively.
+3. Once a good fit is obtained, set `update_state_from_GUI=True` and press **RUN** to update the filters in the QuAM state.
 
-<img src="../.img/cs_fit_operation.png" width="500" alt="Alt text">
+<img src="../.img/cs_fit_operation.png" width="500" alt="GUI operation">
 
 **References:**
 
-[1] Christoph Hellings et al., *arXiv* (2025) *Calibrating Magnetic Flux Control in Superconducting Circuits by Compensating Distortions on Time Scales from Nanoseconds up to Tens of Microseconds*
+[1] Christoph Hellings et al., *arXiv* (2025), *Calibrating Magnetic Flux Control in Superconducting Circuits by Compensating Distortions on Time Scales from Nanoseconds up to Tens of Microseconds*
 
-[2] Rol et al., *Appl. Phys. Lett.* (2019) *Time-domain characterization and correction of on-chip distortion of control pulses in a quantum processor*
-
----
-
-## Finding Initial Parameters – Amplitude and Duration Sweep [(19_chevron_11-02)](./19_chevron_11-02.py)
-
-The first calibration stage identifies coarse operating points using a **Chevron-pattern** experiment. The qubit pair is initiallised to the |11> state and then a flux pulse is applied to the high frequency qubit to activate the interaction with the |02> state. The amplitude and duration on this pulse are swept a Chevron like pattern is observed. The center of the first period of the pattern is saved as a first initial parameter for the CZ gate
-
-<img src="../.img/chevron.png" width="500" alt="Alt text">
-
-**Goal:** Find the amplitude–duration pair that produces a full π phase shift between control states (the first yellow fringe).
+[2] Rol et al., *Appl. Phys. Lett.* (2019), *Time-domain Characterization and Correction of On-chip Distortion of Control Pulses in a Quantum Processor*
 
 ---
 
-## Conditional Phase calibration [(20_cz_conditional_phase)](./20_cz_conditional_phase.py)
+## Finding Initial Parameters – Amplitude and Duration Sweep
+[(19_chevron_11-02)](./19_chevron_11-02.py)
+
+The first calibration stage identifies coarse operating points using a **Chevron-pattern** experiment. The qubit pair is initialized to the |11⟩ state, and a flux pulse is applied to the higher-frequency qubit to activate the interaction with the |02⟩ state.
+
+By sweeping the pulse amplitude and duration, a Chevron-like pattern is observed. The center of the first oscillation period is used as an initial parameter for the CZ gate.
+
+<img src="../.img/chevron.png" width="500" alt="Chevron pattern">
+
+**Goal:** Identify the amplitude–duration pair that produces a full π phase shift between control states (the first yellow fringe).
+
+---
+
+## Conditional Phase Calibration
+[(20_cz_conditional_phase)](./20_cz_conditional_phase.py)
 
 With the optimal duration fixed, perform a fine amplitude scan to locate the **90° conditional-phase point (π/2)**.
 
-The sequence involves preparing the states |0+> and |1+> where |Control, Target> and applying the varying amplitude CZ flux pulse on the Control qubit. The conditional phase picked up by the Target qubit is reconstructed via a tomography x90 pulse of varying phase.
+The sequence involves preparing the states |0+⟩ and |1+⟩ (control, target), then applying the CZ flux pulse of varying amplitude on the control qubit. The conditional phase acquired by the target qubit is reconstructed via tomography using an x90 pulse of varying phase.
 
-<img src="../.img/conditional_phase.png" width="500" alt="Alt text">
+<img src="../.img/conditional_phase.png" width="500" alt="Conditional phase plot">
 
-**Goal**:The conditional phase is fitted and the optimal CZ amplitude is updated to the state.
+**Goal:** Fit the conditional phase curve and update the optimal CZ amplitude in the system state.
+
+---
+
+## Single-Qubit Phase Compensation – Virtual Z Rotations
+[(21_cz_phase_compensation)](./21_cz_phase_compensation.py)
+
+During the CZ pulse, qubit frequencies shift, causing each qubit to acquire an additional phase. These phases must be measured and compensated via virtual Z rotations.
+
+The sequence prepares the |++⟩ state, applies the CZ pulse, and reconstructs each qubit’s phase using tomography with a rotating-phase x90 pulse.
+
+<img src="../.img/individual_phases.png" width="500" alt="Individual qubit phase reconstruction">
+
+**Goal:** Measure the individual qubit phases and apply virtual Z corrections to the system state.
 
 ---
 
-## Single-Qubit Phase Compensation – Virtual Z Rotations [(21_cz_phase_compensation)](./21_cz_phase_compensation.py)
+# Summary
 
-During the CZ gate pulse the qubits frequency is altered thus resulting in them picking up a phase difference during the process. These two individual phases need to be measured and compensated via a virtual Z rotation.
+This repository provides a complete workflow for implementing and calibrating flux-activated CZ gates on tunable-frequency transmons with fixed couplers. It covers the physical principles, distortion compensation techniques, and step-by-step calibration procedures required to reach high-fidelity gate performance.
 
-The sequence to measure the individual qubit phases consitst of preparing the |++> state and applying the CZ pulse, then each qubit phase is reconstruted with a tomography x90 pulse of rotating phase.
 
-<img src="../.img/individual_phases.png" width="500" alt="Alt text">
-
-**Goal**: Measure the individual phases of the qubits and apply the virtual Z correction to the state.
-
----
