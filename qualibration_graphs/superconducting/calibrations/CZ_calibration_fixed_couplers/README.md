@@ -54,7 +54,7 @@ The calibration sequence ensures accurate compensation of intrinsic distortions 
 
 To achieve high-fidelity operation, flux lines tuning the qubit frequency must be characterized and corrected for distortion. Two methods are used to characterize long and short time scale distortions. The fitting parameters for the exponential fit time start fractions can be tuned interactively by loading the dataset via it's id and commiting the changes with the update state from GUI flag.
 
-- **Spectroscopy vs flux delay**
+- **Qubit Spectroscopy vs flux delay** [(17_pi_vs_flux_long_distortions)](../1Q_calibrations/17_pi_vs_flux_long_distortions.py)
 
   This method proposed in [1] consist of detuning the qubit via a flux pulse and probing it's frequency via a short microwave pulse. By sweeping the delay between the two pulses (t) one can reconstruct the pulse amplitude time evolution by tracking the qubit frequency.
 
@@ -70,11 +70,23 @@ To achieve high-fidelity operation, flux lines tuning the qubit frequency must b
 
     <img src="../.img/cryoscope_fit.png" width="500" alt="Alt text">
 
+### **INTENDED USAGE:**
+
+These two nodes are designed so that the user can modify the fitting parameters interactively and accept the changes from the QUAlibrate GUI once the fitted results are judged to be good by the user.
+
+The intended usage is as follows:
+
+- User acquires data with the `update_state` flag set to `False`.
+- If the data is judged to be good for fitting the user then loads the dataset via it's load id <span style="color:red">(1)</span> and starts interating with the fitting parameters <span style="color:red">(2)</span>.
+- Once a good set of parameters is found, the user can set `update_state_from_GUI` to `True` <span style="color:red">(3)</span> and press RUN <span style="color:red">(4)</span> to update the fitted filters to the Quam state.
+
+<img src="../.img/cs_fit_operation.png" width="500" alt="Alt text">
+
 **References:**
 
 [1] Christoph Hellings et al., *arXiv* (2025) *Calibrating Magnetic Flux Control in Superconducting Circuits by Compensating Distortions on Time Scales from Nanoseconds up to Tens of Microseconds*
 
-[2] Rol et al., *Appl. Phys. Lett.* (2019)
+[2] Rol et al., *Appl. Phys. Lett.* (2019) *Time-domain characterization and correction of on-chip distortion of control pulses in a quantum processor*
 
 ---
 
@@ -88,30 +100,26 @@ The first calibration stage identifies coarse operating points using a **Chevron
 
 ---
 
-## Amplitude Sweep for 90° Phase Point [(20_cz_conditional_phase)](./20_cz_conditional_phase.py)
+## Conditional Phase calibration [(20_cz_conditional_phase)](./20_cz_conditional_phase.py)
 
 With the optimal duration fixed, perform a fine amplitude scan to locate the **90° conditional-phase point (π/2)**.
 
-- Defines a linear regime where conditional phase grows proportionally with drive amplitude.
-- Serves as reference for subsequent parameter optimizations (frequency, phase, and Z-corrections).
+The sequence involves preparing the states |0+> and |1+> where |Control, Target> and applying the varying amplitude CZ flux pulse on the Control qubit. The conditional phase picked up by the Target qubit is reconstructed via a tomography x90 pulse of varying phase.
 
-**Outcome:** Identifies the most stable working point minimizing leakage while preserving entangling rate.
+<img src="../.img/conditional_phase.png" width="500" alt="Alt text">
+
+**Goal**:The conditional phase is fitted and the optimal CZ amplitude is updated to the state.
 
 ---
 
 ## Single-Qubit Phase Compensation – Virtual Z Rotations [(21_cz_phase_compensation)](./21_cz_phase_compensation.py)
 
-Microwave drives induce unwanted **single-qubit phase rotations (ZI, IZ)** via AC Stark shifts.
-These must be compensated to achieve a pure entangling operation.
+During the CZ gate pulse the qubits frequency is altered thus resulting in them picking up a phase difference during the process. These two individual phases need to be measured and compensated via a virtual Z rotation.
 
-- Apply **virtual Z corrections** after the CZ pulse by adjusting the rotating frame phase of each qubit.
-- Sweep the correction phase on each qubit independently while monitoring output populations.
-- The optimal correction angle nulls the residual rotation, aligning both Bloch vectors.
+The sequence to measure the individual qubit phases consitst of preparing the |++> state and applying the CZ pulse, then each qubit phase is reconstruted with a tomography x90 pulse of rotating phase.
 
-**Result:** The final gate performs as
-\[
-U_\mathrm{CZ} = e^{-i(\pi/4)(ZZ - ZI - IZ)},
-\]
-realizing an ideal controlled-Z.
+<img src="../.img/individual_phases.png" width="500" alt="Alt text">
+
+**Goal**: Measure the individual phases of the qubits and apply the virtual Z correction to the state.
 
 ---

@@ -139,10 +139,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     raise ValueError("Requested detuning is too large for the given MW FEM band")
                 elif (q_upd.xy.opx_output.band == 2) and (lo_frequency < 4.5e9):
                     raise ValueError("Requested detuning is too large for the given MW FEM band")
-                try:
-                    q_upd.xy.opx_output.upconverter_frequency = None
-                except Exception:
-                    pass
                 print(f"Updating {q_upd.name} LO to {lo_frequency}")
                 q_upd.xy.opx_output.upconverter_frequency = lo_frequency
                 q_upd.xy.RF_frequency -= node.parameters.detuning_in_mhz * 1e6
