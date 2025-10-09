@@ -156,11 +156,8 @@ x180_lengths = [64 * u.ns]
 for k, q in enumerate(machine.qubits):
     # readout
     if machine.qubits[q].laser.trigger is not None:
-        machine.qubits[q].laser.trigger.operations["laser_on"] = Pulse(length=laser_length, digital_marker="ON")
-        machine.qubits[q].laser.trigger.operations["laser_off"] = Pulse(
-            length="#../laser_on/length", digital_marker=[[0, 0]]
-        )
-    machine.qubits[q].spcm1.operations["readout"].length = readout_time
+        machine.qubits[q].laser.trigger.operations["laser_on"].length = laser_length
+    machine.qubits[q].spcm.operations["readout"].length = readout_time
 
     # Qubit cw pulse
     machine.qubits[q].xy.operations["cw"].length = 20 * u.us
