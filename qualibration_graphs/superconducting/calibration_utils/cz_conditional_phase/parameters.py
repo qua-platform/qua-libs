@@ -2,7 +2,7 @@ from typing import Literal, Optional
 
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import CommonNodeParameters, TwoQubitExperimentNodeParameters
+from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -22,6 +22,6 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    TwoQubitExperimentNodeParameters,
+    QubitPairExperimentNodeParameters,
 ):
     pass

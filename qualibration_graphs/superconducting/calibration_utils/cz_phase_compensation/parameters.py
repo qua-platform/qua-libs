@@ -3,7 +3,8 @@ from typing import List, Literal, Optional
 import numpy as np
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import CommonNodeParameters, TwoQubitExperimentNodeParameters
+from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
+
 from quam.core import operation
 
 
@@ -26,6 +27,6 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    TwoQubitExperimentNodeParameters,
+    QubitPairExperimentNodeParameters,
 ):
     pass
