@@ -12,12 +12,15 @@ readout and saturation pulses.
 # %%                                             Import section
 ########################################################################################################################
 import json
-from qualang_tools.units import unit
-from quam_config import Quam
-from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
-from quam.components.pulses import GaussianPulse
-import numpy as np
 from pprint import pprint
+
+import numpy as np
+from qualang_tools.units import unit
+from quam_builder.architecture.superconducting.custom_gates.flux_tunable_transmon_pair.two_qubit_gates import CZGate
+from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
+from quam_config import Quam
+
+from quam.components.pulses import FlatTopGaussianPulse, GaussianPulse, SquarePulse
 
 ########################################################################################################################
 # %%                                 QUAM loading and auxiliary functions
@@ -163,6 +166,7 @@ for k, qubit in enumerate(machine.qubits.values()):
     qubit.xy.opx_output.upconverter_frequency = xy_LO.tolist()[k]  # Qubit drive up-converter frequency
     qubit.xy.opx_output.band = get_band(xy_LO.tolist()[k])  # Qubit drive band for the up-conversion
     qubit.grid_location = f"{k},0"  # Qubit grid location for plotting as "column,row"
+    qubit.anharmonicity = anharmonicity.tolist()[k]  # Qubit anharmonicity
 
 
 ########################################################################################################################
@@ -178,7 +182,7 @@ for k, qubit in enumerate(machine.qubits.values()):
 # Update flux channels
 for k, qubit in enumerate(machine.qubits.values()):
     if hasattr(qubit, "z"):
-        qubit.z.opx_output.output_mode = "direct"
+        qubit.z.opx_output.output_mode = "amplified"  # Flux line output mode
         qubit.z.opx_output.upsampling_mode = "pulse"
 
 ########################################################################################################################
@@ -199,6 +203,7 @@ for k, qubit in enumerate(machine.qubits.values()):
 for k, q in enumerate(machine.qubits):
     # readout
     machine.qubits[q].resonator.operations["readout"].length = 2.5 * u.us
+    machine.qubits[q].resonator.depletion_time = 2.5 * u.us
     machine.qubits[q].resonator.operations["readout"].amplitude = rr_amplitude
     # Qubit saturation
     machine.qubits[q].xy.operations["saturation"].length = 20 * u.us
@@ -208,14 +213,38 @@ for k, q in enumerate(machine.qubits):
         machine.qubits[q],
         amplitude=xy_amplitude,
         length=40,
-        anharmonicity=anharmonicity.tolist()[k],
+        anharmonicity=machine.qubits[q].get_reference() + "/anharmonicity",
         alpha=0.0,
         detuning=0,
     )
+    machine.qubits[q].resonator.core = q
+    machine.qubits[q].xy.core = q
     # Single Gaussian flux pulse
-    # if hasattr(machine.qubits[q], "z"):
-    #     machine.qubits[q].z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
+    if hasattr(machine.qubits[q], "z"):
+        machine.qubits[q].z.flux_point = "joint"
 
+
+########################################################################################################################
+# %%                                    Qubit Pairs
+########################################################################################################################
+
+qubit_pairs = [("1", "2"), ("2", "3"), ("3", "4"), ("4", "5"), ("5", "6"), ("6", "7"), ("7", "8")]
+
+for qp in qubit_pairs:
+
+    q0_freq = machine.qubits[f"q{qp[0]}"].f_01
+    q1_freq = machine.qubits[f"q{qp[1]}"].f_01
+
+    if q0_freq > q1_freq:
+        control = machine.qubits[f"q{qp[0]}"].get_reference()
+        target = machine.qubits[f"q{qp[1]}"].get_reference()
+    else:
+        control = machine.qubits[f"q{qp[1]}"].get_reference()
+        target = machine.qubits[f"q{qp[0]}"].get_reference()
+
+    pair = machine.qubit_pair_type(id=f"q{qp[0]}-q{qp[1]}", qubit_control=control, qubit_target=target)
+
+    machine.qubit_pairs[pair.id] = pair
 
 ########################################################################################################################
 # %%                                         Save the updated QUAM
@@ -226,3 +255,5 @@ machine.save()
 pprint(machine.generate_config())
 with open("qua_config.json", "w+") as f:
     json.dump(machine.generate_config(), f, indent=4)
+
+# %%
