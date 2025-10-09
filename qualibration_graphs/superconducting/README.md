@@ -149,8 +149,6 @@ Refer to the [calibrations/README.md](calibrations/README.md) for detailed infor
 
 The library is organized into the following main directories:
 
-TODO: modify after moving things to Qualibration-libs
-
 ```
 superconducting/
 ├── calibrations/      # Individual calibration scripts (nodes) runnable by QUAlibrate.
