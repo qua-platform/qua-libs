@@ -33,7 +33,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 100
+n_avg = 5000
 
 # Scan the DRAG coefficient pre-factor
 a_min = -1.0
@@ -144,14 +144,15 @@ else:
     job = qm.execute(drag)
     # Get results from QUA program
     res_handles = job.result_handles
+    data_list = ["I1", "I2", "Q1", "Q2", "state1", "state2", "iteration" ]
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-
     while res_handles.is_processing():
+        res_handles.wait_for_all_values()
         # Fetch results
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
-        I1, I2, Q1, Q2, state1, state2, iteration = results.fetch_all()
+        I1, I2, Q1, Q2, state1, state2, iteration = [results.get(data) for data in data_list]
         # Convert the results into Volts
         I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
         I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)

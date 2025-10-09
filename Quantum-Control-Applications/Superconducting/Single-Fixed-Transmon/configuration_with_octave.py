@@ -19,8 +19,8 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"  # Write the QM router IP address
-cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_ip = "172.16.33.101"  # Write the QM router IP address
+cluster_name = 'CS_1'  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
 #############
@@ -42,7 +42,7 @@ con = "con1"
 
 # The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
 # the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
-octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con=con)
+octave_1 = OctaveUnit("octave1", qop_ip, port=11232, con=con)
 # octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con=con)
 
 # If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
@@ -190,7 +190,6 @@ ge_threshold = 0.0
 #                  Config                   #
 #############################################
 full_config = {
-    "version": 1,
     "controllers": {
         con: {
             "analog_outputs": {

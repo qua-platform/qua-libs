@@ -13,7 +13,6 @@ Prerequisites:
 Next steps before going to the next node:
     - Update the readout amplitude (readout_amp) in the configuration.
 """
-
 from qm.qua import *
 from qm import QuantumMachinesManager
 import time
@@ -29,7 +28,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_runs = 1000
+n_runs = 2000
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 a_min = 0.5
 a_max = 1.5
@@ -66,7 +65,6 @@ with program() as ro_amp_opt:
             measure(
                 "readout" * amp(a),
                 "resonator",
-                None,
                 dual_demod.full("rotated_cos", "rotated_sin", I_g),
                 dual_demod.full("rotated_minus_sin", "rotated_cos", Q_g),
             )
@@ -85,7 +83,6 @@ with program() as ro_amp_opt:
             measure(
                 "readout" * amp(a),
                 "resonator",
-                None,
                 dual_demod.full("rotated_cos", "rotated_sin", I_e),
                 dual_demod.full("rotated_minus_sin", "rotated_cos", Q_e),
             )
@@ -139,11 +136,12 @@ else:
     res_handles = job.result_handles
     # Get progress counter to monitor runtime of the program
     while res_handles.is_processing():
+        res_handles.wait_for_all_values()
         # Fetch results
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
-        iteration = results.fetch_all()
+        iteration = results.get('iteration')
         # Progress bar
-        progress_counter(iteration[0], len(amplitudes), start_time=time.time())
+        progress_counter(iteration, len(amplitudes), start_time=time.time())
 
     # Fetch the results at the end
     I_g, Q_g, I_e, Q_e =  results.get("I_g"), results.get("Q_g"),results.get("I_e"), results.get("Q_e")

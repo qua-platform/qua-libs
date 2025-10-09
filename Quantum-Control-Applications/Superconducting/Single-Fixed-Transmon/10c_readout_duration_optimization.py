@@ -102,7 +102,6 @@ with program() as ro_duration_opt:
         measure(
             "readout",
             "resonator",
-            None,
             demod.accumulated("cos", II, division_length, "out1"),
             demod.accumulated("sin", IQ, division_length, "out2"),
             demod.accumulated("minus_sin", QI, division_length, "out1"),
@@ -126,7 +125,6 @@ with program() as ro_duration_opt:
         measure(
             "readout",
             "resonator",
-            None,
             demod.accumulated("cos", II, division_length, "out1"),
             demod.accumulated("sin", IQ, division_length, "out2"),
             demod.accumulated("minus_sin", QI, division_length, "out1"),
@@ -201,12 +199,13 @@ else:
     job = qm.execute(ro_duration_opt)
     # Get results from QUA program
     res_handles = job.result_handles
-    data_list=["Ig_avg", "Qg_avg", "Ie_avg", "Qe_avg", "Ig_var", "Qg_var", "Ie_var", "Qe_var", "iteration"],
+    data_list=["Ig_avg", "Qg_avg", "Ie_avg", "Qe_avg", "Ig_var", "Qg_var", "Ie_var", "Qe_var", "iteration"]
 
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
+        res_handles.wait_for_all_values()
         # Fetch results
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         Ig_avg, Qg_avg, Ie_avg, Qe_avg, Ig_var, Qg_var, Ie_var, Qe_var, iteration = [results.get(data) for data in data_list]

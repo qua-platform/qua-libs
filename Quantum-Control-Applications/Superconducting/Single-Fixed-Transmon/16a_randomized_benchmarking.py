@@ -284,6 +284,7 @@ else:
     # data analysis
     x = np.arange(1, max_circuit_depth + 0.1, delta_clifford)
     while res_handles.is_processing():
+        res_handles.wait_for_all_values()
         # data analysis
         if state_discrimination:
             results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["state_avg", "iteration"])

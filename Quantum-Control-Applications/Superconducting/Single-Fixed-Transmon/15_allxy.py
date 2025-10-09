@@ -28,7 +28,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 1e4
+n_avg = 5e5
 
 # Data to save
 save_data_dict = {
@@ -93,7 +93,6 @@ def allXY(pulses):
     measure(
         "readout",
         "resonator",
-        None,
         dual_demod.full("rotated_cos", "rotated_sin", I_xy),
         dual_demod.full("rotated_minus_sin", "rotated_cos", Q_xy),
     )
@@ -175,6 +174,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
+        res_handles.wait_for_all_values()
         # Fetch results
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         res = [results.get(data) for data in data_list]

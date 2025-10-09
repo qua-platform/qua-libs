@@ -16,7 +16,6 @@ Before proceeding to the next node:
 
 from qm.qua import *
 from qm import QuantumMachinesManager
-import time
 from configuration import *
 from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close

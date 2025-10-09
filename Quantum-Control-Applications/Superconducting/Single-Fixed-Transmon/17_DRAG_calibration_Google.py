@@ -32,7 +32,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 100
+n_avg = 500
 
 # Scan the DRAG coefficient pre-factor
 a_min = 0.0
@@ -138,6 +138,7 @@ else:
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     while res_handles.is_processing():
+        res_handles.wait_for_all_values()
         # Fetch results
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         I, Q, state, iteration = results.get("I"), results.get("Q"),results.get("state"), results.get("iteration")

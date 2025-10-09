@@ -34,8 +34,8 @@ def IQ_imbalance(g, phi):
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"  # Write the QM router IP address
-cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_ip = "172.16.33.101"  # Write the QM router IP address
+cluster_name = 'CS_1'  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
 #############
@@ -78,7 +78,7 @@ saturation_amp = 0.1
 square_pi_len = 100
 square_pi_amp = 0.1
 # Drag pulses
-drag_coef = 0
+drag_coef = 1
 anharmonicity = -200 * u.MHz
 AC_stark_detuning = 0 * u.MHz
 
@@ -191,7 +191,6 @@ ge_threshold = 0.0
 #                  Config                   #
 #############################################
 full_config = {
-    "version": 1,
     "controllers": {
         con: {
             "analog_outputs": {

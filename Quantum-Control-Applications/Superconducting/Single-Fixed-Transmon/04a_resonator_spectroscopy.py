@@ -31,7 +31,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 1000  # The number of averages
+n_avg = 2000  # The number of averages
 # The frequency sweep parameters
 f_min = 30 * u.MHz
 f_max = 70 * u.MHz

@@ -146,7 +146,6 @@ with program() as opt_weights:
         measure(
             "readout",
             "resonator",
-            None,
             demod.sliced("cos", II, division_length, "out1"),
             demod.sliced("sin", IQ, division_length, "out2"),
             demod.sliced("minus_sin", QI, division_length, "out1"),
@@ -168,7 +167,6 @@ with program() as opt_weights:
         measure(
             "readout",
             "resonator",
-            None,
             demod.sliced("cos", II, division_length, "out1"),
             demod.sliced("sin", IQ, division_length, "out2"),
             demod.sliced("minus_sin", QI, division_length, "out1"),
@@ -224,6 +222,7 @@ else:
     res_handles = job.result_handles
     # Live plotting
     while res_handles.is_processing():
+        res_handles.wait_for_all_values()
         # Fetch results
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         iteration = results.get("iteration")

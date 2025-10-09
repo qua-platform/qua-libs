@@ -155,7 +155,7 @@ bloch_sphere.label_bra(bloch_sphere.West * 1.1, "Y")
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 10000
+n_avg = 50000
 
 # Data to save
 save_data_dict = {
@@ -245,9 +245,10 @@ else:
     # Get results from QUA program
     res_handles = job.result_handles
     while res_handles.is_processing():
+        res_handles.wait_for_all_values()
         # Fetch results
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
-        states, iteration = results.get("state"), results.get("iteration")
+        states, iteration = results.get("states"), results.get("iteration")
         # Progress bar
         progress_counter(iteration, n_avg, start_time=time.time())
         # Converts the (0,1) -> |g>,|e> convention to (1,-1) -> |g>,|e>

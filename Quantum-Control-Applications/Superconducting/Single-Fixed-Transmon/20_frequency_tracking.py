@@ -139,12 +139,14 @@ Pe_td_corr = []
 t = []
 # Live plotting
 fig = plt.figure()
+data_list= ["Pe_td_ref_", "Pe_td_corr_", "iteration", "f_res_corr", "corr"]
 interrupt_on_close(fig, job)
 while res_handles.is_processing():
+    res_handles.wait_for_all_values()
     if cond:
         # Fetch results
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
-        Pe_td_ref_, Pe_td_corr_, iteration, f_res_corr, corr = results.fetch_all()
+        Pe_td_ref_, Pe_td_corr_, iteration, f_res_corr, corr = [results.get(data) for data in data_list]
         # Progress bar
         progress_counter(iteration, int(minutes / (time_between_two_runs / 60)), start_time=t0)
         # Get current time
