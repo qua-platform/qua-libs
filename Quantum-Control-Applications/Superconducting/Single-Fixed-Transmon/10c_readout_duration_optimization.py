@@ -52,7 +52,7 @@ def update_readout_length(new_readout_length, ringdown_length):
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 1e4  # number of averages
+n_avg = 5e4  # number of averages
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = 5 * u.us  # Readout pulse duration
 ringdown_len = 0 * u.us  # integration time after readout pulse to observe the ringdown of the resonator
