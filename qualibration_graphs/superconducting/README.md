@@ -16,7 +16,7 @@ See the [QUAlibrate Documentation](https://qua-platform.github.io/qualibrate/) f
     - [Initial Setup (QUAlibrate Configuration)](#initial-setup-qualibrate-configuration)
     - [Verify Setup](#verify-setup)
 3.  [Creating the QUAM State](#creating-the-quam-state)
-4.  [Calibration Nodes and Graphs](calibration-nodes-and-graphs)
+4.  [Calibration Nodes and Graphs](#calibration-nodes-and-graphs)
 5.  [Project Structure](#project-structure)
 6.  [Extending QUAM Components](#extending-quam-components)
 7.  [Contributing](#contributing)
