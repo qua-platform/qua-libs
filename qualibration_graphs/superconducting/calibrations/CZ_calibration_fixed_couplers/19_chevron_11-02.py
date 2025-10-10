@@ -8,7 +8,6 @@ import numpy as np
 import xarray as xr
 from calibration_utils.chevron_cz import (
     Parameters,
-
     baked_waveform,
     fit_raw_data,
     log_fitted_results,

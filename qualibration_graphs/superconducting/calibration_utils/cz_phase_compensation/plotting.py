@@ -27,7 +27,9 @@ def plot_raw_data_with_fit(ds_raw: xr.Dataset, qubit_pairs: Quam, ds_fit: xr.Dat
             qp_data.state_control.plot(ax=ax, marker="o", linestyle="", color="blue", label="Control")
             qp_data.state_target.plot(ax=ax, marker="o", linestyle="", color="red", label="Target")
         else:
-            qp_data.I_control.sel(control_target="c").plot(ax=ax, marker="o", linestyle="", color="blue", label="Control")
+            qp_data.I_control.sel(control_target="c").plot(
+                ax=ax, marker="o", linestyle="", color="blue", label="Control"
+            )
             qp_data.I_target.sel(control_target="t").plot(ax=ax, marker="o", linestyle="", color="red", label="Target")
 
         # Plot fitted data if available and fit was successful
