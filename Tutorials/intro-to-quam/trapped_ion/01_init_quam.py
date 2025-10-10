@@ -74,28 +74,20 @@ for i in range(n_qubits):
 machine.global_op = GlobalOperations(
     global_mw=MWChannel(
         id="global_mw",
-        opx_output=MWFEMAnalogOutputPort(
-            "con1", 8, 1, band=mw_band, upconverter_frequency=mw_LO
-        ),
+        opx_output=MWFEMAnalogOutputPort("con1", 8, 1, band=mw_band, upconverter_frequency=mw_LO),
         intermediate_frequency=mw_IF,
     ),
     ion_displacement=Channel(
         digital_outputs={
-            "ttl": DigitalOutputChannel(
-                opx_output=FEMDigitalOutputPort("con1", 8, 1), delay=136, buffer=0
-            )
+            "ttl": DigitalOutputChannel(opx_output=FEMDigitalOutputPort("con1", 8, 1), delay=136, buffer=0)
         },
     ),
 )
 
 # define pulse
 machine.global_op.global_mw.operations["x180"] = SquarePulse(amplitude=0.2, length=1000)
-machine.global_op.global_mw.operations["y180"] = SquarePulse(
-    amplitude=0.2, length=1000, axis_angle=90
-)
-machine.global_op.ion_displacement.operations["ttl"] = Pulse(
-    length=1000, digital_marker=[(1, 500), (0, 0)]
-)
+machine.global_op.global_mw.operations["y180"] = SquarePulse(amplitude=0.2, length=1000, axis_angle=90)
+machine.global_op.ion_displacement.operations["ttl"] = Pulse(length=1000, digital_marker=[(1, 500), (0, 0)])
 
 # operation macro
 machine.global_op.macros["X"] = SingleXMacro()

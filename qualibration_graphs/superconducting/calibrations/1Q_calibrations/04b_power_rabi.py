@@ -1,57 +1,56 @@
 # %% {Imports}
-from dataclasses import asdict
-
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from dataclasses import asdict
+
 from qm.qua import *
+
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
+
 from qualibrate import QualibrationNode
-from qualibration_libs.data import XarrayDataFetcher
 from quam_config import Quam
-from calibration_utils.ramsey_versus_flux_calibration import (
+from calibration_utils.power_rabi import (
     Parameters,
+    get_number_of_pulses,
+    process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
-    plot_parabolas_with_fit,
-    process_raw_dataset,
 )
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
+from qualibration_libs.data import XarrayDataFetcher
 
-# %% {Node initialisation}
+
+# %% {Description}
 description = """
-        RAMSEY WITH VIRTUAL Z ROTATIONS
-This program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement)
-for different idle times. Instead of detuning the qubit gates, the frame of the second
-x90 pulse is rotated (de-phased) to mimic an accumulated phase acquired for a given
-detuning after the idle time. This method has the advantage of playing resonant gates.
-
-From the results, one can fit the Ramsey oscillations and precisely measure the qubit
-resonance frequency and T2*.
+        POWER RABI WITH ERROR AMPLIFICATION
+This sequence involves repeatedly executing the qubit pulse (such as x180) 'N' times and
+measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
+By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
+amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under
-      study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy,
-      rabi_chevron, power_rabi and updated the state.
-    - (optional) Having calibrated the readout (readout_frequency, amplitude,
-      duration_optimization IQ_blobs) for better SNR.
+    - Having calibrated the mixer or the Octave (nodes 01a or 01b).
+    - Having calibrated the qubit frequency (node 03a_qubit_spectroscopy.py).
+    - Having set the qubit gates duration (qubit.xy.operations["x180"].length).
+    - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
-Next steps before going to the next node:
-    - Update the qubits frequency (f_01) in the state.
-    - Save the current state by calling machine.save()
+State update:
+    - The qubit pulse amplitude corresponding to the specified operation (x180, x90...)
+    (qubit.xy.operations[operation].amplitude).
 """
 
 
+# Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="09_ramsey_vs_flux_calibration",
-    description=description,
-    parameters=Parameters(),
+    name="04b_power_rabi",  # Name should be unique
+    description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
+    parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
 
 
@@ -59,8 +58,13 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1", "q3"]
+    # node.parameters.qubits = ["q1", "q2"]
+    # node.parameters.max_number_pulses_per_sweep = 100
+    # node.parameters.min_amp_factor = 0.8
+    # node.parameters.max_amp_factor = 1.2
+    # node.parameters.amp_factor_step = 0.01
     pass
 
 
@@ -79,36 +83,30 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num_qubits = len(qubits)
 
     n_avg = node.parameters.num_shots  # The number of averages
-
-    # Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
-    idle_times = np.arange(
-        node.parameters.min_wait_time_in_ns // 4,
-        node.parameters.max_wait_time_in_ns // 4,
-        node.parameters.wait_time_step_in_ns // 4,
+    operation = node.parameters.operation  # The qubit operation to play
+    # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+    amps = np.arange(
+        node.parameters.min_amp_factor,
+        node.parameters.max_amp_factor,
+        node.parameters.amp_factor_step,
     )
-
-    # Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
-    detuning = int(1e6 * node.parameters.frequency_detuning_in_mhz)
-    fluxes = np.linspace(
-        -node.parameters.flux_span / 2,
-        node.parameters.flux_span / 2,
-        node.parameters.flux_num,
-    )
+    # Number of applied Rabi pulses sweep
+    N_pi_vec = get_number_of_pulses(node.parameters)
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "flux_bias": xr.DataArray(fluxes, attrs={"long_name": "flux bias", "units": "V"}),
-        "idle_times": xr.DataArray(4 * idle_times, attrs={"long_name": "idle times", "units": "ns"}),
+        "nb_of_pulses": xr.DataArray(N_pi_vec, attrs={"long_name": "number of pulses"}),
+        "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "pulse amplitude prefactor"}),
     }
+
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
-        init_state = [declare(int) for _ in range(num_qubits)]
-        current_state = [declare(int) for _ in range(num_qubits)]
-        state = [declare(int) for _ in range(num_qubits)]
-        state_st = [declare_stream() for _ in range(num_qubits)]
-        t = declare(int)  # QUA variable for the idle time
-        phi = declare(fixed)  # QUA variable for dephasing the second pi/2 pulse (virtual Z-rotation)
-        flux = declare(fixed)  # QUA variable for the flux dc level
+        if node.parameters.use_state_discrimination:
+            state = [declare(int) for _ in range(num_qubits)]
+            state_st = [declare_stream() for _ in range(num_qubits)]
+        a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
+        npi = declare(int)  # QUA variable for the number of qubit pulses
+        count = declare(int)  # QUA variable for counting the qubit pulses
 
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
@@ -116,44 +114,53 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 node.machine.initialize_qpu(target=qubit)
             align()
 
-            for i, qubit in multiplexed_qubits.items():
-                qubit.readout_state(init_state[i])
-
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
-                with for_(*from_array(flux, fluxes)):
-                    with for_(*from_array(t, idle_times)):
+                with for_(*from_array(npi, N_pi_vec)):
+                    with for_(*from_array(a, amps)):
+                        # Qubit initialization
+                        for i, qubit in multiplexed_qubits.items():
+                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                        align()
+
                         # Qubit manipulation
                         for i, qubit in multiplexed_qubits.items():
-                            # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
-                            # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
-                            assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
-                            # Ramsey sequence
-                            with strict_timing_():
-                                qubit.xy.play("x90")
-                                qubit.xy.frame_rotation_2pi(phi)
-                                qubit.xy.wait(t + 1)
-                                qubit.z.wait(duration=qubit.xy.operations["x90"].length)
-                                qubit.z.play(
-                                    "const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t
-                                )
-                                qubit.xy.play("x90")
+                            # Loop for error amplification (perform many qubit pulses)
+                            with for_(count, 0, count < npi, count + 1):
+                                qubit.xy.play(operation, amplitude_scale=a)
                         align()
 
                         # Qubit readout
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.readout_state(current_state[i])
-                            assign(state[i], init_state[i] ^ current_state[i])
-                            assign(init_state[i], current_state[i])
-                            save(state[i], state_st[i])
-                            # Reset the frame of the qubits in order not to accumulate rotations
-                            reset_frame(qubit.xy.name)
+                            if node.parameters.use_state_discrimination:
+                                qubit.readout_state(state[i])
+                                save(state[i], state_st[i])
+                            else:
+                                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                                save(I[i], I_st[i])
+                                save(Q[i], Q_st[i])
                         align()
 
         with stream_processing():
             n_st.save("n")
-            for i in range(num_qubits):
-                state_st[i].buffer(len(idle_times)).buffer(len(fluxes)).average().save(f"state{i + 1}")
+            for i, qubit in enumerate(qubits):
+                if operation == "x180":
+                    if node.parameters.use_state_discrimination:
+                        state_st[i].buffer(len(amps)).buffer(
+                            np.ceil(node.parameters.max_number_pulses_per_sweep / 2)
+                        ).average().save(f"state{i + 1}")
+                    else:
+                        I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")
+                        Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")
+
+                elif operation in ["x90", "-x90", "y90", "-y90"]:
+                    if node.parameters.use_state_discrimination:
+                        state_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"state{i + 1}")
+                    else:
+                        I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")
+                        Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")
+                else:
+                    raise ValueError(f"Unrecognized operation {operation}.")
 
 
 # %% {Simulate}
@@ -229,12 +236,10 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
-    fig_parabola_fit = plot_parabolas_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
-        "raw_data": fig_raw_fit,
-        "parabola_fit": fig_parabola_fit,
+        "amplitude": fig_raw_fit,
     }
 
 
@@ -246,20 +251,11 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            flux_point = node.machine.qubits[q.name].z.flux_point
-            flux_offset = node.results["fit_results"][q.name]["flux_offset"]
-            freq_offset = (
-                node.parameters.frequency_detuning_in_mhz * 1e6
-                - node.results["ds_fit"].freq_offset.sel(qubit=q.name).values * 1e3
-            )
-            if flux_point == "independent":
-                q.z.independent_offset += flux_offset
-            elif flux_point == "joint":
-                q.z.joint_offset += flux_offset
-            else:
-                raise RuntimeError("Unknown flux_point")
-            q.f_01 += freq_offset
-            q.xy.RF_frequency += freq_offset
+
+            operation = q.xy.operations[node.parameters.operation]
+            operation.amplitude = node.results["fit_results"][q.name]["opt_amp"]
+            if node.parameters.operation == "x180":
+                q.xy.operations["x90"].amplitude = node.results["fit_results"][q.name]["opt_amp"] / 2
 
 
 # %% {Save_results}

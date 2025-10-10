@@ -28,9 +28,7 @@ with program() as prog:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_each_(amp_i, amp_scan):
-            machine.global_op.apply(
-                "N_XX", qubit_idx=qubit_idx, amp_scale=amp_i, XX_rep=XX_rep
-            )
+            machine.global_op.apply("N_XX", qubit_idx=qubit_idx, amp_scale=amp_i, XX_rep=XX_rep)
             for i, qubit in enumerate(machine.qubits.values()):
                 state = qubit.apply("measure")
                 save(state, state_st)
