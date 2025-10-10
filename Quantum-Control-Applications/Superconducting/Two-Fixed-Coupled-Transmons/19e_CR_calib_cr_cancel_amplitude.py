@@ -1,4 +1,10 @@
 """
+<<<<<<< HEAD:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/18e_CR_calib_cr_cancel_amplitude.py
+        CR_calib_cancel_drive_amplitude
+This script is to calibrate the phase of CR cancellation drive, corresponding to Fig. 3(b) of the referenced paper.
+CR drive (cancellation) pulse is applied to the control(target) qubit at the target qubit frequency.
+Each sequence, which varies in the duration of the CR drive and the phase of CR cancellation drive,
+=======
                                  CR_calib_cancel_drive_amplitude
 
 The CR_calib scripts are designed for calibrating cross-resonance (CR) gates involving a system
@@ -20,11 +26,16 @@ For the calibration sequences, we employ echoed CR drive.
 This script is to calibrate the phase of CR cancellation drive.
 CR cancellation pulse is applied to the target qubit at the target qubit frequency.
 Each sequence, which varies in the duration of the CR drive and the phase of CR cancel drive,
+>>>>>>> main:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/19e_CR_calib_cr_cancel_amplitude.py
 ends with state tomography of the target state (across X, Y, and Z bases).
 This process is repeated with the control state in both |0> and |1> states.
 We fit the two sets of CR duration versus tomography data to a theoretical model,
 yielding two sets of three parameters: delta, omega_x, and omega_y.
 Using these parameters, we estimate the interaction coefficients of the Hamiltonian.
+(a_X, a_Y, a_Z, b_X, b_Y, b_Z described in the 18a_CR_calib_unit_hamiltonian_tomography.py)
+
+For the calibration sequences, one needs to choose one of the following CR drive configurations:
+cr_type = "direct," "direct + echo," "direct + cancel," or "direct + cancel + echo."
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
@@ -33,9 +44,7 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Find the amplitude where a_X (coeff of I_X) and a_Y (coeff of I_Y) is zero simultaneously.
-      If the two coeffs do not vanish simultaneously, the value of phi could be wrong.
-      Set cr_c1t2_drive_am in the configuration file.
-      Set cr_cancel_c1t2_square_positive_amp in the configuration file accordingly.
+      Set cr_cancel_square_amp_c1t2 in the configuration file.
 
 Reference: Sarah Sheldon, Easwar Magesan, Jerry M. Chow, and Jay M. Gambetta Phys. Rev. A 93, 060302(R) (2016)
 """

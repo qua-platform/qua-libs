@@ -23,7 +23,7 @@ from calibration_utils.ramsey_versus_flux_calibration import (
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 
-# %% {Initialisation}
+# %% {Node initialisation}
 description = """
         RAMSEY WITH VIRTUAL Z ROTATIONS
 This program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement)
@@ -186,7 +186,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
-                data_fetcher["n"],
+                data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
@@ -196,7 +196,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 
-# %% {Load_data}
+# %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""

@@ -85,27 +85,27 @@ saturation_len = 50 * u.us  # Needs to be several T1 so that the final state is 
 pi_len = 320  # in units of ns
 pi_amp = 0.3  # in units of volts
 pi_wf, pi_der_wf = drag_gaussian_pulse_waveforms(
-    pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+    pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, anharmonicity=0, detuning=0, subtracted=True
 )
 minus_pi_wf, minus_pi_der_wf = drag_gaussian_pulse_waveforms(
-    -pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+    -pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, anharmonicity=0, detuning=0, subtracted=True
 )
 
 # Pi_half pulse parameters
 pi_half_len = int(pi_len / 2)  # in units of ns
 pi_half_amp = pi_amp  # in units of volts
 pi_half_wf, pi_half_der_wf = drag_gaussian_pulse_waveforms(
-    pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+    pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, anharmonicity=0, delta=1, detuning=0, subtracted=True
 )
 minus_pi_half_wf, minus_pi_half_der_wf = drag_gaussian_pulse_waveforms(
-    -pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+    -pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, anharmonicity=0, delta=1, detuning=0, subtracted=True
 )
 
 # Subtracted Gaussian pulse parameters
 gauss_amp = 0.3  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_len = 20  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_wf, gauss_der_wf = drag_gaussian_pulse_waveforms(
-    gauss_amp, gauss_len, gauss_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+    gauss_amp, gauss_len, gauss_len / 5, alpha=0, delta=1, anharmonicity=0, detuning=0, subtracted=True
 )
 # Note: a subtracted Gaussian pulse has a more narrow spectral density than a regular gaussian
 # it becomes useful in short pulses to reduce leakage to higher energy states

@@ -1,0 +1,50 @@
+{
+    "raw_data": {
+        "adcI1": "./arrays.npz#raw_data.adcI1",
+        "adcQ1": "./arrays.npz#raw_data.adcQ1",
+        "adc_single_runI1": "./arrays.npz#raw_data.adc_single_runI1",
+        "adc_single_runQ1": "./arrays.npz#raw_data.adc_single_runQ1",
+        "adcI2": "./arrays.npz#raw_data.adcI2",
+        "adcQ2": "./arrays.npz#raw_data.adcQ2",
+        "adc_single_runI2": "./arrays.npz#raw_data.adc_single_runI2",
+        "adc_single_runQ2": "./arrays.npz#raw_data.adc_single_runQ2"
+    },
+    "processed_data": {
+        "adcI1": "./arrays.npz#processed_data.adcI1",
+        "adcQ1": "./arrays.npz#processed_data.adcQ1",
+        "adc_single_runI1": "./arrays.npz#processed_data.adc_single_runI1",
+        "adc_single_runQ1": "./arrays.npz#processed_data.adc_single_runQ1",
+        "adcI2": "./arrays.npz#processed_data.adcI2",
+        "adcQ2": "./arrays.npz#processed_data.adcQ2",
+        "adc_single_runI2": "./arrays.npz#processed_data.adc_single_runI2",
+        "adc_single_runQ2": "./arrays.npz#processed_data.adc_single_runQ2"
+    },
+    "fitted_data": {
+        "mean_values": {
+            "adcI1": 0.0006782373046874996,
+            "adcQ1": 4.6772460937500115e-05,
+            "adc_single_runI1": 0.00059755859375,
+            "adc_single_runQ1": 4.326171875e-05,
+            "adcI2": 0.0006782373046874996,
+            "adcQ2": 4.6772460937500115e-05,
+            "adc_single_runI2": 0.00059755859375,
+            "adc_single_runQ2": 4.326171875e-05
+        },
+        "processed_data_without_mean": {
+            "adcI1": "./arrays.npz#fitted_data.processed_data_without_mean.adcI1",
+            "adcQ1": "./arrays.npz#fitted_data.processed_data_without_mean.adcQ1",
+            "adc_single_runI1": "./arrays.npz#fitted_data.processed_data_without_mean.adc_single_runI1",
+            "adc_single_runQ1": "./arrays.npz#fitted_data.processed_data_without_mean.adc_single_runQ1",
+            "adcI2": "./arrays.npz#fitted_data.processed_data_without_mean.adcI2",
+            "adcQ2": "./arrays.npz#fitted_data.processed_data_without_mean.adcQ2",
+            "adc_single_runI2": "./arrays.npz#fitted_data.processed_data_without_mean.adc_single_runI2",
+            "adc_single_runQ2": "./arrays.npz#fitted_data.processed_data_without_mean.adc_single_runQ2"
+        },
+        "delay1": 288,
+        "delay2": 288
+    },
+    "figures": {
+        "single_run": "./figures.single_run.png",
+        "averaged_run": "./figures.averaged_run.png"
+    }
+}

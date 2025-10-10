@@ -82,7 +82,6 @@ with program() as PROGRAM:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
 
     with for_(n, 0, n < n_avg, n + 1):
-
         save(n, n_st)
 
         for i in range(len(sequence)):

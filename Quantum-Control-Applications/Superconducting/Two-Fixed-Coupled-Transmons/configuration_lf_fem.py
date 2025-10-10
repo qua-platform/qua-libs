@@ -382,8 +382,8 @@ config = {
     "elements": {
         "rr1": {
             "mixInputs": {
-                "I": (con, fem, 5),
-                "Q": (con, fem, 6),
+                "I": (con, fem, 1),
+                "Q": (con, fem, 2),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -401,8 +401,8 @@ config = {
         },
         "rr2": {
             "mixInputs": {
-                "I": (con, fem, 5),
-                "Q": (con, fem, 6),
+                "I": (con, fem, 1),
+                "Q": (con, fem, 2),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -420,8 +420,8 @@ config = {
         },
         "q1_xy": {
             "mixInputs": {
-                "I": (con, fem, 1),
-                "Q": (con, fem, 2),
+                "I": (con, fem, 3),
+                "Q": (con, fem, 4),
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
@@ -438,8 +438,8 @@ config = {
         },
         "q2_xy": {
             "mixInputs": {
-                "I": (con, fem, 3),
-                "Q": (con, fem, 4),
+                "I": (con, fem, 7),
+                "Q": (con, fem, 8),
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },
@@ -456,8 +456,8 @@ config = {
         },
         "cr_drive_c1t2": {
             "mixInputs": {
-                "I": (con, fem, 1),
-                "Q": (con, fem, 2),
+                "I": (con, fem, 3),
+                "Q": (con, fem, 4),
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
@@ -470,8 +470,8 @@ config = {
         },
         "cr_drive_c2t1": {
             "mixInputs": {
-                "I": (con, fem, 3),
-                "Q": (con, fem, 4),
+                "I": (con, fem, 7),
+                "Q": (con, fem, 8),
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },
@@ -484,8 +484,8 @@ config = {
         },
         "cr_cancel_c1t2": {
             "mixInputs": {
-                "I": (con, fem, 3),
-                "Q": (con, fem, 4),
+                "I": (con, fem, 7),
+                "Q": (con, fem, 8),
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
@@ -498,8 +498,8 @@ config = {
         },
         "cr_cancel_c2t1": {
             "mixInputs": {
-                "I": (con, fem, 1),
-                "Q": (con, fem, 2),
+                "I": (con, fem, 3),
+                "Q": (con, fem, 4),
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },

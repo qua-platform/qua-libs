@@ -38,7 +38,6 @@ save_data_dict = {
 # The QUA program #
 ###################
 with program() as PROGRAM:
-
     II = declare(fixed, size=number_of_divisions)
     IQ = declare(fixed, size=number_of_divisions)
     QI = declare(fixed, size=number_of_divisions)

@@ -32,7 +32,6 @@ save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
     Path(__file__).name: Path(__file__).name,
-    "optimal_weights.npz": "optimal_weights.npz",
 }
 
 #####################
@@ -83,6 +82,7 @@ duration_readout = readout_len + 100
 duration_compensation_pulse = 4 * u.us
 
 # Step parameters
+coulomb_step_length = 60  # in ns
 step_length = 16  # in ns
 P1_step_amp = 0.25  # in V
 P2_step_amp = 0.25  # in V
@@ -184,6 +184,7 @@ config = {
             },
             "operations": {
                 "step": "P1_step_pulse",
+                "coulomb_step": "P1_coulomb_step_pulse",
                 "pi": "P1_pi_pulse",
                 "pi_half": "P1_pi_half_pulse",
             },
@@ -203,6 +204,7 @@ config = {
             },
             "operations": {
                 "step": "P2_step_pulse",
+                "coulomb_step": "P2_coulomb_step_pulse",
                 "pi": "P2_pi_pulse",
                 "pi_half": "P2_pi_half_pulse",
             },
@@ -326,6 +328,20 @@ config = {
         "P2_step_pulse": {
             "operation": "control",
             "length": step_length,
+            "waveforms": {
+                "single": "P2_step_wf",
+            },
+        },
+        "P1_coulomb_step_pulse": {
+            "operation": "control",
+            "length": coulomb_step_length,
+            "waveforms": {
+                "single": "P1_step_wf",
+            },
+        },
+        "P2_coulomb_step_pulse": {
+            "operation": "control",
+            "length": coulomb_step_length,
             "waveforms": {
                 "single": "P2_step_wf",
             },

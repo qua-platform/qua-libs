@@ -51,8 +51,8 @@ ge_threshold = 0.155  # arbitrary atm, in V
 B_field = 0  # Predetermined magnetic field value if not set externally
 
 
-# seq = VoltageGateSequence(config, ["P1_sticky", "P2_sticky"])
-seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])
+seq = VoltageGateSequence(config, ["P1_sticky", "P2_sticky"])
+# seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
 # Idle is when RB sequence takes place, duration is overridden with calculated sequence timing
 seq.add_points("idle", level_manip, duration_manip)
@@ -408,7 +408,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration

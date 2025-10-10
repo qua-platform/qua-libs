@@ -47,7 +47,6 @@ save_data_dict = {
 # The QUA program #
 ###################
 with program() as PROGRAM:
-
     Ig, I_g_st, Qg, Q_g_st, n, n_st = qua_declaration(nb_of_qubits=2)
     Ie, I_e_st, Qe, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the readout frequency
@@ -58,7 +57,6 @@ with program() as PROGRAM:
         save(n, n_st)
 
         with for_(*from_array(a, scalings)):
-
             # Reset both qubits to ground
             wait(thermalization_time * u.ns)
             # Measure the ground IQ blobs

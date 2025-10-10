@@ -62,7 +62,6 @@ with program() as PROGRAM:
         assign(phase, 0)
 
         with for_(*from_array(t, t_delays)):
-
             assign(phase, phase + delta_phase)
 
             play("x90", "q1_xy")

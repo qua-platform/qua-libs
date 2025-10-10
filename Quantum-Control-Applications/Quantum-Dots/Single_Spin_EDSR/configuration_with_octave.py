@@ -30,7 +30,6 @@ save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
     Path(__file__).name: Path(__file__).name,
-    "optimal_weights.npz": "optimal_weights.npz",
 }
 
 ############################
@@ -90,6 +89,7 @@ duration_readout = readout_len + 100
 duration_compensation_pulse = 4 * u.us
 
 # Step parameters
+coulomb_step_length = 60  # in ns
 step_length = 16  # in ns
 P1_step_amp = 0.25  # in V
 P2_step_amp = 0.25  # in V
@@ -106,13 +106,24 @@ qubit_LO = 4 * u.GHz
 qubit_IF = 100 * u.MHz
 # Octave gain in dB
 octave_gain = 0
-
-# Pi pulse
-pi_amp = 0.25  # in V
-pi_length = 32  # in ns
-# Pi half
-pi_half_amp = 0.25  # in V
-pi_half_length = 16  # in ns
+# x180 pulse
+x180_amp = 0.25  # in V
+x180_len = 32  # in ns
+# y180 pulse
+y180_amp = x180_amp  # in V
+y180_len = x180_len  # in ns
+# x90 pulse
+x90_amp = x180_amp / 2  # in V
+x90_len = x180_len  # in ns
+# -x90 pulse
+minus_x90_amp = -x90_amp  # in V
+minus_x90_len = x180_len  # in ns
+# y90 pulse
+y90_amp = y180_amp / 2  # in V
+y90_len = y180_len  # in ns
+# -y90 pulse
+minus_y90_amp = -y90_amp  # in V
+minus_y90_len = y180_len  # in ns
 # Gaussian pulse
 gaussian_amp = 0.1  # in V
 gaussian_length = 20  # in ns
@@ -153,6 +164,7 @@ config = {
             },
             "operations": {
                 "step": "P1_step_pulse",
+                "coulomb_step": "P1_coulomb_step_pulse",
             },
         },
         "P1_sticky": {
@@ -170,6 +182,7 @@ config = {
             },
             "operations": {
                 "step": "P2_step_pulse",
+                "coulomb_step": "P2_coulomb_step_pulse",
             },
         },
         "P2_sticky": {
@@ -227,8 +240,12 @@ config = {
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "cw_pulse",
-                "pi": "pi_pulse",
-                "pi_half": "pi_half_pulse",
+                "x180": "x180_pulse",
+                "y180": "y180_pulse",
+                "x90": "x90_pulse",
+                "-x90": "-x90_pulse",
+                "y90": "y90_pulse",
+                "-y90": "-y90_pulse",
                 "gauss": "gaussian_pulse",
             },
         },
@@ -290,6 +307,20 @@ config = {
                 "single": "P2_step_wf",
             },
         },
+        "P1_coulomb_step_pulse": {
+            "operation": "control",
+            "length": coulomb_step_length,
+            "waveforms": {
+                "single": "P1_step_wf",
+            },
+        },
+        "P2_coulomb_step_pulse": {
+            "operation": "control",
+            "length": coulomb_step_length,
+            "waveforms": {
+                "single": "P2_step_wf",
+            },
+        },
         "bias_charge_pulse": {
             "operation": "control",
             "length": step_length,
@@ -318,20 +349,52 @@ config = {
                 "Q": "zero_wf",
             },
         },
-        "pi_pulse": {
+        "x180_pulse": {
             "operation": "control",
-            "length": pi_length,
+            "length": x180_len,
             "waveforms": {
-                "I": "pi_wf",
+                "I": "x180_wf",
                 "Q": "zero_wf",
             },
         },
-        "pi_half_pulse": {
+        "y180_pulse": {
             "operation": "control",
-            "length": pi_half_length,
+            "length": y180_len,
             "waveforms": {
-                "I": "pi_half_wf",
+                "I": "zero_wf",
+                "Q": "y180_wf",
+            },
+        },
+        "x90_pulse": {
+            "operation": "control",
+            "length": x90_len,
+            "waveforms": {
+                "I": "x90_wf",
                 "Q": "zero_wf",
+            },
+        },
+        "-x90_pulse": {
+            "operation": "control",
+            "length": minus_x90_len,
+            "waveforms": {
+                "I": "minus_x90_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "y90_pulse": {
+            "operation": "control",
+            "length": y90_len,
+            "waveforms": {
+                "I": "zero_wf",
+                "Q": "y90_wf",
+            },
+        },
+        "-y90_pulse": {
+            "operation": "control",
+            "length": minus_y90_len,
+            "waveforms": {
+                "I": "zero_wf",
+                "Q": "minus_y90_wf",
             },
         },
         "reflectometry_readout_pulse": {
@@ -362,8 +425,12 @@ config = {
         "P1_step_wf": {"type": "constant", "sample": P1_step_amp},
         "P2_step_wf": {"type": "constant", "sample": P2_step_amp},
         "charge_sensor_step_wf": {"type": "constant", "sample": charge_sensor_amp},
-        "pi_wf": {"type": "constant", "sample": pi_amp},
-        "pi_half_wf": {"type": "constant", "sample": pi_half_amp},
+        "x180_wf": {"type": "constant", "sample": x180_amp},
+        "y180_wf": {"type": "constant", "sample": y180_amp},
+        "x90_wf": {"type": "constant", "sample": x90_amp},
+        "minus_x90_wf": {"type": "constant", "sample": minus_x90_amp},
+        "y90_wf": {"type": "constant", "sample": y90_amp},
+        "minus_y90_wf": {"type": "constant", "sample": minus_y90_amp},
         "gaussian_wf": {
             "type": "arbitrary",
             "samples": list(gaussian_amp * gaussian(gaussian_length, gaussian_length / 5)),

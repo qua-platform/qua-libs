@@ -196,7 +196,6 @@ with program() as PROGRAM:
             # Only played the depth corresponding to target_depth
 
             with if_((depth == 2) | (depth == depth_target)):
-
                 with for_(n, 0, n < n_avg, n + 1):  # Averaging loop
                     # Can replace by active reset
                     wait(thermalization_time * u.ns)
@@ -269,7 +268,6 @@ else:
         x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
 
         while results.is_processing():
-
             # Fetch results
             res = results.fetch_all()
 
@@ -278,7 +276,6 @@ else:
 
             plt.suptitle("interleaved-RB")
             for ind in range(2):
-
                 S = res[2 * ind + 1]
                 # Plot
                 plt.subplot(1, 2, ind + 1)

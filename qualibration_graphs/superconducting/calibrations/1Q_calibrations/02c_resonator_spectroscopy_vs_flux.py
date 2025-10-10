@@ -26,7 +26,7 @@ from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
 
-# %% {Initialisation}
+# %% {Node initialisation}
 description = """
         RESONATOR SPECTROSCOPY VERSUS FLUX
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
@@ -175,7 +175,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
-                data_fetcher["n"],
+                data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
@@ -185,7 +185,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 
-# %% {Load_data}
+# %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
