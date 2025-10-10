@@ -228,9 +228,16 @@ for k, q in enumerate(machine.qubits):
 ########################################################################################################################
 # %%                                    Qubit Pairs
 ########################################################################################################################
+# Add qubit pairs for CZ gates, if qubit pairs are already defined on the machine this line should be commented out
+# This is the case when tunable couplers have been defined in generate_quam.py.
 
+# If pairs are not defined:
+qubit_pairs = [("1", "2"), ("2", "3"), ("3", "4"), ("4", "5"), ("5", "6"), ("6", "7"), ("7", "8")]
 
-for qp in machine.qubit_pairs:
+# If pairs are already defined, comment the previous line and uncomment the following one:
+# qubit_pairs = machine.qubit_pairs
+
+for qp in qubit_pairs:
 
     q0_freq = machine.qubits[f"q{qp[0]}"].f_01
     q1_freq = machine.qubits[f"q{qp[1]}"].f_01
