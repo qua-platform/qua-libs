@@ -60,8 +60,6 @@ The calibration sequence ensures accurate compensation of intrinsic distortions 
 
 To achieve high-fidelity operation, flux lines tuning the qubit frequency must be characterized and corrected for distortion. Two complementary methods are used to characterize long- and short-timescale distortions.
 
-The fitting parameters for the exponential-fit time constants can be tuned interactively by loading the dataset via its ID and committing the changes using the `update_state_from_GUI` flag.
-
 ### Qubit Spectroscopy vs. Flux Delay
 [(17_pi_vs_flux_long_distortions)](../1Q_calibrations/17_pi_vs_flux_long_distortions.py)
 
@@ -88,11 +86,11 @@ This method, introduced in [2], consists of sweeping the duration of a square fl
 
 ### Intended Usage
 
-These two nodes are designed for interactive parameter fitting through the **QUAlibrate GUI**:
+These two nodes are designed for interactive parameter fitting through the **QUAlibrate GUI**. The fitting parameters for the exponential-fit time constants can be tuned interactively by loading the dataset via its ID and committing the changes using the `update_state_from_GUI` flag. Intended calibration workflow:
 
-1. Acquire data with `update_state=False`.
-2. If the data is suitable, load it by its ID and adjust the fitting parameters interactively.
-3. Once a good fit is obtained, set `update_state_from_GUI=True` and press **RUN** to update the filters in the QuAM state.
+- User acquires data with the `update_state` flag set to `False`.
+- If the data is judged to be good for fitting the user then loads the dataset via it's load id <span style="color:red">(1)</span> and starts interating with the fitting parameters <span style="color:red">(2)</span>.
+- Once a good set of parameters is found, the user can set `update_state_from_GUI` to `True` <span style="color:red">(3)</span> and press RUN <span style="color:red">(4)</span> to update the fitted filters to the Quam state.
 
 <p align="center">
    <img src="../.img/cs_fit_operation.png" width="500" alt="GUI operation">
@@ -141,7 +139,7 @@ The sequence involves preparing the states |0+⟩ and |1+⟩ (control, target), 
 
 During the CZ pulse, qubit frequencies shift, causing each qubit to acquire an additional phase. These phases must be measured and compensated via virtual Z rotations.
 
-The sequence prepares the |++⟩ state, applies the CZ pulse, and reconstructs each qubit’s phase using tomography with a rotating-phase x90 pulse.
+The sequence prepares the |++⟩ state, applies the CZ pulse, and reconstructs each qubit’s phase using tomography with a rotating-phase (frame) x90 pulse.
 
 <p align="center">
   <img src="../.img/individual_phases.png" width="500" alt="Individual qubit phase reconstruction">

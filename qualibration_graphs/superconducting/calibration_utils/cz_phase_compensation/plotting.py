@@ -38,7 +38,12 @@ def plot_raw_data_with_fit(ds_raw: xr.Dataset, qubit_pairs: Quam, ds_fit: xr.Dat
                     qp_fit_data.fitted_control.plot(ax=ax, color="blue", alpha=0.5)
                 if "fitted_target" in ds_fit.data_vars:
                     qp_fit_data.fitted_target.plot(ax=ax, color="red", alpha=0.5)
+        if "state_control" in ds_raw.data_vars:
+            ax.set_ylabel("Measured State")
+        else:
+            ax.set_ylabel("Rotated I Quadrature [V]")
 
+        ax.set_xlabel(r"x90 frame rotation [$\mathrm{rad}/2\pi$]")
         ax.legend()
 
     plt.tight_layout()
