@@ -20,7 +20,6 @@ from quam_builder.architecture.superconducting.custom_gates.flux_tunable_transmo
 from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
 from quam_config import Quam
 
-from quam.components.pulses import FlatTopGaussianPulse, GaussianPulse, SquarePulse
 
 ########################################################################################################################
 # %%                                 QUAM loading and auxiliary functions
@@ -228,9 +227,8 @@ for k, q in enumerate(machine.qubits):
 # %%                                    Qubit Pairs
 ########################################################################################################################
 
-qubit_pairs = [("1", "2"), ("2", "3"), ("3", "4"), ("4", "5"), ("5", "6"), ("6", "7"), ("7", "8")]
 
-for qp in qubit_pairs:
+for qp in machine.qubit_pairs:
 
     q0_freq = machine.qubits[f"q{qp[0]}"].f_01
     q1_freq = machine.qubits[f"q{qp[1]}"].f_01
