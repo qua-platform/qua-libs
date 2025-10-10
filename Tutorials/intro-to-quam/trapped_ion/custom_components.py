@@ -41,9 +41,7 @@ def measure_integrated(
     if qua_var is None:
         qua_var = declare(fixed)
 
-    pulse_name_with_amp_scale = add_amplitude_scale_to_pulse_name(
-        pulse_name, amplitude_scale
-    )
+    pulse_name_with_amp_scale = add_amplitude_scale_to_pulse_name(pulse_name, amplitude_scale)
 
     integration_weight_labels = list(pulse.integration_weights_mapping)
     measure(
