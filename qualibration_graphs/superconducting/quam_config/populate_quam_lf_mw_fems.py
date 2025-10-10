@@ -20,7 +20,6 @@ from quam_builder.architecture.superconducting.custom_gates.flux_tunable_transmo
 from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
 from quam_config import Quam
 
-
 ########################################################################################################################
 # %%                                 QUAM loading and auxiliary functions
 ########################################################################################################################
@@ -216,8 +215,11 @@ for k, q in enumerate(machine.qubits):
         alpha=0.0,
         detuning=0,
     )
-    machine.qubits[q].resonator.core = q
-    machine.qubits[q].xy.core = q
+    # If the qubit xy drive and readout are on the same MW-FEM and they don't need to play simultaneously they can share
+    # the same core to save resources. Lines are left commented for precaution so the user can decide on their implementation.
+
+    # machine.qubits[q].resonator.core = q
+    # machine.qubits[q].xy.core = q
     # Single Gaussian flux pulse
     if hasattr(machine.qubits[q], "z"):
         machine.qubits[q].z.flux_point = "joint"
