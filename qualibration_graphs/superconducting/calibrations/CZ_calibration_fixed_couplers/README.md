@@ -1,6 +1,6 @@
-# Fixed-Frequency Two-Qubit Gates: **CZ Gate Physics & Calibration Overview**
+# **CZ Gate on tunable transmons with fixed couplers: Physics & Calibration Overview**
 
-This folder contains routines for implementing and calibrating the **flux-activated CZ gate** on **fixed-frequency transmons**.
+This folder contains routines for implementing and calibrating the **flux-activated CZ gate** on **flux tunable transmons**.
 
 The gate relies on the precise activation of the non-computational state **|11⟩ ↔ |02⟩ avoided-crossing interaction** to accumulate a conditional phase. This protocol requires fine control of the qubit frequency through a short baseband flux pulse on the higher-frequency qubit’s flux line.
 
@@ -20,7 +20,7 @@ The gate relies on the precise activation of the non-computational state **|11�
 
 # Physics of the CZ gate based on 11–02 Interaction
 
-The **controlled-Z (CZ) gate** for fixed-frequency superconducting qubits operates via the *|11⟩ ↔ |02⟩* avoided crossing between two transmons coupled with exchange rate **J**.
+The **controlled-Z (CZ) gate** for flux tunable superconducting qubits operates via the *|11⟩ ↔ |02⟩* avoided crossing between two transmons coupled with exchange rate **J**.
 
 ### Mechanism
 
@@ -46,7 +46,7 @@ A **π phase accumulation** on the |11⟩ state realizes an ideal CZ:
 $$U_\mathrm{CZ} = \mathrm{diag}(1, 1, 1, -1).$$
 
 **Key Reference:**
-- **DiCarlo et al.**, *Nature* (2009) – first demonstration of a CZ gate via the 11–02 transition.
+- **DiCarlo et al.**, *Nature* (2009), *Demonstration of Two-Qubit Algorithms with a Superconducting Quantum Processor*
 
 ---
 
@@ -76,6 +76,7 @@ Exponential filter corrections are then fitted to compensate for long-timescale 
 <p align="center">
    <img src="../.img/long_distortions_fit.png" width="1000" alt="Fit result">
 </p>
+
 ### Cryoscope Calibration
 [(18_cryoscope)](../1Q_calibrations/18_cryoscope.py)
 
@@ -126,9 +127,11 @@ By sweeping the pulse amplitude and duration, a Chevron-like pattern is observed
 With the optimal duration fixed, perform a fine amplitude scan to locate the **90° conditional-phase point (π/2)**.
 
 The sequence involves preparing the states |0+⟩ and |1+⟩ (control, target), then applying the CZ flux pulse of varying amplitude on the control qubit. The conditional phase acquired by the target qubit is reconstructed via tomography using an x90 pulse of varying phase.
+
 <p align="center">
    <img src="../.img/conditional_phase.png" width="500" alt="Conditional phase plot">
 </p>
+
 **Goal:** Fit the conditional phase curve and update the optimal CZ amplitude in the system state.
 
 ---
