@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional
+from typing import ClassVar, List, Literal, Optional
 
 import numpy as np
 from qualang_tools.bakery import baking
@@ -25,6 +25,7 @@ class NodeSpecificParameters(RunnableParameters):
     max_time_in_ns: int = 160
     amp_range: float = 0.1
     amp_step: float = 0.003
+    use_state_discrimination: bool = True
 
 
 class Parameters(
@@ -33,7 +34,7 @@ class Parameters(
     NodeSpecificParameters,
     QubitPairExperimentNodeParameters,
 ):
-    pass
+    targets_name: ClassVar[str] = "qubit_pairs"
 
 
 def baked_waveform(qubit, baked_config, base_level: float = 0.5, max_samples: int = 16):
@@ -60,4 +61,6 @@ def baked_waveform(qubit, baked_config, base_level: float = 0.5, max_samples: in
             b.add_op(f"flux_pulse{i}", qubit.z.name, wf)
             b.play(f"flux_pulse{i}", qubit.z.name)
         pulse_segments.append(b)
+    return pulse_segments
+    return pulse_segments
     return pulse_segments

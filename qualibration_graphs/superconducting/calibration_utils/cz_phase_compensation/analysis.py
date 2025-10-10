@@ -101,9 +101,12 @@ def fit_routine(da):
 
     try:
         # Fit oscillation for each control state and amplitude
-        fit_control = fit_oscillation(da[data_control], "frame")
-        fit_target = fit_oscillation(da[data_target], "frame")
-
+        if data_control == "state_control":
+            fit_control = fit_oscillation(da[data_control], "frame")
+            fit_target = fit_oscillation(da[data_target], "frame")
+        else:
+            fit_control = fit_oscillation(da[data_control].sel(control_target="c"), "frame")
+            fit_target = fit_oscillation(da[data_target].sel(control_target="t"), "frame")
         # Add fitted oscillation curves to the dataset
         da = da.assign(
             {

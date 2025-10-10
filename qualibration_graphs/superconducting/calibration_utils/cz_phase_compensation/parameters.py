@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional
+from typing import ClassVar, List, Literal, Optional
 
 import numpy as np
 from qualibrate import NodeParameters
@@ -21,6 +21,7 @@ class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     num_frames: int = 17
     operation: Literal["cz_flattop", "cz_unipolar"] = "cz_unipolar"
+    use_state_discrimination: bool = True
 
 
 class Parameters(
@@ -29,4 +30,4 @@ class Parameters(
     NodeSpecificParameters,
     QubitPairExperimentNodeParameters,
 ):
-    pass
+    targets_name: ClassVar[str] = "qubit_pairs"

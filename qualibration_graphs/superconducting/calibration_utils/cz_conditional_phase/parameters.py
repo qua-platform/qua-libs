@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import ClassVar, Literal, Optional
 
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
@@ -16,6 +16,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Number of frame rotation points for phase measurement. Default is 10."""
     operation: Literal["cz_flattop", "cz_unipolar"] = "cz_unipolar"
     """Type of CZ operation to perform. Options are 'cz_flattop' or 'cz_unipolar'. Default is 'cz_unipolar'."""
+    use_state_discrimination: bool = True
+    """Whether to use state discrimination for readout. Default is True."""
 
 
 class Parameters(
@@ -24,4 +26,4 @@ class Parameters(
     NodeSpecificParameters,
     QubitPairExperimentNodeParameters,
 ):
-    pass
+    targets_name: ClassVar[str] = "qubit_pairs"

@@ -157,7 +157,7 @@ def fit_chevron_cz(ds, dim):
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     if not node.parameters.use_state_discrimination:
-        ds = convert_IQ_to_V(ds, node.namespace["qubits"], IQ_list=["I_control", "Q_control"])
+        ds = convert_IQ_to_V(ds, qubit_pairs=node.namespace["qubit_pairs"], IQ_list=["I_control", "Q_control"])
 
     def detuning(qp, amp):
         return -((amp * node.namespace["pulse_amplitudes"][qp.name]) ** 2) * qp.qubit_control.freq_vs_flux_01_quad_term
@@ -269,4 +269,5 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             "cz_amp": ("qubit_pair", [fit_results[qp].cz_amp for qp in fit.qubit_pair.values]),
         }
     )
+    return fit, fit_results
     return fit, fit_results
