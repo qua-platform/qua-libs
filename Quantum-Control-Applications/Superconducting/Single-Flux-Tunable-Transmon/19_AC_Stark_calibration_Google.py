@@ -24,9 +24,7 @@ Next steps before going to the next node:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-import time
 from configuration import *
-from qualang_tools.results import fetching_tool
 from qualang_tools.loops import from_array
 from macros import readout_macro
 import matplotlib.pyplot as plt

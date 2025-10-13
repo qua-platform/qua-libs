@@ -35,7 +35,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 100  # The number of averages
+n_avg = 1000  # The number of averages
 # The frequency sweep around the resonator frequency "resonator_IF"
 span = 10 * u.MHz
 df = 100 * u.kHz
@@ -76,7 +76,6 @@ with program() as resonator_spec_2D:
                 measure(
                     "readout" * amp(a),
                     "resonator",
-                    None,
                     dual_demod.full("cos", "sin", I),
                     dual_demod.full("minus_sin", "cos", Q),
                 )
@@ -133,6 +132,8 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while res_handles.is_processing():
+        # Waits (blocks the Python console) until all results have been acquired
+        res_handles.wait_for_all_values()        
         # Fetch results
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         I, Q, iteration = [results.get(data) for data in data_list]

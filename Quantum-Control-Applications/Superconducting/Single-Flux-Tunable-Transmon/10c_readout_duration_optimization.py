@@ -27,7 +27,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
-
+import time
 
 ####################
 # Helper functions #
@@ -101,7 +101,6 @@ with program() as ro_duration_opt:
         measure(
             "readout",
             "resonator",
-            None,
             demod.accumulated("cos", II, division_length, "out1"),
             demod.accumulated("sin", IQ, division_length, "out2"),
             demod.accumulated("minus_sin", QI, division_length, "out1"),
@@ -125,7 +124,6 @@ with program() as ro_duration_opt:
         measure(
             "readout",
             "resonator",
-            None,
             demod.accumulated("cos", II, division_length, "out1"),
             demod.accumulated("sin", IQ, division_length, "out2"),
             demod.accumulated("minus_sin", QI, division_length, "out1"),
@@ -199,19 +197,19 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_duration_opt)
     # Get results from QUA program
-    results = fetching_tool(
-        job,
-        data_list=["Ig_avg", "Qg_avg", "Ie_avg", "Qe_avg", "Ig_var", "Qg_var", "Ie_var", "Qe_var", "iteration"],
-        mode="live",
-    )
+    data_list=["Ig_avg", "Qg_avg", "Ie_avg", "Qe_avg", "Ig_var", "Qg_var", "Ie_var", "Qe_var", "iteration"]
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
+    while res_handles.is_processing():
+       # Waits (blocks the Python console) until all results have been acquired
+        res_handles.wait_for_all_values()                
         # Fetch results
-        Ig_avg, Qg_avg, Ie_avg, Qe_avg, Ig_var, Qg_var, Ie_var, Qe_var, iteration = results.fetch_all()
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+        Ig_avg, Qg_avg, Ie_avg, Qe_avg, Ig_var, Qg_var, Ie_var, Qe_var, iteration =[results.get(data) for data in data_list]
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Derive the SNR
         ground_trace = Ig_avg + 1j * Qg_avg
         excited_trace = Ie_avg + 1j * Qe_avg

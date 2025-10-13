@@ -30,7 +30,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 1000
+n_avg = 5000
 # Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 tau_min = 4
 tau_max = 2000 // 4
@@ -131,7 +131,10 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
-        # Fetch results
+       # Waits (blocks the Python console) until all results have been acquired
+
+        res_handles.wait_for_all_values()        
+        # Fetch results        
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         I, Q, iteration = [results.get(data) for data in data_list]
         # Convert the results into Volts

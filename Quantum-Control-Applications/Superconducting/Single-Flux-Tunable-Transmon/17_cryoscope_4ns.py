@@ -110,7 +110,7 @@ def filter_calc(exponential):
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 10_000  # Number of averages
+n_avg = 1000  # Number of averages
 # Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
 state_discrimination = True
@@ -179,7 +179,6 @@ with program() as cryoscope:
                 measure(
                     "readout",
                     "resonator",
-                    None,
                     dual_demod.full("rotated_cos", "rotated_sin", I),
                     dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
                 )
@@ -251,7 +250,9 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while res_handles.is_processing():
-        # Fetch results
+       # Waits (blocks the Python console) until all results have been acquired
+        res_handles.wait_for_all_values()        
+        # Fetch results        
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         if state_discrimination:
             I, Q, state, iteration = [results.get(data) for data in data_list]

@@ -23,12 +23,12 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
-
+import time
 ##################
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 1e4
+n_avg = 1e5
 
 # Data to save
 save_data_dict = {
@@ -93,7 +93,6 @@ def allXY(pulses):
     measure(
         "readout",
         "resonator",
-        None,
         dual_demod.full("rotated_cos", "rotated_sin", I_xy),
         dual_demod.full("rotated_minus_sin", "rotated_cos", Q_xy),
     )
@@ -175,14 +174,16 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
-        # Fetch results
+       # Waits (blocks the Python console) until all results have been acquired
+        res_handles.wait_for_all_values()        
+        # Fetch results        
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         res = [results.get(data) for data in data_list]
         I = -np.array(res[1::2])
         Q = -np.array(res[2::2])
         n = res[0]
         # Progress bar
-        progress_counter(n, n_avg, start_time=results.start_time)
+        progress_counter(n, n_avg, start_time=time.time())
         # Plot results
         plt.suptitle("All XY")
         plt.subplot(211)

@@ -96,7 +96,6 @@ with program() as cryoscope_amp:
                 measure(
                     "readout",
                     "resonator",
-                    None,
                     dual_demod.full("cos", "sin", I),
                     dual_demod.full("minus_sin", "cos", Q),
                 )
@@ -167,7 +166,10 @@ else:
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     xplot = flux_amp_array * const_flux_amp
     while res_handles.is_processing():
-        # Fetch results
+       # Waits (blocks the Python console) until all results have been acquired
+
+        res_handles.wait_for_all_values()        
+        # Fetch results        
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         if state_discrimination:
             I, Q, state, iteration = [results.get(data) for data in data_list]

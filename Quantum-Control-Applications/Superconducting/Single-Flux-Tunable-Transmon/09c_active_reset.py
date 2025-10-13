@@ -252,6 +252,8 @@ else:
     job = qm.execute(active_reset_prog)
     # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
+    # Waits (blocks the Python console) until all results have been acquired
+    res_handles.wait_for_all_values()        
     data_list = ["I_g", "Q_g", "I_e", "Q_e"]
     # Waits (blocks the Python console) until all results have been acquired
     results = res_handles.fetch_results(wait_until_done=False, timeout=60)

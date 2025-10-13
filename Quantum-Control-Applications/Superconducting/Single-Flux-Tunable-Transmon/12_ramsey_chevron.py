@@ -83,7 +83,6 @@ with program() as ramsey_freq_duration:
                 measure(
                     "readout",
                     "resonator",
-                    None,
                     dual_demod.full("rotated_cos", "rotated_sin", I),
                     dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
                 )
@@ -139,7 +138,10 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while res_handles.is_processing():
-        # Fetch results
+       # Waits (blocks the Python console) until all results have been acquired
+
+        res_handles.wait_for_all_values()        
+        # Fetch results        
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         I, Q, iteration = [results.get(data) for data in data_list]
         # Convert the results into Volts

@@ -31,7 +31,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 100  # The number of averages
+n_avg = 1000  # The number of averages
 # The frequency sweep parameters
 span = 10 * u.MHz
 df = 200 * u.kHz
@@ -68,7 +68,6 @@ with program() as ro_freq_opt:
             measure(
                 "readout",
                 "resonator",
-                None,
                 dual_demod.full("rotated_cos", "rotated_sin", I_g),
                 dual_demod.full("rotated_minus_sin", "rotated_cos", Q_g),
             )
@@ -87,7 +86,6 @@ with program() as ro_freq_opt:
             measure(
                 "readout",
                 "resonator",
-                None,
                 dual_demod.full("rotated_cos", "rotated_sin", I_e),
                 dual_demod.full("rotated_minus_sin", "rotated_cos", Q_e),
             )
@@ -161,7 +159,9 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
-        # Fetch results
+       # Waits (blocks the Python console) until all results have been acquired
+        res_handles.wait_for_all_values()        
+        # Fetch results        
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         Ig_avg, Qg_avg, Ie_avg, Qe_avg, Ig_var, Qg_var, Ie_var, Qe_var, iteration = [results.get(data) for data in data_list]
         # Progress bar

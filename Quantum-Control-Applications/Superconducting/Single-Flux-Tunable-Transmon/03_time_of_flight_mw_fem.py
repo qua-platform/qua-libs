@@ -37,9 +37,9 @@ with program() as raw_trace_prog:
 
     with for_(n, 0, n < n_avg, n + 1):
         # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
-        reset_phase("resonator")
+        reset_if_phase("resonator")
         # Sends the readout pulse and stores the raw ADC traces in the stream called "adc_st"
-        measure("readout", "resonator", adc_st)
+        measure("readout", "resonator", adc_stream = adc_st)
         # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "resonator")
 
@@ -82,10 +82,8 @@ else:
     job = qm.execute(raw_trace_prog)
     # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
-
     # Waits (blocks the Python console) until all results have been acquired
-    res_handles.wait_for_all_values()
-    # Fetch the raw ADC traces and convert them into Volts
+    res_handles.wait_for_all_values()    # Fetch the raw ADC traces and convert them into Volts
     adc = u.raw2volts(res_handles.get("adc").fetch_all())
     adc_single_run = u.raw2volts(res_handles.get("adc_single_run").fetch_all())
     # Filter the data to get the pulse arrival time

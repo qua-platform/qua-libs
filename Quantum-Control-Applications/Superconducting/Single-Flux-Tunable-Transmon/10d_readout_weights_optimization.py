@@ -146,7 +146,6 @@ with program() as opt_weights:
         measure(
             "readout",
             "resonator",
-            None,
             demod.sliced("cos", II, division_length, "out1"),
             demod.sliced("sin", IQ, division_length, "out2"),
             demod.sliced("minus_sin", QI, division_length, "out1"),
@@ -168,7 +167,6 @@ with program() as opt_weights:
         measure(
             "readout",
             "resonator",
-            None,
             demod.sliced("cos", II, division_length, "out1"),
             demod.sliced("sin", IQ, division_length, "out2"),
             demod.sliced("minus_sin", QI, division_length, "out1"),
@@ -217,15 +215,17 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(full_config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(opt_weights)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["iteration"], mode="live")
-    # Live plotting
-    while results.is_processing():
-        # Fetch results
-        iteration = results.fetch_all()[0]
+    res_handles = job.result_handles
+    while res_handles.is_processing():
+       # Waits (blocks the Python console) until all results have been acquired
+        res_handles.wait_for_all_values()        
+        # Fetch results    
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+        iteration = results.get('iteration')
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
 

@@ -31,7 +31,7 @@ from macros import readout_macro
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
-
+import time
 ##################
 #   Parameters   #
 ##################
@@ -283,6 +283,8 @@ else:
     # data analysis
     x = np.arange(1, max_circuit_depth + 0.1, delta_clifford)
     while res_handles.is_processing():
+       # Waits (blocks the Python console) until all results have been acquired
+        res_handles.wait_for_all_values()        
         # data analysis
         if state_discrimination:
             results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)

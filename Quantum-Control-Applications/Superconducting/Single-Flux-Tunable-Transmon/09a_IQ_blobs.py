@@ -57,7 +57,6 @@ with program() as IQ_blobs:
         measure(
             "readout",
             "resonator",
-            None,
             dual_demod.full("rotated_cos", "rotated_sin", I_g),
             dual_demod.full("rotated_minus_sin", "rotated_cos", Q_g),
         )
@@ -125,9 +124,11 @@ else:
     job = qm.execute(IQ_blobs)
     # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
+    # Waits (blocks the Python console) until all results have been acquired
+    res_handles.wait_for_all_values()    
     data_list = ["I_g", "Q_g", "I_e", "Q_e"]
     # Waits (blocks the Python console) until all results have been acquired
-    results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+    results = res_handles.fetch_results(wait_until_done=True, timeout=60)
     # Fetch the 'I' & 'Q' points for the qubit in the ground and excited states
     Ig, Qg, Ie, Qe = [results.get(data)["value"] for data in data_list]
     # Plot the IQ blobs, rotate them to get the separation along the 'I' quadrature, estimate a threshold between them

@@ -31,9 +31,9 @@ with program() as raw_trace_prog:
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
-        reset_phase("resonator")
+        reset_if_phase("resonator")
         # Measure the resonator (send a readout pulse and record the raw ADC trace)
-        measure("readout", "resonator", adc_st)
+        measure("readout", "resonator", adc_stream = adc_st)
         # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "resonator")
 
@@ -80,8 +80,8 @@ else:
     res_handles = job.result_handles
 
     # Waits (blocks the Python console) until all results have been acquired
-    res_handles.wait_for_all_values()
-    # Fetch the raw ADC traces and convert them into Volts
+       # Waits (blocks the Python console) until all results have been acquired
+    res_handles.wait_for_all_values()    # Fetch the raw ADC traces and convert them into Volts
     adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
     adc2 = u.raw2volts(res_handles.get("adc2").fetch_all())
     adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())

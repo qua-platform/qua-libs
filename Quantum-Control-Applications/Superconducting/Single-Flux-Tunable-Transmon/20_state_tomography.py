@@ -156,7 +156,7 @@ bloch_sphere.label_bra(bloch_sphere.West * 1.1, "Y")
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 10000
+n_avg = 50000
 
 # Data to save
 save_data_dict = {
@@ -247,7 +247,10 @@ else:
     data_list=["states", "iteration"]
     res_handles = job.result_handles
     while res_handles.is_processing():
-        # Fetch results
+       # Waits (blocks the Python console) until all results have been acquired
+
+        res_handles.wait_for_all_values()        
+        # Fetch results        
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         states, iteration = [results.get(data) for data in data_list]
         # Progress bar
