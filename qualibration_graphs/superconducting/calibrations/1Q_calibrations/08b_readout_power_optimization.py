@@ -106,8 +106,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
                     # Qubit readout
                     for i, qubit in multiplexed_qubits.items():
+                        # Measure the state of the resonators
                         qubit.resonator.measure("readout", qua_vars=(Ig[i], Qg[i]), amplitude_scale=a)
-                        qubit.align()
                         # save data to their respective streams
                         save(Ig[i], Ig_st[i])
                         save(Qg[i], Qg_st[i])
