@@ -20,7 +20,7 @@ g = QualibrationGraph(
     parameters=Parameters(),
     nodes={
         "chevron": library.nodes["19_chevron_1102"].copy(name="chevron"),
-        "conditional_phase": library.nodes["20_cz_conditional_phase"].copy(name="conditional_phase"),
+        "conditional_phase": library.nodes["20a_cz_conditional_phase"].copy(name="conditional_phase"),
         "phase_compensation": library.nodes["21_cz_phase_compensation"].copy(name="phase_compensation"),
     },
     connectivity=[
