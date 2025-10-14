@@ -16,11 +16,11 @@ class NodeSpecificParameters(RunnableParameters):
     """Length of the operation in ns. Default is the predefined pulse length."""
     frequency_span_in_mhz: float = 100.0
     """Frequency span in MHz. Default is 100 MHz."""
-    frequency_step_in_mhz: float = 0.1
+    frequency_step_in_mhz: float = 0.5
     """Frequency step in MHz. Default is 0.1 MHz."""
     flux_offset_span_in_v: float = 0.05
     """Minimum flux bias offset in volts. Default is -0.02 V."""
-    num_flux_points: int = 51
+    num_flux_points: int = 11
     """Number of flux points. Default is 51."""
     input_line_impedance_in_ohm: Optional[int] = 50
     """Input line impedance in ohms. Default is 50 Ohm."""
