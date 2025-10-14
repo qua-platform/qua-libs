@@ -1,8 +1,9 @@
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Dict, Tuple
 
 import numpy as np
+from scipy.ndimage import gaussian_filter1d
 import xarray as xr
 from qualibrate import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation, oscillation
@@ -91,27 +92,52 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitResults]]:
-    """
-    Fit the CZ conditional phase data for each qubit pair.
+    """Fit oscillations and derive optimal amplitude per qubit pair.
 
-    Parameters:
-    -----------
-    ds : xr.Dataset
-        Dataset containing the processed data.
-    node : QualibrationNode
-        The calibration node containing parameters and qubit pairs.
-
-    Returns:
-    --------
-    Tuple[xr.Dataset, Dict[str, FitResults]]
-        Dataset with fit results and dictionary of fit results for each qubit pair.
+    Returns dataset with added data variables:
+      - fitted, phase_diff (per number_of_operations) from oscillation fits
+      - optimal_amplitude (per amp dimension collapsed)
+      - success (bool)
+    Also returns dict of FitResults referenced by qubit pair name.
     """
     ds_fit = ds.groupby("qubit_pair").apply(fit_routine)
 
-    # # Extract the relevant fitted parameters
-    # ds_fit, fit_results = _extract_relevant_parameters(ds_fit, node)
+    # Derive optimal amplitude per qubit pair using robust column cost over number_of_operations.
+    opt_amps = []
+    successes = []
+    qp_names = ds_fit.qubit_pair.values
+    for qp in qp_names:
+        sub = ds_fit.sel(qubit_pair=qp)
+    # phase_diff dims may include number_of_operations & frame (from fit_routine)
+        if "phase_diff" not in sub:
+            opt_amps.append(np.nan)
+            successes.append(False)
+            continue
+    # Reduce over frame: average phase_diff over frame (robust simple aggregation)
+        # Simpler: average over frame.
+        phase = sub.phase_diff.mean(dim="frame", keep_attrs=True)
+        # phase dims: number_of_operations, amp
+        try:
+            amp_coord = sub.amp_full if "amp_full" in sub.coords else sub.amp
+            X = amp_coord.values
+            Z = phase.transpose("number_of_operations", ...).values  # (ny, nx)
+            x_star = _fit_full_amp(X, Z)
+            opt_amps.append(x_star)
+            successes.append(True and np.isfinite(x_star))
+        except Exception:
+            opt_amps.append(np.nan)
+            successes.append(False)
 
-    return ds_fit
+    ds_fit = ds_fit.assign_coords({"optimal_amplitude": ("qubit_pair", np.array(opt_amps))})
+    ds_fit["optimal_amplitude"] = ds_fit["optimal_amplitude"].astype(float)
+    ds_fit = ds_fit.assign_coords({"success": ("qubit_pair", np.array(successes, dtype=bool))})
+
+    # Build FitResults dict
+    fit_results: Dict[str, FitResults] = {}
+    for qp, amp, succ in zip(qp_names, opt_amps, successes):
+        fit_results[str(qp)] = FitResults(optimal_amplitude=float(amp), success=bool(succ))
+
+    return ds_fit, fit_results
 
 
 def fit_routine(da):
@@ -189,6 +215,49 @@ def fit_routine(da):
     #         pass
 
     return da
+
+
+# -------------------- Optimal amplitude helper functions -------------------- #
+
+def _circ_dist_to_half(Z):
+    """Circular distance of values Z in [0,1) to 0.5 expressed in [0,0.5]."""
+    return np.abs(((Z - 0.5 + 0.5) % 1.0) - 0.5)
+
+
+def _fit_full_amp(X, Z, row_mask=None, trim=0.2, smooth_rows_sigma=0.6, smooth_cols_sigma=1.0):
+    """Robustly select single amplitude minimizing distance of phase to 0.5 across repetitions.
+
+    Parameters mirror the exploratory implementation embedded previously in node file.
+    X: (nx,) amplitude array
+    Z: (ny, nx) phase_diff array in [0,1)
+    Returns best amplitude.
+    """
+    Zw = Z.copy()
+    if smooth_rows_sigma and smooth_rows_sigma > 0:
+        Zw = gaussian_filter1d(Zw, sigma=smooth_rows_sigma, axis=0, mode="nearest")
+    if row_mask is None:
+        row_mask = np.ones(Zw.shape[0], dtype=bool)
+    D = _circ_dist_to_half(Zw[row_mask, :])
+    n = D.shape[0]
+    if n == 0:
+        return np.nan
+    k = int(np.floor(trim * n))
+    D_sorted = np.sort(D, axis=0)
+    if 2 * k < n:
+        C = D_sorted[k:n - k, :].mean(axis=0)
+    else:
+        C = D_sorted.mean(axis=0)
+    if smooth_cols_sigma and smooth_cols_sigma > 0:
+        C = gaussian_filter1d(C, sigma=smooth_cols_sigma, axis=0, mode="nearest")
+    j0 = int(np.argmin(C))
+    j_star = float(j0)
+    if 0 < j0 < len(X) - 1:
+        y1, y2, y3 = C[j0 - 1], C[j0], C[j0 + 1]
+        denom = (y1 - 2 * y2 + y3)
+        if denom != 0:
+            delta = 0.5 * (y1 - y3) / denom
+            j_star = j0 + np.clip(delta, -0.5, 0.5)
+    return float(np.interp(j_star, np.arange(len(X)), X))
 
 
 def _extract_relevant_parameters(
