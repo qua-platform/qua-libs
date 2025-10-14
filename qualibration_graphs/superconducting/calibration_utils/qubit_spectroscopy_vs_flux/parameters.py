@@ -21,7 +21,7 @@ class NodeSpecificParameters(RunnableParameters):
     flux_offset_span_in_v: float = 0.05
     """Minimum flux bias offset in volts. Default is -0.02 V."""
     num_flux_points: int = 11
-    """Number of flux points. Default is 51."""
+    """Number of flux points. Default is 11."""
     input_line_impedance_in_ohm: Optional[int] = 50
     """Input line impedance in ohms. Default is 50 Ohm."""
     line_attenuation_in_db: Optional[int] = 0
