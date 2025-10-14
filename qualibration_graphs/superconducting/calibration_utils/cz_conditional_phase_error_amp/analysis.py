@@ -1,12 +1,12 @@
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Dict, Tuple
 
 import numpy as np
-from scipy.ndimage import gaussian_filter1d
 import xarray as xr
 from qualibrate import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation, oscillation
+from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import curve_fit
 
 
@@ -108,22 +108,20 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     qp_names = ds_fit.qubit_pair.values
     for qp in qp_names:
         sub = ds_fit.sel(qubit_pair=qp)
-    # phase_diff dims may include number_of_operations & frame (from fit_routine)
+        # phase_diff dims: number_of_operations, amp (no frame after fitting)
         if "phase_diff" not in sub:
             opt_amps.append(np.nan)
             successes.append(False)
             continue
-    # Reduce over frame: average phase_diff over frame (robust simple aggregation)
-        # Simpler: average over frame.
-        phase = sub.phase_diff.mean(dim="frame", keep_attrs=True)
-        # phase dims: number_of_operations, amp
+        phase = sub.phase_diff  # already reduced over frame by fit_routine
         try:
             amp_coord = sub.amp_full if "amp_full" in sub.coords else sub.amp
             X = amp_coord.values
-            Z = phase.transpose("number_of_operations", ...).values  # (ny, nx)
+            # Ensure (ny, nx) ordering (number_of_operations, amp)
+            Z = phase.transpose("number_of_operations", "amp").values
             x_star = _fit_full_amp(X, Z)
             opt_amps.append(x_star)
-            successes.append(True and np.isfinite(x_star))
+            successes.append(bool(np.isfinite(x_star)))
         except Exception:
             opt_amps.append(np.nan)
             successes.append(False)
@@ -219,6 +217,7 @@ def fit_routine(da):
 
 # -------------------- Optimal amplitude helper functions -------------------- #
 
+
 def _circ_dist_to_half(Z):
     """Circular distance of values Z in [0,1) to 0.5 expressed in [0,0.5]."""
     return np.abs(((Z - 0.5 + 0.5) % 1.0) - 0.5)
@@ -253,7 +252,7 @@ def _fit_full_amp(X, Z, row_mask=None, trim=0.2, smooth_rows_sigma=0.6, smooth_c
     j_star = float(j0)
     if 0 < j0 < len(X) - 1:
         y1, y2, y3 = C[j0 - 1], C[j0], C[j0 + 1]
-        denom = (y1 - 2 * y2 + y3)
+        denom = y1 - 2 * y2 + y3
         if denom != 0:
             delta = 0.5 * (y1 - y3) / denom
             j_star = j0 + np.clip(delta, -0.5, 0.5)
