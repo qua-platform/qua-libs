@@ -2,7 +2,7 @@ from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
-from calibration_utils.cz_conditional_phase.analysis import FitResults
+from calibration_utils.cz_conditional_phase_error_amp.analysis import FitResults
 from qualibration_libs.core import BatchableList
 import xarray as xr
 
@@ -39,12 +39,9 @@ def plot_raw_data_with_fit(
         qp_name = qp.name
         fit_result = fit_results.sel(qubit_pair=qp_name)
 
-        # Plot phase difference data
-        fit_result.phase_diff.plot.line(ax=ax, x="amp_full")
-
-        # Plot fitted curve if available
-        if fit_result.success and not np.all(np.isnan(fit_result.fitted_curve)):
-            ax.plot(fit_result.phase_diff.amp_full, fit_result.fitted_curve)
+        # phase_diff has dims ('number_of_operations','amp'); aggregate over number_of_operations
+        phase_diff_mean = fit_result.phase_diff.mean(dim="number_of_operations", keep_attrs=True)
+        phase_diff_mean.plot(ax=ax, x="amp_full")
 
         # Mark optimal point
         ax.plot([fit_result.optimal_amplitude], [0.5], marker="o", color="red")
@@ -63,13 +60,13 @@ def plot_raw_data_with_fit(
 
         ax.set_title(qp_name)
         ax.set_xlabel("Amplitude (V)")
-        ax.set_ylabel("Phase difference")
+    ax.set_ylabel("Phase diff (avg over n_ops)")
 
     # Hide unused axes
     for i in range(n_pairs, len(axes)):
         axes[i].axis("off")
 
-    fig.suptitle("CZ phase calibration (phase difference + fit)")
+    fig.suptitle("CZ phase calibration error amp (phase difference avg + optimal amplitude)")
     fig.tight_layout()
 
     return fig
