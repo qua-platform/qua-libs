@@ -23,7 +23,7 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
@@ -52,7 +52,7 @@ def update_readout_length(new_readout_length, ringdown_length):
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 1e4  # number of averages
+n_avg = 1e5  # number of averages
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = 5 * u.us  # Readout pulse duration
 ringdown_len = 0 * u.us  # integration time after readout pulse to observe the ringdown of the resonator
@@ -193,7 +193,7 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(full_config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_duration_opt)
     # Get results from QUA program
@@ -203,8 +203,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
-       # Waits (blocks the Python console) until all results have been acquired
-        res_handles.wait_for_all_values()                
+        res_handles.wait_for_all_values()
         # Fetch results
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         Ig_avg, Qg_avg, Ie_avg, Qe_avg, Ig_var, Qg_var, Ie_var, Qe_var, iteration =[results.get(data) for data in data_list]

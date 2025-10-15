@@ -91,7 +91,7 @@ def active_reset_one_threshold(threshold_g: float, max_tries: int):
     align("resonator", "qubit")
     with while_((I_reset > threshold_g) & (counter < max_tries)):
         # Measure the state of the resonator
-        measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_reset))
+        measure("readout", "resonator", dual_demod.full("rotated_cos", "rotated_sin", I_reset))
         align("resonator", "qubit")
         # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "qubit")
@@ -122,7 +122,7 @@ def active_reset_two_thresholds(threshold_g: float, threshold_e: float, max_trie
     align("resonator", "qubit")
     with while_((I_reset > threshold_g) & (counter < max_tries)):
         # Measure the state of the resonator
-        measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_reset))
+        measure("readout", "resonator", dual_demod.full("rotated_cos", "rotated_sin", I_reset))
         align("resonator", "qubit")
         # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "qubit")
@@ -146,7 +146,7 @@ def active_reset_fast(threshold_g: float):
     I_reset = declare(fixed)
     align("resonator", "qubit")
     # Measure the state of the resonator
-    measure("readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin", I_reset))
+    measure("readout", "resonator", dual_demod.full("rotated_cos", "rotated_sin", I_reset))
     align("resonator", "qubit")
     # Wait for the resonator to deplete
     wait(depletion_time * u.ns, "qubit")
@@ -184,7 +184,6 @@ with program() as active_reset_prog:
         measure(
             "readout",
             "resonator",
-            None,
             dual_demod.full("rotated_cos", "rotated_sin", I_g),
             dual_demod.full("rotated_minus_sin", "rotated_cos", Q_g),
         )
@@ -206,7 +205,6 @@ with program() as active_reset_prog:
         measure(
             "readout",
             "resonator",
-            None,
             dual_demod.full("rotated_cos", "rotated_sin", I_e),
             dual_demod.full("rotated_minus_sin", "rotated_cos", Q_e),
         )
@@ -253,13 +251,12 @@ else:
     # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
     # Waits (blocks the Python console) until all results have been acquired
-    res_handles.wait_for_all_values()        
-    data_list = ["I_g", "Q_g", "I_e", "Q_e"]
+    res_handles.wait_for_all_values()
+    data_list = ["I_g", "Q_g", "I_e", "Q_e","average_tries"]
     # Waits (blocks the Python console) until all results have been acquired
     results = res_handles.fetch_results(wait_until_done=False, timeout=60)
     # Fetch the 'I' & 'Q' points for the qubit in the ground and excited states
-    Ig, Qg, Ie, Qe = [results.get(data)["value"] for data in data_list]
-    average_tries = results.get("average_tries")
+    Ig, Qg, Ie, Qe,average_tries = [results.get(data)["value"] for data in data_list]
     # Plot the IQ blobs, rotate them to get the separation along the 'I' quadrature, estimate a threshold between them
     # for state discrimination and derive the fidelity matrix
     angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(Ig, Qg, Ie, Qe, b_print=True, b_plot=True)

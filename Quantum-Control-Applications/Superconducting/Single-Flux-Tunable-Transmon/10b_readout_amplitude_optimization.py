@@ -29,7 +29,7 @@ import time
 #   Parameters   #
 ##################
 # Parameters Definition
-n_runs = 1000
+n_runs = 1e3
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 a_min = 0.5
 a_max = 1.5
@@ -66,7 +66,6 @@ with program() as ro_amp_opt:
             measure(
                 "readout" * amp(a),
                 "resonator",
-                None,
                 dual_demod.full("rotated_cos", "rotated_sin", I_g),
                 dual_demod.full("rotated_minus_sin", "rotated_cos", Q_g),
             )
@@ -139,8 +138,7 @@ else:
     res_handles = job.result_handles
     # Get progress counter to monitor runtime of the program
     while res_handles.is_processing():
-        # Waits (blocks the Python console) until all results have been acquired
-        res_handles.wait_for_all_values()   
+        res_handles.wait_for_all_values()
         # Fetch results
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         iteration = results.get('iteration')

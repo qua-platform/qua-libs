@@ -78,9 +78,7 @@ else:
     job = qm.execute(raw_trace_prog)
     # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
-
     # Waits (blocks the Python console) until all results have been acquired
-       # Waits (blocks the Python console) until all results have been acquired
     res_handles.wait_for_all_values()    # Fetch the raw ADC traces and convert them into Volts
     adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
     adc2 = u.raw2volts(res_handles.get("adc2").fetch_all())

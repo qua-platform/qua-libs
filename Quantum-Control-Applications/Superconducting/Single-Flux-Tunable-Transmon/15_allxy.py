@@ -18,8 +18,8 @@ Prerequisites:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration_with_lf_fem_and_mw_fem import *
-from qualang_tools.results import progress_counter, fetching_tool
+from configuration import *
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
@@ -174,8 +174,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
-       # Waits (blocks the Python console) until all results have been acquired
-        res_handles.wait_for_all_values()        
+        res_handles.get('iteration').wait_for_values(1)
         # Fetch results        
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         res = [results.get(data) for data in data_list]

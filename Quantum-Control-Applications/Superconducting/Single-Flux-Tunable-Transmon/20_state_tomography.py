@@ -17,7 +17,7 @@ from qm import QuantumMachinesManager
 from qm import SimulationConfig
 import time
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from macros import readout_macro
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
@@ -247,9 +247,7 @@ else:
     data_list=["states", "iteration"]
     res_handles = job.result_handles
     while res_handles.is_processing():
-       # Waits (blocks the Python console) until all results have been acquired
-
-        res_handles.wait_for_all_values()        
+        res_handles.get('iteration').wait_for_values(1)
         # Fetch results        
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         states, iteration = [results.get(data) for data in data_list]

@@ -141,6 +141,7 @@ else:
         # Get results from QUA program
         data_list=["I", "Q", "state"]
         res_handles = job.result_handles
+        res_handles.get('I').wait_for_values(1)
         # Fetch results
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         I, Q, state = [results.get(data) for data in data_list]

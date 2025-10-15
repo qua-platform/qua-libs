@@ -27,10 +27,10 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
-
+import time
 
 ####################
 # Helper functions #
@@ -221,13 +221,12 @@ else:
     # Get results from QUA program
     res_handles = job.result_handles
     while res_handles.is_processing():
-       # Waits (blocks the Python console) until all results have been acquired
-        res_handles.wait_for_all_values()        
+        res_handles.get('iteration').wait_for_values(1)
         # Fetch results    
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         iteration = results.get('iteration')
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
 
     # Fetch and reshape the data
     res_handles = job.result_handles

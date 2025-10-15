@@ -14,13 +14,13 @@ Prerequisites:
 Next steps before going to the next node:
     - Update the qubit frequency (qubit_IF) in the configuration.
 """
-
+#%%
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 import time
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
@@ -134,14 +134,12 @@ else:
     # Get results from QUA program
     data_list=["I", "Q", "iteration"]
     res_handles = job.result_handles
-    # Live plotting
+    time.sleep(1)
+    # Live plotting         
     fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while res_handles.is_processing():
-       # Waits (blocks the Python console) until all results have been acquired
-
-        res_handles.wait_for_all_values()        
-        # Fetch results        
+        res_handles.get('iteration').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         I, Q, iteration = [results.get(data) for data in data_list]
         # Convert the results into Volts

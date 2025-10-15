@@ -38,14 +38,14 @@ Next steps before going to the next node:
 """
 
 import matplotlib.pyplot as plt
-from configuration_with_lf_fem_and_mw_fem import *
+from configuration import *
 from macros import ge_averaged_measurement
 from qm import QuantumMachinesManager, SimulationConfig
 import time
 from qm.qua import *
 from qualang_tools.bakery import baking
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import  progress_counter
 from qualang_tools.results.data_handler import DataHandler
 from scipy import optimize, signal
 
@@ -274,8 +274,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while res_handles.is_processing():
-       # Waits (blocks the Python console) until all results have been acquired
-        res_handles.wait_for_all_values()        
+        res_handles.get('iteration').wait_for_values(1)
         # Fetch results       
         if state_discrimination:
             results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)

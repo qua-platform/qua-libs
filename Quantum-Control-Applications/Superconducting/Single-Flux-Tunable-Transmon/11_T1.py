@@ -18,7 +18,7 @@ from qm import QuantumMachinesManager
 from qm import SimulationConfig
 import time
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array, get_equivalent_log_array
 import matplotlib.pyplot as plt
@@ -67,7 +67,6 @@ with program() as T1:
             measure(
                 "readout",
                 "resonator",
-                None,
                 dual_demod.full("rotated_cos", "rotated_sin", I),
                 dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
             )
@@ -125,14 +124,12 @@ else:
     job = qm.execute(T1)
     # Get results from QUA program
     data_list=["I", "Q", "iteration"]
-    res_handles = job.result_handles
+    res_handles = job.result_handles  
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
-       # Waits (blocks the Python console) until all results have been acquired
-
-        res_handles.wait_for_all_values()        
+        res_handles.get('iteration').wait_for_values(1)
         # Fetch results        
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         I, Q, iteration = [results.get(data) for data in data_list]
