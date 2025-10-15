@@ -2,8 +2,8 @@
        XY8 MEASUREMENT (tau sweep)
 The program consists in playing two XY8 sequences successively (first ending with x90 and then with -x90)
 and measure the photon counts received by the SPCM across varying idle times between pi-pulses.
-Note that the pulse spacing tau is the interpulse spacing, i.e. the time between consecutive pi-pulses and
-does not take into account the finite length of the pi-pulses.
+The times `tau_vec` are the times between pi-pulse centers. From this the pulse spacings are calculated by subtracting
+the duration of the pi-pulse. The same is done for tau_half. It is assumed that the pi/2-pulse has the same length.
 
 The data is post-processed to determine the coherence time T2 associated with the XY8 tau sweep measurement.
 
@@ -24,20 +24,41 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 from configuration import *
-from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
 
+import logging
 import matplotlib.pyplot as plt
+
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+qm_log = logging.getLogger("qm")
 
 
 ##################
 #   Parameters   #
 ##################
-# The time vector for varying the time between pulses in clock cycles (4ns)
+# The time vector for the times between pi-pulse centers in clock cycles (4ns)
 # Each tau value must be a multiple of 2 clock cycles to ensure that tau_half is a multiple of a single clock cycle
 tau_vec = 2 * np.arange(4, 500, 20)
 xy8_order = 4  # order n of the XY8-n measurement
 n_avg = 1_000_000
+
+tau_vec_spacing = tau_vec - x180_len_NV  # interpulse spacing, i.e. from end of pulse to beginning of next pulse
+tau_half_vec_spacing = tau_vec // 2 - x90_len_NV  # interpulse spacing for tau_half
+if x180_len_NV != x90_len_NV:
+    qm_log.warning(
+        f"pi-pulse and pi/2-pulse do not have the same length ({x180_len_NV}, {x90_len_NV}). "
+        f"For physical correctness they should be the same."
+    )
+
+# check that all lengths are at least 4 four clock cycles (16ns)
+for ii in reversed(range(len(tau_vec))):
+    if tau_half_vec_spacing[ii] < 4:
+        qm_log.warning(f"Removed tau value {tau_vec[ii]}: interpulse spacing must be at least 4 clock cycles (16ns).")
+        del tau_half_vec_spacing[ii]
+        del tau_vec_spacing[ii]
+        del tau_vec[ii]
 
 # Data to save
 save_data_dict = {
@@ -90,8 +111,8 @@ def xy8_block(tau):  # A single XY8 block
 # The QUA program #
 ###################
 with program() as xy8_tau:
-    tau = declare(int)  # interpulse spacing
-    tau_half = declare(int)  # half interpulse spacing
+    tau_spacing = declare(int)  # interpulse spacing
+    tau_half_spacing = declare(int)  # half interpulse spacing
     n = declare(int)  # for averages
     i = declare(int)  # for xy8 order
 
@@ -108,16 +129,15 @@ with program() as xy8_tau:
     wait(wait_for_initialization * u.ns, "AOM1")
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(tau, tau_vec)):
-            assign(tau_half, tau >> 1)
+        with for_each_((tau_spacing, tau_half_spacing), (tau_vec_spacing, tau_half_vec_spacing)):
             # Strict_timing validates that the sequence will be played without gaps.
             # If gaps are detected, an error will be raised
             with strict_timing_():
                 # First XY8 sequence with x90 - XY8-order block - x90
                 play("x90", "NV")
-                wait(tau_half, "NV")
-                xy8_n(tau, xy8_order)
-                wait(tau_half, "NV")
+                wait(tau_half_spacing, "NV")
+                xy8_n(tau_spacing, xy8_order)
+                wait(tau_half_spacing, "NV")
                 play("x90", "NV")
             align()  # Play the laser pulse after the XY8 sequence
             # Measure and detect the photons on SPCM1
@@ -130,9 +150,9 @@ with program() as xy8_tau:
             with strict_timing_():
                 # Second XY8 sequence with x90 - XY8-order block - x90
                 play("x90", "NV")
-                wait(tau_half, "NV")
-                xy8_n(tau, xy8_order)
-                wait(tau_half, "NV")
+                wait(tau_half_spacing, "NV")
+                xy8_n(tau_spacing, xy8_order)
+                wait(tau_half_spacing, "NV")
                 play("-x90", "NV")
             align()  # Play the laser pulse after the Echo sequence
             # Measure and detect the photons on SPCM1

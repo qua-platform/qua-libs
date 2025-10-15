@@ -2,8 +2,8 @@
        XY8 MEASUREMENT (order sweep)
 The program consists in playing two XY8 sequences successively (first ending with x90 and then with -x90)
 and measure the photon counts received by the SPCM across varying the order n of the XY8-n measurement.
-Note that the pulse spacing (tau) is the interpulse spacing, i.e. the time between consecutive pi-pulses and
-does not take into account the finite length of the pi-pulses.
+The time `tau` is the time between pi-pulse centers. From this the pulse spacing is calculated by subtracting
+the duration of the pi-pulse. The same is done for tau_half. It is assumed that the pi/2-pulse has the same length.
 
 The data is post-processed to determine the coherence time T2 associated with the XY8 order sweep measurement.
 
@@ -23,24 +23,38 @@ Next steps before going to the next node:
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-
-# from configuration import *
-from config_test import *
+from configuration import *
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
 
+import logging
 import matplotlib.pyplot as plt
+
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+qm_log = logging.getLogger("qm")
 
 
 ##################
 #   Parameters   #
 ##################
-# The time the time between pi-pulses in clock cycles (4ns)
+# The time between pi-pulse centers in clock cycles (4ns)
 # Must be a multiple of 2 clock cycles to ensure that tau_half is a multiple of a single clock cycle
 tau = 2 * 50
 order_vec = np.arange(1, 21, 1, dtype=int)  # order vector for varying the order n of the XY8-n measurement
 n_avg = 1_000
-tau_half = tau // 2  # time between pi/2-pulse and XY8 block
+
+tau_spacing = tau - x180_len_NV  # interpulse spacing, i.e. from end of pulse to beginning of next pulse
+tau_half_spacing = tau // 2 - x90_len_NV  # interpulse spacing for tau_half
+if x180_len_NV != x90_len_NV:
+    qm_log.warning(
+        f"pi-pulse and pi/2-pulse do not have the same length ({x180_len_NV}, {x90_len_NV}). "
+        f"For physical correctness they should be the same."
+    )
+
+if tau_half_spacing < 4:
+    raise ValueError(f"Interpulse spacing must be >= 4. Got ({tau_half_spacing}) for tau half.")
 
 # Data to save
 save_data_dict = {
@@ -116,9 +130,9 @@ with program() as xy8_order_sweep:
             with strict_timing_():
                 # First XY8 sequence with x90 - XY8-order block - x90
                 play("x90", "NV")
-                wait(tau_half, "NV")
-                xy8_n(tau, xy8_order)
-                wait(tau_half, "NV")
+                wait(tau_half_spacing, "NV")
+                xy8_n(tau_spacing, xy8_order)
+                wait(tau_half_spacing, "NV")
                 play("x90", "NV")
             align()  # Play the laser pulse after the XY8 sequence
             # Measure and detect the photons on SPCM1
@@ -131,9 +145,9 @@ with program() as xy8_order_sweep:
             with strict_timing_():
                 # Second XY8 sequence with x90 - XY8-order block - -x90
                 play("x90", "NV")
-                wait(tau_half, "NV")
-                xy8_n(tau, xy8_order)
-                wait(tau_half, "NV")
+                wait(tau_half_spacing, "NV")
+                xy8_n(tau_spacing, xy8_order)
+                wait(tau_half_spacing, "NV")
                 play("-x90", "NV")
             align()  # Play the laser pulse after the Echo sequence
             # Measure and detect the photons on SPCM1
