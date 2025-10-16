@@ -14,8 +14,7 @@ The workflow is as follows:
 
 import matplotlib.pyplot as plt
 from qualang_tools.wirer.wirer.channel_specs import *
-from qualang_tools.wirer import Instruments, allocate_wiring, visualize
-from qualang_tools.wirer.connectivity.connectivity_nv_center_interface import Connectivity
+from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 from quam_builder.builder.qop_connectivity import build_quam_wiring
 from quam_builder.builder.nv_center.build_quam import build_quam
 from my_quam import Quam
