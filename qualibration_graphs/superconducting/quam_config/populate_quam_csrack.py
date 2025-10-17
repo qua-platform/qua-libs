@@ -16,7 +16,7 @@ import json
 from qualang_tools.units import unit
 from quam_config import Quam
 from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses, add_default_transmon_pair_pulses
-from quam_builder.architecture.superconducting.custom_gates import cross_resonance, stark_induced_cz
+from quam_builder.architecture.superconducting.custom_gates import CRGate, StarkInducedCZGate
 from quam.components import pulses
 import numpy as np
 from pprint import pprint
@@ -157,8 +157,8 @@ xy_freq = np.array([
 ]) * u.GHz
 
 xy_LO = np.array([
-    5.25, 5.25, 5.25, 5.25,
-    5.25, 5.25, 5.25, 5.25,
+    5.35, 5.35, 5.35, 5.35,
+    5.35, 5.35, 5.35, 5.35,
 ]) * u.GHz
 
 xy_if = xy_freq - xy_LO  # The intermediate frequency is inferred from the LO and qubit frequencies
@@ -181,15 +181,18 @@ xy_full_scale, xy_amplitude = get_full_scale_power_dBm_and_amplitude(drive_power
 
 # Update qubit xy freq and power
 for k, qubit in enumerate(machine.qubits.values()):
+    print(f"{qubit.name} - ")
     qubit.f_01 = xy_freq.tolist()[k]  # Qubit 0 to 1 (|g> -> |e>) transition frequency
     qubit.xy.RF_frequency = qubit.f_01  # Qubit drive frequency
     qubit.xy.opx_output.full_scale_power_dbm = xy_full_scale  # Max drive power in dBm
-    qubit.xy.opx_output.upconverter_frequency = None # xy_LO.tolist()[k]  # Qubit drive up-converter frequency
+    # qubit.xy.opx_output.upconverter_frequency = None # xy_LO.tolist()[k]  # Qubit drive up-converter frequency
     qubit.xy.opx_output.upconverters = {
         1: {"frequency": xy_LO.tolist()[k]},
-        2: {"frequency": 123.0},
+        2: {"frequency": 5.4 * u.GHz},
     }
     qubit.xy.opx_output.band = get_band(xy_LO.tolist()[k])  # Qubit drive band for the up-conversion
+    # qubit.xy.LO_frequency = xy_LO.tolist()[k] # f"#/qubits/{qubit.name}/xy/upconverter_frequency"
+    print(f"{qubit.name} - .xy UCF: {qubit.xy.upconverter_frequency}")
     print(f"{qubit.name} - .xy LO: {qubit.xy.LO_frequency}")
 
     qubit.xy_detuned.RF_frequency = f"#/qubits/{qubit.name}/xy/RF_frequency"
@@ -305,7 +308,7 @@ for k, qp in enumerate(machine.qubit_pairs):
     print(f"{qp_name} - ZZ LO_frequency: {qb_pair.zz_drive.LO_frequency}")
 
     # Cross Resonance
-    qb_pair.macros["cr"] = cross_resonance.CRGate(qc_correction_phase=0.0)
+    qb_pair.macros["cr"] = CRGate()
     # square
     qb_pair.cross_resonance.operations["square"] = pulses.SquarePulse(
         length=100,
@@ -372,7 +375,7 @@ for k, qp in enumerate(machine.qubit_pairs):
     )
 
     # Stark-induced ZZ
-    qb_pair.macros["stark_cz"] = stark_induced_cz.StarkInducedCZGate(qc_correction_phase=0.0)
+    qb_pair.macros["stark_cz"] = StarkInducedCZGate()
     # square
     qb_pair.zz_drive.operations["square"] = pulses.SquarePulse(
         length=100,
