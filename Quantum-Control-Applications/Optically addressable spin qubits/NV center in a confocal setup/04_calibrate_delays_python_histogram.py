@@ -30,6 +30,7 @@ n_avg = 1_000_000
 buffer_len = 10  # The size of each chunk of data handled by the stream processing
 meas_len = initialization_len + 2 * laser_delay  # total measurement length (ns)
 t_vec = np.arange(0, meas_len, 1)
+# t_vec = np.arange(0, meas_len, 0.5)  # for QOP >=3.5.0
 
 assert (initialization_len - mw_len) > 4, "The MW must be shorter than the laser pulse"
 
@@ -57,12 +58,12 @@ with program() as calib_delays:
         # Play the laser pulse for a duration given here by "initialization_len"
         play("laser_ON", "AOM1", duration=initialization_len * u.ns)
 
-        # Delay the microwave pulse with respect to the laser pulse so that it arrive at the middle of the laser pulse
+        # Delay the microwave pulse with respect to the laser pulse so that it arrives at the middle of the laser pulse
         wait((laser_delay + (initialization_len - mw_len) // 2) * u.ns, "NV")
         # Play microwave pulse
         play("cw" * amp(1), "NV", duration=mw_len * u.ns)
 
-        # Measure the photon counted by the SPCM
+        # Measure the photons counted by the SPCM
         measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len, counts))
         # Adjust the wait time between each averaging iteration
         wait(wait_between_runs * u.ns, "SPCM1")
@@ -114,6 +115,7 @@ else:
     iteration_handle.wait_for_values(1)
     # Data processing initialization
     counts_vec = np.zeros(meas_len, int)
+    # counts_vec = np.zeros(2 * meas_len, int)  # for QOP >=3.5.0
     old_count = 0
 
     # Live plotting
@@ -138,6 +140,7 @@ else:
             old_count = new_count
         # Plot the histogram
         plt.plot(t_vec + 0.5, counts_vec / 1000 / (1 * 1e-9) / iteration)
+        # plt.plot(t_vec + 0.5, counts_vec / 1000 / (0.5 * 1e-9) / iteration)  # for QOP >=3.5.0
         plt.xlabel("t [ns]")
         plt.ylabel(f"counts [kcps / 1ns]")
         plt.title("Delays")

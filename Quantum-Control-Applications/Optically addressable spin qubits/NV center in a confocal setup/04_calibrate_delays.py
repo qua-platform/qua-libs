@@ -28,11 +28,12 @@ mw_len = 1_000  # MW duration length [ns]
 wait_between_runs = 10_000  # [ns]
 n_avg = 1_000_000
 
-resolution = 12  # ns
+resolution = 12  # in samples: 1ns for QOP <3.5.0 (and 2.x.x), 0.5ns for QOP >=3.5.0
 # total measurement length (ns), add 2*laser_delay to ensure that the window is larger than the laser pulse
 meas_len = int(initialization_len + 2 * laser_delay)
 # Time vector for plotting
 t_vec = np.arange(0, meas_len, 1)
+# t_vec = np.arange(0, meas_len, 0.5)  # for QOP >=3.5.0
 
 assert (initialization_len - mw_len) > 4, "The MW must be shorter than the laser pulse"
 
@@ -61,12 +62,12 @@ with program() as calib_delays:
         # Play the laser pulse for a duration given here by "initialization_len"
         play("laser_ON", "AOM1", duration=initialization_len * u.ns)
 
-        # Delay the microwave pulse with respect to the laser pulse so that it arrive at the middle of the laser pulse
+        # Delay the microwave pulse with respect to the laser pulse so that it arrives at the middle of the laser pulse
         wait((laser_delay + (initialization_len - mw_len) // 2) * u.ns, "NV")
         # Play microwave pulse
         play("cw" * amp(1), "NV", duration=mw_len * u.ns)
 
-        # Measure the photon counted by the SPCM
+        # Measure the photons counted by the SPCM
         measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len, counts))
         # Adjust the wait time between each averaging iteration
         wait(wait_between_runs * u.ns, "SPCM1")
@@ -76,17 +77,17 @@ with program() as calib_delays:
 
         align()  # global align before measuring the dark counts
 
-        # Wait before starting the play the laser pulse
+        # Wait before starting the play of the laser pulse
         wait(laser_delay * u.ns, "AOM1")
         # Play the laser pulse for a duration given here by "initialization_len"
         play("laser_ON", "AOM1", duration=initialization_len * u.ns)
 
-        # Delay the microwave pulse with respect to the laser pulse so that it arrive at the middle of the laser pulse
+        # Delay the microwave pulse with respect to the laser pulse so that it arrives at the middle of the laser pulse
         wait((laser_delay + (initialization_len - mw_len) // 2) * u.ns, "NV")
         # Play microwave pulse
         play("cw" * amp(0), "NV", duration=mw_len * u.ns)
 
-        # Measure the photon counted by the SPCM
+        # Measure the photons counted by the SPCM
         measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len, counts))
         # Adjust the wait time between each averaging iteration
         wait(wait_between_runs * u.ns, "SPCM1")
@@ -98,6 +99,7 @@ with program() as calib_delays:
 
     with stream_processing():
         # Directly derive the histograms in the stream processing
+        # NOTE: use `2 * meas_len` for QOP version >= 3.5.0 because time bins are 0.5ns
         times_st.histogram([[i, i + (resolution - 1)] for i in range(0, meas_len, resolution)]).save("times_hist")
         times_st_dark.histogram([[i, i + (resolution - 1)] for i in range(0, meas_len, resolution)]).save(
             "times_hist_dark"
@@ -149,6 +151,7 @@ else:
         # Plot data
         plt.cla()
         plt.plot(t_vec[::resolution] + resolution / 2, times_hist / 1000 / (resolution / u.s) / iteration)
+        # plt.plot(t_vec[::resolution] + resolution / 2, times_hist / 1000 / (0.5 * resolution / u.s) / iteration)  # for QOP >=3.5.0
         plt.xlabel("t [ns]")
         plt.ylabel(f"counts [kcps / {resolution}ns]")
         plt.title("Delays")
