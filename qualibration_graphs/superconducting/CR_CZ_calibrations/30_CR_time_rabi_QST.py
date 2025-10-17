@@ -60,33 +60,31 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.num_shots = 3
-    node.parameters.max_wait_time_in_ns = 100
-
+    # """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
+    # # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.num_shots = 3
+    # node.parameters.max_wait_time_in_ns = 100
     # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
-    node.parameters.qubit_pairs = ["q1-2", "q3-4"]
-    node.parameters.use_state_discrimination = False
-
-    node.parameters.wf_type = "square"
-    node.parameters.cr_type = "direct+cancel+echo"
-    node.parameters.cr_drive_amp_scaling = [
-        0.89,
-        0.89,
-    ]  # None : setting None to use the amp from the config
-    node.parameters.cr_drive_phase = [
-        0.12,
-        0.12,
-    ]  # None : setting None to use the amp from the config
-    node.parameters.cr_cancel_amp_scaling = [
-        0.34,
-        0.34,
-    ]  # None : setting None to use the amp from the config
-    node.parameters.cr_cancel_phase = [
-        0.23,
-        0.23,
-    ]  # None : setting None to use the amp from the config
+    # node.parameters.use_state_discrimination = False
+    # node.parameters.wf_type = "square"
+    # node.parameters.cr_type = "direct+cancel+echo"
+    # node.parameters.cr_drive_amp_scaling = [
+    #     0.89,
+    #     0.89,
+    # ]  # None : setting None to use the amp from the config
+    # node.parameters.cr_drive_phase = [
+    #     0.12,
+    #     0.12,
+    # ]  # None : setting None to use the amp from the config
+    # node.parameters.cr_cancel_amp_scaling = [
+    #     0.34,
+    #     0.34,
+    # ]  # None : setting None to use the amp from the config
+    # node.parameters.cr_cancel_phase = [
+    #     0.23,
+    #     0.23,
+    # ]  # None : setting None to use the amp from the config
+    pass
 
 
 # Instantiate the QUAM class from the state file

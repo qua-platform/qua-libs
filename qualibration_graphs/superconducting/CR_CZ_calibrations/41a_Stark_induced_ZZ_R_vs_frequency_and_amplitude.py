@@ -62,28 +62,25 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubit_pairs = ["q1-2", "q5-6"]
-    node.parameters.use_state_discrimination = True
-    # node.parameters.simulate = True
-    # node.parameters.simulation_duration_ns = 6000
-
-    node.parameters.num_shots = 3
-    node.parameters.wf_type = "flattop"
-    node.parameters.qc_correction_phase_2pi = [0.0, 0.0]
-    node.parameters.qt_correction_phase_2pi = [0.0, 0.0]
-    node.parameters.zz_drive_relative_phase_2pi = [None, None]
-    node.parameters.zz_drive_control_amp_scaling = [None, None]
-    node.parameters.zz_drive_target_amp_scaling = [None, None]
-
-    node.parameters.min_zz_drive_amp_scaling = 0.2
-    node.parameters.max_zz_drive_amp_scaling = 1.0
-    node.parameters.step_zz_drive_amp_scaling = 0.2
-
-    node.parameters.frequency_step_in_mhz = 4
-    node.parameters.frequency_span_in_mhz = 20
-
-    node.parameters.calibrate_qc_amp_scaling = True  # False
+    # # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
+    # node.parameters.use_state_discrimination = True
+    # # node.parameters.simulate = True
+    # # node.parameters.simulation_duration_ns = 6000
+    # node.parameters.num_shots = 3
+    # node.parameters.wf_type = "flattop"
+    # node.parameters.qc_correction_phase_2pi = [0.0, 0.0]
+    # node.parameters.qt_correction_phase_2pi = [0.0, 0.0]
+    # node.parameters.zz_drive_relative_phase_2pi = [None, None]
+    # node.parameters.zz_drive_control_amp_scaling = [None, None]
+    # node.parameters.zz_drive_target_amp_scaling = [None, None]
+    # node.parameters.min_zz_drive_amp_scaling = 0.2
+    # node.parameters.max_zz_drive_amp_scaling = 1.0
+    # node.parameters.step_zz_drive_amp_scaling = 0.2
+    # node.parameters.frequency_step_in_mhz = 4
+    # node.parameters.frequency_span_in_mhz = 20
+    # node.parameters.calibrate_qc_amp_scaling = True  # False
+    pass
 
 
 # Instantiate the QUAM class from the state file

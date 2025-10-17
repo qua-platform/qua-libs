@@ -44,14 +44,15 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.multiplexed = True
-    node.parameters.qubit_pairs = ["q1-2", "q5-6"]
-    node.parameters.use_state_discrimination = True
-    node.parameters.num_random_sequences = 5
-    node.parameters.delta_clifford = 1
-    node.parameters.max_circuit_depth = 10
-    node.parameters.simulate = False
+    # # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.multiplexed = True
+    # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
+    # node.parameters.use_state_discrimination = True
+    # node.parameters.num_random_sequences = 5
+    # node.parameters.delta_clifford = 1
+    # node.parameters.max_circuit_depth = 10
+    # node.parameters.simulate = False
+    pass
 
 
 # Instantiate the QUAM class from the state file
