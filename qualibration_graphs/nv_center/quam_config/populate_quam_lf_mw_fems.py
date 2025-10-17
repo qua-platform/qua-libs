@@ -106,8 +106,9 @@ laser_length = 3000  # in ns
 
 # Update qubit readout parameters
 for k, qubit in enumerate(machine.qubits.values()):
-    qubit.laser.opx_output.upsampling_mode = "pulse"
-    qubit.laser.opx_output.output_mode = "amplified"
+    if qubit.laser.power:
+        qubit.laser.power.opx_output.upsampling_mode = "pulse"
+        qubit.laser.power.opx_output.output_mode = "amplified"
 
 
 ########################################################################################################################
