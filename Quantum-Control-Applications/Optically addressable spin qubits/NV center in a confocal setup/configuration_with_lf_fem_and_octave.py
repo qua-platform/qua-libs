@@ -89,8 +89,8 @@ rf_amp = 0.1
 rf_length = 1000
 
 # Readout parameters
-signal_threshold_1 = -2_000  # ADC untis, to convert to volts divide by 4096 (12 bit ADC)
-signal_threshold_2 = -2_000  # ADC untis, to convert to volts divide by 4096 (12 bit ADC)
+signal_threshold_1 = -2_000  # ADC units, to convert to volts divide by 4096 (12 bit ADC)
+signal_threshold_2 = -2_000  # ADC units, to convert to volts divide by 4096 (12 bit ADC)
 
 # Delays
 detection_delay_1 = 80 * u.ns
