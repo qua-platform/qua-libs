@@ -115,9 +115,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(n, n_st)
 
                 with for_(tomo_axis_control, 0, tomo_axis_control < 3, tomo_axis_control + 1):
-
                     with for_(tomo_axis_target, 0, tomo_axis_target < 3, tomo_axis_target + 1):
-
                         # Reset the qubits to the ground state
                         for i, qp in multiplexed_qubit_pairs.items():
                             qc = qp.qubit_control
@@ -149,13 +147,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             align(*zz_elems)
 
                             # Tomography gates
-                            with if_(tomo_axis_control == 0): #X axis
+                            with if_(tomo_axis_control == 0):  # X axis
                                 qc.xy.play("-y90")
-                            with elif_(tomo_axis_control == 1): #Y axis
+                            with elif_(tomo_axis_control == 1):  # Y axis
                                 qc.xy.play("x90")
-                            with if_(tomo_axis_target == 0): #X axis
+                            with if_(tomo_axis_target == 0):  # X axis
                                 qt.xy.play("-y90")
-                            with elif_(tomo_axis_target == 1): #Y axis
+                            with elif_(tomo_axis_target == 1):  # Y axis
                                 qt.xy.play("x90")
 
                             align(*zz_elems)
@@ -261,7 +259,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     figs_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
-    node.results["figures"] = {f"raw_fit_{qp.name}": fig for fig, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])}
+    node.results["figures"] = {
+        f"raw_fit_{qp.name}": fig for fig, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])
+    }
 
 
 # %% {Update_state}

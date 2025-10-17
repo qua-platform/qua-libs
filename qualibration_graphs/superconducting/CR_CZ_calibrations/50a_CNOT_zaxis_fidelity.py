@@ -44,9 +44,7 @@ Prerequisites:
 
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
-node = QualibrationNode[
-    Parameters, Quam
-](
+node = QualibrationNode[Parameters, Quam](
     name="50a_CNOT_zaxis_fidelity",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
@@ -99,18 +97,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
-        "n_shots": xr.DataArray(
-            np.arange(n_shots), attrs={"long_name": "number of shots"}
-        ),
-        "prepared_state": xr.DataArray(
-            prepared_states, attrs={"long_name": "prepared initial state"}
-        ),
+        "n_shots": xr.DataArray(np.arange(n_shots), attrs={"long_name": "number of shots"}),
+        "prepared_state": xr.DataArray(prepared_states, attrs={"long_name": "prepared initial state"}),
     }
 
     with program() as node.namespace["qua_program"]:
-        _, _, _, _, n, n_st = node.machine.declare_qua_variables(
-            num_IQ_pairs=num_qubit_pairs
-        )
+        _, _, _, _, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
         state_c = [declare(int) for _ in range(num_qubit_pairs)]
         state_t = [declare(int) for _ in range(num_qubit_pairs)]
         state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
@@ -202,9 +194,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -213,9 +203,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     config = node.machine.generate_config()
 
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -225,9 +213,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -286,14 +272,11 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    figs_raw_fit = plot_raw_data_with_fit(
-        node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"]
-    )
+    figs_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
-        f"raw_fit_{qp.name}": fig
-        for fig, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])
+        f"raw_fit_{qp.name}": fig for fig, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])
     }
 
 

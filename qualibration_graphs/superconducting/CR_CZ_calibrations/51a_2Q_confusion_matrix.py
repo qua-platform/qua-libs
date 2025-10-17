@@ -141,9 +141,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(n, n_st)
 
                 with for_(s_c, 0, s_c < 2, s_c + 1):
-
                     with for_(s_t, 0, s_t < 2, s_t + 1):
-
                         # Reset the qubits to the ground state
                         for i, qp in multiplexed_qubit_pairs.items():
                             qc = qp.qubit_control

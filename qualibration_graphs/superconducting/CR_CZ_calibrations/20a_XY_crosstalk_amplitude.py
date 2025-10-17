@@ -25,7 +25,6 @@ from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
 
-
 # %% {Description}
 description = """
 RF crosstalk-cancellation via amplitude sweep.
@@ -65,7 +64,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.qubits = ["q1", "q2", "q3"]
     node.parameters.use_state_discrimination = False
 
-    node.parameters.probed_qubit_idx = 0 # e.g. node.parameters.qubits.index("q1")
+    node.parameters.probed_qubit_idx = 0  # e.g. node.parameters.qubits.index("q1")
 
     node.parameters.num_shots = 10
 
@@ -132,12 +131,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # TODO:
         # ebable to iterate over subset of qubits and generate consistent xarray accordingly
-        # not necessarily having to iterate over num_qubits ** 2 number of pairs  
+        # not necessarily having to iterate over num_qubits ** 2 number of pairs
         for i, qb_driven in enumerate(qubits):
             assign(n, i)
             save(n, n_st)
-            
-            if i == node.parameters.probed_qubit_idx:       
+
+            if i == node.parameters.probed_qubit_idx:
                 if state_discrimination:
                     assign(state_d[i], 1)
                     assign(state_p[i], 1)
@@ -155,9 +154,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             with for_(n, 0, n < n_avg, n + 1):
-
                 with for_(*from_array(amp_scaling_qua, amp_scalings)):
-
                     with for_(*from_array(t, pulse_durations // 4)):
                         # Set the probed Qubit's IF to on-resonance
                         qb_probed.xy.update_frequency(qb_probed.xy.upconverter_frequency)
@@ -172,11 +169,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align(qb_driven.xy.name, qb_probed.xy.name)
                         # Set the probed Qubit's RF to match the driven Qubit's RF
                         qb_probed.xy.update_frequency(
-                            qb_driven.xy.upconverter_frequency + \
-                            qb_driven.xy.intermediate_frequency - \
-                            qb_probed.xy.upconverter_frequency
+                            qb_driven.xy.upconverter_frequency
+                            + qb_driven.xy.intermediate_frequency
+                            - qb_probed.xy.upconverter_frequency
                         )
-                        
+
                         if cancel_drive_phase_2pi[i] is not None:
                             qb_probed.xy.frame_rotation_2pi(cancel_drive_phase_2pi)
 
@@ -188,7 +185,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qb_probed.xy.update_frequency(qb_probed.xy.upconverter_frequency)
                         align(qb_driven.xy.name, qb_probed.xy.name)
                         qb_probed.xy.play("x90")
-                        
+
                         align(qb_driven.xy.name, qb_probed.xy.name, qb_driven.resonator.name, qb_probed.resonator.name)
                         # Measure the state of the resonators
                         if state_discrimination:
@@ -217,8 +214,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n")
             for i in range(num_qubits):
                 if state_discrimination:
-                    state_d_st[i].buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"state_d{i + 1}")
-                    state_p_st[i].buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"state_p{i + 1}")
+                    state_d_st[i].buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(
+                        f"state_d{i + 1}"
+                    )
+                    state_p_st[i].buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(
+                        f"state_p{i + 1}"
+                    )
                 else:
                     I_d_st[i].buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"I_d{i + 1}")
                     Q_d_st[i].buffer(len(pulse_durations)).buffer(len(amp_scalings)).average().save(f"Q_d{i + 1}")
