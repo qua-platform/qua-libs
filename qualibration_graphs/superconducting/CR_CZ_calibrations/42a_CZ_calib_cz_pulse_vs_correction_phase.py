@@ -104,11 +104,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     state_discrimination = node.parameters.use_state_discrimination
     wf_type = node.parameters.wf_type
 
-    qc_correction_phases = node.parameters.qc_correction_phase_2pi if node.parameters.qc_correction_phase_2pi else [None] * num_qubit_pairs
-    qt_correction_phases = node.parameters.qt_correction_phase_2pi if node.parameters.qt_correction_phase_2pi else [None] * num_qubit_pairs
-    zz_relative_phases = node.parameters.zz_drive_relative_phase_2pi if node.parameters.zz_drive_relative_phase_2pi else [None] * num_qubit_pairs
-    zz_control_amp_scalings = node.parameters.zz_drive_control_amp_scaling if node.parameters.zz_drive_control_amp_scaling else [None] * num_qubit_pairs
-    zz_target_amp_scalings = node.parameters.zz_drive_target_amp_scaling if node.parameters.zz_drive_target_amp_scaling else [None] * num_qubit_pairs
+    qc_correction_phases = broadcast_param_to_list(node.parameters.qc_correction_phase_2pi, num_qubit_pairs)
+    qt_correction_phases = broadcast_param_to_list(node.parameters.qt_correction_phase_2pi, num_qubit_pairs)
+    zz_relative_phases = broadcast_param_to_list(node.parameters.zz_drive_relative_phase_2pi, num_qubit_pairs)
+    zz_control_amp_scalings = broadcast_param_to_list(node.parameters.zz_drive_control_amp_scaling, num_qubit_pairs)
+    zz_target_amp_scalings = broadcast_param_to_list(node.parameters.zz_drive_target_amp_scaling, num_qubit_pairs)
 
     corr_phases = np.arange(
         node.parameters.min_cz_pulse_correction_phase_2pi,
@@ -117,7 +117,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     )
 
     # Calibrate ZI or IZ
-    correction_target_terms = ["ZI", "IZ"] # (c, t)
+    correction_target_terms = ["ZI", "IZ"]  # (c, t)
 
     # Control states
     control_states = np.array([0, 1])
@@ -125,7 +125,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
-        "correction_target_term": xr.DataArray(correction_target_terms, attrs={"long_name": "Pauli Z term (control vs target) for Stark-ZZ correction"}),
+        "correction_target_term": xr.DataArray(
+            correction_target_terms, attrs={"long_name": "Pauli Z term (control vs target) for Stark-ZZ correction"}
+        ),
         "correction_phase": xr.DataArray(corr_phases, attrs={"long_name": "stark zz drive relative phase"}),
         "control_state": xr.DataArray(control_states, attrs={"long_name": "control state"}),
     }
@@ -157,7 +159,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     assert corr_term in ["ZI", "IZ"]
 
                     with for_(*from_array(ph, corr_phases)):
-
                         with for_(s, 0, s < 2, s + 1):  # states 0:g or 1:e
                             # Reset the qubits to the ground state
                             for i, qp in multiplexed_qubit_pairs.items():
@@ -170,36 +171,39 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qc.reset(node.parameters.reset_type, node.parameters.simulate, log_callable=node.log)
                                 qt.reset(node.parameters.reset_type, node.parameters.simulate, log_callable=node.log)
                                 align(*zz_elems)
-                                
-                                if corr_term == "ZI": # (1: c, 2: t)
-                                    q1 = qc
-                                    q2 = qt
-                                elif corr_term == "IZ": # (1: t, 2: c)
-                                    q1 = qt
-                                    q2 = qc
 
-                                # Prepare Q1 at 0/1 and Play pi/2 for Q2 
+                                if corr_term == "ZI":
+                                    # Ramsey the CONTROL; prepare TARGET in |0/1>
+                                    q1 = qt  # prepared 0/1
+                                    q2 = qc  # Ramsey (y90 ... -y90)
+                                elif corr_term == "IZ":
+                                    # Ramsey the TARGET; prepare CONTROL in |0/1>
+                                    q1 = qc  # prepared 0/1
+                                    q2 = qt  # Ramsey
+
+                                # Prepare Q1 at 0/1 and Play pi/2 for Q2
                                 with if_(s == 1):
                                     q1.xy.play("x180")
                                     q2.xy.play("y90")
                                 with if_(s == 0):
-                                    q1.xy.wait(qc.xy.operations["x180"].length)
+                                    q1.xy.wait(q1.xy.operations["x180"].length * u.ns)
                                     q2.xy.play("y90")
                                 align(*zz_elems)
 
                                 # Play CZ
-                                qp.apply("stark_cz",
+                                qp.apply(
+                                    "stark_cz",
                                     wf_type=wf_type,
                                     zz_control_amp_scaling=zz_control_amp_scalings[i],
                                     zz_target_amp_scaling=zz_target_amp_scalings[i],
                                     zz_relative_phase=zz_relative_phases[i],
-                                    qc_correction_phase=ph if corr_term=="ZI" else qc_correction_phases[i],
-                                    qt_correction_phase=ph if corr_term=="IZ" else qt_correction_phases[i],
+                                    qc_correction_phase=ph if corr_term == "ZI" else qc_correction_phases[i],
+                                    qt_correction_phase=ph if corr_term == "IZ" else qt_correction_phases[i],
                                 )
                                 align(*zz_elems)
 
                                 # Play pi/2 for Q2
-                                q2.xy.play('-y90')
+                                q2.xy.play("-y90")
                                 align(qc.resonator.name, qt.resonator.name, *zz_elems)
 
                                 # Measure the state of the resonators
@@ -212,7 +216,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 # Reset the frame of the qubits in order not to accumulate rotations
                                 reset_frame(zz.name)
                                 reset_frame(qt.xy_detuned.name)
-                                reset_frame(qt.xy.name)
+                                reset_frame(qc.xy.name)
                                 reset_frame(qt.xy.name)
 
                                 # Wait for the qubit to decay to the ground state - Can be replaced by active reset
@@ -222,8 +226,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for i, qp in enumerate(qubit_pairs):
-                state_c_st[i].buffer(2).buffer(len(corr_phases)).buffer(len(correction_target_terms)).average().save(f"state_c{i + 1}")
-                state_t_st[i].buffer(2).buffer(len(corr_phases)).buffer(len(correction_target_terms)).average().save(f"state_t{i + 1}")
+                state_c_st[i].buffer(2).buffer(len(corr_phases)).buffer(len(correction_target_terms)).average().save(
+                    f"state_c{i + 1}"
+                )
+                state_t_st[i].buffer(2).buffer(len(corr_phases)).buffer(len(correction_target_terms)).average().save(
+                    f"state_t{i + 1}"
+                )
 
 
 # %% {Simulate}
@@ -241,6 +249,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
     from pathlib import Path
+
     # Visualize and save the waveform report
     wf_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 
@@ -305,12 +314,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    figs_raw_fit = plot_raw_data_with_fit(
-        node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"]
-    )
+    figs_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
 
     # Store the generated figures
-    node.results["figures"] = {f"raw_fit_{qp.name}": fig for fig, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])}
+    node.results["figures"] = {
+        f"raw_fit_{qp.name}": fig for fig, qp in zip(figs_raw_fit, node.namespace["qubit_pairs"])
+    }
 
 
 # %% {Update_state}
@@ -330,7 +339,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             fit_result = node.results["fit_results"][qp.name]
-            
+
             qp.macros.stark_cz.qc_correction_phase = fit_result["best_correction_phase_zi_c"]
             qp.macros.stark_cz.qt_correction_phase = fit_result["best_correction_phase_iz_t"]
 
@@ -339,5 +348,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
 
 # %%

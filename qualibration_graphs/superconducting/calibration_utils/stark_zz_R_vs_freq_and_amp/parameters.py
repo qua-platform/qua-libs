@@ -27,6 +27,7 @@ class NodeSpecificParameters(RunnableParameters):
     min_zz_drive_amp_scaling: float = 0.2
     max_zz_drive_amp_scaling: float = 1.0
     step_zz_drive_amp_scaling: float = 0.2
+    calibrate_qc_amp_scaling: bool = True
 
     frequency_step_in_mhz: float = 4
     frequency_span_in_mhz: float = 100

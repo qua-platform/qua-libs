@@ -24,7 +24,6 @@ class NodeSpecificParameters(RunnableParameters):
     min_zz_drive_amp_scaling: float = 0.2
     max_zz_drive_amp_scaling: float = 1.0
     step_zz_drive_amp_scaling: float = 0.2
-    calibrate_control_amp_scaling: bool = True
 
     wf_type: Literal["square", "cosine", "gauss", "flattop"] = "flattop"
     qc_correction_phase_2pi: Optional[Union[float, List[float]]] = None

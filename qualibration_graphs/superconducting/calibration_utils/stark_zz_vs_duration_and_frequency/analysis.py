@@ -88,7 +88,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 
     ds_fit = xr.merge([ds, fit.rename("fit")])
 
-    ds_fit, fit_results = _extract_relevant_fit_parameters(ds_fit)
+    ds_fit, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
     return ds_fit, fit_results
 
 
