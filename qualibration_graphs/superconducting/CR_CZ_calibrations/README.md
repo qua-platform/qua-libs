@@ -6,6 +6,23 @@ This repository gathers our **fixed‑frequency transmon** routines for
 > 👉 **[Stark-Induced Controlled-Z(CZ) Gate](#stark-induced-cz-gate-with-microwave-activated-tunable-zz)**  
 > 👉 **[Microwave Crosstalk Characterization & Compensation](#microwave-crosstalk-characterization--compensation)** 
 
+# Creating the QuAM State
+
+To get started, first read both the project-level [`README.md`](../README.md) and [`quam_config/README.md`](../quam_config/README.md).
+
+## Environment for `CR_CZ_calibrations`
+
+Create a virtual environment and install the dependencies declared in `CR_CZ_calibrations/pyproject.toml` (some are pinned to specific branches):
+
+### Using pip (recommended)
+```bash
+cd CR_CZ_calibrations
+python3 -m venv .venv
+source .venv/bin/activate        # On Windows: .venv\Scripts\activate
+python -m pip install --upgrade pip
+pip install .                    # or: pip install -e .  (for editable installs)
+```
+
 ---
 
 # CR Gate (Cross Resonance)
@@ -100,8 +117,8 @@ For the calibrated phases, an optimized cancellation amplitude can lead to the i
 
 <img src="../.img/CR_CZ_calibrations/CR_calibrate_amplitude.png" width="500" /> 
 
-`31e_CR_phase_correction`
-As there is residual $ZZ$ from the implemented CR gate (in general), we correct for them.
+`31e_CR_correction_phase`
+Calibrates and applies per-gate virtual-Z updates to cancel residual Z-type phases on the control and target qubits (from Stark shifts, ZZ/ZI/IZ byproducts, etc.) accumulated during the CR block.
 
 ## References
 
