@@ -281,32 +281,6 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     phase_diff_da = node.results["ds_fit"].phase_diff.isel(qubit_pair=0)
     phase_diff_da.plot(cmap="twilight_shifted", ax=ax)
 
-    # tol = 0.03
-    # # Build a mask for values within ±0.02 of 0.5
-    # mask = (np.abs(phase_diff_da) <= tol) | (np.abs(phase_diff_da - 1) <= tol)
-    # # Convert mask to 1 (red) / NaN (transparent)
-    # mask_da = phase_diff_da.where(mask)
-    # # We only need a single solid color (red) regardless of the underlying phase value,
-    # # so replace all finite values by 1.
-    # mask_plot = xr.full_like(mask_da, 1.0)
-    # mask_plot = mask_plot.where(mask)  # keep NaN where mask is False
-
-    # # Create a single-color colormap (red). Using alpha for translucency so the greyscale shows through.
-    # red_cmap = ListedColormap(["red"])
-    # mask_plot.plot(ax=ax, cmap=red_cmap, add_colorbar=False)
-    # ax.set_title("Phase diff with highlighted region |value - 0.5| ≤ 0.02")
-
-    # # Store fit results in the format expected by the rest of the node
-    # node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-
-    # # Log the relevant information extracted from the data analysis
-    # log_fitted_results(fit_results, log_callable=node.log)
-
-    # # Set outcomes based on fit success
-    # node.outcomes = {
-    #     qubit_pair_name: ("successful" if fit_result.success else "failed")
-    #     for qubit_pair_name, fit_result in fit_results.items()
-    # }
 # %%
 
 X = node.results["ds_fit"].amp_full.values[0]
