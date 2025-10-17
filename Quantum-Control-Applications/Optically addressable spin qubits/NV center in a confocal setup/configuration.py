@@ -102,7 +102,6 @@ rf_delay = 0 * u.ns
 wait_between_runs = 100
 
 config = {
-    "version": 1,
     "controllers": {
         "con1": {
             "analog_outputs": {

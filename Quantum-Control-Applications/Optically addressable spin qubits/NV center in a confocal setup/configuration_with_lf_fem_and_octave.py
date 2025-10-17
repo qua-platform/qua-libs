@@ -111,7 +111,6 @@ wait_after_measure = 1 * u.us  # Wait time after each measurement
 wait_between_runs = 100
 
 config = {
-    "version": 1,
     "controllers": {
         con: {
             "type": "opx1000",
