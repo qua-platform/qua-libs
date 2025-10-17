@@ -11,13 +11,13 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "qm-qua>=1.2.1",
-    "qualang-tools @ git+https://github.com/qua-platform/py-qua-tools.git@4576fbe2be38a79eadeb95f9e2d16ac2f1f5bc6d",
-    "quam @ git+https://github.com/qua-platform/quam.git@fa3e049b9081c764176f707206981898e388b332",
+    "quam>=0.4.0",
+    "qualang-tools>=0.19.0",
     "qualibrate>=0.2.1",
-    "qualibration-libs @ git+https://github.com/qua-platform/qualibration-libs.git@fc9d9cccf0e6eea0d9560e70a88d9ffa46426f4d",
-    "quam-builder @ git+https://github.com/qua-platform/quam-builder.git@b8a25c355629f1108060860633b648abded26c87",
+    "qm-qua>=1.2.1",
     "tomli>=2.0.1; python_version < '3.11'",
+    "quam-builder@git+https://github.com/qua-platform/quam-builder.git",
+    "qualibration-libs@git+https://github.com/qua-platform/qualibration-libs.git",
     "xarray>=2024.7.0",
     "plotly>=5.24.1",
     "lmfit>=1.3.3",
