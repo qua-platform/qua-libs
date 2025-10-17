@@ -198,21 +198,6 @@ def fit_routine(da):
     if to_assign:
         da = da.assign(to_assign)
 
-    # # --- Post-processing adjustment: add 0.5 to all numeric vars at odd number_of_operations ---
-    # dim_name = "number_of_operations"
-    # if dim_name in da.dims or dim_name in da.coords:
-    #     try:
-    #         ops = da[dim_name]
-    #         # number_of_operations are 1-based; select odd labels (1,3,5,...)
-    #         odd_ops = ops.where((ops % 2) == 0, drop=True).values
-    #         if len(odd_ops) > 0:
-    #             for var_name, dvar in da.data_vars.items():
-    #                 if dim_name in dvar.dims and np.issubdtype(dvar.dtype, np.number):
-    #                     da[var_name].loc[{dim_name: odd_ops}] = -(da[var_name].loc[{dim_name: odd_ops}] - 0.5)
-    #     except Exception as e:
-    #         # Silent fail (could optionally log); keep dataset untouched if error
-    #         pass
-
     return da
 
 
