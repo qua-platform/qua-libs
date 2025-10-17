@@ -56,6 +56,7 @@ def plot_raw_data_with_fit(
 
         def detuning_MHz_to_amp(d):
             return np.sqrt(np.maximum(0, -d * 1e6 / quad))
+
         secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
         secax.set_xlabel("Detuning (MHz)")
 
