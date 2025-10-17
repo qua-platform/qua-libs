@@ -108,10 +108,10 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     """
     ds_fit = ds.groupby("qubit_pair").apply(fit_routine)
 
-    # # Extract the relevant fitted parameters
-    # ds_fit, fit_results = _extract_relevant_parameters(ds_fit, node)
+    # Extract the relevant fitted parameters
+    ds_fit, fit_results = _extract_relevant_parameters(ds_fit, node)
 
-    return ds_fit
+    return ds_fit, fit_results
 
 
 def fit_routine(da):
