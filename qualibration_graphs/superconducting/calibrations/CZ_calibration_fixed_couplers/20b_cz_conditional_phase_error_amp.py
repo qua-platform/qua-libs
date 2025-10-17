@@ -76,7 +76,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
     node.parameters.num_frames = 15
-    node.parameters.load_data_id = 4579
+    node.parameters.load_data_id = 4502
     pass
 
 
