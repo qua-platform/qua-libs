@@ -67,16 +67,7 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    node.parameters.qubit_pairs = ["D1-D2"]
-    node.parameters.num_averages = 100
-    node.parameters.operation = "cz_flattop"
-    node.parameters.number_of_operations = 10
-    node.parameters.amp_range = 0.015
-    node.parameters.amp_step = 0.0001
-    node.parameters.use_state_discrimination = True
-    node.parameters.reset_type = "active"
-    node.parameters.num_frames = 15
-    node.parameters.load_data_id = 4502
+    # node.parameters.qubit_pairs = ["q1-q2"]
     pass
 
 
