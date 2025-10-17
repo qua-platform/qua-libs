@@ -88,10 +88,14 @@ else:
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    last_idx = 0
     while res_handles.is_processing():
-        new_counts = counts_handle.fetch_all()
-        counts.append(new_counts["value"] / total_integration_time / 1000)
-        time.append(new_counts["timestamp"] / u.s)  # Convert timestamps to seconds
+        new_idx = counts_handle.count_so_far()
+        new_counts = counts_handle.fetch(slice(last_idx, new_idx))
+        last_idx = new_idx
+        counts.extend(new_counts["value"] / total_integration_time / 1000)
+        # TODO: does the time bin depend on the sampling rate?
+        time.extend(new_counts["timestamp"] / u.s)  # Convert timestamps to seconds
         plt.cla()
         if len(time) > 50:
             plt.plot(time[-50:], counts[-50:])
