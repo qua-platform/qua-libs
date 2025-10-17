@@ -2,7 +2,7 @@ from typing import Optional, Literal, Union, List
 import numpy as np
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import TwoQubitExperimentNodeParameters, CommonNodeParameters
+from qualibration_libs.parameters import QubitPairExperimentNodeParameters, CommonNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -38,7 +38,7 @@ class NodeSpecificParameters(RunnableParameters):
     qt_correction_phase_2pi: Optional[Union[float, List[float]]] = None
 
 
-class TwoQubitExperimentNodeParametersCustom(TwoQubitExperimentNodeParameters):
+class QubitPairExperimentNodeParametersCustom(QubitPairExperimentNodeParameters):
     use_state_discrimination: bool = True
 
 
@@ -46,6 +46,6 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    TwoQubitExperimentNodeParametersCustom,
+    QubitPairExperimentNodeParametersCustom,
 ):
     pass

@@ -4,7 +4,7 @@ from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import (
     QubitsExperimentNodeParameters,
-    TwoQubitExperimentNodeParameters,
+    QubitPairExperimentNodeParameters,
     CommonNodeParameters,
 )
 
@@ -45,6 +45,6 @@ class Parameters(
     CommonNodeParameters,
     NodeSpecificParameters,
     # QubitsExperimentNodeParameters,
-    TwoQubitExperimentNodeParameters,
+    QubitPairExperimentNodeParameters,
 ):
     pass
