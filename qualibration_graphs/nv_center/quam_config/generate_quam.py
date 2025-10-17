@@ -45,9 +45,9 @@ qubits = [1]
 # qubit drive channel
 q1_drive_ch = mw_fem_spec(con=1, slot=1, out_port=2)
 # qubit laser channel
-q1_laser_digital = lf_fem_dig_spec(con=1, slot=3, out_port=3)
-q1_laser_analog = lf_fem_spec(con=1, out_slot=3, out_port=3)
-q1_laser_ch = q1_laser_digital & q1_laser_analog
+q1_laser_trigger = lf_fem_dig_spec(con=1, slot=3, out_port=3)  # channel for digital laser trigger
+q1_laser_power = lf_fem_spec(con=1, out_slot=3, out_port=3)  # channel for DC laser power control
+q1_laser_ch = q1_laser_trigger & q1_laser_power
 # qubit readout (SPCM) input channel
 q1_spcm_in_ch = lf_fem_spec(con=1, in_slot=3, in_port=1)
 
@@ -55,8 +55,10 @@ q1_spcm_in_ch = lf_fem_spec(con=1, in_slot=3, in_port=1)
 # %%                Allocate the wiring to the connectivity object based on the available instruments
 ########################################################################################################################
 connectivity = Connectivity()
-# The laser and SPCM lines
-connectivity.add_laser(qubits=qubits, constraints=q1_laser_ch)
+# The laser lines
+# use `triggered=False` if no digital laser trigger is used
+connectivity.add_laser(qubits=qubits, triggered=True, constraints=q1_laser_ch)
+# The SPCM lines
 connectivity.add_spcm(qubits=qubits, constraints=q1_spcm_in_ch)
 # The xy drive lines
 connectivity.add_qubit_drive(qubits=qubits, constraints=q1_drive_ch)
