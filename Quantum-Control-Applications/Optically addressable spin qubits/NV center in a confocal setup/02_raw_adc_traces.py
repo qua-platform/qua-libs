@@ -37,7 +37,7 @@ with program() as TimeTagging_calibration:
         # Drive the AOM to play the readout laser pulse
         play("laser_ON", "AOM1")
         # Record the raw ADC traces in the stream called "adc_st"
-        measure("long_readout", "SPCM1", adc_st)
+        measure("long_readout", "SPCM1", adc_stream=adc_st)
         # Waits for the
         wait(1000, "SPCM1")
 
@@ -81,17 +81,21 @@ else:
     # Fetch results and convert traces to volts
     adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
     adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
+    # Determine time axis from the sampling rate: 1e9 for OPX+, 1e9 or 2e9 for OPX1000
+    time_array = np.arange(len(adc1))  # for 1e9 sampling rate
+    # time_array = 0.5 * np.arange(len(adc1))  # for 2e9 sampling rate
+
     # Plot data
     plt.figure()
     plt.subplot(121)
     plt.title("Single run")
-    plt.plot(adc1_single_run, label="Input 1")
+    plt.plot(time_array, adc1_single_run, label="Input 1")
     plt.xlabel("Time [ns]")
     plt.ylabel("Signal amplitude [V]")
 
     plt.subplot(122)
     plt.title("Averaged run")
-    plt.plot(adc1, label="Input 1")
+    plt.plot(time_array, adc1, label="Input 1")
     plt.xlabel("Time [ns]")
     plt.tight_layout()
 
