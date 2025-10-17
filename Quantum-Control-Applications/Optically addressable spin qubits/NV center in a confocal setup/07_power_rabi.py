@@ -47,7 +47,7 @@ with program() as power_rabi:
     a = declare(fixed)  # variable to sweep over the amplitude
     n = declare(int)  # variable to for_loop
     counts_st = declare_stream()  # stream for counts
-    counts_dark_st = declare_stream()  # stream for counts
+    counts_ref_st = declare_stream()  # stream for counts
     n_st = declare_stream()  # stream to save iterations
 
     # Spin initialization
@@ -64,18 +64,14 @@ with program() as power_rabi:
             # Measure and detect the photons on SPCM1
             measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_st)  # save counts
+            # Measure reference photon counts at end of laser pulse
+            if initialization_len_1 - 2 * meas_len_1 - 25 >= 4:
+                wait(initialization_len_1 - 2 * meas_len_1 - 25, "SPCM1")
+                measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
+            else:
+                assign(counts, 1)
+            save(counts, counts_ref_st)
 
-            # Wait and align all elements before measuring the dark events
-            wait(wait_between_runs * u.ns)
-            align()
-
-            # Play the Rabi pulse with zero amplitude
-            play("x180" * amp(0), "NV")
-            align()  # Play the laser pulse after the mw pulse
-            play("laser_ON", "AOM1")
-            # Measure and detect the dark counts on SPCM1
-            measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
-            save(counts, counts_dark_st)  # save dark counts
             wait(wait_between_runs * u.ns)  # wait in between iterations
 
         save(n, n_st)  # save number of iteration inside for_loop
@@ -83,7 +79,7 @@ with program() as power_rabi:
     with stream_processing():
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
         counts_st.buffer(len(a_vec)).average().save("counts")
-        counts_dark_st.buffer(len(a_vec)).average().save("counts_dark")
+        counts_ref_st.buffer(len(a_vec)).average().save("counts_ref")
         n_st.save("iteration")
 
 #####################################
@@ -117,22 +113,21 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(power_rabi)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["counts", "counts_dark", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["counts", "counts_ref", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     while results.is_processing():
         # Fetch results
-        counts, counts_dark, iteration = results.fetch_all()
+        counts, counts_ref, iteration = results.fetch_all()
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(a_vec * x180_amp_NV, counts / 1000 / (meas_len_1 * 1e-9), label="photon counts")
-        plt.plot(a_vec * x180_amp_NV, counts_dark / 1000 / (meas_len_1 * 1e-9), label="dark_counts")
+        plt.plot(a_vec * x180_amp_NV, counts / counts_ref, label="norm. photon counts")
         plt.xlabel("Rabi pulse amplitude [V]")
-        plt.ylabel("Intensity [kcps]")
+        plt.ylabel("Norm. Signal")
         plt.title("Power Rabi")
         plt.legend()
         plt.pause(0.1)
@@ -140,7 +135,8 @@ else:
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
     save_data_dict.update({"counts_data": counts})
-    save_data_dict.update({"counts_dark_data": counts_dark})
+    save_data_dict.update({"counts_dark_data": counts_ref})
+    save_data_dict.update({"normalized_data": counts / counts_ref})
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
