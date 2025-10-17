@@ -24,14 +24,18 @@ class NodeSpecificParameters(RunnableParameters):
     max_wait_time_in_ns: int = 250
     time_step_in_ns: int = 4
     cr_type: Literal["direct", "direct+cancel", "direct+echo", "direct+cancel+echo"] = "direct"
+    wf_type: Literal["square", "cosine", "gauss", "flattop"] = "square"
     cr_drive_amp_scaling: Union[float, List[float]] = 1.0
     cr_drive_phase: Union[float, List[float]] = 1.0
     cr_cancel_amp_scaling: Union[float, List[float]] = 0.0
     cr_cancel_phase: Union[float, List[float]] = 0.0
-    min_corr_phase: float = 0.0
-    max_corr_phase: float = 1.0
-    step_corr_phase: float = 0.1
-    wf_type: Literal["square", "cosine", "gauss", "flattop"] = "square"
+
+    min_correction_phase_2pi: float = -1.0
+    max_correction_phase_2pi: float = +1.0
+    step_correction_phase_2pi: float = 0.1
+
+    qc_correction_phase_2pi: Optional[Union[float, List[float]]] = None
+    qt_correction_phase_2pi: Optional[Union[float, List[float]]] = None
 
 
 class TwoQubitExperimentNodeParametersCustom(TwoQubitExperimentNodeParameters):

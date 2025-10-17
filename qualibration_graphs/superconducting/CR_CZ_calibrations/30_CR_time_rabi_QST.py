@@ -65,7 +65,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.num_shots = 3
     node.parameters.max_wait_time_in_ns = 100
 
-    # node.parameters.qubit_pairs = ["qA1-A2", "qA3-A4"]
+    # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
     node.parameters.qubit_pairs = ["q1-2", "q3-4"]
     node.parameters.use_state_discrimination = False
 
@@ -114,10 +114,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     state_discrimination = node.parameters.use_state_discrimination
     wf_type = node.parameters.wf_type
     cr_type = node.parameters.cr_type
-    cr_drive_amp_scaling = node.parameters.cr_drive_amp_scaling
-    cr_drive_phase = node.parameters.cr_drive_phase
-    cr_cancel_amp_scaling = node.parameters.cr_cancel_amp_scaling
-    cr_cancel_phase = node.parameters.cr_cancel_phase
+    cr_drive_amp_scaling = broadcast_param_to_list(node.parameters.cr_drive_amp_scaling, num_qubit_pairs)
+    cr_drive_phase = broadcast_param_to_list(node.parameters.cr_drive_phase, num_qubit_pairs)
+    cr_cancel_amp_scaling = broadcast_param_to_list(node.parameters.cr_cancel_amp_scaling, num_qubit_pairs)
+    cr_cancel_phase = broadcast_param_to_list(node.parameters.cr_cancel_phase, num_qubit_pairs)
 
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
     pulse_durations = np.arange(
