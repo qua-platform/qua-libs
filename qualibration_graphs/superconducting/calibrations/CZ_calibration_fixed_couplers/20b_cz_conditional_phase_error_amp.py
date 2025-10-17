@@ -5,20 +5,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from calibration_utils.cz_conditional_phase_error_amp import (
-    FitResults,
     Parameters,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
     process_raw_dataset,
 )
-from matplotlib.colors import ListedColormap
-from qm import SimulationConfig
 from qm.qua import *
-from qualang_tools.bakery import baking
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
@@ -80,7 +76,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
     node.parameters.num_frames = 15
-    # node.parameters.load_data_id = 4502
+    node.parameters.load_data_id = 4579
     pass
 
 
@@ -120,13 +116,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
-        amp = declare(fixed)
-        frame = declare(fixed)
-        frame_odd = declare(fixed)
-        control_initial = declare(int)
+        amp = declare(fixed)  # amplitude scaling factor for the CZ gate
+        frame = declare(fixed)  # frame rotation of the target qubit (even number of operations)
+        frame_odd = declare(fixed)  # frame rotation of the target qubit (odd number of operations)
+        control_initial = declare(int)  # initial state of the control qubit
         n = declare(int)
-        n_op = declare(int)
-        count = declare(int)
+        n_op = declare(int)  # number of CZ operations
+        count = declare(int)  # loop counter
         n_st = declare_stream()
         I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
         I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
@@ -147,6 +143,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         with for_(*from_array(frame, frames)):
                             with for_(*from_array(control_initial, [0, 1])):
                                 for ii, qp in multiplexed_qubit_pairs.items():
+                                    # Reset and align both qubits
                                     qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
                                     qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
                                     qp.align()
@@ -156,11 +153,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     qp.qubit_control.xy.play("x180", condition=control_initial == 1)
                                     qp.qubit_target.xy.play("x90")
                                     qp.align()
+                                    # Loop over the number of CZ operations
                                     with for_(count, 0, count < n_op, count + 1):
                                         # play the CZ gate
                                         qp.macros[operation_name].apply(amplitude_scale_control=amp)
-                                        # qp.wait(50)
-                                    # rotate the frame
+                                    # rotate the frame by 𝜋/2 for odd number of operations
                                     with if_(((n_op & 1) == 0) & (control_initial == 1)):
                                         assign(frame_odd, frame - 0.5)
                                         qp.qubit_target.xy.frame_rotation_2pi(frame_odd)

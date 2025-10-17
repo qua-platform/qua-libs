@@ -71,6 +71,6 @@ def plot_raw_data_with_fit(
     for j in range(n_pairs, len(axes)):
         axes[j].axis("off")
 
-    fig.suptitle("CZ conditional phase error amp: phase diff heatmaps")
+    fig.suptitle("CZ conditional phase error amplification")
     fig.tight_layout(rect=(0, 0, 1, 0.97))
     return fig
