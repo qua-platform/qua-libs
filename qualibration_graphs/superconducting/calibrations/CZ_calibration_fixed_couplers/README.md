@@ -135,7 +135,7 @@ The sequence involves preparing the states |0+⟩ and |1+⟩ (control, target), 
 ## Conditional Phase Calibration with Error Amplification
 [(20b_cz_conditional_phase_error_amp)](./20b_cz_conditional_phase_error_amp.py)
 
-This nodes calibrates the CZ conditional phase with error amplification by applying a train of CZ pulses. This allows to further fine tune the gate amplitude parameter.
+This node calibrates the CZ conditional phase with error amplification by applying a train of CZ pulses. This allows to further fine tune the gate amplitude parameter.
 
 <p align="center">
    <img src="../.img/phase_error_amp.png" width="500" alt="Conditional phase plot">
