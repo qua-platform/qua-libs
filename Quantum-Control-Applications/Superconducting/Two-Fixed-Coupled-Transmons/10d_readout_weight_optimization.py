@@ -7,7 +7,7 @@ from qm.qua import *
 from configuration import *
 import time
 import matplotlib.pyplot as plt
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results.data_handler import DataHandler
 
@@ -199,6 +199,7 @@ else:
         interrupt_on_close(fig, job)
         # Live plotting
         while res_handles.is_processing():
+            res_handles.get('iteration').wait_for_values(1)
             # Fetch results
             results = res_handles.fetch_results(wait_until_done=False, timeout=60)
             res = [results.get(data) for data in data_list]

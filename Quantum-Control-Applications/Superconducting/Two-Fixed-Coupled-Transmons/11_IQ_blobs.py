@@ -22,7 +22,6 @@ from qm.qua import *
 from configuration import *
 import time
 import matplotlib.pyplot as plt
-from qualang_tools.results import fetching_tool
 from macros import qua_declaration, multiplexed_readout, active_reset
 from qualang_tools.results import progress_counter
 from qualang_tools.results.data_handler import DataHandler
@@ -109,13 +108,11 @@ else:
         qm = qmm.open_qm(full_config, close_other_machines=True)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
-        data_list = ["iteration"]
         res_handles = job.result_handles
         while res_handles.is_processing():
-            results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["iteration"])
-            iteration = [results.get(data) for data in data_list]
-            progress_counter(iteration[0], n_runs, start_time=time.time())
-
+            res_handles.wait_for_all_values()
+            iteration = res_handles.get('iteration').fetch_all()
+            progress_counter(iteration, n_runs, start_time=time.time())
         # fetch data
         data_list = ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"]
         results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)

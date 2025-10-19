@@ -14,7 +14,6 @@ Prerequisites:
 Next steps before going to the next node:
     - Update the readout frequency (resonator_IF_q) in the configuration.
 """
-#%%
 from qm import QuantumMachinesManager, SimulationConfig
 from qm.qua import *
 from configuration import *
@@ -116,11 +115,11 @@ else:
         res_handles = job.result_handles
         # Get progress counter to monitor runtime of the program
         while res_handles.is_processing():
+            res_handles.get('iteration').wait_for_values(1)
             # Fetch results
-            results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["iteration"])
-            iteration = results.get("iteration")
+            iteration = res_handles.get("iteration").fetch_all()
             # Progress bar
-            progress_counter(iteration, len(scalings), start_time=time.time())
+            progress_counter(iteration, n_avg, start_time=time.time())
         # Fetch the results at the end
         data_list = ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"]
         results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)

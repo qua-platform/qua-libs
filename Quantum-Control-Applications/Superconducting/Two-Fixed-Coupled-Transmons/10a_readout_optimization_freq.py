@@ -161,6 +161,7 @@ else:
         ]
         res_handles = job.result_handles
         while res_handles.is_processing():
+            res_handles.get('iteration').wait_for_values(1)
             results = res_handles.fetch_results(wait_until_done=False, timeout=60)
             (
                 Ig1_avg,

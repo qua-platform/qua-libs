@@ -132,6 +132,7 @@ else:
         res_handles = job.result_handles
         # Live plotting
         while res_handles.is_processing():
+            res_handles.get('n').wait_for_values(1)
             # Fetch results
             results = res_handles.fetch_results(wait_until_done=False, timeout=60)
             n, I1, Q1, I2, Q2 = [results.get(data) for data in data_list]

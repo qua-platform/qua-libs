@@ -44,12 +44,11 @@ Reference: Sarah Sheldon, Easwar Magesan, Jerry M. Chow, and Jay M. Gambetta Phy
 
 from qm.qua import *
 from qm import QuantumMachinesManager
-from configuration_mw_fem import *
+from configuration import *
 import time
 import matplotlib.pyplot as plt
 from qm import SimulationConfig
 from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout

@@ -140,6 +140,7 @@ else:
         data_list = ["iteration", "I1", "Q1", "I2", "Q2"]
         res_handles = job.result_handles
         while res_handles.is_processing():
+            res_handles.get('iteration').wait_for_values(1)
             # Fetch results
             results = res_handles.fetch_results(wait_until_done=False, timeout=60)
             res = [results.get(data) for data in data_list]
