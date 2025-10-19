@@ -5,10 +5,6 @@ This script is to calibrate the phase of CR cancellation drive,
 serving as a complementary measurement to Fig. 3(a) of the referenced paper.
 One may skip this script if the CR cancellation phase found 18c works well.
 
-<<<<<<< HEAD:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/18d_CR_calib_cr_cancel_phase.py
-CR drive (cancellation) pulse is applied to the control(target) qubit at the target qubit frequency.
-Each sequence, which varies in the duration of the CR drive and the phase of CR cancellation drive,
-=======
 
 For the calibration sequences, we employ echoed CR drive.
                                    ____      ____
@@ -23,7 +19,6 @@ For the calibration sequences, we employ echoed CR drive.
 This script is to calibrate the phase of CR cancellation drive.
 CR cancellation pulse is applied to the target qubit at the target qubit frequency.
 Each sequence, which varies in the duration of the CR drive and the phase of CR cancel drive,
->>>>>>> main:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/19d_CR_calib_cr_cancel_phase.py
 ends with state tomography of the target state (across X, Y, and Z bases).
 This process is repeated with the control state in both |0> and |1> states.
 We fit the two sets of CR duration versus tomography data to a theoretical model,

@@ -1,10 +1,4 @@
 """
-<<<<<<< HEAD:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/18c_CR_calib_cr_drive_phase.py
-        CR_calib_cr_drive_phase
-        
-This script is to calibrate the phase of CR drive, corresponding to Fig. 3(a) of the referenced paper.
-CR drive (cancellation) pulse is applied to the control(target) qubit at the target qubit frequency.
-=======
                                  CR_calib_cr_drive_phase
 
 The CR_calib scripts are designed for calibrating cross-resonance (CR) gates involving a system
@@ -23,7 +17,6 @@ For the calibration sequences, we employ echoed CR drive.
             Readout(fR): _____________________ _________|  RR  |__
 
 This script is to calibrate the phase of CR drive.
->>>>>>> main:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/19c_CR_calib_cr_drive_phase.py
 Each sequence, which varies in the duration and phase of the CR drive, ends with
 state tomography of the target state (across X, Y, and Z bases).
 This process is repeated with the control state in both |0> and |1> states.

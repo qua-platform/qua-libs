@@ -1,10 +1,6 @@
 """
         CR_calib_cr_drive_amplitude
 
-<<<<<<< HEAD:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/18b_CR_calib_cr_drive_amplitude.py
-This script is to calibrate the amplitude of CR drive, corresponding to Fig. 2(b) of the referenced paper.
-CR drive (cancellation) pulse is applied to the control(target) qubit at the target qubit frequency.
-=======
 The CR_calib scripts are designed for calibrating cross-resonance (CR) gates involving a system
 with a control qubit and a target qubit. These scripts help estimate the parameters of a Hamiltonian,
 which is represented as:
@@ -21,7 +17,6 @@ For the calibration sequences, we employ echoed CR drive.
             Readout(fR): _____________________ _________|  RR  |__
 
 This script is to calibrate the amplitude of CR drive.
->>>>>>> main:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/19b_CR_calib_cr_drive_amplitude.py
 Each sequence, which varies in the duration and amplitude of the CR drive, ends with
 state tomography of the target state (across X, Y, and Z bases).
 This process is repeated with the control state in both |0> and |1> states.
