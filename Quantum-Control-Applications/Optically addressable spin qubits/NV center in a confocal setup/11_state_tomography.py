@@ -240,7 +240,7 @@ else:
     while results.is_processing():
         # Fetch results
         counts, counts_ref, iteration = results.fetch_all()
-        state = [c / c_ref for (c, c_ref) in zip(counts, counts_ref)]
+        state = counts / counts_ref
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot the Bloch vector on the Bloch sphere
