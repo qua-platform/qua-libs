@@ -61,7 +61,7 @@ with program() as time_rabi:
             align()  # Play the laser pulse after the mw pulse
             play("laser_ON", "AOM1")
             # Measure and detect the photons on SPCM1
-            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
+            measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_st)  # save counts
 
             # Wait and align all elements before measuring the dark events
@@ -73,7 +73,7 @@ with program() as time_rabi:
             align()  # Play the laser pulse after the mw pulse
             play("laser_ON", "AOM1")
             # Measure and detect the dark counts on SPCM1
-            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
+            measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_dark_st)  # save dark counts
             wait(wait_between_runs * u.ns)
 

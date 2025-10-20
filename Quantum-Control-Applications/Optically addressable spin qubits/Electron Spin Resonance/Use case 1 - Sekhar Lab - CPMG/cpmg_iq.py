@@ -72,8 +72,8 @@ with program() as hello_qua:
 
     with for_(n, 0, n < N_shots, n + 1):
         with for_(i_tau, 0, i_tau < num_taus, i_tau + 1):
-            reset_phase("ensemble")
-            reset_phase("resonator")
+            reset_if_phase("ensemble")
+            reset_if_phase("resonator")
             reset_frame("ensemble")
 
             with for_(foo, 0, foo < 100, foo + 1):

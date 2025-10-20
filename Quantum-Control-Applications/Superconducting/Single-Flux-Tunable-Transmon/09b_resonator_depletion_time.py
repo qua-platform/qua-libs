@@ -62,7 +62,6 @@ with program() as res_depletion_time:
             measure(
                 "readout",
                 "resonator",
-                None,
                 dual_demod.full("rotated_cos", "rotated_sin", I),
                 dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
             )
@@ -80,7 +79,6 @@ with program() as res_depletion_time:
             measure(
                 "readout",
                 "resonator",
-                None,
                 dual_demod.full("rotated_cos", "rotated_sin", I),
                 dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
             )

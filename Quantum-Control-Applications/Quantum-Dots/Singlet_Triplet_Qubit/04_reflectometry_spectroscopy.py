@@ -59,7 +59,7 @@ with program() as reflectometry_spectro:
             # RF reflectometry: the voltage measured by the analog input 2 is recorded, demodulated at the readout
             # frequency and the integrated quadratures are stored in "I" and "Q"
             # Please choose the right "out1" or "out2" according to the connectivity
-            measure("readout", "tank_circuit", None, demod.full("cos", I, "out2"), demod.full("sin", Q, "out2"))
+            measure("readout", "tank_circuit", demod.full("cos", I, "out2"), demod.full("sin", Q, "out2"))
             save(I, I_st)
             save(Q, Q_st)
             # Wait at each iteration in order to ensure that the data will not be transferred faster than 1 sample
