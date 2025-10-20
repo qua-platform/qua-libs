@@ -43,7 +43,7 @@ qm_log = logging.getLogger("qm")
 # Must be a multiple of 2 clock cycles to ensure that tau_half is a multiple of a single clock cycle
 tau = 2 * 50
 order_vec = np.arange(1, 21, 1, dtype=int)  # order vector for varying the order n of the XY8-n measurement
-n_avg = 1_000
+n_avg = 1_000_000
 
 tau_spacing = tau - x180_len_NV  # interpulse spacing, i.e. from end of pulse to beginning of next pulse
 tau_half_spacing = tau // 2 - x90_len_NV  # interpulse spacing for tau_half

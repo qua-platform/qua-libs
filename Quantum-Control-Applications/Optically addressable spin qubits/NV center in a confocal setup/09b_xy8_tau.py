@@ -40,12 +40,12 @@ qm_log = logging.getLogger("qm")
 ##################
 # The time vector for the times between pi-pulse centers in clock cycles (4ns)
 # Each tau value must be a multiple of 2 clock cycles to ensure that tau_half is a multiple of a single clock cycle
-tau_vec = 2 * np.arange(4, 500, 20)
+tau_vec = 2 * np.arange(12, 500, 20)
 xy8_order = 4  # order n of the XY8-n measurement
 n_avg = 1_000_000
 
-tau_vec_spacing = tau_vec - x180_len_NV  # interpulse spacing, i.e. from end of pulse to beginning of next pulse
-tau_half_vec_spacing = tau_vec // 2 - x90_len_NV  # interpulse spacing for tau_half
+tau_vec_spacing = tau_vec - x180_len_NV // 4  # interpulse spacing, i.e. from end of pulse to beginning of next pulse
+tau_half_vec_spacing = tau_vec // 2 - x90_len_NV // 4  # interpulse spacing for tau_half
 if x180_len_NV != x90_len_NV:
     qm_log.warning(
         f"pi-pulse and pi/2-pulse do not have the same length ({x180_len_NV}, {x90_len_NV}). "
@@ -56,9 +56,9 @@ if x180_len_NV != x90_len_NV:
 for ii in reversed(range(len(tau_vec))):
     if tau_half_vec_spacing[ii] < 4:
         qm_log.warning(f"Removed tau value {tau_vec[ii]}: interpulse spacing must be at least 4 clock cycles (16ns).")
-        del tau_half_vec_spacing[ii]
-        del tau_vec_spacing[ii]
-        del tau_vec[ii]
+        tau_half_vec_spacing = np.delete(tau_half_vec_spacing, ii)
+        tau_vec_spacing = np.delete(tau_vec_spacing, ii)
+        tau_vec = np.delete(tau_vec, ii)
 
 # Data to save
 save_data_dict = {
@@ -130,6 +130,7 @@ with program() as xy8_tau:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_each_((tau_spacing, tau_half_spacing), (tau_vec_spacing, tau_half_vec_spacing)):
+            wait(4)
             # Strict_timing validates that the sequence will be played without gaps.
             # If gaps are detected, an error will be raised
             with strict_timing_():
