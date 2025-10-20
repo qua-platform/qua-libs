@@ -1,7 +1,7 @@
-# Superconducting QUAlibration graphs
+# QUAlibration graphs
 
-This repository provides a comprehensive library for calibrating superconducting transmon qubits using the Quantum Orchestration Platform (QOP), QUAM, and QUAlibrate.
-This includes both flux-tunable and fixed-frequency Transmons.
+This repository provides a comprehensive library for calibrating various qubits types using the Quantum Orchestration Platform (QOP), QUAM, and QUAlibrate.
+Currently superconducting transmon qubits, including both flux-tunable and fixed-frequency transmons, and NV centers are supported.
 It includes configurable experiment nodes, analysis routines, and tools for managing the quantum system state (QUAM).
 
 This library is built upon **QUAlibrate**, an advanced, open-source software framework designed specifically for the automated calibration of Quantum Processing Units (QPUs). QUAlibrate provides tools to create, manage, and execute calibration routines efficiently. The configurable experiment nodes, analysis routines, and state management tools included here are designed to integrate seamlessly with the QUAlibrate ecosystem.
@@ -16,7 +16,7 @@ See the [QUAlibrate Documentation](https://qua-platform.github.io/qualibrate/) f
     - [Initial Setup (QUAlibrate Configuration)](#initial-setup-qualibrate-configuration)
     - [Verify Setup](#verify-setup)
 3.  [Creating the QUAM State](#creating-the-quam-state)
-4.  [Calibration Nodes and Graphs](calibration-nodes-and-graphs)
+4.  [Calibration Nodes and Graphs](#calibration-nodes-and-graphs)
 5.  [Project Structure](#project-structure)
 6.  [Extending QUAM Components](#extending-quam-components)
 7.  [Contributing](#contributing)
@@ -65,7 +65,7 @@ You have a few options to get the code:
 
 Once you have the code locally:
 
-1.  **Navigate to the Directory:** Open a terminal or command prompt and change into the `superconducting` directory within the downloaded/cloned repository.
+1.  **Navigate to the Directory:** Open a terminal or command prompt and change into the `superconducting` or `nv_center` directory within the downloaded/cloned repository.
 2.  **Activate Virtual Environment:** Ensure your dedicated Python virtual environment (see [Prerequisites](#prerequisites)) is activated.
 3.  **Install the Package:** Run the following command to install the library and its dependencies in editable mode (`-e`), which means changes you make to the source code will be reflected immediately without reinstalling:
 
@@ -83,7 +83,7 @@ Once you have the code locally:
 
 The QUAlibrate framework needs some initial configuration to know where to find calibration scripts, store data, and manage the system state (QUAM).
 
-1.  **Run the Configuration Script:** Execute the provided script from within the `Superconducting` directory:
+1.  **Run the Configuration Script:** Execute the provided script from within the `superconducting`/`nv_center` directory:
 
     ```bash
     setup-qualibrate-config
@@ -133,7 +133,7 @@ QUAM (Quantum Abstract Machine) provides an abstraction layer over the low-level
 
 **How to Create the State:**
 
-The process of creating the initial QUAM state file involves defining your specific hardware components (OPXs, Octaves, mixers, LOs), as well as the QPU layout that the hardware is attached to. Detailed instructions are found in **[quam_config/README.md](quam_config/README.md)**
+The process of creating the initial QUAM state file involves defining your specific hardware components (OPXs, Octaves, mixers, LOs), as well as the QPU layout that the hardware is attached to. Detailed instructions are found in **[superconducting/quam_config/README.md](superconducting/quam_config/README.md)** and **[nv_center/quam_config/README.md](nv_center/quam_config/README.md)**.
 
 This directory contains scripts (`generate_quam.py`, `populate_quam_xx.py`, examples, etc.) that demonstrate how to build the QUAM object programmatically.
 
@@ -143,13 +143,11 @@ The scripts within the `calibrations` directory are the building blocks for auto
 Each script typically performs a specific measurement (e.g., Resonator Spectroscopy, Rabi Oscillations, T1 measurement).
 They are designed to be run via the QUAlibrate framework, either individually or as part of a larger calibration sequence (graph), but can also be executed as a standalone script from your favorite Python IDE (e.g. PyCharm, VScode...).
 
-Refer to the [calibrations/README.md](calibrations/README.md) for detailed information on the structure and conventions used for these nodes.
+Refer to the [calibrations/README.md](superconducting/calibrations/README.md) for detailed information on the structure and conventions used for these nodes.
 
 ## Project Structure
 
-The library is organized into the following main directories:
-
-TODO: modify after moving things to Qualibration-libs
+The library is organized into the directories for the qubit modality, superconcducting or NV centers. Each follows the directory style (example superconducting):
 
 ```
 superconducting/
