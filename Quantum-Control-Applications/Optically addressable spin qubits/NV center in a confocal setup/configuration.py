@@ -180,7 +180,7 @@ config = {
                 "long_readout": "long_readout_pulse_1",
             },
             "outputs": {"out1": ("con1", 1)},
-            "outputPulseParameters": {
+            "timeTaggingParameters": {
                 "signalThreshold": signal_threshold_1,  # ADC units
                 "signalPolarity": "Below",
                 "derivativeThreshold": -2_000,
@@ -203,7 +203,7 @@ config = {
                 "long_readout": "long_readout_pulse_2",
             },
             "outputs": {"out1": ("con1", 2)},
-            "outputPulseParameters": {
+            "timeTaggingParameters": {
                 "signalThreshold": signal_threshold_2,  # ADC units
                 "signalPolarity": "Below",
                 "derivativeThreshold": -2_000,
