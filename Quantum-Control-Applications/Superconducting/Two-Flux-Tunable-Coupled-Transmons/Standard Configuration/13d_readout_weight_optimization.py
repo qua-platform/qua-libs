@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
 import time
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.results.data_handler import DataHandler
 
 
@@ -135,7 +135,7 @@ with program() as opt_weights:
             measure(
                 "readout",
                 f"rr{res}",
-                None,
+                
                 demod.sliced("cos", II[rr], division_length, "out1"),
                 demod.sliced("sin", IQ[rr], division_length, "out2"),
                 demod.sliced("minus_sin", QI[rr], division_length, "out1"),
@@ -162,7 +162,7 @@ with program() as opt_weights:
             measure(
                 "readout",
                 f"rr{res}",
-                None,
+                
                 demod.sliced("cos", II[rr], division_length, "out1"),
                 demod.sliced("sin", IQ[rr], division_length, "out2"),
                 demod.sliced("minus_sin", QI[rr], division_length, "out1"),
@@ -220,13 +220,13 @@ else:
     # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["iteration"], mode="live")
     # Live plotting
     while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
         # Fetch results
-        iteration = results.fetch_all()[0]
+        iteration = res_handles.get('iteration').fetch_all()
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
 
     # Fetch and reshape the data
     ground_trace = [[], []]

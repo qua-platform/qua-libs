@@ -219,13 +219,15 @@ else:
     # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
     # Get results from QUA program
-    results = fetching_tool(job, ["n", "I1", "Q1", "state1", "I2", "Q2", "state2"], mode="live")
+    data_list = ["n", "I1", "Q1", "state1", "I2", "Q2", "state2"]
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while res_handles.is_processing():
+        res_handles.get('n').wait_for_values(1)
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
         # Fetch results
-        n, I1, Q1, state1, I2, Q2, state2 = results.fetch_all()
+        n, I1, Q1, state1, I2, Q2, state2 = [results.get(data) for data in data_list]
         # Convert the results into Volts
         I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
         I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)

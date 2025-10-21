@@ -139,7 +139,7 @@ def active_reset(threshold: float, qubit: str, resonator: str, max_tries=1, Ig=N
         measure(
             "readout",
             resonator,
-            None,
+            
             dual_demod.full("rotated_cos", "rotated_sin", Ig),
         )
         # Play a pi pulse to get back to the ground state

@@ -22,7 +22,7 @@ import time
 from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.analysis import two_state_discriminator
 from macros import multiplexed_readout, qua_declaration
 from qualang_tools.results.data_handler import DataHandler
@@ -118,18 +118,18 @@ else:
     job = qm.execute(ro_amp_opt)  # execute QUA program
     # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
-    # Get results from QUA program
-    results = fetching_tool(job, data_list=["iteration"], mode="live")
     # Get progress counter to monitor runtime of the program
     while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
         # Fetch results
-        iteration = results.fetch_all()
+        iteration = res_handles.get("iteration").fetch_all()
         # Progress bar
-        progress_counter(iteration[0], len(amplitudes), start_time=results.get_start_time())
+        progress_counter(iteration, len(amplitudes), start_time=time.time())
 
     # Fetch the results at the end
-    results = fetching_tool(job, ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"])
-    I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
+    data_list =["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"]
+    results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
+    I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = [results.get(data) for data in data_list]
     # Process the data
     fidelity_vec = [[], []]
     ground_fidelity_vec = [[], []]

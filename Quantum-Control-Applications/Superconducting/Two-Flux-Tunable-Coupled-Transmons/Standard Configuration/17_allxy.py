@@ -17,7 +17,7 @@ Prerequisites:
 
 from qm.qua import *
 from qm import QuantumMachinesManager
-from configuration_with_lf_fem_and_mw_fem import *
+from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
@@ -102,7 +102,7 @@ def allXY(pulses, qubit, resonator):
     measure(
         "readout",
         resonator,
-        None,
+        
         dual_demod.full("rotated_cos", "rotated_sin", I_xy),
         dual_demod.full("rotated_minus_sin", "rotated_cos", Q_xy),
     )

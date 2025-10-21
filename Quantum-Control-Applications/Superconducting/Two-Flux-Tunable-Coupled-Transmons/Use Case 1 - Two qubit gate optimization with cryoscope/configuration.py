@@ -205,7 +205,6 @@ iir1 = [0.95138406]
 # iir1 = []
 
 config = {
-    "version": 1,
     "controllers": {
         "con1": {
             "analog_outputs": {

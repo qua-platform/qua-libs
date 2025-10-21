@@ -19,7 +19,7 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import time
-from configuration_with_lf_fem_and_mw_fem import *
+from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.plot import interrupt_on_close
@@ -33,7 +33,7 @@ from qualang_tools.results.data_handler import DataHandler
 # Parameters Definition
 times = np.arange(4, 200, 2)  # In clock cycles = 4ns
 cooldown_time = 1 * u.us
-n_avg = 1000
+n_avg = 10000
 
 # Data to save
 save_data_dict = {
@@ -110,6 +110,7 @@ else:
     res_handles = job.result_handles
     # Live plotting
     while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["n", "I1", "Q1", "I2", "Q2"])
         # Fetch results
         n, I1, Q1, I2, Q2=  results.get("n"),results.get("I1"), results.get("Q1"),results.get("I2"), results.get("Q2")

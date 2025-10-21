@@ -12,7 +12,7 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 import time
-from configuration_with_lf_fem_and_mw_fem import *
+from configuration import *
 import matplotlib.pyplot as plt
 
 ##################
@@ -33,7 +33,7 @@ with program() as raw_trace_prog:
         reset_if_phase("rr2")
         reset_if_phase("rr1")
         # Measure the resonator (send a readout pulse and record the raw ADC trace)
-        measure("readout", "rr1", adc_stream=adc_st)
+        measure("readout", "rr1", adc_st)
         # Play the readout on rr2 as well for making sure that the ADC won't be saturated for multiplexed readout
         measure("readout", "rr2")
         # Wait for the resonator to deplete

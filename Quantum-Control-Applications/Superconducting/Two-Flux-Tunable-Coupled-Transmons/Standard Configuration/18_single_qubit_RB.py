@@ -23,12 +23,12 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from scipy.optimize import curve_fit
-from configuration_with_lf_fem_and_mw_fem import *
+from configuration import *
 import time
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from macros import multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
@@ -296,6 +296,7 @@ else:
     # data analysis
     x = np.arange(1, max_circuit_depth + 0.1, delta_clifford)
     while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
         # Get results from QUA program
         if state_discrimination:
             results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["state_avg", "iteration"])
@@ -318,13 +319,11 @@ else:
 
     # At the end of the program, fetch the non-averaged results to get the error-bars
     if state_discrimination:
-        results = fetching_tool(job, data_list=["state"])
-        state = results.fetch_all()[0]
+        state =  res_handles.get('state').fetch_all()
         value_avg = np.mean(state, axis=0)
         error_avg = np.std(state, axis=0)
     else:
-        results = fetching_tool(job, data_list=["I", "Q"])
-        I, Q = results.fetch_all()
+        I, Q = res_handles.get('I').fetch_all(), res_handles.get('Q').fetch_all()
         value_avg = np.mean(I, axis=0)
         error_avg = np.std(I, axis=0)
     # data analysis

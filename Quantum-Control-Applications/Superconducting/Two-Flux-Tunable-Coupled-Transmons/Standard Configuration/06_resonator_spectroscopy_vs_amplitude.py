@@ -75,7 +75,7 @@ with program() as multi_res_spec_vs_amp:
                 measure(
                     "readout" * amp(a),
                     "rr1",
-                    None,
+                    
                     dual_demod.full("cos", "sin", I[0]),
                     dual_demod.full("minus_sin", "cos", Q[0]),
                 )
@@ -90,7 +90,7 @@ with program() as multi_res_spec_vs_amp:
                 measure(
                     "readout" * amp(a),
                     "rr2",
-                    None,
+                    
                     dual_demod.full("cos", "sin", I[1]),
                     dual_demod.full("minus_sin", "cos", Q[1]),
                 )

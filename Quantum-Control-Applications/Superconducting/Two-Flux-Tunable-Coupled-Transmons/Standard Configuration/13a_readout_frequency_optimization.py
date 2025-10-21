@@ -23,9 +23,10 @@ import time
 from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from macros import multiplexed_readout, qua_declaration
 from qualang_tools.results.data_handler import DataHandler
+from qualang_tools.plot import interrupt_on_close
 
 ##################
 #   Parameters   #
@@ -76,27 +77,27 @@ with program() as ro_freq_opt:
         n_st.save("n")
         for i in range(2):
             # mean values
-            Ig_st[i].buffer(len(dfs)).average().save(f"Ig{i}_avg")
-            Qg_st[i].buffer(len(dfs)).average().save(f"Qg{i}_avg")
-            Ie_st[i].buffer(len(dfs)).average().save(f"Ie{i}_avg")
-            Qe_st[i].buffer(len(dfs)).average().save(f"Qe{i}_avg")
+            Ig_st[i].buffer(len(dfs)).average().save(f"Ig{i+1}_avg")
+            Qg_st[i].buffer(len(dfs)).average().save(f"Qg{i+1}_avg")
+            Ie_st[i].buffer(len(dfs)).average().save(f"Ie{i+1}_avg")
+            Qe_st[i].buffer(len(dfs)).average().save(f"Qe{i+1}_avg")
             # variances to get the SNR
             (
                 ((Ig_st[i].buffer(len(dfs)) * Ig_st[i].buffer(len(dfs))).average())
                 - (Ig_st[i].buffer(len(dfs)).average() * Ig_st[i].buffer(len(dfs)).average())
-            ).save(f"Ig{i}_var")
+            ).save(f"Ig{i+1}_var")
             (
                 ((Qg_st[i].buffer(len(dfs)) * Qg_st[i].buffer(len(dfs))).average())
                 - (Qg_st[i].buffer(len(dfs)).average() * Qg_st[i].buffer(len(dfs)).average())
-            ).save(f"Qg{i}_var")
+            ).save(f"Qg{i+1}_var")
             (
                 ((Ie_st[i].buffer(len(dfs)) * Ie_st[i].buffer(len(dfs))).average())
                 - (Ie_st[i].buffer(len(dfs)).average() * Ie_st[i].buffer(len(dfs)).average())
-            ).save(f"Ie{i}_var")
+            ).save(f"Ie{i+1}_var")
             (
                 ((Qe_st[i].buffer(len(dfs)) * Qe_st[i].buffer(len(dfs))).average())
                 - (Qe_st[i].buffer(len(dfs)).average() * Qe_st[i].buffer(len(dfs)).average())
-            ).save(f"Qe{i}_var")
+            ).save(f"Qe{i+1}_var")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -129,6 +130,9 @@ else:
     qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_freq_opt)
+    # Prepare the figure for live plotting
+    fig = plt.figure()
+    interrupt_on_close(fig, job)
     # Get results from QUA program
     data_list = [
         "Ig1_avg",
@@ -147,10 +151,13 @@ else:
         "Qg2_var",
         "Ie2_var",
         "Qe2_var",
-        "iteration",
+        "n",
     ]
-    results = fetching_tool(job, data_list=data_list, mode="live")
-    (
+    res_handles = job.result_handles
+    while res_handles.is_processing():
+        res_handles.get('n').wait_for_values(1)
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+        (
         Ig1_avg,
         Qg1_avg,
         Ie1_avg,
@@ -167,34 +174,33 @@ else:
         Qg2_var,
         Ie2_var,
         Qe2_var,
-        iteration,
-    ) = results.fetch_all()
-    # Progress bar
-    progress_counter(iteration, n_avg, start_time=results.get_start_time())
-    # Derive the SNR
-    Z1 = (Ie1_avg - Ig1_avg) + 1j * (Qe1_avg - Qg1_avg)
-    var1 = (Ig1_var + Qg1_var + Ie1_var + Qe1_var) / 4
-    SNR1 = ((np.abs(Z1)) ** 2) / (2 * var1)
-    Z2 = (Ie2_avg - Ig2_avg) + 1j * (Qe2_avg - Qg2_avg)
-    var2 = (Ig2_var + Qg2_var + Ie2_var + Qe2_var) / 4
-    SNR2 = ((np.abs(Z2)) ** 2) / (2 * var2)
-    # Plot results
-    fig = plt.figure()
-    plt.suptitle("Readout frequency optimization")
-    plt.subplot(121)
-    plt.cla()
-    plt.plot(dfs / u.MHz, SNR1, ".-")
-    plt.title(f"Qubit 1 around {resonator_IF_q1 / u.MHz} MHz")
-    plt.xlabel("Readout frequency detuning [MHz]")
-    plt.ylabel("SNR")
-    plt.grid("on")
-    plt.subplot(121)
-    plt.cla()
-    plt.plot(dfs / u.MHz, SNR2, ".-")
-    plt.title(f"Qubit 2 around {resonator_IF_q2 / u.MHz} MHz")
-    plt.xlabel("Readout frequency detuning [MHz]")
-    plt.grid("on")
-    plt.pause(0.1)
+        n,
+        ) = [results.get(data) for data in data_list]
+        # Progress bar
+        progress_counter(n, n_avg, start_time=time.time())
+        # Derive the SNR
+        Z1 = (Ie1_avg - Ig1_avg) + 1j * (Qe1_avg - Qg1_avg)
+        var1 = (Ig1_var + Qg1_var + Ie1_var + Qe1_var) / 4
+        SNR1 = ((np.abs(Z1)) ** 2) / (2 * var1)
+        Z2 = (Ie2_avg - Ig2_avg) + 1j * (Qe2_avg - Qg2_avg)
+        var2 = (Ig2_var + Qg2_var + Ie2_var + Qe2_var) / 4
+        SNR2 = ((np.abs(Z2)) ** 2) / (2 * var2)
+        # Plot results
+        plt.suptitle("Readout frequency optimization")
+        plt.subplot(121)
+        plt.cla()
+        plt.plot(dfs / u.MHz, SNR1, ".-")
+        plt.title(f"Qubit 1 around {resonator_IF_q1 / u.MHz} MHz")
+        plt.xlabel("Readout frequency detuning [MHz]")
+        plt.ylabel("SNR")
+        plt.grid("on")
+        plt.subplot(122)
+        plt.cla()
+        plt.plot(dfs / u.MHz, SNR2, ".-")
+        plt.title(f"Qubit 2 around {resonator_IF_q2 / u.MHz} MHz")
+        plt.xlabel("Readout frequency detuning [MHz]")
+        plt.grid("on")
+        plt.pause(0.1)
     print(f"The optimal readout frequency is {dfs[np.argmax(SNR1)] + resonator_IF_q1} Hz (SNR={max(SNR1)})")
     print(f"The optimal readout frequency is {dfs[np.argmax(SNR2)] + resonator_IF_q2} Hz (SNR={max(SNR2)})")
 

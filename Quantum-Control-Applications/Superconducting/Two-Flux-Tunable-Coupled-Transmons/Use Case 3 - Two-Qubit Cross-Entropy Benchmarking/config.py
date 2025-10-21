@@ -1,5 +1,4 @@
 config = {
-    "version": 1,
     "controllers": {
         "con1": {
             "analog_outputs": {

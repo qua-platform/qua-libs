@@ -160,6 +160,7 @@ else:
     res_handles = job.result_handles
     # Live plotting
     while res_handles.is_processing():
+        res_handles.get('n').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["n", "I1", "Q1", "I2", "Q2"])
         # Fetch results
         n, I1, Q1, I2, Q2=  results.get("n"),results.get("I1"), results.get("Q1"),results.get("I2"), results.get("Q2")

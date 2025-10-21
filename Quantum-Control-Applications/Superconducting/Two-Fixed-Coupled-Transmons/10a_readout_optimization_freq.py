@@ -22,7 +22,7 @@ from configuration import *
 import time
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from macros import multiplexed_readout, qua_declaration
 import math
 from qualang_tools.plot import interrupt_on_close

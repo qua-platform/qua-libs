@@ -120,6 +120,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)
     while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
         # Get results from QUA program
         results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["I", "Q", "iteration"])
         # Fetch results

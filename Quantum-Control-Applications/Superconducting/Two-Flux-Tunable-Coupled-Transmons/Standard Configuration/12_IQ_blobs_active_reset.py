@@ -2,7 +2,7 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import time
-from configuration_with_lf_fem_and_mw_fem import *
+from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.analysis import two_state_discriminator
 from macros import qua_declaration, multiplexed_readout, reset_qubit
@@ -89,7 +89,7 @@ else:
     # Get results from QUA program
     data_list = ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"]
     # fetch data
-    results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
+    results = res_handles.fetch_results(wait_until_done=True, timeout=60,stream_names=data_list)
     res = [results.get(data)['value'] for data in data_list]
     I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = res
     two_state_discriminator(I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, True, True)

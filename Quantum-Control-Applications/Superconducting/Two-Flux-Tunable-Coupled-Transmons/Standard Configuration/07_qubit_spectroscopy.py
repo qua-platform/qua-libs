@@ -29,7 +29,7 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 import time
-from configuration_with_lf_fem_and_mw_fem import *
+from configuration import *
 from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
