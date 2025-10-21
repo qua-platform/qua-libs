@@ -235,8 +235,8 @@ else:
 
         # Plot data
         ax1.cla()
-        ax1.plot( order_vec, norm1, label="x90_XY8-n_x90")
-        ax1.plot( order_vec, norm2, label="x90_XY8-n_-x90")
+        ax1.plot(order_vec, norm1, label="x90_XY8-n_x90")
+        ax1.plot(order_vec, norm2, label="x90_XY8-n_-x90")
         ax1.set_ylabel("Norm. Signal")
         ax1.set_title("XY8 order sweep")
         ax1.legend()
