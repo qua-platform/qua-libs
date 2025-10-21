@@ -155,6 +155,10 @@ bloch_sphere.label_bra(bloch_sphere.West * 1.1, "Y")
 # Parameters Definition
 n_avg = 1_000_000  # Number of averaging iterations
 
+# Determine reference readout during single laser pulse
+reference_wait = initialization_len_1 // 4 - 2 * meas_len_1 // 4 - 25  # in clock cycles
+reference_readout = reference_wait >= 4
+
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
@@ -190,8 +194,8 @@ with program() as state_tomography:
             measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_st)  # save counts
             # Measure reference photon counts at end of laser pulse
-            if initialization_len_1 - 2 * meas_len_1 - 25 >= 4:
-                wait(initialization_len_1 - 2 * meas_len_1 - 25, "SPCM1")
+            if reference_readout:
+                wait(reference_wait, "SPCM1")
                 measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             else:
                 assign(counts, 1)

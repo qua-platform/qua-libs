@@ -31,6 +31,10 @@ from qualang_tools.results.data_handler import DataHandler
 t_vec = np.arange(4, 500, 20)  # The time vector for varying the idle time in clock cycles (4ns)
 n_avg = 1_000_000
 
+# Determine reference readout during single laser pulse
+reference_wait = initialization_len_1 // 4 - 2 * meas_len_1 // 4 - 25  # in clock cycles
+reference_readout = reference_wait >= 4
+
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
@@ -71,8 +75,8 @@ with program() as hahn_echo:
             measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_1_st)  # save counts
             # Measure reference photon counts at end of laser pulse
-            if initialization_len_1 - 2 * meas_len_1 - 25 >= 4:
-                wait(initialization_len_1 - 2 * meas_len_1 - 25, "SPCM1")
+            if reference_readout:
+                wait(reference_wait, "SPCM1")
                 measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             else:
                 assign(counts, 1)
@@ -93,8 +97,8 @@ with program() as hahn_echo:
             measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_2_st)  # save counts
             # Measure reference photon counts at end of laser pulse
-            if initialization_len_1 - 2 * meas_len_1 - 25 >= 4:
-                wait(initialization_len_1 - 2 * meas_len_1 - 25, "SPCM1")
+            if reference_readout:
+                wait(reference_wait, "SPCM1")
                 measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             else:
                 assign(counts, 1)
