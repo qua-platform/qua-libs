@@ -38,9 +38,9 @@ with program() as counter:
         # Loop over the chunks to measure for the total integration time
         with for_(n, 0, n < n_count, n + 1):
             # Play the laser pulse...
-            play("laser_ON", "AOM", duration=single_integration_time_cycles)
+            play("laser_ON", "AOM1", duration=single_integration_time_cycles)
             # ... while measuring the events from the SPCM
-            measure("readout", "SPCM", time_tagging.analog(times, single_integration_time_ns, counts))
+            measure("readout", "SPCM1", time_tagging.analog(times, single_integration_time_ns, counts))
             # Increment the received counts
             assign(total_counts, total_counts + counts)
         # Save the counts
@@ -48,7 +48,7 @@ with program() as counter:
         assign(total_counts, 0)
 
     with stream_processing():
-        counts_st.with_timestamps().save("counts")
+        counts_st.with_timestamps().save_all("counts")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -94,7 +94,6 @@ else:
         new_counts = counts_handle.fetch(slice(last_idx, new_idx))
         last_idx = new_idx
         counts.extend(new_counts["value"] / total_integration_time / 1000)
-        # TODO: does the time bin depend on the sampling rate?
         time.extend(new_counts["timestamp"] / u.s)  # Convert timestamps to seconds
         plt.cla()
         if len(time) > 50:
