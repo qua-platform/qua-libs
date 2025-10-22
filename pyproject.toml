@@ -7,7 +7,6 @@ license = "BSD-3-Clause"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.12"
 qm-qua = {version = ">=1.2.0", allow-prereleases = true}
 
 [tool.poetry.dev-dependencies]
