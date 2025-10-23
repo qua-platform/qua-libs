@@ -2,7 +2,6 @@
        HAHN ECHO MEASUREMENT (T2)
 The program consists in playing two Hahn echo sequences successively (first ending with x90 and then with -x90)
 and measure the photon counts received by the SPCM across varying idle times.
-The sequence is repeated without playing the mw pulses to measure the dark counts on the SPCM.
 
 The data is then post-processed to determine the coherence time T2.
 

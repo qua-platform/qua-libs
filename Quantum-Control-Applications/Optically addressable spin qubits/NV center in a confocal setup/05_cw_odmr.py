@@ -2,7 +2,6 @@
         CW Optically Detected Magnetic Resonance (ODMR)
 The program consists in playing a mw pulse and the readout laser pulse simultaneously to extract
 the photon counts received by the SPCM across varying intermediate frequencies.
-The sequence is repeated without playing the mw pulses to measure the dark counts on the SPCM.
 
 The data is then post-processed to determine the spin resonance frequency.
 This frequency can be used to update the NV intermediate frequency in the configuration under "NV_IF_freq".

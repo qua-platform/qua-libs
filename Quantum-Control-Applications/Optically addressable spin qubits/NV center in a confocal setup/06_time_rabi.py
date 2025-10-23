@@ -2,7 +2,7 @@
         TIME RABI
 The program consists in playing a mw pulse and measure the photon counts received by the SPCM
 across varying mw pulse durations.
-The sequence is repeated without playing the mw pulses to measure the dark counts on the SPCM.
+The sequence has a reference measurement window at the end of the laser pulse to normalize the photon counts.
 
 The data is then post-processed to determine the pi pulse duration for the specified amplitude.
 

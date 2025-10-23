@@ -2,7 +2,6 @@
        RAMSEY MEASUREMENT (T2*)
 The program consists in playing two Ramsey sequence successively (first ending with x90 and then with -x90)
 and measure the photon counts received by the SPCM across varying idle times.
-The sequence is repeated without playing the mw pulses to measure the dark counts on the SPCM.
 
 The data is then post-processed to determine the dephasing time T2*.
 
