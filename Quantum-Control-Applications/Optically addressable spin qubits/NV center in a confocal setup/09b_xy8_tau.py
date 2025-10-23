@@ -134,7 +134,7 @@ with program() as xy8_tau:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_each_((tau_spacing, tau_half_spacing), (tau_vec_spacing, tau_half_vec_spacing)):
-            wait(4)
+            wait(4)  # short wait to assign the variables of the zipped loop, else there's a strict timing error
             # Strict_timing validates that the sequence will be played without gaps.
             # If gaps are detected, an error will be raised
             with strict_timing_():
