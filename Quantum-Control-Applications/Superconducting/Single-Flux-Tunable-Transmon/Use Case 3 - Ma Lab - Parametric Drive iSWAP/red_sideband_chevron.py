@@ -60,7 +60,6 @@ with program() as red_sideband:
                 measure(
                     "readout",
                     "resonator1",
-                    None,
                     dual_demod.full("cos", "sin", I),
                     dual_demod.full("minus_sin", "cos", Q),
                 )

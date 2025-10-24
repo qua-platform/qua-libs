@@ -17,6 +17,7 @@ The data undergoes post-processing to calibrate three distinct parameters:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
+import time
 from configuration import *
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
@@ -36,9 +37,9 @@ with program() as raw_trace_prog:
 
     with for_(n, 0, n < n_avg, n + 1):
         # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
-        reset_phase("resonator")
+        reset_if_phase("resonator")
         # Sends the readout pulse and stores the raw ADC traces in the stream called "adc_st"
-        measure("readout", "resonator", adc_st)
+        measure("readout", "resonator", adc_stream = adc_st)
         # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "resonator")
 
@@ -64,7 +65,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, raw_trace_prog, simulation_config)
+    job = qmm.simulate(full_config, raw_trace_prog, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -78,14 +79,14 @@ if simulate:
 
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(raw_trace_prog)
     # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
+
     # Waits (blocks the Python console) until all results have been acquired
-    res_handles.wait_for_all_values()
-    # Fetch the raw ADC traces and convert them into Volts
+    res_handles.wait_for_all_values()    # Fetch the raw ADC traces and convert them into Volts
     adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
     adc2 = u.raw2volts(res_handles.get("adc2").fetch_all())
     adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())

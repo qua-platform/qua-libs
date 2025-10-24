@@ -15,6 +15,7 @@ Next steps before going to the next node:
 from qm import QuantumMachinesManager
 from qm.qua import *
 from configuration import *
+import time
 
 
 ###################

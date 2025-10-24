@@ -93,7 +93,6 @@ with program() as cryoscope_amp:
                 measure(
                     "short_readout",
                     "resonator",
-                    None,
                     dual_demod.full("cos", "sin", I),
                     dual_demod.full("minus_sin", "cos", Q),
                 )
@@ -149,7 +148,9 @@ else:
     fig.canvas.mpl_connect("close_event", on_close)
     xplot = flux_amp_array * const_flux_amp
     while res_handles.is_processing():
-        I = I_handles.fetch_all()
+       # Waits (blocks the Python console) until all results have been acquired
+
+    res_handles.wait_for_all_values()        I = I_handles.fetch_all()
         Q = Q_handles.fetch_all()
         Ie = Ie_handles.fetch_all()
         Qe = Qe_handles.fetch_all()

@@ -23,7 +23,6 @@ from qm.qua import *
 from qm.simulate import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt
-from qualang_tools.results import fetching_tool
 from qualang_tools.analysis import two_state_discriminator
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
@@ -37,7 +36,7 @@ n_runs = 10000  # Number of runs
 # Data to save
 save_data_dict = {
     "n_runs": n_runs,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -86,7 +85,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, iq_blobs, simulation_config)
+    job = qmm.simulate(full_config, iq_blobs, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -99,62 +98,23 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(iq_blobs)
+    # Creates a result handle to fetch data from the OPX
+    res_handles = job.result_handles
+    # Get results from QUA program
+    data_list = ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"]
     # fetch data
-    results = fetching_tool(job, ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"])
-    I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
-    # Plot the IQ blobs, rotate them to get the separation along the 'I' quadrature, estimate a threshold between them
-    # for state discrimination and derive the fidelity matrix
+    results = res_handles.fetch_results(wait_until_done=True, timeout=60,stream_names=data_list)
+    res = [results.get(data)['value'] for data in data_list]
+    I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = res
     two_state_discriminator(I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, True, True)
     plt.suptitle("qubit 1")
     two_state_discriminator(I_g_q2, Q_g_q2, I_e_q2, Q_e_q2, True, True)
     plt.suptitle("qubit 2")
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
-
-    #########################################
-    # The two_state_discriminator gives us the rotation angle which makes it such that all of the information will be in
-    # the I axis. This is being done by setting the `rotation_angle` parameter in the configuration.
-    # See this for more information: https://qm-docs.qualang.io/guides/demod#rotating-the-iq-plane
-    # Once we do this, we can perform active reset using:
-    #########################################
-    #
-    # # Active reset:
-    # with if_(I > threshold):
-    #     play("x180", "qubit")
-    #
-    #########################################
-    #
-    # # Active reset (faster):
-    # play("x180", "qubit", condition=I > threshold)
-    #
-    #########################################
-    #
-    # # Repeat until success active reset
-    # with while_(I > threshold):
-    #     play("x180", "qubit")
-    #     align("qubit", "resonator")
-    #     measure("readout", "resonator", None,
-    #                 dual_demod.full("rotated_cos", "rotated_sin", I))
-    #
-    #########################################
-    #
-    # # Repeat until success active reset, up to 3 iterations
-    # count = declare(int)
-    # assign(count, 0)
-    # cont_condition = declare(bool)
-    # assign(cont_condition, ((I > threshold) & (count < 3)))
-    # with while_(cont_condition):
-    #     play("x180", "qubit")
-    #     align("qubit", "resonator")
-    #     measure("readout", "resonator", None,
-    #                 dual_demod.full("rotated_cos", "rotated_sin", I))
-    #     assign(count, count + 1)
-    #     assign(cont_condition, ((I > threshold) & (count < 3)))
-    #
-    #########################################
     # Save results
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
@@ -168,3 +128,4 @@ else:
     save_data_dict.update({"Q_e_q2_data": Q_e_q2})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
+

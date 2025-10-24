@@ -3,11 +3,12 @@ Plays a MW pulse during a laser pulse, while performing time tagging throughout 
 the delays in the system, as well as the NV initialization duration.
 This version process the data in Python, which makes it slower but works better when the counts are high.
 """
-
+#%%
 from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
+import time
 from qualang_tools.results.data_handler import DataHandler
 
 ##################
@@ -18,7 +19,7 @@ initial_delay_cycles = 500 // 4  # delay before laser (units of clock cycles = 4
 laser_len_cycles = 2000 // 4  # laser duration length (units of clock cycles = 4 ns)
 mw_len_cycles = 1000 // 4  # MW duration length (units of clock cycles = 4 ns)
 wait_between_runs = 3000 // 4  # (4ns)
-n_avg = 1e6
+n_avg = 1e3
 
 buffer_len = 10
 meas_len = (laser_len_cycles + 2 * initial_delay_cycles) * 4  # total measurement length (ns)
@@ -30,7 +31,7 @@ assert (laser_len_cycles - mw_len_cycles) > 4, "The MW must be shorter than the 
 save_data_dict = {
     "n_avg": n_avg,
     "t_vec": t_vec,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -68,15 +69,16 @@ with program() as calib_delays:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-qm = qmm.open_qm(config)
-
+qm = qmm.open_qm(full_config,close_other_machines=True)
 job = qm.execute(calib_delays)
 
 res_handles = job.result_handles
 times_handle = res_handles.get("times")
 iteration_handle = res_handles.get("iteration")
-times_handle.wait_for_values(1)
-iteration_handle.wait_for_values(1)
+print(times_handle.count_so_far())
+print( iteration_handle.fetch_all() + 1)
+# times_handle.wait_for_values(1)
+# iteration_handle.wait_for_values(1)
 counts_vec = np.zeros(meas_len, int)
 old_count = 0
 
@@ -86,7 +88,7 @@ interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
 b_cont = res_handles.is_processing()
 b_last = not b_cont
-
+#%%
 while b_cont or b_last:
     plt.cla()
     new_count = times_handle.count_so_far()

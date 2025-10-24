@@ -22,10 +22,11 @@ Before proceeding to the next node:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
+import time
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results.data_handler import DataHandler
 
@@ -45,7 +46,7 @@ save_data_dict = {
     "n_avg": n_avg,
     "division_length": division_length,
     "number_of_divisions": number_of_divisions,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -75,7 +76,7 @@ with program() as ro_weights_opt:
             measure(
                 "readout",
                 f"rr{res}",
-                None,
+                
                 demod.accumulated("rotated_cos", II[rr], division_length, "out1"),
                 demod.accumulated("rotated_sin", IQ[rr], division_length, "out2"),
                 demod.accumulated("rotated_minus_sin", QI[rr], division_length, "out1"),
@@ -102,7 +103,7 @@ with program() as ro_weights_opt:
             measure(
                 "readout",
                 f"rr{res}",
-                None,
+                
                 demod.accumulated("rotated_cos", II[rr], division_length, "out1"),
                 demod.accumulated("rotated_sin", IQ[rr], division_length, "out2"),
                 demod.accumulated("rotated_minus_sin", QI[rr], division_length, "out1"),
@@ -162,7 +163,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, ro_weights_opt, simulation_config)
+    job = qmm.simulate(full_config, ro_weights_opt, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -175,9 +176,11 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_weights_opt)
+    # Creates a result handle to fetch data from the OPX
+    res_handles = job.result_handles
     # Get results from QUA program
     data_list = [
         "Ig_avg_q0",
@@ -199,15 +202,13 @@ else:
         "Qe_var_q1",
         "iteration",
     ]
-    results = fetching_tool(
-        job,
-        data_list=data_list,
-        mode="live",
-    )
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
+    while res_handles.is_processing():
+        res_handles.get('Qe_var_q1').wait_for_values(1)
+        # Fetch results
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
         # Fetch results
         (
             Ig_avg_q1,
@@ -227,9 +228,9 @@ else:
             Ie_var_q2,
             Qe_var_q2,
             iteration,
-        ) = results.fetch_all()
+        ) = [results.get(data) for data in data_list]
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Derive the SNR
         ground_trace_q1 = Ig_avg_q1 + 1j * Qg_avg_q1
         excited_trace_q1 = Ie_avg_q1 + 1j * Qe_avg_q1

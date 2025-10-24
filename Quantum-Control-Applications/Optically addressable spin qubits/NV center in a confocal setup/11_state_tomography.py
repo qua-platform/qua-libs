@@ -16,6 +16,7 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+import time
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
 
@@ -158,7 +159,7 @@ n_avg = 1_000_000  # Number of averaging iterations
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -210,7 +211,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, state_tomography, simulation_config)
+    job = qmm.simulate(full_config, state_tomography, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -223,15 +224,17 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(state_tomography)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
+    data_list=["counts", "iteration"]
+    res_handles = job.result_handles
     # Live plotting
-    while results.is_processing():
+    while res_handles.is_processing():
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch results
-        state, iteration = results.fetch_all()
+        state, iteration = [results.get(data) for data in data_list]
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot the Bloch vector on the Bloch sphere

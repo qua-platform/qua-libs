@@ -20,8 +20,8 @@ Next steps before going to the next node:
 from qm import QuantumMachinesManager, SimulationConfig
 from qm.qua import *
 from configuration import *
+import time
 import matplotlib.pyplot as plt
-from qualang_tools.results import fetching_tool
 from macros import qua_declaration, multiplexed_readout, active_reset
 from qualang_tools.results import progress_counter
 from qualang_tools.results.data_handler import DataHandler
@@ -38,7 +38,7 @@ qubits = ["q1_xy", "q2_xy"]
 save_data_dict = {
     "qubits": qubits,
     "shots": n_runs,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -91,7 +91,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job = qmm.simulate(full_config, PROGRAM, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -105,18 +105,18 @@ if simulate:
 else:
     try:
         # Open the quantum machine
-        qm = qmm.open_qm(config)
+        qm = qmm.open_qm(full_config, close_other_machines=True)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
-        results = fetching_tool(job, ["iteration"], mode="live")
-
-        while results.is_processing():
-            iteration = results.fetch_all()
-            progress_counter(iteration[0], n_runs, start_time=results.start_time)
-
+        res_handles = job.result_handles
+        while res_handles.is_processing():
+            res_handles.wait_for_all_values()
+            iteration = res_handles.get('iteration').fetch_all()
+            progress_counter(iteration, n_runs, start_time=time.time())
         # fetch data
-        results = fetching_tool(job, ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"])
-        I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
+        data_list = ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"]
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
+        I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = [results.get(data)['value'] for data in data_list]
         # Plot the IQ blobs, rotate them to get the separation along the 'I' quadrature, estimate a threshold between them
         # for state discrimination and derive the fidelity matrix
         two_state_discriminator(I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, True, True)

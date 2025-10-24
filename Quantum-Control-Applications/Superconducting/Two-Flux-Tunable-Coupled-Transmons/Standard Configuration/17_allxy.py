@@ -21,7 +21,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
-from qualang_tools.results import fetching_tool
+import time
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from qualang_tools.results.data_handler import DataHandler
@@ -37,7 +37,7 @@ n_avg = 1000  # The number of averages
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "config": config,
+    "config": full_config,
 }
 
 ###################################
@@ -102,7 +102,7 @@ def allXY(pulses, qubit, resonator):
     measure(
         "readout",
         resonator,
-        None,
+        
         dual_demod.full("rotated_cos", "rotated_sin", I_xy),
         dual_demod.full("rotated_minus_sin", "rotated_cos", Q_xy),
     )
@@ -161,7 +161,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, ALL_XY, simulation_config)
+    job = qmm.simulate(full_config, ALL_XY, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -174,23 +174,26 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ALL_XY)
+    # Creates a result handle to fetch data from the OPX
+    res_handles = job.result_handles
     # Get results from QUA program
     data_list = ["n"] + list(np.concatenate([[f"I{i}", f"Q{i}"] for i in range(len(sequence))]))
-    results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
+    while True:
         # Fetch results
-        res = results.fetch_all()
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
+        #res = results.fetch_all()
+        res = [results.get(data) for data in data_list]
         I = -np.array(res[1::2])
         Q = -np.array(res[2::2])
         n = res[0]
         # Progress bar
-        progress_counter(n, n_avg, start_time=results.start_time)
+        progress_counter(n,n_avg,start_time=time.time())
         # Plot results
         plt.suptitle(f"All XY for qubit {qb}")
         plt.subplot(211)
@@ -209,6 +212,9 @@ else:
         plt.legend()
         plt.tight_layout()
         plt.pause(0.1)
+
+        if not res_handles.is_processing():
+            break
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

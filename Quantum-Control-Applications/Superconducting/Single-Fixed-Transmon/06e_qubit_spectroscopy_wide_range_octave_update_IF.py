@@ -16,6 +16,7 @@ Before proceeding to the next node:
 
 from qm.qua import *
 from qm import QuantumMachinesManager
+import time
 from configuration import *
 from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
@@ -29,7 +30,7 @@ from qualang_tools.results.data_handler import DataHandler
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 # Open the quantum machine
-qm = qmm.open_qm(config)
+qm = qmm.open_qm(full_config)
 
 
 ##################
@@ -55,7 +56,7 @@ frequency = np.array(np.concatenate([IFs + LOs[i] for i in range(len(LOs))]))
 # correction matrix elements
 corrected_IFs, c00, c01, c10, c11, offset_I, offset_Q = get_correction_for_each_LO_and_IF(
     path_to_database="",
-    config=config,
+    config=full_config,
     element="qubit",
     gain=0,
     LO_list=LOs,
@@ -71,7 +72,7 @@ save_data_dict = {
     "IF_frequencies": IFs,
     "LO_frequencies": LOs,
     "frequencies": frequency,
-    "config": config,
+    "config": full_config,
 }
 
 ###################

@@ -4,12 +4,13 @@ This allows measuring all the delays in the system, as well as the NV initializa
 If the counts are too high, the program might hang. In this case reduce the resolution or use
 05b_calibrate_delays_python_histogram.py if high resolution is needed.
 """
-
+#%%
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+import time
 from qualang_tools.results.data_handler import DataHandler
 
 ##################
@@ -30,7 +31,7 @@ t_vec = np.arange(0, meas_len, 1)
 save_data_dict = {
     "n_avg": n_avg,
     "t_vec": t_vec,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -68,12 +69,12 @@ with program() as calib_delays:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-simulate = True
+simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=28_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, calib_delays, simulation_config)
+    job = qmm.simulate(full_config, calib_delays, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -85,20 +86,21 @@ if simulate:
     # Visualize and save the waveform report
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
-    qm = qmm.open_qm(config)
-
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     job = qm.execute(calib_delays)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["times_hist", "iteration"], mode="live")
+    data_list=["times_hist", "iteration"]
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-
-    while results.is_processing():
+    #%%
+    while res_handles.is_processing():
         # Fetch results
-        times_hist, iteration = results.fetch_all()
+        results =res_handles.fetch_results(wait_until_done=False, timeout=60)
+        times_hist, iteration = [results.get(data) for data in data_list]
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot(t_vec[::resolution] + resolution / 2, times_hist / 1000 / (resolution / u.s) / iteration)

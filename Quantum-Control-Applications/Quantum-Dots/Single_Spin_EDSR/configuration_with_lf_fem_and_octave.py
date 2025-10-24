@@ -144,8 +144,7 @@ cw_len = 100  # in ns
 #############################################
 #                  Config                   #
 #############################################
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         con: {
             "type": "opx1000",
@@ -228,6 +227,8 @@ config = {
             },
         }
     },
+}
+logical_config = {
     "elements": {
         "P1": {
             "singleInput": {
@@ -529,3 +530,5 @@ config = {
         },
     },
 }
+
+full_config = controller_config | logical_config

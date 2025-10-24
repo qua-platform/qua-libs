@@ -24,8 +24,9 @@ Before proceeding to the next node:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
+import time
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
@@ -36,11 +37,11 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 1000  # The number of averages
+n_avg = 100  # The number of averages
 
 center = 100 * u.MHz
 span = 0.5 * u.MHz
-df = 1 * u.kHz
+df = 10 * u.kHz
 dfs = np.arange(-span, +span + 0.1, df)  # Storage detuning sweep
 
 # Data to save
@@ -48,7 +49,7 @@ save_data_dict = {
     "n_avg": n_avg,
     "center_frequency": center,
     "dfs": dfs,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -103,13 +104,13 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, storage_spec, simulation_config)
+    job = qmm.simulate(full_config, storage_spec, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -122,24 +123,24 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(storage_spec)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I", "Q", "state", "iteration"], mode="live")
-    # Live plotting
+    res_handles = job.result_handles    # Live plotting
     fig1, ax1 = plt.subplots(2, 1)
     fig2, ax2 = plt.subplots(1, 1)
     interrupt_on_close(fig1, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
+    while res_handles.is_processing():
         # Fetch results
-        I, Q, state, iteration = results.fetch_all()
-        # Convert results into Volts
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+        I, Q, state, iteration = results.get("I"), results.get("Q"), results.get("state"), results.get("iteration")
+        # Convert results into Volts    
         S = u.demod2volts(I + 1j * Q, readout_len)
         R = np.abs(S)  # Amplitude
         phase = np.angle(S)  # Phase
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot results
         fig1.suptitle(f"Storage spectroscopy - LO = {storage_LO / u.GHz} GHz")
         ax1[0].clear()

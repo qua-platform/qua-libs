@@ -7,6 +7,7 @@ from qm.qua import *
 from qm import LoopbackInterface
 from qm import QuantumMachinesManager
 from configuration import *
+import time
 import matplotlib.pyplot as plt
 from macros import get_c2c_time
 from qualang_tools.results.data_handler import DataHandler
@@ -37,7 +38,7 @@ n_avg = 100
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -146,7 +147,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Simulate or execute #
 #######################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulate blocks python until the simulation is done
@@ -156,7 +157,7 @@ if simulate:
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, cpmg, simulate_config)
+    job = qmm.simulate(full_config, cpmg, simulate_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -184,17 +185,19 @@ if simulate:
     print("center to center time between 3rd and 2nd pulse", ver_t4)
 
 else:
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     job = qm.execute(cpmg)  # execute QUA program
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["i_echo", "tau", "I", "Q", "iteration"], mode="live")
+    data_list=["i_echo", "tau", "I", "Q", "iteration"]
+    res_handles = job.result_handles
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
+    while res_handles.is_processing():
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch results
-        i_echo, tau, I, Q, iteration = results.fetch_all()
+        i_echo, tau, I, Q, iteration = [results.get(data) for data in data_list]
         # Display progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot(i_echo, I, ".", label="I")

@@ -89,7 +89,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Simulate or execute #
 #######################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -99,7 +99,7 @@ if simulate:
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, signal_test, simulate_config)
+    job = qmm.simulate(full_config, signal_test, simulate_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -126,7 +126,7 @@ if simulate:
 
 else:
     # Open quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     # Execute QUA program
     job = qm.execute(signal_test)
     # Fetch results
@@ -137,13 +137,14 @@ else:
     echo2_handle.wait_for_all_values(1)
     iteration_handle = res_handle.get("iteration")
     iteration_handle.wait_for_values(1)
-    # results = fetching_tool(job, data_list=["echo1", "echo2", "iteration"], mode="live")
+    # data_list=["echo1", "echo2", "iteration"]
 
     # Plot results
+    res_handles = job.result_handles
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handle.is_processing():
-        # echo1, echo2, iteration = results.fetch_all()
+        # echo1, echo2, iteration = [results.get(data) for data in data_list]
         echo1 = u.raw2volts(echo1_handle.fetch_all())
         echo2 = u.raw2volts(echo2_handle.fetch_all())
         iteration = iteration_handle.fetch_all()

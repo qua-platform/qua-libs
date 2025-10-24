@@ -11,6 +11,7 @@ correcting any non-zero DC offsets, and estimating the SNR.
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
+import time
 from configuration import *
 import matplotlib.pyplot as plt
 
@@ -29,12 +30,12 @@ with program() as raw_trace_prog:
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
-        reset_phase("rr2")
-        reset_phase("rr1")
+        reset_if_phase("rr2")
+        reset_if_phase("rr1")
         # Measure the resonator (send a readout pulse and record the raw ADC trace)
         measure("readout", "rr1", adc_st)
         # Play the readout on rr2 as well for making sure that the ADC won't be saturated for multiplexed readout
-        measure("readout", "rr2", None)
+        measure("readout", "rr2")
         # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "rr1", "rr2")
 
@@ -58,7 +59,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, raw_trace_prog, simulation_config)
+    job = qmm.simulate(full_config, raw_trace_prog, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -71,16 +72,16 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open a quantum machine to execute the QUA program
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(raw_trace_prog)
     # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
     # Waits (blocks the Python console) until all results have been acquired
-    res_handles.wait_for_all_values()
+    results = res_handles.fetch_results(wait_until_done=True, timeout=60,stream_names=["adc","adc_single_run"])
     # Fetch the raw ADC traces and convert them into Volts
-    adc = u.raw2volts(res_handles.get("adc").fetch_all())
-    adc_single_run = u.raw2volts(res_handles.get("adc_single_run").fetch_all())
+    adc = u.raw2volts(results.get("adc"))
+    adc_single_run = u.raw2volts(results.get("adc_single_run"))
     # Plot data
     plt.figure()
     plt.subplot(121)
@@ -98,3 +99,4 @@ else:
     plt.xlabel("Time [ns]")
     plt.legend()
     plt.tight_layout()
+    plt.show()

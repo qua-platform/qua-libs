@@ -2,11 +2,10 @@ from pathlib import Path
 import numpy as np
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-
 # These packages are imported here so that we don't have to import them in all the other files
-from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import progress_counter, fetching_tool
 import plotly.io as pio
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.results import progress_counter
 
 pio.renderers.default = "browser"
 
@@ -119,8 +118,7 @@ triangle_wf = [triangle_flux_amp * i / 7 for i in range(8)] + [triangle_flux_amp
 initialization_len = 1 * u.us  # in ns
 activation_len = 320  # in ns
 
-config = {
-    "version": 1,
+full_config = {
     "controllers": {
         "con1": {
             "type": "opx1",

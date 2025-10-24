@@ -76,8 +76,7 @@ detection_delay = 136
 mw_delay = 0
 laser_delay = 0
 
-config = {
-    "version": 1,
+full_config = {
     "controllers": {
         "con1": {
             "type": "opx1",

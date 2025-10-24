@@ -18,10 +18,11 @@ Next steps before going to the next node:
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
+import time
 from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.analysis import two_state_discriminator
 from macros import multiplexed_readout, qua_declaration
 from qualang_tools.results.data_handler import DataHandler
@@ -42,7 +43,7 @@ amplitudes = np.arange(a_min, a_max + da / 2, da)  # The amplitude vector +da/2 
 save_data_dict = {
     "n_runs": n_runs,
     "amplitudes": amplitudes,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -99,7 +100,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, ro_amp_opt, simulation_config)
+    job = qmm.simulate(full_config, ro_amp_opt, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -112,21 +113,23 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_amp_opt)  # execute QUA program
-    # Get results from QUA program
-    results = fetching_tool(job, data_list=["iteration"], mode="live")
+    # Creates a result handle to fetch data from the OPX
+    res_handles = job.result_handles
     # Get progress counter to monitor runtime of the program
-    while results.is_processing():
+    while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
         # Fetch results
-        iteration = results.fetch_all()
+        iteration = res_handles.get("iteration").fetch_all()
         # Progress bar
-        progress_counter(iteration[0], len(amplitudes), start_time=results.get_start_time())
+        progress_counter(iteration, len(amplitudes), start_time=time.time())
 
     # Fetch the results at the end
-    results = fetching_tool(job, ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"])
-    I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
+    data_list =["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"]
+    results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
+    I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = [results.get(data) for data in data_list]
     # Process the data
     fidelity_vec = [[], []]
     ground_fidelity_vec = [[], []]

@@ -133,8 +133,7 @@ triangle_wf = [triangle_flux_amp * i / 7 for i in range(8)] + [triangle_flux_amp
 initialization_len = 1 * u.us  # in ns
 activation_len = 320  # in ns
 
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         con: {
             "type": "opx1000",
@@ -192,6 +191,8 @@ config = {
             },
         }
     },
+}
+logical_config = {
     "elements": {
         "ensemble": {
             "mixInputs": {
@@ -515,3 +516,4 @@ config = {
         ],
     },
 }
+full__config = controller_config | logical_config

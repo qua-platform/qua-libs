@@ -62,7 +62,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, raw_trace_prog, simulation_config)
+    job = qmm.simulate(full_config, raw_trace_prog, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -75,7 +75,7 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open a quantum machine to execute the QUA program
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(raw_trace_prog)
     # Creates a result handle to fetch data from the OPX

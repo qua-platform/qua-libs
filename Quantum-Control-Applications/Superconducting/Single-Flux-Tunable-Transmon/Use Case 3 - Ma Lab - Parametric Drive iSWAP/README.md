@@ -47,7 +47,6 @@ To replicate the figure presented below, refer to the protocol in red_sideband_c
                 measure(
                     "readout",
                     "resonator1",
-                    None,
                     dual_demod.full("cos", "sin",  I),
                     dual_demod.full("minus_sin", "cos",  Q),
                 )
@@ -79,7 +78,6 @@ To replicate the figure presented below, refer to the protocol in blue_sideband_
                 measure(
                     "readout",
                     "resonator1",
-                    None,
                     dual_demod.full("cos", "sin",  I),
                     dual_demod.full("minus_sin", "cos",  Q),
                 )

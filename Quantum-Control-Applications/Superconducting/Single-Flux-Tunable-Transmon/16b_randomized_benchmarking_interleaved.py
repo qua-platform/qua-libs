@@ -24,8 +24,9 @@ Prerequisites:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
+import time
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from macros import readout_macro
@@ -56,7 +57,7 @@ interleaved_gate_index = 2
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "config": config,
+    "config": full_config,
 }
 
 
@@ -284,7 +285,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, rb, simulation_config)
+    job = qmm.simulate(full_config, rb, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -298,30 +299,34 @@ if simulate:
 
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(rb)
     # Get results from QUA program
     if state_discrimination:
-        results = fetching_tool(job, data_list=["state_avg", "iteration"], mode="live")
+        data_list=["state_avg", "iteration"]
     else:
-        results = fetching_tool(job, data_list=["I_avg", "Q_avg", "iteration"], mode="live")
+        data_list=["I_avg", "Q_avg", "iteration"]
+    res_handles = job.result_handles 
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     # data analysis
     x = np.arange(2, 2 * max_circuit_depth + 0.1, 2 * delta_clifford)
-    while results.is_processing():
-        # data analysis
+    while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
+   # data analysis
         if state_discrimination:
-            state_avg, iteration = results.fetch_all()
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
+            state_avg, iteration = [results.get(data) for data in data_list]
             value_avg = state_avg
         else:
-            I, Q, iteration = results.fetch_all()
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)            
+            I, Q, iteration = [results.get(data) for data in data_list]
             value_avg = I
 
         # Progress bar
-        progress_counter(iteration, num_of_sequences, start_time=results.get_start_time())
+        progress_counter(iteration, num_of_sequences, time.time())
         # Plot averaged values
         plt.cla()
         plt.plot(x, value_avg, marker=".")
@@ -332,13 +337,13 @@ else:
 
     # At the end of the program, fetch the non-averaged results to get the error-bars
     if state_discrimination:
-        results = fetching_tool(job, data_list=["state"])
-        state = results.fetch_all()[0]
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["state"])
+        state = results.get('state')
         value_avg = np.mean(state, axis=0)
         error_avg = np.std(state, axis=0)
     else:
-        results = fetching_tool(job, data_list=["I", "Q"])
-        I, Q = results.fetch_all()
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["I", "Q"])
+        I, Q = results.get('I'), results.get('Q')
         value_avg = np.mean(I, axis=0)
         error_avg = np.std(I, axis=0)
     # data analysis

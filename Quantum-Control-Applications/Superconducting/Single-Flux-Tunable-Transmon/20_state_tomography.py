@@ -15,8 +15,9 @@ Prerequisites:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
+import time
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from macros import readout_macro
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
@@ -155,12 +156,12 @@ bloch_sphere.label_bra(bloch_sphere.West * 1.1, "Y")
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 10000
+n_avg = 50000
 
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -225,7 +226,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, state_tomography, simulation_config)
+    job = qmm.simulate(full_config, state_tomography, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -239,16 +240,19 @@ if simulate:
 
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(state_tomography)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["states", "iteration"], mode="live")
-    while results.is_processing():
-        # Fetch results
-        states, iteration = results.fetch_all()
+    data_list=["states", "iteration"]
+    res_handles = job.result_handles
+    while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
+        # Fetch results        
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+        states, iteration = [results.get(data) for data in data_list]
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, time.time())
         # Converts the (0,1) -> |g>,|e> convention to (1,-1) -> |g>,|e>
         state = -2 * (states - 0.5)
         # Plot the Bloch vector on the Bloch sphere

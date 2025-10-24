@@ -13,12 +13,12 @@ Prerequisites:
 Next steps before going to the next node:
     - Update the readout amplitude (readout_amp) in the configuration.
 """
-
 from qm.qua import *
 from qm import QuantumMachinesManager
+import time
 from qm import SimulationConfig
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from qualang_tools.analysis import two_state_discriminator
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
@@ -28,7 +28,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_runs = 1000
+n_runs = 2000
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 a_min = 0.5
 a_max = 1.5
@@ -39,7 +39,7 @@ amplitudes = np.arange(a_min, a_max + da / 2, da)  # The amplitude vector +da/2 
 save_data_dict = {
     "n_runs": n_runs,
     "amplitudes": amplitudes,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -65,7 +65,6 @@ with program() as ro_amp_opt:
             measure(
                 "readout" * amp(a),
                 "resonator",
-                None,
                 dual_demod.full("rotated_cos", "rotated_sin", I_g),
                 dual_demod.full("rotated_minus_sin", "rotated_cos", Q_g),
             )
@@ -84,7 +83,6 @@ with program() as ro_amp_opt:
             measure(
                 "readout" * amp(a),
                 "resonator",
-                None,
                 dual_demod.full("rotated_cos", "rotated_sin", I_e),
                 dual_demod.full("rotated_minus_sin", "rotated_cos", Q_e),
             )
@@ -118,7 +116,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, ro_amp_opt, simulation_config)
+    job = qmm.simulate(full_config, ro_amp_opt, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -131,22 +129,22 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_amp_opt)  # execute QUA program
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["iteration"], mode="live")
+    res_handles = job.result_handles
     # Get progress counter to monitor runtime of the program
-    while results.is_processing():
+    while res_handles.is_processing():
+        res_handles.wait_for_all_values()
         # Fetch results
-        iteration = results.fetch_all()
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+        iteration = results.get('iteration')
         # Progress bar
-        progress_counter(iteration[0], len(amplitudes), start_time=results.get_start_time())
+        progress_counter(iteration, len(amplitudes), start_time=time.time())
 
     # Fetch the results at the end
-    results = fetching_tool(job, data_list=["I_g", "Q_g", "I_e", "Q_e"])
-    I_g, Q_g, I_e, Q_e = results.fetch_all()
-
+    I_g, Q_g, I_e, Q_e =  results.get("I_g"), results.get("Q_g"),results.get("I_e"), results.get("Q_e")
     # Process the data
     fidelity_vec = []
     ground_fidelity_vec = []

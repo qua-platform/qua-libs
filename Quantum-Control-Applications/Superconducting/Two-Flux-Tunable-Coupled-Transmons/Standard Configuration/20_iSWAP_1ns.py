@@ -26,10 +26,10 @@ Next steps before going to the next node:
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
+import time
 from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 import numpy as np
@@ -45,7 +45,7 @@ def baked_waveform(waveform, pulse_duration, flux_qubit):
     pulse_segments = []  # Stores the baking objects
     # Create the different baked sequences, each one corresponding to a different truncated duration
     for i in range(0, pulse_duration + 1):
-        with baking(config, padding_method="right") as b:
+        with baking(full_config, padding_method="right") as b:
             if i == 0:  # Otherwise, the baking will be empty and will not be created
                 wf = [0.0] * 16
             else:
@@ -73,8 +73,8 @@ flux_waveform = np.array([const_flux_amp] * const_flux_len)
 # Baked flux pulse segments
 square_pulse_segments = baked_waveform(flux_waveform, const_flux_len, qubit_to_flux_tune)
 # Flux offset
-flux_bias = config["controllers"]["con1"]["analog_outputs"][
-    config["elements"][f"q{qubit_to_flux_tune}_z"]["singleInput"]["port"][1]
+flux_bias = full_config["controllers"]["con1"]["analog_outputs"][
+    full_config["elements"][f"q{qubit_to_flux_tune}_z"]["singleInput"]["port"][1]
 ]["offset"]
 xplot = np.arange(0, const_flux_len + 0.1, 1)
 
@@ -84,7 +84,7 @@ save_data_dict = {
     "amps": amps,
     "flux_waveform": flux_waveform,
     "flux_bias": flux_bias,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -145,7 +145,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, iswap, simulation_config)
+    job = qmm.simulate(full_config, iswap, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -158,43 +158,45 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(iswap)
     # Prepare the figure for live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)
     # Tool to easily fetch results from the OPX (results_handle used in it)
-    results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+    res_handles = job.result_handles
     # Live plotting
-    while results.is_processing():
+    while res_handles.is_processing():
+        res_handles.get('n').wait_for_values(1)
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=["n", "I1", "Q1", "I2", "Q2"])
         # Fetch results
-        n, I1, Q1, I2, Q2 = results.fetch_all()
+        n, I1, Q1, I2, Q2=  results.get("n"),results.get("I1"), results.get("Q1"),results.get("I2"), results.get("Q2")
         # Convert the results into Volts
         I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
         I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
         # Progress bar
-        progress_counter(n, n_avg, start_time=results.start_time)
+        progress_counter(n,n_avg,start_time=time.time())
         # Plot
         plt.suptitle(f"SWAP chevron sweeping the flux on qubit {qubit_to_flux_tune}")
         plt.subplot(221)
         plt.cla()
-        plt.pcolor(xplot, amps * const_flux_amp + flux_bias, I1.T)
+        plt.pcolor(xplot, amps * const_flux_amp + flux_bias, I1)
         plt.title("q1 - I")
         plt.ylabel("Interaction time (ns)")
         plt.subplot(223)
         plt.cla()
-        plt.pcolor(xplot, amps * const_flux_amp + flux_bias, Q1.T)
+        plt.pcolor(xplot, amps * const_flux_amp + flux_bias, Q1)
         plt.title("q1 - Q")
         plt.xlabel("FLux amplitude (V)")
         plt.ylabel("Interaction time (ns)")
         plt.subplot(222)
         plt.cla()
-        plt.pcolor(xplot, amps * const_flux_amp + flux_bias, I2.T)
+        plt.pcolor(xplot, amps * const_flux_amp + flux_bias, I2)
         plt.title("q2 - I")
         plt.subplot(224)
         plt.cla()
-        plt.pcolor(xplot, amps * const_flux_amp + flux_bias, Q2.T)
+        plt.pcolor(xplot, amps * const_flux_amp + flux_bias, Q2)
         plt.title("q2 - Q")
         plt.xlabel("FLux amplitude (V)")
         plt.tight_layout()

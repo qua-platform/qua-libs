@@ -93,8 +93,7 @@ rf_delay = 0 * u.ns
 
 wait_between_runs = 100
 
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         con: {
             "type": "opx1000",
@@ -179,6 +178,8 @@ config = {
             },
         }
     },
+}
+logical_config = {
     "elements": {
         "NV": {
             "MWInput": {
@@ -363,3 +364,4 @@ config = {
         "OFF": {"samples": [(0, 0)]},  # [(on/off, ns)]
     },
 }
+full_config = controller_config | logical_config
