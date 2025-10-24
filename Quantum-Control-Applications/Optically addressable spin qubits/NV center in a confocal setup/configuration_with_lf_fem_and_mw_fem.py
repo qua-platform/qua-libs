@@ -1,5 +1,5 @@
 """
-QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
+QUA-Config supporting OPX1000 w/ LF-FEM & MW-FEM
 """
 
 from pathlib import Path
@@ -39,9 +39,9 @@ default_additional_files = {
 # OPX configuration #
 #####################
 con = "con1"
-mw_fem = 1  # This should be the index of the LF-FEM module, e.g., 1
+mw_fem = 1  # This should be the index of the MW-FEM module, e.g., 1
 lf_fem = 5  # This should be the index of the LF-FEM module, e.g., 1
-# Set octave_config to None if no octave are present
+# Set octave_config to None if no octave is present
 octave_config = None
 
 # Frequencies
@@ -79,8 +79,8 @@ rf_amp = 0.1
 rf_length = 1000
 
 # Readout parameters
-signal_threshold_1 = -2_000  # ADC untis, to convert to volts divide by 4096 (12 bit ADC)
-signal_threshold_2 = -2_000  # ADC untis, to convert to volts divide by 4096 (12 bit ADC)
+signal_threshold_1 = -2_000  # ADC units, to convert to volts divide by 4096 (12 bit ADC)
+signal_threshold_2 = -2_000  # ADC units, to convert to volts divide by 4096 (12 bit ADC)
 
 # Delays
 detection_delay_1 = 80 * u.ns
@@ -94,7 +94,6 @@ rf_delay = 0 * u.ns
 wait_between_runs = 100
 
 config = {
-    "version": 1,
     "controllers": {
         con: {
             "type": "opx1000",
@@ -241,7 +240,7 @@ config = {
                 "long_readout": "long_readout_pulse_1",
             },
             "outputs": {"out1": (con, lf_fem, 1)},
-            "outputPulseParameters": {
+            "timeTaggingParameters": {
                 "signalThreshold": signal_threshold_1,  # ADC units
                 "signalPolarity": "Below",
                 "derivativeThreshold": -2_000,
@@ -264,7 +263,7 @@ config = {
                 "long_readout": "long_readout_pulse_2",
             },
             "outputs": {"out1": (con, lf_fem, 2)},
-            "outputPulseParameters": {
+            "timeTaggingParameters": {
                 "signalThreshold": signal_threshold_2,  # ADC units
                 "signalPolarity": "Below",
                 "derivativeThreshold": -2_000,
