@@ -33,7 +33,7 @@ from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 import time
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
 from qdac2_driver import QDACII, load_voltage_list
@@ -46,8 +46,8 @@ from qualang_tools.results.data_handler import DataHandler
 ##################
 # Parameters Definition
 n_avg = 100  # Number of averages
-n_points_slow = 101  # Number of points for the slow axis
-n_points_fast = 100  # Number of points for the fast axis
+n_points_slow = 10  # Number of points for the slow axis
+n_points_fast = 11  # Number of points for the fast axis
 Coulomb_amp = 0.0  # amplitude of the Coulomb pulse
 # How many Coulomb pulse periods to last the whole program
 N = (int((readout_len + 1_000) / (2 * step_length)) + 1) * n_points_fast * n_points_slow * n_avg

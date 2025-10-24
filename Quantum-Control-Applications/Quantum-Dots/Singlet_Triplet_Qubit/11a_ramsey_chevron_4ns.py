@@ -32,7 +32,7 @@ from qm.qua import *
 from qualang_tools.addons.variables import assign_variables_to_element
 from qualang_tools.loops import from_array
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.results.data_handler import DataHandler
 
 ##################
@@ -123,7 +123,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration

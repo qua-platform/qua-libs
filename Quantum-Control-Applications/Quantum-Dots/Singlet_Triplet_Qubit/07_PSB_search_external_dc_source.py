@@ -28,7 +28,7 @@ from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 import time
-from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
+from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
@@ -40,8 +40,8 @@ from qualang_tools.results.data_handler import DataHandler
 ##################
 # Parameters Definition
 n_avg = 100  # Number of averages
-n_points_slow = 101  # Number of points for the slow axis
-n_points_fast = 100  # Number of points for the fast axis
+n_points_slow = 10  # Number of points for the slow axis
+n_points_fast = 11  # Number of points for the fast axis
 Coulomb_amp = 0.0  # amplitude of the Coulomb pulse
 # How many Coulomb pulse periods to last the whole program
 N = (int((readout_len + 1_000) / (2 * step_length)) + 1) * n_points_fast * n_points_slow * n_avg
@@ -176,6 +176,7 @@ else:
         if i == 0:
             # Get results from QUA program and initialize live plotting
             data_list=["I", "Q", "dc_signal"]
+        res_handles.get('iteration').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         I, Q, DC_signal = [results.get(data)['value'] for data in data_list]

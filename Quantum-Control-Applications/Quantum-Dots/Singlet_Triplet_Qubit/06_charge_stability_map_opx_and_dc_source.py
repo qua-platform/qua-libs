@@ -17,13 +17,13 @@ Prerequisites:
 Before proceeding to the next node:
     - Identify the different charge occupation regions
 """
-
+#%%
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 import time
-from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
+from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
@@ -36,7 +36,7 @@ from qualang_tools.results.data_handler import DataHandler
 # Parameters Definition
 n_avg = 100
 n_points_slow = 10
-n_points_fast = 101
+n_points_fast = 11
 
 # Voltages in Volt
 voltage_values_slow = np.linspace(-1.5, 1.5, n_points_slow)
@@ -142,6 +142,7 @@ else:
         wait_until_job_is_paused(job)
         # Get results from QUA program and initialize live plotting
         data_list=["I", "Q", "dc_signal"]
+        res_handles.get('iteration').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         I, Q, DC_signal = [results.get(data)['value'] for data in data_list]
@@ -152,7 +153,7 @@ else:
         phase = np.angle(S)  # Phase
         DC_signal = u.demod2volts(DC_signal, readout_len, single_demod=True)
         # Progress bar
-        progress_counter(iteration, n_points_slow, start_time=results.start_time)
+        progress_counter(iteration, n_points_slow,start_time=time.time())
         # Plot data
         plt.subplot(121)
         plt.cla()
@@ -163,7 +164,7 @@ else:
         plt.subplot(122)
         plt.cla()
         plt.title("Phase [rad]")
-        plt.pcolor(voltage_values_fast, voltage_values_slow, phase)
+        plt.pcolor(voltage_values_fast, voltage_values_slow, phase,shading='auto')
         plt.xlabel("Fast voltage axis [V]")
         plt.ylabel("Slow voltage axis [V]")
         plt.tight_layout()
@@ -177,3 +178,5 @@ else:
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
+
+# %%

@@ -22,7 +22,7 @@ from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 import time
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
@@ -121,6 +121,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch results
         I, Q, iteration = [results.get(data) for data in data_list]
@@ -129,7 +130,7 @@ else:
         R = np.abs(S)  # Amplitude
         phase = np.angle(S)  # Phase
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot results
         plt.suptitle("Charge sensor gate sweep")
         plt.subplot(211)

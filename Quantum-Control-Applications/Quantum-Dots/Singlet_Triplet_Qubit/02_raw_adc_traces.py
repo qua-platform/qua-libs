@@ -35,6 +35,7 @@ with program() as raw_trace_prog:
         # *amp(0) sets the amplitude to zero, thus the collected trace is the digitization of the analog input
         # in the majority of cases the DC bias to the sensor is applied with an external DC source.
         measure("readout" * amp(0), "TIA", adc_dc_st)
+        measure("readout" * amp(0), "TIA", adc_rf_st)
         # Measure the tank circuit (send a readout pulse and record the raw ADC trace)
         # Wait for the resonator to deplete
         wait(1_000 * u.ns, "TIA", "tank_circuit")

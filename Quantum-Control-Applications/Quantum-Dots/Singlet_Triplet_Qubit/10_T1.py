@@ -28,7 +28,7 @@ from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 import time
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.addons.variables import assign_variables_to_element
@@ -40,7 +40,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 100
+n_avg = 1000
 # Wait time sweep in ns - must be larger than 4 clock cycles
 durations = np.arange(16, 2000, 100)
 
@@ -171,6 +171,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         I, Q, DC_signal, iteration = [results.get(data) for data in data_list]

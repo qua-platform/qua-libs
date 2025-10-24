@@ -19,7 +19,7 @@ from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 import time
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
@@ -30,7 +30,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 100  # Number of averaging loops
+n_avg = 1000  # Number of averaging loops
 # The frequency axis
 frequencies = np.linspace(50 * u.MHz, 350 * u.MHz, 101)
 
@@ -119,7 +119,7 @@ else:
         R = np.abs(S)  # Amplitude
         phase = np.angle(S)  # Phase
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot results
         plt.suptitle("RF-reflectometry spectroscopy")
         plt.subplot(211)
