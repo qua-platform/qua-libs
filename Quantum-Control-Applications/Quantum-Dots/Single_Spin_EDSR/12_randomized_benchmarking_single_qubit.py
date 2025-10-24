@@ -17,7 +17,7 @@ Prerequisites:
     - Having the qubit frequency perfectly calibrated (ramsey).
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
 """
-
+#%%
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
@@ -442,6 +442,7 @@ else:
     # data analysis
     x = np.arange(1, max_circuit_depth + 0.1, delta_clifford)
     while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
         # data analysis
         if state_discrimination:
@@ -529,3 +530,4 @@ else:
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
+#%%

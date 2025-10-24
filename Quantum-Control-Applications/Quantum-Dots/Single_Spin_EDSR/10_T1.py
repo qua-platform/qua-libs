@@ -41,7 +41,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 100
+n_avg = 1000
 # Wait time sweep in ns - must be larger than 4 clock cycles
 durations = np.arange(16, 2000, 100)
 
@@ -114,7 +114,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration

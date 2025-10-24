@@ -137,7 +137,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -190,6 +190,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
+        res_handles.get('I').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         I, Q, DC_signal, iteration = [results.get(data) for data in data_list]
@@ -199,7 +200,7 @@ else:
         phase = np.angle(S)  # Phase
         DC_signal = u.demod2volts(DC_signal, readout_len, single_demod=True)
         # Progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg,start_time=time.time())
         # Plot data
         plt.subplot(121)
         plt.cla()

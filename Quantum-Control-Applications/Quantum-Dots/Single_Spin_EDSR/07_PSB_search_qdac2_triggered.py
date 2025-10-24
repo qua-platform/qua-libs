@@ -165,7 +165,7 @@ load_voltage_list(
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
