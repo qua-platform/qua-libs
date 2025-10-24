@@ -82,8 +82,8 @@ else:
     adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
     adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
     # Determine time axis from the sampling rate: 1e9 for OPX+, 1e9 or 2e9 for OPX1000
-    time_array = np.arange(len(adc1))  # for 1e9 sampling rate
-    # time_array = 0.5 * np.arange(len(adc1))  # for 2e9 sampling rate
+    time_bin = 1 / (sampling_rate * 1e-9)  # in ns
+    time_array = time_bin * np.arange(len(adc1))  # in ns
 
     # Plot data
     plt.figure()

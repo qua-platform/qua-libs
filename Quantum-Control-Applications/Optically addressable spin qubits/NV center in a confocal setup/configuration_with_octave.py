@@ -47,6 +47,8 @@ octave_config.add_device_info("octave1", octave_ip, octave_port)
 #####################
 # OPX configuration #
 #####################
+sampling_rate = int(1e9)  # needed in some scripts
+
 # Frequencies
 NV_IF_freq = 40 * u.MHz
 NV_LO_freq = 2.83 * u.GHz

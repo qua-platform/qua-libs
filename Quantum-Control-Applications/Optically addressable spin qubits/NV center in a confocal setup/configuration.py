@@ -54,6 +54,8 @@ default_additional_files = {
 # Set octave_config to None if no octave is present
 octave_config = None
 
+sampling_rate = int(1e9)  # needed in some scripts
+
 # Frequencies
 NV_IF_freq = 40 * u.MHz
 NV_LO_freq = 2.83 * u.GHz
