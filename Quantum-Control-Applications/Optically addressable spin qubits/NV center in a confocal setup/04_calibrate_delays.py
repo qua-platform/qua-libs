@@ -108,9 +108,9 @@ with program() as calib_delays:
 
     with stream_processing():
         # Directly derive the histograms in the stream processing
-        times_st.histogram(
-            [[i, i + (resolution_samp - 1)] for i in range(0, total_samples, resolution_samp)]
-        ).save("times_hist")
+        times_st.histogram([[i, i + (resolution_samp - 1)] for i in range(0, total_samples, resolution_samp)]).save(
+            "times_hist"
+        )
         times_st_dark.histogram(
             [[i, i + (resolution_samp - 1)] for i in range(0, total_samples, resolution_samp)]
         ).save("times_hist_dark")
