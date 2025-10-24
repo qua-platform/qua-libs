@@ -71,7 +71,7 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open Quantum Machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(config, close_other_machines=True)
     # Execute program
     job = qm.execute(TimeTagging_calibration)
     # create a handle to get results

@@ -139,7 +139,7 @@ if simulate:
 
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(calib_delays)
     # Get results from QUA program

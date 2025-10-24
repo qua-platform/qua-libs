@@ -112,7 +112,7 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(time_rabi)
     # Get results from QUA program
