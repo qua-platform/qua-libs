@@ -29,15 +29,12 @@ n_avg = 1_000_000
 
 buffer_len = 10  # The size of each chunk of data handled by the stream processing
 meas_len = initialization_len + 2 * laser_delay  # total measurement length (ns)
-t_vec = np.arange(0, meas_len, 1)
-# t_vec = np.arange(0, meas_len, 0.5)  # for QOP >=3.5.0
 
 assert (initialization_len - mw_len) > 4, "The MW must be shorter than the laser pulse"
 
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "t_vec": t_vec,
     "config": config,
 }
 
@@ -82,6 +79,11 @@ with program() as calib_delays:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
+version_str = qmm.version_dict()["QOP"]  # QOP version as a string
+version_tuple = tuple(map(int, version_str.split(".")))  # QOP version as a tuple
+# time tagging time bin: 1.0 ns (QOP < 3.5.0) or 0.5 ns (>= 3.5.0)
+time_bin = 0.5 if version_tuple >= (3, 5, 0) else 1.0
+
 #######################
 # Simulate or execute #
 #######################
@@ -114,7 +116,9 @@ else:
     times_handle.wait_for_values(1)
     iteration_handle.wait_for_values(1)
     # Data processing initialization
-    counts_vec = np.zeros(meas_len, int)
+    t_vec = np.arange(0, meas_len, time_bin)  # time vector in ns for plotting
+    total_samples = len(t_vec)
+    counts_vec = np.zeros(total_samples, int)
     # counts_vec = np.zeros(2 * meas_len, int)  # for QOP >=3.5.0
     old_count = 0
 
@@ -139,8 +143,7 @@ else:
                     counts_vec[times[i][j]] += 1
             old_count = new_count
         # Plot the histogram
-        plt.plot(t_vec + 0.5, counts_vec / 1000 / (1 * 1e-9) / iteration)
-        # plt.plot(t_vec + 0.5, counts_vec / 1000 / (0.5 * 1e-9) / iteration)  # for QOP >=3.5.0
+        plt.plot(t_vec + 0.5 * time_bin, counts_vec / 1000 / (time_bin * 1e-9) / iteration)
         plt.xlabel("t [ns]")
         plt.ylabel(f"counts [kcps / 1ns]")
         plt.title("Delays")
@@ -151,7 +154,8 @@ else:
     # Save results
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
-    save_data_dict.update({"times_handle_data": times_handle})
+    save_data_dict.update({"t_vec": t_vec})
+    save_data_dict.update({"counts_vec": counts_vec})
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

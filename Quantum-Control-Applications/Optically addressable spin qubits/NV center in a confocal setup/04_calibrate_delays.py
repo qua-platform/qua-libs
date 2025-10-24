@@ -18,6 +18,16 @@ import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.results.data_handler import DataHandler
 
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
+
+version_str = qmm.version_dict()["QOP"]  # QOP version as a string
+version_tuple = tuple(map(int, version_str.split(".")))  # QOP version as a tuple
+# time tagging time bin: 1.0 ns (QOP < 3.5.0) or 0.5 ns (>= 3.5.0)
+time_bin = 0.5 if version_tuple >= (3, 5, 0) else 1.0
+
 ##################
 #   Parameters   #
 ##################
@@ -27,13 +37,12 @@ initialization_len = 2_000  # laser duration length [ns]
 mw_len = 1_000  # MW duration length [ns]
 wait_between_runs = 10_000  # [ns]
 n_avg = 1_000_000
+resolution = 12  # histogram resolution in ns
 
-resolution = 12  # in samples: 1ns for QOP <3.5.0 (and 2.x.x), 0.5ns for QOP >=3.5.0
-# total measurement length (ns), add 2*laser_delay to ensure that the window is larger than the laser pulse
-meas_len = int(initialization_len + 2 * laser_delay)
-# Time vector for plotting
-t_vec = np.arange(0, meas_len, 1)
-# t_vec = np.arange(0, meas_len, 0.5)  # for QOP >=3.5.0
+meas_len = int(initialization_len + 2 * laser_delay)  # total measurement length in ns
+t_vec = np.arange(0, meas_len, time_bin)  # time vector in ns for plotting
+total_samples = len(t_vec)
+resolution_samp = int(resolution / time_bin)  # histogram resolution in time tag bins
 
 assert (initialization_len - mw_len) > 4, "The MW must be shorter than the laser pulse"
 
@@ -99,17 +108,13 @@ with program() as calib_delays:
 
     with stream_processing():
         # Directly derive the histograms in the stream processing
-        # NOTE: use `2 * meas_len` for QOP version >= 3.5.0 because time bins are 0.5ns
-        times_st.histogram([[i, i + (resolution - 1)] for i in range(0, meas_len, resolution)]).save("times_hist")
-        times_st_dark.histogram([[i, i + (resolution - 1)] for i in range(0, meas_len, resolution)]).save(
-            "times_hist_dark"
-        )
+        times_st.histogram(
+            [[i, i + (resolution_samp - 1)] for i in range(0, total_samples, resolution_samp)]
+        ).save("times_hist")
+        times_st_dark.histogram(
+            [[i, i + (resolution_samp - 1)] for i in range(0, total_samples, resolution_samp)]
+        ).save("times_hist_dark")
         n_st.save("iteration")
-
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 #######################
 # Simulate or execute #
@@ -143,6 +148,8 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
+    hist_bin_centers = t_vec[::resolution_samp] + resolution / 2
+
     while results.is_processing():
         # Fetch results
         times_hist, times_hist_dark, iteration = results.fetch_all()
@@ -150,8 +157,8 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(t_vec[::resolution] + resolution / 2, times_hist / 1000 / (resolution / u.s) / iteration)
-        # plt.plot(t_vec[::resolution] + resolution / 2, times_hist / 1000 / (0.5 * resolution / u.s) / iteration)  # for QOP >=3.5.0
+        plt.plot(hist_bin_centers, times_hist / 1000 / (resolution / u.s) / iteration)
+        plt.plot(hist_bin_centers, times_hist_dark / 1000 / (resolution / u.s) / iteration)
         plt.xlabel("t [ns]")
         plt.ylabel(f"counts [kcps / {resolution}ns]")
         plt.title("Delays")
