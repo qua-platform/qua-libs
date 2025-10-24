@@ -10,6 +10,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
+from qualang_tools.loops import from_array
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
@@ -89,8 +90,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     n_avg = node.parameters.num_shots
     max_circuit_depth = node.parameters.max_circuit_depth
     delta_clifford = node.parameters.delta_clifford
-    assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
-    num_depths = max_circuit_depth // delta_clifford
+    depths = node.parameters.get_depths()
+    num_depths = len(depths)
     seed = node.parameters.seed  # Pseudo-random number generator seed
     strict_timing = node.parameters.use_strict_timing
     # List of recovery gates from the lookup table
@@ -190,7 +191,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     qubit.xy.play("-x90")
 
     # Register the sweep axes to be added to the dataset when fetching data
-    depths = np.arange(1, max_circuit_depth + 0.1, delta_clifford)
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "nb_of_sequences": xr.DataArray(np.arange(num_of_sequences), attrs={"long_name": "Number of sequences"}),
@@ -201,8 +201,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         state = [declare(int) for _ in range(num_qubits)]
         state_st = [declare_stream() for _ in range(num_qubits)]
         depth = declare(int)  # QUA variable for the varying depth
-        # QUA variable for the current depth (changes in steps of delta_clifford)
-        depth_target = declare(int)
         # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
         saved_gate = declare(int)
         # QUA variable for the loop over random sequences
@@ -221,43 +219,41 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(m, m_st)
                 # Generate the random sequence of length max_circuit_depth
                 sequence_list, inv_gate_list = generate_sequence()
-                assign(depth_target, 1)  # Initialize the current depth to 1
 
-                with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
+                with for_(*from_array(depth, depths)):
                     # Replacing the last gate in the sequence with the sequence's inverse gate
                     # The original gate is saved in 'saved_gate' and is being restored at the end
                     assign(saved_gate, sequence_list[depth])
                     assign(sequence_list[depth], inv_gate_list[depth - 1])
-                    # Only played the depth corresponding to target_depth
-                    with if_(depth == depth_target):
-                        with for_(n, 0, n < n_avg, n + 1):
-                            # Initialize the qubits
-                            for i, qubit in multiplexed_qubits.items():
-                                qubit.reset(node.parameters.reset_type, node.parameters.simulate)
-                                # Align the two elements to play the sequence after qubit initialization
-                            align()
-                            # Manipulate the qubits
-                            for i, qubit in multiplexed_qubits.items():
-                                # The strict_timing ensures that the sequence will be played without gaps
-                                if strict_timing:
-                                    with strict_timing_():
-                                        # Play the random sequence of desired depth
-                                        play_sequence(sequence_list, depth, qubit)
-                                else:
+
+                    with for_(n, 0, n < n_avg, n + 1):
+                        # Initialize the qubits
+                        for i, qubit in multiplexed_qubits.items():
+                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                        # Align the two elements to play the sequence after qubit initialization
+                        align()
+
+                        # Manipulate the qubits
+                        for i, qubit in multiplexed_qubits.items():
+                            # The strict_timing ensures that the sequence will be played without gaps
+                            if strict_timing:
+                                with strict_timing_():
+                                    # Play the random sequence of desired depth
                                     play_sequence(sequence_list, depth, qubit)
-                            align()
-                            # Readout the qubits
-                            for i, qubit in multiplexed_qubits.items():
-                                if node.parameters.use_state_discrimination:
-                                    qubit.readout_state(state[i])
-                                    save(state[i], state_st[i])
-                                else:
-                                    qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                                    save(I[i], I_st[i])
-                                    save(Q[i], Q_st[i])
-                            align()
-                        # Go to the next depth
-                        assign(depth_target, depth_target + delta_clifford)
+                            else:
+                                play_sequence(sequence_list, depth, qubit)
+                        align()
+
+                        # Readout the qubits
+                        for i, qubit in multiplexed_qubits.items():
+                            if node.parameters.use_state_discrimination:
+                                qubit.readout_state(state[i])
+                                save(state[i], state_st[i])
+                            else:
+                                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                                save(I[i], I_st[i])
+                                save(Q[i], Q_st[i])
+                        align()
                     # Reset the last gate of the sequence back to the original Clifford gate
                     # (that was replaced by the recovery gate at the beginning)
                     assign(sequence_list[depth], saved_gate)
