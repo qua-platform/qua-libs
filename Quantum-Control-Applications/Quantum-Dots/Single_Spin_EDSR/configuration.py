@@ -143,11 +143,11 @@ y90_amp = y180_amp / 2
 minus_y90_len = y180_len
 minus_y90_amp = -y90_amp
 
+
 #############################################
 #                  Config                   #
 #############################################
 full_config = {
-    "version": 1,
     "controllers": {
         "con1": {
             "analog_outputs": {
@@ -176,6 +176,7 @@ full_config = {
             },
             "operations": {
                 "step": "P1_step_pulse",
+                "coulomb_step": "P1_coulomb_step_pulse",
             },
         },
         "P1_sticky": {
@@ -310,6 +311,13 @@ full_config = {
             "length": step_length,
             "waveforms": {
                 "single": "P2_step_wf",
+            },
+        },
+        "P1_coulomb_step_pulse": {
+            "operation": "control",
+            "length": coulomb_step_length,
+            "waveforms": {
+                "single": "P1_step_wf",
             },
         },
         "bias_charge_pulse": {

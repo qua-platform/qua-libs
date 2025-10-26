@@ -38,12 +38,12 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 from qualang_tools.results.data_handler import DataHandler
-
+from qualang_tools.voltage_gates import VoltageGateSequence
 ##################
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 100
+n_avg = 1000
 
 # Chirp parameters - Defined in configuration
 
@@ -68,7 +68,7 @@ B_fields = [0, 1, 2]
 # Delay in ns before stepping to the readout point after playing the qubit pulse - must be a multiple of 4ns and >= 16ns
 delay_before_readout = 16
 
-seq = OPX_virtual_gate_sequence(full_config, ["P1_sticky", "P2_sticky"])
+seq = VoltageGateSequence(full_config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
 seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, duration_readout)
@@ -207,13 +207,14 @@ else:
             # Resume the QUA program (escape the 'pause' statement)
             job.resume()
             # Wait until the program reaches the 'pause' statement again, indicating that the QUA program is done
-            wait_until_job_is_paused(job)
+            #wait_until_job_is_paused(job)
         if i == 0:
             # Get results from QUA program and initialize live plotting
             data_list=["I", "Q", "dc_signal"]
+        res_handles.get('I').wait_for_values(1)
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
-        I, Q, DC_signal = [results.get(data) for data in data_list]
+        I, Q, DC_signal = [results.get(data)['value'] for data in data_list]
         iteration = results.get("iteration")
         # Convert results into Volts
         S = u.demod2volts(I + 1j * Q, reflectometry_readout_length, single_demod=True)

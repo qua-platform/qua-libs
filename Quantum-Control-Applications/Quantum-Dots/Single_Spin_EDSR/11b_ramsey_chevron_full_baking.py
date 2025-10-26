@@ -42,7 +42,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 100
+n_avg = 1000
 # Pulse duration sweep in ns
 durations = np.arange(0, 101, 1)
 assert max(durations) % 4 == 0
@@ -61,8 +61,8 @@ for t in durations:  # Create the different baked sequences
     t = int(t)
     with baking(full_config, padding_method="left") as b:  # don't use padding to assure error if timing is incorrect
         # Add the baked operation to the config
-        wf_I = [pi_half_amp] * pi_half_length
-        wf_Q = [0.0] * pi_half_length  # The baked waveforms (only the "I" quadrature)
+        wf_I = [x90_amp] * x90_len
+        wf_Q = [0.0] * x90_len  # The baked waveforms (only the "I" quadrature)
         b.add_op("pi_half_baked", "qubit", [wf_I, wf_Q])
 
         # Baked sequence
@@ -116,7 +116,7 @@ with program() as Ramsey_chevron:
                             with case_(ii):
                                 # Drive the qubit by playing the MW pulse at the end of the manipulation step
                                 wait(
-                                    (duration_init + duration_manip - 2 * pi_half_length) * u.ns
+                                    (duration_init + duration_manip - 2 * x90_len) * u.ns
                                     - max(durations) // 4
                                     - 4,
                                     "qubit",
@@ -204,6 +204,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         I, Q, DC_signal, iteration = [results.get(data) for data in data_list]

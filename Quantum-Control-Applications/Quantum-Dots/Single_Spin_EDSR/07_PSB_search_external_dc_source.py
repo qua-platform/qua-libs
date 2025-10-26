@@ -26,7 +26,6 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-import time
 from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
@@ -38,8 +37,8 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 1  # Number of averages
-n_points_slow = 101  # Number of points for the slow axis
+n_avg = 100  # Number of averages
+n_points_slow = 10  # Number of points for the slow axis
 n_points_fast = 100  # Number of points for the fast axis
 Coulomb_amp = 0.0  # amplitude of the Coulomb pulse
 # How many Coulomb pulse periods to last the whole program
@@ -175,7 +174,7 @@ else:
         if i == 0:
             # Get results from QUA program and initialize live plotting
             data_list=["I", "Q", "dc_signal"]
-        res_handles.get('I').wait_for_values(1)
+            continue
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         I, Q, DC_signal = [results.get(data)['value']  for data in data_list]
@@ -191,13 +190,13 @@ else:
         plt.subplot(121)
         plt.cla()
         plt.title(r"$R=\sqrt{I^2 + Q^2}$ [V]")
-        plt.pcolor(voltage_values_fast, voltage_values_slow[: iteration + 1], R)
+        plt.pcolor(voltage_values_fast, voltage_values_slow[:i], R)
         plt.xlabel("Fast voltage axis [V]")
         plt.ylabel("Slow voltage axis [V]")
         plt.subplot(122)
         plt.cla()
         plt.title("Phase [rad]")
-        plt.pcolor(voltage_values_fast, voltage_values_slow[: iteration + 1], phase)
+        plt.pcolor(voltage_values_fast, voltage_values_slow[:i], phase)
         plt.xlabel("Fast voltage axis [V]")
         plt.ylabel("Slow voltage axis [V]")
         plt.tight_layout()

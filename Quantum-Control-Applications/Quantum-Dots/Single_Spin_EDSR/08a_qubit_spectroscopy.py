@@ -31,7 +31,6 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-import time
 from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
@@ -195,6 +194,7 @@ else:
             data_list=["I", "Q", "dc_signal"]
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+        res_handles.get('iteration').wait_for_values(1)
         I, Q, DC_signal = [results.get(data)['value'] for data in data_list]
         iteration = results.get("iteration")
         # Convert results into Volts

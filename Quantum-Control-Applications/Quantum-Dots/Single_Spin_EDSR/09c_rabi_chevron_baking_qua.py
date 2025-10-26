@@ -27,7 +27,6 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-import time
 from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
@@ -63,7 +62,7 @@ for t in range(16):  # Create the different baked sequences
             wf_I = [0.0] * 16
             wf_Q = [0.0] * 16  # Otherwise the baked pulse will be empty
         else:
-            wf_I = [pi_amp] * t
+            wf_I = [x180_amp] * t
             wf_Q = [0.0] * t  # The baked waveforms (only the "I" quadrature)
 
         # Add the baked operation to the config
@@ -74,7 +73,7 @@ for t in range(16):  # Create the different baked sequences
 
     if t < 4:
         with baking(full_config, padding_method="left") as b4ns:  # don't use padding to assure error if timing is incorrect
-            wf_I = [pi_amp] * t
+            wf_I = [x180_amp] * t
             wf_Q = [0.0] * t  # The baked waveforms (only the "I" quadrature)
 
             # Add the baked operation to the config
@@ -137,7 +136,7 @@ with program() as Rabi_prog:
                                 # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
                                 wait((duration_init - delay_before_readout) * u.ns - t_cycles - 4 - 29, "qubit")
                                 pi_list_4ns[ii].run()
-                                play("pi", "qubit", duration=t_cycles)
+                                play("x180", "qubit", duration=t_cycles)
 
                 # Measure the dot right after the qubit manipulation
                 wait(duration_init * u.ns, "tank_circuit", "TIA")

@@ -196,7 +196,7 @@ else:
         phase = np.angle(S)  # Phase
         DC_signal = u.demod2volts(DC_signal, readout_len, single_demod=True)
         # Progress bar
-        progress_counter(iteration, n_points_slow, start_time=results.start_time)
+        progress_counter(iteration, n_points_slow)
         # Plot data
         plt.subplot(121)
         plt.cla()

@@ -38,7 +38,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 100
+n_avg = 10000
 n_points_slow = 10
 n_points_fast = 11
 Coulomb_amp = 0.1  # amplitude of the Coulomb pulse
@@ -168,8 +168,8 @@ else:
         if i == 0:
             # Get results from QUA program and initialize live plotting
             data_list=["I", "Q", "dc_signal"]
-        res_handles.get('I').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+        res_handles.get('iteration').wait_for_values(1)
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         I, Q, DC_signal = [results.get(data)['value'] for data in data_list]
         iteration = results.get("iteration")
@@ -184,13 +184,13 @@ else:
         plt.subplot(121)
         plt.cla()
         plt.title(r"$R=\sqrt{I^2 + Q^2}$ [V]")
-        plt.pcolor(voltage_values_fast, voltage_values_slow[: iteration + 1], R)
+        plt.pcolor(voltage_values_fast, voltage_values_slow[:i + 1], R)
         plt.xlabel("Fast voltage axis [V]")
         plt.ylabel("Slow voltage axis [V]")
         plt.subplot(122)
         plt.cla()
         plt.title("Phase [rad]")
-        plt.pcolor(voltage_values_fast, voltage_values_slow[: iteration + 1], phase)
+        plt.pcolor(voltage_values_fast, voltage_values_slow[:i + 1], phase)
         plt.xlabel("Fast voltage axis [V]")
         plt.ylabel("Slow voltage axis [V]")
         plt.tight_layout()

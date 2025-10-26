@@ -27,7 +27,6 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-import time
 from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
@@ -90,13 +89,13 @@ with program() as Ramsey_chevron:
                     seq.add_compensation_pulse(duration=duration_compensation_pulse)
 
                     # Drive the qubit by playing the MW pulse at the end of the manipulation step
-                    wait((duration_init + duration_manip - 2 * pi_half_length) * u.ns - t, "qubit")
+                    wait((duration_init + duration_manip - 2 * x90_len) * u.ns - t, "qubit")
                     # Play the 1st pi half pulse
-                    play("pi_half", "qubit")
+                    play("x90", "qubit")
                     # Wait a varying idle time
                     wait(t, "qubit")
                     # Play the 2nd pi half pulse
-                    play("pi_half", "qubit")
+                    play("x90", "qubit")
 
                     # Measure the dot right after the qubit manipulation
                     wait((duration_init + duration_manip) * u.ns, "tank_circuit", "TIA")

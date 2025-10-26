@@ -41,7 +41,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 1000
+n_avg = 10000
 # Wait time sweep in ns - must be larger than 4 clock cycles
 durations = np.arange(16, 2000, 100)
 
@@ -80,16 +80,16 @@ with program() as T1_prog:
             with strict_timing_():  # Ensure that the sequence will be played without gap
                 # Navigate through the charge stability map
                 seq.add_step(voltage_point_name="initialization")
-                seq.add_step(voltage_point_name="idle", duration=pi_length)
+                seq.add_step(voltage_point_name="idle", duration=x180_len)
                 seq.add_step(voltage_point_name="readout", duration=t + readout_len)
                 seq.add_compensation_pulse(duration=duration_compensation_pulse)
 
                 # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
                 wait(duration_init * u.ns, "qubit")  # Need -4 cycles to compensate the gap
-                play("pi", "qubit")
+                play("x180", "qubit")
 
                 # Measure the dot right after the qubit manipulation
-                wait((duration_init + pi_length) * u.ns + (t >> 2), "tank_circuit", "TIA")
+                wait((duration_init + x180_len) * u.ns + (t >> 2), "tank_circuit", "TIA")
                 I, Q, I_st, Q_st = RF_reflectometry_macro(I=I, Q=Q)
                 dc_signal, dc_signal_st = DC_current_sensing_macro(dc_signal=dc_signal)
             # Ramp the background voltage to zero to avoid propagating floating point errors
