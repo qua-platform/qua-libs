@@ -63,7 +63,7 @@ with program() as power_rabi:
             align()  # Play the laser pulse after the mw pulse
             play("laser_ON", "AOM1")
             # Measure and detect the photons on SPCM1
-            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
+            measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_st)  # save counts
 
             # Wait and align all elements before measuring the dark events
@@ -75,7 +75,7 @@ with program() as power_rabi:
             align()  # Play the laser pulse after the mw pulse
             play("laser_ON", "AOM1")
             # Measure and detect the dark counts on SPCM1
-            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
+            measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_dark_st)  # save dark counts
             wait(wait_between_runs * u.ns)  # wait in between iterations
 
@@ -95,7 +95,7 @@ qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octa
 #######################
 # Simulate or execute #
 #######################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -129,7 +129,7 @@ else:
         # Fetch results
         counts, counts_dark, iteration = [results.get(data) for data in data_list]
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot(a_vec * x180_amp_NV, counts / 1000 / (meas_len_1 * 1e-9), label="photon counts")

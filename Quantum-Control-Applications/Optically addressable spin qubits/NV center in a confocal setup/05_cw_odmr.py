@@ -62,7 +62,7 @@ with program() as cw_odmr:
             play("laser_ON", "AOM1", duration=readout_len * u.ns)
             wait(1_000 * u.ns, "SPCM1")  # so readout don't catch the first part of spin reinitialization
             # Measure and detect the photons on SPCM1
-            measure("long_readout", "SPCM1", None, time_tagging.analog(times, readout_len, counts))
+            measure("long_readout", "SPCM1", time_tagging.analog(times, readout_len, counts))
 
             save(counts, counts_st)  # save counts on stream
 
@@ -74,7 +74,7 @@ with program() as cw_odmr:
             # ... and the laser pulse simultaneously (the laser pulse is delayed by 'laser_delay_1')
             play("laser_ON", "AOM1", duration=readout_len * u.ns)
             wait(1_000 * u.ns, "SPCM1")  # so readout don't catch the first part of spin reinitialization
-            measure("long_readout", "SPCM1", None, time_tagging.analog(times, readout_len, counts))
+            measure("long_readout", "SPCM1", time_tagging.analog(times, readout_len, counts))
 
             save(counts, counts_dark_st)  # save counts on stream
 
@@ -130,7 +130,7 @@ else:
         # Fetch results
         counts, counts_dark, iteration = [results.get(data) for data in data_list]
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot((NV_LO_freq * 0 + f_vec) / u.MHz, counts / 1000 / (readout_len * 1e-9), label="photon counts")

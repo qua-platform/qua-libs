@@ -73,7 +73,7 @@ with program() as T1:
             align()  # Play the laser pulse after the mw sequence
             # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
-            measure("readout", "SPCM1", None, time_tagging.analog(times1, meas_len_1, counts1))
+            measure("readout", "SPCM1", time_tagging.analog(times1, meas_len_1, counts1))
             save(counts1, counts_1_st)  # save counts
             wait(wait_between_runs * u.ns, "AOM1")
 
@@ -87,7 +87,7 @@ with program() as T1:
             align()  # Play the laser pulse after the mw sequence
             # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
-            measure("readout", "SPCM1", None, time_tagging.analog(times2, meas_len_1, counts2))
+            measure("readout", "SPCM1", time_tagging.analog(times2, meas_len_1, counts2))
             save(counts2, counts_2_st)  # save counts
             wait(wait_between_runs * u.ns, "AOM1")
 
@@ -99,7 +99,7 @@ with program() as T1:
             align()  # Play the laser pulse after the mw sequence
             # Measure and detect the dark counts on SPCM1
             play("laser_ON", "AOM1")
-            measure("readout", "SPCM1", None, time_tagging.analog(times_dark, meas_len_1, counts_dark))
+            measure("readout", "SPCM1", time_tagging.analog(times_dark, meas_len_1, counts_dark))
             save(counts_dark, counts_dark_st)  # save counts
             wait(wait_between_runs * u.ns, "AOM1")
 
@@ -154,7 +154,7 @@ else:
         # Fetch results
         counts1, counts2, counts_dark, iteration = [results.get(data) for data in data_list]
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot(4 * t_vec, counts1 / 1000 / (meas_len_1 / u.s), label="counts in |0>")

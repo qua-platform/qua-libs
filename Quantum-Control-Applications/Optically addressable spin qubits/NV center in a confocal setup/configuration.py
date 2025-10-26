@@ -32,8 +32,8 @@ def IQ_imbalance(g, phi):
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"  # Write the OPX IP address
-cluster_name = "Cluster_1"  # Write your cluster_name if version >= QOP220
+qop_ip = "172.16.33.101"  # Write the OPX IP address
+cluster_name = "CS_1"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
 #############

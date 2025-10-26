@@ -64,7 +64,7 @@ with program() as calib_delays:
         play("cw" * amp(1), "NV", duration=mw_len * u.ns)
 
         # Measure the photon counted by the SPCM
-        measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len, counts))
+        measure("readout", "SPCM1", time_tagging.analog(times, meas_len, counts))
         # Adjust the wait time between each averaging iteration
         wait(wait_between_runs * u.ns, "SPCM1")
         # Save the time tags to the stream
@@ -111,8 +111,9 @@ else:
     res_handles = job.result_handles
     times_handle = res_handles.get("times")
     iteration_handle = res_handles.get("iteration")
-    times_handle.wait_for_values(1)
-    iteration_handle.wait_for_values(1)
+    
+    # times_handle.wait_for_values(1)
+    # iteration_handle.wait_for_values(1)
     # Data processing initialization
     counts_vec = np.zeros(meas_len, int)
     old_count = 0
@@ -144,13 +145,12 @@ else:
         plt.ylabel(f"counts [kcps / 1ns]")
         plt.title("Delays")
         plt.pause(0.1)
-
         b_cont = res_handles.is_processing()
         b_last = not (b_cont or b_last)
     # Save results
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
-    save_data_dict.update({"times_handle_data": times_handle})
+    save_data_dict.update({"times_handle_data": counts_vec})
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

@@ -148,8 +148,9 @@ else:
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch results
         counts1, counts2, counts_dark, iteration = [results.get(data) for data in data_list]
+        
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot(4 * t_vec, counts1 / 1000 / (meas_len_1 / u.s), label="x90_idle_x90")

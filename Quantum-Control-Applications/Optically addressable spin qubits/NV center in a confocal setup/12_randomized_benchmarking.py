@@ -32,7 +32,7 @@ from qualang_tools.results.data_handler import DataHandler
 ##################
 # Parameters Definition
 num_of_sequences = 50  # Number of random sequences
-n_avg = 20  # Number of averaging loops for each random sequence
+n_avg = 100  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
 delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
@@ -186,12 +186,13 @@ with program() as rb:
 
                 with for_(n, 0, n < n_avg, n + 1):
                     # The strict_timing ensures that the sequence will be played without gaps
+                    
                     with strict_timing_():
                         play_sequence(sequence_list, depth)
                     align()  # Play the laser pulse after the Echo sequence
                     # Measure and detect the photons on SPCM1
                     play("laser_ON", "AOM1")
-                    measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
+                    measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
                     save(counts, counts_st)  # save counts
                     wait(wait_between_runs * u.ns)  # wait in between iterations
 
@@ -254,11 +255,12 @@ else:
     x = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
     x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
     while res_handles.is_processing():
+        res_handles.get('counts').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # data analysis
         counts_avg, iteration = [results.get(data) for data in data_list]
         # Progress bar
-        progress_counter(iteration, num_of_sequences, start_time=results.get_start_time())
+        progress_counter(iteration, num_of_sequences, start_time=time.time())
         # Plot averaged values
         plt.cla()
         plt.plot(x, counts_avg, marker=".")
@@ -267,7 +269,6 @@ else:
         plt.title("Single qubit RB")
         plt.pause(0.1)
     # At the end of the program, fetch the non-averaged results to get the error-bars
-
     data_list=["counts"]
     counts = [results.get(data) for data in data_list][0]
     value_avg = np.mean(counts, axis=0)

@@ -188,7 +188,7 @@ with program() as state_tomography:
             align()  # Play the laser pulse after the mw sequence
             # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
-            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
+            measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_st)  # save counts
             wait(wait_between_runs * u.ns, "AOM1")
         save(n, n_st)
@@ -232,11 +232,12 @@ else:
     res_handles = job.result_handles
     # Live plotting
     while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
         results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch results
         state, iteration = [results.get(data) for data in data_list]
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot the Bloch vector on the Bloch sphere
         bloch_sphere.plot_vector((state[0], state[1], state[2]), "", color="r")
         plt.pause(0.1)
@@ -252,6 +253,6 @@ else:
     # Save results
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
-    save_data_dict.update({"counts_data": counts})
+    save_data_dict.update({"counts_data": state})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
