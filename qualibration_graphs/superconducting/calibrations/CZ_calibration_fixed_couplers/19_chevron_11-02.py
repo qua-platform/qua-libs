@@ -29,7 +29,7 @@ from quam_builder.architecture.superconducting.custom_gates.flux_tunable_transmo
 from quam_config import Quam
 from scipy.optimize import curve_fit
 
-from quam.components.pulses import FlatTopGaussianPulse, SquarePulse
+from quam.components.pulses import CosineBipolarPulse, FlatTopGaussianPulse, SquarePulse
 
 # %% {Node_parameters}
 description = """
@@ -351,7 +351,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
     for qp in node.namespace["qubit_pairs"]:
         if hasattr(qp.macros, "cz_unipolar"):
-            continue
+            pass
         else:
             print(f"Creating CZ Unipolar gate macro for {qp.name}")
             cz_pulse = SquarePulse(length=100, amplitude=0.5, id="cz_unipolar_pulse")
@@ -371,7 +371,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             control_qb.z.operations[pulse_name].amplitude = pulse_amp
 
         if hasattr(qp.macros, "cz_flattop"):
-            continue
+            pass
         else:
             print(f"Creating CZ Flattop gate macro for {qp.name}")
             cz_pulse = FlatTopGaussianPulse(length=100, amplitude=0.5, flat_length=50, id="cz_flattop_pulse")
@@ -394,12 +394,37 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             control_qb.z.operations[pulse_name].amplitude = pulse_amp
             control_qb.z.operations[pulse_name].flat_length = flat_length
 
+        if hasattr(qp.macros, "cz_bipolar"):
+            pass
+        else:
+            print(f"Creating CZ Bipolar gate macro for {qp.name}")
+            cz_pulse = CosineBipolarPulse(length=100, amplitude=0.5, id="cz_bipolar_pulse", flat_length=10)
+            cz = CZGate(flux_pulse_control=cz_pulse)
+            node.machine.qubit_pairs[qp.name].macros["cz_bipolar"] = cz
+            pulse_length = (
+                node.machine.qubit_pairs[qp.name].macros["cz_bipolar"].flux_pulse_control.get_reference() + "/length"
+            )
+            flat_length = (
+                node.machine.qubit_pairs[qp.name].macros["cz_bipolar"].flux_pulse_control.get_reference()
+                + "/flat_length"
+            )
+            pulse_amp = (
+                node.machine.qubit_pairs[qp.name].macros["cz_bipolar"].flux_pulse_control.get_reference() + "/amplitude"
+            )
+            pulse_name = node.machine.qubit_pairs[qp.name].macros["cz_bipolar"].flux_pulse_control_label
+            control_qb = node.machine.qubit_pairs[qp.name].qubit_control
+            control_qb.z.operations[pulse_name] = CosineBipolarPulse(length=100, amplitude=0.5, flat_length=10)
+            control_qb.z.operations[pulse_name].length = pulse_length
+            control_qb.z.operations[pulse_name].amplitude = pulse_amp
+            control_qb.z.operations[pulse_name].flat_length = flat_length
+
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
                 continue
             else:
                 qp.macros["cz_unipolar"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
+                qp.macros["cz_bipolar"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
                 qp.macros["cz_flattop"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
                 # Round up to the upper 4 ns to be compatible with the hardware time resolution
                 qp.macros["cz_unipolar"].flux_pulse_control.length = int(
@@ -408,8 +433,14 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 qp.macros["cz_flattop"].flux_pulse_control.flat_length = int(
                     np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4
                 )
+                qp.macros["cz_bipolar"].flux_pulse_control.flat_length = int(
+                    np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 2) * 2
+                )
                 qp.macros["cz_flattop"].flux_pulse_control.length = (
                     int(np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4) + 20
+                )
+                qp.macros["cz_bipolar"].flux_pulse_control.length = (
+                    (int(np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4) + 12)
                 )
 
 

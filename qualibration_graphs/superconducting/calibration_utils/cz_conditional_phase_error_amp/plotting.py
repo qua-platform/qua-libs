@@ -10,6 +10,7 @@ from qualibration_libs.core import BatchableList
 def plot_raw_data_with_fit(
     fit_results: xr.Dataset,
     qubit_pairs: BatchableList,
+    node=None,
 ) -> plt.Figure:
     """Plot phase difference as 2D heatmap (number_of_operations vs amplitude) with optimal amplitude line.
 
@@ -22,11 +23,12 @@ def plot_raw_data_with_fit(
     n_pairs = len(qubit_pairs)
     cols = min(4, n_pairs)
     rows = (n_pairs + cols - 1) // cols
-    fig, axes = plt.subplots(rows, cols, figsize=(4 * cols, 3.5 * rows), squeeze=False)
+    fig, axes = plt.subplots(2 * rows, cols, figsize=(4 * cols, 3.5 * rows * 2), squeeze=False)
     axes = axes.flatten()
 
     for i, qp in enumerate(qubit_pairs):
-        ax = axes[i]
+        # Main plot (top)
+        ax_main = axes[2 * i]
         qp_name = qp.name
         fr = fit_results.sel(qubit_pair=qp_name)
 
@@ -37,7 +39,7 @@ def plot_raw_data_with_fit(
 
         # Create mesh
         X, Y = np.meshgrid(amps, n_ops)
-        pcm = ax.pcolormesh(
+        pcm = ax_main.pcolormesh(
             X,
             Y,
             phase.values,
@@ -46,7 +48,7 @@ def plot_raw_data_with_fit(
             vmin=0.0,
             vmax=1.0,
         )
-        ax.axvline(fr.optimal_amplitude.item(), color="lime", lw=2, label="optimal")
+        ax_main.axvline(fr.optimal_amplitude.item(), color="lime", lw=2, label="optimal")
 
         # Secondary x-axis: detuning (MHz)
         quad = qp.qubit_control.freq_vs_flux_01_quad_term
@@ -57,18 +59,35 @@ def plot_raw_data_with_fit(
         def detuning_MHz_to_amp(d):
             return np.sqrt(np.maximum(0, -d * 1e6 / quad))
 
-        secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
+        secax = ax_main.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
         secax.set_xlabel("Detuning (MHz)")
 
-        ax.set_title(qp_name)
-        ax.set_xlabel("Amplitude (V)")
-        ax.set_ylabel("# CZ operations")
-        ax.legend(loc="upper right", fontsize=8)
-        cbar = fig.colorbar(pcm, ax=ax, shrink=0.85)
+        ax_main.set_title(qp_name)
+        ax_main.set_xlabel("Amplitude (V)")
+        ax_main.set_ylabel("# CZ operations")
+        ax_main.legend(loc="upper right", fontsize=8)
+        cbar = fig.colorbar(pcm, ax=ax_main, shrink=0.85)
         cbar.set_label("Phase diff (2π units)")
 
+        # New: Add subplot below with state_control plot
+        ax_sub = axes[2 * i + 1]
+
+        try:
+            data = fit_results.state_control.sel(qubit_pair=qp_name, control_axis=1).mean(dim="frame")
+            pcs = ax_sub.pcolormesh(X, Y, data)
+            ax_sub.axvline(fr.optimal_amplitude.item(), color="lime", lw=2, label="optimal")
+            ax_sub.set_ylabel("# CZ operations")
+            ax_sub.set_xlabel("Amplitude (V)")
+            cbar = fig.colorbar(pcs, ax=ax_sub, shrink=0.85)
+            cbar.set_label("Control qubit population")
+            secax = ax_sub.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
+            secax.set_xlabel("Detuning (MHz)")
+
+        except Exception as e:
+            ax_sub.text(0.5, 0.5, f"Plot failed: {e}", ha="center", va="center")
+
     # Hide unused axes
-    for j in range(n_pairs, len(axes)):
+    for j in range(2 * n_pairs, len(axes)):
         axes[j].axis("off")
 
     fig.suptitle("CZ conditional phase error amplification")
