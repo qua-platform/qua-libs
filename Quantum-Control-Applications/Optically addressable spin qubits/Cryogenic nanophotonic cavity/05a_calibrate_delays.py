@@ -51,7 +51,7 @@ with program() as calib_delays:
         wait(initial_delay_cycles + (laser_len_cycles - mw_len_cycles) // 2, "Yb")  # delay the microwave pulse
         play("cw", "Yb", duration=mw_len_cycles)  # play microwave pulse
 
-        measure("readout", "SNSPD", None, time_tagging.analog(times, meas_len, counts))
+        measure("readout", "SNSPD", time_tagging.analog(times, meas_len, counts))
         wait(wait_between_runs, "SNSPD")
 
         with for_(i, 0, i < counts, i + 1):

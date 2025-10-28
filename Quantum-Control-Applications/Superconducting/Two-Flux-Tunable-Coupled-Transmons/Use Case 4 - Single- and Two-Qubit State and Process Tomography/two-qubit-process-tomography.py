@@ -231,8 +231,8 @@ with program() as two_qubit_process_tomography:
                         reset_frame(f"q{qubit1}_xy")
                         reset_frame(f"q{qubit2}_xy")
 
-                        reset_phase(f"q{qubit1}_xy")
-                        reset_phase(f"q{qubit2}_xy")
+                        reset_if_phase(f"q{qubit1}_xy")
+                        reset_if_phase(f"q{qubit2}_xy")
 
                         # prepare qubit1 and qubit 2 in one of six Bloch sphere states
                         prepare_states(c1, c2, qubit1, qubit2)

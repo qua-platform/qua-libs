@@ -65,8 +65,8 @@ with program() as T1:
             # do not wash out. Furthermore, because the control signal is associated with
             # 'ensemble' and demodulated in 'resonator', we reset the phase of the 'resonator'
             # as well so that there is no random phase in the demodulation stage
-            reset_phase("ensemble")  # makes the phase of 'ensemble' pulse identical every run
-            reset_phase("resonator")  # makes the phase of 'resonator' pulse identical every run
+            reset_if_phase("ensemble")  # makes the phase of 'ensemble' pulse identical every run
+            reset_if_phase("resonator")  # makes the phase of 'resonator' pulse identical every run
             reset_frame("ensemble")  # bring to 0 the -pi phase added to 'ensemble'
 
             # Pi/2 pulse
@@ -92,7 +92,6 @@ with program() as T1:
             measure(
                 "readout",
                 "resonator",
-                None,
                 dual_demod.full("cos", "out1", "sin", "out2", I),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
             )

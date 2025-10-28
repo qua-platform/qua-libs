@@ -77,7 +77,7 @@ def analog_readout(nb_of_rows, nb_of_columns, readout_threshold, readout_done):
     assign(counter, 0)
     with while_(~readout_done):
         wait_for_trigger("fpga")
-        measure("readout_fpga", "fpga", None, integration.full("constant", data, "out1"))
+        measure("readout_fpga", "fpga", integration.full("constant", data, "out1"))
         with if_(data < readout_threshold):
             assign(occupation_matrix[counter], 1)
         with else_():
@@ -589,7 +589,7 @@ with program() as atom_sorting:
                     )
                 # Measure raw adc trace for spectrograms
                 if raw_adc_acquisition:
-                    measure("readout", "detector", raw_adc)
+                    measure("readout", "detector", adc_stream=raw_adc)
             # Exit the infinite loop in case just a single sorting sequence is needed
             if single_run:
                 assign(infinite_run, False)

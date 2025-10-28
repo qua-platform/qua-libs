@@ -116,8 +116,8 @@ def PID_monitor_prog(
                 with for_(n_inner_repeat, 0, n_inner_repeat < N_inner_repeat, n_inner_repeat + 1):
 
                     # Ensure that the two digital oscillators will start with the same phase
-                    reset_phase("phase_modulator")
-                    reset_phase("detector_AC")
+                    reset_if_phase("phase_modulator")
+                    reset_if_phase("detector_AC")
 
                     # Adjust the phase delay between the two
                     # frame_rotation_2pi(angle, "detector_AC") #rotate the detector phase
@@ -127,7 +127,7 @@ def PID_monitor_prog(
                     # Play the PDH sideband
                     play("cw", "phase_modulator")
                     # Measure and integrate the signal received by the detector --> DC measurement
-                    measure("readout", "detector_DC", None, integration.full("constant", single_shot_DC, "out1"))
+                    measure("readout", "detector_DC", integration.full("constant", single_shot_DC, "out1"))
                     # Measure and demodulate the signal received by the detector --> AC measurement sqrt(I**2 + Q**2)
                     measure(
                         "readout",

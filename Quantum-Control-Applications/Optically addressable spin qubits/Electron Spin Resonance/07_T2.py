@@ -62,8 +62,8 @@ with program() as T2:
             # do not wash out. Furthermore, because the control signal is associated with
             # 'ensemble' and demodulated in 'resonator', we reset the phase of the 'resonator'
             # as well so that there is no random phase in the demodulation stage
-            reset_phase("ensemble")
-            reset_phase("resonator")
+            reset_if_phase("ensemble")
+            reset_if_phase("resonator")
             reset_frame("ensemble")
 
             assign(pulse_delay, t_delay - (pi_half_len + pi_len) // 2)
@@ -94,7 +94,6 @@ with program() as T2:
             measure(
                 "readout",
                 "resonator",
-                None,
                 dual_demod.full("cos", "out1", "sin", "out2", I),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
             )

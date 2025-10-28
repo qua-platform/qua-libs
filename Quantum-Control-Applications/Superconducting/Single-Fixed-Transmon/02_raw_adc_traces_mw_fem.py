@@ -29,9 +29,9 @@ with program() as raw_trace_prog:
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
-        reset_phase("resonator")
+        reset_if_phase("resonator")
         # Measure the resonator (send a readout pulse and record the raw ADC trace)
-        measure("readout", "resonator", adc_st)
+        measure("readout", "resonator", adc_stream=adc_st)
         # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "resonator")
 
