@@ -52,7 +52,7 @@ config = {
     },
     "pulses": {
         "readout_pulse": {
-            "operation": "measure",
+            "operation": "measurement",
             "length": readout_len,
             "waveforms": {"single": "const_wf"},
             "digital_marker": "ON",

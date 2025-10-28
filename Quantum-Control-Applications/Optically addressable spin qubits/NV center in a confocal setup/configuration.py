@@ -54,6 +54,8 @@ default_additional_files = {
 # Set octave_config to None if no octave is present
 octave_config = None
 
+sampling_rate = int(1e9)  # needed in some scripts
+
 # Frequencies
 NV_IF_freq = 40 * u.MHz
 NV_LO_freq = 2.83 * u.GHz
@@ -102,7 +104,6 @@ rf_delay = 0 * u.ns
 wait_between_runs = 100
 
 config = {
-    "version": 1,
     "controllers": {
         "con1": {
             "analog_outputs": {
@@ -181,7 +182,7 @@ config = {
                 "long_readout": "long_readout_pulse_1",
             },
             "outputs": {"out1": ("con1", 1)},
-            "outputPulseParameters": {
+            "timeTaggingParameters": {
                 "signalThreshold": signal_threshold_1,  # ADC units
                 "signalPolarity": "Below",
                 "derivativeThreshold": -2_000,
@@ -204,7 +205,7 @@ config = {
                 "long_readout": "long_readout_pulse_2",
             },
             "outputs": {"out1": ("con1", 2)},
-            "outputPulseParameters": {
+            "timeTaggingParameters": {
                 "signalThreshold": signal_threshold_2,  # ADC units
                 "signalPolarity": "Below",
                 "derivativeThreshold": -2_000,
