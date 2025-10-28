@@ -124,7 +124,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Pre-compute the baked short segments (1..16 samples) for each control qubit in the pairs
     baked_signals = {
-        qp.qubit_control.name: baked_waveform(qp.qubit_control, baked_config, base_level=0.5, max_samples=16)
+        qp.qubit_control.name: baked_waveform(qp.qubit_control, baked_config, base_level=pulse_amplitudes[qp.name], max_samples=16)
         for qp in qubit_pairs
     }
 
@@ -182,7 +182,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                         with case_(j):
                                             baked_signals[qp.qubit_control.name][j - 1].run(
                                                 amp_array=[
-                                                    (qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * a)
+                                                    (qp.qubit_control.z.name, a)
                                                 ]
                                             )
 
@@ -212,16 +212,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                             p = pulse_amplitudes[qp.name]
                                             denom = qp.qubit_control.z.operations["const"].amplitude
                                             scale = (p / denom) * a
-                                            qp.qubit_control.z.play(
-                                                "const",
-                                                duration=t_cycles,
-                                                amplitude_scale=scale,
-                                            )
-                                            baked_signals[qp.qubit_control.name][j - 1].run(
-                                                amp_array=[
-                                                    (qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * a)
-                                                ]
-                                            )
+                                            with strict_timing_():
+                                                qp.qubit_control.z.play(
+                                                    "const",
+                                                    duration=t_cycles,
+                                                    amplitude_scale=scale,
+                                                )
+                                                baked_signals[qp.qubit_control.name][j - 1].run(
+                                                    amp_array=[(qp.qubit_control.z.name, a)]
+                                                )
                             align()
 
                             if node.parameters.use_state_discrimination:
@@ -257,7 +256,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
-    config = node.machine.generate_config()
+    config = node.namespace["baked_config"]
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
@@ -440,7 +439,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                     int(np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4) + 20
                 )
                 qp.macros["cz_bipolar"].flux_pulse_control.length = (
-                    (int(np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4) + 12)
+                    int(np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4) + 12
                 )
 
 
