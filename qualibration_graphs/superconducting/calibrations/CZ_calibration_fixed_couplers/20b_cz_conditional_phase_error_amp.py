@@ -158,6 +158,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     with for_(count, 0, count < n_op, count + 1):
                                         # play the CZ gate
                                         qp.macros[operation_name].apply(amplitude_scale_control=amp)
+                                        qp.wait(4) # wait for flux to settle
                                     # rotate the frame by 𝜋/2 for odd number of operations
                                     with if_(((n_op & 1) == 0) & (control_initial == 1)):
                                         assign(frame_odd, frame - 0.5)
