@@ -1,23 +1,17 @@
 from quam.core import quam_dataclass
-from quam.components.channels import IQChannel, Pulse
-from quam.components.quantum_components.qubit import Qubit
+from quam.components.channels import IQChannel
 from quam import QuamComponent
-from .flux_line import FluxLine
-from .readout_resonator import ReadoutResonator
-from qualang_tools.octave_tools import octave_calibration_tool
-from qm import QuantumMachine, logger
-from typing import Dict, Any, Optional, Union, List, Tuple
+from typing import Union
 from qm.qua import align, wait
 import numpy as np
-from dataclasses import field
 
-__all__ = ["Transmon"]
+__all__ = ["TWPA"]
 
 
 @quam_dataclass
 class TWPA(QuamComponent):
     """
-    Example QuAM component for a transmon qubit.
+    Example QuAM component for a TWPA.
 
     Args:
         id (str, int): The id of the TWPA, used to generate the name.
@@ -29,10 +23,15 @@ class TWPA(QuamComponent):
     id: Union[int, str]
 
     pump: IQChannel = None
+    spectroscopy: IQChannel = None
 
-    gain: float = None
-    snr_improvement: float = None
+    max_gain: float = None
+    max_snr_improvement: float = None
     p_saturation: float = None
+
+    pump_frequency : float = None
+    pump_amplitude : float = None
+
 
     dispersive_feature: float = None
     qubits: list = None
