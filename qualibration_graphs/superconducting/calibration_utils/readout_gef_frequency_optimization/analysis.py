@@ -74,14 +74,14 @@ def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode)
     """Add metadata to the dataset and fit results."""
 
     fit_results = {}
-    for q in node.parameters.qubits:
-        if q not in ds_fit.qubit.values:
-            logging.warning(f"Qubit {q} not found in the fit results.")
+    for q in node.namespace["qubits"]:
+        if q.name not in ds_fit.qubit.values:
+            logging.warning(f"Qubit {q.name} not found in the fit results.")
             continue
 
-        fit_results[q] = FitParameters(
-            optimal_detuning=ds_fit.optimal_detuning.sel(qubit=q).item(),
-            success=ds_fit.success.sel(qubit=q).item(),
+        fit_results[q.name] = FitParameters(
+            optimal_detuning=ds_fit.optimal_detuning.sel(qubit=q.name).item(),
+            success=ds_fit.success.sel(qubit=q.name).item(),
         )
 
     return ds_fit, fit_results
