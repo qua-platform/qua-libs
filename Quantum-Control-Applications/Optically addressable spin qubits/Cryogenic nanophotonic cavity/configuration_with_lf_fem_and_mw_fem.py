@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter,fetching_tool
 import plotly.io as pio
 
 pio.renderers.default = "browser"
@@ -82,8 +82,7 @@ detection_delay = 136
 mw_delay = 0
 laser_delay = 0
 
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         con: {
             "type": "opx1000",
@@ -176,6 +175,8 @@ config = {
             },
         }
     },
+}
+logical_config = {
     "elements": {
         "Yb": {
             "MWInput": {
@@ -412,3 +413,4 @@ config = {
         "OFF": {"samples": [(0, 0)]},  # [(on/off, ns)]
     },
 }
+full_config = controller_config | logical_config

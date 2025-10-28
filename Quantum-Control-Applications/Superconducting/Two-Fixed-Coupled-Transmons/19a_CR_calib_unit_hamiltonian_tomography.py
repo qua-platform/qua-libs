@@ -13,14 +13,9 @@ The sequence extracts the six coefficients from a set of CR time Rabi traces:
 two traces from the prepared control states (|g⟩ and |e⟩) and three traces from
 applying quantum state tomography (QST) on the target qubit.
 
-<<<<<<< HEAD:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/18a_CR_calib_unit_hamiltonian_tomography.py
 For the calibration sequences, one need to choose one of the following CR drive configurations:
 "direct," "direct + echo," "direct + cancel," or "direct + cancel + echo."
                                    ____      ____ 
-=======
-For the calibration sequences, we employ echoed CR drive.
-                                   ____      ____
->>>>>>> main:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/19a_CR_calib_unit_hamiltonian_tomography.py
             Control(fC): _________| pi |____| pi |________________
                              ____
                  CR(fT): ___|    |_____      _____________________
@@ -49,11 +44,11 @@ Reference: Sarah Sheldon, Easwar Magesan, Jerry M. Chow, and Jay M. Gambetta Phy
 
 from qm.qua import *
 from qm import QuantumMachinesManager
-from configuration_mw_fem import *
+from configuration import *
+import time
 import matplotlib.pyplot as plt
 from qm import SimulationConfig
 from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
@@ -104,7 +99,7 @@ save_data_dict = {
     "cr_cancel_phase": cr_cancel_phase,
     "ts_ns": ts_ns,
     "n_avg": n_avg,
-    "config": config,
+    "config": full_config,
 }
 
 
@@ -216,7 +211,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=3_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job = qmm.simulate(full_config, PROGRAM, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -230,28 +225,30 @@ if simulate:
 else:
     try:
         # Open the quantum machine
-        qm = qmm.open_qm(config)
+        qm = qmm.open_qm(full_config, close_other_machines=True)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
         # Prepare the figure for live plotting
         fig, axss = plt.subplots(4, 2, figsize=(10, 10))
         interrupt_on_close(fig, job)
         # Tool to easily fetch results from the OPX (results_handle used in it)
-        fetch_names = ["n", "I1", "Q1", "state1", "I2", "Q2", "state2"]
-        results = fetching_tool(job, fetch_names, mode="live")
+        data_list = ["n", "I1", "Q1", "state1", "I2", "Q2", "state2"]
+
+        res_handles = job.result_handles
         # Live plotting
-        while results.is_processing():
+        while res_handles.is_processing():
             # Fetch results
-            res = results.fetch_all()
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+            res = [results.get(data) for data in data_list]
             iterations, I1, Q1, state_c, I2, Q2, state_t = res
             # Progress bar
-            progress_counter(iterations, n_avg, start_time=results.start_time)
+            progress_counter(iterations, n_avg, start_time=time.time())
             # Convert the results into Volts
             I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
             I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
             bloch_c, bloch_t = -2 * state_c + 1, -2 * state_t + 1  # convert |0> -> 1, |1> -> -1
             # Progress bar
-            progress_counter(iterations, n_avg, start_time=results.start_time)
+            progress_counter(iterations, n_avg, start_time=time.time())
             # plotting data
             fig = plot_crqst_result_2D(ts_ns, bloch_c, bloch_t, fig, axss)
             plt.tight_layout()

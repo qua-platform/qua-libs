@@ -38,7 +38,7 @@ default_additional_files = {
 # OPX configuration #
 #####################
 con = "con1"
-fem = 1  # Should be the LF-FEM index, e.g., 1
+fem = 2  # Should be the LF-FEM index, e.g., 1
 # Set octave_config to None if no octave are present
 octave_config = None
 
@@ -107,8 +107,7 @@ pi_half_amps = [0.27, -0.27]
 #############################################
 #                  Config                   #
 #############################################
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         con: {
             "type": "opx1000",
@@ -177,6 +176,8 @@ config = {
             },
         }
     },
+}
+logical_config = {
     "elements": {
         "P1": {
             "singleInput": {
@@ -412,3 +413,4 @@ config = {
         },
     },
 }
+full_config = controller_config | logical_config

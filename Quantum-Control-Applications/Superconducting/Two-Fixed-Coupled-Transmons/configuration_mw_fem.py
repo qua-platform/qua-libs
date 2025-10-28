@@ -231,7 +231,7 @@ cr_drive_square_phase_ZI_correct_c2t1 = 0.0  # in units of 2pi
 #                Resonators                 #
 #############################################
 # Qubits full scale power
-resonator_full_scale_power_dbm = -20
+resonator_full_scale_power_dbm = -11
 # Qubits bands
 # The keyword "band" refers to the following frequency bands:
 #   1: (50 MHz - 5.5 GHz)
@@ -288,8 +288,7 @@ ge_threshold_q2 = 0.0
 #############################################
 #                  Config                   #
 #############################################
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         "con1": {
             "type": "opx1000",
@@ -348,6 +347,8 @@ config = {
             },
         },
     },
+}
+logical_config = {
     "elements": {
         "rr1": {
             "MWInput": {
@@ -753,4 +754,4 @@ config = {
     },
 }
 
-# %%
+full_config = controller_config | logical_config

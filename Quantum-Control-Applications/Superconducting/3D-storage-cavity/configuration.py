@@ -19,8 +19,8 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "172.16.33.101"  # Write the QM router IP address
-cluster_name = "Cluster_81"  # Write your cluster_name if version >= QOP220
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
 # Path to save data
@@ -32,7 +32,7 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 
 # The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
 # the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
-octave_1 = OctaveUnit("octave1", "192.168.88.250", port=80, con="con1")
+octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")
 # octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1")
 
 # If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
@@ -45,6 +45,17 @@ octaves = [octave_1]
 # Configure the Octaves
 octave_config = octave_declaration(octaves)
 
+#############
+# Save Path #
+#############
+# Path to save data
+save_dir = Path(__file__).parent.resolve() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 #####################
 # OPX configuration #
 #####################
@@ -237,8 +248,7 @@ ge_threshold = 1.0
 #############################################
 #                  Config                   #
 #############################################
-config = {
-    "version": 1,
+full_config = {
     "controllers": {
         "con1": {
             "analog_outputs": {

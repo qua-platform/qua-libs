@@ -17,12 +17,12 @@ Prerequisites:
 Before proceeding to the next node:
     - Identify the different charge occupation regions
 """
-
+#%%
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
+from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
@@ -33,9 +33,9 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 100
+n_avg = 10000
 n_points_slow = 10
-n_points_fast = 101
+n_points_fast = 11
 
 # Voltages in Volt
 voltage_values_slow = np.linspace(-1.5, 1.5, n_points_slow)
@@ -51,7 +51,7 @@ save_data_dict = {
     "n_avg": n_avg,
     "voltage_values_slow": voltage_values_slow,
     "voltage_values_fast": voltage_values_fast,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -111,7 +111,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, charge_stability_prog, simulation_config)
+    job = qmm.simulate(full_config, charge_stability_prog, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -124,9 +124,10 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(charge_stability_prog)
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
@@ -138,29 +139,33 @@ else:
         job.resume()
         # Wait until the program reaches the 'pause' statement again, indicating that the QUA program is done
         wait_until_job_is_paused(job)
-        # Get results from QUA program and initialize live plotting
-        results = fetching_tool(job, data_list=["I", "Q", "dc_signal", "iteration"], mode="live")
-
+        if i == 0:
+            # Get results from QUA program and initialize live plotting
+            data_list=["I", "Q", "dc_signal"]
+            res_handles.get('iteration').wait_for_values(1)
+            continue
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
-        I, Q, DC_signal, iteration = results.fetch_all()
+        I, Q, DC_signal = [results.get(data)['value'] for data in data_list]
+        iteration = results.get("iteration")
         # Convert results into Volts
         S = u.demod2volts(I + 1j * Q, reflectometry_readout_length, single_demod=True)
         R = np.abs(S)  # Amplitude
         phase = np.angle(S)  # Phase
         DC_signal = u.demod2volts(DC_signal, readout_len, single_demod=True)
         # Progress bar
-        progress_counter(iteration, n_points_slow, start_time=results.start_time)
+        progress_counter(iteration, n_points_slow)
         # Plot data
         plt.subplot(121)
         plt.cla()
         plt.title(r"$R=\sqrt{I^2 + Q^2}$ [V]")
-        plt.pcolor(voltage_values_fast, voltage_values_slow, R)
+        plt.pcolor(voltage_values_fast, voltage_values_slow[:i], R)
         plt.xlabel("Fast voltage axis [V]")
         plt.ylabel("Slow voltage axis [V]")
         plt.subplot(122)
         plt.cla()
         plt.title("Phase [rad]")
-        plt.pcolor(voltage_values_fast, voltage_values_slow, phase)
+        plt.pcolor(voltage_values_fast, voltage_values_slow[:i], phase,shading='auto')
         plt.xlabel("Fast voltage axis [V]")
         plt.ylabel("Slow voltage axis [V]")
         plt.tight_layout()
@@ -174,3 +179,5 @@ else:
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
+
+# %%

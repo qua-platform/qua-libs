@@ -297,17 +297,17 @@ ge_threshold_q2 = 0.0
 #############################################
 #                  Config                   #
 #############################################
-config = {
+full_config = {
     "version": 1,
     "controllers": {
         "con1": {
             "analog_outputs": {
-                1: {"offset": 0.0},  # I qubit1 XY
-                2: {"offset": 0.0},  # Q qubit1 XY
-                3: {"offset": 0.0},  # I qubit2 XY
-                4: {"offset": 0.0},  # Q qubit2 XY
-                5: {"offset": 0.0},  # I readout line
-                6: {"offset": 0.0},  # Q readout line
+                1: {"offset": 0.0}, # I readout line
+                2: {"offset": 0.0},  # Q readout line
+                3: {"offset": 0.0},  # I qubit1 XY
+                4: {"offset": 0.0},  # Q qubit1 XY
+                7: {"offset": 0.0},   # I qubit2 XY
+                8: {"offset": 0.0},   # I qubit2 XY
             },
             "digital_outputs": {
                 1: {},

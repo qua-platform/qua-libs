@@ -66,7 +66,7 @@ saturation_amp = 0.03
 square_pi_len = 100
 square_pi_amp = 0.03
 # Drag pulses
-drag_coef = 0
+drag_coef = 1
 anharmonicity = -200 * u.MHz
 AC_stark_detuning = 0 * u.MHz
 
@@ -194,8 +194,7 @@ ge_threshold = 0.0
 #############################################
 #                  Config                   #
 #############################################
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         con: {
             "type": "opx1000",
@@ -266,6 +265,8 @@ config = {
             },
         },
     },
+}
+logical_config = {    
     "elements": {
         "qubit": {
             # MWInput corresponds to an OPX physical output port
@@ -499,3 +500,5 @@ config = {
         },
     },
 }
+
+full_config = controller_config | logical_config

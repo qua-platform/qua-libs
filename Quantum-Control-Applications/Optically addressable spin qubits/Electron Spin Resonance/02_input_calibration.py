@@ -46,7 +46,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Simulate or execute #
 #######################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -55,7 +55,7 @@ if simulate:
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, input_cal, simulate_config)
+    job = qmm.simulate(full_config, input_cal, simulate_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -67,7 +67,7 @@ if simulate:
     # Visualize and save the waveform report
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     job = qm.execute(input_cal)  # execute QUA program
     res_hand = job.result_handles
     res_hand.wait_for_all_values()

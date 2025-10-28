@@ -6,8 +6,8 @@ from qm import QuantumMachinesManager, SimulationConfig
 from qm.qua import *
 from configuration import *
 import matplotlib.pyplot as plt
-from qualang_tools.results import fetching_tool, progress_counter
-import math
+from qualang_tools.results import progress_counter
+import time
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results.data_handler import DataHandler
 
@@ -15,7 +15,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 10  # Number of runs
+n_avg = 100  # Number of runs
 resonator = "rr1"
 division_length = 1  # Size of each demodulation slice in clock cycles
 number_of_divisions = int((readout_len) / (4 * division_length))
@@ -31,7 +31,7 @@ save_data_dict = {
     "division_length": division_length,
     "number_of_divisions": number_of_divisions,
     "pulse_duration": pulse_duration,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -89,7 +89,6 @@ with program() as PROGRAM:
         measure(
             "readout",
             resonator,
-            None,
             demod.accumulated("cos", II, division_length, "out1"),
             demod.accumulated("sin", IQ, division_length, "out2"),
             demod.accumulated("minus_sin", QI, division_length, "out1"),
@@ -144,7 +143,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job = qmm.simulate(full_config, PROGRAM, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -158,21 +157,19 @@ if simulate:
 else:
     try:
         # Open the quantum machine
-        qm = qmm.open_qm(config)
+        qm = qmm.open_qm(full_config)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
+        res_handles = job.result_handles
         # Get results from QUA program
         data_list = ["Ig_avg", "Qg_avg", "Ie_avg", "Qe_avg", "Ig_var", "Qg_var", "Ie_var", "Qe_var", "iteration"]
-        results = fetching_tool(
-            job,
-            data_list=data_list,
-            mode="live",
-        )
         # Live plotting
         fig = plt.figure()
         interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-        while results.is_processing():
+        while res_handles.is_processing():
+            res_handles.get('iteration').wait_for_values(1)
             # Fetch results
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
             (
                 Ig_avg,
                 Qg_avg,
@@ -183,9 +180,9 @@ else:
                 Ie_var,
                 Qe_var,
                 iteration,
-            ) = results.fetch_all()
+            ) = [results.get(data) for data in data_list]
             # Progress bar
-            progress_counter(iteration, n_avg, start_time=results.get_start_time())
+            progress_counter(iteration, n_avg, start_time=time.time())
             # Derive the SNR
             ground_trace = Ig_avg + 1j * Qg_avg
             excited_trace = Ie_avg + 1j * Qe_avg

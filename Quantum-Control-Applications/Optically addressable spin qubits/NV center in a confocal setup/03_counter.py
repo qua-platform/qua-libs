@@ -10,6 +10,7 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+import time
 from qualang_tools.results.data_handler import DataHandler
 
 ##################
@@ -38,9 +39,9 @@ with program() as counter:
         # Loop over the chunks to measure for the total integration time
         with for_(n, 0, n < n_count, n + 1):
             # Play the laser pulse...
-            play("laser_ON", "AOM", duration=single_integration_time_cycles)
+            play("laser_ON", "AOM1", duration=single_integration_time_cycles)
             # ... while measuring the events from the SPCM
-            measure("readout", "SPCM", None, time_tagging.analog(times, single_integration_time_ns, counts))
+            measure("readout", "SPCM1", None, time_tagging.analog(times, single_integration_time_ns, counts))
             # Increment the received counts
             assign(total_counts, total_counts + counts)
         # Save the counts
@@ -64,7 +65,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, counter, simulation_config)
+    job = qmm.simulate(full_config, counter, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -76,8 +77,7 @@ if simulate:
     # Visualize and save the waveform report
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
-    qm = qmm.open_qm(config)
-
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     job = qm.execute(counter)
     # Get results from QUA program
     res_handles = job.result_handles
@@ -89,6 +89,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         new_counts = counts_handle.fetch_all()
         counts.append(new_counts["value"] / total_integration_time / 1000)
         time.append(new_counts["timestamp"] / u.s)  # Convert timestamps to seconds

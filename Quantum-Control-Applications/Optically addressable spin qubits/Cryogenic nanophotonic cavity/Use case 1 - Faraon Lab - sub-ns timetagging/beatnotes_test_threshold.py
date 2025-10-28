@@ -2,6 +2,7 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
+import time
 from qualang_tools.results import progress_counter, fetching_tool
 import datetime
 
@@ -59,21 +60,22 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 new_signal_threshold = 600
 config["elements"]["SNSPD"]["outputPulseParameters"]["signalThreshold"] = new_signal_threshold
 # Open a quantum machine
-qm = qmm.open_qm(config)
+qm = qmm.open_qm(full_config,close_other_machines=True)
 # Execute the QUA program
 job = qm.execute(calib_delays)
-
+res_handles = job.result_handles
 # Get results from QUA program
-results = fetching_tool(job, data_list=["times_hist", "iteration"], mode="live")
+data_list=["times_hist", "iteration"]
 # Live plotting
 fig = plt.figure()
 interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
-while results.is_processing():
+while res_handles.is_processing():
+    results = res_handles.fetch_results(wait_until_done=True,timeout=60)
     # Fetch results
-    times_hist, iteration = results.fetch_all()
+    times_hist, iteration = [results.get(data) for data in data_list]
     # Progress bar
-    progress_counter(iteration, n_avg, start_time=results.get_start_time())
+    progress_counter(iteration, n_avg, start_time=time.time())
     # Plot data
     plt.cla()
     plt.plot(t_vec[::resolution] + resolution / 2, times_hist / 1000 / (resolution / u.s) / iteration)

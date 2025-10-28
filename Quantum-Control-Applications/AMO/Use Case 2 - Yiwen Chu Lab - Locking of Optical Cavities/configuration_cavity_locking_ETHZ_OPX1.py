@@ -152,7 +152,7 @@ opticalswitches_lookup = {
 # CONFIGURATION:
 ################
 
-config = {
+full_config = {
     "version": 1,
     "controllers": {
         "con1": {

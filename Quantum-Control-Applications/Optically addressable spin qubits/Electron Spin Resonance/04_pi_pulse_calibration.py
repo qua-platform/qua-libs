@@ -8,6 +8,7 @@ from qm.qua import *
 from qm import LoopbackInterface
 from qm import QuantumMachinesManager
 from configuration import *
+import time
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from macros import get_c2c_time
@@ -25,13 +26,13 @@ pulse1_vec = np.arange(pulse1_min, pulse1_max + 0.1, dpulse1)  # Pi/2 pulse dura
 # Resonator or qubit relaxation time
 cooldown_time = 10 * u.ms // 4
 
-n_avg = 100
+n_avg = 1000
 
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
     "pulse1_vec": pulse1_vec,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -128,7 +129,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Simulate or execute #
 #######################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -138,7 +139,7 @@ if simulate:
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, pi_pulse_cal, simulate_config)
+    job = qmm.simulate(full_config, pi_pulse_cal, simulate_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -164,20 +165,22 @@ if simulate:
     )
 
 else:
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     job = qm.execute(pi_pulse_cal)  # execute QUA program
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+    data_list=["I", "Q", "iteration"]
+    res_handles = job.result_handles
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
+    while res_handles.is_processing():
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch results
-        I, Q, iteration = results.fetch_all()
+        I, Q, iteration = [results.get(data) for data in data_list]
         # Convert I & Q to Volts
         I = u.demod2volts(I, readout_len)
         Q = u.demod2volts(Q, readout_len)
         # Display progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot(pulse1_vec * 4, I, label="I")

@@ -108,7 +108,6 @@ with program() as cryoscope:
                 measure(
                     "readout",
                     res_name,
-                    None,
                     dual_demod.full("rotated_cos", "rotated_sin", I),
                     dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
                 )

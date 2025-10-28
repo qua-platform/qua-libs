@@ -34,7 +34,8 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
+import time
+from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.bakery import baking
@@ -48,12 +49,12 @@ from qualang_tools.results.data_handler import DataHandler
 # Parameters Definition
 n_avg = 100
 # Pulse duration sweep in ns
-durations = np.arange(0, 500, 1)
+durations = np.arange(0, 50, 1)
 # Magnetic field in T
 B_fields = np.arange(-5, 5, 0.1)
 B_fields = [0]
 
-seq = VoltageGateSequence(config, ["P1_sticky", "P2_sticky"])
+seq = VoltageGateSequence(full_config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
 seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, duration_readout)
@@ -63,7 +64,7 @@ pi_list = []
 pi_list_4ns = []
 for t in range(16):  # Create the different baked sequences
     t = int(t)
-    with baking(config, padding_method="left") as b:  # don't use padding to assure error if timing is incorrect
+    with baking(full_config, padding_method="left") as b:  # don't use padding to assure error if timing is incorrect
         if t == 0:
             wf1 = [0.0] * 16
             wf2 = [0.0] * 16
@@ -81,7 +82,7 @@ for t in range(16):  # Create the different baked sequences
         b.play("pi_baked", "P1")  # Play the qubit pulse
         b.play("pi_baked", "P2")  # Play the qubit pulse
     if t < 4:
-        with baking(config, padding_method="left") as b4ns:  # don't use padding to assure error if timing is incorrect
+        with baking(full_config, padding_method="left") as b4ns:  # don't use padding to assure error if timing is incorrect
             wf1 = [pi_amps[0] - level_manip[0]] * t
             wf2 = [pi_amps[1] - level_manip[1]] * t
 
@@ -106,7 +107,7 @@ save_data_dict = {
     "n_avg": n_avg,
     "durations": durations,
     "B_fields": B_fields,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -185,7 +186,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, Rabi_prog, simulation_config)
+    job = qmm.simulate(full_config, Rabi_prog, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples    plt.figure()
@@ -226,9 +227,10 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(Rabi_prog)
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
@@ -240,9 +242,12 @@ else:
         wait_until_job_is_paused(job)
         if i == 0:
             # Get results from QUA program and initialize live plotting
-            results = fetching_tool(job, data_list=["I", "Q", "dc_signal", "iteration"], mode="live")
+            data_list=["I", "Q", "dc_signal"]
+        res_handles.get('iteration').wait_for_values(1)
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
-        I, Q, DC_signal, iteration = results.fetch_all()
+        I, Q, DC_signal = [results.get(data)['value'] for data in data_list]
+        iteration = results.get("iteration")
         # Convert results into Volts
         S = u.demod2volts(I + 1j * Q, reflectometry_readout_length, single_demod=True)
         R = np.abs(S)  # Amplitude

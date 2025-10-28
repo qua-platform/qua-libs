@@ -19,21 +19,21 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
-
+import time
 ##################
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 1e4
+n_avg = 1e5
 
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "config": config,
+    "config": full_config,
 }
 
 ###################################
@@ -93,7 +93,6 @@ def allXY(pulses):
     measure(
         "readout",
         "resonator",
-        None,
         dual_demod.full("rotated_cos", "rotated_sin", I_xy),
         dual_demod.full("rotated_minus_sin", "rotated_cos", Q_xy),
     )
@@ -151,7 +150,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, ALL_XY, simulation_config)
+    job = qmm.simulate(full_config, ALL_XY, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -165,23 +164,25 @@ if simulate:
 
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ALL_XY)
     # Get results from QUA program
     data_list = ["iteration"] + list(np.concatenate([[f"I{i}", f"Q{i}"] for i in range(len(sequence))]))
-    results = fetching_tool(job, data_list, mode="live")
+    res_handles = job.result_handles    
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
-        # Fetch results
-        res = results.fetch_all()
+    while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
+        # Fetch results        
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+        res = [results.get(data) for data in data_list]
         I = -np.array(res[1::2])
         Q = -np.array(res[2::2])
         n = res[0]
         # Progress bar
-        progress_counter(n, n_avg, start_time=results.start_time)
+        progress_counter(n, n_avg, start_time=time.time())
         # Plot results
         plt.suptitle("All XY")
         plt.subplot(211)

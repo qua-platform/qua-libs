@@ -41,10 +41,11 @@ import matplotlib.pyplot as plt
 from configuration import *
 from macros import ge_averaged_measurement
 from qm import QuantumMachinesManager, SimulationConfig
+import time
 from qm.qua import *
 from qualang_tools.bakery import baking
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import  progress_counter
 from qualang_tools.results.data_handler import DataHandler
 from scipy import optimize, signal
 
@@ -108,7 +109,7 @@ def baked_waveform(waveform, pulse_duration):
     pulse_segments = []  # Stores the baking objects
     # Create the different baked sequences, each one corresponding to a different truncated duration
     for i in range(0, pulse_duration + 1):
-        with baking(config, padding_method="right") as b:
+        with baking(full_config, padding_method="right") as b:
             if i == 0:  # Otherwise, the baking will be empty and will not be created
                 wf = [0.0] * 16
             else:
@@ -147,7 +148,7 @@ xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - Must be
 save_data_dict = {
     "n_avg": n_avg,
     "flux_waveform": flux_waveform,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -202,7 +203,6 @@ with program() as cryoscope:
                 measure(
                     "readout",
                     "resonator",
-                    None,
                     dual_demod.full("rotated_cos", "rotated_sin", I),
                     dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
                 )
@@ -248,7 +248,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, cryoscope, simulation_config)
+    job = qmm.simulate(full_config, cryoscope, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -261,28 +261,31 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(cryoscope)
     # Get results from QUA program
     if state_discrimination:
-        results = fetching_tool(job, data_list=["I", "Q", "state", "iteration"], mode="live")
+        data_list=["I", "Q", "state", "iteration"]
     else:
-        results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg", "iteration"], mode="live")
+        data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg", "iteration"]
+    res_handles = job.result_handles        
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
-
-    while results.is_processing():
-        # Fetch results
+    while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
+        # Fetch results       
         if state_discrimination:
-            I, Q, state, iteration = results.fetch_all()
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
+            I, Q, state, iteration = [results.get(data) for data in data_list]
             # Convert the results into Volts
             I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Bloch vector Sx + iSy
             qubit_state = (state[:, 0] * 2 - 1) + 1j * (state[:, 1] * 2 - 1)
         else:
-            I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60,stream_names=data_list)
+            I, Q, Ie, Qe, Ig, Qg, iteration = [results.get(data) for data in data_list]
             # Phase of ground and excited states
             phase_g = np.angle(Ig + 1j * Qg)
             phase_e = np.angle(Ie + 1j * Qe)
@@ -296,7 +299,7 @@ else:
             qubit_state = (state[:, 0] * 2 - 1) + 1j * (state[:, 1] * 2 - 1)
 
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, time.time())
         # Accumulated phase: angle between Sx and Sy
         qubit_phase = np.unwrap(np.angle(qubit_state))
         qubit_phase = qubit_phase - qubit_phase[-1]

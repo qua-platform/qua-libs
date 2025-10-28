@@ -6,10 +6,11 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
+import time
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.plot import interrupt_on_close
 from macros import multiplexed_readout, qua_declaration, active_reset
 import math
@@ -41,7 +42,7 @@ save_data_dict = {
     "num_of_sequences": num_of_sequences,
     "delta_clifford": delta_clifford,
     "max_circuit_depth": max_circuit_depth,
-    "config": config,
+    "config": full_config,
 }
 
 
@@ -220,7 +221,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job = qmm.simulate(full_config, PROGRAM, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -234,7 +235,7 @@ if simulate:
 else:
     try:
         # Open the quantum machine
-        qm = qmm.open_qm(config)
+        qm = qmm.open_qm(full_config, close_other_machines=True)
 
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM, flags=["not-strict-timing"])
@@ -243,18 +244,20 @@ else:
         fig = plt.figure()
         interrupt_on_close(fig, job)
         # Tool to easily fetch results from the OPX (results_handle used in it)
-        results = fetching_tool(job, ["iteration", "I1", "Q1", "I2", "Q2"], mode="live")
+        data_list = ["iteration", "I1", "Q1", "I2", "Q2"]
+        res_handles = job.result_handles
         # Live plotting
 
         x = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
         x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
 
-        while results.is_processing():
+        while res_handles.is_processing():
             # Fetch results
-            res = results.fetch_all()
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+            res = [results.get(data) for data in data_list]
 
             # Progress bar
-            progress_counter(res[0], num_of_sequences, start_time=results.start_time)
+            progress_counter(res[0], num_of_sequences, start_time=time.time())
 
             plt.suptitle("RB")
 

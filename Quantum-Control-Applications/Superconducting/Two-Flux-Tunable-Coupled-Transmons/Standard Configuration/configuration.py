@@ -30,8 +30,8 @@ def IQ_imbalance(g, phi):
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"  # Write the QM router IP address
-cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_ip = "172.16.33.101"  # Write the QM router IP address
+cluster_name = "CS_2"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
 #############
@@ -245,8 +245,7 @@ ge_threshold_q2 = 0.0
 #############################################
 #                  Config                   #
 #############################################
-config = {
-    "version": 1,
+full_config = {
     "controllers": {
         "con1": {
             "analog_outputs": {

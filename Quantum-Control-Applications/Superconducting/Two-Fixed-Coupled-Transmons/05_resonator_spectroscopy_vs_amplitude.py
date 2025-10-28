@@ -22,6 +22,7 @@ Before proceeding to the next node:
 from qm.qua import *
 from qm import QuantumMachinesManager, SimulationConfig
 from configuration import *
+import time
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
@@ -51,7 +52,7 @@ save_data_dict = {
     "n_avg": n_avg,
     "dfs": dfs,
     "amplitudes": amplitudes,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -126,7 +127,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=1_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job = qmm.simulate(full_config, PROGRAM, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -140,20 +141,22 @@ if simulate:
 else:
     try:
         # Open a quantum machine to execute the QUA program
-        qm = qmm.open_qm(config)
+        qm = qmm.open_qm(full_config, close_other_machines=True)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
         # Prepare the figure for live plotting
         fig = plt.figure()
         interrupt_on_close(fig, job)
         # Tool to easily fetch results from the OPX (results_handle used in it)
-        results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+        data_list = ["n", "I1", "Q1", "I2", "Q2"]
+        res_handles = job.result_handles
         # Live plotting
-        while results.is_processing():
+        while res_handles.is_processing():
             # Fetch results
-            n, I1, Q1, I2, Q2 = results.fetch_all()
+            results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+            n, I1, Q1, I2, Q2 = [results.get(data) for data in data_list]
             # Progress bar
-            progress_counter(n, n_avg, start_time=results.start_time)
+            progress_counter(n, n_avg, start_time=time.time())
             # Data analysis
             S1 = u.demod2volts(I1 + 1j * Q1, readout_len)
             S2 = u.demod2volts(I2 + 1j * Q2, readout_len)

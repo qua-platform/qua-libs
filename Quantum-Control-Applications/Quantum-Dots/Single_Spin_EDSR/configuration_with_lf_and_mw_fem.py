@@ -39,7 +39,7 @@ default_additional_files = {
 # OPX configuration #
 #####################
 con = "con1"
-lf_fem = 5  # Should be the LF-FEM index, e.g., 1
+lf_fem = 2  # Should be the LF-FEM index, e.g., 1
 mw_fem = 1  # Should be the MW-FEM index, e.g., 5
 
 # Set octave_config to None if no octave are present
@@ -126,11 +126,14 @@ gaussian_length = 20 * int(sampling_rate // 1e9)  # in units of [1/sampling_rate
 cw_amp = 0.85  # in arb.
 cw_len = 100  # in ns
 
+pi_amp = 0.05
+
+chirp_rate = 5000
+
 #############################################
 #                  Config                   #
 #############################################
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         con: {
             "type": "opx1000",
@@ -227,6 +230,8 @@ config = {
             },
         }
     },
+}
+logical_config = {
     "elements": {
         "P1": {
             "singleInput": {
@@ -518,3 +523,4 @@ config = {
         },
     },
 }
+full_config = controller_config | logical_config

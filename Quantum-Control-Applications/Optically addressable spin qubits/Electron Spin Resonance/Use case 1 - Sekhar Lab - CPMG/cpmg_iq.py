@@ -4,6 +4,7 @@ from qm.qua import *
 from qm import LoopbackInterface
 from qm import QuantumMachinesManager
 from configuration import *
+import time
 import matplotlib.pyplot as plt
 from qm.simulate.credentials import create_credentials
 
@@ -139,7 +140,7 @@ if simulate:
         include_digital_waveforms=True,
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
-    job = qmm.simulate(config, hello_qua, simulate_config)  # do simulation with qmm
+    job = qmm.simulate(full_config, hello_qua, simulate_config)  # do simulation with qmm
     job.get_simulated_samples().con1.plot()  # visualize played pulses
 
     analog_wf = job.simulated_analog_waveforms()

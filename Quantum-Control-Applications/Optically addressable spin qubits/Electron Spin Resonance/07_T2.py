@@ -7,6 +7,7 @@ from qm.qua import *
 from qm import LoopbackInterface
 from qm import QuantumMachinesManager
 from configuration import *
+import time
 import matplotlib.pyplot as plt
 from macros import get_c2c_time
 from qualang_tools.loops import from_array
@@ -21,18 +22,18 @@ pi_half_len = 160 // 4  # Calibrated pi/2 pulse
 
 delay_min = safe_delay
 delay_max = 20000 // 4
-d_delay = 1000 // 4
+d_delay = 100 // 4
 delay_vec = np.arange(delay_min, delay_max + 0.1, d_delay)
 
 cooldown_time = 10e6 // 4
 
-n_avg = 100
+n_avg = 5000
 
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
     "delay_vec": delay_vec,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -127,7 +128,7 @@ if simulate:
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, T2, simulate_config)
+    job = qmm.simulate(full_config, T2, simulate_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -153,20 +154,22 @@ if simulate:
     )
 
 else:
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     job = qm.execute(T2)  # execute QUA program
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+    data_list=["I", "Q", "iteration"]
+    res_handles = job.result_handles
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
+    while res_handles.is_processing():
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch results
-        I, Q, iteration = results.fetch_all()
+        I, Q, iteration = [results.get(data) for data in data_list]
         # Convert I & Q to Volts
         I = u.demod2volts(I, readout_len)
         Q = u.demod2volts(Q, readout_len)
         # Display progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot(delay_vec * 4, I, label="I")

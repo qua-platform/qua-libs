@@ -14,6 +14,7 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
+import time
 from qm import SimulationConfig
 from qualang_tools.results.data_handler import DataHandler
 
@@ -37,7 +38,7 @@ assert (initialization_len - mw_len) > 4, "The MW must be shorter than the laser
 save_data_dict = {
     "n_avg": n_avg,
     "t_vec": t_vec,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -63,7 +64,7 @@ with program() as calib_delays:
         play("cw" * amp(1), "NV", duration=mw_len * u.ns)
 
         # Measure the photon counted by the SPCM
-        measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len, counts))
+        measure("readout", "SPCM1", time_tagging.analog(times, meas_len, counts))
         # Adjust the wait time between each averaging iteration
         wait(wait_between_runs * u.ns, "SPCM1")
         # Save the time tags to the stream
@@ -90,7 +91,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, calib_delays, simulation_config)
+    job = qmm.simulate(full_config, calib_delays, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -103,19 +104,21 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(calib_delays)
     # Get results from QUA program
     res_handles = job.result_handles
     times_handle = res_handles.get("times")
     iteration_handle = res_handles.get("iteration")
-    times_handle.wait_for_values(1)
-    iteration_handle.wait_for_values(1)
+    
+    # times_handle.wait_for_values(1)
+    # iteration_handle.wait_for_values(1)
     # Data processing initialization
     counts_vec = np.zeros(meas_len, int)
     old_count = 0
 
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
@@ -142,13 +145,12 @@ else:
         plt.ylabel(f"counts [kcps / 1ns]")
         plt.title("Delays")
         plt.pause(0.1)
-
         b_cont = res_handles.is_processing()
         b_last = not (b_cont or b_last)
     # Save results
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
-    save_data_dict.update({"times_handle_data": times_handle})
+    save_data_dict.update({"times_handle_data": counts_vec})
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

@@ -74,7 +74,7 @@ saturation_amp = 0.1
 square_pi_len = 100
 square_pi_amp = 0.1
 # Drag pulses
-drag_coef = 0
+drag_coef = 1
 anharmonicity = -200 * u.MHz
 AC_stark_detuning = 0 * u.MHz
 
@@ -201,7 +201,7 @@ ge_threshold = 0.0
 #############################################
 #                  Config                   #
 #############################################
-config = {
+full_config = {
     "version": 1,
     "controllers": {
         "con1": {

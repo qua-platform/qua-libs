@@ -48,7 +48,7 @@ save_data_dict = {
     "IF_frequencies": frequencies,
     "external_frequencies": freqs_external,
     "frequencies": frequency,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -79,7 +79,6 @@ with program() as qubit_spec:
                 measure(
                     "readout",
                     "resonator",
-                    None,
                     dual_demod.full("cos", "sin", I),
                     dual_demod.full("minus_sin", "cos", Q),
                 )
@@ -121,7 +120,7 @@ def wait_until_job_is_paused(current_job):
 # Run Program #
 ###############
 # Open the quantum machine
-qm = qmm.open_qm(config)
+qm = qmm.open_qm(full_config,close_other_machines=True)
 # Send the QUA program to the OPX, which compiles and executes it. It will stop at the 'pause' statement.
 job = qm.execute(qubit_spec)
 # Creates results handles to fetch the data

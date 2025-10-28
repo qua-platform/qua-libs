@@ -19,8 +19,8 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"  # Write the OPX IP address
-cluster_name = "Cluster_1"  # Write your cluster_name if version >= QOP220
+qop_ip = "172.16.33.115"  # Write the OPX IP address
+cluster_name = "CS_3"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
 #############
@@ -93,8 +93,7 @@ rf_delay = 0 * u.ns
 
 wait_between_runs = 100
 
-config = {
-    "version": 1,
+controller_config = {
     "controllers": {
         con: {
             "type": "opx1000",
@@ -179,6 +178,8 @@ config = {
             },
         }
     },
+}
+logical_config = {
     "elements": {
         "NV": {
             "MWInput": {
@@ -363,3 +364,4 @@ config = {
         "OFF": {"samples": [(0, 0)]},  # [(on/off, ns)]
     },
 }
+full_config = controller_config | logical_config

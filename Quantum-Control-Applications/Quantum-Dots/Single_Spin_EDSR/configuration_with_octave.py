@@ -134,8 +134,7 @@ cw_len = 100  # in ns
 #############################################
 #                  Config                   #
 #############################################
-config = {
-    "version": 1,
+full_config = {
     "controllers": {
         "con1": {
             "analog_outputs": {

@@ -27,10 +27,10 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.results import progress_counter
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
-
+import time
 
 ####################
 # Helper functions #
@@ -81,16 +81,16 @@ def plot_three_complex_arrays(x, arr1, arr2, arr3):
 
 
 def update_readout_length(new_readout_length, ringdown_length):
-    config["pulses"]["readout_pulse"]["length"] = new_readout_length
-    config["integration_weights"]["cosine_weights"] = {
+    full_config["pulses"]["readout_pulse"]["length"] = new_readout_length
+    full_config["integration_weights"]["cosine_weights"] = {
         "cosine": [(1.0, new_readout_length + ringdown_length)],
         "sine": [(0.0, new_readout_length + ringdown_length)],
     }
-    config["integration_weights"]["sine_weights"] = {
+    full_config["integration_weights"]["sine_weights"] = {
         "cosine": [(0.0, new_readout_length + ringdown_length)],
         "sine": [(1.0, new_readout_length + ringdown_length)],
     }
-    config["integration_weights"]["minus_sine_weights"] = {
+    full_config["integration_weights"]["minus_sine_weights"] = {
         "cosine": [(0.0, new_readout_length + ringdown_length)],
         "sine": [(-1.0, new_readout_length + ringdown_length)],
     }
@@ -121,7 +121,7 @@ save_data_dict = {
     "ringdown_len": ringdown_len,
     "division_length": division_length,
     "number_of_divisions": number_of_divisions,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -146,7 +146,6 @@ with program() as opt_weights:
         measure(
             "readout",
             "resonator",
-            None,
             demod.sliced("cos", II, division_length, "out1"),
             demod.sliced("sin", IQ, division_length, "out2"),
             demod.sliced("minus_sin", QI, division_length, "out1"),
@@ -168,7 +167,6 @@ with program() as opt_weights:
         measure(
             "readout",
             "resonator",
-            None,
             demod.sliced("cos", II, division_length, "out1"),
             demod.sliced("sin", IQ, division_length, "out2"),
             demod.sliced("minus_sin", QI, division_length, "out1"),
@@ -204,7 +202,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, opt_weights, simulation_config)
+    job = qmm.simulate(full_config, opt_weights, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -217,17 +215,18 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config,close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(opt_weights)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["iteration"], mode="live")
-    # Live plotting
-    while results.is_processing():
-        # Fetch results
-        iteration = results.fetch_all()[0]
+    res_handles = job.result_handles
+    while res_handles.is_processing():
+        res_handles.get('iteration').wait_for_values(1)
+        # Fetch results    
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
+        iteration = results.get('iteration')
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
 
     # Fetch and reshape the data
     res_handles = job.result_handles

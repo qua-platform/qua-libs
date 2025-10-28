@@ -21,6 +21,7 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+import time
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
 
@@ -35,7 +36,7 @@ n_avg = 1_000_000
 save_data_dict = {
     "n_avg": n_avg,
     "t_vec": t_vec,
-    "config": config,
+    "config": full_config,
 }
 
 ###################
@@ -71,7 +72,7 @@ with program() as hahn_echo:
             align()  # Play the laser pulse after the Echo sequence
             # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
-            measure("readout", "SPCM1", None, time_tagging.analog(times1, meas_len_1, counts1))
+            measure("readout", "SPCM1", time_tagging.analog(times1, meas_len_1, counts1))
             save(counts1, counts_1_st)  # save counts
             wait(wait_between_runs * u.ns, "AOM1")
 
@@ -85,7 +86,7 @@ with program() as hahn_echo:
             align()  # Play the laser pulse after the Echo sequence
             # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
-            measure("readout", "SPCM1", None, time_tagging.analog(times2, meas_len_1, counts2))
+            measure("readout", "SPCM1", time_tagging.analog(times2, meas_len_1, counts2))
             save(counts2, counts_2_st)  # save counts
             wait(wait_between_runs * u.ns, "AOM1")
 
@@ -126,7 +127,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, hahn_echo, simulation_config)
+    job = qmm.simulate(full_config, hahn_echo, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -139,21 +140,23 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(full_config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     # execute QUA program
     job = qm.execute(hahn_echo)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["counts1", "counts2", "counts_dark", "iteration"], mode="live")
+    data_list=["counts1", "counts2", "counts_dark", "iteration"]
+    res_handles = job.result_handles
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
-    while results.is_processing():
+    while res_handles.is_processing():
+        results = res_handles.fetch_results(wait_until_done=False, timeout=60)
         # Fetch results
-        counts1, counts2, counts_dark, iteration = results.fetch_all()
+        counts1, counts2, counts_dark, iteration = [results.get(data) for data in data_list]
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        progress_counter(iteration, n_avg, start_time=time.time())
         # Plot data
         plt.cla()
         plt.plot(8 * t_vec, counts1 / 1000 / (meas_len_1 / u.s), label="x90_idle_x180_idle_x90")
