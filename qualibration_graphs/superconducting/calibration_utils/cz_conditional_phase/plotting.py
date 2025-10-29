@@ -31,7 +31,7 @@ def plot_raw_data_with_fit(
     cols = min(4, n_pairs)  # Max 4 columns
     rows = (n_pairs + cols - 1) // cols  # Ceiling division
 
-    fig, axes = plt.subplots(2 * rows, cols, figsize=(3 * cols, 3 * rows * 2), squeeze=False)
+    fig, axes = plt.subplots(2 * rows, cols, figsize=(4 * cols, 4 * rows * 2), squeeze=False)
     axes = axes.flatten()
 
     for i, qp in enumerate(qubit_pairs):
@@ -67,18 +67,23 @@ def plot_raw_data_with_fit(
 
         # Add secondary plot below: state_control for control_axis=1 averaged over frame
         ax_sub = axes[2 * i + 1]
-        # try:
-        data = fit_results.state_control.sel(qubit_pair=qp_name, control_axis=1).mean(dim="frame")
+
+        data_g = fit_results.g_state_control.sel(qubit_pair=qp_name, control_axis=1).mean(dim="frame")
+        data_e = fit_results.e_state_control.sel(qubit_pair=qp_name, control_axis=1).mean(dim="frame")
+        data_f = fit_results.f_state_control.sel(qubit_pair=qp_name, control_axis=1).mean(dim="frame")
         # Try to get axes for mesh
         amps = fit_result.amp_full.values if "amp_full" in fit_result.coords else fit_result.amp.values
-        pcs = ax_sub.plot(amps, data)
+        ax_sub.plot(amps, data_g, label="g", color="blue")
+        ax_sub.plot(amps, data_e, label="e", color="red")
+        ax_sub.plot(amps, data_f, label="f", color="green")
         ax_sub.axvline(fit_result.optimal_amplitude.item(), color="red", linestyle="--", lw=0.5, label="optimal")
+        ax_sub.axhline(0.0, color="red", linestyle="--", lw=0.5)
+        ax_sub.axhline(1.0, color="red", linestyle="--", lw=0.5)
         ax_sub.set_ylabel("Control qubit population")
         ax_sub.set_xlabel("Amplitude (V)")
         secax2 = ax_sub.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
         secax2.set_xlabel("Detuning (MHz)")
-        # except Exception as e:
-        #     ax_sub.text(0.5, 0.5, f"Plot failed: {e}", ha="center", va="center")
+        ax_sub.legend()
 
     # Hide unused axes
     for i in range(2 * n_pairs, len(axes)):
