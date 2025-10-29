@@ -9,7 +9,7 @@ class NodeSpecificParameters(RunnableParameters):
     num_averages: int = 100
     """Number of averages to perform. Default is 100."""
     amp_range: float = 0.010
-    """Range of amplitude variation around the nominal value. Default is 0.010."""
+    """Range of amplitude variation around the nominal value, will scan between center - range and center + range. Default is 0.010."""
     amp_step: float = 0.001
     """Step size for amplitude scanning. Default is 0.001."""
     num_frame_rotations: int = 10

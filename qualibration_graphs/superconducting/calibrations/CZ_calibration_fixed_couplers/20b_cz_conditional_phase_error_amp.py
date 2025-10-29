@@ -25,7 +25,7 @@ from quam_config import Quam
 
 # %% {Initialisation}
 description = """
-CALIBRATION OF THE CONTROLLED-PHASE (CPHASE) OF THE CZ GATE
+CALIBRATION OF THE CONTROLLED-PHASE (CPHASE) OF THE CZ GATE with error amplification
 
 This sequence calibrates the CPhase of the CZ gate by scanning the pulse amplitude and measuring the
 resulting phase of the target qubit. The calibration compares two scenarios:
@@ -35,16 +35,20 @@ resulting phase of the target qubit. The calibration compares two scenarios:
 
 For each amplitude, we measure:
 1. The phase difference of the target qubit between the two scenarios
-2. The amount of leakage to the |f> state when the control qubit is in the excited state
+2. The average population in the |g>, |e>, and |f> states of the control qubit when the control qubit is in the excited state.
+
+**Error amplification:**
+To improve sensitivity to small phase errors, the CZ gate is applied repeatedly (multiple times in sequence) for each measurement. This introduces an extra dimension to the experiment: the number of repeated CZ operations. By increasing the number of repetitions, small phase errors accumulate, making them easier to detect and fit.
 
 The calibration process involves:
 1. Applying a CZ gate with varying amplitudes
-2. Measuring the phase of the target qubit for both control qubit states
-3. Calculating the phase difference
-4. Measuring the population in the |f> state to quantify leakage
+2. Repeating the CZ operation a variable number of times (error amplification dimension)
+3. Measuring the phase of the target qubit for both control qubit states
+4. Calculating the phase difference
+5. Measuring the population fractions of the |g>, |e>, and |f> states on the control qubit to quantify leakage
 
 The optimal CZ gate amplitude is determined by finding the point where:
-1. The phase difference is closest to π (0.5 in normalized units)
+1. The phase difference (after error amplification) is closest to π (0.5 in normalized units)
 2. The leakage to the |f> state is minimized
 
 Prerequisites:
@@ -160,7 +164,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     with for_(count, 0, count < n_op, count + 1):
                                         # play the CZ gate
                                         qp.macros[operation_name].apply(amplitude_scale_control=amp)
-                                        qp.wait(4) # wait for flux to settle
+                                        qp.wait(4)  # wait for flux to settle
                                     # rotate the frame by 𝜋/2 for odd number of operations
                                     with if_(((n_op & 1) == 0) & (control_initial == 1)):
                                         assign(frame_odd, frame - 0.5)
