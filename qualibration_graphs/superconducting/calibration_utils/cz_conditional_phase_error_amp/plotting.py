@@ -73,15 +73,26 @@ def plot_raw_data_with_fit(
         ax_sub = axes[2 * i + 1]
 
         try:
-            data = fit_results.state_control.sel(qubit_pair=qp_name, control_axis=1).mean(dim="frame")
-            pcs = ax_sub.pcolormesh(X, Y, data)
-            ax_sub.axvline(fr.optimal_amplitude.item(), color="lime", lw=2, label="optimal")
-            ax_sub.set_ylabel("# CZ operations")
-            ax_sub.set_xlabel("Amplitude (V)")
-            cbar = fig.colorbar(pcs, ax=ax_sub, shrink=0.85)
-            cbar.set_label("Control qubit population")
-            secax = ax_sub.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
-            secax.set_xlabel("Detuning (MHz)")
+            data_g = (
+                fit_results.g_state_control.sel(qubit_pair=qp_name, control_axis=1)
+                .sel(amp=fr.optimal_amplitude, method="nearest")
+                .mean(dim="frame")
+            )
+            data_e = (
+                fit_results.e_state_control.sel(qubit_pair=qp_name, control_axis=1)
+                .sel(amp=fr.optimal_amplitude, method="nearest")
+                .mean(dim="frame")
+            )
+            data_f = (
+                fit_results.f_state_control.sel(qubit_pair=qp_name, control_axis=1)
+                .sel(amp=fr.optimal_amplitude, method="nearest")
+                .mean(dim="frame")
+            )
+            ax_sub.plot(n_ops, data_g, label="g", color="blue")
+            ax_sub.plot(n_ops, data_f, label="f", color="green")
+            ax_sub.set_ylabel("Control qubit state fractions")
+            ax_sub.set_xlabel("# CZ operations")
+            ax_sub.legend()
 
         except Exception as e:
             ax_sub.text(0.5, 0.5, f"Plot failed: {e}", ha="center", va="center")

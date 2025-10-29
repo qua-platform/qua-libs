@@ -130,7 +130,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         if node.parameters.use_state_discrimination:
             state_c = [declare(int) for _ in range(num_qubit_pairs)]
             state_t = [declare(int) for _ in range(num_qubit_pairs)]
-            state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state_cg_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state_ce_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state_cf_st = [declare_stream() for _ in range(num_qubit_pairs)]
             state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
 
         for qubit in node.machine.active_qubits:
@@ -173,7 +175,23 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                         # measure both qubits
                                         qp.qubit_control.readout_state_gef(state_c[ii])
                                         qp.qubit_target.readout_state(state_t[ii])
-                                        save(state_c[ii], state_c_st[ii])
+                                        # save each state outcome to its corresponding stream
+                                        with switch_(state_c[ii]):
+                                            with case_(0):
+                                                wait(4)
+                                                save(1, state_cg_st[ii])
+                                                save(0, state_ce_st[ii])
+                                                save(0, state_cf_st[ii])
+                                            with case_(1):
+                                                wait(4)
+                                                save(0, state_cg_st[ii])
+                                                save(1, state_ce_st[ii])
+                                                save(0, state_cf_st[ii])
+                                            with default_():
+                                                wait(4)
+                                                save(0, state_cg_st[ii])
+                                                save(0, state_ce_st[ii])
+                                                save(1, state_cf_st[ii])
                                         save(state_t[ii], state_t_st[ii])
                                     else:
                                         qp.qubit_control.resonator.measure("readout", qua_vars=(I_c[ii], Q_c[ii]))
@@ -187,9 +205,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n")
             for i in range(num_qubit_pairs):
                 if node.parameters.use_state_discrimination:
-                    state_c_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).buffer(
+                    state_cg_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).buffer(
                         num_operations
-                    ).average().save(f"state_control{i + 1}")
+                    ).average().save(f"g_state_control{i + 1}")
+                    state_ce_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).buffer(
+                        num_operations
+                    ).average().save(f"e_state_control{i + 1}")
+                    state_cf_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).buffer(
+                        num_operations
+                    ).average().save(f"f_state_control{i + 1}")
                     state_t_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).buffer(
                         num_operations
                     ).average().save(f"state_target{i + 1}")

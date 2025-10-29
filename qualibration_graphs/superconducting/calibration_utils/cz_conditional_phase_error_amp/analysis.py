@@ -105,6 +105,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
 
     # Derive optimal amplitude per qubit pair using robust column cost over number_of_operations.
     opt_amps = []
+    opt_idxs = []
     successes = []
     qp_names = ds_fit.qubit_pair.values
     for qp in qp_names:
@@ -121,14 +122,19 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             # Ensure (ny, nx) ordering (number_of_operations, amp)
             Z = phase.transpose("number_of_operations", "amp").values
             x_star = _fit_full_amp(X, Z)
+            idx = int(np.argmin(np.abs(X - x_star)))
             opt_amps.append(x_star)
+            opt_idxs.append(idx)
             successes.append(bool(np.isfinite(x_star)))
         except Exception:
             opt_amps.append(np.nan)
+            opt_idxs.append(np.nan)
             successes.append(False)
 
     ds_fit = ds_fit.assign_coords({"optimal_amplitude": ("qubit_pair", np.array(opt_amps))})
     ds_fit["optimal_amplitude"] = ds_fit["optimal_amplitude"].astype(float)
+    ds_fit = ds_fit.assign_coords({"optimal_index": ("qubit_pair", np.array(opt_idxs))})
+    ds_fit["optimal_index"] = ds_fit["optimal_index"].astype(int)
     ds_fit = ds_fit.assign_coords({"success": ("qubit_pair", np.array(successes, dtype=bool))})
 
     # Build FitResults dict
