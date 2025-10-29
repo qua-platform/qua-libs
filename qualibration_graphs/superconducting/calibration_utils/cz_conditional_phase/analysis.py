@@ -159,9 +159,13 @@ def fit_routine(da):
 
     except Exception as e:
         # Fallback: find amplitude closest to π phase difference (0.5 in normalized units)
-        optimal_amp = float(np.abs(phase_diff - 0.5).idxmin("amp_full"))
-        fitted_curve = np.full_like(phase_diff.values, np.nan)
+        optimal_amp = np.nan
+        fitted_curve = (phase_diff.dims, np.full_like(phase_diff.values, np.nan))
         success = False
+
+    if optimal_amp is np.nan or not (np.min(da.amp_full.values) <= optimal_amp <= np.max(da.amp_full.values)):
+        success = False
+        optimal_amp = np.nan
 
     da = da.assign(
         optimal_amplitude=optimal_amp,
