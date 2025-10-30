@@ -82,8 +82,9 @@ if __name__ == "__main__":
     # Simple dephasing times (same time-units as durations below)
     dev = TwoSpinDevice(
         n=2,
-        frame="lab",
+        frame="rot",
         omega=(omega1, omega2),
+        ref_omega=(omega1, omega2),
         Jxx=J, Jyy=J, Jzz=J,
         Tphi1=500.0,
         Tphi2=500.0,
@@ -192,11 +193,11 @@ if __name__ == "__main__":
     # Chevron parameters
     amp_chevron = 1.0e-2       # Fixed amplitude
     delta_omega = 5e-2         # Detuning window around omega1
-    n = 31                     # Grid resolution
+    n = 61                     # Grid resolution
 
     # Define sweep parameters
     drive_freqs = jnp.linspace(-delta_omega, delta_omega, n) + omega1
-    pulse_times = jnp.linspace(1e-5, 1000.0, n)
+    pulse_times = jnp.linspace(1e-5, 2000.0, n)
 
     # Circuit factory for 2D sweep
     # Takes TWO parameters: duration and drive frequency
@@ -254,6 +255,7 @@ if __name__ == "__main__":
     plt.title("Rabi Chevron: ⟨Z₀⟩ vs (Δ, duration)")
     plt.colorbar(label="⟨Z₀⟩")
     plt.tight_layout()
+    plt.show()
 
     # =========================================================================
     # Example 4: 2D Exchange Sweep (J_max × duration)

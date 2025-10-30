@@ -243,7 +243,7 @@ class TwoSpinDevice(QuantumDeviceBase):
       where Δ_j = ω_j - ω_ref,j  (if ref_omega provided)
     """
     n: int = 2
-    frame: Literal["lab","rot"] = "rot"
+    frame: Literal["lab","rot"] = "lab"
 
     # physical qubit angular frequencies (rad/s)
     omega: Sequence[float] = (0.0, 0.0)
