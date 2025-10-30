@@ -1,7 +1,12 @@
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from quantum_dots.quam_config import Quam
 
+from quam.core import quam_dataclass
+from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD
+
+@quam_dataclass
+class Quam(BaseQuamQD): 
+    pass
 
 description = """
         CLOSE ALL OTHER QMs.
