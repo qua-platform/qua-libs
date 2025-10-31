@@ -1,12 +1,6 @@
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-
-from quam.core import quam_dataclass
-from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD
-
-@quam_dataclass
-class Quam(BaseQuamQD): 
-    pass
+from quam_config import Quam
 
 description = """
         CLOSE ALL OTHER QMs.
@@ -18,7 +12,7 @@ node = QualibrationNode[NodeParameters, Quam](
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load()
+node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 
 
 # %% {Close_all_quantum_machines}
