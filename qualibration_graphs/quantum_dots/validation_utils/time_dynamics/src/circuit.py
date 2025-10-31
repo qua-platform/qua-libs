@@ -133,7 +133,7 @@ def Y(which: int, t0, pulse_class=GaussianPulse, **kwargs) -> Gate:
     return Gate("Y", which, pulse, "drive")
 
 
-def HeisenbergRampGate(
+def ExchangeRampGate(
     which: tuple[int, int], t0, pulse_class=CouplingPulse, **kwargs
 ) -> Gate:
     """
@@ -162,7 +162,7 @@ def HeisenbergRampGate(
 
     Examples
     --------
-    >>> gate = HeisenbergRampGate(
+    >>> gate = ExchangeRampGate(
     ...     which=(0, 1), t0=0.0, Jmax=2*np.pi*10e6,
     ...     t_ramp=20e-9, duration=100e-9, shape="cos"
     ... )
@@ -255,7 +255,7 @@ class Circuit:
         couplings = [(g.which, g.pulse) for g in self.gates if g.type == "coupling"]
 
         # Build time-dependent Hamiltonian
-        Ht = self.device.hamiltonian_with_controls(drives=drives, couplings=couplings)
+        Ht = self.device.construct_h(drives=drives, couplings=couplings)
 
         # Determine time points
         tsave = self.tsave
