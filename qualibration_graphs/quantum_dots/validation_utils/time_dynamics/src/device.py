@@ -16,11 +16,10 @@ TwoSpinDevice
     Specialized device for two-qubit Heisenberg-type interactions,
     supporting both lab and rotating frames
 """
-
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Sequence, Protocol, Tuple
+from typing import Callable, Literal, Sequence, Tuple
 
 import dynamiqs as dq
 import jax.numpy as jnp
@@ -29,348 +28,256 @@ from .pulse import GaussianPulse, CouplingPulse
 from .utils import embed_two_qubit_op, embed_single_qubit_op, kron_n
 
 
-# --- Base protocol (for typing pulses in signatures) ---
-class PulseLike(Protocol):
-    """
-    Protocol for pulse-like objects.
-
-    Any object implementing this protocol can be used as a pulse in
-    device Hamiltonians.
-    """
-    def timecallable(self):
-        """Return a callable that evaluates the pulse as a function of time."""
-        ...
-
-# =======================
-# Base class (generic)
-# =======================
+# =============================================================================
+# Base class (simple orchestrator; hooks implemented by child classes)
+# =============================================================================
 @dataclass(frozen=True)
 class QuantumDeviceBase:
-    """
-    Generic quantum device base.
-    Override `static_h()` for your model's time-independent part.
-    You can also override `_drive_xy_ops()` or `_effective_drive_phase_evolution()`
-    to change how drives are mapped.
-    """
     n: int
-    frame: Literal["lab","rot"] = "rot"
+    frame: Literal["lab", "rot"] = "rot"
 
-    # ---- overridables ----
-    def static_h(self) -> dq.QArray:
-        """Return time-independent Hamiltonian as a dq.QArray with dims=(2,)*n."""
-        return 0.0 * kron_n([dq.eye(2)]*self.n)  # default: zero
-
-    def _drive_xy_ops(self, which: int):
-        """
-        Return the (X_j, Y_j) operators for a single-qubit drive.
-
-        Parameters
-        ----------
-        which : int
-            Index of the qubit to drive (0-based)
-
-        Returns
-        -------
-        tuple[dq.QArray, dq.QArray]
-            Tuple of (X_j, Y_j) operators acting on qubit `which`
-        """
-        return (
-            embed_single_qubit_op(dq.sigmax(), which, self.n),
-            embed_single_qubit_op(dq.sigmay(), which, self.n)
-        )
-
-    def _effective_drive_phase_evolution(self, which: int, drive_freq: jnp.ndarray | None):
-        """
-        Return phase evolution function g(t) = exp(i * ω_eff * t).
-
-        Default implementation assumes rotating frame with zero effective
-        frequency unless a drive_freq is specified. Child classes can override
-        to implement lab/rotating frame logic.
-
-        Parameters
-        ----------
-        which : int
-            Index of the driven qubit
-        drive_freq : jnp.ndarray | None
-            Drive carrier frequency in rad/s, or None for on-resonance drive
-
-        Returns
-        -------
-        Callable[[jnp.ndarray], jnp.ndarray]
-            Function that computes exp(i * ω_eff * t)
-        """
-        omega_eff = 0.0 if drive_freq is None else drive_freq
-
-        def g(t):
-            return jnp.exp(1j * (omega_eff * t))
-
-        return g
-
-    # ---- fixed composition logic (reused by all children) ----
-    def hamiltonian_with_pulses(self, pulses: Sequence[tuple[int, GaussianPulse]]) -> dq.TimeQArray:
-        """
-        Build time-dependent Hamiltonian with single-qubit drive pulses.
-
-        Constructs H(t) = H_static + Σ_j [Re(s_j(t)) X_j + Im(s_j(t)) Y_j],
-        where s_j(t) = (amp * envelope * exp(i*phase)) * exp(i*ω_eff*t).
-
-        The drive is decomposed into X and Y components to handle the
-        complex-valued control in a way compatible with dynamiqs.
-
-        Parameters
-        ----------
-        pulses : Sequence[tuple[int, GaussianPulse]]
-            List of (qubit_index, pulse) tuples
-
-        Returns
-        -------
-        dq.TimeQArray
-            Time-dependent Hamiltonian operator
-        """
-        Ht = dq.constant(self.static_h())
-
-        for which, pulse in pulses:
-            s_base = pulse.timecallable()  # complex envelope
-            wobble = self._effective_drive_phase_evolution(
-                which, getattr(pulse, "drive_freq", None)
-            )
-
-            def s_re(t):
-                val = s_base(t) * wobble(t)
-                return jnp.real(val)
-
-            def s_im(t):
-                val = s_base(t) * wobble(t)
-                return jnp.imag(val)
-
-            Xj, Yj = self._drive_xy_ops(which)
-            Ht = Ht + dq.modulated(s_re, Xj) + dq.modulated(s_im, Yj)
-
-        return Ht
-    def hamiltonian_with_controls(
+    def construct_h(
         self,
         drives: Sequence[tuple[int, GaussianPulse]] = (),
-        couplings: Sequence[tuple[Tuple[int, int], CouplingPulse, str]] = (),
+        couplings: Sequence[tuple[Tuple[int, int], CouplingPulse]] = (),  # Heisenberg only
     ) -> dq.TimeQArray:
         """
-        Build complete time-dependent Hamiltonian with drives and couplings.
-
-        Combines the static Hamiltonian with:
-        - Single-qubit drive pulses (X/Y control)
-        - Two-qubit Heisenberg-type coupling modulation
-
-        Parameters
-        ----------
-        drives : Sequence[tuple[int, GaussianPulse]], optional
-            List of (qubit_index, pulse) tuples for single-qubit drives
-        couplings : Sequence[tuple[tuple[int, int], CouplingPulse, str]], optional
-            List of ((qubit_i, qubit_j), coupling_pulse, kind) tuples for
-            time-dependent two-qubit interactions
-
-        Returns
-        -------
-        dq.TimeQArray
-            Full time-dependent Hamiltonian H(t)
-
-        Notes
-        -----
-        The coupling term uses the Heisenberg form:
-        H_coupling(t) = J(t) * 0.25 * (X_i X_j + Y_i Y_j + Z_i Z_j)
+        Compose H(t) = H_static + H_dynamic(t) + H_drives(t) + H_pulses(t)
         """
-        Ht = dq.constant(self.static_h())
+        # Static part (built at Python time; safe for jit/vmap)
+        Ht = dq.constant(self._static_h())
 
-        # --- single-qubit drives ---
+        # Intrinsic time-dependent pieces (e.g., RW exchange for constant Jxx/Jyy)
+        for f, op in self._dynamic_h():
+            Ht = Ht + dq.modulated(f, op)
+
+        # Single-qubit drives
         for which, pulse in drives:
-            s_base = pulse.timecallable()
-            wobble = self._effective_drive_phase_evolution(
-                which, getattr(pulse, "drive_freq", None)
-            )
+            for f, op in self._drive_h(which, pulse):
+                Ht = Ht + dq.modulated(f, op)
 
-            def s_re(t):
-                return jnp.real(s_base(t) * wobble(t))
-
-            def s_im(t):
-                return jnp.imag(s_base(t) * wobble(t))
-
-            Xj, Yj = self._drive_xy_ops(which)
-            Ht = Ht + dq.modulated(s_re, Xj) + dq.modulated(s_im, Yj)
-
-        # --- two-qubit couplings (Heisenberg form) ---
+        # Heisenberg two-qubit pulses
         for (i, j), cpulse in couplings:
-            Jt = cpulse.timecallable()  # time-dependent coupling strength J(t)
-            XX = embed_two_qubit_op(dq.sigmax(), dq.sigmax(), i, j, self.n)
-            YY = embed_two_qubit_op(dq.sigmay(), dq.sigmay(), i, j, self.n)
-            ZZ = embed_two_qubit_op(dq.sigmaz(), dq.sigmaz(), i, j, self.n)
-            # Heisenberg coupling: J(t) * (XX + YY + ZZ) / 4
-            op = 0.25 * (XX + YY + ZZ)
-
-            Ht = Ht + dq.modulated(Jt, op)
+            for f, op in self._pulse_h(i, j, cpulse):
+                Ht = Ht + dq.modulated(f, op)
 
         return Ht
+
+    # ---------------- hooks to implement in child classes ----------------
+    def _static_h(self) -> dq.QArray:
+        raise NotImplementedError("_static_h not implemented")
+
+    def _dynamic_h(self) -> Sequence[tuple[Callable[[jnp.ndarray], jnp.ndarray], dq.QArray]]:
+        # Default: no intrinsic time dependence
+        return ()
+
+    def _drive_h(self, which: int, pulse: GaussianPulse) -> Sequence[tuple[Callable[[jnp.ndarray], jnp.ndarray], dq.QArray]]:
+        raise NotImplementedError("_drive_h not implemented")
+
+    def _pulse_h(self, i: int, j: int, cpulse: CouplingPulse) -> Sequence[tuple[Callable[[jnp.ndarray], jnp.ndarray], dq.QArray]]:
+        raise NotImplementedError("_pulse_h not implemented")
+
+    # --------- tiny helpers, reusable by children ---------
+    def _effective_drive_phase_evolution(self, which: int, drive_freq: jnp.ndarray | None):
+        # Child can override to subtract ref_omega per qubit.
+        omega_eff = jnp.asarray(0.0) if drive_freq is None else drive_freq
+        def g(t): return jnp.exp(1j * (omega_eff * t))
+        return g
+
+    def _xy_ops(self, which: int):
+        return (
+            embed_single_qubit_op(dq.sigmax(), which, self.n),
+            embed_single_qubit_op(dq.sigmay(), which, self.n),
+        )
 
     def _jump_operators(self) -> Sequence[dq.QArray]:
         """
-        Return jump operators for master equation simulations.
+        Pure dephasing jump operators for each qubit.
 
-        Override this method in subclasses to define decoherence channels
-        for use with mesolve.
-
-        Returns
-        -------
-        Sequence[dq.QArray]
-            List of jump (Lindblad) operators
-
-        Raises
-        ------
-        NotImplementedError
-            If not overridden in a subclass
+        Implements L_j = sqrt(γ_φ,j) * Z_j with γ_φ,j = 1/(2*Tφ_j).
+        This yields single-qubit coherence decay exp(-t / Tφ_j).
         """
-        raise NotImplementedError("Subclass must implement _jump_operators for master equation")
+        raise NotImplementedError("_jump_operators not implemented")
 
-# ===================================
-# Child class: Two-spin Heisenberg / ZZ
-# ===================================
+# =============================================================================
+# Two-spin Heisenberg/ZZ with rotating-wave exchange in ROT
+# =============================================================================
 @dataclass(frozen=True)
 class TwoSpinDevice(QuantumDeviceBase):
-    """
-    Two-spin device that supports both LAB and ROT frames.
-
-    LAB frame:
-      H = 0.5 * Σ_j ω_j Z_j + 0.25*(Jxx X⊗X + Jyy Y⊗Y + Jzz Z⊗Z)
-
-    ROT frame:
-      H = 0.5 * Σ_j Δ_j Z_j + 0.25*(Jzz Z⊗Z)   (Jxx/Jyy typically RWA-dropped)
-      where Δ_j = ω_j - ω_ref,j  (if ref_omega provided)
-    """
     n: int = 2
-    frame: Literal["lab","rot"] = "lab"
+    frame: Literal["lab", "rot"] = "lab"
 
     # physical qubit angular frequencies (rad/s)
     omega: Sequence[float] = (0.0, 0.0)
-    # per-qubit reference frame (only used in 'rot' to set detuning)
     ref_omega: Sequence[float] | None = None
 
-    # Couplings
-    Jxx: float = 0.0
-    Jyy: float = 0.0
-    Jzz: float = 0.0
+    # constant couplings
+    J0: float = 0.0
 
+    # (optional) dephasing parameters for jump ops (not used here)
     Tphi1: float = 1e6
     Tphi2: float = 1e6
 
-    # ---- overrides ----
-    def static_h(self) -> dq.QArray:
-        """
-        Build the static (time-independent) Hamiltonian.
+    # ---------- math helpers ----------
+    def _rw_decompose(self, op: dq.QArray):
+        # H(t) = op e^{iωt} + op† e^{-iωt} = cos(ωt)*(op+op†) + sin(ωt)*i(op-op†)
+        op_dag = op.conj().mT
+        A = op + op_dag                  # Hermitian
+        B = 1j * (op - op_dag)           # Hermitian
+        return A, B
 
-        In LAB frame:
-            H = 0.5 * Σ_j ω_j Z_j + 0.25 * (Jxx X⊗X + Jyy Y⊗Y + Jzz Z⊗Z)
+    def _ref_freqs_ij(self, i: int, j: int) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+        # Keep as JAX arrays (jit/vmap friendly); no float(...) casts
+        if self.ref_omega is None:
+            w_i = jnp.asarray(0.0)
+            w_j = jnp.asarray(0.0)
+        else:
+            w_i = jnp.asarray(self.ref_omega[i])
+            w_j = jnp.asarray(self.ref_omega[j])
+        Delta = w_i - w_j
+        Sigma = w_i + w_j
+        return w_i, w_j, Delta, Sigma
 
-        In ROT (rotating) frame:
-            H = 0.5 * Σ_j Δ_j Z_j + 0.25 * Jzz Z⊗Z
-            where Δ_j = ω_j - ω_ref,j
+    def _ff_ops_ij(self, i: int, j: int):
+        sp = 0.5 * (dq.sigmax() + 1j * dq.sigmay())
+        sm = 0.5 * (dq.sigmax() - 1j * dq.sigmay())
+        S_ip_S_jm = embed_two_qubit_op(sp, sm, i, j, self.n)  # σ_i^+ σ_j^-
+        S_ip_S_jp = embed_two_qubit_op(sp, sp, i, j, self.n)  # σ_i^+ σ_j^+
+        return S_ip_S_jm, S_ip_S_jp
 
-        Returns
-        -------
-        dq.QArray
-            Static Hamiltonian operator
-        """
+    # ---------- hooks ----------
+    def _static_h(self) -> dq.QArray:
         H = 0.0 * kron_n([dq.eye(2)] * self.n)
 
         if self.frame == "lab":
-            # Zeeman terms: ω_j Z_j / 2
-            for j, w in enumerate(self.omega):
-                if w != 0.0:
-                    H = H + 0.5 * w * embed_single_qubit_op(dq.sigmaz(), j, self.n)
-        else:  # 'rot'
-            # Detuning terms: Δ_j Z_j / 2, where Δ_j = ω_j - ω_ref,j
-            if self.ref_omega is not None:
-                for j, (w, wref) in enumerate(zip(self.omega, self.ref_omega)):
-                    delta = w - wref
-                    if delta != 0.0:
-                        H = H + 0.5 * delta * embed_single_qubit_op(dq.sigmaz(), j, self.n)
+            # Zeeman: add terms unconditionally; zeros no-op
+            for q, w in enumerate(self.omega):
+                H = H + 0.5 * jnp.asarray(w) * embed_single_qubit_op(dq.sigmaz(), q, self.n)
+            # Static couplings in LAB
+            H = H + 0.25 * self.J0 * kron_n([dq.sigmax(), dq.sigmax()] + [dq.eye(2)] * (self.n - 2))
+            H = H + 0.25 * self.J0 * kron_n([dq.sigmay(), dq.sigmay()] + [dq.eye(2)] * (self.n - 2))
+            H = H + 0.25 * self.J0 * kron_n([dq.sigmaz(), dq.sigmaz()] + [dq.eye(2)] * (self.n - 2))
 
-        # Two-qubit coupling terms
-        if self.n >= 2:
-            if self.Jxx != 0.0:
-                H = H + 0.25 * self.Jxx * kron_n(
-                    [dq.sigmax(), dq.sigmax()] + [dq.eye(2)] * (self.n - 2)
-                )
-            if self.Jyy != 0.0:
-                H = H + 0.25 * self.Jyy * kron_n(
-                    [dq.sigmay(), dq.sigmay()] + [dq.eye(2)] * (self.n - 2)
-                )
-            if self.Jzz != 0.0:
-                H = H + 0.25 * self.Jzz * kron_n(
-                    [dq.sigmaz(), dq.sigmaz()] + [dq.eye(2)] * (self.n - 2)
-                )
+        elif self.frame == "rot":
+            # Detunings: Δ_j Z_j / 2, where Δ_j = ω_j - ω_ref,j (0 if no ref_omega)
+            if self.ref_omega is None:
+                ref = (0.0,) * self.n
+            else:
+                ref = self.ref_omega
+            for q, (w, wref) in enumerate(zip(self.omega, ref)):
+                delta = jnp.asarray(w) - jnp.asarray(wref)
+                H = H + 0.5 * delta * embed_single_qubit_op(dq.sigmaz(), q, self.n)
+            # Keep ZZ static in ROT
+            H = H + 0.25 * self.J0 * kron_n([dq.sigmaz(), dq.sigmaz()] + [dq.eye(2)] * (self.n - 2))
+
+        else:
+            raise NotImplementedError
+
         return H
 
-    def _effective_drive_phase_evolution(self, which: int, drive_freq: jnp.ndarray | None):
-        """
-        Compute frame-dependent phase evolution for drives.
+    def _dynamic_h(self):
+        if self.frame != "rot":
+            return ()
+        i, j = 0, 1
+        _, _, Delta, Sigma = self._ref_freqs_ij(i, j)
+        S_ip_S_jm, S_ip_S_jp = self._ff_ops_ij(i, j)
 
-        Returns g(t) = exp(i * ω_eff * t) where:
-        - LAB frame: ω_eff = drive_freq (or 0 if None)
-        - ROT frame: ω_eff = drive_freq - ω_ref[which] (or 0 if None)
+        Jflip_scale = (self.J0 + self.J0) / 4.0
 
-        Parameters
-        ----------
-        which : int
-            Index of the driven qubit
-        drive_freq : jnp.ndarray | None
-            Drive carrier frequency in rad/s
+        terms = []
 
-        Returns
-        -------
-        Callable[[jnp.ndarray], jnp.ndarray]
-            Phase evolution function g(t)
-        """
-        if self.frame == "lab":
-            omega_eff = 0.0 if drive_freq is None else drive_freq
-        else:
-            if drive_freq is None:
-                omega_eff = 0.0
+        A, B = self._rw_decompose(Jflip_scale * S_ip_S_jm)
+        D = Delta
+        terms.extend([(lambda t, D=D: jnp.cos(D * t), A),
+                      (lambda t, D=D: jnp.sin(D * t), B)])
+
+        return terms
+
+    def _drive_h(self, which: int, pulse: GaussianPulse) -> Sequence[tuple[Callable[[jnp.ndarray], jnp.ndarray], dq.QArray]]:
+        # Override to subtract per-qubit ref frequency in ROT
+        def wobble_rot(which: int, drive_freq):
+            if self.frame == "lab":
+                omega_eff = jnp.asarray(0.0) if drive_freq is None else drive_freq
             else:
-                wref = 0.0 if self.ref_omega is None else self.ref_omega[which]
-                omega_eff = drive_freq - wref
+                if drive_freq is None:
+                    omega_eff = jnp.asarray(0.0)
+                else:
+                    wref = jnp.asarray(0.0) if self.ref_omega is None else jnp.asarray(self.ref_omega[which])
+                    omega_eff = drive_freq - wref
+            return lambda t: jnp.exp(1j * (omega_eff * t))
 
-        def g(t):
-            return jnp.exp(1j * (omega_eff * t))
+        s_base = pulse.timecallable()
+        wobble = wobble_rot(which, getattr(pulse, "drive_freq", None))
+        Xj, Yj = self._xy_ops(which)
 
-        return g
+        def s_re(t): return jnp.real(s_base(t) * wobble(t))
+        def s_im(t): return jnp.imag(s_base(t) * wobble(t))
+
+        return ((s_re, Xj), (s_im, Yj))
+
+    def _pulse_h(self, i: int, j: int, cpulse: CouplingPulse) -> Sequence[
+        tuple[Callable[[jnp.ndarray], jnp.ndarray], dq.QArray]]:
+        """
+        Heisenberg coupling pulse J(t).
+        We automatically subtract any DC baseline from the pulse so that
+        static couplings (Jxx/Jyy/Jzz) carry the DC and pulses are pure modulation.
+        """
+        Jt_raw = cpulse.timecallable()
+
+        # --- Automatic DC subtraction (JIT/vmap-safe) ---
+        # We look for common baseline attributes on the pulse; if missing, they default to 0.
+        # This avoids Python branching and keeps values as JAX scalars.
+
+        def Jt(t):
+            # zero-mean modulation used for both ZZ and RW XX+YY
+            return Jt_raw(t) - self.J0
+
+        out: list[tuple[Callable[[jnp.ndarray], jnp.ndarray], dq.QArray]] = []
+
+        # ZZ always static under modulation
+        ZZ = embed_two_qubit_op(dq.sigmaz(), dq.sigmaz(), i, j, self.n)
+        out.append((Jt, 0.25 * ZZ))
+
+        if self.frame == "rot":
+            # XX+YY -> RW flip-flop with scale J(t)/2 on σ_i^+σ_j^- + h.c.
+            S_ip_S_jm, _ = self._ff_ops_ij(i, j)
+            A, B = self._rw_decompose(S_ip_S_jm)
+            _, _, Delta, _ = self._ref_freqs_ij(i, j)
+            D = Delta  # capture JAX value
+
+            def c(t, D=D):
+                return 0.5 * Jt(t) * jnp.cos(D * t)
+
+            def s(t, D=D):
+                return 0.5 * Jt(t) * jnp.sin(D * t)
+
+            # Use extend for clarity when adding multiple terms
+            out.extend([(c, A), (s, B)])
+        else:
+            # LAB: static (XX+YY)/4 * J(t)
+            XX = embed_two_qubit_op(dq.sigmax(), dq.sigmax(), i, j, self.n)
+            YY = embed_two_qubit_op(dq.sigmay(), dq.sigmay(), i, j, self.n)
+            out.append((Jt, 0.25 * (XX + YY)))
+
+        return out
 
     def _jump_operators(self) -> Sequence[dq.QArray]:
         """
-        Construct pure dephasing jump operators for each qubit.
+        Pure dephasing jump operators for each qubit.
 
-        Implements Lindblad operators L_j = sqrt(γ_φ,j) * Z_j where
-        γ_φ,j = 1/(2*T_φ,j). This produces exp(-t/T_φ) decay of
-        off-diagonal density matrix elements.
-
-        Returns
-        -------
-        Sequence[dq.QArray]
-            List of jump operators [L_φ,1, L_φ,2, ...]
-
-        Notes
-        -----
-        The master equation is:
-            dρ/dt = -i[H, ρ] + Σ_j γ_φ,j (Z_j ρ Z_j - ρ)
-        which is equivalent to Lindblad form with L_j = sqrt(γ_φ,j) Z_j
+        Implements L_j = sqrt(γ_φ,j) * Z_j with γ_φ,j = 1/(2*Tφ_j).
+        This yields single-qubit coherence decay exp(-t / Tφ_j).
         """
-        # Dephasing rates: γ_φ = 1/(2*T_φ)
-        gamma_phi1 = 0.5 / self.Tphi1
-        gamma_phi2 = 0.5 / self.Tphi2
+        # JAX-friendly scalars
+        gamma_phi1 = jnp.asarray(0.5 / self.Tphi1)
+        gamma_phi2 = jnp.asarray(0.5 / self.Tphi2)
 
-        # Jump operators: L = sqrt(γ) * σ_z
-        Lphi1 = jnp.sqrt(gamma_phi1) * dq.tensor(dq.sigmaz(), dq.eye(self.n))
-        Lphi2 = jnp.sqrt(gamma_phi2) * dq.tensor(dq.eye(self.n), dq.sigmaz())
+        Lphi1 = jnp.sqrt(gamma_phi1) * embed_single_qubit_op(dq.sigmaz(), 0, self.n)
+        Lphi2 = jnp.sqrt(gamma_phi2) * embed_single_qubit_op(dq.sigmaz(), 1, self.n)
 
-        dims_2q = (self.n, self.n)
-
-        jump_ops = [
-            dq.asqarray(Lphi1, dims=dims_2q),
-            dq.asqarray(Lphi2, dims=dims_2q),
+        # If dynamiqs needs explicit subsystem dims, pass (2, 2) for two qubits.
+        # (If embed_* already returns a dq.QArray with dims, you can skip asqarray.)
+        return [
+            dq.asqarray(Lphi1, dims=(2, 2)),
+            dq.asqarray(Lphi2, dims=(2, 2)),
         ]
-        return jump_ops

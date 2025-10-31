@@ -61,7 +61,7 @@ if __name__ == "__main__":
     """
 
     # Import gate definitions
-    from src.circuit import X, Y, HeisenbergRampGate
+    from src.circuit import X, Y, ExchangeRampGate
     from src.pulse import GaussianPulse
 
     print("=" * 70)
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         frame="rot",
         omega=(omega1, omega2),
         ref_omega=(omega1, omega2),
-        Jxx=J, Jyy=J, Jzz=J,
+        J0=J,
         Tphi1=500.0,
         Tphi2=500.0,
     )
@@ -281,7 +281,7 @@ if __name__ == "__main__":
     def make_exchange_circuit(jmax: float, total_time: float) -> Circuit:
         """Build circuit with Heisenberg exchange pulse."""
         gates = [
-            HeisenbergRampGate(
+            ExchangeRampGate(
                 which=(0, 1),      # Acts on qubit pair (0,1)
                 Jmax=jmax,         # Maximum exchange strength
                 t0=0.0,
