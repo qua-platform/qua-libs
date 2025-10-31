@@ -65,7 +65,7 @@ Prerequisites:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="20_cz_conditional_phase",  # Name should be unique
+    name="70a_two_qubit_standard_rb",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
 )
@@ -191,7 +191,7 @@ probs = xr.concat(probs, dim="outcome")
 # Assign outcome labels
 probs = probs.assign_coords(outcome=("outcome", labels))
 
-probs_00 = probs.sel(outcome="00")  
+probs_00 = probs.sel(outcome="00")
 probs_00 = probs_00.rename({"shots": "average", "sequence": "repeat", "depths": "circuit_depth"})
 probs_00 = probs_00.transpose("qubit_pair","repeat", "circuit_depth", "average")
 
