@@ -1,17 +1,16 @@
-
 # %% {Imports}
 from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Optional
-from qualibration_libs.parameters import get_qubit_pairs
 
+import numpy as np
 import xarray as xr
+from calibration_utils.two_qubit_interleaved_rb.analysis import process_raw_dataset
 
 # from iqcc_calibration_tools.qualibrate_config.qualibrate.node import NodeParameters, QualibrationNode
 from calibration_utils.two_qubit_interleaved_rb.circuit_utils import (
     layerize_quantum_circuit,
     process_circuit_to_integers,
 )
-
 from calibration_utils.two_qubit_interleaved_rb.data_utils import RBResult
 from calibration_utils.two_qubit_interleaved_rb.parameters import Parameters
 from calibration_utils.two_qubit_interleaved_rb.plot_utils import gate_mapping
@@ -26,8 +25,8 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualibrate import QualibrationNode
 from qualibrate.parameters import NodeParameters
 from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.parameters import get_qubit_pairs
 from quam_config import Quam
-import numpy as np
 
 # %% {Initialisation}
 description = """
@@ -47,9 +46,9 @@ to an exponential decay as a function of circuit depth. This gives an estimate o
 the two-qubit system.
 
 Key Features:
-    - reduce_to_1q_cliffords: When enabled (default), the Clifford gates are sampled as 1q Cliffords per qubit
+    - reduce_to_1q_cliffords: When enabled, the Clifford gates are sampled as 1q Cliffords per qubit
       (this is of course a much smaller subset of the whole 2q Clifford group).
-    - use_input_stream: When enabled (default), the circuit sequences are streamed to the OPX in using the
+    - use_input_stream: When enabled, the circuit sequences are streamed to the OPX by using the
       input stream feature. This allows for dynamic circuit execution and reduces memory usage on the OPX.
 
 Each sequence is played multiple times for averaging, and multiple random sequences are generated for each depth to
@@ -77,72 +76,55 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubit_pairs = ["qB2-qB4"]
+    node.parameters.operation = "cz_flattop"
+    node.parameters.reset_type = "active"
+    # node.parameters.load_data_id = 5452
     pass
 
+
+if node.parameters.use_input_stream:
+    raise NotImplementedError("Input streams is not supported yet.")
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
 
-# %% {Initialize_QuAM_and_QOP}
 
-# Instantiate the QuAM class from the state file
-# node.machine = Quam.load()
+# %% {Create_QUA_program}
+@node.run_action(skip_if=node.parameters.load_data_id is not None)
+def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 
-# Get the relevant QuAM components
-if node.parameters.qubit_pairs is None or node.parameters.qubit_pairs == "":
-    qubit_pairs = node.machine.active_qubit_pairs
-else:
-    qubit_pairs = [node.machine.qubit_pairs[qp] for qp in node.parameters.qubit_pairs]
+    node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
 
-if len(qubit_pairs) == 0:
-    raise ValueError("No qubit pairs selected")
+    node.namespace["sweep_axes"] = {
+        "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
+        "shots": xr.DataArray(np.arange(node.parameters.num_shots)),
+        "depths": xr.DataArray(np.array(node.parameters.circuit_lengths)),
+        "sequence": xr.DataArray(np.arange(node.parameters.num_circuits_per_length)),
+    }
 
-# Generate the OPX and Octave configurations
+    standard_RB = StandardRB(
+        amplification_lengths=node.parameters.circuit_lengths,
+        num_circuits_per_length=node.parameters.num_circuits_per_length,
+        num_qubits=2,
+    )
 
-# Open Communication with the QOP
-if node.parameters.load_data_id is None:
-    qmm = node.machine.connect()
+    transpiled_circuits = standard_RB.transpiled_circuits
+    transpiled_circuits_as_ints = {}
+    for l, circuits in transpiled_circuits.items():
+        transpiled_circuits_as_ints[l] = [process_circuit_to_integers(layerize_quantum_circuit(qc)) for qc in circuits]
 
-config = node.machine.generate_config()
+    circuits_as_ints = []
+    for circuits_per_len in transpiled_circuits_as_ints.values():
+        for circuit in circuits_per_len:
+            circuit_with_measurement = circuit + [66]  # readout
+            circuits_as_ints.append(circuit_with_measurement)
 
+    num_pairs = len(qubit_pairs)
 
-# %% {Random circuit generation}
+    qua_program_handler = QuaProgramHandler(node, num_pairs, circuits_as_ints, node.machine, qubit_pairs)
 
-standard_RB = StandardRB(
-    amplification_lengths=node.parameters.circuit_lengths,
-    num_circuits_per_length=node.parameters.num_circuits_per_length,
-    basis_gates=node.parameters.basis_gates,
-    num_qubits=2,
-)
-
-transpiled_circuits = standard_RB.transpiled_circuits
-transpiled_circuits_as_ints = {}
-for l, circuits in transpiled_circuits.items():
-    transpiled_circuits_as_ints[l] = [process_circuit_to_integers(layerize_quantum_circuit(qc)) for qc in circuits]
-
-circuits_as_ints = []
-for circuits_per_len in transpiled_circuits_as_ints.values():
-    for circuit in circuits_per_len:
-        circuit_with_measurement = circuit + [66]  # readout
-        circuits_as_ints.append(circuit_with_measurement)
-
-# %% {QUA_program}
-
-num_pairs = len(qubit_pairs)
-
-qua_program_handler = QuaProgramHandler(node, num_pairs, circuits_as_ints, node.machine, qubit_pairs)
-
-rb = node.namespace["qua_program"] = qua_program_handler.get_qua_program()
-
-# %%
-node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
-
-node.namespace["sweep_axes"] = {
-    "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
-    "shots": xr.DataArray(np.arange(node.parameters.num_shots)),
-    "depths": xr.DataArray(np.array(node.parameters.circuit_lengths)),
-    "sequence": xr.DataArray(np.arange(node.parameters.num_circuits_per_length)),
-}
+    node.namespace["qua_program"] = qua_program_handler.get_qua_program()
 
 
 # %% {Execute}
@@ -174,53 +156,54 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 
-# %% {Data_analysis and plotting}
-ds = node.results["ds_raw"]
-# Assume ds is your input dataset and ds['state'] is your DataArray
-state = ds["state"]  # shape: (qubit, shots, sequence, depths)
-
-# Outcome labels for 2-qubit states
-labels = ["00", "01", "10", "11"]
-
-# Create a list of DataArrays: one for each outcome
-probs = [state == i for i in range(4)]
-
-# Stack along a new outcome dimension
-probs = xr.concat(probs, dim="outcome")
-
-# Assign outcome labels
-probs = probs.assign_coords(outcome=("outcome", labels))
-
-probs_00 = probs.sel(outcome="00")
-probs_00 = probs_00.rename({"shots": "average", "sequence": "repeat", "depths": "circuit_depth"})
-probs_00 = probs_00.transpose("qubit_pair","repeat", "circuit_depth", "average")
+# %% {Load_data}
+@node.run_action(skip_if=node.parameters.load_data_id is None)
+def load_data(node: QualibrationNode[Parameters, Quam]):
+    """Load a previously acquired dataset."""
+    load_data_id = node.parameters.load_data_id
+    # Load the specified dataset
+    node.load_from_id(node.parameters.load_data_id)
+    node.parameters.load_data_id = load_data_id
+    # Get the active qubit pairs from the loaded node parameters
+    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 
-probs_00 = probs_00.astype(int)
+# %% {Analyse_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def analyse_data(node: QualibrationNode[Parameters, Quam]):
+    """Analysis the raw data and store the fitted data in another xarray dataset and the fitted results."""
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
 
-ds_transposed = ds.rename({"shots": "average", "sequence": "repeat", "depths": "circuit_depth"})
-ds_transposed = ds_transposed.transpose("qubit_pair", "repeat", "circuit_depth", "average")
 
-for qp in qubit_pairs:
+# %% {Plot_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def plot_data(node: QualibrationNode[Parameters, Quam]):
+    """Plot the raw and fitted data in a specific figure whose shape is given by qubit pair grid locations."""
+    qubit_pairs = node.namespace["qubit_pairs"]
 
-    rb_result = RBResult(
-        circuit_depths=list(node.parameters.circuit_lengths),
-        num_repeats=node.parameters.num_circuits_per_length,
-        num_averages=node.parameters.num_shots,
-        state=ds_transposed.state.sel(qubit_pair=qp.id).data,
-    )
+    for qp in qubit_pairs:
 
-    fig = rb_result.plot_with_fidelity()
-    fig.suptitle(f"2Q Randomized Benchmarking - {qp.name}")
-    fig.show()
+        rb_result = RBResult(
+            circuit_depths=list(node.parameters.circuit_lengths),
+            num_repeats=node.parameters.num_circuits_per_length,
+            num_averages=node.parameters.num_shots,
+            state=node.results["ds_raw"].state.sel(qubit_pair=qp.name).data,
+        )
+
+        fig = rb_result.plot_with_fidelity()
+        fig.suptitle(f"2Q Randomized Benchmarking - {qp.name}")
+        fig.show()
+
+        node.results[f"fig_{qp.name}"] = fig
+
 
 # %% {Update_state}
-with node.record_state_updates():
-    for qp in qubit_pairs:
-        node.machine.qubit_pairs[qp.id].macros["cz"].fidelity["StandardRB"] = rb_result.fidelity
-        node.machine.qubit_pairs[qp.id].macros["cz"].fidelity["StandardRB_alpha"] = rb_result.alpha
+# with node.record_state_updates():
+#     for qp in qubit_pairs:
+#         node.machine.qubit_pairs[qp.id].macros["cz"].fidelity["StandardRB"] = rb_result.fidelity
+#         node.machine.qubit_pairs[qp.id].macros["cz"].fidelity["StandardRB_alpha"] = rb_result.alpha
 
 # %% {Save_results}
 node.save()
 
-    # %%
+# %%

@@ -2,28 +2,17 @@ from typing import Literal
 
 import numpy as np
 from more_itertools import flatten
-
-# from iqcc_calibration_tools.quam_config.components import Transmon, TransmonPair
-from qiskit.circuit import reset
-from qiskit.transpiler import target
 from qm.qua import *
 from qm.qua._expressions import QuaArrayVariable, QuaVariable
-
-# from iqcc_calibration_tools.quam_config.components import Quam
 from qualang_tools.units import unit
-
-# from iqcc_calibration_tools.analysis.data_utils import split_list_by_integer_count
-# from iqcc_calibration_tools.quam_config.macros import active_reset, readout_state, align, assign, reset_frame
 from qualibrate import NodeParameters, QualibrationNode
 from quam_config import Quam
 
 
 def reset_qubits(node, control: Quam.qubit_type, target: Quam.qubit_type, thermalization_time: float | None = None):
-    if node.parameters.reset_type == "active":
-        control.reset(reset_type="active")
-        target.reset(reset_type="active")
-    else:
-        control.resonator.wait(thermalization_time // 4)
+
+    control.reset(reset_type=node.parameters.reset_type)
+    target.reset(reset_type=node.parameters.reset_type)
 
 
 def play_gate(
@@ -34,6 +23,7 @@ def play_gate(
     state_target: QuaVariable,
     state_st: "_ResultSource",
     reset_type: Literal["thermal", "active"],
+    cz_operation: str = "cz_unipolar"
 ):
     with switch_(gate, unsafe=True):
 
@@ -216,11 +206,8 @@ def play_gate(
             qubit_pair.qubit_control.wait(20)
             qubit_pair.qubit_target.wait(20)
         with case_(64):  # CZ
-            qubit_pair.macros["cz"].apply()
-            # qubit_pair.gates['Cz'].execute()
+            qubit_pair.macros[cz_operation].apply()
         with case_(65):  # idle_2q
-            # qubit_pair.qubit_control.wait(int(1e9*(qubit_pair.qubit_control.T1/1000)) // 4)
-            # qubit_pair.qubit_target.wait(int(1e9*(qubit_pair.qubit_target.T1/1000)) // 4)
             qubit_pair.qubit_control.wait(4)
             qubit_pair.qubit_target.wait(4)
 
@@ -252,11 +239,12 @@ def play_sequence(
     state_target: QuaVariable,
     state_st,
     reset_type: Literal["thermal", "active"],
+    cz_operation: str = "cz_unipolar"
 ):
 
     i = declare(int)
     with for_(i, 0, i < depth, i + 1):
-        play_gate(sequence[i], qubit_pair, state, state_control, state_target, state_st, reset_type)
+        play_gate(sequence[i], qubit_pair, state, state_control, state_target, state_st, reset_type, cz_operation)
 
 
 class QuaProgramHandler:
@@ -388,6 +376,7 @@ class QuaProgramHandler:
                         state_target,
                         state_st[i],
                         self.node.parameters.reset_type,
+                        self.node.parameters.operation,
                     )
 
                     save(n, n_st)
