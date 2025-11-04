@@ -3,7 +3,7 @@ import signal
 import psutil
 import time
 import requests
-
+from werkzeug.serving import make_server
 
 from quam.core import QuamRoot
 from qua_dashboards.video_mode import VideoModeComponent, OPXDataAcquirer, scan_modes
@@ -17,53 +17,28 @@ import threading
 
 
 _DASHBOARD_THREAD: Optional[threading.Thread] = None
-_DASHBOARD_APP = None
+_DASHBOARD_SERVER = None
 
-def is_port_in_use(port: int = 8050): 
-    for connection in psutil.net_connections():
-        if connection.laddr.port == port and connection.status == "LISTEN": 
-            return True
-    return False
 
-def stop_existing_dashboard(port: int = 8050, timeout: float = 15.0): 
-    """Kill any process listening on the specified port."""
-    logger = setup_logging(__name__)
-    logger.info(f"Checking for existing dashboard on port {port}...")
+def stop_dashboard():
+    """Gracefully shutdown the dashboard server without killing the process."""
+    global _DASHBOARD_THREAD, _DASHBOARD_SERVER
     
-    killed = False
-    for process in psutil.process_iter(['pid', 'name']):
-        try:
-            # Get connections for this process
-            connections = process.net_connections(kind='inet')
-            for conn in connections:
-                # Check if this process is listening on our port
-                if conn.status == 'LISTEN' and conn.laddr.port == port:
-                    logger.info(f"Found process {process.name()} (PID: {process.pid}) using port {port}")
-                    logger.info(f"Terminating process...")
-                    process.terminate()
-                    try:
-                        process.wait(timeout=timeout)
-                        logger.info(f"Successfully terminated process on port {port}")
-                    except psutil.TimeoutExpired:
-                        logger.warning(f"Process did not terminate gracefully, killing...")
-                        process.kill()
-                        process.wait(timeout=5)
-                    killed = True
-                    break
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            continue
-        
-        if killed:
-            break
+    if _DASHBOARD_SERVER is not None:
+        print("Shutting down existing dashboard...")
+        _DASHBOARD_SERVER.shutdown()
+        _DASHBOARD_SERVER = None
     
-    if not killed:
-        logger.info(f"No process found using port {port}")
+    if _DASHBOARD_THREAD is not None and _DASHBOARD_THREAD.is_alive():
+        _DASHBOARD_THREAD.join(timeout=3)
+        _DASHBOARD_THREAD = None
     
-    return killed
+    time.sleep(1)
 
 
 def launch_video_mode(
     machine: QuamRoot,
+    log, 
     x_axis_name: str, 
     y_axis_name: str, 
     virtual_gate_id: str, 
@@ -74,26 +49,25 @@ def launch_video_mode(
     y_span: float = None, 
     x_points: int = None, 
     y_points: int = None,
+    num_software_averages: int = 1, 
     x_mode: str = "Voltage", 
     y_mode: str = "Voltage", 
     scan_modes_dict: Dict = None, 
     result_type: str = "I",
     port: int = 8050, 
-    auto_kill_existing: bool = True
-) -> threading.Thread: 
-    global _DASHBOARD_THREAD, _DASHBOARD_APP
+) -> None: 
+    global _DASHBOARD_THREAD, _DASHBOARD_SERVER
+    
+    if _DASHBOARD_THREAD is not None and _DASHBOARD_THREAD.is_alive():
+        log("Stopping existing dashboard")
+        stop_dashboard()
+
     if scan_modes_dict is None: 
         scan_modes_dict = {
             "Switch_Raster_Scan": scan_modes.SwitchRasterScan(), 
             "Raster_Scan": scan_modes.RasterScan(), 
             "Spiral_Scan": scan_modes.SpiralScan(),
         }
-
-    if auto_kill_existing: 
-        stop_existing_dashboard(port = port)
-        time.sleep(1)
-
-    logger = setup_logging(__name__)
 
 
     qmm = machine.connect()
@@ -106,10 +80,12 @@ def launch_video_mode(
         y_axis_name=y_axis_name,  # Must appear in gate_set.valid_channel_names; Virtual gate names also valid
         scan_modes=scan_modes_dict,
         result_type=result_type,  # "I", "Q", "amplitude", or "phase"
-        available_readout_pulses=readout_pulses # Input a list of pulses. The default only reads out from the first pulse, unless the second one is chosen in the UI. 
+        available_readout_pulses=readout_pulses, # Input a list of pulses. The default only reads out from the first pulse, unless the second one is chosen in the UI. 
+        num_software_averages=num_software_averages
     )
-    data_acquirer.x_mode = x_mode if x_mode is not None else "Voltage"
-    data_acquirer.y_mode = y_mode if y_mode is not None else "Voltage"
+    data_acquirer.x_mode = x_mode
+    data_acquirer.y_mode = y_mode
+
 
     if x_span is not None or x_points is not None:
         x_sweepaxis = data_acquirer.find_sweepaxis(x_axis_name, mode = x_mode)
@@ -147,22 +123,17 @@ def launch_video_mode(
 
     ui_update(app, video_mode_component)
 
-    _DASHBOARD_APP = app
     
 
     def run_server(): 
-        logger.info(f"Dashboard built. Starting Dash server on http://localhost:{port}")
-        app.run(debug=False, host="0.0.0.0", port=port, use_reloader=False)
+        global _DASHBOARD_SERVER
+        log(f"Starting new dashboard on http://localhost:{port}")
+        _DASHBOARD_SERVER = make_server('0.0.0.0', port, app.server)
+        _DASHBOARD_SERVER.serve_forever()
 
-
-    server_thread = threading.Thread(target=run_server, daemon=True, name="VideoModeDashboard")
-    server_thread.start()
-    _DASHBOARD_THREAD = server_thread
-    logger.info("Dashboard server started in background thread")
-    logger.info("Node will complete but dashboard remains accessible at http://localhost:8050")
-
-
-    return server_thread
+    _DASHBOARD_THREAD = threading.Thread(target=run_server, daemon=True, name="VideoMode")
+    _DASHBOARD_THREAD.start()
+    log("Dashboard running at http://localhost:8050")
 
 
 def create_video_mode(
@@ -171,6 +142,7 @@ def create_video_mode(
     y_axis_name: str,
     virtual_gate_id: str,
     readout_pulses: List,
+    num_software_averages: int, 
     dc_control: bool,
     save_path: str,
     **kwargs
@@ -191,7 +163,7 @@ def create_video_mode(
         virtual_gate_id=virtual_gate_id,
         readout_pulses=readout_pulses,
         dc_control=dc_control,
+        num_software_averages = num_software_averages, 
         save_path=save_path,
-        auto_kill_existing=True,
         **kwargs
     )
