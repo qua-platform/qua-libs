@@ -134,7 +134,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.Video_Mode)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -172,10 +172,10 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Analyse_data}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.Video_Mode)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    #node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
@@ -188,7 +188,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Plot_data}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.Video_Mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
     fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
@@ -204,7 +204,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.Video_Mode)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor_name data analysis was successful."""
     with node.record_state_updates():
@@ -213,6 +213,32 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             q.readout_resonator.intermediate_frequency = float(node.results["fit_results"][q.name]["frequency"])
+
+# %%
+from calibration_utils.run_video_mode import create_video_mode
+@node.run_action(skip_if = node.parameters.Video_Mode is False)
+def run_video_mode(node: QualibrationNode[Parameters, Quam]):
+    machine = node.machine
+    readout_pulses = [sensor.readout_resonator.operations["readout"] for sensor in [node.machine.sensor_dots[sensor] for sensor in node.parameters.sensor_names]]
+    x_axis_name = [rp.channel.name for rp in readout_pulses][0]
+    num_points = int(node.parameters.frequency_span_in_mhz // node.parameters.frequency_step_in_mhz)
+    f_span = int(node.parameters.frequency_span_in_mhz*1e6)
+    num_software_averages = node.parameters.num_shots
+    create_video_mode(
+        machine = machine, 
+        log = node.log, 
+        x_axis_name = x_axis_name, 
+        y_axis_name = None, 
+        x_span = f_span, 
+        x_points = num_points,
+        x_mode = "Frequency",
+        num_software_averages = num_software_averages,
+        virtual_gate_id = node.parameters.virtual_gate_set_id, 
+        dc_control = node.parameters.dc_control, 
+        readout_pulses = readout_pulses, 
+        save_path = "/Users/kalidu_laptop/.qualibrate/quam_state"
+    )
+
 
 
 # %% {Save_results}

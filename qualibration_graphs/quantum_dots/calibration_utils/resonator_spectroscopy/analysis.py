@@ -44,11 +44,23 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    ds = convert_IQ_to_V(ds, node.namespace["sensors"])
-    ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
-    full_freq = np.array([ds.detuning + q.resonator.RF_frequency for q in node.namespace["sensors"]])
-    ds = ds.assign_coords(full_freq=(["sensor", "detuning"], full_freq))
+    """Process raw dataset to add amplitude and phase information."""
+    
+    has_iq = "I" in ds.data_vars and "Q" in ds.data_vars
+    
+    if has_iq:
+        ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
+    else:
+        if "IQ_abs" not in ds.data_vars:
+            ds["IQ_abs"] = ds.get("signal", ds.get("amplitude", None))
+    
+    full_freq = np.array([
+        ds.detuning + q.readout_resonator.intermediate_frequency 
+        for q in node.namespace["sensors"]
+    ])
+    ds = ds.assign_coords(full_freq=(["sensors", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
+    
     return ds
 
 
@@ -82,24 +94,24 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     # Get the fitted resonator frequency
     full_freq = np.array([q.readout_resonator.intermediate_frequency for q in node.namespace["sensors"]])
     res_freq = fit.position + full_freq
-    fit = fit.assign_coords(res_freq=("sensor", res_freq.data))
+    fit = fit.assign_coords(res_freq=("sensors", res_freq.data))
     fit.res_freq.attrs = {"long_name": "resonator frequency", "units": "Hz"}
     # Get the fitted FWHM
     fwhm = np.abs(fit.width)
-    fit = fit.assign_coords(fwhm=("sensor", fwhm.data))
+    fit = fit.assign_coords(fwhm=("sensors", fwhm.data))
     fit.fwhm.attrs = {"long_name": "resonator fwhm", "units": "Hz"}
     # Assess whether the fit was successful or not
     freq_success = np.abs(res_freq.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
     fwhm_success = np.abs(fwhm.data) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
     success_criteria = freq_success & fwhm_success
-    fit = fit.assign_coords(success=("sensor", success_criteria))
+    fit = fit.assign_coords(success=("sensors", success_criteria))
 
     fit_results = {
         q: FitParameters(
-            frequency=fit.sel(sensor=q).res_freq.values.__float__(),
-            fwhm=fit.sel(sensor=q).fwhm.values.__float__(),
-            success=fit.sel(sensor=q).success.values.__bool__(),
+            frequency=fit.sel(sensors=q).res_freq.values.__float__(),
+            fwhm=fit.sel(sensors=q).fwhm.values.__float__(),
+            success=fit.sel(sensors=q).success.values.__bool__(),
         )
-        for q in fit.sensor.values
+        for q in fit.sensors.values
     }
     return fit, fit_results
