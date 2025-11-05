@@ -75,12 +75,12 @@ def launch_video_mode(
     data_acquirer = OPXDataAcquirer(
         qmm=qmm,
         machine=machine,
-        gate_set=virtual_gate_set,  # Replace with your GateSet instance
-        x_axis_name=x_axis_name,  # Must appear in gate_set.valid_channel_names; Virtual gate names also valid
-        y_axis_name=y_axis_name,  # Must appear in gate_set.valid_channel_names; Virtual gate names also valid
+        gate_set=virtual_gate_set,  
+        x_axis_name=x_axis_name, 
+        y_axis_name=y_axis_name,
         scan_modes=scan_modes_dict,
-        result_type=result_type,  # "I", "Q", "amplitude", or "phase"
-        available_readout_pulses=readout_pulses, # Input a list of pulses. The default only reads out from the first pulse, unless the second one is chosen in the UI. 
+        result_type=result_type,
+        available_readout_pulses=readout_pulses,
         num_software_averages=num_software_averages
     )
     data_acquirer.x_mode = x_mode
