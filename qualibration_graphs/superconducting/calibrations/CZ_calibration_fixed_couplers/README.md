@@ -120,7 +120,7 @@ By sweeping the pulse amplitude and duration, a Chevron-like pattern is observed
 ---
 
 ## Conditional Phase Calibration
-[(20_cz_conditional_phase)](./20_cz_conditional_phase.py)
+[(20a_cz_conditional_phase)](./20a_cz_conditional_phase.py)
 
 With the optimal duration fixed, perform a fine amplitude scan to locate the **90° conditional-phase point (π/2)**.
 
@@ -131,6 +131,17 @@ The sequence involves preparing the states |0+⟩ and |1+⟩ (control, target), 
 </p>
 
 **Goal:** Fit the conditional phase curve and update the optimal CZ amplitude in the system state.
+
+## Conditional Phase Calibration with Error Amplification
+[(20b_cz_conditional_phase_error_amp)](./20b_cz_conditional_phase_error_amp.py)
+
+This node calibrates the CZ conditional phase with error amplification by applying a train of CZ pulses. This allows to further fine tune the gate amplitude parameter.
+
+<p align="center">
+   <img src="../.img/phase_error_amp.png" width="500" alt="Conditional phase plot">
+</p>
+
+**Goal:** Fine tune the CZ gate pulse amplitude.
 
 ---
 
