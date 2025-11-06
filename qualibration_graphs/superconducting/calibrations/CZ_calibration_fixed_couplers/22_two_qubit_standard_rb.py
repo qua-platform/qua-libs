@@ -37,7 +37,8 @@ Each random sequence is generated for the maximum depth (specified as an input) 
 user (the sequence is truncated to the desired depth). Each truncated sequence ends with the recovery gate that will
 bring the qubits back to their ground state.
 
-The random circuits are generated offline and transpiled to a basis gate set (default is ['rz', 'sx', 'x', 'cz']).
+The random circuits are generated offline as a sequence of Clifford gates and then transpiled to a basis gate set
+(default is ['rz', 'sx', 'x', 'cz']).
 The circuits are executed per two-qubit layer using a switch_case block structure, allowing for efficient execution
 of the quantum circuits.
 
@@ -46,8 +47,6 @@ to an exponential decay as a function of circuit depth. This gives an estimate o
 the two-qubit system.
 
 Key Features:
-    - reduce_to_1q_cliffords: When enabled, the Clifford gates are sampled as 1q Cliffords per qubit
-      (this is of course a much smaller subset of the whole 2q Clifford group).
     - use_input_stream: When enabled, the circuit sequences are streamed to the OPX by using the
       input stream feature. This allows for dynamic circuit execution and reduces memory usage on the OPX.
 
@@ -64,7 +63,7 @@ Prerequisites:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="70a_two_qubit_standard_rb",  # Name should be unique
+    name="22_two_qubit_standard_rb",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
 )
@@ -76,9 +75,9 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubit_pairs = ["qB2-qB4"]
-    node.parameters.operation = "cz_flattop"
+    node.parameters.operation = "cz_bipolar"
     node.parameters.reset_type = "active"
-    # node.parameters.load_data_id = 5452
+    node.parameters.load_data_id = 5580
     pass
 
 
@@ -180,7 +179,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit pair grid locations."""
     qubit_pairs = node.namespace["qubit_pairs"]
-
+    node.results["fit_results"] = {}
     for qp in qubit_pairs:
 
         rb_result = RBResult(
@@ -195,14 +194,15 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         fig.show()
 
         node.results[f"fig_{qp.name}"] = fig
+        node.results["fit_results"][qp.name] = {"alpha": rb_result.alpha, "fidelity": rb_result.fidelity}
+
 
 
 # %% {Update_state}
-# with node.record_state_updates():
-#     for qp in qubit_pairs:
-#         node.machine.qubit_pairs[qp.id].macros["cz"].fidelity["StandardRB"] = rb_result.fidelity
-#         node.machine.qubit_pairs[qp.id].macros["cz"].fidelity["StandardRB_alpha"] = rb_result.alpha
-
+with node.record_state_updates():
+    for qp in node.namespace["qubit_pairs"]:
+        node.machine.qubit_pairs[qp.name].macros["cz"].fidelity["StandardRB"] = node.results["fit_results"][qp.name]["fidelity"]
+        node.machine.qubit_pairs[qp.name].macros["cz"].fidelity["StandardRB_alpha"] = node.results["fit_results"][qp.name]["alpha"]
 # %% {Save_results}
 node.save()
 

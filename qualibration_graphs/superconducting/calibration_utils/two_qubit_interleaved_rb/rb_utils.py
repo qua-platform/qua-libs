@@ -96,13 +96,6 @@ class RBBase:
             inverse_clifford = clifford_product.adjoint()
             qc.append(inverse_clifford, range(self.num_qubits))
 
-            # # Verify that the quantum circuit is an identity operator up to a phase
-            # unitary = Operator(qc).data
-            # identity = np.eye(unitary.shape[0])
-            # # Normalize the unitary to remove global phase
-            # unitary_normalized = unitary / np.linalg.det(unitary)**(1/unitary.shape[0])
-            # assert np.allclose(unitary_normalized, identity, atol=1e-8), "Circuit is not an identity operator up to a phase."
-
             circuits.append(qc)
 
         return circuits
