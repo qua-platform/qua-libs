@@ -12,7 +12,7 @@ node = QualibrationNode[NodeParameters, Quam](
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
+node.machine = Quam.load()
 
 
 # %% {Close_all_quantum_machines}

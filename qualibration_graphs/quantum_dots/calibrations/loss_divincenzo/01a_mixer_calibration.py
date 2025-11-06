@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from qualang_tools.multi_user import qm_session
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import get_sensors
+from calibration_utils.common_utils.experiment import get_sensors, get_qubits
 from calibration_utils.mixer_calibration import (
     Parameters,
     extract_relevant_fit_parameters,
@@ -42,20 +42,29 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-    # Get the active qubits from the node and organize them by batches
+    # Get the active sensors from the node and organize them by batches
     node.namespace["sensors"] = sensors = get_sensors(node)
+    # Get the active qubits from the node and organize them by batches
+    node.namespace["qubits"] = qubits = get_qubits(node)
+
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         node.namespace["calibration_results"] = {}
         for sensor in sensors:
             calibration_results = sensor.calibrate_octave(
                 qm,
-                calibrate_drive=node.parameters.calibrate_drive,
                 calibrate_resonator=node.parameters.calibrate_resonator,
             )
             node.namespace["calibration_results"][sensor.name] = {
-                "resonator": calibration_results[0],
-                "xy_drive": calibration_results[1],
+                "resonator": calibration_results,
+            }
+        for qubit in qubits: 
+            calibration_results = qubit.calibrate_octave(
+                qm, 
+                calibrate_drive = node.parameters.calibrate_drive,
+            )
+            node.namespace["calibration_results"][qubit.name] = {
+                "xy_drive": calibration_results,
             }
 
 

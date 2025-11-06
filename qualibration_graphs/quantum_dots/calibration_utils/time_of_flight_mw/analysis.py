@@ -10,7 +10,7 @@ from qualibrate import QualibrationNode
 
 @dataclass
 class FitParameters:
-    """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
+    """Stores the relevant sensor spectroscopy experiment fit parameters for a single sensor"""
 
     tof_to_add: int
     success: bool
@@ -18,12 +18,12 @@ class FitParameters:
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
     """
-    Logs the node-specific fitted results for all qubits from the fit results
+    Logs the node-specific fitted results for all sensors from the fit results
 
     Parameters:
     -----------
     fit_results : dict
-        Dictionary containing the fitted results for all qubits.
+        Dictionary containing the fitted results for all sensors.
     logger : logging.Logger, optional
         Logger for logging the fitted results. If None, a default logger is used.
 
@@ -32,7 +32,7 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         log_callable = logging.getLogger(__name__).info
 
     for q in fit_results.keys():
-        s_qubit = f"Results for qubit {q}: "
+        s_qubit = f"Results for sensor {q}: "
         s_tof = f"\tTime of flight to add: {fit_results[q]['tof_to_add']:.0f} ns\n"
         if fit_results[q]["success"]:
             s_qubit += " SUCCESS!\n"
@@ -52,7 +52,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
-    Fit the qubit frequency and FWHM for each qubit in the dataset.
+    Fit the sensor frequency and FWHM for each sensor in the dataset.
 
     Parameters:
     -----------
@@ -79,8 +79,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit = ds_fit.assign_coords(
         {
             "con": (
-                ["qubit"],
-                [node.machine.qubits[q.name].resonator.opx_input.controller_id for q in node.namespace["qubits"]],
+                ["sensor"],
+                [node.machine.sensors[q.name].resonator.opx_input.controller_id for q in node.namespace["sensors"]],
             )
         }
     )
@@ -88,16 +88,16 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     # Assess whether the fit was successful or not
     nan_success = np.isnan(ds_fit.delay.data)
     success_criteria = ~nan_success
-    ds_fit = ds_fit.assign_coords(success=("qubit", success_criteria))
+    ds_fit = ds_fit.assign_coords(success=("sensor", success_criteria))
     # Populate the FitParameters class with fitted values
     fit_results = {
         q: FitParameters(
-            tof_to_add=int(ds_fit.sel(qubit=q).delay),
-            success=bool(ds_fit.sel(qubit=q).success.values),
+            tof_to_add=int(ds_fit.sel(sensor=q).delay),
+            success=bool(ds_fit.sel(sensor=q).success.values),
         )
-        for q in ds_fit.qubit.values
+        for q in ds_fit.sensor.values
     }
-    node.outcomes = {q: "successful" if fit_results[q].success else "fail" for q in ds_fit.qubit.values}
+    node.outcomes = {q: "successful" if fit_results[q].success else "fail" for q in ds_fit.sensor.values}
 
     return ds_fit, fit_results
 
