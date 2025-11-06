@@ -81,26 +81,37 @@ def launch_video_mode(
         scan_modes=scan_modes_dict,
         result_type=result_type,
         available_readout_pulses=readout_pulses,
-        num_software_averages=num_software_averages
+        num_software_averages=num_software_averages, 
+        x_mode = x_mode, 
+        y_mode = y_mode
     )
-    data_acquirer.x_mode = x_mode
-    data_acquirer.y_mode = y_mode
+
+    def find_default(mode): 
+        if mode == "Voltage": 
+            points, span = 51, 0.03
+        if mode == "Frequency":
+            points, span = 51, int(10e6)
+        if mode == "Amplitude": 
+            points, span = 51, 0.01
+        return (points, span)
+
 
 
     if x_span is not None or x_points is not None:
         x_sweepaxis = data_acquirer.find_sweepaxis(x_axis_name, mode = x_mode)
-        x_sweepaxis.span = x_span if x_span is not None else 0.03
-        x_sweepaxis.points = x_points if x_points is not None else 51
+        x_sweepaxis.span = x_span if x_span is not None else find_default(x_mode)[1]
+        x_sweepaxis.points = x_points if x_points is not None else find_default(x_mode)[0]
 
     if y_axis_name is not None and (y_span is not None or y_points is not None): 
-        y_sweepaxis = data_acquirer.find_sweepaxis(y_axis_name, y_mode)
-        y_sweepaxis.span = y_span if y_span is not None else 0.03
-        y_sweepaxis.points = y_points if y_points is not None else 51
+        y_sweepaxis = data_acquirer.find_sweepaxis(y_axis_name, mode = y_mode)
+        y_sweepaxis.span = y_span if y_span is not None else find_default(x_mode)[1]
+        y_sweepaxis.points = y_points if y_points is not None else find_default(x_mode)[0]
 
     video_mode_component = VideoModeComponent(
         data_acquirer = data_acquirer, 
         data_polling_interval_s = 0.2, 
-        save_path = save_path
+        save_path = save_path, 
+        shutdown_callback = stop_dashboard
     )
 
     virtual_gates_component = VirtualLayerEditor(gateset = virtual_gate_set, component_id = 'Virtual_Gates')

@@ -1,11 +1,16 @@
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonNodeParameters
+from qualibration_libs.parameters import CommonNodeParameters
+from calibration_utils.common_utils.experiment import BaseExperimentNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
+    run_in_video_mode: bool = False
+    """Optionally run the measurement with these parameters in Video Mode"""
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
+    virtual_gate_set_id: str = None
+    """Name of VirtualGateSet associated with the sensors"""
     frequency_span_in_mhz: float = 15
     """Span of frequencies to sweep in MHz. Default is 15 MHz."""
     frequency_step_in_mhz: float = 0.1
@@ -27,12 +32,13 @@ class NodeSpecificParameters(RunnableParameters):
     buffer_from_crossing_threshold_in_dbm: int = 1
     """Buffer from the crossing threshold in dBm - the optimal readout power will be set to be this number in Db below
     the threshold. Default is 1 dBm."""
+    dc_control: bool = False
 
 
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    QubitsExperimentNodeParameters,
+    BaseExperimentNodeParameters,
 ):
     pass
