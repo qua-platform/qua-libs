@@ -18,7 +18,7 @@ def plot_raw_data_with_fit(node: QualibrationNode):
 
     Notes
     -----
-    - The function creates a grid of subplots, one for each qubit.
+    - The function creates a grid of subplots, one for each element.
     - Each subplot contains the raw data and the fitted curve.
     """
     figures = {}
@@ -36,7 +36,7 @@ def plot_raw_data_with_fit(node: QualibrationNode):
 
 def plot_individual_data_with_fit(calibration_results: Dict[str, Dict[str, MixerCalibrationResults]], element_name: str):
     """
-    Plots individual qubit data on a given axis with optional fit.
+    Plots individual element data on a given axis with optional fit.
     """
     figs = {}
     for key in ["resonator", "xy_drive"]:

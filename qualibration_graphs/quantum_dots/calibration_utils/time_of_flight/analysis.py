@@ -10,7 +10,7 @@ from qualibrate import QualibrationNode
 
 @dataclass
 class FitParameters:
-    """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
+    """Stores the relevant sensor spectroscopy experiment fit parameters for a single sensor"""
 
     tof_to_add: int
     offset_to_add: float
@@ -53,7 +53,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
-    Fit the qubit frequency and FWHM for each qubit in the dataset.
+    Fit the sensor frequency and FWHM for each sensor in the dataset.
 
     Parameters:
     -----------
@@ -77,7 +77,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit["delay"] = (ds_fit["filtered_adc"] > ds_fit["threshold"]).where(True).idxmax("readout_time")
     ds_fit["delay"] = np.round(ds_fit["delay"] / 4) * 4
     ds_fit.delay.attrs = {"long_name": "TOF to add", "units": "ns"}
-    # Get the controller of each qubit
+    # Get the controller of each sensor
     ds_fit = ds_fit.assign_coords(
         {
             "con": (
@@ -106,7 +106,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     offset_success = np.abs(ds_fit.offset_mean) < 0.5
     
     success_criteria = ~nan_success & offset_success.data
-    ds_fit = ds_fit.assign_coords(success=("qubit", success_criteria))
+    ds_fit = ds_fit.assign_coords(success=("sensor", success_criteria))
     # Populate the FitParameters class with fitted values
     fit_results = {
         s: FitParameters(

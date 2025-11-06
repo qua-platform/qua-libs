@@ -21,12 +21,12 @@ class FitParameters:
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
     """
-    Logs the node-specific fitted results for all qubits from the fit results
+    Logs the node-specific fitted results for all sensors from the fit results
 
     Parameters:
     -----------
     fit_results : dict
-        Dictionary containing the fitted results for all qubits.
+        Dictionary containing the fitted results for all sensors.
     logger : logging.Logger, optional
         Logger for logging the fitted results. If None, a default logger is used.
 
@@ -46,7 +46,7 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    """Processes the raw dataset by converting the 'I' and 'Q' quadratures to V, or adding the RF_frequency as a coordinate for instance."""
+    """Processes the raw dataset by converting the 'I' and 'Q' quadratures to V, or adding the intermediate_frequency as a coordinate for instance."""
 
     # Add the amplitude and phase to the raw dataset
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
@@ -61,7 +61,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
-    Fit the T1 relaxation time for each qubit according to ``a * np.exp(t * decay) + offset``.
+    Fit the T1 relaxation time for each sensor according to ``a * np.exp(t * decay) + offset``.
 
     Parameters:
     -----------
