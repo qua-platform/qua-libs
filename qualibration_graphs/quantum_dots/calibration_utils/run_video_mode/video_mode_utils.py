@@ -1,8 +1,5 @@
 from typing import Dict, List, Optional
-import signal
-import psutil
 import time
-import requests
 from werkzeug.serving import make_server
 
 from quam.core import QuamRoot
@@ -10,9 +7,7 @@ from qua_dashboards.video_mode import VideoModeComponent, OPXDataAcquirer, scan_
 from qua_dashboards.voltage_control import VoltageControlComponent
 from qua_dashboards.core import build_dashboard
 from qua_dashboards.virtual_gates import VirtualLayerEditor, ui_update
-from qm import QuantumMachinesManager
 from qcodes.parameters import DelegateParameter
-from qua_dashboards.utils import setup_logging
 import threading
 
 
