@@ -29,7 +29,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Da
 
     Notes
     -----
-    - The function creates a grid of subplots, one for each qubit.
+    - The function creates a grid of subplots, one for each sensor.
     - Each subplot contains the raw data and the fitted curve.
     """
     num_sensors = len(sensors)

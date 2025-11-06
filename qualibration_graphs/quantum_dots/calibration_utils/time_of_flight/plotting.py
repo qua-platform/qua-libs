@@ -18,7 +18,7 @@ def plot_single_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.
     ds : xr.Dataset
         The dataset containing the quadrature data.
     sensors : list of SensorDot
-        A list of qubits to plot.
+        A list of sensors to plot.
     fits : xr.Dataset
         The dataset containing the fit parameters.
 
@@ -29,7 +29,7 @@ def plot_single_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.
 
     Notes
     -----
-    - The function creates a grid of subplots, one for each qubit.
+    - The function creates a grid of subplots, one for each sensor.
     - Each subplot contains the raw data and the fitted curve.
     """
     num_sensors = len(sensors)

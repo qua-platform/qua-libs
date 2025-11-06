@@ -74,7 +74,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
-    # Get the active qubits from the node and organize them by batches
+    # Get the active sensors from the node and organize them by batches
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
 
@@ -175,7 +175,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active qubits from the loaded node parameters
+    # Get the active sensors from the loaded node parameters
     node.namespace["sensors"] = get_sensors(node)
 
 
@@ -198,7 +198,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
+    """Plot the raw and fitted data."""
     fig_single_run_fit = plot_single_run_with_fit(
         node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
     )
