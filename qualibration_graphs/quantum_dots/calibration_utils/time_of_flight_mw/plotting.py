@@ -1,11 +1,9 @@
 from typing import List
 import xarray as xr
 from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 
 from qualang_tools.units import unit
-from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.quantum_dots.components import SensorDot
 
 u = unit(coerce_to_integer=True)

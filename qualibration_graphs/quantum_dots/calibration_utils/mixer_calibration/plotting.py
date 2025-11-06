@@ -1,5 +1,4 @@
 from typing import Dict
-from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
 from qualang_tools.octave_tools.calibration_result_plotter import CalibrationResultPlotter

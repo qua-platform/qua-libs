@@ -5,7 +5,6 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 
 from qualang_tools.units import unit
-from qualibration_libs.plotting import QubitGrid, grid_iter
 from qualibration_libs.analysis import lorentzian_dip
 
 u = unit(coerce_to_integer=True)
