@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 import time
 from werkzeug.serving import make_server
 
@@ -96,6 +96,7 @@ def launch_video_mode(
         x_sweepaxis = data_acquirer.find_sweepaxis(x_axis_name, mode = x_mode)
         x_sweepaxis.span = x_span if x_span is not None else find_default(x_mode)[1]
         x_sweepaxis.points = x_points if x_points is not None else find_default(x_mode)[0]
+        
 
     if y_axis_name is not None and (y_span is not None or y_points is not None): 
         y_sweepaxis = data_acquirer.find_sweepaxis(y_axis_name, mode = y_mode)

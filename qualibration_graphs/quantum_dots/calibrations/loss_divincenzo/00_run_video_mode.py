@@ -13,7 +13,7 @@ node = QualibrationNode[Parameters, Quam](
     name="00_run_video_mode", description=description, parameters=Parameters()
 )
 
-node.machine = Quam.load()
+node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 
 # %%
 @node.run_action()

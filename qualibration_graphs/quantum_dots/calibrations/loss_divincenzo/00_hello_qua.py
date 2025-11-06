@@ -15,6 +15,7 @@ from calibration_utils.hello_qua import Parameters
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
+from calibration_utils.common_utils.experiment import get_dots, get_sensors
 
 description = """
         Basic script to play with the QUA program and test the QOP connectivity.
@@ -36,7 +37,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load()
+node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 
 
 # %% {Create_QUA_program}
@@ -48,9 +49,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     virtual_gate_set = node.machine.virtual_gate_sets[node.parameters.virtual_gate_set_id]
     
-    node.namespace["quantum_dots"] = target_qd = node.machine.quantum_dots[node.parameters.quantum_dots]
+    node.namespace["quantum_dots"] = quantum_dots = get_dots(node)
+    node.namespace["sensors"] = sensors = get_sensors(node)
 
-    v_center = 0
+    # Select only the first QD in the list
+    target_qd = list(quantum_dots.batch()[0].values())[0]
+
+    v_center = node.parameters.v_center
     v_span = node.parameters.v_span
     n_points = node.parameters.num_points
 
@@ -69,18 +74,29 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         v = declare(fixed)
 
-        align()
-        with for_(n, 0, n < node.parameters.num_shots, n + 1):
-            save(n, n_st)
-            with for_(*from_array(v, voltages)):
-                target_qd.go_to_voltages(v)
-                align()
+        for multiplexed_sensors in sensors.batch():
+            align()
+            with for_(n, 0, n < node.parameters.num_shots, n + 1):
+                save(n, n_st)
+                with for_(*from_array(v, voltages)):
+                    target_qd.go_to_voltages(v)
+                    align()
+                    for i, sensor in multiplexed_sensors.items():
+                        # Select the resonator tied to the sensor
+                        rr = sensor.readout_resonator
+                        # Measure using said resonator
+                        rr.measure("readout", qua_vars = (I[i], Q[i]))
+                        # Post-measurement wait (Optional)
+                        rr.wait(500)
+
+                        # Save data
+                        save(I[i], I_st[i])
+                        save(Q[i], Q_st[i])
 
         with stream_processing():
             n_st.save("n")
-        # This example doesn't save I/Q, adjust if needed
-        # I_st[0].buffer(len(voltages)).average().save("I1")
-        # Q_st[0].buffer(len(voltages)).average().save("Q1")
+            I_st[0].buffer(len(voltages)).average().save("I1")
+            Q_st[0].buffer(len(voltages)).average().save("Q1")
 
 
 # %% {Simulate}

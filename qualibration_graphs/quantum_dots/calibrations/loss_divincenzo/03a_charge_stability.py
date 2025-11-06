@@ -1,8 +1,7 @@
 # %% {Imports}
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
+import matplotlib.pyplot as plt
 
 from qm.qua import *
 
@@ -13,41 +12,32 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import get_sensors
-from calibration_utils.resonator_spectroscopy import (
-    Parameters,
-    process_raw_dataset,
-    fit_raw_data,
-    log_fitted_results,
-    plot_raw_amplitude_with_fit,
-    plot_raw_phase,
+from calibration_utils.charge_stability import Parameters, get_voltage_arrays
+from calibration_utils.charge_stability import (
+    plot_raw_amplitude, 
+    plot_raw_phase
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-# %% {Node initialisation}
-description = """
-        1D RESONATOR SPECTROSCOPY
-This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to extract the
-'I' and 'Q' quadratures across varying readout intermediate frequencies for sensors.
-The data is then post-processed to determine the resonator resonance frequency.
-This frequency is used to update the readout frequency in the state.
+from calibration_utils.common_utils.experiment import get_dots, get_sensors
 
-Prerequisites:
+description = """
+            2D CHARGE STABILITY MAP
+This script involves a simple 2D voltage map, done by stepping the X and Y Quantum Dots 
+to their corresponding voltages, sending a readout pulse, and demodulating the 'I' and 'Q'
+quadratures. 
+
+Prerequisites: 
     - Having calibrated the IQ mixer/Octave connected to the readout line (node 01a_mixer_calibration.py).
     - Having calibrated the time of flight, offsets, and gains (node 01a_time_of_flight.py).
+    - Having calibrated the resonators coupled to the SensorDot components (nodes 02a_resonator_spectroscopy.py, 02b_resonator_spectroscopy_vs_power.py).
     - Having initialized the QUAM state parameters for the readout pulse amplitude and duration.
-
-State update:
-    - The readout frequency: sensor.readout_resonator.intermediate_frequency
+    - Having registered the QuantumDot elements and your SensorDot elements in your QUAM state. 
 """
 
-# Be sure to include [Parameters, Quam] so the node has proper type hinting
-node = QualibrationNode[Parameters, Quam](
-    name="02a_resonator_spectroscopy",  # Name should be unique
-    description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
-    parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
-)
+
+node = QualibrationNode[Parameters, Quam](name="03a_charge_stability", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -56,7 +46,8 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.sensors = ["q1", "q2"]
+    # node.parameters.multiplexed = True
+    # node.parameters.num_shots = 2
     pass
 
 
@@ -71,55 +62,59 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
 
-    # Get the relevant sensor dots rom the node
+    virtual_gate_set = node.machine.virtual_gate_sets[node.parameters.virtual_gate_set_id]
+
     node.namespace["sensors"] = sensors = get_sensors(node)
+    
+    x_dot = node.machine.quantum_dots[node.parameters.x_axis_name]
+    y_dot = node.machine.quantum_dots[node.parameters.y_axis_name]
 
+    x_volts, y_volts = get_voltage_arrays(node)
     num_sensors = len(sensors)
-
-    # Extract the sweep parameters and axes from the node parameters
-    n_avg = node.parameters.num_shots
-
-    # The frequency sweep around the resonator resonance frequency
-    span = node.parameters.frequency_span_in_mhz * u.MHz
-    step = node.parameters.frequency_step_in_mhz * u.MHz
-    dfs = np.arange(-span / 2, +span / 2, step)
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "sensors": xr.DataArray(sensors.get_names()),
-        "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
+        "x_volts": xr.DataArray(x_volts, attrs={"long_name": "voltage", "units": "V"}),
+        "y_volts": xr.DataArray(y_volts, attrs={"long_name": "voltage", "units": "V"}),
     }
 
+    # node.namespace["sweep"]
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
+        seq = virtual_gate_set.new_sequence()
 
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
-        df = declare(int)  # QUA variable for the readout frequency
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs = num_sensors)
+        x = declare(fixed)
+        y = declare(fixed)
 
         for multiplexed_sensors in sensors.batch():
             align()
-            with for_(n, 0, n < n_avg, n + 1):
+            with for_(n, 0, n < node.parameters.num_shots, n + 1):
                 save(n, n_st)
-                with for_(*from_array(df, dfs)):
+                with for_(*from_array(x, x_volts)):
+                    with for_(*from_array(y, y_volts)):
+                        with seq.simultaneous():
+                            x_dot.go_to_voltages(x)
+                            y_dot.go_to_voltages(y)
+                        align()
+                        for i, sensor in multiplexed_sensors.items():
+                            # Select the resonator tied to the sensor
+                            rr = sensor.readout_resonator
+                            # Measure using said resonator
+                            rr.measure("readout", qua_vars = (I[i], Q[i]))
+                            # Post-measurement wait (Optional)
+                            rr.wait(500)
 
-                    for i, sensor in multiplexed_sensors.items():
-                        rr = sensor.readout_resonator
-                        # Update the resonator frequencies for all resonators
-                        rr.update_frequency(df + rr.intermediate_frequency)
-                        # Measure the resonator
-                        rr.measure("readout", qua_vars=(I[i], Q[i]))
-                        # wait for the resonator to deplete
-                        rr.wait(1000)
-                        # save data
-                        save(I[i], I_st[i])
-                        save(Q[i], Q_st[i])
-                    align()
+                            # Save data
+                            save(I[i], I_st[i])
+                            save(Q[i], Q_st[i])
 
         with stream_processing():
             n_st.save("n")
             for i in range(num_sensors):
-                I_st[i].buffer(len(dfs)).average().save(f"I{i + 1}")
-                Q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
+                I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I")
+                Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q")
 
 
 # %% {Simulate}
@@ -157,7 +152,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
-        node.log(job.execution_report())
+        print(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
@@ -174,77 +169,50 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
 
 
-# %% {Analyse_data}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
-def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-
-    # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], log_callable=node.log)
-    node.outcomes = {
-        sensor_name: ("successful" if fit_result["success"] else "failed")
-        for sensor_name, fit_result in node.results["fit_results"].items()
-    }
-
-
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
-    fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
-    fig_fit_amplitude = plot_raw_amplitude_with_fit(
-        node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
-    )
+    fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
+    fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
-        "phase": fig_raw_phase,
-        "amplitude": fig_fit_amplitude,
+        "amplitude": fig_amplitude,
+        "phase": fig_phase,
     }
 
-
-# %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
-def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the sensor_name data analysis was successful."""
-    with node.record_state_updates():
-        for q in node.namespace["sensors"]:
-            if node.outcomes[q.name] == "failed":
-                continue
-
-            q.readout_resonator.intermediate_frequency = float(node.results["fit_results"][q.name]["frequency"])
 
 # %%
 from calibration_utils.run_video_mode import create_video_mode
 @node.run_action(skip_if = node.parameters.run_in_video_mode is False)
 def run_video_mode(node: QualibrationNode[Parameters, Quam]):
-    machine = node.machine
-    readout_pulses = [sensor.readout_resonator.operations["readout"] for sensor in [node.machine.sensor_dots[sensor] for sensor in node.parameters.sensor_names]]
-    x_axis_name = [rp.channel.name for rp in readout_pulses][0]
-    num_points = int(node.parameters.frequency_span_in_mhz // node.parameters.frequency_step_in_mhz)
-    f_span = int(node.parameters.frequency_span_in_mhz*1e6)
-    num_software_averages = node.parameters.num_shots
+    x_axis_name = node.parameters.x_axis_name
+    y_axis_name = node.parameters.y_axis_name
+    x_span, x_points = node.parameters.x_span, node.parameters.x_points
+    y_span, y_points = node.parameters.y_span, node.parameters.y_points
+
     create_video_mode(
-        machine = machine, 
-        log = node.log, 
+        machine = node.machine, 
+        num_software_averages=node.parameters.num_shots,
+        log = node.log,
         x_axis_name = x_axis_name, 
-        y_axis_name = None, 
-        x_span = f_span, 
-        x_points = num_points,
-        x_mode = "Frequency",
-        num_software_averages = num_software_averages,
+        y_axis_name = y_axis_name, 
+        x_span = x_span, 
+        x_points = x_points,
+        y_span = y_span, 
+        y_points = y_points,
         virtual_gate_id = node.parameters.virtual_gate_set_id, 
         dc_control = node.parameters.dc_control, 
-        readout_pulses = readout_pulses, 
-        save_path = "/Users/User/.qualibrate/quam_state"
+        readout_pulses = [node.machine.sensor_dots[name].readout_resonator.operations["readout"] for name in node.parameters.sensor_names], 
+        save_path = "/Users/User/.qualibrate/user_storage"
     )
-
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Save the node results and state."""
     node.save()
+
+
