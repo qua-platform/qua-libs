@@ -36,7 +36,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
+node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}

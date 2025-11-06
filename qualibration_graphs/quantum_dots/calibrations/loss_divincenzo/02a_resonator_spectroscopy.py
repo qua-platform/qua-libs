@@ -39,7 +39,7 @@ Prerequisites:
     - Having initialized the QUAM state parameters for the readout pulse amplitude and duration, and the resonators depletion time.
 
 State update:
-    - The readout frequency: sensor.resonator.f_01 & sensor.resonator.RF_frequency
+    - The readout frequency: sensor.readout_resonator.intermediate_frequency
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -61,7 +61,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
+node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
@@ -239,7 +239,7 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
         virtual_gate_id = node.parameters.virtual_gate_set_id, 
         dc_control = node.parameters.dc_control, 
         readout_pulses = readout_pulses, 
-        save_path = "/Users/kalidu_laptop/.qualibrate/quam_state"
+        save_path = "/Users/User/.qualibrate/quam_state"
     )
 
 

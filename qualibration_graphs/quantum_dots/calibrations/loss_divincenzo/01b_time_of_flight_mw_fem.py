@@ -24,6 +24,7 @@ from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
+from calibration_utils.common_utils.experiment import get_sensors
 
 description = """
         TIME OF FLIGHT - MW FEM
@@ -42,7 +43,7 @@ Prerequisites:
     - Having initialized the Quam (quam_config/populate_quam_state_*.py).
 
 State update:
-    - The time of flight: qubit.resonator.time_of_flight
+    - The time of flight: sensor.readout_resonator.time_of_flight
 """
 
 
@@ -70,13 +71,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
-    # Get the active qubits from the node and organize them by batches
-    node.namespace["qubits"] = qubits = get_qubits(node)
-    num_qubits = len(qubits)
+    # Get the active sensors from the node and organize them by batches
+    node.namespace["sensors"] = sensors = get_sensors(node)
+    num_sensors = len(sensors)
 
     node.namespace["tracked_resonators"] = [] = []
-    for q in qubits:
-        resonator = q.resonator
+    for s in sensors:
+        resonator = s.readout_resonator
         # make temporary updates before running the program and revert at the end.
         with tracked_updates(resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
             if node.parameters.time_of_flight_in_ns is not None:
@@ -87,7 +88,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
-        "qubit": xr.DataArray(qubits.get_names()),
+        "sensor": xr.DataArray(sensors.get_names()),
         "readout_time": xr.DataArray(
             np.arange(0, node.parameters.readout_length_in_ns, 1),
             attrs={"long_name": "readout time", "units": "ns"},
@@ -97,24 +98,24 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     with program() as node.namespace["qua_program"]:
         n = declare(int)  # QUA variable for the averaging loop
         n_st = declare_stream()
-        adc_st = [declare_stream(adc_trace=True) for _ in range(num_qubits)]  # The stream to store the raw ADC trace
+        adc_st = [declare_stream(adc_trace=True) for _ in range(num_sensors)]  # The stream to store the raw ADC trace
 
-        for multiplexed_qubits in qubits.batch():
+        for multiplexed_sensors in sensors.batch():
             with for_(n, 0, n < node.parameters.num_shots, n + 1):
                 save(n, n_st)
-                for i, qubit in multiplexed_qubits.items():
+                for i, sensor in multiplexed_sensors.items():
                     # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
-                    reset_if_phase(qubit.resonator.name)
+                    reset_if_phase(sensor.readout_resonator.name)
                     # Measure the resonator (send a readout pulse and record the raw ADC trace)
-                    qubit.resonator.measure("readout", stream=adc_st[i])
+                    sensor.readout_resonator.measure("readout", stream=adc_st[i])
                     # Wait for the resonator to deplete
-                    qubit.resonator.wait(node.machine.depletion_time * u.ns)
+                    sensor.readout_resonator.wait(1000)
                 align()
 
         with stream_processing():
             n_st.save("n")
-            for i, qubit in enumerate(node.namespace["qubits"]):
-                if qubit.resonator.opx_input.port_id == 1:
+            for i, sensor in enumerate(node.namespace["sensor"]):
+                if sensor.readout_resonator.opx_input.port_id == 1:
                     stream = adc_st[i].input1()
                 else:
                     stream = adc_st[i].input2()
@@ -174,8 +175,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active qubits from the loaded node parameters
-    node.namespace["qubits"] = get_qubits(node)
+    # Get the active sensors from the loaded node parameters
+    node.namespace["sensors"] = get_qubits(node)
 
 
 # %% {Data_analysis}
@@ -197,12 +198,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plotting}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
+    """Plot the raw and fitted data."""
     fig_single_run_fit = plot_single_run_with_fit(
-        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+        node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
     )
     fig_averaged_run_fit = plot_averaged_run_with_fit(
-        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
+        node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
     )
     plt.show()
     # Store the generated figures
@@ -215,22 +216,22 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the qubit data analysis was successful."""
+    """Update the relevant parameters if the data analysis was successful."""
 
     # Revert the change done at the beginning of the node
     for tracked_resonator in node.namespace.get("tracked_resonators", []):
         tracked_resonator.revert_changes()
 
     with node.record_state_updates():
-        for q in node.namespace["qubits"]:
-            if not node.results["fit_results"][q.name]["success"]:
+        for s in node.namespace["sensors"]:
+            if not node.results["fit_results"][s.name]["success"]:
                 continue
 
-            fit_result = node.results["fit_results"][q.name]
+            fit_result = node.results["fit_results"][s.name]
             if node.parameters.time_of_flight_in_ns is not None:
-                q.resonator.time_of_flight = node.parameters.time_of_flight_in_ns + fit_result["tof_to_add"]
+                s.readout_resonator.time_of_flight = node.parameters.time_of_flight_in_ns + fit_result["tof_to_add"]
             else:
-                q.resonator.time_of_flight = fit_result["tof_to_add"]
+                s.readout_resonator.time_of_flight = fit_result["tof_to_add"]
 
 
 # %% {Save_results}

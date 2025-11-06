@@ -1,14 +1,16 @@
 from qualibrate.parameters import RunnableParameters
 from typing import List, Optional
 
-class VideoModeSpecificParameters(RunnableParameters):
+class VideoModeCommonParameters(RunnableParameters):
+    num_shots: int = 100
+    """Number of averages to perform. Default is 100."""
+    virtual_gate_set_id: str = None
+    """Name of the VirtualGateSet to measure using Video Mode."""
     x_axis_name: str = None
     """Name of physical or virtual X axis."""
     y_axis_name: str = None
     """Name of physical or virtual Y axis."""
     sensor_names: Optional[List[str]] = None
     """Sensors that you would like to sweep"""
-    frequency_span_in_mhz: float = 30.0
-    """Span of frequencies to sweep in MHz. Default is 30 MHz."""
-    frequency_step_in_mhz: float = 0.1
-    """Step size for frequency sweep in MHz. Default is 0.1 MHz."""
+    dc_control: bool = False
+    """Whether to include DC Control channels in Video Mode"""

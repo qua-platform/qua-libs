@@ -35,18 +35,14 @@ description = """
 This sequence involves measuring the resonator by sending a readout pulse and
 demodulating the signals to extract the 'I' and 'Q' quadratures for all resonators
 simultaneously. This is done across various readout frequencies and amplitudes.
-Based on the results, one can determine if a qubit is coupled to the resonator by
-noting the resonator frequency splitting. This information can then be used to adjust
-the readout amplitude, choosing a readout amplitude value just before the observed
-frequency splitting.
+Based on the results, one can then adjust the readout amplitude, choosing a 
+readout amplitude value just before the observed frequency splitting.
 
 Prerequisites:
     - Having calibrated the resonator frequency (node 02a_resonator_spectroscopy.py).
-    - Having specified the desired flux point if relevant (qubit.z.flux_point).
 
 State update:
-    - The readout frequency at the optimal readout power: qubit.resonator.f_01 & qubit.resonator.RF_frequency
-    - The readout power: qubit.resonator.set_output_power()
+    - The readout power: sensor.readout_resonator.set_output_power()
     - The readout frequency for the optimal readout power. 
 """
 
@@ -70,7 +66,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
+node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
@@ -79,7 +75,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
-    # Get the active qubits from the node and organize them by batches
+    # Get the active sensors from the node and organize them by batches
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
     # Update the readout power to match the desired range, this change will be reverted at the end of the node.
@@ -222,7 +218,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
+    """Plot the raw and fitted data."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
@@ -289,7 +285,7 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
         virtual_gate_id = node.parameters.virtual_gate_set_id, 
         dc_control = node.parameters.dc_control, 
         readout_pulses = readout_pulses, 
-        save_path = "/Users/kalidu_laptop/.qualibrate/quam_state"
+        save_path = "/Users/User/.qualibrate/quam_state"
     )
 
 
