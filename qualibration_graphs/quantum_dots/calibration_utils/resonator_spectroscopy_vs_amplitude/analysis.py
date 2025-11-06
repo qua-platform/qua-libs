@@ -34,7 +34,7 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
-        s_qubit = f"Results for qubit {q}: "
+        s_qubit = f"Results for sensor {q}: "
         s_power = f"Optimal readout power: {fit_results[q]['optimal_power']:.2f} dBm | "
         s_freq = f"Resonator frequency: {1e-9 * fit_results[q]['resonator_frequency']:.3f} GHz | "
         s_shift = f"(shift of {1e-6 * fit_results[q]['frequency_shift']:.0f} MHz)\n"
@@ -48,13 +48,11 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     """Processes the raw dataset by converting the 'I' and 'Q' quadratures to V, or adding the RF_frequency as a coordinate for instance."""
 
-    # Convert the 'I' and 'Q' quadratures from demodulation units to V.
-    ds = convert_IQ_to_V(ds, node.namespace["qubits"])
     # Add the amplitude and phase to the raw dataset
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     # Add the RF frequency as a coordinate of the raw dataset
-    full_freq = np.array([ds.detuning + q.resonator.RF_frequency for q in node.namespace["qubits"]])
-    ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
+    full_freq = np.array([ds.detuning + s.readout_resonator.intermediate_frequency for s in node.namespace["sensors"]])
+    ds = ds.assign_coords(full_freq=(["sensor", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     # Normalize the IQ_abs with respect to the amplitude axis
     ds = ds.assign({"IQ_abs_norm": ds["IQ_abs"] / ds.IQ_abs.mean(dim=["detuning"])})
@@ -103,20 +101,20 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     # Get the first occurrence below the derivative threshold
     optimal_power = ds_fit.below_threshold.idxmax(dim="power")
     optimal_power -= node.parameters.buffer_from_crossing_threshold_in_dbm
-    ds_fit = ds_fit.assign_coords({"optimal_power": (["qubit"], optimal_power.data)})
+    ds_fit = ds_fit.assign_coords({"optimal_power": (["sensor"], optimal_power.data)})
 
     # Define a function to fit the resonator line at the optimal power for each qubit
-    def _select_optimal_power(ds, qubit):
+    def _select_optimal_power(ds, sensor):
         return peaks_dips(
-            ds.sel(power=ds["optimal_power"].sel(qubit=qubit).data, method="nearest").sel(qubit=qubit).IQ_abs,
+            ds.sel(power=ds["optimal_power"].sel(sensor=sensor).data, method="nearest").sel(sensor=sensor).IQ_abs,
             "detuning",
         )
 
     # Get the resonance frequency shift at the optimal power
     freq_shift = []
-    for q in node.namespace["qubits"]:
+    for q in node.namespace["sensors"]:
         freq_shift.append(float(_select_optimal_power(ds_fit, q.name).position.data))
-    ds_fit = ds_fit.assign_coords({"freq_shift": (["qubit"], freq_shift)})
+    ds_fit = ds_fit.assign_coords({"freq_shift": (["sensor"], freq_shift)})
 
     # Extract the relevant fitted parameters
     fit_dataset, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
@@ -127,24 +125,24 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the fit dataset and fit result dictionary."""
 
     # Get the fitted resonator frequency
-    full_freq = np.array([q.resonator.RF_frequency for q in node.namespace["qubits"]])
+    full_freq = np.array([s.readout_resonator.intermediate_frequency for s in node.namespace["sensors"]])
     res_freq = fit.freq_shift + full_freq
-    fit = fit.assign_coords(res_freq=("qubit", res_freq.data))
+    fit = fit.assign_coords(res_freq=("sensor", res_freq.data))
     fit.res_freq.attrs = {"long_name": "resonator frequency", "units": "Hz"}
     # Assess whether the fit was successful or not
     freq_success = np.abs(fit.freq_shift.data) < node.parameters.frequency_span_in_mhz * 1e6
     nan_success = np.isnan(fit.freq_shift.data) | np.isnan(fit.optimal_power.data)
     success_criteria = freq_success & ~nan_success
-    fit = fit.assign_coords(success=("qubit", success_criteria))
+    fit = fit.assign_coords(success=("sensor", success_criteria))
 
     fit_results = {
-        q: FitParameters(
-            success=fit.sel(qubit=q).success.values.__bool__(),
-            resonator_frequency=float(fit.res_freq.sel(qubit=q).values),
-            frequency_shift=float(fit.freq_shift.sel(qubit=q).data),
-            optimal_power=float(fit.optimal_power.sel(qubit=q).data),
+        s: FitParameters(
+            success=fit.sel(sensor=s).success.values.__bool__(),
+            resonator_frequency=float(fit.res_freq.sel(sensor=s).values),
+            frequency_shift=float(fit.freq_shift.sel(sensor=s).data),
+            optimal_power=float(fit.optimal_power.sel(sensor=s).data),
         )
-        for q in fit.qubit.values
+        for s in fit.sensor.values
     }
 
     return fit, fit_results
