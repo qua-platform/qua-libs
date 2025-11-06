@@ -201,8 +201,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 with node.record_state_updates():
     for qp in node.namespace["qubit_pairs"]:
-        node.machine.qubit_pairs[qp.name].macros["cz"].fidelity["StandardRB"] = node.results["fit_results"][qp.name]["fidelity"]
-        node.machine.qubit_pairs[qp.name].macros["cz"].fidelity["StandardRB_alpha"] = node.results["fit_results"][qp.name]["alpha"]
+        node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB"] = node.results["fit_results"][qp.name]["fidelity"]
+        node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB_alpha"] = node.results["fit_results"][qp.name]["alpha"]
 # %% {Save_results}
 node.save()
 

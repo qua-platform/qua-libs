@@ -63,7 +63,7 @@ Prerequisites:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="23_two_qubit_standard_rb",  # Name should be unique
+    name="23_two_qubit_interleaved_rb",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
 )
@@ -77,7 +77,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.qubit_pairs = ["qB2-qB4"]
     node.parameters.operation = "cz_bipolar"
     node.parameters.reset_type = "active"
-    # node.parameters.load_data_id = 5580
+    node.parameters.load_data_id = 5594
     pass
 
 
@@ -184,7 +184,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     for qp in qubit_pairs:
 
         rb_result = InterleavedRBResult(
-            standard_rb_alpha=0.99,
+            standard_rb_alpha=node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB_alpha"],
             circuit_depths=list(node.parameters.circuit_lengths),
             num_repeats=node.parameters.num_circuits_per_length,
             num_averages=node.parameters.num_shots,
@@ -192,19 +192,19 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         )
 
         fig = rb_result.plot_with_fidelity()
-        fig.suptitle(f"2Q Randomized Benchmarking - {qp.name}")
+        fig.suptitle(f"2Q Interleaved CZ Randomized Benchmarking - {qp.name}")
         fig.show()
 
-        # node.results[f"fig_{qp.name}"] = fig
-        # node.results["fit_results"][qp.name] = {"alpha": rb_result.alpha, "fidelity": rb_result.fidelity}
+        node.results[f"fig_{qp.name}"] = fig
+        node.results["fit_results"][qp.name] = {"alpha": rb_result.alpha, "fidelity": rb_result.fidelity}
 
 
 
 # %% {Update_state}
 with node.record_state_updates():
     for qp in node.namespace["qubit_pairs"]:
-        # node.machine.qubit_pairs[qp.name].macros["cz"].fidelity["InterleavedRB"] = node.results["fit_results"][qp.name]["fidelity"]
-        # node.machine.qubit_pairs[qp.name].macros["cz"].fidelity["InterleavedRB_alpha"] = node.results["fit_results"][qp.name]["alpha"]
+        node.machine.qubit_pairs[qp.name].macros["cz"].fidelity["InterleavedRB"] = node.results["fit_results"][qp.name]["fidelity"]
+        node.machine.qubit_pairs[qp.name].macros["cz"].fidelity["InterleavedRB_alpha"] = node.results["fit_results"][qp.name]["alpha"]
 # %% {Save_results}
 node.save()
 

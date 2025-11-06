@@ -64,14 +64,15 @@ class RBResult:
         """
         Plots the RB fidelity as a function of circuit depth, including a fit to an exponential decay model.
         The fitted curve is overlaid with the raw data points, and error bars are included.
-        
+
         Returns:
             matplotlib.figure.Figure: The figure object containing the plot.
         """
         A, alpha, B = self.fit_exponential()
         fidelity = self.get_fidelity(alpha)
         self.fidelity = fidelity
-        
+
+
         # std of average
         error_bars = (self.data == 0).stack(combined=("average", "repeat")).std(dim="combined").state.data / np.sqrt(self.num_repeats * self.num_averages)
 
@@ -96,10 +97,12 @@ class RBResult:
             label="Exponential Fit",
         )
 
+        label = f"CZ Fidelity = {fidelity * 100:.2f}%" if isinstance(self, InterleavedRBResult) else f"2Q Clifford Fidelity = {fidelity * 100:.2f}%"
+
         plt.text(
             0.5,
             0.95,
-            f"2Q Clifford Fidelity = {fidelity * 100:.2f}%",
+            label,
             horizontalalignment="center",
             verticalalignment="top",
             fontdict={"fontsize": "large", "fontweight": "bold"},
@@ -109,10 +112,10 @@ class RBResult:
         plt.xlabel("Circuit Depth")
         plt.ylabel(r"Probability to recover to $|00\rangle$")
         plt.legend(framealpha=0)
-        
+
         return fig
-        
-        
+
+
 
     def plot_two_qubit_state_distribution(self):
         """
@@ -172,7 +175,7 @@ class RBResult:
 
         popt, _ = curve_fit(rb_decay_curve, self.circuit_depths, decay_curve, p0=[0.75, 0.9, 0.25], maxfev=10000)
         A, alpha, B = popt
-        
+
         self.alpha = alpha
 
         return A, alpha, B
@@ -225,7 +228,7 @@ class InterleavedRBResult(RBResult):
     Class for analyzing and visualizing the results of a Interleaved Randomized Benchmarking (IRB) experiment.
     """
     standard_rb_alpha: float = 1
-    
+
     def __init__(self, standard_rb_alpha: float, circuit_depths: list[int], num_repeats: int, num_averages: int, state: np.ndarray):
         super().__init__(circuit_depths, num_repeats, num_averages, state)
         self.standard_rb_alpha = standard_rb_alpha
