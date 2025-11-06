@@ -4,7 +4,7 @@ from qualibrate import QualibrationNode
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.core import BatchableList
 
-from quam_builder.architecture.quantum_dots.components import SensorDot
+from quam_builder.architecture.quantum_dots.components import SensorDot, QuantumDot
 from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD
 from quam_builder.architecture.quantum_dots.qubit import AnySpinQubit
 from quam_builder.architecture.quantum_dots.qubit_pair import AnySpinQubitPair
@@ -44,6 +44,17 @@ def _make_batchable_list_from_multiplexed(items: List, multiplexed: bool) -> Bat
 
     return BatchableList(items, batched_groups)
 
+def _get_dots(machine:BaseQuamQD, node_parameters: QuantumDotExperimentNodeParameters):
+    if node_parameters.quantum_dots is None or node_parameters.quantum_dots == "":
+        dots = list(machine.quantum_dots.values())
+    else:
+        dots = [machine.quantum_dots[s] for s in node_parameters.quantum_dots]
+    return dots
+
+def get_dots(node: QualibrationNode) -> BatchableList[QuantumDot]:
+    dots = _get_dots(node.machine, node.parameters)
+    dots_batchable_list = _make_batchable_list_from_multiplexed(dots, True)
+    return dots_batchable_list
 
 def _get_sensors(machine: BaseQuamQD, node_parameters: BaseExperimentNodeParameters):
     if node_parameters.sensor_names is None or node_parameters.sensor_names == "":

@@ -1,7 +1,8 @@
 from typing import Optional
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonNodeParameters
+from qualibration_libs.parameters import CommonNodeParameters
+from calibration_utils.common_utils.experiment import BaseExperimentNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -19,6 +20,6 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    QubitsExperimentNodeParameters,
+    BaseExperimentNodeParameters,
 ):
     pass
