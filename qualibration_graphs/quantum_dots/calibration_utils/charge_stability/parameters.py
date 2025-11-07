@@ -44,19 +44,3 @@ def get_voltage_arrays(node):
     y_span, y_center, y_points = node.parameters.y_span, 0, node.parameters.y_points
     x_volts, y_volts = np.linspace(x_center - x_span/2, x_center + x_span/2, x_points), np.linspace(y_center - y_span/2, y_center + y_span/2, y_points)
     return x_volts, y_volts
-
-def get_swept_object(node, name): 
-    """Extract the abstracted object from a given node."""
-    machine = node.machine
-
-    collections = [
-        machine.qubits, 
-        machine.quantum_dots, 
-        machine.sensor_dots, 
-        machine.barrier_gates
-    ]
-    for collection in collections: 
-        if name in collection: 
-            return collection[name]
-    
-    raise ValueError(f"Element {name} found in BaseQuamQD")
