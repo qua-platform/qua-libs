@@ -12,7 +12,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.charge_stability import Parameters, get_voltage_arrays
+from calibration_utils.charge_stability import Parameters, get_voltage_arrays, get_swept_object
 from calibration_utils.charge_stability import (
     plot_raw_amplitude, 
     plot_raw_phase
@@ -66,8 +66,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     node.namespace["sensors"] = sensors = get_sensors(node)
     
-    x_dot = node.machine.quantum_dots[node.parameters.x_axis_name]
-    y_dot = node.machine.quantum_dots[node.parameters.y_axis_name]
+    x_obj, y_obj = get_swept_object(node, node.parameters.x_axis_name), get_swept_object(node, node.parameters.y_axis_name)
 
     x_volts, y_volts = get_voltage_arrays(node)
     num_sensors = len(sensors)
@@ -95,8 +94,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 with for_(*from_array(x, x_volts)):
                     with for_(*from_array(y, y_volts)):
                         with seq.simultaneous():
-                            x_dot.go_to_voltages(x)
-                            y_dot.go_to_voltages(y)
+                            x_obj.go_to_voltages(x)
+                            y_obj.go_to_voltages(y)
                         align()
                         for i, sensor in multiplexed_sensors.items():
                             # Select the resonator tied to the sensor
