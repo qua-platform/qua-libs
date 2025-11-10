@@ -55,6 +55,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubits = ["q1"]
+    node.parameters.load_data_id = 5687
     pass
 
 
@@ -286,6 +287,15 @@ def plot_results(node: QualibrationNode[Parameters, Quam]):
     fig = plot_fit(ds, qubits, node.results["fit_results"])
     plt.show()
     node.results["fitted_data"] = fig
+
+    fig, axs = plt.subplots(1)
+
+    node.results["ds_proc"].IQ_abs.plot(ax=axs)
+    plt.tight_layout()
+    plt.show()
+
+    node.results["fig_raw"] = fig
+
 
 
 # %% {Update_state}

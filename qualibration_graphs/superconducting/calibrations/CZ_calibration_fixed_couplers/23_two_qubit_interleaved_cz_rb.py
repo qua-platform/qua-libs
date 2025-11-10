@@ -63,7 +63,7 @@ Prerequisites:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="23_two_qubit_standard_rb",  # Name should be unique
+    name="23_two_qubit_interleaved_rb",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
 )
@@ -195,17 +195,18 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         fig.suptitle(f"2Q Randomized Benchmarking - {qp.name}")
         fig.show()
 
-        # node.results[f"fig_{qp.name}"] = fig
-        # node.results["fit_results"][qp.name] = {"alpha": rb_result.alpha, "fidelity": rb_result.fidelity}
+        node.results[f"fig_{qp.name}"] = fig
+        node.results["fit_results"][qp.name] = {"alpha": rb_result.alpha, "fidelity": rb_result.fidelity}
 
 
 
 # %% {Update_state}
-with node.record_state_updates():
-    for qp in node.namespace["qubit_pairs"]:
+# with node.record_state_updates():
+#     for qp in node.namespace["qubit_pairs"]:
         # node.machine.qubit_pairs[qp.name].macros["cz"].fidelity["InterleavedRB"] = node.results["fit_results"][qp.name]["fidelity"]
         # node.machine.qubit_pairs[qp.name].macros["cz"].fidelity["InterleavedRB_alpha"] = node.results["fit_results"][qp.name]["alpha"]
 # %% {Save_results}
+
 node.save()
 
 # %%

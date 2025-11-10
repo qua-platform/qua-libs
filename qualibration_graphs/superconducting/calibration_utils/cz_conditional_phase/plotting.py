@@ -74,11 +74,11 @@ def plot_raw_data_with_fit(
         # Try to get axes for mesh
         amps = fit_result.amp_full.values if "amp_full" in fit_result.coords else fit_result.amp.values
         ax_sub.plot(amps, data_g, label="g", color="blue")
-        ax_sub.plot(amps, data_e, label="e", color="red")
+        # ax_sub.plot(amps, data_e, label="e", color="red")
         ax_sub.plot(amps, data_f, label="f", color="green")
         ax_sub.axvline(fit_result.optimal_amplitude.item(), color="red", linestyle="--", lw=0.5, label="optimal")
         ax_sub.axhline(0.0, color="red", linestyle="--", lw=0.5)
-        ax_sub.axhline(1.0, color="red", linestyle="--", lw=0.5)
+        # ax_sub.axhline(1.0, color="red", linestyle="--", lw=0.5)
         ax_sub.set_ylabel("Control qubit population")
         ax_sub.set_xlabel("Amplitude (V)")
         secax2 = ax_sub.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
