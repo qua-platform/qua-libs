@@ -19,11 +19,11 @@ with program() as hello_qua:
     i = declare(int)
 
     play("init", "P1")
-    play("init", "P2")
+    play("init", "P2_sticky")
     play("manip", "P1", duration=t)
-    play("manip", "P2", duration=t)
+    play("manip", "P2_sticky", duration=t)
     play("readout", "P1")
-    play("readout", "P2")
+    play("readout", "P2_sticky")
 
 
 #####################################

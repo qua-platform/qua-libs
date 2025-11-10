@@ -5,7 +5,7 @@ A simple sandbox to showcase different QUA functionalities during the installati
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration_with_lf_fem_and_mw_fem import *
+from configuration import *
 import matplotlib.pyplot as plt
 from qm import generate_qua_script
 
@@ -19,11 +19,11 @@ with program() as hello_qua:
     i = declare(int)
 
     play("init", "P1")
-    play("init", "P2")
+    play("init", "P2_sticky")
     play("manip", "P1", duration=t)
-    play("manip", "P2", duration=t)
+    play("manip", "P2_sticky", duration=t)
     play("readout", "P1")
-    play("readout", "P2")
+    play("readout", "P2_sticky")
 
 
 #####################################

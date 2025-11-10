@@ -257,9 +257,6 @@ config = {
             "operations": {
                 "step": "P2_step_pulse",
                 "coulomb_step": "P2_coulomb_step_pulse",
-                "init": "P2_init_pulse",
-                "manip": "P2_manip_pulse",
-                "readout": "P2_readout_pulse",
             },
         },
         "P2_sticky": {
@@ -269,6 +266,9 @@ config = {
             "sticky": {"analog": True, "duration": hold_offset_duration},
             "operations": {
                 "step": "P2_step_pulse",
+                "init": "P2_init_pulse",
+                "manip": "P2_manip_pulse",
+                "readout": "P2_readout_pulse",
             },
         },
         "sensor_gate": {
@@ -547,8 +547,8 @@ config = {
         "P1_readout_wf": {"type": "constant", "sample": level_readout[0]},
         "P2_step_wf": {"type": "constant", "sample": P2_step_amp},
         "P2_init_wf": {"type": "constant", "sample": level_init[1]},
-        "P2_manip_wf": {"type": "constant", "sample": level_manip[1]},
-        "P2_readout_wf": {"type": "constant", "sample": level_readout[1]},
+        "P2_manip_wf": {"type": "constant", "sample": level_manip[1] - level_init[1]},
+        "P2_readout_wf": {"type": "constant", "sample": level_readout[1] - level_manip[1]},
         "charge_sensor_step_wf": {"type": "constant", "sample": charge_sensor_amp},
         "x180_wf": {"type": "constant", "sample": x180_amp},
         "y180_wf": {"type": "constant", "sample": y180_amp},
