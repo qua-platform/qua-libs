@@ -337,11 +337,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 def save_results(node: QualibrationNode[Parameters, Quam]):
 
     for qp in node.namespace.get("tracked_qubit_pairs", []):
-        try:
-            qp.revert_changes()
-        except Exception:
-            pass
+        qp.revert_changes()
+
     node.save()
-
-
-# %%

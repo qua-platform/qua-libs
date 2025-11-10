@@ -26,7 +26,6 @@ from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
-
 # %% {Initialisation}
 description = """
 CALIBRATION OF THE CONTROLLED-PHASE (CPHASE) OF THE CZ GATE
@@ -328,11 +327,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 def save_results(node: QualibrationNode[Parameters, Quam]):
 
     for qp in node.namespace.get("tracked_qubit_pairs", []):
-        try:
-            qp.revert_changes()
-        except Exception:
-            pass
+        qp.revert_changes()
+
     node.save()
-
-
-# %%
