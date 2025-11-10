@@ -96,7 +96,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
     frames = np.arange(0, 1, 1 / node.parameters.num_frame_rotations)
 
-    operation_name = node.parameters.operation
+    operation = node.parameters.operation
     num_operations = node.parameters.number_of_operations
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -114,8 +114,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     for qp in qubit_pairs:
         with tracked_updates(qp, auto_revert=False, dont_assign_to_none=False) as tracked_qp:
             # Mark the CZ gate amplitude as tracked for updates if the calibration is successful
-            tracked_qp.macros[operation_name].phase_shift_control = 0.0
-            tracked_qp.macros[operation_name].phase_shift_target = 0.0
+            tracked_qp.macros[operation].phase_shift_control = 0.0
+            tracked_qp.macros[operation].phase_shift_target = 0.0
             tracked_qp_list.append(tracked_qp)
 
     node.namespace["tracked_qubit_pairs"] = tracked_qp_list
@@ -139,21 +139,28 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state_cf_st = [declare_stream() for _ in range(num_qubit_pairs)]
             state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
 
-        for qubit in node.machine.active_qubits:
-            node.machine.initialize_qpu(target=qubit)
-
         for multiplexed_qubit_pairs in qubit_pairs.batch():
+            # Initialize the qubits
+            for qp in multiplexed_qubit_pairs.values():
+                node.machine.initialize_qpu(target=qp.qubit_control)
+                node.machine.initialize_qpu(target=qp.qubit_target)
+            # Loop for averaging
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
+                # Loop over the number of CZ operations for error amplification
                 with for_(n_op, 1, n_op <= num_operations, n_op + 1):
+                    # Loop over amplitude scale
                     with for_(*from_array(amp, amplitudes)):
+                        # Loop over the frame rotations
                         with for_(*from_array(frame, frames)):
+                            # Loop over the initial state of the control qubit
                             with for_(*from_array(control_initial, [0, 1])):
                                 for ii, qp in multiplexed_qubit_pairs.items():
-                                    # Reset and align both qubits
+                                    # Reset the qubits
                                     qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
                                     qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
                                     qp.align()
+                                    # Reset the frames of both qubits
                                     reset_frame(qp.qubit_target.xy.name)
                                     reset_frame(qp.qubit_control.xy.name)
                                     # setting both qubits to the initial state
@@ -163,7 +170,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     # Loop over the number of CZ operations
                                     with for_(count, 0, count < n_op, count + 1):
                                         # play the CZ gate
-                                        qp.macros[operation_name].apply(amplitude_scale_control=amp)
+                                        qp.macros[operation].apply(amplitude_scale_control=amp)
                                         qp.wait(4)  # wait for flux to settle
                                     # rotate the frame by 𝜋/2 for odd number of operations
                                     with if_(((n_op & 1) == 0) & (control_initial == 1)):
@@ -323,13 +330,13 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit pair data analysis was successful."""
 
-    operation_name = node.parameters.operation
+    operation = node.parameters.operation
     with node.record_state_updates():
         fit_results = node.results["fit_results"]
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
                 continue
-            qp.macros[operation_name].flux_pulse_control.amplitude = fit_results[qp.name]["optimal_amplitude"]
+            qp.macros[operation].flux_pulse_control.amplitude = fit_results[qp.name]["optimal_amplitude"]
 
 
 # %% {Save_results}
