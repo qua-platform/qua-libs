@@ -1,7 +1,5 @@
 # %% {Imports}
-import warnings
-from dataclasses import asdict, dataclass
-from typing import List, Literal, Optional
+from dataclasses import asdict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,20 +12,17 @@ from calibration_utils.chevron_cz import (
     plot_raw_data_with_fit,
     process_raw_dataset,
 )
-from qm import SimulationConfig
 from qm.qua import *
-from qualang_tools.bakery import baking
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-from qualibrate import NodeParameters, QualibrationNode
+from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.parameters import get_qubit_pairs, get_qubits
+from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_builder.architecture.superconducting.custom_gates.flux_tunable_transmon_pair.two_qubit_gates import CZGate
 from quam_config import Quam
-from scipy.optimize import curve_fit
 
 from quam.components.pulses import CosineBipolarPulse, FlatTopGaussianPulse, SquarePulse
 
@@ -124,7 +119,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Pre-compute the baked short segments (1..16 samples) for each control qubit in the pairs
     baked_signals = {
-        qp.qubit_control.name: baked_waveform(qp.qubit_control, baked_config, base_level=pulse_amplitudes[qp.name], max_samples=16)
+        qp.qubit_control.name: baked_waveform(
+            qp.qubit_control, baked_config, base_level=pulse_amplitudes[qp.name], max_samples=16
+        )
         for qp in qubit_pairs
     }
 
@@ -181,9 +178,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     for j in range(1, 17):
                                         with case_(j):
                                             baked_signals[qp.qubit_control.name][j - 1].run(
-                                                amp_array=[
-                                                    (qp.qubit_control.z.name, a)
-                                                ]
+                                                amp_array=[(qp.qubit_control.z.name, a)]
                                             )
 
                             # For pulse durations above 16ns we combine baking with regular play statements.
