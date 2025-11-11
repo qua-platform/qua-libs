@@ -104,71 +104,14 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     Tuple[xr.Dataset, Dict[str, FitResults]]
         Dataset with fit results and dictionary of fit results for each qubit pair.
     """
-    ds_fit = ds.groupby("qubit_pair").apply(fit_routine)
+    # For RB analysis, no fitting routine is currently implemented.
+    # Pass the dataset through unchanged, or implement RB-specific fitting here if needed.
+    ds_fit = ds
 
     # Extract the relevant fitted parameters
     ds_fit, fit_results = _extract_relevant_parameters(ds_fit, node)
 
     return ds_fit, fit_results
-
-
-def fit_routine(da):
-
-    if hasattr(da, "state_target"):
-        data = "state_target"
-    else:
-        data = "I_target"
-    # Fit oscillation for each control state and amplitude
-    fit_data = fit_oscillation(da[data], "frame")
-
-    # Add fitted oscillation curves to the dataset
-    da = da.assign(
-        {
-            "fitted": oscillation(
-                da.frame,
-                fit_data.sel(fit_vals="a"),
-                fit_data.sel(fit_vals="f"),
-                fit_data.sel(fit_vals="phi"),
-                fit_data.sel(fit_vals="offset"),
-            )
-        }
-    )
-
-    # Extract phase and calculate phase difference
-    phase = fix_oscillation_phi_2pi(fit_data)
-    phase_diff = (phase.sel(control_axis=0) - phase.sel(control_axis=1)) % 1
-
-    # Fit tanh curve to find optimal amplitude
-    try:
-        # The initial guess for the tanh fit is important and needs to be adjusted based on the amplitude range
-        amp_range = np.max(phase_diff.amp_full.values) - np.min(phase_diff.amp_full.values)
-        p0 = [
-            -0.5,  # a
-            1 / amp_range,  # b
-            -np.mean(phase_diff.amp_full.values) / amp_range,  # c
-            0.5,  # d
-        ]
-        fit_params, _ = curve_fit(tanh_fit, phase_diff.amp_full.values[0], phase_diff.values[0], p0=p0)
-        optimal_amp = (np.arctanh((0.5 - fit_params[3]) / fit_params[0]) - fit_params[2]) / fit_params[1]
-        fitted_curve = tanh_fit(phase_diff.amp_full, *fit_params)
-        success = True
-
-    except Exception as e:
-        # Fallback: find amplitude closest to π phase difference (0.5 in normalized units)
-        optimal_amp = float(np.abs(phase_diff - 0.5).idxmin("amp_full"))
-        fitted_curve = np.full_like(phase_diff.values, np.nan)
-        success = False
-
-    da = da.assign(
-        optimal_amplitude=optimal_amp,
-        phase_diff=phase_diff,
-        fitted_curve=fitted_curve,
-        success=success,
-    )
-
-    return da
-
-
 def _extract_relevant_parameters(
     ds_fit: xr.Dataset, node: QualibrationNode
 ) -> Tuple[xr.Dataset, Dict[str, FitResults]]:
