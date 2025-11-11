@@ -63,7 +63,7 @@ gate_mapping = {
     61: "Z180(target)",
     62: "Z270(target)",
     63: "Wait(20) both qubits",
-    64: "CZ gate (Wait(20) both qubits)",
+    64: "CZ gate",
     65: "Idle_2q (Wait(100/4) both qubits)",
     66: "Readout and thermalization (both qubits)"
 }
