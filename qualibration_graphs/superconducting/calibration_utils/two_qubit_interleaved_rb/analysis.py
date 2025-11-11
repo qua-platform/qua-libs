@@ -9,7 +9,7 @@ from qualibrate import QualibrationNode
 
 @dataclass
 class FitResults:
-    """Stores the relevant CZ conditional phase experiment fit parameters for a single qubit pair"""
+    """Stores the relevant fit parameters for a single qubit pair in an RB experiment"""
 
     optimal_amplitude: float
     success: bool
