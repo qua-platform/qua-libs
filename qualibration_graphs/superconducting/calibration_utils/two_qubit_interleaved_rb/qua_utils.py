@@ -397,7 +397,3 @@ class QuaProgramHandler:
             return self._get_qua_program_without_input_stream()
 
 
-circ1 = [0]
-circ2 = [1]
-
-qua_circ = [0, 66, 1]
