@@ -47,7 +47,10 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter, fetching_tool
 
 from iqcc_calibration_tools.qualibrate_config.qualibrate.node import NodeParameters, QualibrationNode
-from calibration_utils.two_qubit_interleaved_rb.circuit_utils import layerize_quantum_circuit, process_circuit_to_integers
+from calibration_utils.two_qubit_interleaved_rb.circuit_utils import (
+    layerize_quantum_circuit,
+    process_circuit_to_integers,
+)
 from calibration_utils.two_qubit_interleaved_rb.qua_utils import QuaProgramHandler
 from iqcc_calibration_tools.analysis.plot_utils import plot_samples
 from iqcc_calibration_tools.storage.save_utils import fetch_results_as_xarray
@@ -58,17 +61,16 @@ from calibration_utils.two_qubit_interleaved_rb.rb_utils import InterleavedRB
 from calibration_utils.two_qubit_interleaved_rb.plot_utils import gate_mapping
 
 
-
-
 # %% {Node_parameters}
+
 
 class Parameters(NodeParameters):
     qubit_pairs: Optional[List[str]] = None
-    circuit_lengths: tuple[int] = (0,1,2,4,8,16,32,48) # in number of cliffords
+    circuit_lengths: tuple[int] = (0, 1, 2, 4, 8, 16, 32, 48)  # in number of cliffords
     num_circuits_per_length: int = 15
     num_averages: int = 20
-    target_gate: str = "cz" # "idle_2q" or "cz" supported 
-    basis_gates: list[str] = ['rz', 'sx', 'x', 'cz'] 
+    target_gate: str = "cz"  # "idle_2q" or "cz" supported
+    basis_gates: list[str] = ["rz", "sx", "x", "cz"]
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     reduce_to_1q_cliffords: bool = True
@@ -78,6 +80,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
     timeout: int = 100
     seed: int = 0
+
 
 node = QualibrationNode(name="2Q_interleaved_rb", parameters=Parameters())
 
@@ -113,7 +116,7 @@ interleaved_RB = InterleavedRB(
     basis_gates=node.parameters.basis_gates,
     num_qubits=2,
     reduce_to_1q_cliffords=node.parameters.reduce_to_1q_cliffords,
-    seed=node.parameters.seed
+    seed=node.parameters.seed,
 )
 
 transpiled_circuits = interleaved_RB.transpiled_circuits
@@ -124,7 +127,7 @@ for l, circuits in transpiled_circuits.items():
 circuits_as_ints = []
 for circuits_per_len in transpiled_circuits_as_ints.values():
     for circuit in circuits_per_len:
-        circuit_with_measurement = circuit + [66] # readout
+        circuit_with_measurement = circuit + [66]  # readout
         circuits_as_ints.append(circuit_with_measurement)
 
 # %% {QUA_program}
@@ -137,7 +140,7 @@ rb = qua_program_handler.get_qua_program()
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns//4)  # in clock cycles
+    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns // 4)  # in clock cycles
     job = qmm.simulate(config, rb, simulation_config)
     samples = job.get_simulated_samples()
 
@@ -145,26 +148,28 @@ elif node.parameters.load_data_id is None:
     # Prepare data for saving
     node.results = {}
     date_time = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
-    
+
     with qm_session(node.machine.qmm, config, timeout=node.parameters.timeout) as qm:
         if node.parameters.use_input_stream:
             num_sequences = len(qua_program_handler.sequence_lengths)
-            circuits_as_ints_batched_padded = [batch + [0] * (qua_program_handler.max_current_sequence_length - len(batch)) for batch in qua_program_handler.circuits_as_ints_batched]    
-            
-            if node.machine.network['cloud']:
+            circuits_as_ints_batched_padded = [
+                batch + [0] * (qua_program_handler.max_current_sequence_length - len(batch))
+                for batch in qua_program_handler.circuits_as_ints_batched
+            ]
+
+            if node.machine.network["cloud"]:
                 write_sync_hook(circuits_as_ints_batched_padded)
 
-                job = qm.execute(rb,
-                        terminal_output=True,options={"sync_hook": "sync_hook.py"})
+                job = qm.execute(rb, terminal_output=True, options={"sync_hook": "sync_hook.py"})
             else:
                 job = qm.execute(rb)
                 for id, batch in enumerate(circuits_as_ints_batched_padded):
                     job.push_to_input_stream("sequence", batch)
                     print(f"{id}/{num_sequences}: Received ")
-        
+
         else:
             job = qm.execute(rb)
-        
+
         results = fetching_tool(job, ["iteration"], mode="live")
         while results.is_processing():
             # Fetch results
@@ -176,22 +181,28 @@ elif node.parameters.load_data_id is None:
 
 for num in flatten(circuits_as_ints):
     print(gate_mapping[num])
-    
+
 # %% {Plot and save if simulation}
 if node.parameters.simulate:
-    qubit_names = [qubit_pair.qubit_control.name for qubit_pair in qubit_pairs] + [qubit_pair.qubit_target.name for qubit_pair in qubit_pairs]
+    qubit_names = [qubit_pair.qubit_control.name for qubit_pair in qubit_pairs] + [
+        qubit_pair.qubit_target.name for qubit_pair in qubit_pairs
+    ]
     readout_lines = set([q[1] for q in qubit_names])
-    fig = plot_samples(samples, qubit_names, readout_lines=list(readout_lines), xlim=(0,10000))
-    
+    fig = plot_samples(samples, qubit_names, readout_lines=list(readout_lines), xlim=(0, 10000))
+
     # node.results["figure"] = fig
     # node.save()
 
- # %% {Data_fetching_and_dataset_creation}
+# %% {Data_fetching_and_dataset_creation}
 if node.parameters.load_data_id is None:
     ds = fetch_results_as_xarray(
-    job.result_handles,
-    qubit_pairs,
-        { "sequence": range(node.parameters.num_circuits_per_length), "depths": list(node.parameters.circuit_lengths), "shots": range(node.parameters.num_averages)},
+        job.result_handles,
+        qubit_pairs,
+        {
+            "sequence": range(node.parameters.num_circuits_per_length),
+            "depths": list(node.parameters.circuit_lengths),
+            "shots": range(node.parameters.num_averages),
+        },
     )
 else:
     node = node.load_from_id(node.parameters.load_data_id)
@@ -201,7 +212,7 @@ node.results = {"ds": ds}
 # %% {Data_analysis and plotting}
 
 # Assume ds is your input dataset and ds['state'] is your DataArray
-state = ds['state']  # shape: (qubit, shots, sequence, depths)
+state = ds["state"]  # shape: (qubit, shots, sequence, depths)
 
 # Outcome labels for 2-qubit states
 labels = ["00", "01", "10", "11"]
@@ -210,7 +221,7 @@ labels = ["00", "01", "10", "11"]
 probs = [state == i for i in range(4)]
 
 # Stack along a new outcome dimension
-probs = xr.concat(probs, dim='outcome')
+probs = xr.concat(probs, dim="outcome")
 
 # Assign outcome labels
 probs = probs.assign_coords(outcome=("outcome", labels))
@@ -225,15 +236,17 @@ probs_00 = probs_00.astype(int)
 ds_transposed = ds.rename({"shots": "average", "sequence": "repeat", "depths": "circuit_depth"})
 ds_transposed = ds_transposed.transpose("qubit", "repeat", "circuit_depth", "average")
 
+rb_results = {}
 for qp in qubit_pairs:
 
     rb_result = InterleavedRBResult(
-        standard_rb_alpha=node.machine.qubit_pairs[qp.id].macros["cz"].fidelity.get('StandardRB_alpha', 1),
+        standard_rb_alpha=node.machine.qubit_pairs[qp.id].macros["cz"].fidelity.get("StandardRB_alpha", 1),
         circuit_depths=list(node.parameters.circuit_lengths),
         num_repeats=node.parameters.num_circuits_per_length,
         num_averages=node.parameters.num_averages,
-        state=ds_transposed.sel(qubit=qp.name).state.data
+        state=ds_transposed.sel(qubit=qp.name).state.data,
     )
+    rb_results[qp.id] = rb_result
 
     fig = rb_result.plot_with_fidelity()
     fig.suptitle(f"2Q Interleaved Randomized Benchmarking - {qp.name}")
@@ -243,8 +256,8 @@ for qp in qubit_pairs:
 # %% {Update_state}
 with node.record_state_updates():
     for qp in qubit_pairs:
-        node.machine.qubit_pairs[qp.id].macros["cz"].fidelity['IRB_alpha'] = rb_result.alpha
-        node.machine.qubit_pairs[qp.id].macros["cz"].fidelity['IRB'] = rb_result.fidelity
+        node.machine.qubit_pairs[qp.id].macros["cz"].fidelity["IRB_alpha"] = rb_results[qp.id].alpha
+        node.machine.qubit_pairs[qp.id].macros["cz"].fidelity["IRB"] = rb_results[qp.id].fidelity
 
 # %% {Save_results}
 node.save()
