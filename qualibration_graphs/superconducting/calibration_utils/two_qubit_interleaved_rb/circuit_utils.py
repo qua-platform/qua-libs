@@ -78,10 +78,6 @@ def process_circuit_to_integers(circuit: QuantumCircuit) -> List[int]:
                 raise ValueError(f"{gate_name} gate found with single qubit gates in the layer")
             else:
                 current_layer = [gate_name]
-                # # If there are any single-qubit gates, process them first
-                # layer_int = get_layer_integer(tuple(current_layer))
-                # result.append(layer_int)
-                # current_layer = []
         elif gate_name in SINGLE_QUBIT_GATE_MAP:
             # Single-qubit gate
             qubit_index = instruction.qubits[0]._index
