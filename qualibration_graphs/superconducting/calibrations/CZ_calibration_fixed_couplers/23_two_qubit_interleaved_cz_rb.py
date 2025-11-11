@@ -4,7 +4,7 @@ from typing import List, Literal, Optional
 
 import numpy as np
 import xarray as xr
-from calibration_utils.two_qubit_interleaved_rb.analysis import process_raw_dataset
+from calibration_utils.two_qubit_interleaved_rb.analysis import log_fitted_results, process_raw_dataset
 
 # from iqcc_calibration_tools.qualibrate_config.qualibrate.node import NodeParameters, QualibrationNode
 from calibration_utils.two_qubit_interleaved_rb.circuit_utils import (
@@ -184,7 +184,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     for qp in qubit_pairs:
 
         rb_result = InterleavedRBResult(
-            standard_rb_alpha=node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB_alpha"],
+            standard_rb_alpha=node.machine.qubit_pairs[qp.name]
+            .macros[node.parameters.operation]
+            .fidelity["StandardRB_alpha"],
             circuit_depths=list(node.parameters.circuit_lengths),
             num_repeats=node.parameters.num_circuits_per_length,
             num_averages=node.parameters.num_shots,
@@ -196,15 +198,31 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         fig.show()
 
         node.results[f"fig_{qp.name}"] = fig
-        node.results["fit_results"][qp.name] = {"alpha": rb_result.alpha, "fidelity": rb_result.fidelity}
+        node.results["fit_results"][qp.name] = {
+            "success": rb_result.fit_success,
+            "alpha": rb_result.alpha,
+            "fidelity": rb_result.fidelity,
+        }
 
+        log_fitted_results(node.results["fit_results"], log_callable=node.log)
+
+        node.outcomes = {
+            qp_name: ("successful" if fit_result.get("success") else "failed")
+            for qp_name, fit_result in node.results["fit_results"].items()
+        }
 
 
 # %% {Update_state}
 with node.record_state_updates():
     for qp in node.namespace["qubit_pairs"]:
-        node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["InterleavedRB"] = node.results["fit_results"][qp.name]["fidelity"]
-        node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["InterleavedRB_alpha"] = node.results["fit_results"][qp.name]["alpha"]
+        if node.outcomes[qp.name] == "failed":
+            continue
+        node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["InterleavedRB"] = node.results[
+            "fit_results"
+        ][qp.name]["fidelity"]
+        node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["InterleavedRB_alpha"] = (
+            node.results["fit_results"][qp.name]["alpha"]
+        )
 # %% {Save_results}
 node.save()
 

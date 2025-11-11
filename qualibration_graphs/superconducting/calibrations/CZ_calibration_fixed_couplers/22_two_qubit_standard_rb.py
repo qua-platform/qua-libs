@@ -4,7 +4,7 @@ from typing import List, Literal, Optional
 
 import numpy as np
 import xarray as xr
-from calibration_utils.two_qubit_interleaved_rb.analysis import process_raw_dataset
+from calibration_utils.two_qubit_interleaved_rb.analysis import log_fitted_results, process_raw_dataset
 
 # from iqcc_calibration_tools.qualibrate_config.qualibrate.node import NodeParameters, QualibrationNode
 from calibration_utils.two_qubit_interleaved_rb.circuit_utils import (
@@ -75,9 +75,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubit_pairs = ["qB2-qB4"]
-    node.parameters.operation = "cz_bipolar"
-    node.parameters.reset_type = "active"
-    node.parameters.load_data_id = 5580
+    node.parameters.load_data_id = 5785
     pass
 
 
@@ -194,15 +192,31 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         fig.show()
 
         node.results[f"fig_{qp.name}"] = fig
-        node.results["fit_results"][qp.name] = {"alpha": rb_result.alpha, "fidelity": rb_result.fidelity}
+        node.results["fit_results"][qp.name] = {
+            "success": rb_result.fit_success,
+            "alpha": rb_result.alpha,
+            "fidelity": rb_result.fidelity,
+        }
 
+        log_fitted_results(node.results["fit_results"], log_callable=node.log)
+
+        node.outcomes = {
+            qp_name: ("successful" if fit_result.get("success") else "failed")
+            for qp_name, fit_result in node.results["fit_results"].items()
+        }
 
 
 # %% {Update_state}
 with node.record_state_updates():
     for qp in node.namespace["qubit_pairs"]:
-        node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB"] = node.results["fit_results"][qp.name]["fidelity"]
-        node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB_alpha"] = node.results["fit_results"][qp.name]["alpha"]
+        if node.outcomes[qp.name] == "failed":
+            continue
+        node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB"] = node.results[
+            "fit_results"
+        ][qp.name]["fidelity"]
+        node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB_alpha"] = node.results[
+            "fit_results"
+        ][qp.name]["alpha"]
 # %% {Save_results}
 node.save()
 

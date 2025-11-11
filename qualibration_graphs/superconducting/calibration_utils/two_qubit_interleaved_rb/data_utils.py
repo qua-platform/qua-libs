@@ -20,6 +20,7 @@ class RBResult:
     num_repeats: int
     num_averages: int
     state: np.ndarray
+    fit_success: bool = True
 
     def __post_init__(self):
         """
@@ -72,9 +73,30 @@ class RBResult:
         fidelity = self.get_fidelity(alpha)
         self.fidelity = fidelity
 
-
         # std of average
-        error_bars = (self.data == 0).stack(combined=("average", "repeat")).std(dim="combined").state.data / np.sqrt(self.num_repeats * self.num_averages)
+        error_bars = (
+            (self.data == 0).stack(combined=("average", "repeat"))
+            .std(dim="combined").state.data
+        ) / np.sqrt(self.num_repeats * self.num_averages)
+        
+        # Check if fitted curve is within error bars of experimental data
+        experimental_data = self.get_decay_curve()
+        fitted_values = rb_decay_curve(np.array(self.circuit_depths), A, alpha, B)
+        
+        # Calculate residuals normalized by error bars
+        normalized_residuals = np.abs(fitted_values - experimental_data) / error_bars
+        max_deviation = np.max(normalized_residuals)
+        
+        # Check if any fitted point deviates more than 2 sigma from experimental data
+        if max_deviation > 2.0:
+            print(
+                f"Warning: Fitted curve deviates up to {max_deviation:.2f} sigma "
+                "from experimental data. Consider reviewing fit quality."
+            )
+            self.fit_success = False
+        else:
+            print(f"Fit validation passed: Maximum deviation is {max_deviation:.2f} sigma.")
+            self.fit_success = True
 
         fig = plt.figure()
         plt.errorbar(
