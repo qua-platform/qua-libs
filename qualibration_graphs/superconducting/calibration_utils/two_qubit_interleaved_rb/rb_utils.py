@@ -6,7 +6,6 @@ import xarray
 from matplotlib import pyplot as plt
 from more_itertools import flatten
 from qiskit import QuantumCircuit, transpile
-from qiskit.circuit import QuantumCircuit
 from qiskit.circuit.equivalence_library import SessionEquivalenceLibrary as sel
 from qiskit.circuit.instruction import Instruction
 from qiskit.circuit.library import *
