@@ -15,6 +15,9 @@ black = "^24.3.0"
 poethepoet = "^0.10.0"
 flake8 = "^3.9.1"
 
+[tool.poetry.group.dev.dependencies]
+dynamiqs = {version = "^0.3.3", python = ">=3.10,<3.12"}
+
 [tool.black]
 line-length = 120
 #force-exclude = '''Two-Flux-Tunable-Transmons/Use Case 4 - Single- and Two-Qubit State and Process Tomography/helper_functions.py'''
