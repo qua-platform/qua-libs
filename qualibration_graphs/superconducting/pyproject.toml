@@ -11,7 +11,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "quam>=0.4.0",
+    "quam>=0.5.0a1",
     "qualang-tools>=0.19.0",
     "qualibrate>=0.2.1",
     "qm-qua>=1.2.1",

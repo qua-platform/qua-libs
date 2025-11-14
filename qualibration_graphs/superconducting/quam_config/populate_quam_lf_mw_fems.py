@@ -20,6 +20,8 @@ from quam_builder.architecture.superconducting.custom_gates.flux_tunable_transmo
 from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
 from quam_config import Quam
 
+from quam.components.pulses import CosineBipolarPulse, FlatTopGaussianPulse, SquarePulse
+
 ########################################################################################################################
 # %%                                 QUAM loading and auxiliary functions
 ########################################################################################################################
@@ -252,6 +254,66 @@ for qp in qubit_pairs:
     pair = machine.qubit_pair_type(id=f"q{qp[0]}-q{qp[1]}", qubit_control=control, qubit_target=target)
 
     machine.qubit_pairs[pair.id] = pair
+
+    # Add CZ gate macros with different pulse shapes
+
+    # Estimated parameters for the CZ gates - these should be calibrated later
+    cz_interaction_duration = 100  # in ns
+    smoothing_duration = 20  # in ns
+
+    print(f"Creating CZ Unipolar gate macro for {pair.name}")
+    cz_pulse = SquarePulse(length=cz_interaction_duration, amplitude=0.1, id="cz_unipolar_pulse")
+    cz = CZGate(flux_pulse_control=cz_pulse)
+    pair.macros["cz_unipolar"] = cz
+    pulse_length = pair.macros["cz_unipolar"].flux_pulse_control.get_reference() + "/length"
+    pulse_amp = pair.macros["cz_unipolar"].flux_pulse_control.get_reference() + "/amplitude"
+    pulse_name = pair.macros["cz_unipolar"].flux_pulse_control_label
+    control_qb = pair.qubit_control
+    control_qb.z.operations[pulse_name] = SquarePulse(length=cz_interaction_duration, amplitude=0.1)
+    control_qb.z.operations[pulse_name].length = pulse_length
+    control_qb.z.operations[pulse_name].amplitude = pulse_amp
+
+    print(f"Creating CZ Flattop gate macro for {pair.name}")
+    cz_pulse = FlatTopGaussianPulse(
+        length=cz_interaction_duration + smoothing_duration,
+        amplitude=0.1,
+        flat_length=cz_interaction_duration,
+        id="cz_flattop_pulse",
+    )
+    cz = CZGate(flux_pulse_control=cz_pulse)
+    pair.macros["cz_flattop"] = cz
+    pulse_length = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/length"
+    flat_length = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/flat_length"
+    pulse_amp = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/amplitude"
+    pulse_name = pair.macros["cz_flattop"].flux_pulse_control_label
+    control_qb = pair.qubit_control
+    control_qb.z.operations[pulse_name] = FlatTopGaussianPulse(
+        length=cz_interaction_duration + smoothing_duration, amplitude=0.1, flat_length=cz_interaction_duration
+    )
+    control_qb.z.operations[pulse_name].length = pulse_length
+    control_qb.z.operations[pulse_name].amplitude = pulse_amp
+    control_qb.z.operations[pulse_name].flat_length = flat_length
+
+    print(f"Creating CZ Bipolar gate macro for {pair.name}")
+    cz_pulse = CosineBipolarPulse(
+        length=cz_interaction_duration + smoothing_duration,
+        amplitude=0.1,
+        id="cz_bipolar_pulse",
+        flat_length=cz_interaction_duration,
+    )
+    cz = CZGate(flux_pulse_control=cz_pulse)
+    pair.macros["cz_bipolar"] = cz
+    pulse_length = pair.macros["cz_bipolar"].flux_pulse_control.get_reference() + "/length"
+    flat_length = pair.macros["cz_bipolar"].flux_pulse_control.get_reference() + "/flat_length"
+    pulse_amp = pair.macros["cz_bipolar"].flux_pulse_control.get_reference() + "/amplitude"
+    pulse_name = pair.macros["cz_bipolar"].flux_pulse_control_label
+    control_qb = pair.qubit_control
+    control_qb.z.operations[pulse_name] = CosineBipolarPulse(
+        length=cz_interaction_duration + smoothing_duration, amplitude=0.1, flat_length=cz_interaction_duration
+    )
+    control_qb.z.operations[pulse_name].length = pulse_length
+    control_qb.z.operations[pulse_name].amplitude = pulse_amp
+    control_qb.z.operations[pulse_name].flat_length = flat_length
 
 ########################################################################################################################
 # %%                                         Save the updated QUAM

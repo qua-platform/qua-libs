@@ -3,7 +3,6 @@ from dataclasses import asdict
 
 import matplotlib.pyplot as plt
 import numpy as np
-from quam.core import operation
 import xarray as xr
 from calibration_utils.cz_conditional_phase import (
     FitResults,
@@ -21,6 +20,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
+from qualibration_libs.core import tracked_updates
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
@@ -61,7 +61,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="20_cz_conditional_phase",  # Name should be unique
+    name="20a_cz_conditional_phase",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
 )
@@ -106,7 +106,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "frame": xr.DataArray(frames, attrs={"long_name": "frame rotation", "units": "2π"}),
         "control_axis": xr.DataArray([0, 1], attrs={"long_name": "control qubit state"}),
     }
+    tracked_qp_list = []
+    for qp in qubit_pairs:
+        with tracked_updates(qp, auto_revert=False, dont_assign_to_none=False) as tracked_qp:
+            # Mark the CZ gate amplitude as tracked for updates if the calibration is successful
+            tracked_qp.macros[operation].phase_shift_control = 0.0
+            tracked_qp.macros[operation].phase_shift_target = 0.0
+            tracked_qp_list.append(tracked_qp)
 
+    node.namespace["tracked_qubit_pairs"] = tracked_qp_list
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
         I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
@@ -117,7 +125,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         if node.parameters.use_state_discrimination:
             state_c = [declare(int) for _ in range(num_qubit_pairs)]
             state_t = [declare(int) for _ in range(num_qubit_pairs)]
-            state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state_ce_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state_cg_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state_cf_st = [declare_stream() for _ in range(num_qubit_pairs)]
             state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
@@ -156,10 +166,27 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                                 if node.parameters.use_state_discrimination:
                                     # measure both qubits
-                                    qp.qubit_control.readout_state(state_c[ii])
+                                    qp.qubit_control.readout_state_gef(state_c[ii])
                                     qp.qubit_target.readout_state(state_t[ii])
-                                    save(state_c[ii], state_c_st[ii])
+                                    # save each state outcome in its respective stream
+                                    with switch_(state_c[ii]):
+                                        with case_(0):
+                                            wait(4)
+                                            save(1, state_cg_st[ii])
+                                            save(0, state_ce_st[ii])
+                                            save(0, state_cf_st[ii])
+                                        with case_(1):
+                                            wait(4)
+                                            save(0, state_cg_st[ii])
+                                            save(1, state_ce_st[ii])
+                                            save(0, state_cf_st[ii])
+                                        with default_():
+                                            wait(4)
+                                            save(0, state_cg_st[ii])
+                                            save(0, state_ce_st[ii])
+                                            save(1, state_cf_st[ii])
                                     save(state_t[ii], state_t_st[ii])
+
                                 else:
                                     qp.qubit_control.resonator.measure("readout", qua_vars=(I_c[ii], Q_c[ii]))
                                     qp.qubit_target.resonator.measure("readout", qua_vars=(I_t[ii], Q_t[ii]))
@@ -174,8 +201,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n")
             for i in range(num_qubit_pairs):
                 if node.parameters.use_state_discrimination:
-                    state_c_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(
-                        f"state_control{i + 1}"
+                    state_cg_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(
+                        f"g_state_control{i + 1}"
+                    )
+                    state_ce_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(
+                        f"e_state_control{i + 1}"
+                    )
+                    state_cf_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(
+                        f"f_state_control{i + 1}"
                     )
                     state_t_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(
                         f"state_target{i + 1}"
@@ -292,7 +325,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+
+    for qp in node.namespace.get("tracked_qubit_pairs", []):
+        qp.revert_changes()
+
     node.save()
-
-
-# %%
