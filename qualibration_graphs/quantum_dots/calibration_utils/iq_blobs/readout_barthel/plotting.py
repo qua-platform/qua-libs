@@ -43,7 +43,9 @@ def plot_raw_data(x, bins=100, ax=None, show=True, save=None, label="data", figs
 
 def plot_fit(x, samples, bins=100, ax=None, show=True, save=None,
              label_data="data", figsize=(6, 4), n_grid=400,
-             component_kwargs=None, mixture_kwargs=None, **hist_kwargs):
+             component_kwargs=None, mixture_kwargs=None,
+             posterior="ppd_mean", ppd_draws=64, agg="mean",
+             hist_kwargs=None, **extra_hist_kwargs):
     """
     Plot the raw histogram plus fitted 2-component GMM curves and total density.
 
@@ -60,42 +62,105 @@ def plot_fit(x, samples, bins=100, ax=None, show=True, save=None,
         n_grid (int): Number of x-points for curve plotting.
         component_kwargs (dict|None): kwargs for component lines (per-component).
         mixture_kwargs (dict|None): kwargs for total mixture line.
-        **hist_kwargs: forwarded to ax.hist (e.g. alpha=0.5)
+        posterior (str): 'ppd_mean' (recommended, label-invariant) or 'mean'/'median'.
+        ppd_draws (int): Number of posterior draws for PPD mean mode.
+        agg (str): Aggregation method when posterior != 'ppd_mean' ('mean' or 'median').
+        hist_kwargs (dict|None): kwargs for histogram.
+        **extra_hist_kwargs: additional kwargs forwarded to ax.hist (e.g. alpha=0.5)
     Returns:
         ax (matplotlib.Axes)
     """
+    import numpy as np
+
     created_fig = False
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
         created_fig = True
 
+    # Merge histogram kwargs
+    if hist_kwargs is None:
+        hist_kwargs = dict(alpha=0.5, density=True)
+    hist_kwargs.update(extra_hist_kwargs)
+
     # Histogram
-    if "alpha" not in hist_kwargs:
-        hist_kwargs["alpha"] = 0.5
-    ax.hist(x, bins=bins, density=True, label=label_data, **hist_kwargs)
+    x = np.asarray(x)
+    ax.hist(x, bins=bins, label=label_data, **hist_kwargs)
 
-    # Posterior means (simple point estimate view)
-    import numpy as np
-    pi = np.array(samples["pi"]).mean(axis=0)
-    mu = np.array(samples["mu"]).mean(axis=0)
-    sigma = 1.0 / np.sqrt(np.array(samples["tau"]).mean(axis=0))
-
-    xs = np.linspace(np.min(x), np.max(x), n_grid)
-    total_pdf = np.zeros_like(xs)
+    # Grid for plotting
+    rng = np.ptp(x) or 1.0
+    xs = np.linspace(x.min() - 0.1 * rng, x.max() + 0.1 * rng, n_grid)
 
     if component_kwargs is None:
         component_kwargs = dict(ls="--")
     if mixture_kwargs is None:
         mixture_kwargs = dict(lw=2)
 
-    # Components
-    for k in range(len(pi)):
-        comp_pdf = pi[k] * (1.0 / (np.sqrt(2*np.pi)*sigma[k])) * np.exp(-(xs - mu[k])**2 / (2*sigma[k]**2))
-        ax.plot(xs, comp_pdf, label=f"Component {k+1}", **component_kwargs)
-        total_pdf += comp_pdf
+    def _agg(key):
+        if key not in samples: return None
+        arr = np.asarray(samples[key])
+        if posterior == "median" or agg == "median":
+            return np.median(arr, axis=0)
+        return arr.mean(axis=0)
 
-    # Mixture total
-    ax.plot(xs, total_pdf, label="Mixture fit", **mixture_kwargs)
+    def _norm_pdf_local(x, mu, sigma):
+        return (1.0 / (np.sqrt(2*np.pi)*sigma)) * np.exp(-(x - mu)**2 / (2*sigma**2))
+
+    if posterior == "ppd_mean":
+        # Average densities over posterior draws (label-invariant)
+        S = len(np.asarray(samples["pi"]))
+        idx = _choose_draw_indices(S, ppd_draws)
+
+        total_pdf = np.zeros_like(xs)
+        comp_pdfs = []
+
+        # Determine number of components from first sample
+        n_comp = len(np.asarray(samples["pi"])[0])
+        for k in range(n_comp):
+            comp_pdfs.append(np.zeros_like(xs))
+
+        for i in idx:
+            pi = np.asarray(samples["pi"])[i]
+            mu = np.asarray(samples["mu"])[i]
+            sigma = 1.0 / np.sqrt(np.asarray(samples["tau"])[i])
+
+            dens_i = np.zeros_like(xs)
+            for k in range(n_comp):
+                comp_k = pi[k] * _norm_pdf_local(xs, mu[k], sigma[k])
+                comp_pdfs[k] += comp_k
+                dens_i += comp_k
+            total_pdf += dens_i
+
+        total_pdf /= float(len(idx))
+        for k in range(n_comp):
+            comp_pdfs[k] /= float(len(idx))
+
+        # Plot
+        ax.plot(xs, total_pdf, label="Total (PPD mean)", **mixture_kwargs)
+        for k in range(n_comp):
+            ax.plot(xs, comp_pdfs[k], label=f"Component {k+1}", **component_kwargs)
+
+        # Annotate weights using posterior means
+        pi_mean = _agg("pi")
+        ax.text(0.02, 0.98, f"weights: " + "  ".join([f"w_{k+1}={pi_mean[k]:.2f}" for k in range(n_comp)]),
+                transform=ax.transAxes, va="top", fontsize=9)
+
+    else:
+        # Point-estimate plug-in
+        pi = _agg("pi")
+        mu = _agg("mu")
+        sigma = 1.0 / np.sqrt(_agg("tau"))
+
+        total_pdf = np.zeros_like(xs)
+        n_comp = len(pi)
+
+        # Components
+        for k in range(n_comp):
+            comp_pdf = pi[k] * _norm_pdf_local(xs, mu[k], sigma[k])
+            ax.plot(xs, comp_pdf, label=f"Component {k+1}", **component_kwargs)
+            total_pdf += comp_pdf
+
+        # Mixture total
+        ax.plot(xs, total_pdf, label=f"Total ({posterior})", **mixture_kwargs)
 
     ax.set_xlabel("Readout Voltage")
     ax.set_ylabel("Density")

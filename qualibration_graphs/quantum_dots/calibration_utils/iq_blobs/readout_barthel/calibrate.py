@@ -28,10 +28,10 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Optional, Tuple, Dict, Any, Callable
 
-from readout_barthel.fit import fit_model, MCMCConfig
-from readout_barthel.models.barthel_model import build_barthel_model_1d_analytic
-from readout_barthel.pca import pca_project_1d, PCAProjection
-from readout_barthel.utils import Normalizer1D
+from .fit import fit_model, MCMCConfig
+from .models.barthel_model import build_barthel_model_1d_analytic
+from .pca import pca_project_1d, PCAProjection
+from .utils import Normalizer1D
 
 
 @dataclass

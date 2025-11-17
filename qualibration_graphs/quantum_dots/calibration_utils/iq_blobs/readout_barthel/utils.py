@@ -10,7 +10,7 @@ These tools support the full workflow from data preprocessing through performanc
 """
 
 from typing import Optional, Dict, Any, Tuple
-from readout_barthel.analytic import _std_norm_cdf, triplet_cdf_analytic
+from .analytic import _std_norm_cdf, triplet_cdf_analytic
 import jax.numpy as jnp
 import jax
 from dataclasses import dataclass

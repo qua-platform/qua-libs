@@ -25,7 +25,7 @@ import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
 from typing import Dict, Any, Optional, Callable
-from readout_barthel_project.readout_barthel.analytic import triplet_pdf_analytic, _norm_pdf
+from ..analytic import triplet_pdf_analytic, _norm_pdf
 
 
 def build_barthel_model_1d_analytic(

@@ -9,8 +9,8 @@ to assign binary labels (0 = singlet, 1 = triplet).
 
 import jax.numpy as jnp
 from typing import Tuple, Optional, Union
-from readout_barthel.utils import Normalizer1D
-from readout_barthel.pca import PCAProjection
+from .utils import Normalizer1D
+from .pca import PCAProjection
 
 
 def classify_iq_with_pca_threshold(

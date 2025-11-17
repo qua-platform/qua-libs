@@ -1,3 +1,12 @@
+# # -------------------------------------------
+# # -------------------------------------------
+# # -------------------------------------------
+from quam_qd_generator_example import config, config_path
+# # -------------------------------------------
+# # -------------------------------------------
+# # -------------------------------------------
+
+
 # %% {Imports}
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,10 +31,9 @@ from calibration_utils.iq_blobs import (
     plot_confusion_matrices,
     simulate_quantum_dot_readout_from_node,
 )
-from qualibration_libs.parameters import get_qubits
+from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-
 
 # %% {Description}
 description = """
@@ -50,11 +58,13 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1", "q2"]
-    pass
+    node.parameters.qubit_pairs = ['Q0_Q1']
+    node.parameters.simulate = True
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load()
+
+node.machine = Quam.load(config_path)
 
 
 # %% {Create_QUA_program}
@@ -67,14 +77,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
-    node.namespace["quantum_dot_pairs"] = quantum_dot_pairs = get_quantum_dot_pairs(node)
-    num_quantum_dot_pairs = len(quantum_dot_pairs)
+    node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
+    num_qubit_pairs = len(qubit_pairs)
 
     n_runs = node.parameters.num_shots  # Number of runs
     operation = node.parameters.operation
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
-        "quantum_dot_pair": xr.DataArray(quantum_dot_pairs.get_names()),
+        "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "n_runs": xr.DataArray(np.linspace(1, n_runs, n_runs), attrs={"long_name": "number of shots"}),
     }
 
@@ -82,69 +92,68 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         I_g, I_g_st, Q_g, Q_g_st, n, n_st = node.machine.declare_qua_variables()
         I_e, I_e_st, Q_e, Q_e_st, _, _ = node.machine.declare_qua_variables()
 
-        for multiplexed_quantum_dot_pairs in quantum_dot_pairs.batch():
+        for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
-            for quantum_dot_pair in multiplexed_quantum_dot_pairs.values():
+            for qubit_pair in multiplexed_qubit_pairs.values():
                 # -----------------------------------------
                 # Initialise qpu
                 # -----------------------------------------
-                # node.machine.initialize_qpu(target=qubit)
+                # node.machine.initialize_qpu(target='idle')
                 pass
 
             align()
 
             with for_(n, 0, n < n_runs, n + 1):
                 save(n, n_st)
-                # -----------------------------------------
-                # Initialise quantum dot pair - mixed or GS
-                # -----------------------------------------
 
-                for i, quantum_dot_pair in multiplexed_quantum_dot_pairs.items():
-                    # quantum_dot_pair.reset(node.parameters.reset_type, node.parameters.simulate)
-                    pass
-                align()
                 # Qubit readout
-                for i, quantum_dot_pair in multiplexed_quantum_dot_pairs.items():
+                for i, qubit_pair in multiplexed_qubit_pairs.items():
+                    # -----------------------------------------
+                    # Initialise quantum dot pair - mixed or GS
+                    # -----------------------------------------
+                    qubit_pair.quantum_dot_pair.run_sequence('initialise')
                     # -----------------------------------------
                     # Readout quantum dot pair
                     # -----------------------------------------
                     # Measure the state of the resonators
-                    # quantum_dot_pair.resonator.measure(operation, qua_vars=(I_g[i], Q_g[i]))
-                    # # Wait for the resonator to empty in case active reset is used
-                    # quantum_dot_pair.resonator.wait(qubit.resonator.depletion_time * u.ns)
-                    # # save data to their respective streams
-                    # save(I_g[i], I_g_st[i])
-                    # save(Q_g[i], Q_g_st[i])
-                    pass
-                align()
+                    qubit_pair.quantum_dot_pair.run_sequence('measure')
+                    if len(qubit_pair.quantum_dot_pair.sensor_dots)!=1:
+                        raise NotImplementedError(
+                            f'Handling of multiple sensor dots is not implemented yet.'
+                        )
+                    qubit_pair.quantum_dot_pair.sensor_dots[0].measure(
+                        operation, qua_vars=(I_g[i], Q_g[i])
+                    )
+                    save(I_g[i], I_g_st[i])
+                    save(Q_g[i], Q_g_st[i])
 
-                # Excited state iq blobs for all qubits
-                # Qubit initialization
-                for i, quantum_dot_pair in quantum_dot_pairs.items():
-                    quantum_dot_pair.reset(node.parameters.reset_type, node.parameters.simulate)
                 align()
 
                 # Qubit readout
-                for i, quantum_dot_pair in multiplexed_quantum_dot_pairs.items():
+                for i, qubit_pair in multiplexed_qubit_pairs.items():
                     # -----------------------------------------
                     # Initialise quantum dot pair - ES or GS then xy pulse
                     # -----------------------------------------
-                    # Play the x180 gate to put the qubits in the excited state
-                    # quantum_dot_pair.xy.play("x180")
-                    # # Align the elements to measure after playing the qubit pulses.
-                    # quantum_dot_pair.align()
-                    # # Measure the state of the resonators
-                    # quantum_dot_pair.resonator.measure(operation, qua_vars=(I_e[i], Q_e[i]))
-                    # # Wait for the resonator to empty in case active reset is used
-                    # quantum_dot_pair.resonator.wait(quantum_dot_pairs.resonator.depletion_time * u.ns)
-                    # # save data to their respective streams
-                    # save(I_e[i], I_e_st[i])
-                    # save(Q_e[i], Q_e_st[i])
-                    pass
+                    qubit_pair.quantum_dot_pair.run_sequence('initialise')
+                    # qubit_pair.quantum_dot[0].xy.play("x180")
+                    # -----------------------------------------
+                    # Readout quantum dot pair
+                    # -----------------------------------------
+                    # Measure the state of the resonators
+                    qubit_pair.quantum_dot_pair.run_sequence('measure')
+                    if len(qubit_pair.quantum_dot_pair.sensor_dots)!=1:
+                        raise NotImplementedError(
+                            f'Handling of multiple sensor dots is not implemented yet.'
+                        )
+                    qubit_pair.quantum_dot_pair.sensor_dots[0].measure(
+                        operation, qua_vars=(I_g[i], Q_g[i])
+                    )
+                    save(I_g[i], I_g_st[i])
+                    save(Q_g[i], Q_g_st[i])
 
         with stream_processing():
             n_st.save("n")
-            for i in range(num_quantum_dot_pairs):
+            for i in range(num_qubit_pairs):
                 I_g_st[i].buffer(n_runs).save(f"Ig{i + 1}")
                 Q_g_st[i].buffer(n_runs).save(f"Qg{i + 1}")
                 I_e_st[i].buffer(n_runs).save(f"Ie{i + 1}")
@@ -159,20 +168,20 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     quantum dot readout data for testing the analysis and plotting.
     """
     # Connect to the QOP
-    qmm = node.machine.connect()
-    # Get the config from the machine
-    config = node.machine.generate_config()
-    # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
-    # Store the figure, waveform report and simulated samples
-    node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
+    # qmm = node.machine.connect()
+    # # Get the config from the machine
+    # config = node.machine.generate_config()
+    # # Simulate the QUA program, generate the waveform report and plot the simulated samples
+    # samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    # # Store the figure, waveform report and simulated samples
+    # node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
     # Generate realistic quantum dot IQ blob data using Barthel model
     node.log("Generating realistic simulated IQ data using Barthel model...")
     ds_simulated = simulate_quantum_dot_readout_from_node(node, add_noise_variation=True, seed=42)
     # Process the simulated data (convert to voltage units)
     node.results["ds_raw"] = process_raw_dataset(ds_simulated, node)
-    node.log(f"Simulated {len(node.namespace['quantum_dot_pairs'])} quantum dot pairs with {node.parameters.num_shots} shots each")
+    node.log(f"Simulated {len(node.namespace['qubit_pairs'])} quantum dot pairs with {node.parameters.num_shots} shots each")
 
 
 # %% {Execute}
@@ -213,7 +222,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
-    node.namespace["quantum_dot_pairs"] = get_quantum_dot_pairs(node)
+    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 
 # %% {Analyse_data}
@@ -241,9 +250,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     Plot the raw and fitted data in specific figures whose shape is given by
     qubit.grid_location.
     """
-    fig_iq = plot_iq_blobs(node.results["ds_raw"], node.namespace["quantum_dot_pairs"], node.results["ds_fit"])
-    fig_confusion = plot_confusion_matrices(node.results["ds_raw"], node.namespace["quantum_dot_pairs"], node.results["ds_fit"])
-    fig_histogram = plot_historams(node.results["ds_raw"], node.namespace["quantum_dot_pairs"], node.results["ds_fit"])
+    fig_iq = plot_iq_blobs(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
+    fig_confusion = plot_confusion_matrices(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
+    fig_histogram = plot_historams(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
@@ -258,7 +267,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
-        for q in node.namespace["quantum_dot_pairs"]:
+        for q in node.namespace["qubit_pairs"]:
             if node.outcomes[q.name] == "failed":
                 continue
 
