@@ -85,15 +85,15 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.num_averages = 100
-    node.parameters.coupler_flux_min = 0.0 #relative to the coupler set point
-    node.parameters.coupler_flux_max = 0.1 #relative to the coupler set point
-    node.parameters.coupler_flux_step = 0.001
-    node.parameters.qubit_flux_span = 0.015 # relative to the known/calculated detuning between the qubits
-    node.parameters.qubit_flux_step = 0.0001
-    node.parameters.pulse_duration_ns = 400
+    node.parameters.coupler_flux_min = -1.2   #relative to the coupler set point
+    node.parameters.coupler_flux_max = 0.15#relative to the coupler set point
+    node.parameters.coupler_flux_step = 0.01
+    node.parameters.qubit_flux_span = 0.04 # relative to the known/calculated detuning between the qubits
+    node.parameters.qubit_flux_step = 0.0003
+    node.parameters.pulse_duration_ns = 200
     node.parameters.cz_or_iswap = "cz"
     node.parameters.use_saved_detuning = False
-    node.parameters.qubit_pairs = ["coupler_qB1_qB2"]
+    node.parameters.qubit_pairs = ["qB1-B2"]
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
 # Instantiate the QUAM class from the state file
@@ -138,8 +138,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             est_flux_shift = np.sqrt(-(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency) / qp.qubit_control.freq_vs_flux_01_quad_term*10e-2) #TODO: figure out how to make this run properly after filters
             est_flux_shift = 0.05 # TEMPORARY FIX --- IGNORE ---
         elif node.parameters.cz_or_iswap == "cz":
-            est_flux_shift = np.sqrt(-(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency + qp.qubit_target.anharmonicity) / qp.qubit_control.freq_vs_flux_01_quad_term*10e-3) #TODO: figure out how to make this run properly after filters
-            # est_flux_shift = 0.00 # TEMPORARY FIX --- IGNORE ---
+            est_flux_shift = np.sqrt(-(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency + qp.qubit_target.anharmonicity) / qp.qubit_control.freq_vs_flux_01_quad_term) #TODO: figure out how to make this run properly after filters
+            est_flux_shift = 0.007 # TEMPORARY FIX --- IGNORE ---
         fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
     node.namespace["fluxes_qp"] = fluxes_qp
 
