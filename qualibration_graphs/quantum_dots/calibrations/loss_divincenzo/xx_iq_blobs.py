@@ -37,7 +37,36 @@ from qualibration_libs.data import XarrayDataFetcher
 
 # %% {Description}
 description = """
+Singlet-Triplet (or Parity) IQ Blob Calibration using Barthel Model
 
+This calibration performs singlet-triplet readout discrimination for quantum dot pairs using
+the Barthel model, which accounts for spin relaxation during measurement.
+
+Physics:
+--------
+- Measures IQ traces for both singlet (S) and triplet (T) states
+- Models triplet relaxation T→S during readout time τ_M with relaxation time T₁
+- Uses PCA to project 2D IQ data onto optimal 1D discrimination axis
+- Determines optimal threshold for maximum fidelity/visibility
+
+Analysis:
+---------
+1. PCA projection: Finds optimal axis to separate S and T states in IQ plane
+2. Barthel model fitting: Bayesian MCMC fit accounting for in-flight relaxation
+3. Threshold optimization: Computes fidelity and visibility curves vs threshold
+4. Confusion matrix: Measures classification accuracy for both states
+
+Outputs:
+--------
+- IQ blob plots: Raw data in rotated IQ plane with threshold line
+- Histograms: PCA-projected data with fitted Barthel model components
+- Confusion matrices: Classification accuracy for S and T states
+- Fidelity/Visibility curves: Performance metrics vs threshold voltage
+- Integration weights angle: Optimal rotation for readout
+- Threshold values: Optimal discrimination thresholds in various units
+
+The calibration updates the resonator integration weights angle and threshold parameters
+for optimal singlet-triplet discrimination.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -63,7 +92,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-
 node.machine = Quam.load(config_path)
 
 
@@ -135,7 +163,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Initialise quantum dot pair - ES or GS then xy pulse
                     # -----------------------------------------
                     qubit_pair.quantum_dot_pair.run_sequence('initialise')
-                    # qubit_pair.quantum_dot[0].xy.play("x180")
+                    qubit_pair.qubit_target.play_xy_pulse("x180")
                     # -----------------------------------------
                     # Readout quantum dot pair
                     # -----------------------------------------

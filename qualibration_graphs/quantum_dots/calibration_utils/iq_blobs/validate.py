@@ -24,7 +24,7 @@ def simulate_quantum_dot_readout_data(
     sigma_Q: float = 0.10e-2,
     rho: float = 0.0,
     tau_M: float = 1.0,
-    T1: float = 2.0,
+    T1: float = 20.0,
     add_noise_variation: bool = True,
     seed: Optional[int] = None,
 ) -> xr.Dataset:
@@ -100,11 +100,11 @@ def simulate_quantum_dot_readout_data(
     for i, qdp in enumerate(qubit_pairs):
         # Add realistic variations across quantum dot pairs if requested
         if add_noise_variation:
-            # Add small random variations to noise parameters (�20%)
+            # Add small random variations to noise parameters (20%)
             sigma_I_var = sigma_I * (1 + 0.2 * (np.random.rand() - 0.5))
             sigma_Q_var = sigma_Q * (1 + 0.2 * (np.random.rand() - 0.5))
 
-            # Add small variations to blob positions (�10%)
+            # Add small variations to blob positions (10%)
             mu_S_var = (
                 mu_S[0] + 0.1 * mu_S[0] * (np.random.rand() - 0.5) if mu_S[0] != 0 else 0.0,
                 mu_S[1] + 0.1 * mu_S[1] * (np.random.rand() - 0.5) if mu_S[1] != 0 else 0.0,
