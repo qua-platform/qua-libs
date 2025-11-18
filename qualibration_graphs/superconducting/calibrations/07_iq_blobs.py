@@ -131,6 +131,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Qubit readout
                 for i, qubit in multiplexed_qubits.items():
                     qubit.xy.play("x180")
+                    qubit.align()
                     qubit.resonator.measure(operation, qua_vars=(I_e[i], Q_e[i]))
                     qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
                     # save data
