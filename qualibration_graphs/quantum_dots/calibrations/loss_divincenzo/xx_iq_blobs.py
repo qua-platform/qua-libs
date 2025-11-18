@@ -10,7 +10,7 @@ from quam_qd_generator_example import config, config_path
 # %% {Imports}
 import matplotlib.pyplot as plt
 import numpy as np
-from calibration_utils.iq_blobs.plotting import plot_historams
+from calibration_utils.iq_blobs.plotting import plot_historams, plot_visibility_curves
 import xarray as xr
 from dataclasses import asdict
 
@@ -253,12 +253,14 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     fig_iq = plot_iq_blobs(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
     fig_confusion = plot_confusion_matrices(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
     fig_histogram = plot_historams(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
+    fig_visibility = plot_visibility_curves(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
         "iq_blobs": fig_iq,
         "confusion_matrix": fig_confusion,
         "histograms": fig_histogram,
+        "visibility_curves": fig_visibility,
     }
 
 
