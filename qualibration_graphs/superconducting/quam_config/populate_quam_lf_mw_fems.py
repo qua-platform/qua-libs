@@ -298,6 +298,7 @@ for qp in qubit_pairs:
     cz_pulse = CosineBipolarPulse(
         length=cz_interaction_duration + smoothing_duration,
         amplitude=0.1,
+        smoothing_time=smoothing_duration,
         id="cz_bipolar_pulse",
         flat_length=cz_interaction_duration,
     )
