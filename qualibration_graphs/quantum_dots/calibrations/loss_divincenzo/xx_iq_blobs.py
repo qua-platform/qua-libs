@@ -117,6 +117,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
+
         I_g, I_g_st, Q_g, Q_g_st, n, n_st = node.machine.declare_qua_variables()
         I_e, I_e_st, Q_e, Q_e_st, _, _ = node.machine.declare_qua_variables()
 
@@ -137,7 +138,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Qubit readout
                 for i, qubit_pair in multiplexed_qubit_pairs.items():
                     # -----------------------------------------
-                    # Initialise quantum dot pair - mixed or GS
+                    # Initialise quantum dot pair - GS
                     # -----------------------------------------
                     qubit_pair.quantum_dot_pair.run_sequence('initialise')
                     # -----------------------------------------
@@ -305,8 +306,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             operation = q.resonator.operations[node.parameters.operation]
             operation.integration_weights_angle -= float(fit_result["iw_angle"])
             # Convert the thresholds back to demod units
-            operation.threshold = float(fit_result["ge_threshold"]) * operation.length / 2**12
-            operation.rus_exit_threshold = float(fit_result["rus_threshold"]) * operation.length / 2**12
+            operation.threshold = float(fit_result["I_threshold"]) * operation.length / 2**12
             if node.parameters.operation == "readout":
                 q.resonator.confusion_matrix = fit_result["confusion_matrix"]
 
