@@ -352,31 +352,19 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                     np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4
                 )
                 if node.parameters.update_all_pulses:
-                    qp.macros["cz_bipolar"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
-                    qp.macros["cz_flattop"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
+                    qp.macros["cz_bipolar"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name][
+                        "cz_amp"
+                    ]
+                    qp.macros["cz_flattop"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name][
+                        "cz_amp"
+                    ]
                     # Round up to the upper 4 ns to be compatible with the hardware time resolution
                     qp.macros["cz_flattop"].flux_pulse_control.flat_length = int(
-                        np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4
+                        np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 2) * 2
                     )
                     qp.macros["cz_bipolar"].flux_pulse_control.flat_length = int(
                         np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 2) * 2
                     )
-
-                    # Ensure the total length is always larger than the flat length
-                    if (
-                        qp.macros["cz_bipolar"].flux_pulse_control.flat_length
-                        > qp.macros["cz_bipolar"].flux_pulse_control.length
-                    ):
-                        qp.macros["cz_bipolar"].flux_pulse_control.length = (
-                            int(np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4) + 12
-                        )
-                    if (
-                        qp.macros["cz_flattop"].flux_pulse_control.flat_length
-                        > qp.macros["cz_flattop"].flux_pulse_control.length
-                    ):
-                        qp.macros["cz_flattop"].flux_pulse_control.length = (
-                            int(np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4) + 20
-                        )
 
 
 # %% {Save_results}
