@@ -5,10 +5,9 @@ from typing import Dict, Tuple
 import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
-
-from quam.components.quantum_components import qubit
 from qualibration_libs.analysis import oscillation
 
+from quam.components.quantum_components import qubit
 
 
 @dataclass
@@ -18,6 +17,7 @@ class FitParameters:
     success: bool
     coupler_flux_min: float
     qubit_flux_max: float
+
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
     """
@@ -49,7 +49,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     Tuple[xr.Dataset, Dict[str, FitResults]]
         Dataset with fit results and dictionary of fit results for each qubit pair.
     """
-    detuning_mode = "quadratic" # "cosine" or "quadratic"
+    detuning_mode = "quadratic"  # "cosine" or "quadratic"
     qubit_pairs = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
     fluxes_qp = node.namespace["fluxes_qp"]
     fluxes_coupler = ds.coupler_flux.values
@@ -58,9 +58,22 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
     coupler_flux_full = np.array([fluxes_coupler + qp.coupler.decouple_offset for qp in qubit_pairs])
     if detuning_mode == "quadratic":
-        detuning = np.array([-fluxes_qp[qp.name] ** 2 * qp.qubit_control.freq_vs_flux_01_quad_term  for qp in qubit_pairs])
+        detuning = np.array(
+            [-fluxes_qp[qp.name] ** 2 * qp.qubit_control.freq_vs_flux_01_quad_term for qp in qubit_pairs]
+        )
     elif detuning_mode == "cosine":
-        detuning = np.array([oscillation(fluxes_qp, qp.qubit_control.extras['a'], qp.qubit_control.extras['f'], qp.qubit_control.extras['phi'], qp.qubit_control.extras['offset']) for qp in qubit_pairs])
+        detuning = np.array(
+            [
+                oscillation(
+                    fluxes_qp,
+                    qp.qubit_control.extras["a"],
+                    qp.qubit_control.extras["f"],
+                    qp.qubit_control.extras["phi"],
+                    qp.qubit_control.extras["offset"],
+                )
+                for qp in qubit_pairs
+            ]
+        )
     ds = ds.assign_coords({"coupler_flux_full": (["qubit_pair", "coupler_flux"], coupler_flux_full)})
     ds = ds.assign_coords({"detuning": (["qubit_pair", "qubit_flux"], detuning)})
 
@@ -100,14 +113,18 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
         else:
             res_sum = -fit.I_control + fit.I_target
         fluxes_qp = node.namespace["fluxes_qp"]
-        coupler_min_arg = res_sum.sel(qubit_pair=qp).mean(dim='qubit_flux').argmin()
-        coupler_flux_min = fit.coupler_flux_full.sel(qubit_pair=qp)[coupler_min_arg]
-        qubit_max_arg = res_sum.sel(qubit_pair=qp).mean(dim="coupler_flux").argmax()
-        qubit_flux_max = fluxes_qp[qp][qubit_max_arg]
-        #fit_results[qp] = {"flux_coupler_min": float(flux_coupler_min.values), "flux_qubit_max": float(flux_qubit_max)}
+        if node.parameters.cz_or_iswap == "iswap":
+            coupler_optimal_flux_point = res_sum.sel(qubit_pair=qp).mean(dim="qubit_flux").argmin()
+        else:
+            coupler_optimal_flux_point = res_sum.sel(qubit_pair=qp).mean(dim="qubit_flux").argmax()
+        coupler_flux_min = fit.coupler_flux_full.sel(qubit_pair=qp)[coupler_optimal_flux_point]
+        if node.parameters.cz_or_iswap == "iswap":
+            qubit_optimal_flux_point = res_sum.sel(qubit_pair=qp).mean(dim="coupler_flux").argmax()
+        else:
+            qubit_optimal_flux_point = res_sum.sel(qubit_pair=qp).mean(dim="coupler_flux").argmin()
+        qubit_flux_max = fluxes_qp[qp][qubit_optimal_flux_point]
+
         fit_results[qp] = FitParameters(
-            success=True,
-            coupler_flux_min=float(coupler_flux_min.values),
-            qubit_flux_max=float(qubit_flux_max)
+            success=True, coupler_flux_min=float(coupler_flux_min.values), qubit_flux_max=float(qubit_flux_max)
         )
     return fit, fit_results
