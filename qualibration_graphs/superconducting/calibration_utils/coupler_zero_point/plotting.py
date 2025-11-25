@@ -63,8 +63,8 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit_pair: str, fit: xr
         The axis on which to plot the data.
     ds : xr.Dataset
         The dataset containing the quadrature data.
-    qubit : dict[str, str]
-        mapping to the qubit to plot.
+    qubit_pair : str
+        The ID of the qubit pair to plot.
     fit : xr.Dataset, optional
         The dataset containing the fit parameters (default is None).
 
@@ -81,18 +81,19 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit_pair: str, fit: xr
 
     data.assign_coords(
         {"qubit_flux_mV": 1e3 * data.qubit_flux_full, "coupler_flux_mV": 1e3 * data.coupler_flux_full}
-    ).plot(x="qubit_flux_mV", y="coupler_flux_mV")
+    ).plot(x="qubit_flux_mV", y="coupler_flux_mV", ax=ax)
 
     # Only plot fit results if they exist and are valid
     if fit is not None:
         try:
             # Check if fit values exist and are valid (not NaN)
-            qubit_flux_max = float(fit["qubit_flux_max"])
-            coupler_flux_min = float(fit["coupler_flux_min"])
-            if not (np.isnan(qubit_flux_max) or np.isnan(coupler_flux_min)):
-                ax.axhline(1e3 * coupler_flux_min, color="red", lw=0.5, ls="--")
-                # ax.axhline(1e3*machine.qubit_pairs[qp['qubit']].coupler.decouple_offset, color = 'blue', lw =0.5, ls = '--')
-                ax.axvline(1e3 * qubit_flux_max, color="red", lw=0.5, ls="--")
+            optimal_qubit_flux = float(fit["optimal_qubit_flux"])
+            optimal_coupler_flux = float(fit["optimal_coupler_flux"])
+            if not (np.isnan(optimal_qubit_flux) or np.isnan(optimal_coupler_flux)):
+                ax.axhline(1e3 * optimal_coupler_flux, color="red", lw=0.5, ls="--", label="Optimal Coupler Flux")
+                ax.axvline(1e3 * optimal_qubit_flux, color="red", lw=0.5, ls="--", label="Optimal Qubit Flux")
+                ax.set_title(f"{qubit_pair} - Fit Successful")
+                ax.legend()
             else:
                 ax.set_title(f"{qubit_pair} - Fit Failed (Invalid Parameters)")
         except (ValueError, TypeError, AttributeError):
@@ -110,5 +111,5 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit_pair: str, fit: xr
     sec_ax = ax.secondary_xaxis("top", functions=(flux_to_detuning, detuning_to_flux))
     sec_ax.set_xlabel("Detuning [MHz]")
 
-    ax.set_xlabel("qubit flux [mV]")
-    ax.set_ylabel("coupler flux [mV]")
+    ax.set_xlabel("Qubit Flux [mV]")
+    ax.set_ylabel("Coupler Flux [mV]")

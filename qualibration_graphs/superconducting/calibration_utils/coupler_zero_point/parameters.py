@@ -24,19 +24,19 @@ class NodeSpecificParameters(RunnableParameters):
         Maximum relative coupler flux bias (in normalized flux units) with respect to the
         current coupler operating set point. Positive values move above the set point.
 
-    coupler_flux_step : float, default = 0.0004
+    coupler_flux_step : float, default = 0.0005
         Increment used when sweeping the coupler flux between coupler_flux_min and
         coupler_flux_max. Controls resolution of the coupler flux scan.
 
-    qubit_flux_span : float, default = 0.026
+    qubit_flux_span : float, default = 0.05
         Total relative span (peak-to-peak) of the flux detuning applied across (or between)
         the two qubits, referenced to the known/calculated nominal detuning.
 
-    qubit_flux_step : float, default = 0.0002
+    qubit_flux_step : float, default = 0.0005
         Increment used when sweeping qubit flux detuning across the specified span.
         Determines granularity of the qubit detuning scan.
 
-    pulse_duration_ns : int, default = 232
+    pulse_duration_ns : int, default = 200
         Duration of the two-qubit interaction pulse in nanoseconds. Should match calibrated
         gate length for the selected interaction (cz or iSWAP).
 
@@ -48,13 +48,6 @@ class NodeSpecificParameters(RunnableParameters):
     use_saved_detuning : bool, default = False
         If True, reuse previously extracted qubit detuning value rather than recalculating.
         Speeds up subsequent runs but risks drift if the system has changed.
-
-    flux_point_joint_or_independent_or_pairwise : Literal["joint", "independent", "pairwise"], default = "joint"
-        Strategy for generating flux coordinate sets:
-            - "joint": sweep a shared coordinated grid over both qubit flux and coupler flux.
-            - "independent": treat sweeps separately (e.g., first coupler, then qubits).
-            - "pairwise": iterate over matched pairs of flux points (useful for symmetric paths).
-        Impacts experiment ordering, total points, and potential hysteresis mitigation.
 
     Notes
     -----
