@@ -74,8 +74,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubit_pairs = ["qB2-qB4"]
-    node.parameters.load_data_id = 5785
+    # node.parameters.qubit_pairs = ["q1-q2"]
     pass
 
 
@@ -110,6 +109,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     transpiled_circuits_as_ints = {}
     for l, circuits in transpiled_circuits.items():
         transpiled_circuits_as_ints[l] = [process_circuit_to_integers(layerize_quantum_circuit(qc)) for qc in circuits]
+
+    # to calculate the average number of 2q layers per Clifford
+    node.namespace["average_layers_per_clifford"] = np.mean([np.mean([len(circ) for circ in circuits])/np.array(length+1) for length, circuits in transpiled_circuits_as_ints.items() if length > 0])
 
     circuits_as_ints = []
     for circuits_per_len in transpiled_circuits_as_ints.values():
@@ -185,6 +187,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
             num_repeats=node.parameters.num_circuits_per_length,
             num_averages=node.parameters.num_shots,
             state=node.results["ds_raw"].state.sel(qubit_pair=qp.name).data,
+            average_layers_per_clifford=node.namespace["average_layers_per_clifford"],
         )
 
         fig = rb_result.plot_with_fidelity()

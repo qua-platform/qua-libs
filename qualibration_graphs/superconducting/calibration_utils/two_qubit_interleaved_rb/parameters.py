@@ -12,8 +12,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Type of CZ operation to perform. Options are 'cz_flattop', 'cz_unipolar' or "cz_bipolar". Default is 'cz_unipolar'."""
     use_state_discrimination: bool = True
     """Whether to use state discrimination for readout. Default is True."""
-    circuit_lengths: list[int] = [0, 2, 4, 16, 32, 64]
-    """Circuit lengths (number of Cliffords) to benchmark. Default is (0, 1, 4, 16, 32, 50)."""
+    circuit_lengths: list[int] = [1, 4, 16, 32, 64]
+    """Circuit lengths (number of Cliffords) to benchmark. Default is (1, 4, 16, 32, 64)."""
     num_circuits_per_length: int = 5
     """Number of random circuits sampled per circuit length. Default is 5."""
     seed: int = 0

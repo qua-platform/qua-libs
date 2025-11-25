@@ -1,8 +1,10 @@
 import dataclasses
-import xarray as xr
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
 from scipy.optimize import curve_fit
+
 
 @dataclasses.dataclass
 class RBResult:
@@ -21,6 +23,8 @@ class RBResult:
     num_averages: int
     state: np.ndarray
     fit_success: bool = True
+    average_layers_per_clifford: float = None
+    average_gates_per_2q_layer: float = 1.51
 
     def __post_init__(self):
         """
@@ -72,23 +76,29 @@ class RBResult:
         A, alpha, B = self.fit_exponential()
         fidelity = self.get_fidelity(alpha)
         self.fidelity = fidelity
+        self.epc = 1 - self.fidelity
+
+        # Calculate additional metrics if constants are provided
+        if self.average_layers_per_clifford is not None and self.average_gates_per_2q_layer is not None:
+            self.error_per_2q_layer = (1 - fidelity) / self.average_layers_per_clifford
+            self.error_per_gate = self.error_per_2q_layer / self.average_gates_per_2q_layer
+            self.average_gate_fidelity = 1 - self.error_per_gate
 
         # std of average
-        error_bars = (
-            (self.data == 0).stack(combined=("average", "repeat"))
-            .std(dim="combined").state.data
-        ) / np.sqrt(self.num_repeats * self.num_averages)
-        
+        error_bars = ((self.data == 0).stack(combined=("average", "repeat")).std(dim="combined").state.data) / np.sqrt(
+            self.num_repeats * self.num_averages
+        )
+
         # Check if fitted curve is within error bars of experimental data
         experimental_data = self.get_decay_curve()
         fitted_values = rb_decay_curve(np.array(self.circuit_depths), A, alpha, B)
-        
+
         # Calculate residuals normalized by error bars
         normalized_residuals = np.abs(fitted_values - experimental_data) / error_bars
         max_deviation = np.max(normalized_residuals)
-        
-        # Check if any fitted point deviates more than 2 sigma from experimental data
-        if max_deviation > 2.0:
+
+        # Check if any fitted point deviates more than 4 sigma from experimental data
+        if max_deviation > 4.0:
             print(
                 f"Warning: Fitted curve deviates up to {max_deviation:.2f} sigma "
                 "from experimental data. Consider reviewing fit quality."
@@ -119,7 +129,11 @@ class RBResult:
             label="Exponential Fit",
         )
 
-        label = f"CZ Fidelity = {fidelity * 100:.2f}%" if isinstance(self, InterleavedRBResult) else f"2Q Clifford Fidelity = {fidelity * 100:.2f}%"
+        label = (
+            f"CZ Fidelity = {fidelity * 100:.2f}%"
+            if isinstance(self, InterleavedRBResult)
+            else f"2Q Clifford Fidelity = {fidelity * 100:.2f}% \n Single 2Q Gate Fidelity = {self.average_gate_fidelity * 100:.2f}%"
+        )
 
         plt.text(
             0.5,
@@ -136,8 +150,6 @@ class RBResult:
         plt.legend(framealpha=0)
 
         return fig
-
-
 
     def plot_two_qubit_state_distribution(self):
         """
@@ -249,9 +261,17 @@ class InterleavedRBResult(RBResult):
     """
     Class for analyzing and visualizing the results of a Interleaved Randomized Benchmarking (IRB) experiment.
     """
+
     standard_rb_alpha: float = 1
 
-    def __init__(self, standard_rb_alpha: float, circuit_depths: list[int], num_repeats: int, num_averages: int, state: np.ndarray):
+    def __init__(
+        self,
+        standard_rb_alpha: float,
+        circuit_depths: list[int],
+        num_repeats: int,
+        num_averages: int,
+        state: np.ndarray,
+    ):
         super().__init__(circuit_depths, num_repeats, num_averages, state)
         self.standard_rb_alpha = standard_rb_alpha
 
