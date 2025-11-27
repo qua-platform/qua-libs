@@ -79,81 +79,200 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "x_volts": xr.DataArray(x_volts, attrs={"long_name": "voltage", "units": "V"}),
         "y_volts": xr.DataArray(y_volts, attrs={"long_name": "voltage", "units": "V"}),
     }
+    x_external, y_external = node.parameters.x_external_source, node.parameters.y_external_source
 
     # node.namespace["sweep"]
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
-    with program() as node.namespace["qua_program"]:
-        seq = virtual_gate_set.new_sequence()
 
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs = num_sensors)
-        x = declare(fixed)
-        y = declare(fixed)
+    # Case 1: Both axes OPX voltages
+    if not x_external and not y_external: 
+        with program() as node.namespace["qua_program"]: 
+            seq = virtual_gate_set.new_sequence()
 
-        for multiplexed_sensors in sensors.batch():
-            align()
-            with for_(n, 0, n < node.parameters.num_shots, n + 1):
-                save(n, n_st)
-                with for_(*from_array(x, x_volts)):
-                    with for_(*from_array(y, y_volts)):
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs = num_sensors)
+            x = declare(fixed)
+            y = declare(fixed)
 
-                        # Option 1: Neither of them use the external source
-                        if not (node.parameters.x_external_source or node.parameters.y_external_source): 
-
-                            # Simultaneous stepping of the voltage of the virtualised gates. 
-                            # If ramps are preferred, specify ramp_duration as arg in simultaneous()
+            for multiplexed_sensors in sensors.batch():
+                align() 
+                with for_(n, 0, n<node.parameters.num_shots, n+1):
+                    save(n, n_st)
+                    with for_(*from_array(x, x_volts)): 
+                        with for_(*from_array(y, y_volts)):
                             with seq.simultaneous():
                                 x_obj.go_to_voltages(x)
                                 y_obj.go_to_voltages(y)
-                        
-                        # Option 2: X external
-                        elif node.parameters.x_external_source and not node.parameters.y_external_source: 
+
+                            align()
+                            for i, sensor in multiplexed_sensors.items():
+                                # Select the resonator tied to the sensor
+                                rr = sensor.readout_resonator
+                                # Measure using said resonator
+                                rr.measure("readout", qua_vars = (I[i], Q[i]))
+                                # Post-measurement wait (Optional)
+                                rr.wait(500)
+
+                                # Save data
+                                save(I[i], I_st[i])
+                                save(Q[i], Q_st[i])
+            with stream_processing():
+                n_st.save("n")
+                for i in range(num_sensors):
+                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I")
+                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q")
+        
+    # Case 2: X external and Y OPX
+    elif x_external and not y_external: 
+        with program() as node.namespace["qua_program"]: 
+            seq = virtual_gate_set.new_sequence()
+
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs = num_sensors)
+            x = declare(fixed)
+            y = declare(fixed)
+
+            for multiplexed_sensors in sensors.batch():
+                align()
+                # We know that the X is the slow axis. Order it so that the X axis comes first
+                with for_(*from_array(x, x_volts)): 
+                    assign(IO1, x)
+                    pause()
+                    with for_(n, 0, n<node.parameters.num_shots, n+1): 
+                        save(n, n_st)
+                        with for_(*from_array(y, y_volts)):
                             y_obj.go_to_voltages(y)
-                            pause()
+                            align()
+                            for i, sensor in multiplexed_sensors.items():
+                                # Select the resonator tied to the sensor
+                                rr = sensor.readout_resonator
+                                # Measure using said resonator
+                                rr.measure("readout", qua_vars = (I[i], Q[i]))
+                                # Post-measurement wait (Optional)
+                                rr.wait(500)
 
-                        # Option 3: Y external
-                        elif node.parameters.y_external_source and not node.parameters.x_external_source: 
+                                # Save data
+                                save(I[i], I_st[i])
+                                save(Q[i], Q_st[i])
+            with stream_processing():
+                n_st.save("n")
+                for i in range(num_sensors):
+                    I_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save(f"I")
+                    Q_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save(f"Q")
+
+    # Case 3: X OPX and Y external 
+    elif not x_external and y_external: 
+        with program() as node.namespace["qua_program"]: 
+            seq = virtual_gate_set.new_sequence()
+
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs = num_sensors)
+            x = declare(fixed)
+            y = declare(fixed)
+
+            for multiplexed_sensors in sensors.batch():
+                align()
+                # We know that the Y is the slow axis. Order it so that the Y axis comes first
+                with for_(*from_array(y, y_volts)): 
+                    assign(IO2, y)
+                    pause()
+                    with for_(n, 0, n<node.parameters.num_shots, n+1): 
+                        save(n, n_st)
+                        with for_(*from_array(x, x_volts)):
                             x_obj.go_to_voltages(x)
+                            align()
+                            for i, sensor in multiplexed_sensors.items():
+                                # Select the resonator tied to the sensor
+                                rr = sensor.readout_resonator
+                                # Measure using said resonator
+                                rr.measure("readout", qua_vars = (I[i], Q[i]))
+                                # Post-measurement wait (Optional)
+                                rr.wait(500)
+
+                                # Save data
+                                save(I[i], I_st[i])
+                                save(Q[i], Q_st[i])
+            with stream_processing():
+                n_st.save("n")
+                for i in range(num_sensors):
+                    I_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"I")
+                    Q_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"Q")
+
+
+    # Case 4: Both external 
+    elif x_external and y_external: 
+        with program() as node.namespace["qua_program"]: 
+            seq = virtual_gate_set.new_sequence()
+
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs = num_sensors)
+            x = declare(fixed)
+            y = declare(fixed)
+
+            for multiplexed_sensors in sensors.batch():
+                align()
+                # We know that the Y is the slow axis. Order it so that the Y axis comes first
+                with for_(*from_array(y, y_volts)): 
+                    with for_(n, 0, n<node.parameters.num_shots, n+1): 
+                        save(n, n_st)
+                        with for_(*from_array(x, x_volts)):
+                            assign(IO1, x)
+                            assign(IO2, y)
                             pause()
+                            align()
+                            for i, sensor in multiplexed_sensors.items():
+                                # Select the resonator tied to the sensor
+                                rr = sensor.readout_resonator
+                                # Measure using said resonator
+                                rr.measure("readout", qua_vars = (I[i], Q[i]))
+                                # Post-measurement wait (Optional)
+                                rr.wait(500)
 
-                        # Option 4: Both external
-                        elif node.parameters.y_external_source and node.parameters.x_external_source: 
-                            pause()
-
-
-                        align()
-                        for i, sensor in multiplexed_sensors.items():
-                            # Select the resonator tied to the sensor
-                            rr = sensor.readout_resonator
-                            # Measure using said resonator
-                            rr.measure("readout", qua_vars = (I[i], Q[i]))
-                            # Post-measurement wait (Optional)
-                            rr.wait(500)
-
-                            # Save data
-                            save(I[i], I_st[i])
-                            save(Q[i], Q_st[i])
-
-        with stream_processing():
-            n_st.save("n")
-            for i in range(num_sensors):
-                I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I")
-                Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q")
-
+                                # Save data
+                                save(I[i], I_st[i])
+                                save(Q[i], Q_st[i])
+            with stream_processing():
+                n_st.save("n")
+                for i in range(num_sensors):
+                    I_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"I")
+                    Q_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"Q")
 
 def paused_program(node: QualibrationNode): 
     job = node.namespace["job"]
+    x_obj = node.machine.get_component(node.parameters.x_axis_name)
+    y_obj = node.machine.get_component(node.parameters.y_axis_name)
     x_vals, y_vals = get_voltage_arrays(node)
-    x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(node.parameters.y_axis_name)
-    for n in range(node.parameters.num_shots):
-        for x in x_vals: 
-            for y in y_vals: 
+    
+    x_external = node.parameters.x_external_source
+    y_external = node.parameters.y_external_source
+
+    # Case 2: X external — len(x_volts) pauses
+    if x_external and not y_external:
+        for _ in x_vals:
+            while not job.is_paused():
+                time.sleep(0.001)
+            x = job.get_io1_value().double_value
+            x_obj.physical_channel.offset_parameter(x)
+            print(f"Slow x coordinate: {x:.5f}")
+            job.resume()
+
+    # Case 3: Y external — len(y_volts) pauses
+    elif y_external and not x_external:
+        for _ in y_vals:
+            while not job.is_paused():
+                time.sleep(0.001)
+            y = job.get_io2_value().double_value
+            y_obj.physical_channel.offset_parameter(y)
+            print(f"Slow y coordinate: {y:.5f}")
+            job.resume()
+
+    # Case 4: Both external — len(x_volts) * len(y_volts) pauses
+    elif x_external and y_external:
+        for _ in x_vals:
+            for _ in y_vals:
                 while not job.is_paused():
                     time.sleep(0.001)
-                if node.parameters.x_external_source: 
-                    x_obj.physical_channel.offset_parameter(x)
-                if node.parameters.y_external_source: 
-                    y_obj.physical_channel.offset_parameter(y)
-                time.sleep(0.01)
+                x = job.get_io1_value().double_value
+                y = job.get_io2_value().double_value
+                x_obj.physical_channel.offset_parameter(x)
+                y_obj.physical_channel.offset_parameter(y)
+                print(f"Slow x and y coordinates: {x:.5f}, {y:.5f}")
                 job.resume()
 
 
@@ -183,6 +302,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        time.sleep(0.5)
         # Run the paused program code
         if node.parameters.x_external_source or node.parameters.y_external_source:
             paused_program(node)
