@@ -16,8 +16,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Span of frequencies to sweep in MHz. Default is 30 MHz."""
     frequency_step_in_mhz: float = 0.1
     """Step size for frequency sweep in MHz. Default is 0.1 MHz."""
-    dc_control: bool = False
-    """If an associated external DC offset exists."""
+    dc_control: bool = True
+    """Whether to include DC control tab in Video Mode"""
 
 
 

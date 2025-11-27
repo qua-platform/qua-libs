@@ -25,7 +25,7 @@ class NodeSpecificParameters(RunnableParameters):
     """The X axis span in volts"""
     y_span: float = 0.03
     """The Y axis span in volts"""
-    dc_control: bool = False
+    dc_control: bool = True
     """Includes VoltageControlComponent in Video Mode."""
 
 

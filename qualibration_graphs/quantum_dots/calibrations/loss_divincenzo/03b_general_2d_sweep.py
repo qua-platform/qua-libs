@@ -22,6 +22,7 @@ from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
 from calibration_utils.common_utils.experiment import get_dots, get_sensors
+from calibration_utils.common_utils.connect_to_external_source import external_source_setup
 
 description = """
             2D CHARGE STABILITY MAP
@@ -38,7 +39,7 @@ Prerequisites:
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="03a_charge_stability", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](name="03b_general_2d_sweep", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -54,6 +55,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
+external_source_setup(node)
 
 
 # %% {Create_QUA_program}
@@ -151,7 +153,7 @@ def paused_program(node: QualibrationNode):
                     x_obj.physical_channel.offset_parameter(x)
                 if node.parameters.y_external_source: 
                     y_obj.physical_channel.offset_parameter(y)
-                time.sleep(0.1)
+                time.sleep(0.01)
                 job.resume()
 
 

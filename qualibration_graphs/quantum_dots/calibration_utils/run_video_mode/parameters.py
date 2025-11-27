@@ -19,8 +19,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Axis type of the Y axis. Can be 'Voltage', 'Frequency', 'Amplitude'."""
     sensor_names: List[str] = None
     """List of sensor names to include in the measurement. """
-    dc_control: bool = False
-    """Whether to include DC Control channels in Video Mode"""
+    dc_control: bool = True
+    """Whether to include DC control tab in Video Mode"""
     result_type: Literal["I", "Q", "Amplitude", "Phase"] = "I"
     """Result type to display. Can be 'I', 'Q', 'Amplitude', 'Phase'."""
     

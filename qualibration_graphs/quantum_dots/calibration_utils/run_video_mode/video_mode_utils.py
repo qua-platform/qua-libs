@@ -5,6 +5,7 @@ from werkzeug.serving import make_server
 from quam.core import QuamRoot
 from qua_dashboards.video_mode import VideoModeComponent, OPXDataAcquirer, scan_modes
 from qua_dashboards.voltage_control import VoltageControlComponent
+from qua_dashboards.video_mode.tab_controllers import VoltageControlTabController
 from qua_dashboards.core import build_dashboard
 from qua_dashboards.virtual_gates import VirtualLayerEditor, ui_update
 from qcodes.parameters import DelegateParameter
@@ -103,16 +104,6 @@ def launch_video_mode(
         y_sweepaxis.span = y_span if y_span is not None else find_default(x_mode)[1]
         y_sweepaxis.points = y_points if y_points is not None else find_default(x_mode)[0]
 
-    video_mode_component = VideoModeComponent(
-        data_acquirer = data_acquirer, 
-        data_polling_interval_s = 0.2, 
-        save_path = save_path, 
-        shutdown_callback = stop_dashboard
-    )
-
-    virtual_gates_component = VirtualLayerEditor(gateset = virtual_gate_set, component_id = 'Virtual_Gates')
-
-    components = [video_mode_component, virtual_gates_component]
     if dc_control: 
         voltage_parameters = []
         physical_channels = machine.physical_channels
@@ -121,7 +112,20 @@ def launch_video_mode(
                 name = ch.id, label = ch.id, source = ch.offset_parameter
             ))
         voltage_control_component = VoltageControlComponent(component_id="Voltage_Control",voltage_parameters=voltage_parameters,update_interval_ms=1000)
-        components.append(voltage_control_component)
+        voltage_control_tab = VoltageControlTabController(voltage_control_component = voltage_control_component)
+
+
+    video_mode_component = VideoModeComponent(
+        data_acquirer = data_acquirer, 
+        data_polling_interval_s = 0.2, 
+        save_path = save_path, 
+        shutdown_callback = stop_dashboard, 
+        voltage_control_tab = voltage_control_tab
+    )
+
+    virtual_gates_component = VirtualLayerEditor(gateset = virtual_gate_set, component_id = 'Virtual_Gates')
+
+    components = [video_mode_component, virtual_gates_component]
 
     app = build_dashboard(
         components=components,
