@@ -2,6 +2,7 @@
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
+import time
 
 from qm.qua import *
 
@@ -12,8 +13,8 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.charge_stability import Parameters, get_voltage_arrays
-from calibration_utils.charge_stability import (
+from calibration_utils.general_2d_sweep import Parameters, get_voltage_arrays
+from calibration_utils.general_2d_sweep import (
     plot_raw_amplitude, 
     plot_raw_phase
 )
@@ -93,13 +94,30 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 with for_(*from_array(x, x_volts)):
                     with for_(*from_array(y, y_volts)):
 
-                        # Simultaneous stepping of the voltage of the virtualised gates. 
-                        # If ramps are preferred, specify ramp_duration as arg in simultaneous()
-                        with seq.simultaneous():
-                            x_obj.go_to_voltages(x)
-                            y_obj.go_to_voltages(y)
+                        # Option 1: Neither of them use the external source
+                        if not (node.parameters.x_external_source or node.parameters.y_external_source): 
 
+                            # Simultaneous stepping of the voltage of the virtualised gates. 
+                            # If ramps are preferred, specify ramp_duration as arg in simultaneous()
+                            with seq.simultaneous():
+                                x_obj.go_to_voltages(x)
+                                y_obj.go_to_voltages(y)
                         
+                        # Option 2: X external
+                        elif node.parameters.x_external_source and not node.parameters.y_external_source: 
+                            y_obj.go_to_voltages(y)
+                            pause()
+
+                        # Option 3: Y external
+                        elif node.parameters.y_external_source and not node.parameters.x_external_source: 
+                            x_obj.go_to_voltages(x)
+                            pause()
+
+                        # Option 4: Both external
+                        elif node.parameters.y_external_source and node.parameters.x_external_source: 
+                            pause()
+
+
                         align()
                         for i, sensor in multiplexed_sensors.items():
                             # Select the resonator tied to the sensor
@@ -118,6 +136,23 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for i in range(num_sensors):
                 I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I")
                 Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q")
+
+
+def paused_program(node: QualibrationNode): 
+    job = node.namespace["job"]
+    x_vals, y_vals = get_voltage_arrays(node)
+    x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(node.parameters.y_axis_name)
+    for n in range(node.parameters.num_shots):
+        for x in x_vals: 
+            for y in y_vals: 
+                while not job.is_paused():
+                    time.sleep(0.001)
+                if node.parameters.x_external_source: 
+                    x_obj.physical_channel.offset_parameter(x)
+                if node.parameters.y_external_source: 
+                    y_obj.physical_channel.offset_parameter(y)
+                time.sleep(0.1)
+                job.resume()
 
 
 # %% {Simulate}
@@ -146,6 +181,9 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        # Run the paused program code
+        if node.parameters.x_external_source or node.parameters.y_external_source:
+            paused_program(node)
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
