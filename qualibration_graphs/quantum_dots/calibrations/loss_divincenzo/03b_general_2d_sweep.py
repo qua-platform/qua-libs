@@ -235,14 +235,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 def paused_program(node: QualibrationNode): 
     job = node.namespace["job"]
-    x_obj = node.machine.get_component(node.parameters.x_axis_name)
-    y_obj = node.machine.get_component(node.parameters.y_axis_name)
+    x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(node.parameters.y_axis_name)
     x_vals, y_vals = get_voltage_arrays(node)
-    
-    x_external = node.parameters.x_external_source
-    y_external = node.parameters.y_external_source
+    x_external, y_external = node.parameters.x_external_source, node.parameters.y_external_source
 
-    # Case 2: X external — len(x_volts) pauses
+    # Case 2: X external and Y OPX
     if x_external and not y_external:
         for _ in x_vals:
             while not job.is_paused():
@@ -252,7 +249,7 @@ def paused_program(node: QualibrationNode):
             print(f"Slow x coordinate: {x:.5f}")
             job.resume()
 
-    # Case 3: Y external — len(y_volts) pauses
+    # Case 3: X OPX and Y external
     elif y_external and not x_external:
         for _ in y_vals:
             while not job.is_paused():
@@ -262,7 +259,7 @@ def paused_program(node: QualibrationNode):
             print(f"Slow y coordinate: {y:.5f}")
             job.resume()
 
-    # Case 4: Both external — len(x_volts) * len(y_volts) pauses
+    # Case 4: X external and Y external
     elif x_external and y_external:
         for _ in x_vals:
             for _ in y_vals:
