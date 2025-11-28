@@ -344,8 +344,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
-            qp.coupler.decouple_offset = node.results["fit_results"][qp.name]["coupler_flux_min"]
-            qp.detuning = node.results["fit_results"][qp.name]["qubit_flux_max"]
+            qp.coupler.decouple_offset = node.results["fit_results"][qp.name]["optimal_coupler_flux"]
+            qp.detuning = node.results["fit_results"][qp.name]["optimal_qubit_flux"]
 
 
 # %% {Save_results}
