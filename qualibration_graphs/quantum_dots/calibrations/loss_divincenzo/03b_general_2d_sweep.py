@@ -121,8 +121,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I")
-                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q")
+                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
         
     # Case 2: X external and Y OPX
     elif x_external and not y_external: 
@@ -158,8 +158,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save("I")
-                    Q_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save("Q")
+                    I_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save(f"I{i}")
+                    Q_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save(f"Q{i}")
 
     # Case 3: X OPX and Y external 
     elif not x_external and y_external: 
@@ -200,8 +200,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save("I")
-                    Q_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save("Q")
+                    I_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"I{i}")
+                    Q_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"Q{i}")
 
     # Case 4: Both external 
     elif x_external and y_external: 
@@ -237,8 +237,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save("I")
-                    Q_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save("Q")
+                    I_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(f"Q{i}")
 
 def paused_program(node: QualibrationNode): 
     job = node.namespace["job"]
