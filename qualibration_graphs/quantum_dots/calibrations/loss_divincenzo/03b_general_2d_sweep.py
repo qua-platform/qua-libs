@@ -102,7 +102,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             with seq.simultaneous():
                                 x_obj.go_to_voltages(x)
                                 y_obj.go_to_voltages(y)
-
                             align()
                             for i, sensor in multiplexed_sensors.items():
                                 # Select the resonator tied to the sensor
@@ -155,8 +154,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save(f"I")
-                    Q_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save(f"Q")
+                    I_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save("I")
+                    Q_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save("Q")
 
     # Case 3: X OPX and Y external 
     elif not x_external and y_external: 
@@ -192,9 +191,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"I")
-                    Q_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"Q")
-
+                    I_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save("I")
+                    Q_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save("Q")
 
     # Case 4: Both external 
     elif x_external and y_external: 
@@ -208,9 +206,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for multiplexed_sensors in sensors.batch():
                 align()
                 # We know that the Y is the slow axis. Order it so that the Y axis comes first
-                with for_(*from_array(y, y_volts)): 
-                    with for_(n, 0, n<node.parameters.num_shots, n+1): 
-                        save(n, n_st)
+                with for_(n, 0, n<node.parameters.num_shots, n+1): 
+                    save(n, n_st)
+                    with for_(*from_array(y, y_volts)): 
                         with for_(*from_array(x, x_volts)):
                             assign(IO1, x)
                             assign(IO2, y)
@@ -230,8 +228,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"I")
-                    Q_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"Q")
+                    I_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save("I")
+                    Q_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save("Q")
 
 def paused_program(node: QualibrationNode): 
     job = node.namespace["job"]
@@ -247,6 +245,7 @@ def paused_program(node: QualibrationNode):
             x = job.get_io1_value().double_value
             x_obj.physical_channel.offset_parameter(x)
             print(f"Slow x coordinate: {x:.5f}")
+            time.sleep(0.01)
             job.resume()
 
     # Case 3: X OPX and Y external
@@ -257,6 +256,7 @@ def paused_program(node: QualibrationNode):
             y = job.get_io2_value().double_value
             y_obj.physical_channel.offset_parameter(y)
             print(f"Slow y coordinate: {y:.5f}")
+            time.sleep(0.01)
             job.resume()
 
     # Case 4: X external and Y external
@@ -270,6 +270,7 @@ def paused_program(node: QualibrationNode):
                 x_obj.physical_channel.offset_parameter(x)
                 y_obj.physical_channel.offset_parameter(y)
                 print(f"Slow x and y coordinates: {x:.5f}, {y:.5f}")
+                time.sleep(0.01)
                 job.resume()
 
 
