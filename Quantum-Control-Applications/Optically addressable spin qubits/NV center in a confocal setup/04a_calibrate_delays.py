@@ -21,7 +21,7 @@ from qualang_tools.results.data_handler import DataHandler
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
 version_str = qmm.version_dict()["QOP"]  # QOP version as a string
 version_tuple = tuple(map(int, version_str.split(".")))  # QOP version as a tuple

@@ -10,7 +10,7 @@ import time
 
 root_directory = "C:\\Users\\name\\Desktop\\QM_RB\\data_q1q2"  # change to your local directory
 data_handler = DataHandler(root_data_folder=root_directory)
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 ##############################
 # Program-specific variables #

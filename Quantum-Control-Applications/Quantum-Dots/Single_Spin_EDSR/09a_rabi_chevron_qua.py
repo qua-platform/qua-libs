@@ -101,7 +101,7 @@ with program() as Rabi_prog:
         # DC current sensing
         dc_signal_st.buffer(len(durations)).buffer(len(frequencies)).average().save("dc_signal")
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 
 ###########################
