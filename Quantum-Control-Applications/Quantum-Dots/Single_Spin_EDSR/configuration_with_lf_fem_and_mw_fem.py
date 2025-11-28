@@ -4,7 +4,6 @@ QUA-Config supporting OPX1000 w/ LF-FEM & MW-FEM
 
 from pathlib import Path
 
-import numpy as np
 import plotly.io as pio
 from qualang_tools.units import unit
 from qualang_tools.voltage_gates import VoltageGateSequence
