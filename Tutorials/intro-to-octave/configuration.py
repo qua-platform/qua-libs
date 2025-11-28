@@ -2,7 +2,6 @@
 Octave configuration working for QOP244 and qm-qua==1.2.1 and newer.
 """
 
-
 ######################
 # Network parameters #
 ######################
