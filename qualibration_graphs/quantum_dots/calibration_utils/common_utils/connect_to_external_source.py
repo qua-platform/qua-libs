@@ -25,7 +25,8 @@ def external_source_setup(node: QualibrationNode, reset_voltages: bool = True):
         node.machine.barrier_gates["virtual_barrier_1"].physical_channel: qdac.ch05.dc_constant_V, 
         node.machine.barrier_gates["virtual_barrier_2"].physical_channel: qdac.ch06.dc_constant_V,
         node.machine.barrier_gates["virtual_barrier_3"].physical_channel: qdac.ch07.dc_constant_V, 
-        node.machine.sensor_dots["virtual_sensor_1"].physical_channel: qdac.ch08.dc_constant_V
+        node.machine.sensor_dots["virtual_sensor_1"].physical_channel: qdac.ch08.dc_constant_V, 
+        node.machine.sensor_dots["virtual_sensor_2"].physical_channel: qdac.ch09.dc_constant_V
     }
     node.machine.connect_to_external_source(external_voltage_mapping, reset_voltages = reset_voltages)
 
