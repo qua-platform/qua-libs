@@ -25,10 +25,14 @@ from calibration_utils.common_utils.experiment import get_dots, get_sensors
 from calibration_utils.common_utils.connect_to_external_source import external_source_setup
 
 description = """
-            2D CHARGE STABILITY MAP
+            2D GENERAL CHARGE STABILITY MAP
 This script involves a simple 2D voltage map, done by stepping the X and Y Quantum Dots 
 to their corresponding voltages, sending a readout pulse, and demodulating the 'I' and 'Q'
-quadratures. 
+quadratures. In this node, you may perform the 2D map using either OPX outputs or external 
+voltage source outputs, or a combination. 
+
+Note: Currently the external v external 2D map has a large number of pause() functions, which 
+    increases the runtime drastically. Use with caution. 
 
 Prerequisites: 
     - Having calibrated the IQ mixer/Octave connected to the readout line (node 01a_mixer_calibration.py).
