@@ -159,6 +159,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Case 3: X OPX and Y external 
     elif not x_external and y_external: 
+        node.namespace["sweep_axes"] = {
+            "sensors": xr.DataArray(sensors.get_names()),
+            "y_volts": xr.DataArray(y_volts, attrs={"long_name": "voltage", "units": "V"}),
+            "x_volts": xr.DataArray(x_volts, attrs={"long_name": "voltage", "units": "V"}),
+        }
         with program() as node.namespace["qua_program"]: 
             seq = virtual_gate_set.new_sequence()
 
@@ -314,6 +319,9 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         # Display the execution report to expose possible runtime errors
         print(job.execution_report())
+    # Transpose X and Y for Case # 3
+    if not node.parameters.x_external_source and node.parameters.y_external_source:
+        dataset = dataset.transpose("sensors", "x_volts", "y_volts")
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
