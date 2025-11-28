@@ -72,7 +72,11 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubit_pairs = ["q1-q2"]
+    node.parameters.qubit_pairs = ["qB1-B2"]
+    node.parameters.num_averages = 100
+    node.parameters.amp_range = 0.1
+    node.parameters.amp_step = 0.001
+    node.parameters.num_frame_rotations = 12
     pass
 
 
@@ -147,7 +151,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qp.qubit_target.xy.play("x90")
                                 qp.align()
                                 # play the CZ gate
-                                qp.macros[operation].apply(amplitude_scale_control=amp)
+                                # qp.macros[operation].apply(amplitude_scale_control=amp)
+                                qp.coupler.play("cz_param",amplitude_scale=amp)
+                                qp.align()
                                 # rotate the frame
                                 qp.qubit_target.xy.frame_rotation_2pi(frame)
                                 # Tomographic rotation on the target qubit
@@ -272,7 +278,15 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     )
     plt.show()
 
+    fig, axs = plt.subplots(2,1,figsize=(8,10))
+    ds = node.results["ds_raw"]
+    ds.state_target.sel(control_axis=0).plot(ax=axs[0])
+    ds.state_target.sel(control_axis=1).plot(ax=axs[1])
+
     node.results["phase_figure"] = fig_phase
+    node.results["raw_figure"] = fig
+
+    node.save()
 
 
 # %% {Update_state}

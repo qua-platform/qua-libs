@@ -4,7 +4,7 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.coupler_zero_point import (
+from calibration_utils.wifi import (
     Parameters,
     fit_raw_data,
     log_fitted_results,
@@ -24,51 +24,12 @@ from quam_config import Quam
 
 # %% {Initialisation}
 description = """
-        COUPLER ZERO-INTERACTION CALIBRATION
-This calibration program determines the flux bias point for tunable couplers that
-results in zero effective coupling (g ≈ 0) between pairs of flux-tunable qubits.
-This is a crucial step for architectures relying on dynamically tunable coupling
-to implement high-fidelity two-qubit gates and isolate qubits during single-qubit operations.
-
-The method performs a 2D sweep of:
-    - The coupler flux bias (around its idle point).
-    - The qubit control flux (to bring qubit frequencies closer to resonance).
-
-Each point in this sweep involves initializing the control qubit in the excited state and applying
-concurrent flux pulses to both the control qubit and the coupler. The resulting excitation in the
-target qubit is measured either using state discrimination or IQ integration, depending on the
-configuration. The aim is to identify the coupler bias point at which the residual interaction vanishes.
-
-From the data, the optimal coupler flux (yielding minimal excitation transfer) and corresponding
-control qubit flux (yielding maximal excitation retention) are extracted. These values are used
-to update the coupler’s `decouple_offset` and the estimated qubit `detuning`.
-
-This procedure ensures precise decoupling between qubits during idle or single-qubit operations, helping
-mitigate unwanted crosstalk and residual ZZ interactions.
-
-Prerequisites:
-    - Coupler hardware model with known calibration structure.
-    - Qubit frequencies, flux tuning models (quadratic term at least).
-    - Active reset routines for fast initialization (optional).
-    - Calibrated readout and XY pulses on the control and target qubits.
-    - Initial coupler `decouple_offset` set near its expected g ≈ 0 point.
-
-State update:
-    - Coupler zero-point flux: `coupler.decouple_offset`
-    - Control qubit detuning: `qubit_pair.detuning`
-
-Additional notes:
-    - Supports both simulation and hardware execution.
-    - Results are visualized in a 2D map with overlays for idle and calibrated zero-g coupler flux points.
-    - If enabled, detuning is also plotted on a secondary axis for interpretation.
-
-This calibration is essential for optimizing gate scheduling, minimizing idling errors,
-and preparing the system for entangling gate calibration.
+        ...
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="18a_coupler_zero_point",  # Name should be unique
+    name="98_wifi",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
@@ -77,18 +38,18 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubit_pairs = ["q1-2"]
-    node.parameters.num_shots = 50
+    node.parameters.num_shots = 100
     node.parameters.qubit_pairs = ["qB1-B2"]
-    node.parameters.coupler_flux_min = -0.1
-    node.parameters.coupler_flux_max = 0.2
-    node.parameters.coupler_flux_step = 0.002
-    node.parameters.qubit_flux_span = 0.007
-    node.parameters.qubit_flux_step = 0.000025
-    node.parameters.pulse_duration_ns = 4000
-    node.parameters.cz_or_iswap = "cz"
-    node.parameters.use_saved_detuning = True
+    node.parameters.modulation_range_mhz = 20
+    node.parameters.modulation_step_mhz = 0.1
+    node.parameters.min_amp = 0.0001
+    node.parameters.max_amp = 0.5
+    node.parameters.amp_step = 0.001
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
+    # node.parameters.modulation_amplitude = 0.07
+    node.parameters.pulse_duration_ns = 250
+    node.parameters.cz_or_iswap = "iswap"
     pass
 
 
@@ -111,52 +72,51 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     n_avg = node.parameters.num_shots  # The number of averages
 
     # Loop parameters
-    fluxes_coupler = np.arange(
-        node.parameters.coupler_flux_min, node.parameters.coupler_flux_max, node.parameters.coupler_flux_step
+    if node.parameters.cz_or_iswap == "iswap":
+        node.namespace["central_frequencies"] = central_frequencies = [
+            int(
+                node.machine.qubits[qp.qubit_control.name].xy.RF_frequency
+                - node.machine.qubits[qp.qubit_target.name].xy.RF_frequency
+            )
+            for qp in qubit_pairs
+        ]
+    else:
+        node.namespace["central_frequencies"] = central_frequencies = [
+            int(
+                node.machine.qubits[qp.qubit_control.name].xy.RF_frequency
+                - node.machine.qubits[qp.qubit_target.name].xy.RF_frequency
+                + qp.qubit_target.anharmonicity
+            )
+            for qp in qubit_pairs
+        ]
+
+
+    # node.namespace["central_frequencies"] = central_frequencies = [440e6] #TODO: remove
+    print("Central frequencies (MHz): ", central_frequencies)
+
+    # Define the frequency sweep around the central frequency
+    span = node.parameters.modulation_range_mhz * u.MHz
+    step = node.parameters.modulation_step_mhz * u.MHz
+    frequency_sweep = np.arange(-span / 2, span / 2, step)
+
+    amplitudes = np.arange(
+        node.parameters.min_amp,
+        node.parameters.max_amp,
+        node.parameters.amp_step,
     )
-    fluxes_qubit = np.arange(
-        -node.parameters.qubit_flux_span / 2,
-        node.parameters.qubit_flux_span / 2,
-        node.parameters.qubit_flux_step,
-    )
-    fluxes_qp = {}
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
-        "coupler_flux": xr.DataArray(fluxes_coupler, attrs={"long_name": "coupler flux", "units": "V"}),
-        "qubit_flux": xr.DataArray(fluxes_qubit, attrs={"long_name": "qubit flux", "units": "V"}),
+        "frequencies": xr.DataArray(frequency_sweep, attrs={"long_name": "coupler frequency", "units": "MHz"}),
+        "amplitudes": xr.DataArray(amplitudes, attrs={"long_name": "pulse amplitude", "units": "a.u."}),
     }
-    for qp in qubit_pairs:
-        # estimate the flux shift to get the control qubit to the target qubit frequency
-        if node.parameters.use_saved_detuning:
-            est_flux_shift = qp.detuning
-        elif node.parameters.cz_or_iswap == "iswap":
-            est_flux_shift = np.sqrt(
-                -(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency)
-                / qp.qubit_control.freq_vs_flux_01_quad_term
-            )
-        elif node.parameters.cz_or_iswap == "cz":
-            est_flux_shift = np.sqrt(
-                -(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency + qp.qubit_target.anharmonicity)
-                / qp.qubit_control.freq_vs_flux_01_quad_term
-            )
-        fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
-    node.namespace["fluxes_qp"] = fluxes_qp
-
-    assert (
-        node.parameters.pulse_duration_ns % 4 == 0
-    ), f"Expected pulse duration to be divisible by 4, got {node.parameters.pulse_duration_ns} ns"
-    pulse_duration_ns = node.parameters.pulse_duration_ns
-    reset_coupler_bias = False
 
     with program() as node.namespace["qua_program"]:
         n = declare(int)
-        flux_coupler = declare(float)
-        flux_qubit = declare(float)
-        comp_flux_qubit = declare(float)
+        coupler_freq = declare(int)
+        amplitude = declare(fixed)
         n_st = declare_stream()
-        qua_pulse_duration = declare(int, value=pulse_duration_ns // 4)
         if node.parameters.use_state_discrimination:
             state_c = [declare(int) for _ in range(num_qubit_pairs)]
             state_t = [declare(int) for _ in range(num_qubit_pairs)]
@@ -172,45 +132,29 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             for ii, qp in multiplexed_qubit_pairs.items():
                 print("qubit control: %s, qubit target: %s" % (qp.qubit_control.name, qp.qubit_target.name))
-                # Bring the active qubits to the minimum frequency point
-                if reset_coupler_bias:
-                    qp.coupler.set_dc_offset(0.0)
-                wait(1000)
 
                 with for_(n, 0, n < n_avg, n + 1):
                     save(n, n_st)
-                    with for_(*from_array(flux_coupler, fluxes_coupler)):
-                        with for_(*from_array(flux_qubit, fluxes_qp[qp.name])):
+                    with for_(*from_array(coupler_freq, frequency_sweep)):
+                        qp.coupler.update_frequency(coupler_freq + central_frequencies[ii])
+                        with for_(*from_array(amplitude, amplitudes)):
                             # Qubit initialization
                             qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
                             qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
-                            align()
-                            if "coupler_qubit_crosstalk" in qp.extras:
-                                assign(
-                                    comp_flux_qubit, flux_qubit + qp.extras["coupler_qubit_crosstalk"] * flux_coupler
-                                )
-                            else:
-                                print("No crosstalk compensated")
-                                assign(comp_flux_qubit, flux_qubit)
                             qp.align()
-                            # setting both qubits ot the initial state
+
                             qp.qubit_control.xy.play("x180")
                             if node.parameters.cz_or_iswap == "cz":
                                 qp.qubit_target.xy.play("x180")
-                            align()
-                            # wait(8)
-                            qp.qubit_control.z.play(
-                                "const",
-                                amplitude_scale=comp_flux_qubit / qp.qubit_control.z.operations["const"].amplitude,
-                                duration=qua_pulse_duration,
-                            )
+                            qp.align()
+                            # qp.coupler.reset_if_phase()
                             qp.coupler.play(
                                 "const",
-                                amplitude_scale=flux_coupler / qp.coupler.operations["const"].amplitude,
-                                duration=qua_pulse_duration,
+                                amplitude_scale=amplitude / qp.coupler.operations["const"].amplitude,
+                                duration=node.parameters.pulse_duration_ns >> 2,
                             )
-                            align()
-                            wait(20)
+                            qp.align()
+
                             # readout
                             if node.parameters.use_state_discrimination:
                                 # if node.parameters.cz_or_iswap == "cz":
@@ -233,17 +177,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n")
             for i in range(num_qubit_pairs):
                 if node.parameters.use_state_discrimination:
-                    state_c_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(
+                    state_c_st[i].buffer(len(amplitudes)).buffer(len(frequency_sweep)).average().save(
                         f"state_control{i}"
                     )
-                    state_t_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(
-                        f"state_target{i}"
-                    )
+                    state_t_st[i].buffer(len(amplitudes)).buffer(len(frequency_sweep)).average().save(f"state_target{i}")
                 else:
-                    I_c_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"I_control{i}")
-                    Q_c_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"Q_control{i}")
-                    I_t_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"I_target{i}")
-                    Q_t_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"Q_target{i}")
+                    I_c_st[i].buffer(len(amplitudes)).buffer(len(frequency_sweep)).average().save(f"I_control{i}")
+                    Q_c_st[i].buffer(len(amplitudes)).buffer(len(frequency_sweep)).average().save(f"Q_control{i}")
+                    I_t_st[i].buffer(len(amplitudes)).buffer(len(frequency_sweep)).average().save(f"I_target{i}")
+                    Q_t_st[i].buffer(len(amplitudes)).buffer(len(frequency_sweep)).average().save(f"Q_target{i}")
 
 
 # %% {Simulate}
@@ -286,6 +228,40 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 
+# %%
+
+ds = node.results["ds_raw"]
+
+offset = node.namespace["central_frequencies"][0]  # example offset
+
+ds = ds.assign_coords(frequencies_shifted=ds.frequencies + offset)
+
+
+fig, axs = plt.subplots(1, 2, figsize=(10, 7))
+ds.state_control.plot(ax=axs[0], x="frequencies_shifted")
+ds.state_target.plot(ax=axs[1], x="frequencies_shifted")
+fig.tight_layout()
+
+node.results["figures"] = {"raw_data_example": fig}
+# data = ds.state_control.values[0]
+
+# fft_data = np.fft.fft(data - np.mean(data))
+# freqs = np.fft.fftfreq(len(data[0]), d=node.parameters.time_step * 1e-9)
+
+# fig_fft, ax_fft = plt.subplots(figsize=(6, 4))
+# ax_fft.pcolormesh(
+#     freqs[fft_data.shape[1] // 2 :],
+#     ds.frequencies_shifted.values,
+#     np.abs(fft_data)[:, fft_data.shape[1] // 2 :],
+#     shading="auto",
+# )
+# fig_fft.tight_layout()
+
+# node.results["figures"]["fft_data_example"] = fig_fft
+
+node.save()
+
+
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
@@ -297,28 +273,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     qubit_pairs = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
     node.namespace["qubits"] = [qp.qubit_control for qp in qubit_pairs] + [qp.qubit_target for qp in qubit_pairs]
     node.namespace["qubit_pairs"] = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
-    fluxes_qubit = np.arange(
-        -node.parameters.qubit_flux_span / 2,
-        node.parameters.qubit_flux_span / 2,
-        node.parameters.qubit_flux_step,
-    )
-    fluxes_qp = {}
-    for qp in qubit_pairs:
-        # estimate the flux shift to get the control qubit to the target qubit frequency
-        if node.parameters.use_saved_detuning:
-            est_flux_shift = qp.detuning
-        elif node.parameters.cz_or_iswap == "iswap":
-            est_flux_shift = np.sqrt(
-                -(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency)
-                / qp.qubit_control.freq_vs_flux_01_quad_term
-            )
-        elif node.parameters.cz_or_iswap == "cz":
-            est_flux_shift = np.sqrt(
-                -(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency + qp.qubit_target.anharmonicity)
-                / qp.qubit_control.freq_vs_flux_01_quad_term
-            )
-        fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
-    node.namespace["fluxes_qp"] = fluxes_qp
 
 
 # %% {Analyse_data}
