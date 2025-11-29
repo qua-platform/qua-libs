@@ -1,10 +1,17 @@
 import matplotlib.pyplot as plt
-from qualang_tools.wirer.wirer.channel_specs import *
-from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
-from quam_builder.builder.qop_connectivity import build_quam_wiring
-from quam_builder.builder.superconducting import build_quam
-from quam_config import Quam
+from qualang_tools.wirer import Connectivity, Instruments, allocate_wiring, visualize
 
+from qualang_tools.wirer.connectivity.wiring_spec import (
+    WiringFrequency,
+    WiringIOType,
+    WiringLineType,
+)
+from qualang_tools.wirer.wirer.channel_specs import *
+from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD
+from quam_builder.builder.qop_connectivity import build_quam_wiring
+from quam_builder.builder.quantum_dots import build_quam
+
+# from quam_config import Quam
 ########################################################################################################################
 # %%                                              Define static parameters
 ########################################################################################################################
@@ -17,57 +24,76 @@ cluster_name = "Cluster_1"  # Name of the cluster
 ########################################################################################################################
 instruments = Instruments()
 instruments.add_mw_fem(controller=1, slots=[1, 2])
-instruments.add_lf_fem(controller=1, slots=[3, 5])
+instruments.add_lf_fem(controller=1, slots=[3, 4, 5])
 
 ########################################################################################################################
 # %%                                 Define which qubit ids are present in the system
 ########################################################################################################################
-qubits = [1, 2, 3, 4, 5, 6, 7, 8]
-qubit_pairs = [(qubits[i], qubits[i + 1]) for i in range(len(qubits) - 1)]
+global_gates = [1, 2]
+sensor_dots = [1, 2]
+qubits = [1, 2, 3, 4]
+qubit_pairs = [(1, 2), (2, 3), (3, 4)]
 
 ########################################################################################################################
 # %%                                 Define any custom/hardcoded channel addresses
 ########################################################################################################################
-# multiplexed readout for qubits 1 to 4 and 5 to 8 on two feed-lines
-q1to4_res_ch = mw_fem_spec(con=1, slot=1, in_port=1, out_port=1)
-q5to8_res_ch = mw_fem_spec(con=1, slot=2, in_port=1, out_port=1)
-# individual xy drive for qubits 1 to 4 on MW-FEM 1
-q1to4_drive_ch = mw_fem_spec(con=1, slot=1, in_port=None, out_port=None)
-# multiplexed xy drive for qubits 5 to 8 on MW-FEM 2 port 4
-q5to8_drive_ch = mw_fem_spec(con=1, slot=2, in_port=None, out_port=4)
+# multiplexed readout for sensor 1 to 2 and 3 to 4 on two feed-lines
+# s1to2_res_ch = mw_fem_spec(con=1, slot=1, in_port=1, out_port=1)
+# s3to4_res_ch = mw_fem_spec(con=1, slot=2, in_port=1, out_port=1)
 
 ########################################################################################################################
 # %%                Allocate the wiring to the connectivity object based on the available instruments
 ########################################################################################################################
 connectivity = Connectivity()
 # The readout lines
-connectivity.add_resonator_line(qubits=qubits[:4], constraints=q1to4_res_ch)
-connectivity.add_resonator_line(qubits=qubits[4:], constraints=q5to8_res_ch)
-# The xy drive lines
-connectivity.add_qubit_drive_lines(qubits=qubits[:4], constraints=q1to4_drive_ch)
-for qubit in qubits[4:]:
-    connectivity.add_qubit_drive_lines(qubits=qubit, constraints=q5to8_drive_ch)
-    allocate_wiring(connectivity, instruments, block_used_channels=False)
-# The flux lines for the individual qubits
-connectivity.add_qubit_flux_lines(qubits=qubits)
-# The flux lines for the tunable couplers
-connectivity.add_qubit_pair_flux_lines(qubit_pairs=qubit_pairs)
-# Allocate the wiring
+connectivity.add_voltage_gate_lines(voltage_gates=global_gates, name="rb")
+
+# Option 1
+connectivity.add_sensor_dots(sensor_dots=sensor_dots, shared_resonator_line=False)
+
+# Option 2
+# connectivity.add_sensor_dot_resonator_line(sensor_dots, wiring_frequency=WiringFrequency.DC)
+# connectivity.add_sensor_dot_voltage_gate_lines(sensor_dots)
+
+# Option 1:
+connectivity.add_qubits(qubits=qubits)
+# Option 2:
+# connectivity.add_qubit_voltage_gate_lines(qubits)
+# connectivity.add_quantum_dot_qubit_drive_lines(qubits, wiring_frequency=WiringFrequency.DC)
+
+connectivity.add_qubit_pairs(qubit_pairs=qubit_pairs)
 allocate_wiring(connectivity, instruments)
 
-# View wiring schematic
-visualize(connectivity.elements, available_channels=instruments.available_channels)
-plt.show(block=False)
+# Optional: visualize wiring (requires a GUI backend). Comment out in headless environments.
+import matplotlib
+matplotlib.use("TkAgg")
+visualize(
+    connectivity.elements,
+    available_channels=instruments.available_channels,
+    use_matplotlib=True,
+)
+plt.show()
 
 ########################################################################################################################
 # %%                                   Build the wiring and QUAM
 ########################################################################################################################
-user_input = input("Do you want to save the updated QUAM? (y/n)")
-if user_input.lower() == "y":
-    machine = Quam()
-    # Build the wiring (wiring.json) and initiate the QUAM
-    build_quam_wiring(connectivity, host_ip, cluster_name, machine)
+machine = BaseQuamQD()
 
-    # Reload QUAM, build the QUAM object and save the state as state.json
-    machine = Quam.load()
-    build_quam(machine)
+machine = build_quam_wiring(
+    connectivity,
+    host_ip,
+    cluster_name,
+    machine,
+)
+
+machine.generate_config()
+
+# Example: map qubit pairs to specific sensor dots (supports multiple sensors per pair).
+# Pair keys: q1_q2 or q1-2. Sensor ids: virtual_sensor_<n>, sensor_<n>, or s<n> (e.g., virtual_sensor_1, sensor_1, s1).
+qubit_pair_sensor_map = {
+    "q1_q2": ["s1"],
+    "q2_q3": ["s1", "sensor_2"],
+    "q3_q4": ["s2"],
+}
+
+build_quam(machine, qubit_pair_sensor_map=qubit_pair_sensor_map)
