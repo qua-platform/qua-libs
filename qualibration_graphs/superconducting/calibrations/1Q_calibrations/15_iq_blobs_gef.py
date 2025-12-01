@@ -131,6 +131,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # |e> state readout
                 for i, qubit in multiplexed_qubits.items():
                     qubit.xy.play("x180")
+                    qubit.align()
                     qubit.resonator.measure(operation, qua_vars=(I_e[i], Q_e[i]))
                     qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
                     # save data
@@ -148,6 +149,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity)
                     qubit.xy.play("EF_x180")
                     update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
+                    qubit.align()
                     qubit.resonator.measure(operation, qua_vars=(I_f[i], Q_f[i]))
                     qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
                     # save data
