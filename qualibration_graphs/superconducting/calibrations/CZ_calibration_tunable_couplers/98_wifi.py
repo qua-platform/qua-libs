@@ -40,16 +40,16 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubit_pairs = ["q1-2"]
     node.parameters.num_shots = 100
     node.parameters.qubit_pairs = ["qB1-B2"]
-    node.parameters.modulation_range_mhz = 20
-    node.parameters.modulation_step_mhz = 0.1
+    node.parameters.modulation_range_mhz = 15
+    node.parameters.modulation_step_mhz = 0.15
     node.parameters.min_amp = 0.0001
-    node.parameters.max_amp = 0.5
-    node.parameters.amp_step = 0.001
+    node.parameters.max_amp = 0.3
+    node.parameters.amp_step = 0.002
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
     # node.parameters.modulation_amplitude = 0.07
-    node.parameters.pulse_duration_ns = 250
-    node.parameters.cz_or_iswap = "iswap"
+    node.parameters.pulse_duration_ns = 700
+    node.parameters.cz_or_iswap = "cz"
     pass
 
 
@@ -83,15 +83,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     else:
         node.namespace["central_frequencies"] = central_frequencies = [
             int(
-                node.machine.qubits[qp.qubit_control.name].xy.RF_frequency
-                - node.machine.qubits[qp.qubit_target.name].xy.RF_frequency
-                + qp.qubit_target.anharmonicity
+                node.machine.qubits[qp.qubit_target.name].xy.RF_frequency
+                - node.machine.qubits[qp.qubit_control.name].xy.RF_frequency
+                + qp.qubit_control.anharmonicity
             )
             for qp in qubit_pairs
         ]
 
 
-    # node.namespace["central_frequencies"] = central_frequencies = [440e6] #TODO: remove
+    # node.namespace["central_frequencies"] = central_frequencies = [100e6] #TODO: remove
     print("Central frequencies (MHz): ", central_frequencies)
 
     # Define the frequency sweep around the central frequency
@@ -149,18 +149,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qp.align()
                             # qp.coupler.reset_if_phase()
                             qp.coupler.play(
-                                "const",
-                                amplitude_scale=amplitude / qp.coupler.operations["const"].amplitude,
+                                "smooth",
+                                amplitude_scale=amplitude / qp.coupler.operations["smooth"].amplitude,
                                 duration=node.parameters.pulse_duration_ns >> 2,
                             )
                             qp.align()
 
                             # readout
                             if node.parameters.use_state_discrimination:
-                                # if node.parameters.cz_or_iswap == "cz":
-                                #     qp.qubit_control.readout_state_gef(state_c[ii])
-                                # else:
-                                qp.qubit_control.readout_state(state_c[ii])
+                                if node.parameters.cz_or_iswap == "cz":
+                                    qp.qubit_control.readout_state_gef(state_c[ii])
+                                else:
+                                    qp.qubit_control.readout_state(state_c[ii])
                                 qp.qubit_target.readout_state(state_t[ii])
                                 save(state_c[ii], state_c_st[ii])
                                 save(state_t[ii], state_t_st[ii])

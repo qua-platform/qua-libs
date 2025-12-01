@@ -40,10 +40,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubit_pairs = ["q1-2"]
     node.parameters.num_shots = 200
     node.parameters.qubit_pairs = ["qB1-B2"]
-    node.parameters.modulation_range_mhz = 10
+    node.parameters.modulation_range_mhz = 5
     node.parameters.modulation_step_mhz = 0.1
     node.parameters.min_time = 16
-    node.parameters.max_time = 300
+    node.parameters.max_time = 100
     node.parameters.time_step = 4
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
@@ -92,7 +92,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
     # node.namespace["central_frequencies"] = central_frequencies = [440e6] #TODO: remove
-    node.namespace["central_frequencies"] = central_frequencies = [312e6] #TODO: remove
+    node.namespace["central_frequencies"] = central_frequencies = [309e6] #TODO: remove
     print("Central frequencies (MHz): ", central_frequencies)
 
      # Define the frequency sweep around the central frequency
@@ -259,8 +259,6 @@ fig_fft.tight_layout()
 node.results["figures"]["fft_data_example"] = fig_fft
 
 
-
-
 node.save()
 
 # %%
@@ -271,8 +269,8 @@ ds2 = ds.assign_coords(if_freq=ds.frequencies_shifted)
 ds2 = ds2.swap_dims({"frequencies": "if_freq"})
 
 fig , axs = plt.subplots(1, 1, figsize=(10, 7))
-ds2.state_target.sel(if_freq=311.4e6).plot(ax=axs)
-ds2.state_control.sel(if_freq=311.4e6).plot(ax=axs)
+ds2.state_target.sel(if_freq=309e6).plot(ax=axs)
+ds2.state_control.sel(if_freq=309e6).plot(ax=axs)
 plt.show()
 
 
