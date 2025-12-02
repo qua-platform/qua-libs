@@ -91,9 +91,9 @@ machine.generate_config()
 # Example: map qubit pairs to specific sensor dots (supports multiple sensors per pair).
 # Pair keys: q1_q2 or q1-2. Sensor ids: virtual_sensor_<n>, sensor_<n>, or s<n> (e.g., virtual_sensor_1, sensor_1, s1).
 qubit_pair_sensor_map = {
-    "q1_q2": ["s1"],
-    "q2_q3": ["s1", "sensor_2"],
-    "q3_q4": ["s2"],
+    "q1_q2": ["sensor_1"],
+    "q2_q3": ["sensor_1", "sensor_2"],
+    "q3_q4": ["sensor_2"],
 }
 
 build_quam(machine, qubit_pair_sensor_map=qubit_pair_sensor_map)
