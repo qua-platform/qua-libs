@@ -1,7 +1,5 @@
-import os
 from pathlib import Path
 import numpy as np
-from qm.octave import QmOctaveConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
@@ -34,15 +32,6 @@ default_additional_files = {
     Path(__file__).name: Path(__file__).name,
     "optimal_weights.npz": "optimal_weights.npz",
 }
-
-############################
-# Set octave configuration #
-############################
-octave_ip = qop_ip  # Write the Octave IP address
-octave_port = 11050  # 11xxx, where xxx are the last three digits of the Octave IP address
-octave_config = QmOctaveConfig()
-octave_config.set_calibration_db(os.getcwd())
-octave_config.add_device_info("octave1", octave_ip, octave_port)
 
 #####################
 # OPX configuration #
@@ -126,7 +115,7 @@ config = {
     },
     "elements": {
         "NV": {
-            "RF_inputs": {"port": ("octave1", 1)},
+            "RF_inputs": {"port": ("oct1", 1)},
             "intermediate_frequency": NV_IF_freq,
             "operations": {
                 "cw": "const_pulse",
@@ -224,7 +213,7 @@ config = {
         },
     },
     "octaves": {
-        "octave1": {
+        "oct1": {
             "RF_outputs": {
                 1: {
                     "LO_frequency": NV_LO_freq,

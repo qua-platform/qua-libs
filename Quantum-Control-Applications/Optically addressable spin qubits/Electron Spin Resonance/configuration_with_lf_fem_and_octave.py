@@ -1,11 +1,9 @@
 """
-QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
+QUA-Config supporting OPX1000 w/ LF-FEM & Octave
 """
 
-import os
 from pathlib import Path
 import numpy as np
-from qm.octave import QmOctaveConfig
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
@@ -46,25 +44,12 @@ default_additional_files = {
 #####################
 con = "con1"
 fem = 1  # This should be the index of the LF-FEM module, e.g., 1
-############################
-# Set octave configuration #
-############################
-octave_ip = qop_ip  # Write the Octave IP address
-octave_port = 11050  # 11xxx, where xxx are the last three digits of the Octave IP address
-octave_config = QmOctaveConfig()
-octave_config.set_calibration_db(os.getcwd())
-octave_config.add_device_info("octave1", octave_ip, octave_port)
 
 sampling_rate = int(1e9)  # or, int(2e9)
+
 # Frequencies
 resonator_IF = -30 * u.MHz  # in Hz
 ensemble_IF = -30 * u.MHz  # in Hz
-
-mixer_ensemble_g = 0.0
-mixer_ensemble_phi = 0.0
-
-# LOs are used in plots. They can also be used marking mixer elements in the config.
-# On top of that they can also be used for setting LO sources (this make sure that everything is in sync)
 ensemble_LO = 2.8 * u.GHz  # in Hz
 
 # Readout parameters

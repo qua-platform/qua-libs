@@ -97,7 +97,7 @@ with program() as resonator_spec_2D:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 #######################
 # Simulate or execute #
