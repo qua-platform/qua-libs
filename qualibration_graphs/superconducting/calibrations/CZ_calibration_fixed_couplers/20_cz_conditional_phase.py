@@ -74,8 +74,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     node.parameters.qubit_pairs = ["qB1-B2"]
     node.parameters.num_averages = 100
-    node.parameters.amp_range = 0.1
-    node.parameters.amp_step = 0.001
     node.parameters.num_frame_rotations = 12
     pass
 
@@ -98,6 +96,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_averages
     amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
+    amplitudes = np.arange(-80e6, -120e6, -0.5e6)
     frames = np.arange(0, 1, 1 / node.parameters.num_frame_rotations)
 
     # Select the CZ operation type
@@ -115,7 +114,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     with program() as node.namespace["qua_program"]:
         I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
         I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
-        amp = declare(fixed)
+        amp = declare(int)
         frame = declare(fixed)
         control_initial = declare(int)
         if node.parameters.use_state_discrimination:
@@ -135,6 +134,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Loop over the amplitude scale
                 with for_(*from_array(amp, amplitudes)):
                     # Loop over the frame rotations
+                    qp.coupler.update_frequency(qp.coupler.intermediate_frequency + amp)
                     with for_(*from_array(frame, frames)):
                         # Loop over the initial state of the control qubit
                         with for_(*from_array(control_initial, [0, 1])):
@@ -152,7 +152,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qp.align()
                                 # play the CZ gate
                                 # qp.macros[operation].apply(amplitude_scale_control=amp)
-                                qp.coupler.play("cz_param",amplitude_scale=amp)
+                                qp.coupler.play("cz_param")
                                 qp.align()
                                 # rotate the frame
                                 qp.qubit_target.xy.frame_rotation_2pi(frame)
@@ -290,17 +290,17 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
-def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the qubit pair data analysis was successful."""
+# @node.run_action(skip_if=node.parameters.simulate)
+# def update_state(node: QualibrationNode[Parameters, Quam]):
+#     """Update the relevant parameters if the qubit pair data analysis was successful."""
 
-    operation = node.parameters.operation
-    with node.record_state_updates():
-        fit_results = node.results["fit_results"]
-        for qp in node.namespace["qubit_pairs"]:
-            if node.outcomes[qp.name] == "failed":
-                continue
-            qp.macros[operation].flux_pulse_control.amplitude = fit_results[qp.name]["optimal_amplitude"]
+#     operation = node.parameters.operation
+#     with node.record_state_updates():
+#         fit_results = node.results["fit_results"]
+#         for qp in node.namespace["qubit_pairs"]:
+#             if node.outcomes[qp.name] == "failed":
+#                 continue
+#             qp.macros[operation].flux_pulse_control.amplitude = fit_results[qp.name]["optimal_amplitude"]
 
 
 # %% {Save_results}

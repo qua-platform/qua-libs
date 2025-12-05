@@ -67,6 +67,7 @@ class NodeSpecificParameters(RunnableParameters):
     max_amp: float = 1.0
     amp_step: float = 0.001
     cz_or_iswap: Literal["cz", "iswap"] = "iswap"
+    operation: str = "const"
 
 class Parameters(
     NodeParameters,

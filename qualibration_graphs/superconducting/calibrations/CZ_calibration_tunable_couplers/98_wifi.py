@@ -40,16 +40,17 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubit_pairs = ["q1-2"]
     node.parameters.num_shots = 100
     node.parameters.qubit_pairs = ["qB1-B2"]
-    node.parameters.modulation_range_mhz = 15
-    node.parameters.modulation_step_mhz = 0.15
+    node.parameters.modulation_range_mhz = 20
+    node.parameters.modulation_step_mhz = 0.2
     node.parameters.min_amp = 0.0001
     node.parameters.max_amp = 0.3
-    node.parameters.amp_step = 0.002
+    node.parameters.amp_step = 0.007
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
     # node.parameters.modulation_amplitude = 0.07
-    node.parameters.pulse_duration_ns = 700
+    node.parameters.pulse_duration_ns = 500
     node.parameters.cz_or_iswap = "cz"
+    node.parameters.operation = "const"
     pass
 
 
@@ -91,7 +92,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         ]
 
 
-    # node.namespace["central_frequencies"] = central_frequencies = [100e6] #TODO: remove
+    # node.namespace["central_frequencies"] = central_frequencies = [int(250e6)] #TODO: remove
     print("Central frequencies (MHz): ", central_frequencies)
 
     # Define the frequency sweep around the central frequency
@@ -149,8 +150,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qp.align()
                             # qp.coupler.reset_if_phase()
                             qp.coupler.play(
-                                "smooth",
-                                amplitude_scale=amplitude / qp.coupler.operations["smooth"].amplitude,
+                                node.parameters.operation,
+                                amplitude_scale=amplitude / qp.coupler.operations[node.parameters.operation].amplitude,
                                 duration=node.parameters.pulse_duration_ns >> 2,
                             )
                             qp.align()
@@ -159,9 +160,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             if node.parameters.use_state_discrimination:
                                 if node.parameters.cz_or_iswap == "cz":
                                     qp.qubit_control.readout_state_gef(state_c[ii])
+                                    qp.qubit_target.readout_state_gef(state_t[ii])
                                 else:
                                     qp.qubit_control.readout_state(state_c[ii])
-                                qp.qubit_target.readout_state(state_t[ii])
+                                    qp.qubit_target.readout_state(state_t[ii])
                                 save(state_c[ii], state_c_st[ii])
                                 save(state_t[ii], state_t_st[ii])
                             else:
@@ -263,61 +265,61 @@ node.save()
 
 
 # %% {Load_data}
-@node.run_action(skip_if=node.parameters.load_data_id is None)
-def load_data(node: QualibrationNode[Parameters, Quam]):
-    """Load a previously acquired dataset."""
-    load_data_id = node.parameters.load_data_id
-    # Load the specified dataset
-    node.load_from_id(node.parameters.load_data_id)
-    node.parameters.load_data_id = load_data_id
-    qubit_pairs = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
-    node.namespace["qubits"] = [qp.qubit_control for qp in qubit_pairs] + [qp.qubit_target for qp in qubit_pairs]
-    node.namespace["qubit_pairs"] = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
+# @node.run_action(skip_if=node.parameters.load_data_id is None)
+# def load_data(node: QualibrationNode[Parameters, Quam]):
+#     """Load a previously acquired dataset."""
+#     load_data_id = node.parameters.load_data_id
+#     # Load the specified dataset
+#     node.load_from_id(node.parameters.load_data_id)
+#     node.parameters.load_data_id = load_data_id
+#     qubit_pairs = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
+#     node.namespace["qubits"] = [qp.qubit_control for qp in qubit_pairs] + [qp.qubit_target for qp in qubit_pairs]
+#     node.namespace["qubit_pairs"] = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
 
 
-# %% {Analyse_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+# # %% {Analyse_data}
+# @node.run_action(skip_if=node.parameters.simulate)
+# def analyse_data(node: QualibrationNode[Parameters, Quam]):
+#     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+#     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+#     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+#     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-    # Log the relevant information extracted from the data analysis
+#     # Log the relevant information extracted from the data analysis
 
-    log_fitted_results(node.results["fit_results"], log_callable=node.log)
-    node.outcomes = {
-        qubit_pair_name: ("successful" if fit_result["success"] else "failed")
-        for qubit_pair_name, fit_result in node.results["fit_results"].items()
-    }
-
-
-# %% {Plot_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(
-        node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["fit_results"]
-    )
-    plt.show()
-    node.results["figures"] = {"raw_fit": fig_raw_fit}
+#     log_fitted_results(node.results["fit_results"], log_callable=node.log)
+#     node.outcomes = {
+#         qubit_pair_name: ("successful" if fit_result["success"] else "failed")
+#         for qubit_pair_name, fit_result in node.results["fit_results"].items()
+#     }
 
 
-# %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
-def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the qubit data analysis was successful."""
+# # %% {Plot_data}
+# @node.run_action(skip_if=node.parameters.simulate)
+# def plot_data(node: QualibrationNode[Parameters, Quam]):
+#     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
+#     fig_raw_fit = plot_raw_data_with_fit(
+#         node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["fit_results"]
+#     )
+#     plt.show()
+#     node.results["figures"] = {"raw_fit": fig_raw_fit}
 
-    with node.record_state_updates():
-        for qp in node.namespace["qubit_pairs"]:
-            qp.coupler.decouple_offset = node.results["fit_results"][qp.name]["optimal_coupler_flux"]
-            qp.detuning = node.results["fit_results"][qp.name]["optimal_qubit_flux"]
+
+# # %% {Update_state}
+# @node.run_action(skip_if=node.parameters.simulate)
+# def update_state(node: QualibrationNode[Parameters, Quam]):
+#     """Update the relevant parameters if the qubit data analysis was successful."""
+
+#     with node.record_state_updates():
+#         for qp in node.namespace["qubit_pairs"]:
+#             qp.coupler.decouple_offset = node.results["fit_results"][qp.name]["optimal_coupler_flux"]
+#             qp.detuning = node.results["fit_results"][qp.name]["optimal_qubit_flux"]
 
 
-# %% {Save_results}
-@node.run_action()
-def save_results(node: QualibrationNode[Parameters, Quam]):
-    node.save()
+# # %% {Save_results}
+# @node.run_action()
+# def save_results(node: QualibrationNode[Parameters, Quam]):
+#     node.save()
 
 
 # %%

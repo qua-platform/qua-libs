@@ -38,17 +38,17 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubit_pairs = ["q1-2"]
-    node.parameters.num_shots = 200
+    node.parameters.num_shots = 100
     node.parameters.qubit_pairs = ["qB1-B2"]
-    node.parameters.modulation_range_mhz = 5
-    node.parameters.modulation_step_mhz = 0.1
+    node.parameters.modulation_range_mhz = 20
+    node.parameters.modulation_step_mhz = 0.2
     node.parameters.min_time = 16
-    node.parameters.max_time = 100
+    node.parameters.max_time = 400
     node.parameters.time_step = 4
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
     # node.parameters.modulation_amplitude = 0.07
-    node.parameters.modulation_amplitude = 0.37
+    node.parameters.modulation_amplitude = 0.4
     node.parameters.cz_or_iswap = "iswap"
     pass
 
@@ -73,7 +73,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Loop parameters
     if node.parameters.cz_or_iswap == "iswap":
-        node.namespace["central_frequencies"] =central_frequencies = [
+        node.namespace["central_frequencies"] = central_frequencies = [
             int(
                 node.machine.qubits[qp.qubit_control.name].xy.RF_frequency
                 - node.machine.qubits[qp.qubit_target.name].xy.RF_frequency
@@ -83,19 +83,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     else:
         node.namespace["central_frequencies"] = central_frequencies = [
             int(
-                node.machine.qubits[qp.qubit_control.name].xy.RF_frequency
-                - node.machine.qubits[qp.qubit_target.name].xy.RF_frequency
-                + qp.qubit_target.anharmonicity
+                node.machine.qubits[qp.qubit_target.name].xy.RF_frequency
+                - node.machine.qubits[qp.qubit_control.name].xy.RF_frequency
+                + qp.qubit_control.anharmonicity
             )
             for qp in qubit_pairs
         ]
 
 
-    # node.namespace["central_frequencies"] = central_frequencies = [440e6] #TODO: remove
-    node.namespace["central_frequencies"] = central_frequencies = [309e6] #TODO: remove
     print("Central frequencies (MHz): ", central_frequencies)
 
-     # Define the frequency sweep around the central frequency
+    # Define the frequency sweep around the central frequency
     span = node.parameters.modulation_range_mhz * u.MHz
     step = node.parameters.modulation_step_mhz * u.MHz
     frequency_sweep = np.arange(-span / 2, span / 2, step)
@@ -129,7 +127,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for qubit in node.machine.active_qubits:
             node.machine.initialize_qpu(target=qubit)
             align()
-
+ 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             for ii, qp in multiplexed_qubit_pairs.items():
                 print("qubit control: %s, qubit target: %s" % (qp.qubit_control.name, qp.qubit_target.name))
@@ -159,11 +157,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                             # readout
                             if node.parameters.use_state_discrimination:
-                                # if node.parameters.cz_or_iswap == "cz":
-                                #     qp.qubit_control.readout_state_gef(state_c[ii])
-                                # else:
-                                qp.qubit_control.readout_state(state_c[ii])
-                                qp.qubit_target.readout_state(state_t[ii])
+                                if node.parameters.cz_or_iswap == "cz":
+                                    qp.qubit_control.readout_state_gef(state_c[ii])
+                                    qp.qubit_target.readout_state_gef(state_t[ii])
+                                else:
+                                    qp.qubit_control.readout_state(state_c[ii])
+                                    qp.qubit_target.readout_state(state_t[ii])
                                 save(state_c[ii], state_c_st[ii])
                                 save(state_t[ii], state_t_st[ii])
                             else:
@@ -230,52 +229,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 
-# %%
-
-ds = node.results["ds_raw"]
-
-offset = node.namespace["central_frequencies"][0]   # example offset
-
-ds = ds.assign_coords(
-    frequencies_shifted = ds.frequencies + offset
-)
-
-
-fig, axs = plt.subplots(1, 2, figsize=(10, 7))
-ds.state_control.plot(ax=axs[0], y="frequencies_shifted")
-ds.state_target.plot(ax=axs[1], y="frequencies_shifted")
-fig.tight_layout()
-
-node.results["figures"] = {"raw_data_example": fig}
-data = ds.state_control.values[0]
-
-fft_data = np.fft.fft(data - np.mean(data))
-freqs = np.fft.fftfreq(len(data[0]), d=node.parameters.time_step * 1e-9)
-
-fig_fft, ax_fft = plt.subplots(figsize=(6, 4))
-ax_fft.pcolormesh(freqs[fft_data.shape[1] // 2:], ds.frequencies_shifted.values, np.abs(fft_data)[:, fft_data.shape[1] // 2:], shading="auto")
-fig_fft.tight_layout()
-
-node.results["figures"]["fft_data_example"] = fig_fft
-
-
-node.save()
-
-# %%
-# 1) Add the new coord; this keeps its dims from frequencies_shifted
-ds2 = ds.assign_coords(if_freq=ds.frequencies_shifted)
-
-# 2) Make if_freq the dimension instead of 'frequencies'
-ds2 = ds2.swap_dims({"frequencies": "if_freq"})
-
-fig , axs = plt.subplots(1, 1, figsize=(10, 7))
-ds2.state_target.sel(if_freq=309e6).plot(ax=axs)
-ds2.state_control.sel(if_freq=309e6).plot(ax=axs)
-plt.show()
-
-
-
-
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
@@ -292,7 +245,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit"
+    and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
@@ -310,11 +264,28 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(
-        node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["fit_results"]
-    )
-    plt.show()
-    node.results["figures"] = {"raw_fit": fig_raw_fit}
+    for qp_name in node.results["ds_raw"].qubit_pair.values:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        ds_qp = node.results["ds_raw"].sel(qubit_pair=qp_name)
+        ds_qp.state_control.plot(ax=ax1, x="durations", y="frequencies_shifted")
+        ax1.set_title(f"{qp_name} - Control Qubit")
+        ds_qp.state_target.plot(ax=ax2, x="durations", y="frequencies_shifted")
+        ax2.set_title(f"{qp_name} - Target Qubit")
+
+        fit_result = node.results["fit_results"].get(qp_name)
+        if fit_result and fit_result.get("success"):
+            cz_len = fit_result.get("cz_len")
+            f0 = fit_result.get("f0")
+            if cz_len is not None and f0 is not None:
+                ax1.plot(cz_len, f0, "r*", markersize=12, label="fit")
+                ax2.plot(cz_len, f0, "r*", markersize=12, label="fit")
+                ax1.legend()
+                ax2.legend()
+
+        plt.suptitle(f"Chevron for {qp_name}")
+        plt.tight_layout()
+        plt.show()
+        node.results.setdefault("figures", {})[f"raw_fit_{qp_name}"] = fig
 
 
 # %% {Update_state}
@@ -324,8 +295,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
-            qp.coupler.decouple_offset = node.results["fit_results"][qp.name]["optimal_coupler_flux"]
-            qp.detuning = node.results["fit_results"][qp.name]["optimal_qubit_flux"]
+            fit_result = node.results["fit_results"].get(qp.name)
+            qp.coupler.intermediate_frequency = fit_result.get("f0")
+            # qp.c = fit_result.get("optimal_qubit_flux")
 
 
 # %% {Save_results}

@@ -79,9 +79,7 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit_pair: str, fit: xr
     else:
         data = ds.I_target.sel(qubit_pair=qubit_pair)
 
-    data.assign_coords(
-        {"qubit_flux_mV": 1e3 * data.qubit_flux_full, "coupler_flux_mV": 1e3 * data.coupler_flux_full}
-    ).plot(x="qubit_flux_mV", y="coupler_flux_mV", ax=ax)
+    data.plot(x="durations", y="frequencies_shifted", ax=ax)
 
     # Only plot fit results if they exist and are valid
     if fit is not None:
@@ -90,8 +88,8 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit_pair: str, fit: xr
             optimal_qubit_flux = float(fit["optimal_qubit_flux"])
             optimal_coupler_flux = float(fit["optimal_coupler_flux"])
             if not (np.isnan(optimal_qubit_flux) or np.isnan(optimal_coupler_flux)):
-                ax.axhline(1e3 * optimal_coupler_flux, color="red", lw=0.5, ls="--", label="Optimal Coupler Flux")
-                ax.axvline(1e3 * optimal_qubit_flux, color="red", lw=0.5, ls="--", label="Optimal Qubit Flux")
+                ax.axhline(optimal_coupler_flux, color="red", lw=0.5, ls="--", label="Optimal Coupler Flux")
+                ax.axvline(optimal_qubit_flux, color="red", lw=0.5, ls="--", label="Optimal duration")
                 ax.set_title(f"{qubit_pair} - Fit Successful")
                 ax.legend()
             else:
@@ -100,16 +98,6 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit_pair: str, fit: xr
             ax.set_title(f"{qubit_pair} - Fit Failed")
     else:
         ax.set_title(f"{qubit_pair} - No Fit Data")
-    detuning_data = ds.sel(qubit_pair=qubit_pair).detuning.values * 1e-6
 
-    def flux_to_detuning(x):
-        return np.interp(x, 1e3 * data.qubit_flux_full, detuning_data)
-
-    def detuning_to_flux(y):
-        return np.interp(y, detuning_data, 1e3 * data.qubit_flux_full)
-
-    sec_ax = ax.secondary_xaxis("top", functions=(flux_to_detuning, detuning_to_flux))
-    sec_ax.set_xlabel("Detuning [MHz]")
-
-    ax.set_xlabel("Qubit Flux [mV]")
-    ax.set_ylabel("Coupler Flux [mV]")
+    ax.set_xlabel("durations [ns]")
+    ax.set_ylabel("Coupler frequency [Hz]")
