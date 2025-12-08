@@ -20,7 +20,7 @@ jax_config.update("jax_enable_x64", True)
 
 @dataclass
 class FitParameters:
-    """Stores the relevant qubit_pair spectroscopy experiment fit parameters for a single qubit_pair"""
+    """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
 
     iw_angle: float
     ge_threshold: float
@@ -32,12 +32,12 @@ class FitParameters:
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
     """
-    Logs the node-specific fitted results for all qubit_pairs from the fit xarray Dataset.
+    Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
 
     Parameters:
     -----------
     ds : xr.Dataset
-        Dataset containing the fitted results for all qubit_pairs.
+        Dataset containing the fitted results for all qubits.
     log_callable : callable, optional
         Callable for logging the fitted results. If None, a default logger is used.
 
@@ -45,16 +45,16 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
-        s_qubit_pair = f"Results for qubit_pair {q}: "
+        s_qubit = f"Results for qubit {q}: "
         s = f"IW angle: {fit_results[q]['iw_angle'] * 180 / np.pi:.1f} deg | "
         s += f"ge_threshold: {fit_results[q]['ge_threshold'] * 1e3:.1f} mV | "
         s += f"I_threshold: {fit_results[q]['I_threshold'] * 1e3:.1f} mV | "
         s += f"readout fidelity: {fit_results[q]['readout_fidelity']:.1f} % \n "
         if fit_results[q]["success"]:
-            s_qubit_pair += " SUCCESS!\n"
+            s_qubit += " SUCCESS!\n"
         else:
-            s_qubit_pair += " FAIL!\n"
-        log_callable(s_qubit_pair + s)
+            s_qubit += " FAIL!\n"
+        log_callable(s_qubit + s)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
@@ -71,31 +71,31 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
         dask="parallelized",  # This allows for parallel processing
         output_dtypes=[float],  # Specify the output data type
     )
-    # ds = convert_IQ_to_V(ds, node.namespace["qubit_pairs"], IQ_list=["Ig", "Qg", "Ie", "Qe"])
+    # ds = convert_IQ_to_V(ds, node.namespace["qubits"], IQ_list=["Ig", "Qg", "Ie", "Qe"])
     return ds
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
-    Fit the quantum dot readout using PCA and Barthel model for each qubit_pair in the dataset.
+    Fit the quantum dot readout using PCA and Barthel model for each qubit in the dataset.
 
     Parameters:
     -----------
     ds : xr.Dataset
         Dataset containing the raw data with Ig, Qg, Ie, Qe.
     node : QualibrationNode
-        Node containing qubit_pair information.
+        Node containing qubit information.
 
     Returns:
     --------
     xr.Dataset
         Dataset containing the fit results.
     dict[str, FitParameters]
-        Dictionary of fit parameters for each qubit_pair.
+        Dictionary of fit parameters for each qubit.
     """
     ds_fit = ds
 
-    # Lists to store results for all qubit_pairs
+    # Lists to store results for all qubits
     angles = []
     ge_thresholds = []
     norm_ge_thresholds = []
@@ -126,12 +126,12 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     visibility_opt_vrf_list = []  # optimal threshold for visibility
     visibility_opt_list = []  # optimal visibility value
 
-    for q in node.namespace["qubit_pairs"]:
+    for q in node.namespace["qubits"]:
         # Extract I and Q data for ground (S) and excited (T) states
-        Ig_q = ds_fit.Ig.sel(qubit_pair=q.name).values
-        Qg_q = ds_fit.Qg.sel(qubit_pair=q.name).values
-        Ie_q = ds_fit.Ie.sel(qubit_pair=q.name).values
-        Qe_q = ds_fit.Qe.sel(qubit_pair=q.name).values
+        Ig_q = ds_fit.Ig.sel(qubit=q.name).values
+        Qg_q = ds_fit.Qg.sel(qubit=q.name).values
+        Ie_q = ds_fit.Ie.sel(qubit=q.name).values
+        Qe_q = ds_fit.Qe.sel(qubit=q.name).values
 
         # Stack ground and excited state data for combined fitting
         # Shape: (n_samples, 2) where columns are [I, Q]
@@ -300,48 +300,48 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         weights_list.append([w_S, w_T_no, w_T_dec])
 
     # Assign all results to dataset
-    ds_fit = ds_fit.assign({"iw_angle": xr.DataArray(angles, coords=dict(qubit_pair=ds_fit.qubit_pair.data))})
-    ds_fit = ds_fit.assign({"ge_threshold": xr.DataArray(ge_thresholds, coords=dict(qubit_pair=ds_fit.qubit_pair.data))})
-    ds_fit = ds_fit.assign({"norm_ge_threshold": xr.DataArray(norm_ge_thresholds, coords=dict(qubit_pair=ds_fit.qubit_pair.data))})
-    ds_fit = ds_fit.assign({'I_threshold': xr.DataArray(I_thresholds, coords=dict(qubit_pair=ds_fit.qubit_pair.data))})
-    ds_fit = ds_fit.assign({"gg": xr.DataArray(gg_list, coords=dict(qubit_pair=ds_fit.qubit_pair.data))})
-    ds_fit = ds_fit.assign({"ge": xr.DataArray(ge_list, coords=dict(qubit_pair=ds_fit.qubit_pair.data))})
-    ds_fit = ds_fit.assign({"eg": xr.DataArray(eg_list, coords=dict(qubit_pair=ds_fit.qubit_pair.data))})
-    ds_fit = ds_fit.assign({"ee": xr.DataArray(ee_list, coords=dict(qubit_pair=ds_fit.qubit_pair.data))})
+    ds_fit = ds_fit.assign({"iw_angle": xr.DataArray(angles, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign({"ge_threshold": xr.DataArray(ge_thresholds, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign({"norm_ge_threshold": xr.DataArray(norm_ge_thresholds, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign({'I_threshold': xr.DataArray(I_thresholds, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign({"gg": xr.DataArray(gg_list, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign({"ge": xr.DataArray(ge_list, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign({"eg": xr.DataArray(eg_list, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign({"ee": xr.DataArray(ee_list, coords=dict(qubit=ds_fit.qubit.data))})
     ds_fit = ds_fit.assign(
-        {"readout_fidelity": xr.DataArray(100 * (ds_fit.gg + ds_fit.ee) / 2, coords=dict(qubit_pair=ds_fit.qubit_pair.data))}
+        {"readout_fidelity": xr.DataArray(100 * (ds_fit.gg + ds_fit.ee) / 2, coords=dict(qubit=ds_fit.qubit.data))}
     )
 
     # Assign rotated IQ data for plotting
-    ds_fit = ds_fit.assign({"Ig_rot": xr.DataArray(Ig_rot_list, dims=["qubit_pair", "n_runs"])})
-    ds_fit = ds_fit.assign({"Qg_rot": xr.DataArray(Qg_rot_list, dims=["qubit_pair", "n_runs"])})
-    ds_fit = ds_fit.assign({"Ie_rot": xr.DataArray(Ie_rot_list, dims=["qubit_pair", "n_runs"])})
-    ds_fit = ds_fit.assign({"Qe_rot": xr.DataArray(Qe_rot_list, dims=["qubit_pair", "n_runs"])})
+    ds_fit = ds_fit.assign({"Ig_rot": xr.DataArray(Ig_rot_list, dims=["qubit", "n_runs"])})
+    ds_fit = ds_fit.assign({"Qg_rot": xr.DataArray(Qg_rot_list, dims=["qubit", "n_runs"])})
+    ds_fit = ds_fit.assign({"Ie_rot": xr.DataArray(Ie_rot_list, dims=["qubit", "n_runs"])})
+    ds_fit = ds_fit.assign({"Qe_rot": xr.DataArray(Qe_rot_list, dims=["qubit", "n_runs"])})
 
     # Assign PCA projected data for plotting
     # Note: y_pca combines both ground and excited states, so it has dimension n_samples (2 * n_runs)
-    ds_fit = ds_fit.assign({"y_pca": xr.DataArray(y_pca_list, dims=["qubit_pair", "n_samples"])})
+    ds_fit = ds_fit.assign({"y_pca": xr.DataArray(y_pca_list, dims=["qubit", "n_samples"])})
 
     # Assign pre-computed density curves for plotting (all as DataArrays)
     # Note: All lists have same grid size (800 points), so we use a grid_pts dimension
-    ds_fit = ds_fit.assign({"density_grid": xr.DataArray(grid_values_list, dims=["qubit_pair", "grid_pts"])})
-    ds_fit = ds_fit.assign({"density_total": xr.DataArray(total_density_list, dims=["qubit_pair", "grid_pts"])})
-    ds_fit = ds_fit.assign({"density_S": xr.DataArray(S_density_list, dims=["qubit_pair", "grid_pts"])})
-    ds_fit = ds_fit.assign({"density_T_no": xr.DataArray(T_no_density_list, dims=["qubit_pair", "grid_pts"])})
-    ds_fit = ds_fit.assign({"density_T_dec": xr.DataArray(T_dec_density_list, dims=["qubit_pair", "grid_pts"])})
-    ds_fit = ds_fit.assign({"weights": xr.DataArray(weights_list, dims=["qubit_pair", "weight_component"],
+    ds_fit = ds_fit.assign({"density_grid": xr.DataArray(grid_values_list, dims=["qubit", "grid_pts"])})
+    ds_fit = ds_fit.assign({"density_total": xr.DataArray(total_density_list, dims=["qubit", "grid_pts"])})
+    ds_fit = ds_fit.assign({"density_S": xr.DataArray(S_density_list, dims=["qubit", "grid_pts"])})
+    ds_fit = ds_fit.assign({"density_T_no": xr.DataArray(T_no_density_list, dims=["qubit", "grid_pts"])})
+    ds_fit = ds_fit.assign({"density_T_dec": xr.DataArray(T_dec_density_list, dims=["qubit", "grid_pts"])})
+    ds_fit = ds_fit.assign({"weights": xr.DataArray(weights_list, dims=["qubit", "weight_component"],
                                                       coords={"weight_component": ["w_S", "w_T_no", "w_T_dec"]})})
 
     # Assign fidelity and visibility curves for plotting (all as DataArrays)
-    ds_fit = ds_fit.assign({"fidelity_vrf": xr.DataArray(fidelity_vrf_list, dims=["qubit_pair", "fidelity_pts"])})
-    ds_fit = ds_fit.assign({"fidelity_curve": xr.DataArray(fidelity_curve_list, dims=["qubit_pair", "fidelity_pts"])})
-    ds_fit = ds_fit.assign({"fidelity_opt_vrf": xr.DataArray(fidelity_opt_vrf_list, coords=dict(qubit_pair=ds_fit.qubit_pair.data))})
-    ds_fit = ds_fit.assign({"fidelity_opt": xr.DataArray(fidelity_opt_list, coords=dict(qubit_pair=ds_fit.qubit_pair.data))})
+    ds_fit = ds_fit.assign({"fidelity_vrf": xr.DataArray(fidelity_vrf_list, dims=["qubit", "fidelity_pts"])})
+    ds_fit = ds_fit.assign({"fidelity_curve": xr.DataArray(fidelity_curve_list, dims=["qubit", "fidelity_pts"])})
+    ds_fit = ds_fit.assign({"fidelity_opt_vrf": xr.DataArray(fidelity_opt_vrf_list, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign({"fidelity_opt": xr.DataArray(fidelity_opt_list, coords=dict(qubit=ds_fit.qubit.data))})
 
-    ds_fit = ds_fit.assign({"visibility_vrf": xr.DataArray(visibility_vrf_list, dims=["qubit_pair", "visibility_pts"])})
-    ds_fit = ds_fit.assign({"visibility_curve": xr.DataArray(visibility_curve_list, dims=["qubit_pair", "visibility_pts"])})
-    ds_fit = ds_fit.assign({"visibility_opt_vrf": xr.DataArray(visibility_opt_vrf_list, coords=dict(qubit_pair=ds_fit.qubit_pair.data))})
-    ds_fit = ds_fit.assign({"visibility_opt": xr.DataArray(visibility_opt_list, coords=dict(qubit_pair=ds_fit.qubit_pair.data))})
+    ds_fit = ds_fit.assign({"visibility_vrf": xr.DataArray(visibility_vrf_list, dims=["qubit", "visibility_pts"])})
+    ds_fit = ds_fit.assign({"visibility_curve": xr.DataArray(visibility_curve_list, dims=["qubit", "visibility_pts"])})
+    ds_fit = ds_fit.assign({"visibility_opt_vrf": xr.DataArray(visibility_opt_vrf_list, coords=dict(qubit=ds_fit.qubit.data))})
+    ds_fit = ds_fit.assign({"visibility_opt": xr.DataArray(visibility_opt_list, coords=dict(qubit=ds_fit.qubit.data))})
 
     # Extract the relevant fitted parameters
     fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
@@ -363,16 +363,16 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
     fit_results = {
         q: FitParameters(
-            iw_angle=float(fit.sel(qubit_pair=q).iw_angle),
-            ge_threshold=float(fit.sel(qubit_pair=q).ge_threshold),
-            I_threshold=float(fit.sel(qubit_pair=q).I_threshold),
-            readout_fidelity=float(fit.sel(qubit_pair=q).readout_fidelity),
+            iw_angle=float(fit.sel(qubit=q).iw_angle),
+            ge_threshold=float(fit.sel(qubit=q).ge_threshold),
+            I_threshold=float(fit.sel(qubit=q).I_threshold),
+            readout_fidelity=float(fit.sel(qubit=q).readout_fidelity),
             confusion_matrix=[
-                [float(fit.sel(qubit_pair=q).gg), float(fit.sel(qubit_pair=q).ge)],
-                [float(fit.sel(qubit_pair=q).eg), float(fit.sel(qubit_pair=q).ee)],
+                [float(fit.sel(qubit=q).gg), float(fit.sel(qubit=q).ge)],
+                [float(fit.sel(qubit=q).eg), float(fit.sel(qubit=q).ee)],
             ],
-            success=fit.sel(qubit_pair=q).success.values.__bool__(),
+            success=fit.sel(qubit=q).success.values.__bool__(),
         )
-        for q in fit.qubit_pair.values
+        for q in fit.qubit.values
     }
     return fit, fit_results

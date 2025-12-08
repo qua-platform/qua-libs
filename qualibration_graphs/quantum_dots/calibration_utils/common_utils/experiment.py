@@ -1,5 +1,6 @@
 from typing import List, Literal, Optional
 
+from qiskit_experiments.framework import BaseExperiment
 from qualibrate import QualibrationNode
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.core import BatchableList
@@ -9,6 +10,16 @@ from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD
 from quam_builder.architecture.quantum_dots.qubit import AnySpinQubit
 from quam_builder.architecture.quantum_dots.qubit_pair import AnySpinQubitPair
 
+__all__ = [
+    "BaseExperimentNodeParameters",
+    "QuantumDotExperimentNodeParameters",
+    "QubitsExperimentNodeParameters",
+    "QubitPairExperimentNodeParameters",
+    "get_qubits",
+    "get_qubit_pairs",
+    "get_dots",
+    "get_sensors",
+]
 
 class BaseExperimentNodeParameters(RunnableParameters):
     multiplexed: bool = False

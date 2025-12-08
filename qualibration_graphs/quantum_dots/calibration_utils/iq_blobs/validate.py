@@ -15,7 +15,7 @@ from .readout_barthel.simulate import SimulationParamsIQ, simulate_readout_iq
 
 
 def simulate_quantum_dot_readout_data(
-    qubit_pairs: List,
+    qubits: List,
     n_runs: int,
     p_triplet: float = 0.5,
     mu_S: tuple = (0.0, 0.0),
@@ -37,7 +37,7 @@ def simulate_quantum_dot_readout_data(
 
     Parameters
     ----------
-    qubit_pairs : List
+    qubits : List
         List of quantum dot pair objects to simulate data for.
     n_runs : int
         Number of measurement repetitions (shots) to simulate.
@@ -67,16 +67,16 @@ def simulate_quantum_dot_readout_data(
     -------
     xr.Dataset
         Dataset containing simulated IQ data with variables:
-        - Ig1, Qg1, Ie1, Qe1: Ground and excited state IQ data for qubit_pair 1
-        - Ig2, Qg2, Ie2, Qe2: Ground and excited state IQ data for qubit_pair 2
+        - Ig1, Qg1, Ie1, Qe1: Ground and excited state IQ data for qubit 1
+        - Ig2, Qg2, Ie2, Qe2: Ground and excited state IQ data for qubit 2
         - etc.
-        Dimensions: (qubit_pair, n_runs)
+        Dimensions: (qubit, n_runs)
 
     Examples
     --------
-    >>> # Assuming you have qubit_pairs defined
+    >>> # Assuming you have qubits defined
     >>> ds = simulate_quantum_dot_readout_data(
-    ...     qubit_pairs=qubit_pairs,
+    ...     qubits=qubits,
     ...     n_runs=1000,
     ...     p_triplet=0.5
     ... )
@@ -88,8 +88,8 @@ def simulate_quantum_dot_readout_data(
     if seed is not None:
         np.random.seed(seed)
 
-    num_qubit_pairs = len(qubit_pairs)
-    qubit_pair_names = [q.name for q in qubit_pairs]
+    num_qubits = len(qubits)
+    qubit_names = [q.name for q in qubits]
 
     # Storage for simulated data
     Ig_data = []
@@ -97,7 +97,7 @@ def simulate_quantum_dot_readout_data(
     Ie_data = []
     Qe_data = []
 
-    for i, qdp in enumerate(qubit_pairs):
+    for i, qdp in enumerate(qubits):
         # Add realistic variations across quantum dot pairs if requested
         if add_noise_variation:
             # Add small random variations to noise parameters (20%)
@@ -159,7 +159,7 @@ def simulate_quantum_dot_readout_data(
 
     # Create xarray Dataset matching the expected format from execute_qua_program
     # The format should match what comes out of stream processing in QUA
-    # Reshape to match expected format: add qubit_pair dimension
+    # Reshape to match expected format: add qubit dimension
     Ig_combined = np.array(Ig_data)
     Qg_combined = np.array(Qg_data)
     Ie_combined = np.array(Ie_data)
@@ -167,14 +167,14 @@ def simulate_quantum_dot_readout_data(
 
     ds_final = xr.Dataset(
         {
-            "Ig": (["qubit_pair", "n_runs"], Ig_combined),
-            "Qg": (["qubit_pair", "n_runs"], Qg_combined),
-            "Ie": (["qubit_pair", "n_runs"], Ie_combined),
-            "Qe": (["qubit_pair", "n_runs"], Qe_combined),
+            "Ig": (["qubit", "n_runs"], Ig_combined),
+            "Qg": (["qubit", "n_runs"], Qg_combined),
+            "Ie": (["qubit", "n_runs"], Ie_combined),
+            "Qe": (["qubit", "n_runs"], Qe_combined),
             "n": (["n_runs"], np.arange(n_runs)),
         },
         coords={
-            "qubit_pair": qubit_pair_names,
+            "qubit": qubit_names,
             "n_runs": np.arange(n_runs),
         },
     )
@@ -192,7 +192,7 @@ def simulate_quantum_dot_readout_from_node(node, add_noise_variation: bool = Tru
     Parameters
     ----------
     node : QualibrationNode
-        The calibration node containing parameters and qubit_pairs.
+        The calibration node containing parameters and qubits.
     add_noise_variation : bool, optional
         If True, adds slight variations in noise parameters across quantum dot pairs,
         by default True.
@@ -211,13 +211,13 @@ def simulate_quantum_dot_readout_from_node(node, add_noise_variation: bool = Tru
     >>> ds_simulated = simulate_quantum_dot_readout_from_node(node)
     >>> node.results["ds_raw"] = ds_simulated
     """
-    qubit_pairs = node.namespace["qubit_pairs"]
+    qubits = node.namespace["qubits"]
     n_runs = node.parameters.num_shots
 
     # You can add more parameters to node.parameters to control simulation if needed
     # For now, using reasonable defaults
     ds = simulate_quantum_dot_readout_data(
-        qubit_pairs=qubit_pairs,
+        qubits=qubits,
         n_runs=n_runs,
         p_triplet=0.5,  # Mixed ensemble for calibration data
         mu_S=(0.0, 0.0),  # Singlet at origin

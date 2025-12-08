@@ -2,7 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from calibration_utils.iq_blobs.plotting import plot_historams
+from calibration_utils.iq_blobs.plotting import plot_histograms
 import xarray as xr
 from dataclasses import asdict
 
@@ -236,7 +236,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """
     fig_iq = plot_iq_blobs(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     fig_confusion = plot_confusion_matrices(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
-    fig_histogram = plot_historams(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_histogram = plot_histograms(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {

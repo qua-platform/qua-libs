@@ -10,7 +10,7 @@ from qualang_tools.units import unit
 u = unit(coerce_to_integer=True)
 
 
-def plot_iq_blobs(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dataset):
+def plot_iq_blobs(ds: xr.Dataset, qubits: List[Any], fits: xr.Dataset):
     """
     Plots the IQ blobs with the derived thresholds for the given quantum dot pairs.
 
@@ -18,7 +18,7 @@ def plot_iq_blobs(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dataset):
     ----------
     ds : xr.Dataset
         The dataset containing the quadrature data.
-    qubit_pairs : list
+    qubits : list
         A list of quantum dot pairs to plot.
     fits : xr.Dataset
         The dataset containing the fit parameters.
@@ -34,7 +34,7 @@ def plot_iq_blobs(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dataset):
     - Each subplot contains the raw data and the fitted curve.
     """
     # Calculate grid dimensions based on number of qubit pairs
-    n_pairs = len(qubit_pairs)
+    n_pairs = len(qubits)
     n_cols = int(np.ceil(np.sqrt(n_pairs)))
     n_rows = int(np.ceil(n_pairs / n_cols))
 
@@ -48,10 +48,10 @@ def plot_iq_blobs(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dataset):
         axes = axes.flatten()
 
     # Plot each qubit pair
-    for idx, qubit_pair in enumerate(qubit_pairs):
+    for idx, qubit in enumerate(qubits):
         ax = axes[idx]
-        qubit_pair_dict = {"qubit_pair": qubit_pair.id}
-        plot_individual_iq_blobs(ax, ds, qubit_pair_dict, fits.sel(qubit_pair=qubit_pair.id))
+        qubit_dict = {"qubit": qubit.id}
+        plot_individual_iq_blobs(ax, ds, qubit_dict, fits.sel(qubit=qubit.id))
 
     # Hide unused axes
     for idx in range(n_pairs, len(axes)):
@@ -69,7 +69,7 @@ def plot_iq_blobs(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dataset):
     return fig
 
 
-def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit_pair: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots individual quantum dot pair data on a given axis with optional fit.
 
@@ -79,7 +79,7 @@ def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit_pair: dict[str, str
         The axis on which to plot the data.
     ds : xr.Dataset
         The dataset containing the quadrature data.
-    qubit_pair : dict[str, str]
+    qubit : dict[str, str]
         mapping to the quantum dot pair to plot.
     fit : xr.Dataset, optional
         The dataset containing the fit parameters (default is None).
@@ -110,11 +110,11 @@ def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit_pair: dict[str, str
     ax.axis("equal")
     ax.set_xlabel("I [mV]")
     ax.set_ylabel("Q [mV]")
-    ax.set_title(f'{qubit_pair["qubit_pair"]}')
+    ax.set_title(f'{qubit["qubit"]}')
     ax.grid(True, alpha=0.3)
 
 
-def plot_historams(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dataset):
+def plot_histograms(ds: xr.Dataset, qubits: List[Any], fits: xr.Dataset):
     """
     Plots the IQ blobs with the derived thresholds for the given quantum dot pairs.
 
@@ -122,7 +122,7 @@ def plot_historams(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dataset):
     ----------
     ds : xr.Dataset
         The dataset containing the quadrature data.
-    qubit_pairs : list
+    qubits : list
         A list of quantum dot pairs to plot.
     fits : xr.Dataset
         The dataset containing the fit parameters.
@@ -138,7 +138,7 @@ def plot_historams(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dataset):
     - Each subplot contains the raw data and the fitted curve.
     """
     # Calculate grid dimensions based on number of qubit pairs
-    n_pairs = len(qubit_pairs)
+    n_pairs = len(qubits)
     n_cols = int(np.ceil(np.sqrt(n_pairs)))
     n_rows = int(np.ceil(n_pairs / n_cols))
 
@@ -152,10 +152,10 @@ def plot_historams(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dataset):
         axes = axes.flatten()
 
     # Plot each qubit pair
-    for idx, qubit_pair in enumerate(qubit_pairs):
+    for idx, qubit in enumerate(qubits):
         ax = axes[idx]
-        qubit_pair_dict = {"qubit_pair": qubit_pair.id}
-        plot_individual_histograms(ax, ds, qubit_pair_dict, fits.sel(qubit_pair=qubit_pair.id))
+        qubit_dict = {"qubit": qubit.id}
+        plot_individual_histograms(ax, ds, qubit_dict, fits.sel(qubit=qubit.id))
 
     # Hide unused axes
     for idx in range(n_pairs, len(axes)):
@@ -171,7 +171,7 @@ def plot_historams(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dataset):
     return fig
 
 
-def plot_individual_histograms(ax: Axes, ds: xr.Dataset, qubit_pair: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_histograms(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots individual quantum dot pair data on a given axis with optional fit.
 
@@ -181,7 +181,7 @@ def plot_individual_histograms(ax: Axes, ds: xr.Dataset, qubit_pair: dict[str, s
         The axis on which to plot the data.
     ds : xr.Dataset
         The dataset containing the quadrature data.
-    qubit_pair : dict[str, str]
+    qubit : dict[str, str]
         mapping to the quantum dot pair to plot.
     fit : xr.Dataset, optional
         The dataset containing the fit parameters (default is None).
@@ -227,12 +227,12 @@ def plot_individual_histograms(ax: Axes, ds: xr.Dataset, qubit_pair: dict[str, s
 
     ax.set_xlabel("PCA projection (normalized)")
     ax.set_ylabel("Density")
-    ax.set_title(qubit_pair["qubit_pair"])
+    ax.set_title(qubit["qubit"])
     ax.legend(fontsize=8)
     ax.grid(True, alpha=0.3)
 
 
-def plot_confusion_matrices(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dataset):
+def plot_confusion_matrices(ds: xr.Dataset, qubits: List[Any], fits: xr.Dataset):
     """
     Plots the confusion matrix for the given quantum dot pairs.
 
@@ -240,7 +240,7 @@ def plot_confusion_matrices(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dat
     ----------
     ds : xr.Dataset
         The dataset containing the quadrature data.
-    qubit_pairs : list
+    qubits : list
         A list of quantum dot pairs to plot.
     fits : xr.Dataset
         The dataset containing the fit parameters.
@@ -256,7 +256,7 @@ def plot_confusion_matrices(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dat
     - Each subplot contains the raw data and the fitted curve.
     """
     # Calculate grid dimensions based on number of qubit pairs
-    n_pairs = len(qubit_pairs)
+    n_pairs = len(qubits)
     n_cols = int(np.ceil(np.sqrt(n_pairs)))
     n_rows = int(np.ceil(n_pairs / n_cols))
 
@@ -270,10 +270,10 @@ def plot_confusion_matrices(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dat
         axes = axes.flatten()
 
     # Plot each qubit pair
-    for idx, qubit_pair in enumerate(qubit_pairs):
+    for idx, qubit in enumerate(qubits):
         ax = axes[idx]
-        qubit_pair_dict = {"qubit_pair": qubit_pair.id}
-        plot_individual_confusion_matrix(ax, ds, qubit_pair_dict, fits.sel(qubit_pair=qubit_pair.id))
+        qubit_dict = {"qubit": qubit.id}
+        plot_individual_confusion_matrix(ax, ds, qubit_dict, fits.sel(qubit=qubit.id))
 
     # Hide unused axes
     for idx in range(n_pairs, len(axes)):
@@ -284,7 +284,7 @@ def plot_confusion_matrices(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dat
     return fig
 
 
-def plot_individual_confusion_matrix(ax: Axes, ds: xr.Dataset, qubit_pair: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_confusion_matrix(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots individual quantum dot pair data on a given axis with optional fit.
 
@@ -294,7 +294,7 @@ def plot_individual_confusion_matrix(ax: Axes, ds: xr.Dataset, qubit_pair: dict[
         The axis on which to plot the data.
     ds : xr.Dataset
         The dataset containing the quadrature data.
-    qubit_pair : dict[str, str]
+    qubit : dict[str, str]
         mapping to the quantum dot pair to plot.
     fit : xr.Dataset, optional
         The dataset containing the fit parameters (default is None).
@@ -316,10 +316,10 @@ def plot_individual_confusion_matrix(ax: Axes, ds: xr.Dataset, qubit_pair: dict[
     ax.text(1, 0, f"{100 * confusion[0][1]:.1f}%", ha="center", va="center", color="w")
     ax.text(0, 1, f"{100 * confusion[1][0]:.1f}%", ha="center", va="center", color="w")
     ax.text(1, 1, f"{100 * confusion[1][1]:.1f}%", ha="center", va="center", color="k")
-    ax.set_title(qubit_pair["qubit_pair"])
+    ax.set_title(qubit["qubit"])
 
 
-def plot_visibility_curves(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Dataset):
+def plot_visibility_curves(ds: xr.Dataset, qubits: List[Any], fits: xr.Dataset):
     """
     Plots the fidelity and visibility curves for the given quantum dot pairs.
 
@@ -327,7 +327,7 @@ def plot_visibility_curves(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Data
     ----------
     ds : xr.Dataset
         The dataset containing the quadrature data.
-    qubit_pairs : list
+    qubits : list
         A list of quantum dot pairs to plot.
     fits : xr.Dataset
         The dataset containing the fit parameters.
@@ -343,7 +343,7 @@ def plot_visibility_curves(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Data
     - Each subplot contains fidelity and visibility curves vs threshold.
     """
     # Calculate grid dimensions based on number of qubit pairs
-    n_pairs = len(qubit_pairs)
+    n_pairs = len(qubits)
     n_cols = int(np.ceil(np.sqrt(n_pairs)))
     n_rows = int(np.ceil(n_pairs / n_cols))
 
@@ -357,10 +357,10 @@ def plot_visibility_curves(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Data
         axes = axes.flatten()
 
     # Plot each qubit pair
-    for idx, qubit_pair in enumerate(qubit_pairs):
+    for idx, qubit in enumerate(qubits):
         ax = axes[idx]
-        qubit_pair_dict = {"qubit_pair": qubit_pair.id}
-        plot_individual_visibility_curve(ax, ds, qubit_pair_dict, fits.sel(qubit_pair=qubit_pair.id))
+        qubit_dict = {"qubit": qubit.id}
+        plot_individual_visibility_curve(ax, ds, qubit_dict, fits.sel(qubit=qubit.id))
 
     # Hide unused axes
     for idx in range(n_pairs, len(axes)):
@@ -371,7 +371,7 @@ def plot_visibility_curves(ds: xr.Dataset, qubit_pairs: List[Any], fits: xr.Data
     return fig
 
 
-def plot_individual_visibility_curve(ax: Axes, ds: xr.Dataset, qubit_pair: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_visibility_curve(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots fidelity and visibility curves on the same axes, highlighting their optima.
 
@@ -381,7 +381,7 @@ def plot_individual_visibility_curve(ax: Axes, ds: xr.Dataset, qubit_pair: dict[
         The axis on which to plot the data.
     ds : xr.Dataset
         The dataset containing the quadrature data.
-    qubit_pair : dict[str, str]
+    qubit : dict[str, str]
         mapping to the quantum dot pair to plot.
     fit : xr.Dataset, optional
         The dataset containing the fit parameters (default is None).
@@ -418,6 +418,6 @@ def plot_individual_visibility_curve(ax: Axes, ds: xr.Dataset, qubit_pair: dict[
 
     ax.set_xlabel("Threshold voltage  $V_{rf}$ (normalized)")
     ax.set_ylabel("Metric value")
-    ax.set_title(f'{qubit_pair["qubit_pair"]}')
+    ax.set_title(f'{qubit["qubit"]}')
     ax.legend(fontsize=8)
     ax.grid(True, alpha=0.3)
