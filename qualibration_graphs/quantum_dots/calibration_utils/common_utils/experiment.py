@@ -32,6 +32,8 @@ class BaseExperimentNodeParameters(RunnableParameters):
     """The wait time for qubit reset."""
     sensor_names: Optional[List[str]] = None
     """The list of sensor dot names to be included in the measurement. """
+    initialization_type: Optional[List[str]] = None
+    """The type of initialization to perform."""
 
 class QuantumDotExperimentNodeParameters(BaseExperimentNodeParameters):
     quantum_dots: Optional[List[str]] = None

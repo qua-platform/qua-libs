@@ -1,12 +1,3 @@
-# # -------------------------------------------
-# # -------------------------------------------
-# # -------------------------------------------
-from quam_builder.architecture.quantum_dots.examples.quam_qd_generator_example import config, config_path
-# # -------------------------------------------
-# # -------------------------------------------
-# # -------------------------------------------
-
-
 # %% {Imports}
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,7 +12,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
-from quam_config import Quam
+from quam_config import Quam, config_path
 from calibration_utils.iq_blobs import (
     Parameters,
     process_raw_dataset,
@@ -133,10 +124,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 # Qubit readout
                 for i, qubit in multiplexed_qubits.items():
-
-                    qubit.initialize()
+                    qubit.wait(node.parameters.reset_wait_time)
+                    qubit.initialize(initialization_type=node.parameters.initialization_type)
                     qubit.align()
-                    I_g[i],Q_g[i] = qubit.measure()
+                    I_g[i],Q_g[i] = qubit.measure(use_state_discrimination=node.parameters.use_state_discrimination)
                     qubit.align()
 
                     # qubit.voltage_sequence.apply_compensation_pulse()
@@ -149,11 +140,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 # Qubit readout
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.initialize()
+                    qubit.wait(node.parameters.reset_wait_time)
+                    qubit.initialize(initialization_type=node.parameters.initialization_type)
+
                     qubit.align()
+
+                    qubit.idle(qubit.macros.x180.duration)
                     qubit.x180()
                     qubit.align()
-                    I_e[i], Q_e[i] = qubit.measure()
+
+                    I_e[i], Q_e[i] = qubit.measure(use_state_discrimination=node.parameters.use_state_discrimination)
+
                     qubit.align()
 
                     # qubit.voltage_sequence.apply_compensation_pulse()

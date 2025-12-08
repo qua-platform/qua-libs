@@ -1,3 +1,3 @@
-from .my_quam import Quam
+from .my_quam import Quam, config_path
 
-__all__ = ["Quam"]
+__all__ = ["Quam", "config_path"]
