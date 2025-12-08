@@ -61,29 +61,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.num_shots = 3
-    # node.parameters.max_wait_time_in_ns = 100
-    # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
-    # node.parameters.use_state_discrimination = False
-    # node.parameters.wf_type = "square"
-    # node.parameters.cr_type = "direct+cancel+echo"
-    # node.parameters.cr_drive_amp_scaling = [
-    #     0.89,
-    #     0.89,
-    # ]  # None : setting None to use the amp from the config
-    # node.parameters.cr_drive_phase = [
-    #     0.12,
-    #     0.12,
-    # ]  # None : setting None to use the amp from the config
-    # node.parameters.cr_cancel_amp_scaling = [
-    #     0.34,
-    #     0.34,
-    # ]  # None : setting None to use the amp from the config
-    # node.parameters.cr_cancel_phase = [
-    #     0.23,
-    #     0.23,
-    # ]  # None : setting None to use the amp from the config
     pass
 
 
@@ -113,9 +90,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     wf_type = node.parameters.wf_type
     cr_type = node.parameters.cr_type
     cr_drive_amp_scaling = broadcast_param_to_list(node.parameters.cr_drive_amp_scaling, num_qubit_pairs)
-    cr_drive_phase = broadcast_param_to_list(node.parameters.cr_drive_phase, num_qubit_pairs)
+    cr_drive_phase = broadcast_param_to_list(node.parameters.cr_drive_phase_2pi, num_qubit_pairs)
     cr_cancel_amp_scaling = broadcast_param_to_list(node.parameters.cr_cancel_amp_scaling, num_qubit_pairs)
-    cr_cancel_phase = broadcast_param_to_list(node.parameters.cr_cancel_phase, num_qubit_pairs)
+    cr_cancel_phase = broadcast_param_to_list(node.parameters.cr_cancel_phase_2pi, num_qubit_pairs)
 
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
     pulse_durations = np.arange(
@@ -147,6 +124,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         t = declare(int)
         s = declare(int)  # QUA variable for the control state
         c = declare(int)  # QUA variable for the projection index in QST
+
+        # Reset explicitly
+        reset_global_phase()
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)

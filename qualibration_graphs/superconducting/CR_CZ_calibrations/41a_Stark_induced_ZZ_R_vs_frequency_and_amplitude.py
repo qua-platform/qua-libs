@@ -62,7 +62,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # # You can get type hinting in your IDE by typing node.parameters.
+    # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
     # node.parameters.use_state_discrimination = True
     # # node.parameters.simulate = True

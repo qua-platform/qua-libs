@@ -20,14 +20,14 @@ class NodeSpecificParameters(RunnableParameters):
     """
 
     num_shots: int = 100
-    min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 1600
+    min_pulse_duration_in_ns: int = 16
+    max_pulse_duration_in_ns: int = 1600
     time_step_in_ns: int = 16
     cr_type: Literal["direct", "direct+cancel", "direct+echo", "direct+cancel+echo"] = "direct"
     cr_drive_amp_scaling: Union[float, List[float]] = 1.0
-    cr_drive_phase: Union[float, List[float]] = 1.0
+    cr_drive_phase_2pi: Union[float, List[float]] = 1.0
     cr_cancel_amp_scaling: Union[float, List[float]] = 0.0
-    cr_cancel_phase: Union[float, List[float]] = 0.0
+    cr_cancel_phase_2pi: Union[float, List[float]] = 0.0
     wf_type: Literal["square", "cosine", "gauss", "flattop"] = "square"
 
 

@@ -68,20 +68,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubit_pairs = ["q1-2", "q2-3"]
-    # node.parameters.use_state_discrimination = True
-    # node.parameters.wf_type = "square"
-    # node.parameters.cr_type = "direct+cancel+echo"
-    # node.parameters.cr_drive_amp_scaling = [0.89, 0.89]  # None : setting None to use the amp from the config
-    # node.parameters.cr_drive_phase = [0.12, 0.12]  # None : setting None to use the amp from the config
-    # node.parameters.cr_cancel_amp_scaling = [0.34, 0.34]  # None : setting None to use the amp from the config
-    # node.parameters.cr_cancel_phase = [0.23, 0.23]  # None : setting None to use the amp from the config
-    # node.parameters.qc_correction_phase_2pi = [None, None]
-    # node.parameters.qt_correction_phase_2pi = [None, None]
-    # node.parameters.min_correction_phase_2pi = 0.0
-    # node.parameters.max_correction_phase_2pi = 1.0
-    # node.parameters.step_correction_phase_2pi = 0.1
+    # You can get type hinting in your IDE by typing node.parameters.
     pass
 
 
@@ -111,9 +98,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     wf_type = node.parameters.wf_type
     cr_type = node.parameters.cr_type
     cr_drive_amp_scaling = broadcast_param_to_list(node.parameters.cr_drive_amp_scaling, num_qubit_pairs)
-    cr_drive_phase = broadcast_param_to_list(node.parameters.cr_drive_phase, num_qubit_pairs)
+    cr_drive_phase = broadcast_param_to_list(node.parameters.cr_drive_phase_2pi, num_qubit_pairs)
     cr_cancel_amp_scaling = broadcast_param_to_list(node.parameters.cr_cancel_amp_scaling, num_qubit_pairs)
-    cr_cancel_phase = broadcast_param_to_list(node.parameters.cr_cancel_phase, num_qubit_pairs)
+    cr_cancel_phase = broadcast_param_to_list(node.parameters.cr_cancel_phase_2pi, num_qubit_pairs)
 
     # correction phasees
     qc_correction_phases = broadcast_param_to_list(node.parameters.qc_correction_phase_2pi, num_qubit_pairs)

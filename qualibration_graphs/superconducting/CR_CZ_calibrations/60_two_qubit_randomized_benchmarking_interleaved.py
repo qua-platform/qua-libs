@@ -44,14 +44,7 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    # # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.multiplexed = True
-    # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
-    # node.parameters.use_state_discrimination = True
-    # node.parameters.num_random_sequences = 5
-    # node.parameters.delta_clifford = 1
-    # node.parameters.max_circuit_depth = 10
-    # node.parameters.simulate = False
+    # You can get type hinting in your IDE by typing node.parameters.
     pass
 
 
@@ -297,6 +290,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         seq_idx = declare(int, value=0)  # Index for the sequence
         idx_st = declare_stream()
+
+        # Reset explicitly
+        reset_global_phase()
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
