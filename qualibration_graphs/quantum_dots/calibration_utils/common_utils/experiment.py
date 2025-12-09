@@ -34,6 +34,9 @@ class BaseExperimentNodeParameters(RunnableParameters):
     """The list of sensor dot names to be included in the measurement. """
     initialization_type: Optional[List[str]] = None
     """The type of initialization to perform."""
+    voltage_sequence: Optional[str] = None
+    """The voltage sequence to be included in the measurement."""
+
 
 class QuantumDotExperimentNodeParameters(BaseExperimentNodeParameters):
     quantum_dots: Optional[List[str]] = None

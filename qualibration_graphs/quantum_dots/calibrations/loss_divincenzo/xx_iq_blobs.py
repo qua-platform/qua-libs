@@ -22,6 +22,8 @@ from calibration_utils.iq_blobs import (
     plot_confusion_matrices,
     simulate_quantum_dot_readout_from_node,
 )
+from qualibrate.models.outcome import Outcome
+
 from qualibration_libs.parameters import get_qubit_pairs, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -79,6 +81,8 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubits = ["q1", "q2"]
     node.parameters.qubits = ['Q0', 'Q1']
     node.parameters.simulate = True
+    node.parameters.reset_wait_time = 32
+    node.parameters.voltage_sequence = 'main_qpu'
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load(config_path)
@@ -124,14 +128,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 # Qubit readout
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.wait(node.parameters.reset_wait_time)
                     qubit.initialize(initialization_type=node.parameters.initialization_type)
                     qubit.align()
                     I_g[i],Q_g[i] = qubit.measure(use_state_discrimination=node.parameters.use_state_discrimination)
                     qubit.align()
 
                     # qubit.voltage_sequence.apply_compensation_pulse()
-                    qubit.voltage_sequence.ramp_to_zero()
+                    qubit.wait(node.parameters.reset_wait_time)
 
                     save(I_g[i], I_g_st[i])
                     save(Q_g[i], Q_g_st[i])
@@ -139,25 +142,25 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 align()
 
                 # Qubit readout
-                for i, qubit in multiplexed_qubits.items():
-                    qubit.wait(node.parameters.reset_wait_time)
-                    qubit.initialize(initialization_type=node.parameters.initialization_type)
+                with node.machine.voltage_sequences[node.parameters.voltage_sequence].simultaneous():
+                    for i, qubit in multiplexed_qubits.items():
+                        qubit.initialize(initialization_type=node.parameters.initialization_type)
 
-                    qubit.align()
+                        qubit.align()
 
-                    qubit.idle(qubit.macros.x180.duration)
-                    qubit.x180()
-                    qubit.align()
+                        qubit.x180()
 
-                    I_e[i], Q_e[i] = qubit.measure(use_state_discrimination=node.parameters.use_state_discrimination)
+                        qubit.align()
 
-                    qubit.align()
+                        I_e[i], Q_e[i] = qubit.measure(use_state_discrimination=node.parameters.use_state_discrimination)
 
-                    # qubit.voltage_sequence.apply_compensation_pulse()
-                    qubit.voltage_sequence.ramp_to_zero()
+                        qubit.align()
 
-                    save(I_e[i], I_e_st[i])
-                    save(Q_e[i], Q_e_st[i])
+                        # qubit.voltage_sequence.apply_compensation_pulse()
+                        qubit.wait(node.parameters.reset_wait_time)
+
+                        save(I_e[i], I_e_st[i])
+                        save(Q_e[i], Q_e_st[i])
 
         with stream_processing():
             n_st.save("n")
@@ -176,14 +179,17 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     quantum dot readout data for testing the analysis and plotting.
     """
     # Connect to the QOP
-    # qmm = node.machine.connect()
-    # # Get the config from the machine
-    # config = node.machine.generate_config()
-    # # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    # samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
-    # # Store the figure, waveform report and simulated samples
-    # node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
+    qmm = node.machine.connect()
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Simulate the QUA program, generate the waveform report and plot the simulated samples
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    # Store the figure, waveform report and simulated samples
+    node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
+# %% {Validate}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+def validate_analysis(node: QualibrationNode[Parameters, Quam]):
     # Generate realistic quantum dot IQ blob data using Barthel model
     node.log("Generating realistic simulated IQ data using Barthel model...")
     ds_simulated = simulate_quantum_dot_readout_from_node(node, add_noise_variation=True, seed=42)
@@ -246,7 +252,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
-        qubit_name: ("successful" if fit_result["success"] else "failed")
+        qubit_name: (Outcome.SUCCESSFUL if fit_result["success"] else Outcome.FAILED)
         for qubit_name, fit_result in node.results["fit_results"].items()
     }
 
