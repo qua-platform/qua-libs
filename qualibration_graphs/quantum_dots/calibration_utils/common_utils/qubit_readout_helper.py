@@ -112,11 +112,13 @@ def get_qubits_batched_by_readout(node: QualibrationNode, sensor_batches: Batcha
         return BatchableList([],[])
     
     if sensor_batches is None: 
-        sensor_batches = get_sensors(node)
+        sensors = list(machine.sensor_dots.values())
+        batched_groups = [[i for i in range(len(sensors))]]
+        sensor_batches = BatchableList(sensors, batched_groups)
 
     compatible_sensor_groups = _get_compatible_sensor_groups(sensor_batches)
 
-    footprints = [_get_qubit_readout_footprint(q, machine) for q in qubits]
+    footprints = [_get_qubit_readout_footprint(machine, q) for q in qubits]
 
     batched_groups = _build_readout_batches(footprints, compatible_sensor_groups)
 

@@ -11,7 +11,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
-from quam_config import Quam
+from quam_config import Quam, QubitQuam
 from calibration_utils.ramsey import (
     Parameters,
     process_raw_dataset,
@@ -47,9 +47,10 @@ State update:
     - The qubit 0->1 frequency: qubit.f_01 & qubit.xy.RF_frequency
     - T2*: qubit.T2ramsey.
 """
+# If the Quam state is a BaseQuamQD, upgrade to the qubit quam.
+Quam = QubitQuam
 
 node = QualibrationNode[Parameters, Quam](name="0n_ramsey", description=description, parameters=Parameters())
-
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
@@ -61,7 +62,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 ## Instantiate the QUAM class from the state file
-node.machine = Quam.load()
+node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 
 
 # %% {Create_QUA_program}
@@ -107,10 +108,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             reset_frame(qubit.xy_channel.name)
                             # In this command, each qubit will move to the (1,1) configuration of themself and their buddy quantum dot
                             # In the way that they are batched, no dots will be shared. Each batch will therefore operate sequentially, meaning no overlap/simultaneous operation conflicts.
-                            qubit.ramp_to_point("initialize", ramp_duration = init_ramp_duration)
+                            qubit.ramp_to_voltages({"virtual_dot_0": 0.05}, duration = 1000, ramp_duration = 1000)
 
                             # Or we use the macro to step/ramp to initialize point
-                            qubit.initialize_point()
+                            #qubit.initialize_point()
                         align()
                         # Qubit manipulation
                         for i, qubit in batched_qubits.items():
@@ -134,10 +135,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
 
                         for i, qubit in batched_qubits.items(): 
-                            qubit.ramp_to_point("readout", ramp_duration = readout_ramp_duration)
+                            qubit.ramp_to_voltages({"virtual_dot_0": 0.10}, duration = 1000,  ramp_duration = 1000)
 
                             # Or we use the macro to step/ramp to readout point
-                            qubit.measure_point()
+                            #qubit.measure_point()
 
                         align()
 

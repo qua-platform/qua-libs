@@ -57,10 +57,11 @@ def get_dots(node: QualibrationNode) -> BatchableList[QuantumDot]:
     return dots_batchable_list
 
 def _get_sensors(machine: BaseQuamQD, node_parameters: BaseExperimentNodeParameters):
-    if node_parameters.sensor_names is None or node_parameters.sensor_names == "":
+    sensor_names = getattr(node_parameters, 'sensor_names', None)
+    if sensor_names is None or sensor_names == "":
         sensors = list(machine.sensor_dots.values())
     else:
-        sensors = [machine.sensor_dots[s] for s in node_parameters.sensor_names]
+        sensors = [machine.sensor_dots[s] for s in sensor_names]
     return sensors
 
 
