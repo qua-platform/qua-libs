@@ -108,7 +108,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             reset_frame(qubit.xy_channel.name)
                             # In this command, each qubit will move to the (1,1) configuration of themself and their buddy quantum dot
                             # In the way that they are batched, no dots will be shared. Each batch will therefore operate sequentially, meaning no overlap/simultaneous operation conflicts.
-                            qubit.ramp_to_voltages({"virtual_dot_0": 0.05}, duration = 1000, ramp_duration = 1000)
+                            qubit.ramp_to_voltages({qubit.quantum_dot.id: 0.05}, duration = 1000, ramp_duration = 1000)
 
                             # Or we use the macro to step/ramp to initialize point
                             #qubit.initialize_point()
@@ -135,7 +135,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
 
                         for i, qubit in batched_qubits.items(): 
-                            qubit.ramp_to_voltages({"virtual_dot_0": 0.10}, duration = 1000,  ramp_duration = 1000)
+                            qubit.ramp_to_voltages({qubit.quantum_dot.id: 0.10}, duration = 1000,  ramp_duration = 1000)
 
                             # Or we use the macro to step/ramp to readout point
                             #qubit.measure_point()
@@ -245,8 +245,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.results["fit_results"][q.name]["success"]:
+                current_rf = q.xy_channel.RF_frequency
+                q.xy_channel.RF_frequency = None
+                q.xy_channel.RF_frequency = current_rf - float(node.results["fit_results"][q.name]["freq_offset"])
                 q.larmor_frequency -= float(node.results["fit_results"][q.name]["freq_offset"])
-                q.xy_channel.RF_frequency -= float(node.results["fit_results"][q.name]["freq_offset"])
                 q.T2ramsey = float(node.results["fit_results"][q.name]["decay"])
 
 
