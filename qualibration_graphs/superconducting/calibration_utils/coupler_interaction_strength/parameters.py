@@ -18,7 +18,6 @@ class NodeSpecificParameters(RunnableParameters):
     idle_time_max: int = 5000
     idle_time_step: int = 4
     cz_or_iswap: Literal["cz", "iswap"] = "cz"
-    use_saved_detuning: bool = True
 
 
 class Parameters(NodeParameters, CommonNodeParameters, NodeSpecificParameters, QubitPairExperimentNodeParameters):
