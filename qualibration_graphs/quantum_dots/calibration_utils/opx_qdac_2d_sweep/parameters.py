@@ -11,8 +11,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Whether to run this measurement in Video Mode."""
     virtual_gate_set_id: str = None
     """Name of the VirtualGateSet of this measurement."""
-    sensor_names: List[str] = None
-    """List of sensor dot names to measure in your measurement."""
     x_axis_name: str = None
     """The name of the swept element in the X axis."""
     x_from_qdac: bool = False
@@ -29,6 +27,8 @@ class NodeSpecificParameters(RunnableParameters):
     """The X axis span in volts"""
     y_span: float = 0.03
     """The Y axis span in volts"""
+    points_duration: int = 1000
+    """Dwell time on each point in nanoseconds"""
     dc_control: bool = True
     """Includes VoltageControlComponent in Video Mode."""
 

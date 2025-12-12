@@ -21,8 +21,7 @@ from calibration_utils.opx_qdac_2d_sweep import (
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-from calibration_utils.common_utils.experiment import get_dots, get_sensors
-from calibration_utils.common_utils.connect_to_external_source import external_source_setup
+from calibration_utils.common_utils.experiment import get_dots, get_sensors, _make_batchable_list_from_multiplexed
 
 description = """
             2D GENERAL CHARGE STABILITY MAP
@@ -59,8 +58,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
-external_source_setup(node)
-
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
@@ -70,11 +67,36 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     u = unit(coerce_to_integer=True)
 
     virtual_gate_set = node.machine.virtual_gate_sets[node.parameters.virtual_gate_set_id]
-
-    node.namespace["sensors"] = sensors = get_sensors(node)
-    
     x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(node.parameters.y_axis_name)
     x_volts, y_volts = get_voltage_arrays(node)
+    quantum_dot_pair = node.machine.find_quantum_dot_pair(node.parameters.x_axis_name, node.parameters.y_axis_name)
+    dwell_time = node.parameters.points_duration
+
+    node.namespace["sensors"] = sensor_dot_list = node.machine.quantum_dot_pairs[quantum_dot_pair].sensor_dots
+    sensors = _make_batchable_list_from_multiplexed(
+        sensor_dot_list, 
+        False
+    )
+
+    # Connect machine to QDAC
+    node.machine.connect_to_external_source(external_qdac=True)
+    # Set up the DC lists 
+    dc_list_x = node.machine.qdac.channel(x_obj.physical_channel.qdac_channel).dc_list(
+            voltages = x_volts, 
+            dwell_s = dwell_time*2, 
+            stepped = True
+    )
+    dc_list_x.start_on_external(trigger = 1)
+
+    dc_list_y = node.machine.qdac.channel(y_obj.physical_channel.qdac_channel).dc_list(
+            voltages = y_volts, 
+            dwell_s = dwell_time*2, 
+            stepped = True
+    )
+    dc_list_y.start_on_external(trigger = 2)
+
+
+
     num_sensors = len(sensors)
 
     # Register the sweep axes to be added to the dataset when fetching data
@@ -104,8 +126,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     with for_(*from_array(x, x_volts)): 
                         with for_(*from_array(y, y_volts)):
                             with seq.simultaneous():
-                                x_obj.go_to_voltages(x)
-                                y_obj.go_to_voltages(y)
+                                x_obj.go_to_voltages({x_obj.id: x}, duration = dwell_time)
+                                y_obj.go_to_voltages({y_obj.id: y}, duration = dwell_time)
                             align()
                             for i, sensor in multiplexed_sensors.items():
                                 # Select the resonator tied to the sensor
@@ -139,9 +161,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 with for_(n, 0, n<node.parameters.num_shots, n+1): 
                     save(n, n_st)
                     with for_(*from_array(x, x_volts)): 
-                        play("trigger", "qdac_trigger1")
+                        x_obj.physical_channel.qdac_trigger.play("trigger")
                         with for_(*from_array(y, y_volts)):
-                            y_obj.go_to_voltages(y)
+                            y_obj.go_to_voltages({y_obj.id: y}, duration = dwell_time)
                             align()
                             for i, sensor in multiplexed_sensors.items():
                                 # Select the resonator tied to the sensor
@@ -162,6 +184,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Case 3: X OPX and Y external 
     elif not x_external and y_external: 
+        # Transpose so that the slow (Y) is on the outer loop
         node.namespace["sweep_axes"] = {
             "sensors": xr.DataArray(sensors.get_names()),
             "y_volts": xr.DataArray(y_volts, attrs={"long_name": "voltage", "units": "V"}),
@@ -177,13 +200,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for multiplexed_sensors in sensors.batch():
                 align()
                 # We know that the Y is the slow axis. Order it so that the Y axis comes first
-                with for_(*from_array(y, y_volts)): 
-                    assign(IO2, y)
-                    pause()
-                    with for_(n, 0, n<node.parameters.num_shots, n+1): 
-                        save(n, n_st)
+                with for_(n, 0, n<node.parameters.num_shots, n+1): 
+                    save(n, n_st)
+                    with for_(*from_array(y, y_volts)): 
+                        y_obj.physical_channel.qdac_trigger.play("trigger")
                         with for_(*from_array(x, x_volts)):
-                            x_obj.go_to_voltages(x)
+                            x_obj.go_to_voltages({x_obj.id: x}, duration = dwell_time)
                             align()
                             for i, sensor in multiplexed_sensors.items():
                                 # Select the resonator tied to the sensor
@@ -216,12 +238,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # We know that the Y is the slow axis. Order it so that the Y axis comes first
                 with for_(n, 0, n<node.parameters.num_shots, n+1): 
                     save(n, n_st)
-                    with for_(*from_array(y, y_volts)): 
-                        with for_(*from_array(x, x_volts)):
-                            assign(IO1, x)
-                            assign(IO2, y)
-                            pause()
-                            align()
+                    with for_(*from_array(x, x_volts)): 
+                        x_obj.physical_channel.qdac_trigger.play("trigger")
+                        with for_(*from_array(y, y_volts)):
+                            y_obj.physical_channel.qdac_trigger.play("trigger")
                             for i, sensor in multiplexed_sensors.items():
                                 # Select the resonator tied to the sensor
                                 rr = sensor.readout_resonator
@@ -236,50 +256,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(f"I{i}")
-                    Q_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(f"Q{i}")
-
-def paused_program(node: QualibrationNode): 
-    job = node.namespace["job"]
-    x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(node.parameters.y_axis_name)
-    x_vals, y_vals = get_voltage_arrays(node)
-    x_external, y_external = node.parameters.x_external_source, node.parameters.y_external_source
-
-    # Case 2: X external and Y OPX
-    if x_external and not y_external:
-        for _ in x_vals:
-            while not job.is_paused():
-                time.sleep(0.001)
-            x = job.get_io1_value().double_value
-            x_obj.physical_channel.offset_parameter(x)
-            print(f"Slow x coordinate: {x:.5f}")
-            time.sleep(0.01)
-            job.resume()
-
-    # Case 3: X OPX and Y external
-    elif y_external and not x_external:
-        for _ in y_vals:
-            while not job.is_paused():
-                time.sleep(0.001)
-            y = job.get_io2_value().double_value
-            y_obj.physical_channel.offset_parameter(y)
-            print(f"Slow y coordinate: {y:.5f}")
-            time.sleep(0.01)
-            job.resume()
-
-    # Case 4: X external and Y external
-    elif x_external and y_external:
-        for _ in x_vals:
-            for _ in y_vals:
-                while not job.is_paused():
-                    time.sleep(0.001)
-                x = job.get_io1_value().double_value
-                y = job.get_io2_value().double_value
-                x_obj.physical_channel.offset_parameter(x)
-                y_obj.physical_channel.offset_parameter(y)
-                print(f"Slow x and y coordinates: {x:.5f}, {y:.5f}")
-                time.sleep(0.01)
-                job.resume()
+                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
 
 
 # %% {Simulate}
@@ -308,10 +286,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-        time.sleep(0.5)
-        # Run the paused program code
-        if node.parameters.x_external_source or node.parameters.y_external_source:
-            paused_program(node)
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
@@ -323,7 +297,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the execution report to expose possible runtime errors
         print(job.execution_report())
     # Transpose X and Y for Case # 3
-    if not node.parameters.x_external_source and node.parameters.y_external_source:
+    if not node.parameters.x_from_qdac and node.parameters.y_from_qdac:
         dataset = dataset.transpose("sensors", "x_volts", "y_volts")
     # Register the raw dataset
     node.results["ds_raw"] = dataset
