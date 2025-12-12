@@ -71,3 +71,5 @@ if user_input.lower() == "y":
     # Reload QUAM, build the QUAM object and save the state as state.json
     machine = Quam.load()
     build_quam(machine)
+
+# %%

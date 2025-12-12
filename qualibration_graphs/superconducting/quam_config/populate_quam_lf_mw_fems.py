@@ -260,7 +260,7 @@ for qp in qubit_pairs:
     # Estimated parameters for the CZ gates - these should be calibrated later
     cz_interaction_duration = 100  # in ns
     smoothing_duration = 20  # in ns
-    post_zero_padding_time = 2  # in ns
+    post_zero_padding_length = 2  # in ns
 
     print(f"Creating CZ Unipolar gate macro for {pair.name}")
     cz_pulse = SquarePulse(length=cz_interaction_duration, amplitude=0.1, id="cz_unipolar_pulse")
@@ -278,55 +278,55 @@ for qp in qubit_pairs:
     cz_pulse = FlatTopGaussianPulse(
         amplitude=0.1,
         flat_length=cz_interaction_duration,
-        smoothing_time=smoothing_duration,
-        post_zero_padding_time=post_zero_padding_time,
+        smoothing_length=smoothing_duration,
+        post_zero_padding_length=post_zero_padding_length,
         id="cz_flattop_pulse",
     )
     cz = CZGate(flux_pulse_control=cz_pulse)
     pair.macros["cz_flattop"] = cz
     flat_length = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/flat_length"
     pulse_amp = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/amplitude"
-    pulse_smoothing = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/smoothing_time"
-    pulse_padding = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/post_zero_padding_time"
+    pulse_smoothing = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/smoothing_length"
+    pulse_padding = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/post_zero_padding_length"
     pulse_name = pair.macros["cz_flattop"].flux_pulse_control_label
     control_qb = pair.qubit_control
     control_qb.z.operations[pulse_name] = FlatTopGaussianPulse(
         amplitude=0.1,
         flat_length=cz_interaction_duration,
-        smoothing_time=smoothing_duration,
-        post_zero_padding_time=post_zero_padding_time,
+        smoothing_length=smoothing_duration,
+        post_zero_padding_length=post_zero_padding_length,
     )
     control_qb.z.operations[pulse_name].amplitude = pulse_amp
     control_qb.z.operations[pulse_name].flat_length = flat_length
-    control_qb.z.operations[pulse_name].smoothing_time = pulse_smoothing
-    control_qb.z.operations[pulse_name].post_zero_padding_time = pulse_padding
+    control_qb.z.operations[pulse_name].smoothing_length = pulse_smoothing
+    control_qb.z.operations[pulse_name].post_zero_padding_length = pulse_padding
 
     print(f"Creating CZ Bipolar gate macro for {pair.name}")
     cz_pulse = CosineBipolarPulse(
         amplitude=0.1,
-        smoothing_time=smoothing_duration,
+        smoothing_length=smoothing_duration,
         id="cz_bipolar_pulse",
         flat_length=cz_interaction_duration,
-        post_zero_padding_time=post_zero_padding_time,
+        post_zero_padding_length=post_zero_padding_length,
     )
     cz = CZGate(flux_pulse_control=cz_pulse)
     pair.macros["cz_bipolar"] = cz
     flat_length = pair.macros["cz_bipolar"].flux_pulse_control.get_reference() + "/flat_length"
     pulse_amp = pair.macros["cz_bipolar"].flux_pulse_control.get_reference() + "/amplitude"
-    pulse_smoothing = pair.macros["cz_bipolar"].flux_pulse_control.get_reference() + "/smoothing_time"
-    pulse_padding = pair.macros["cz_bipolar"].flux_pulse_control.get_reference() + "/post_zero_padding_time"
+    pulse_smoothing = pair.macros["cz_bipolar"].flux_pulse_control.get_reference() + "/smoothing_length"
+    pulse_padding = pair.macros["cz_bipolar"].flux_pulse_control.get_reference() + "/post_zero_padding_length"
     pulse_name = pair.macros["cz_bipolar"].flux_pulse_control_label
     control_qb = pair.qubit_control
     control_qb.z.operations[pulse_name] = CosineBipolarPulse(
         amplitude=0.1,
         flat_length=cz_interaction_duration,
-        smoothing_time=smoothing_duration,
-        post_zero_padding_time=post_zero_padding_time,
+        smoothing_length=smoothing_duration,
+        post_zero_padding_length=post_zero_padding_length,
     )
     control_qb.z.operations[pulse_name].amplitude = pulse_amp
     control_qb.z.operations[pulse_name].flat_length = flat_length
-    control_qb.z.operations[pulse_name].smoothing_time = pulse_smoothing
-    control_qb.z.operations[pulse_name].post_zero_padding_time = pulse_padding
+    control_qb.z.operations[pulse_name].smoothing_length = pulse_smoothing
+    control_qb.z.operations[pulse_name].post_zero_padding_length = pulse_padding
 
 ########################################################################################################################
 # %%                                         Save the updated QUAM
