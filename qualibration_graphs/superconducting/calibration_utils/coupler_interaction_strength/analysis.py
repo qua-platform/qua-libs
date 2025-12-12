@@ -4,9 +4,10 @@ from typing import Dict, Tuple
 
 import numpy as np
 import xarray as xr
-from scipy.fft import fft
-
 from qualibrate import QualibrationNode
+from scipy.optimize import curve_fit
+from scipy.signal import savgol_filter
+
 
 @dataclass
 class FitParameters:
@@ -15,7 +16,9 @@ class FitParameters:
     success: bool
     interaction_max: int
     coupler_flux_pulse: float
-    coupler_flux_min:float
+    coupler_flux_min: float
+    flux_at_target: float
+
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
     """
@@ -30,7 +33,13 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
-    pass
+    for qubit_pair, results in fit_results.items():
+        log_callable(f"Results for qubit pair: {qubit_pair}")
+        log_callable(f"  - Success: {results['success']}")
+        log_callable(f"  - Interaction max: {results['interaction_max']} MHz")
+        log_callable(f"  - Coupler flux pulse: {results['coupler_flux_pulse']:.3f} V")
+        log_callable(f"  - Coupler flux min: {results['coupler_flux_min']:.3f} V")
+        log_callable(f"  - Flux at target: {results['flux_at_target']:.3f} V")
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
@@ -50,17 +59,13 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     qubit_pairs = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
     fluxes_coupler = ds.flux_coupler.values
 
-    ds = ds.assign_coords(idle_time = ds.idle_time * 4)
+    ds = ds.assign_coords(idle_time=ds.idle_time * 4)
     if node.parameters.use_state_discrimination:
-        ds = ds.assign({"res_sum" : ds.state_control - ds.state_target})
+        ds = ds.assign({"res_sum": ds.state_control - ds.state_target})
     else:
-        ds = ds.assign({"res_sum" : ds.I_control - ds.I_target})
+        ds = ds.assign({"res_sum": ds.I_control - ds.I_target})
     flux_coupler_full = np.array([fluxes_coupler + qp.coupler.decouple_offset for qp in qubit_pairs])
     ds = ds.assign_coords({"flux_coupler_full": (["qubit_pair", "flux_coupler"], flux_coupler_full)})
-
-    # Add the dominant frequencies to the dataset
-    ds['dominant_frequency'] = extract_dominant_frequencies(ds.res_sum)
-    ds.dominant_frequency.attrs['units'] = 'GHz'
 
     return ds
 
@@ -89,41 +94,75 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
-
-    # Populate the FitParameters class with fitted values
     fit_results = {}
-    for qp in node.machine.qubit_pairs.values():
-        target_gate_time = 50  # ns (fallback)
-        if node.parameters.cz_or_iswap  == "cz" and "Cz" in qp.macros:
-            target_gate_time = qp.macros["Cz"].coupler_flux_pulse.length
-        max_frequency = 1 / (2 * target_gate_time)  # in GHz
-        interaction_max = (fit.dominant_frequency * (fit.dominant_frequency < max_frequency)).max(dim='flux_coupler')
-        coupler_flux_pulse = fit.flux_coupler.isel(flux_coupler=(fit.dominant_frequency * (fit.dominant_frequency < max_frequency)).argmax(dim='flux_coupler'))
-        coupler_flux_min = fit.flux_coupler_full.isel(flux_coupler=fit.dominant_frequency.argmin(dim='flux_coupler'))
+    for i, qp_name in enumerate(fit.qubit_pair.values):
+        ds_qp = fit.isel(qubit_pair=i)
+        time_us = ds_qp.idle_time.values * 1e-3
+        flux_bias = ds_qp.flux_coupler.values
+        data_matrix = ds_qp.state_target.values.T
 
-        fit_results[qp.name] = FitParameters(
-            success=True,
-            interaction_max= int(interaction_max.values),
-            coupler_flux_pulse = float(coupler_flux_pulse.values),
-            coupler_flux_min=float(coupler_flux_min.values)
+        jeff_raw, fit_mask = extract_jeff_from_flux_slices(data_matrix, time_us, node)
+        jeff_smooth = savgol_filter(jeff_raw, window_length=9, polyorder=3)
+
+        fit = fit.assign(
+            {
+                f"jeff_raw_{qp_name}": (("flux_coupler",), jeff_raw),
+                f"fit_mask_{qp_name}": (("flux_coupler",), fit_mask),
+                f"jeff_smooth_{qp_name}": (("flux_coupler",), jeff_smooth),
+            }
         )
+
+        interaction_max = np.max(jeff_smooth)
+        coupler_flux_pulse = flux_bias[np.argmax(jeff_smooth)]
+        coupler_flux_min = flux_bias[np.argmin(jeff_smooth)]
+
+        target_value = 1e3 / (node.parameters.target_gate_duration_ns)  # MHz
+        closest_idx = np.argmin(np.abs(jeff_smooth - target_value))
+        flux_at_target = flux_bias[closest_idx]
+
+        fit_results[qp_name] = FitParameters(
+            success=True,
+            interaction_max=interaction_max,
+            coupler_flux_pulse=coupler_flux_pulse,
+            coupler_flux_min=coupler_flux_min,
+            flux_at_target=flux_at_target,
+        )
+
     return fit, fit_results
 
 
-def extract_dominant_frequencies(da, dim="idle_time"):
-    def extract_dominant_frequency(signal, sample_rate):
-        fft_result = fft(signal)
-        frequencies = np.fft.fftfreq(len(signal), 1 / sample_rate)
-        positive_freq_idx = np.where(frequencies > 0)
-        dominant_idx = np.argmax(np.abs(fft_result[positive_freq_idx]))
-        return frequencies[positive_freq_idx][dominant_idx]
+def damped_cosine(t, A, gamma, f, phi, C):
+    return A * np.exp(-gamma * t) * np.cos(2 * np.pi * f * t + phi) + C
 
-    def extract_dominant_frequency_wrapper(signal):
-        sample_rate = 1 / (da.coords[dim][1].values - da.coords[dim][0].values)  # Assuming uniform sampling
-        return extract_dominant_frequency(signal, sample_rate)
 
-    dominant_frequencies = xr.apply_ufunc(
-        extract_dominant_frequency_wrapper, da, input_core_dims=[[dim]], output_core_dims=[[]], vectorize=True
-    )
+def extract_jeff_from_flux_slices(data_matrix, time_us, node: QualibrationNode):
+    jeff_raw = []
+    fit_mask = []
 
-    return dominant_frequencies
+    for i in range(data_matrix.shape[1]):
+        ydata = data_matrix[:, i]
+        # condition = np.min(np.abs(ydata)) > 0.5
+        # if node.parameters.cz_or_iswap == "iswap":
+        #     condition = np.max(np.abs(ydata)) < 0.5
+        # if condition:
+        #     jeff_raw.append(0.0)
+        #     fit_mask.append(False)
+        #     continue
+
+        try:
+            popt, _ = curve_fit(
+                damped_cosine,
+                time_us,
+                ydata,
+                p0=[0.3, 1.0, 5.0, 0.0, 0.0],
+                bounds=([0, 0, 0, -np.pi, -1], [1, 100, 20, np.pi, 1]),
+                maxfev=5000,
+            )
+            freq_mhz = popt[2]
+            jeff_raw.append(freq_mhz)
+            fit_mask.append(True)
+        except RuntimeError:
+            jeff_raw.append(0.0)
+            fit_mask.append(False)
+
+    return np.array(jeff_raw), np.array(fit_mask)

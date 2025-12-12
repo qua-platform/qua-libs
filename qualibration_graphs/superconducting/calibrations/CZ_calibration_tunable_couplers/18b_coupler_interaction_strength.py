@@ -3,7 +3,6 @@ from dataclasses import asdict
 
 import matplotlib.pyplot as plt
 import numpy as np
-from qiskit.circuit.library.standard_gates.equivalence_library import phi
 import xarray as xr
 
 from qm.qua import *
@@ -28,8 +27,7 @@ from calibration_utils.coupler_interaction_strength import (
     fit_raw_data,
     log_fitted_results,
     plot_target_data,
-    plot_control_data,
-    plot_domain_frequency
+    plot_jeff_vs_flux,
 )
 
 # %% {Initialisation}
@@ -71,18 +69,19 @@ node = QualibrationNode[Parameters, Quam](
 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    node.parameters.num_averages = 100
+    node.parameters.num_averages = 300
     node.parameters.idle_time_min = 16
-    node.parameters.idle_time_max = 1000
+    node.parameters.idle_time_max = 400
     node.parameters.idle_time_step = 4
     node.parameters.coupler_flux_min = -0.3
     node.parameters.coupler_flux_max = 0.22
-    node.parameters.coupler_flux_step = 0.01
+    node.parameters.coupler_flux_step = 0.0025
     node.parameters.simulate = False
     node.parameters.cz_or_iswap = "cz"
     node.parameters.qubit_pairs = ["qB1-B2"]
     node.parameters.use_state_discrimination = True
-    node.parameters.reset_type = "thermal"
+    node.parameters.reset_type = "active"
+    node.parameters.target_gate_duration_ns = 100
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
@@ -151,17 +150,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qp.qubit_control.xy.play("x180")
                             if node.parameters.cz_or_iswap == "cz":
                                 qp.qubit_target.xy.play("x180")
-                            qp.qubit_control.z.wait(qp.qubit_control.xy.operations["x180"].length >> 2)
-                            qp.coupler.wait(qp.qubit_control.xy.operations["x180"].length >> 2)
-
+                            qp.align()
                             # Play the flux pulse on the qubit control and coupler
                             qp.qubit_control.z.play("const", amplitude_scale = comp_flux_qubit / qp.qubit_control.z.operations["const"].amplitude, duration = idle_time)
                             qp.coupler.play("const", amplitude_scale = flux_coupler / qp.coupler.operations["const"].amplitude, duration = idle_time)
-
                             qp.align()
                             # readout
                             if node.parameters.use_state_discrimination:
-                                qp.qubit_control.readout_state_gef(state_c[ii])
+                                if node.parameters.cz_or_iswap == "cz":
+                                    qp.qubit_control.readout_state_gef(state_c[ii])
+                                else:
+                                    qp.qubit_control.readout_state(state_c[ii])
                                 qp.qubit_target.readout_state(state_t[ii])
                                 save(state_c[ii], state_c_st[ii])
                                 save(state_t[ii], state_t_st[ii])
@@ -244,104 +243,16 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_control = plot_control_data(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["fit_results"],node)
     fig_target = plot_target_data(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["fit_results"],node)
-    fig_domain_frequency = plot_domain_frequency(node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["fit_results"],node)
+    fig_jeff_vs_flux = plot_jeff_vs_flux(node.results["ds_fit"], node.namespace["qubit_pairs"], node.results["fit_results"],node)
     plt.show()
     node.results["figures"] = {
-                                "fig_control": fig_control,
                                "fig_target":fig_target,
-                               "fig_domain_frequency":fig_domain_frequency}
-
+                               "fig_jeff_vs_flux":fig_jeff_vs_flux}
 
 
 # %%
 
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
-from scipy.signal import savgol_filter
-
-# ------------------------------
-# Load raw experimental data
-# ------------------------------
-data_matrix = node.results["ds_raw"].state_target.data[0].T  # shape = (123, 80)
-flux_bias = node.results["ds_raw"].flux_coupler.data  # shape = (80,)
-time_us = node.results["ds_raw"].idle_time.data * 1e-3     # 123 time points
-
-
-# ------------------------------
-# Define damped cosine fit model
-# ------------------------------
-def damped_cosine(t, A, gamma, f, phi, C):
-    return A * np.exp(-gamma * t) * np.cos(2 * np.pi * f * t + phi) + C
-
-# ------------------------------
-# Extract J_eff from each flux slice
-# ------------------------------
-jeff_raw = []
-fit_mask = []
-
-for i in range(data_matrix.shape[1]):
-    ydata = data_matrix[:, i]
-    if np.min(np.abs(ydata)) > 0.5:
-        # Flat trace: assign zero and mark as failed fit
-        jeff_raw.append(0.0)
-        fit_mask.append(False)
-        continue
-
-    try:
-        popt, _ = curve_fit(
-            damped_cosine, time_us, ydata,
-            p0=[0.3, 1.0, 5.0, 0.0, 0.0],
-            bounds=([0, 0, 0, -np.pi, -1], [1, 100, 20, np.pi, 1]),
-            maxfev=5000
-        )
-        freq_mhz = popt[2]
-        jeff_raw.append(freq_mhz)
-        fit_mask.append(True)
-    except RuntimeError:
-        jeff_raw.append(0.0)
-        fit_mask.append(False)
-
-jeff_raw = np.array(jeff_raw)
-fit_mask = np.array(fit_mask)
-phi_vals = np.array(flux_bias)
-
-# Smooth only the valid (nonzero) portion
-jeff_smooth = savgol_filter(jeff_raw, window_length=9, polyorder=3)
-
-# ------------------------------
-# Plot raw and smoothed J_eff
-# ------------------------------
-fig = plt.figure(figsize=(8, 5))
-
-# Blue: flat traces
-plt.plot(phi_vals[~fit_mask], jeff_raw[~fit_mask], 'o', color='blue', alpha=0.5, label='Flat signal (J = 0)')
-
-# Gold: valid fits
-plt.plot(phi_vals[fit_mask], jeff_raw[fit_mask], 'o', color='gold', alpha=0.6, label='Extracted $J_{eff}$')
-
-# Orange: smoothed fit
-plt.plot(phi_vals, jeff_smooth, '-', color='orange', linewidth=2, label='Smoothed $J_{eff}$')
-
-plt.axvline(phi_vals[np.argmin(jeff_smooth)], color='red', linestyle='--', label='Min $J_{eff}$ point')
-# Find the flux bias where J_eff is closest to 5 MHz
-target_value = 10.0  # MHz
-closest_idx = np.argmin(np.abs(jeff_smooth - target_value))
-flux_at_target = phi_vals[closest_idx]
-
-plt.axvline(flux_at_target, color='green', linestyle='--', label='CZ gate amplitude')
-plt.xlabel('Flux Bias (arb. units)')
-plt.ylabel('Effective Coupling $J_{eff}$ (MHz)')
-plt.title('Extracted Coupling vs Flux Bias')
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
-
-node.results["figures"]["fig_jeff_vs_flux"] = fig
-# %% {Update_state}
 # @node.run_action(skip_if=node.parameters.simulate)
 # def update_state(node: QualibrationNode[Parameters, Quam]):
 #     """Update the relevant parameters if the qubit data analysis was successful."""
@@ -364,3 +275,7 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
 
 # %%
 
+%load_ext autoreload
+%autoreload 2
+
+# %%

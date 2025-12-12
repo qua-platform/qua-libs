@@ -18,6 +18,7 @@ class NodeSpecificParameters(RunnableParameters):
     idle_time_max: int = 5000
     idle_time_step: int = 4
     cz_or_iswap: Literal["cz", "iswap"] = "cz"
+    target_gate_duration_ns: int = 50
 
 
 class Parameters(NodeParameters, CommonNodeParameters, NodeSpecificParameters, QubitPairExperimentNodeParameters):
