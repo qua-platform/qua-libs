@@ -4,7 +4,7 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.JAZZ_ZZ import (
+from calibration_utils.JAZZ import (
     FitResults,
     Parameters,
     fit_raw_data,
@@ -61,7 +61,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="JAZZ_ZZ",  # Name should be unique
+    name="JAZZ_CZ",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
 )
@@ -72,18 +72,10 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubit_pairs = ["q1-q2"]
-    node.parameters.qubit_pairs = ["qB1-B2"]
-    node.parameters.time_min_ns = 16
-    node.parameters.time_max_ns = 500
-    node.parameters.time_step_ns = 8
-    node.parameters.artificial_detuning_mhz = 10
-    node.parameters.amp_min = -0.2
-    node.parameters.amp_max = 0.2
-    node.parameters.amp_step = 0.01
-    node.parameters.num_averages = 100
-    node.parameters.use_state_discrimination = True
-    node.parameters.reset_type = "active"
+    node.parameters.qubit_pairs = ["qB2-qB4"]
+    node.parameters.operation = "cz_bipolar"
+    node.parameters.num_frame_rotations = 10
+    node.parameters.amp_range = 0.1
     pass
 
 
@@ -104,24 +96,33 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_averages
-    amplitudes = np.arange(node.parameters.amp_min, node.parameters.amp_max, node.parameters.amp_step)
-    durations = np.arange(node.parameters.time_min_ns, node.parameters.time_max_ns, node.parameters.time_step_ns) // 4
-    detuning = node.parameters.artificial_detuning_mhz * u.MHz
+    amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
+    frames = np.arange(0, 1, 1 / node.parameters.num_frame_rotations)
+
+    # Select the CZ operation type
+    operation = node.parameters.operation
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
-        "amp": xr.DataArray(amplitudes, attrs={"long_name": "coupler amplitude", "units": "V"}),
-        "time": xr.DataArray(durations * 4, attrs={"long_name": "coupler amplitude", "units": "ns"}),
+        "amp": xr.DataArray(amplitudes, attrs={"long_name": "amplitude scale", "units": "a.u."}),
+        "frame": xr.DataArray(frames, attrs={"long_name": "frame rotation", "units": "2π"}),
     }
+    tracked_qp_list = []
+    for qp in qubit_pairs:
+        with tracked_updates(qp, auto_revert=False, dont_assign_to_none=False) as tracked_qp:
+            # Mark the CZ gate amplitude as tracked for updates if the calibration is successful
+            tracked_qp.macros[operation].phase_shift_control = 0.0
+            tracked_qp.macros[operation].phase_shift_target = 0.0
+            tracked_qp_list.append(tracked_qp)
 
+    node.namespace["tracked_qubit_pairs"] = tracked_qp_list
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
         I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
         I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
         amp = declare(fixed)
-        virtual_detuning_phase = declare(fixed)
-        t = declare(int)
+        frame = declare(fixed)
         if node.parameters.use_state_discrimination:
             state_c = [declare(int) for _ in range(num_qubit_pairs)]
             state_t = [declare(int) for _ in range(num_qubit_pairs)]
@@ -140,8 +141,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(n, n_st)
                 # Loop over the amplitude scale
                 with for_(*from_array(amp, amplitudes)):
-                    with for_(*from_array(t, durations)):
-                        assign(virtual_detuning_phase, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
+                    # Loop over the frame rotations
+                    with for_(*from_array(frame, frames)):
                         for ii, qp in multiplexed_qubit_pairs.items():
                             # Reset the qubits
                             qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
@@ -154,34 +155,49 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qp.qubit_target.xy.play("x90")
                             qp.align()
                             # play the CZ gate
-                            qp.coupler.play(
-                                "const", amplitude_scale=qp.coupler.operations["const"].amplitude / amp, duration=t
-                            )
-                            qp.align()
+                            qp.macros[operation].apply(amplitude_scale_control=amp)
                             # Echo pulse
                             qp.qubit_control.xy.play("x180")
                             qp.qubit_target.xy.play("x180")
                             qp.align()
                             # play the CZ gate
-                            qp.coupler.play(
-                                "const", amplitude_scale=qp.coupler.operations["const"].amplitude / amp, duration=t
-                            )
-                            qp.align()
+                            qp.macros[operation].apply(amplitude_scale_control=amp)
                             # rotate the frame
-                            qp.qubit_target.xy.frame_rotation_2pi(virtual_detuning_phase)
+                            qp.qubit_target.xy.frame_rotation_2pi(frame)
                             # Tomographic rotation on the target qubit
                             qp.qubit_target.xy.play("x90")
                             qp.align()
 
                             if node.parameters.use_state_discrimination:
                                 # measure both qubits
+                                qp.qubit_control.readout_state_gef(state_c[ii])
                                 qp.qubit_target.readout_state(state_t[ii])
+                                # save each state outcome in its respective stream
+                                with switch_(state_c[ii]):
+                                    with case_(0):
+                                        wait(4)
+                                        save(1, state_cg_st[ii])
+                                        save(0, state_ce_st[ii])
+                                        save(0, state_cf_st[ii])
+                                    with case_(1):
+                                        wait(4)
+                                        save(0, state_cg_st[ii])
+                                        save(1, state_ce_st[ii])
+                                        save(0, state_cf_st[ii])
+                                    with default_():
+                                        wait(4)
+                                        save(0, state_cg_st[ii])
+                                        save(0, state_ce_st[ii])
+                                        save(1, state_cf_st[ii])
                                 save(state_t[ii], state_t_st[ii])
 
-                        else:
-                            qp.qubit_target.resonator.measure("readout", qua_vars=(I_t[ii], Q_t[ii]))
-                            save(I_t[ii], I_t_st[ii])
-                            save(Q_t[ii], Q_t_st[ii])
+                            else:
+                                qp.qubit_control.resonator.measure("readout", qua_vars=(I_c[ii], Q_c[ii]))
+                                qp.qubit_target.resonator.measure("readout", qua_vars=(I_t[ii], Q_t[ii]))
+                                save(I_c[ii], I_c_st[ii])
+                                save(Q_c[ii], Q_c_st[ii])
+                                save(I_t[ii], I_t_st[ii])
+                                save(Q_t[ii], Q_t_st[ii])
 
             align()
 
@@ -189,10 +205,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n")
             for i in range(num_qubit_pairs):
                 if node.parameters.use_state_discrimination:
-                    state_t_st[i].buffer(len(durations)).buffer(len(amplitudes)).average().save(f"state_target{i + 1}")
+                    state_cg_st[i].buffer(len(frames)).buffer(len(amplitudes)).average().save(f"g_state_control{i + 1}")
+                    state_ce_st[i].buffer(len(frames)).buffer(len(amplitudes)).average().save(f"e_state_control{i + 1}")
+                    state_cf_st[i].buffer(len(frames)).buffer(len(amplitudes)).average().save(f"f_state_control{i + 1}")
+                    state_t_st[i].buffer(len(frames)).buffer(len(amplitudes)).average().save(f"state_target{i + 1}")
                 else:
-                    I_t_st[i].buffer(len(durations)).buffer(len(amplitudes)).average().save(f"I_target{i + 1}")
-                    Q_t_st[i].buffer(len(durations)).buffer(len(amplitudes)).average().save(f"Q_target{i + 1}")
+                    I_c_st[i].buffer(len(frames)).buffer(len(amplitudes)).average().save(f"I_control{i + 1}")
+                    Q_c_st[i].buffer(len(frames)).buffer(len(amplitudes)).average().save(f"Q_control{i + 1}")
+                    I_t_st[i].buffer(len(frames)).buffer(len(amplitudes)).average().save(f"I_target{i + 1}")
+                    Q_t_st[i].buffer(len(frames)).buffer(len(amplitudes)).average().save(f"Q_target{i + 1}")
 
 
 # %% {Simulate}
@@ -288,15 +309,22 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit pair data analysis was successful."""
 
+    operation = node.parameters.operation
     with node.record_state_updates():
         fit_results = node.results["fit_results"]
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
                 continue
-            pass
+            qp.macros[operation].flux_pulse_control.amplitude = fit_results[qp.name]["optimal_amplitude"]
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+
+    for qp in node.namespace.get("tracked_qubit_pairs", []):
+        qp.revert_changes()
+
     node.save()
+
+# %%

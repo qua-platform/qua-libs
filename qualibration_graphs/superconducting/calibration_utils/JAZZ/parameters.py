@@ -8,15 +8,14 @@ from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperime
 class NodeSpecificParameters(RunnableParameters):
     num_averages: int = 100
     """Number of averages to perform. Default is 100."""
-    amp_min: float = -0.1
-    amp_max: float = 0.1
+    amp_range: float = 0.030
     """Range of amplitude variation around the nominal value, will scan between center - range and center + range. Default is 0.030."""
     amp_step: float = 0.001
     """Step size for amplitude scanning. Default is 0.001."""
-    time_min_ns: float = 16
-    time_max_ns: float = 1000
-    time_step_ns: float = 16
-    artificial_detuning_mhz: int = 1
+    num_frame_rotations: int = 10
+    """Number of frame rotation points for phase measurement. Default is 10."""
+    operation: Literal["cz_flattop", "cz_unipolar", "cz_bipolar"] = "cz_unipolar"
+    """Type of CZ operation to perform. Options are 'cz_flattop', 'cz_unipolar', or 'cz_bipolar'. Default is 'cz_unipolar'."""
     use_state_discrimination: bool = True
     """Whether to use state discrimination for readout. Default is True."""
 
