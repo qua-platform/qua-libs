@@ -133,7 +133,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qubit.xy.play("x90")
                                 qubit.xy.frame_rotation_2pi(phi)
                                 qubit.xy.wait(t + 1)
-                                qubit.z.wait(duration=qubit.xy.operations["x90"].length)
+                                qubit.z.wait(qubit.xy.operations["x90"].length * u.ns)
                                 qubit.z.play(
                                     "const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t
                                 )
