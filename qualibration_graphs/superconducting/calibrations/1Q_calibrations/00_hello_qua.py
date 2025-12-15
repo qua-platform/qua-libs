@@ -33,6 +33,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.multiplexed = True
     # node.parameters.num_shots = 2
+    node.parameters.simulate = True
+    node.parameters.qubits = ["q1"]
+    node.parameters.simulation_duration_ns = 2000
+    node.parameters.use_waveform_report = False
     pass
 
 
@@ -68,17 +72,23 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 qubit.xy.update_frequency(0)
             align()
 
-            with for_(n, 0, n < node.parameters.num_shots, n + 1):
-                save(n, n_st)
-                with for_(*from_array(a, amps)):
-                    for i, qubit in multiplexed_qubits.items():
-                        # qubit.z.play("const", duration=qubit.xy.operations["x180"].length * u.ns)
-                        qubit.xy.play("x180", amplitude_scale=a)
-                        qubit.wait(250 * u.ns)
-                    align()
+            qubit.xy.play("x180")
+            align()
+            node.machine.qubit_pairs["q1-3"].coupler.play("const")
+            align()
+            qubit.resonator.measure("readout")
 
-        with stream_processing():
-            n_st.save("n")
+            # with for_(n, 0, n < node.parameters.num_shots, n + 1):
+            #     save(n, n_st)
+            #     with for_(*from_array(a, amps)):
+            #         for i, qubit in multiplexed_qubits.items():
+            #             # qubit.z.play("const", duration=qubit.xy.operations["x180"].length * u.ns)
+            #             qubit.xy.play("x180", amplitude_scale=a)
+            #             qubit.wait(250 * u.ns)
+            #         align()
+
+        # with stream_processing():
+        #     n_st.save("n")
         # This example doesn't save I/Q, adjust if needed
         # I_st[0].buffer(len(amps)).average().save("I1")
         # Q_st[0].buffer(len(amps)).average().save("Q1")

@@ -39,10 +39,10 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubit_pairs = ["q1-2"]
     node.parameters.num_shots = 100
-    node.parameters.qubit_pairs = ["qB1-B2"]
+    node.parameters.qubit_pairs = ["q1-3"]
     node.parameters.modulation_range_mhz = 20
     node.parameters.modulation_step_mhz = 0.2
-    node.parameters.min_time = 16
+    node.parameters.min_time = 100
     node.parameters.max_time = 400
     node.parameters.time_step = 4
     node.parameters.use_state_discrimination = True
@@ -50,6 +50,9 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.modulation_amplitude = 0.07
     node.parameters.modulation_amplitude = 0.4
     node.parameters.cz_or_iswap = "iswap"
+    node.parameters.simulate = True
+    node.parameters.use_waveform_report = False
+    node.parameters.simulation_duration_ns = 20000
     pass
 
 
@@ -127,7 +130,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for qubit in node.machine.active_qubits:
             node.machine.initialize_qpu(target=qubit)
             align()
- 
+
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             for ii, qp in multiplexed_qubit_pairs.items():
                 print("qubit control: %s, qubit target: %s" % (qp.qubit_control.name, qp.qubit_target.name))
