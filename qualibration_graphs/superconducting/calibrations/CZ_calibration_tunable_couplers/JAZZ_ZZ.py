@@ -78,10 +78,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.time_max_ns = 500
     node.parameters.time_step_ns = 8
     node.parameters.artificial_detuning_mhz = 10
-    node.parameters.amp_min = -0.2
-    node.parameters.amp_max = 0.2
-    node.parameters.amp_step = 0.01
-    node.parameters.num_averages = 100
+    node.parameters.amp_min = -0.1
+    node.parameters.amp_max = 0.1
+    node.parameters.amp_step = 0.001
+    node.parameters.num_averages = 200
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
     pass
@@ -153,20 +153,24 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # setting both qubits to the initial state
                             qp.qubit_target.xy.play("x90")
                             qp.align()
+                            qp.wait(4)
                             # play the CZ gate
                             qp.coupler.play(
                                 "const", amplitude_scale=qp.coupler.operations["const"].amplitude / amp, duration=t
                             )
                             qp.align()
+                            qp.wait(4)
                             # Echo pulse
                             qp.qubit_control.xy.play("x180")
                             qp.qubit_target.xy.play("x180")
                             qp.align()
+                            qp.wait(4)
                             # play the CZ gate
                             qp.coupler.play(
                                 "const", amplitude_scale=qp.coupler.operations["const"].amplitude / amp, duration=t
                             )
                             qp.align()
+                            qp.wait(4)
                             # rotate the frame
                             qp.qubit_target.xy.frame_rotation_2pi(virtual_detuning_phase)
                             # Tomographic rotation on the target qubit
@@ -234,7 +238,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
+# %%
+node.results["ds_raw"].state_target.plot()
 
+# %%
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
