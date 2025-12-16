@@ -75,13 +75,13 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubit_pairs = ["q1-q2"]
     node.parameters.qubit_pairs = ["qB1-B2"]
     node.parameters.time_min_ns = 16
-    node.parameters.time_max_ns = 500
-    node.parameters.time_step_ns = 8
-    node.parameters.artificial_detuning_mhz = 10
-    node.parameters.amp_min = -0.1
-    node.parameters.amp_max = 0.1
-    node.parameters.amp_step = 0.001
-    node.parameters.num_averages = 200
+    node.parameters.time_max_ns = 2000
+    node.parameters.time_step_ns = 12
+    node.parameters.artificial_detuning_mhz = 5
+    node.parameters.amp_min = -1
+    node.parameters.amp_max = 0.15
+    node.parameters.amp_step = 0.01
+    node.parameters.num_averages = 100
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
     pass
@@ -153,24 +153,24 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # setting both qubits to the initial state
                             qp.qubit_target.xy.play("x90")
                             qp.align()
-                            qp.wait(4)
+                            # qp.wait(4)
                             # play the CZ gate
                             qp.coupler.play(
-                                "const", amplitude_scale=qp.coupler.operations["const"].amplitude / amp, duration=t
+                                "const", amplitude_scale=amp / qp.coupler.operations["const"].amplitude, duration=t
                             )
                             qp.align()
-                            qp.wait(4)
+                            # qp.wait(4)
                             # Echo pulse
                             qp.qubit_control.xy.play("x180")
                             qp.qubit_target.xy.play("x180")
                             qp.align()
-                            qp.wait(4)
+                            # qp.wait(4)
                             # play the CZ gate
                             qp.coupler.play(
-                                "const", amplitude_scale=qp.coupler.operations["const"].amplitude / amp, duration=t
+                                "const", amplitude_scale=amp / qp.coupler.operations["const"].amplitude, duration=t
                             )
                             qp.align()
-                            qp.wait(4)
+                            # qp.wait(4)
                             # rotate the frame
                             qp.qubit_target.xy.frame_rotation_2pi(virtual_detuning_phase)
                             # Tomographic rotation on the target qubit
@@ -238,8 +238,116 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
+
 # %%
-node.results["ds_raw"].state_target.plot()
+node.results["ds_raw"].state_target.plot(x="amp")
+
+# %%
+
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import curve_fit
+from scipy.signal import savgol_filter
+
+# ------------------------------
+# Load raw experimental data
+# ------------------------------
+data_matrix = node.results["ds_raw"].state_target.data[0].T  # shape = (123, 80)
+flux_bias = node.results["ds_raw"].amp.data  # shape = (80,)
+
+# Real idle time values in nanoseconds
+time_ns = node.results["ds_raw"].time.data
+time_us = time_ns * 1e-3  # Convert to µs
+
+
+# ------------------------------
+# Define damped cosine fit model
+# ------------------------------
+def damped_cosine(t, A, gamma, f, phi, C):
+    return A * np.exp(-gamma * t) * np.cos(2 * np.pi * f * t + phi) + C
+
+
+# ------------------------------
+# Extract J_eff from each flux slice
+# ------------------------------
+jeff_raw = []
+fit_mask = []
+
+for i in range(data_matrix.shape[1]):
+    ydata = data_matrix[:, i] - np.mean(data_matrix[:, i])
+
+    # if np.max(np.abs(ydata)) < 0.02:
+    #     # Flat trace: assign zero and mark as failed fit
+    #     jeff_raw.append(0.0)
+    #     fit_mask.append(False)
+    #     continue
+
+    try:
+        popt, _ = curve_fit(
+            damped_cosine,
+            time_us,
+            ydata,
+            p0=[0.3, 1.0, 5.0, 0.0, 0.0],
+            bounds=([-np.inf, -np.inf, -np.inf, -np.pi, -np.inf], [np.inf, np.inf, np.inf, np.pi, np.inf]),
+            maxfev=5000,
+        )
+        freq_mhz = popt[2]
+        jeff_raw.append(freq_mhz)
+        fit_mask.append(True)
+    except RuntimeError:
+        jeff_raw.append(0.0)
+        fit_mask.append(False)
+
+jeff_raw = np.array(jeff_raw)
+fit_mask = np.array(fit_mask)
+phi_vals = np.array(flux_bias)
+
+# Smooth only the valid (nonzero) portion
+jeff_smooth = savgol_filter(jeff_raw[fit_mask], window_length=9, polyorder=3)
+
+# ------------------------------
+# Plot raw and smoothed J_eff
+# ------------------------------
+plt.figure(figsize=(8, 5))
+
+# Blue: flat traces
+plt.plot(
+    phi_vals[~fit_mask],
+    np.abs(jeff_raw[~fit_mask] - node.parameters.artificial_detuning_mhz),
+    "o",
+    color="blue",
+    alpha=0.5,
+    label="Flat signal (J = 0)",
+)
+
+# Gold: valid fits
+plt.plot(
+    phi_vals[fit_mask],
+    np.abs(jeff_raw[fit_mask] - node.parameters.artificial_detuning_mhz),
+    "o",
+    color="gold",
+    alpha=0.6,
+    label="Extracted $J_{eff}$",
+)
+
+# Orange: smoothed fit
+plt.plot(
+    phi_vals[fit_mask],
+    np.abs(jeff_smooth - node.parameters.artificial_detuning_mhz),
+    "-",
+    color="orange",
+    linewidth=2,
+    label="Smoothed $J_{eff}$",
+)
+
+plt.xlabel("Flux Bias (arb. units)")
+plt.ylabel("Effective Coupling $J_{eff}$ (MHz)")
+plt.title("Extracted Coupling vs Flux Bias")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
 
 # %%
 # %% {Load_data}
