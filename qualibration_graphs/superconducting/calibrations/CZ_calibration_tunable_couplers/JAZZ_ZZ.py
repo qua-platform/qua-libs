@@ -9,9 +9,9 @@ from calibration_utils.JAZZ_ZZ import (
     Parameters,
     fit_raw_data,
     log_fitted_results,
+    plot_oscillation_data,
     plot_raw_data_with_fit,
     process_raw_dataset,
-    plot_oscillation_data,
 )
 from qm import SimulationConfig
 from qm.qua import *
@@ -80,7 +80,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.time_step_ns = 12
     node.parameters.artificial_detuning_mhz = 5
     node.parameters.amp_min = -1
-    node.parameters.amp_max = 0.15
+    node.parameters.amp_max = 0.3
     node.parameters.amp_step = 0.01
     node.parameters.num_averages = 100
     node.parameters.use_state_discrimination = True
@@ -154,24 +154,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # setting both qubits to the initial state
                             qp.qubit_target.xy.play("x90")
                             qp.align()
-                            # qp.wait(4)
                             # play the CZ gate
                             qp.coupler.play(
                                 "const", amplitude_scale=amp / qp.coupler.operations["const"].amplitude, duration=t
                             )
                             qp.align()
-                            # qp.wait(4)
                             # Echo pulse
                             qp.qubit_control.xy.play("x180")
                             qp.qubit_target.xy.play("x180")
                             qp.align()
-                            # qp.wait(4)
                             # play the CZ gate
                             qp.coupler.play(
                                 "const", amplitude_scale=amp / qp.coupler.operations["const"].amplitude, duration=t
                             )
                             qp.align()
-                            # qp.wait(4)
                             # rotate the frame
                             qp.qubit_target.xy.frame_rotation_2pi(virtual_detuning_phase)
                             # Tomographic rotation on the target qubit
@@ -240,14 +236,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 
-# %%
-node.results["ds_raw"].state_target.plot(x="amp")
-
-# %% {Plot_raw_data}
-node.results["ds_raw"].state_target.plot(x="amp")
-
-
-# %%
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
@@ -306,12 +294,12 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
                 continue
-            # Here you could update the optimal flux bias amplitude for minimum coupling
-            # For example: qp.some_parameter = fit_results[qp.name]["optimal_amplitude"]
-            pass
+            node.machine.qubit_pairs[qp.name].coupler.decouple_offset += fit_results[qp.name]["optimal_amplitude"]
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
+# %%
