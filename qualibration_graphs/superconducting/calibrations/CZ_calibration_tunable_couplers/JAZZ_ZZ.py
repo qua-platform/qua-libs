@@ -11,6 +11,7 @@ from calibration_utils.JAZZ_ZZ import (
     log_fitted_results,
     plot_raw_data_with_fit,
     process_raw_dataset,
+    plot_oscillation_data,
 )
 from qm import SimulationConfig
 from qm.qua import *
@@ -242,111 +243,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %%
 node.results["ds_raw"].state_target.plot(x="amp")
 
-# %%
-
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.optimize import curve_fit
-from scipy.signal import savgol_filter
-
-# ------------------------------
-# Load raw experimental data
-# ------------------------------
-data_matrix = node.results["ds_raw"].state_target.data[0].T  # shape = (123, 80)
-flux_bias = node.results["ds_raw"].amp.data  # shape = (80,)
-
-# Real idle time values in nanoseconds
-time_ns = node.results["ds_raw"].time.data
-time_us = time_ns * 1e-3  # Convert to µs
-
-
-# ------------------------------
-# Define damped cosine fit model
-# ------------------------------
-def damped_cosine(t, A, gamma, f, phi, C):
-    return A * np.exp(-gamma * t) * np.cos(2 * np.pi * f * t + phi) + C
-
-
-# ------------------------------
-# Extract J_eff from each flux slice
-# ------------------------------
-jeff_raw = []
-fit_mask = []
-
-for i in range(data_matrix.shape[1]):
-    ydata = data_matrix[:, i] - np.mean(data_matrix[:, i])
-
-    # if np.max(np.abs(ydata)) < 0.02:
-    #     # Flat trace: assign zero and mark as failed fit
-    #     jeff_raw.append(0.0)
-    #     fit_mask.append(False)
-    #     continue
-
-    try:
-        popt, _ = curve_fit(
-            damped_cosine,
-            time_us,
-            ydata,
-            p0=[0.3, 1.0, 5.0, 0.0, 0.0],
-            bounds=([-np.inf, -np.inf, -np.inf, -np.pi, -np.inf], [np.inf, np.inf, np.inf, np.pi, np.inf]),
-            maxfev=5000,
-        )
-        freq_mhz = popt[2]
-        jeff_raw.append(freq_mhz)
-        fit_mask.append(True)
-    except RuntimeError:
-        jeff_raw.append(0.0)
-        fit_mask.append(False)
-
-jeff_raw = np.array(jeff_raw)
-fit_mask = np.array(fit_mask)
-phi_vals = np.array(flux_bias)
-
-# Smooth only the valid (nonzero) portion
-jeff_smooth = savgol_filter(jeff_raw[fit_mask], window_length=9, polyorder=3)
-
-# ------------------------------
-# Plot raw and smoothed J_eff
-# ------------------------------
-plt.figure(figsize=(8, 5))
-
-# Blue: flat traces
-plt.plot(
-    phi_vals[~fit_mask],
-    np.abs(jeff_raw[~fit_mask] - node.parameters.artificial_detuning_mhz),
-    "o",
-    color="blue",
-    alpha=0.5,
-    label="Flat signal (J = 0)",
-)
-
-# Gold: valid fits
-plt.plot(
-    phi_vals[fit_mask],
-    np.abs(jeff_raw[fit_mask] - node.parameters.artificial_detuning_mhz),
-    "o",
-    color="gold",
-    alpha=0.6,
-    label="Extracted $J_{eff}$",
-)
-
-# Orange: smoothed fit
-plt.plot(
-    phi_vals[fit_mask],
-    np.abs(jeff_smooth - node.parameters.artificial_detuning_mhz),
-    "-",
-    color="orange",
-    linewidth=2,
-    label="Smoothed $J_{eff}$",
-)
-
-plt.xlabel("Flux Bias (arb. units)")
-plt.ylabel("Effective Coupling $J_{eff}$ (MHz)")
-plt.title("Extracted Coupling vs Flux Bias")
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
+# %% {Plot_raw_data}
+node.results["ds_raw"].state_target.plot(x="amp")
 
 
 # %%
@@ -385,17 +283,17 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in a specific figure whose shape is given by qubit pair grid locations."""
+    """Plot the JAZZ_ZZ coupling analysis and oscillation traces."""
     qubit_pairs = node.namespace["qubit_pairs"]
 
-    # Plot phase calibration data
-    fig_phase = plot_raw_data_with_fit(
-        node.results["ds_fit"],
-        qubit_pairs,
-    )
-    plt.show()
+    # Plot coupling vs flux bias
+    fig_coupling = plot_raw_data_with_fit(node.results["ds_fit"], qubit_pairs, node)
 
-    node.results["phase_figure"] = fig_phase
+    # Plot oscillation traces for verification
+    fig_oscillations = plot_oscillation_data(node.results["ds_raw"], qubit_pairs)
+
+    node.results["coupling_figure"] = fig_coupling
+    node.results["oscillation_figure"] = fig_oscillations
 
 
 # %% {Update_state}
@@ -408,6 +306,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
                 continue
+            # Here you could update the optimal flux bias amplitude for minimum coupling
+            # For example: qp.some_parameter = fit_results[qp.name]["optimal_amplitude"]
             pass
 
 

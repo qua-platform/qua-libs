@@ -3,24 +3,26 @@ from typing import Dict
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.cz_conditional_phase.analysis import FitResults
+from calibration_utils.JAZZ_ZZ.analysis import FitResults
 from qualibration_libs.core import BatchableList
 
 
 def plot_raw_data_with_fit(
     fit_results: xr.Dataset,
     qubit_pairs: BatchableList,
+    node=None,
 ) -> plt.Figure:
     """
-    Plot the CZ phase calibration data showing phase difference vs amplitude with fit.
+    Plot the JAZZ_ZZ data showing effective coupling J_eff vs flux bias with optimal point.
 
     Parameters:
     -----------
     fit_results : xr.Dataset
-        Fit results for each qubit pair
-        Optimal amplitudes for each qubit pair
+        Fit results for each qubit pair containing jeff_raw, jeff_smooth, fit_mask, optimal_amplitude
     qubit_pairs : BatchableList
         List of qubit pairs
+    node : QualibrationNode, optional
+        Node containing parameters like artificial_detuning_mhz
 
     Returns:
     --------
@@ -31,65 +33,126 @@ def plot_raw_data_with_fit(
     cols = min(4, n_pairs)  # Max 4 columns
     rows = (n_pairs + cols - 1) // cols  # Ceiling division
 
-    fig, axes = plt.subplots(2 * rows, cols, figsize=(4 * cols, 4 * rows * 2), squeeze=False)
+    fig, axes = plt.subplots(rows, cols, figsize=(8 * cols, 5 * rows), squeeze=False)
     axes = axes.flatten()
 
     for i, qp in enumerate(qubit_pairs):
-        ax = axes[2 * i]
+        ax = axes[i]
         qp_name = qp.name
         fit_result = fit_results.sel(qubit_pair=qp_name)
 
-        # Plot phase difference data
-        fit_result.phase_diff.plot.line(ax=ax, x="amp_full")
+        # Get flux bias values and coupling data
+        flux_bias = fit_result.amp.values
+        jeff_raw = fit_result.jeff_raw.values
+        jeff_smooth = fit_result.jeff_smooth.values
+        fit_mask = fit_result.fit_mask.values.astype(bool)
 
-        # Plot fitted curve if available
-        if hasattr(fit_result, "success") and fit_result.success and not np.all(np.isnan(fit_result.fitted_curve)):
-            ax.plot(fit_result.phase_diff.amp_full, fit_result.fitted_curve)
+        # Get artificial detuning from parameters
+        artificial_detuning = node.parameters.artificial_detuning_mhz if node else 1.0
 
-        # Mark optimal point
-        ax.plot([fit_result.optimal_amplitude], [0.5], marker="o", color="red")
-        ax.axhline(y=0.5, color="red", linestyle="--", lw=0.5)
-        ax.axvline(x=fit_result.optimal_amplitude, color="red", linestyle="--", lw=0.5)
+        # Plot flat traces (failed fits) - Blue
+        plt.sca(ax)
+        ax.plot(
+            flux_bias[~fit_mask],
+            np.abs(jeff_raw[~fit_mask] - artificial_detuning),
+            "o",
+            color="blue",
+            alpha=0.5,
+            label="Flat signal (J = 0)",
+        )
 
-        # Add secondary x-axis for detuning in MHz
-        def amp_to_detuning_MHz(amp):
-            return -(amp**2) * qp.qubit_control.freq_vs_flux_01_quad_term / 1e6  # Convert Hz to MHz
+        # Plot valid fits - Gold
+        ax.plot(
+            flux_bias[fit_mask],
+            np.abs(jeff_raw[fit_mask] - artificial_detuning),
+            "o",
+            color="gold",
+            alpha=0.6,
+            label="Extracted $J_{eff}$",
+        )
 
-        def detuning_MHz_to_amp(detuning_MHz):
-            return np.sqrt(-detuning_MHz * 1e6 / qp.qubit_control.freq_vs_flux_01_quad_term)
+        # Plot smoothed fit - Orange
+        if np.any(fit_mask):
+            ax.plot(
+                flux_bias[fit_mask],
+                np.abs(jeff_smooth[fit_mask] - artificial_detuning),
+                "-",
+                color="orange",
+                linewidth=2,
+                label="Smoothed $J_{eff}$",
+            )
 
-        secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
-        secax.set_xlabel("Detuning (MHz)")
+        # Mark optimal amplitude (minimum coupling)
+        if not np.isnan(fit_result.optimal_amplitude.values):
+            ax.axvline(
+                x=fit_result.optimal_amplitude.values,
+                color="red",
+                linestyle="--",
+                linewidth=2,
+                label="Optimal amplitude",
+            )
 
-        ax.set_title(qp_name)
-        ax.set_xlabel("Amplitude (V)")
-        ax.set_ylabel("Phase difference")
-
-        # Add secondary plot below: state_control for control_axis=1 averaged over frame
-        ax_sub = axes[2 * i + 1]
-
-        data_g = fit_results.g_state_control.sel(qubit_pair=qp_name, control_axis=1).mean(dim="frame")
-        data_e = fit_results.e_state_control.sel(qubit_pair=qp_name, control_axis=1).mean(dim="frame")
-        data_f = fit_results.f_state_control.sel(qubit_pair=qp_name, control_axis=1).mean(dim="frame")
-        # Try to get axes for mesh
-        amps = fit_result.amp_full.values if "amp_full" in fit_result.coords else fit_result.amp.values
-        ax_sub.plot(amps, data_g, label="g", color="blue")
-        ax_sub.plot(amps, data_e, label="e", color="red")
-        ax_sub.plot(amps, data_f, label="f", color="green")
-        ax_sub.axvline(fit_result.optimal_amplitude.item(), color="red", linestyle="--", lw=0.5, label="optimal")
-        ax_sub.axhline(0.0, color="red", linestyle="--", lw=0.5)
-        ax_sub.axhline(1.0, color="red", linestyle="--", lw=0.5)
-        ax_sub.set_ylabel("Control qubit population")
-        ax_sub.set_xlabel("Amplitude (V)")
-        secax2 = ax_sub.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
-        secax2.set_xlabel("Detuning (MHz)")
-        ax_sub.legend()
+        ax.set_xlabel("Flux Bias (arb. units)")
+        ax.set_ylabel("Effective Coupling $|J_{eff}|$ (MHz)")
+        ax.set_title(f"JAZZ_ZZ Coupling vs Flux Bias - {qp_name}")
+        ax.grid(True)
+        ax.legend()
 
     # Hide unused axes
-    for i in range(2 * n_pairs, len(axes)):
+    for i in range(n_pairs, len(axes)):
         axes[i].axis("off")
 
-    fig.suptitle("CZ phase calibration (phase difference + fit)")
+    fig.suptitle("JAZZ_ZZ Effective Coupling Extraction")
+    fig.tight_layout()
+
+    return fig
+
+
+def plot_oscillation_data(
+    ds_raw: xr.Dataset,
+    qubit_pairs: BatchableList,
+    amp_indices: list = None,
+) -> plt.Figure:
+    """
+    Plot raw oscillation data for selected amplitudes to show the time evolution.
+
+    Parameters:
+    -----------
+    ds_raw : xr.Dataset
+        Raw dataset containing state_target oscillations
+    qubit_pairs : BatchableList
+        List of qubit pairs
+    amp_indices : list, optional
+        List of amplitude indices to plot. If None, plots a few representative ones.
+
+    Returns:
+    --------
+    plt.Figure
+        The generated figure showing oscillation traces
+    """
+    n_pairs = len(qubit_pairs)
+    cols = min(4, n_pairs)
+    rows = (n_pairs + cols - 1) // cols
+
+    fig, axes = plt.subplots(rows, cols, figsize=(8 * cols, 5 * rows), squeeze=False)
+    axes = axes.flatten()
+
+    for i, qp in enumerate(qubit_pairs):
+        ax = axes[i]
+        qp_name = qp.name
+        qp_data = ds_raw.sel(qubit_pair=qp_name)
+
+        qp_data.state_target.plot(ax=ax, x="amp")
+
+        ax.set_xlabel("Time (µs)")
+        ax.set_ylabel("State Target")
+        ax.set_title(f"JAZZ_ZZ Oscillations - {qp_name}")
+
+    # Hide unused axes
+    for i in range(n_pairs, len(axes)):
+        axes[i].axis("off")
+
+    fig.suptitle("JAZZ_ZZ Raw Oscillation Data")
     fig.tight_layout()
 
     return fig

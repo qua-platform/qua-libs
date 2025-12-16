@@ -7,33 +7,25 @@ import xarray as xr
 from qualibrate import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation, oscillation
 from scipy.optimize import curve_fit
+from scipy.signal import savgol_filter
 
 
 @dataclass
 class FitResults:
-    """Stores the relevant CZ conditional phase experiment fit parameters for a single qubit pair"""
+    """Stores the relevant JAZZ_ZZ experiment fit parameters for a single qubit pair"""
 
     optimal_amplitude: float
     success: bool
 
 
-def fix_oscillation_phi_2pi(fit_data):
-    """Extract the phase parameter from oscillation fit data."""
-    # Extract the phase parameter from the fit results
-    phase = fit_data.sel(fit_vals="phi")
-    # Normalize phase to [0, 1] range (representing 0 to 2π)
-    phase = (phase / (2 * np.pi)) % 1
-    return phase
-
-
-def tanh_fit(x, a, b, c, d):
-    """Tanh fitting function for phase difference vs amplitude."""
-    return a * np.tanh(b * x + c) + d
+def damped_cosine(t, A, gamma, f, phi, C):
+    """Damped cosine fitting function for JAZZ_ZZ oscillations."""
+    return A * np.exp(-gamma * t) * np.cos(2 * np.pi * f * t + phi) + C
 
 
 def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
     """
-    Logs the node-specific fitted results for all qubit pairs.
+    Logs the JAZZ_ZZ fitted results for all qubit pairs.
 
     Parameters:
     -----------
@@ -47,7 +39,7 @@ def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
 
     for qp_name, fit_result in fit_results.items():
         s_qubit = f"Results for qubit pair {qp_name}: "
-        s_amp = f"\tOptimal CZ amplitude: {fit_result.optimal_amplitude:.6f} a.u."
+        s_amp = f"\tOptimal JAZZ_ZZ amplitude for minimum coupling: {fit_result.optimal_amplitude:.6f} a.u."
 
         if fit_result.success:
             s_qubit += "SUCCESS!\n"
@@ -61,7 +53,7 @@ def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     """
-    Process the raw dataset by adding amplitude and detuning coordinates.
+    Process the raw dataset for JAZZ_ZZ analysis.
 
     Parameters:
     -----------
@@ -75,26 +67,16 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     xr.Dataset
         Processed dataset with additional coordinates
     """
-    qubit_pairs = node.namespace["qubit_pairs"]
-
-    operation = node.parameters.operation
-
-    def abs_amp(qp, amp):
-        return amp * qp.macros[operation].flux_pulse_control.amplitude
-
-    def detuning(qp, amp):
-        amplitude_squared = (amp * qp.macros[operation].flux_pulse_control.amplitude) ** 2
-        return -amplitude_squared * qp.qubit_control.freq_vs_flux_01_quad_term
-
-    ds = ds.assign_coords({"amp_full": (["qubit_pair", "amp"], np.array([abs_amp(qp, ds.amp) for qp in qubit_pairs]))})
-    ds = ds.assign_coords({"detuning": (["qubit_pair", "amp"], np.array([detuning(qp, ds.amp) for qp in qubit_pairs]))})
+    # Convert time from ns to µs for fitting
+    time_us = ds.time.data * 1e-3
+    ds = ds.assign_coords(time_us=("time", time_us))
 
     return ds
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitResults]]:
     """
-    Fit the CZ conditional phase data for each qubit pair.
+    Fit the JAZZ_ZZ data by extracting effective coupling J_eff from oscillations.
 
     Parameters:
     -----------
@@ -108,7 +90,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     Tuple[xr.Dataset, Dict[str, FitResults]]
         Dataset with fit results and dictionary of fit results for each qubit pair.
     """
-    ds_fit = ds.groupby("qubit_pair").apply(fit_routine)
+    ds_fit = ds.groupby("qubit_pair").apply(lambda da: fit_jazz_zz_routine(da, node))
 
     # Extract the relevant fitted parameters
     ds_fit, fit_results = _extract_relevant_parameters(ds_fit, node)
@@ -116,60 +98,82 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     return ds_fit, fit_results
 
 
-def fit_routine(da):
+def fit_jazz_zz_routine(da, node):
+    """
+    Extract effective coupling J_eff from JAZZ_ZZ oscillations for each amplitude.
 
+    Parameters:
+    -----------
+    da : xr.DataArray
+        Data array containing the oscillation data
+    node : QualibrationNode
+        The calibration node containing parameters
+
+    Returns:
+    --------
+    xr.DataArray
+        Data array with added fit results
+    """
     if hasattr(da, "state_target"):
         data = "state_target"
     else:
         data = "I_target"
-    # Fit oscillation for each control state and amplitude
-    fit_data = fit_oscillation(da[data], "frame")
 
-    # Add fitted oscillation curves to the dataset
-    da = da.assign(
-        {
-            "fitted": oscillation(
-                da.frame,
-                fit_data.sel(fit_vals="a"),
-                fit_data.sel(fit_vals="f"),
-                fit_data.sel(fit_vals="phi"),
-                fit_data.sel(fit_vals="offset"),
+    # Extract the data matrix (time vs amplitude)
+    data_matrix = da[data].data[0].T  # shape = (n_time, n_amp)
+    flux_bias = da.amp.data  # amplitude values
+    time_us = da.time_us.data  # time in µs
+
+    # Extract J_eff from each flux slice
+    jeff_raw = []
+    fit_mask = []
+
+    for i in range(data_matrix.shape[1]):
+        ydata = data_matrix[:, i] - np.mean(data_matrix[:, i])
+
+        try:
+            popt, _ = curve_fit(
+                damped_cosine,
+                time_us,
+                ydata,
+                p0=[0.3, 1.0, 5.0, 0.0, 0.0],
+                bounds=([-np.inf, -np.inf, -np.inf, -np.pi, -np.inf], [np.inf, np.inf, np.inf, np.pi, np.inf]),
+                maxfev=5000,
             )
-        }
-    )
+            freq_mhz = popt[2]
+            jeff_raw.append(freq_mhz)
+            fit_mask.append(True)
+        except RuntimeError:
+            jeff_raw.append(0.0)
+            fit_mask.append(False)
 
-    # Extract phase and calculate phase difference
-    phase_diff = fix_oscillation_phi_2pi(fit_data)
+    jeff_raw = np.array(jeff_raw)
+    fit_mask = np.array(fit_mask)
 
-    # Fit tanh curve to find optimal amplitude
-    try:
-        # The initial guess for the tanh fit is important and needs to be adjusted based on the amplitude range
-        amp_range = np.max(phase_diff.amp_full.values) - np.min(phase_diff.amp_full.values)
-        p0 = [
-            -0.5,  # a
-            1 / amp_range,  # b
-            -np.mean(phase_diff.amp_full.values) / amp_range,  # c
-            0.5,  # d
-        ]
-        fit_params, _ = curve_fit(tanh_fit, phase_diff.amp_full.values[0], phase_diff.values[0], p0=p0)
-        optimal_amp = (np.arctanh((0.5 - fit_params[3]) / fit_params[0]) - fit_params[2]) / fit_params[1]
-        fitted_curve = tanh_fit(phase_diff.amp_full, *fit_params)
+    # Smooth only the valid (nonzero) portion if there are enough valid points
+    if np.sum(fit_mask) >= 9:  # Need at least 9 points for window_length=9
+        jeff_smooth = np.zeros_like(jeff_raw)
+        jeff_smooth[fit_mask] = savgol_filter(jeff_raw[fit_mask], window_length=9, polyorder=3)
+    else:
+        jeff_smooth = jeff_raw.copy()
+
+    # Find optimal amplitude (closest to artificial_detuning_mhz to minimize coupling)
+    valid_indices = np.where(fit_mask)[0]
+    if len(valid_indices) > 0:
+        coupling_deviation = np.abs(jeff_smooth[fit_mask] - node.parameters.artificial_detuning_mhz)
+        min_coupling_idx = valid_indices[np.argmin(coupling_deviation)]
+        optimal_amplitude = flux_bias[min_coupling_idx]
         success = True
-
-    except Exception as e:
-        # Fallback: find amplitude closest to π phase difference (0.5 in normalized units)
-        optimal_amp = np.nan
-        fitted_curve = (phase_diff.dims, np.full_like(phase_diff.values, np.nan))
+    else:
+        optimal_amplitude = np.nan
         success = False
 
-    if optimal_amp is np.nan or not (np.min(da.amp_full.values) <= optimal_amp <= np.max(da.amp_full.values)):
-        success = False
-        optimal_amp = np.nan
-
+    # Add results to data array
     da = da.assign(
-        optimal_amplitude=optimal_amp,
-        phase_diff=phase_diff,
-        fitted_curve=fitted_curve,
+        jeff_raw=("amp", jeff_raw),
+        jeff_smooth=("amp", jeff_smooth),
+        fit_mask=("amp", fit_mask),
+        optimal_amplitude=optimal_amplitude,
         success=success,
     )
 
@@ -185,7 +189,7 @@ def _extract_relevant_parameters(
     Parameters:
     -----------
     ds_fit : xr.Dataset
-        Dataset containing the fit results from fit_routine.
+        Dataset containing the fit results from fit_jazz_zz_routine.
     node : QualibrationNode
         The calibration node containing parameters and qubit pairs.
 
@@ -198,11 +202,16 @@ def _extract_relevant_parameters(
 
     # Add metadata attributes to the dataset
     if "optimal_amplitude" in ds_fit.data_vars:
-        ds_fit.optimal_amplitude.attrs = {"long_name": "optimal CZ amplitude", "units": "a.u."}
-    if "phase_diff" in ds_fit.data_vars:
-        ds_fit.phase_diff.attrs = {"long_name": "phase difference", "units": "2π"}
-    if "fitted_curve" in ds_fit.data_vars:
-        ds_fit.fitted_curve.attrs = {"long_name": "fitted tanh curve", "units": "2π"}
+        ds_fit.optimal_amplitude.attrs = {
+            "long_name": "optimal JAZZ_ZZ amplitude for minimum coupling",
+            "units": "a.u.",
+        }
+    if "jeff_raw" in ds_fit.data_vars:
+        ds_fit.jeff_raw.attrs = {"long_name": "raw extracted effective coupling", "units": "MHz"}
+    if "jeff_smooth" in ds_fit.data_vars:
+        ds_fit.jeff_smooth.attrs = {"long_name": "smoothed effective coupling", "units": "MHz"}
+    if "fit_mask" in ds_fit.data_vars:
+        ds_fit.fit_mask.attrs = {"long_name": "successful fit mask", "units": "bool"}
 
     # Create FitResults for each qubit pair
     fit_results = {}
