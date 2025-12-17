@@ -33,8 +33,6 @@ from calibration_utils.charge_stability import (
     plot_raw_amplitude,
     plot_raw_phase,
     plot_change_point_overlays,
-    plot_gap_shoulders,
-    plot_charge_state_boundaries,
     plot_line_fit_overlays,
 )
 from qualibration_libs.runtime import simulate_and_plot
@@ -312,15 +310,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
             if fit_params.get("segments"):
                 fig_lines = plot_line_fit_overlays(sensor_data, fit_params, sensor.id)
                 node.results["figures"][f"{sensor.id}_line_fits"] = fig_lines
-
-            # Plot gap shoulders
-            if fit_params["success"]:
-                fig_shoulders = plot_gap_shoulders(sensor_data, fit_params, sensor.id)
-                node.results["figures"][f"{sensor.id}_gap_shoulders"] = fig_shoulders
-
-                # Plot charge state boundaries for state (0, 0)
-                fig_boundaries = plot_charge_state_boundaries(sensor_data, fit_params, sensor.id, state=(0, 0))
-                node.results["figures"][f"{sensor.id}_state_boundaries"] = fig_boundaries
 
     # plt.show()  # Commented out to avoid blocking in non-interactive mode
 
