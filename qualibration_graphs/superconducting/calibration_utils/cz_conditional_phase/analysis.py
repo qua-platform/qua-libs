@@ -6,7 +6,7 @@ import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation, oscillation
-from scipy.optimize import curve_fit
+from scipy.ndimage import uniform_filter1d
 
 
 @dataclass
@@ -24,11 +24,6 @@ def fix_oscillation_phi_2pi(fit_data):
     # Normalize phase to [0, 1] range (representing 0 to 2π)
     phase = (phase / (2 * np.pi)) % 1
     return phase
-
-
-def tanh_fit(x, a, b, c, d):
-    """Tanh fitting function for phase difference vs amplitude."""
-    return a * np.tanh(b * x + c) + d
 
 
 def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
@@ -142,26 +137,49 @@ def fit_routine(da):
     phase = fix_oscillation_phi_2pi(fit_data)
     phase_diff = (phase.sel(control_axis=0) - phase.sel(control_axis=1)) % 1
 
-    # Fit tanh curve to find optimal amplitude
-    try:
-        # The initial guess for the tanh fit is important and needs to be adjusted based on the amplitude range
-        amp_range = np.max(phase_diff.amp.values) - np.min(phase_diff.amp.values)
-        p0 = [
-            -0.5,  # a
-            1 / amp_range,  # b
-            -np.mean(phase_diff.amp.values) / amp_range,  # c
-            0.5,  # d
-        ]
-        fit_params, _ = curve_fit(tanh_fit, phase_diff.amp.values[0], phase_diff.values[0], p0=p0)
-        optimal_amp = (np.arctanh((0.5 - fit_params[3]) / fit_params[0]) - fit_params[2]) / fit_params[1]
-        fitted_curve = tanh_fit(phase_diff.amp, *fit_params)
-        success = True
+    # Robust analysis: find amplitude closest to π phase difference (0.5 in normalized units)
+    # Apply smoothing to make it more robust to noisy data
 
-    except Exception as e:
-        # Fallback: find amplitude closest to π phase difference (0.5 in normalized units)
+    # Apply smoothing if we have enough data points
+    if len(phase_diff.amp) > 5:
+        # Smooth the phase difference data with a rolling window
+        window_size = min(5, len(phase_diff.amp) // 3)  # Adaptive window size
+
+        # Handle potentially multidimensional data by flattening along amp axis
+        phase_values = phase_diff.values.flatten() if phase_diff.values.ndim > 1 else phase_diff.values
+        smoothed_phase_diff = uniform_filter1d(phase_values, size=window_size, mode="nearest")
+
+        # Find points near 0.5 (within some tolerance)
+        tolerance = 0.1  # Allow 10% tolerance around 0.5
+        distances = np.abs(smoothed_phase_diff - 0.5)
+
+        # Find candidates within tolerance
+        candidates_mask = distances <= tolerance
+
+        if np.any(candidates_mask):
+            # Use weighted average of good candidates, weighted by inverse distance
+            amp_values = phase_diff.amp.values
+            candidate_amps = (
+                amp_values[candidates_mask] if amp_values.ndim == 1 else amp_values.flatten()[candidates_mask]
+            )
+            candidate_distances = distances[candidates_mask]
+
+            # Avoid division by zero by adding small epsilon
+            weights = 1 / (candidate_distances + 1e-10)
+            optimal_amp = float(np.average(candidate_amps, weights=weights))
+            success = True
+        else:
+            # Fallback: find the closest point to 0.5
+            min_idx = np.argmin(distances)
+            amp_values = phase_diff.amp.values
+            optimal_amp = float(amp_values[min_idx] if amp_values.ndim == 1 else amp_values.flatten()[min_idx])
+            success = False  # Mark as failed since no good candidates found
+    else:
+        # Not enough data points for smoothing, use simple approach
         optimal_amp = float(np.abs(phase_diff - 0.5).idxmin("amp"))
-        fitted_curve = np.full_like(phase_diff.values, np.nan)
-        success = False
+        success = len(phase_diff.amp) >= 3  # Need at least 3 points for meaningful result
+
+    fitted_curve = xr.full_like(phase_diff, np.nan)  # No curve fitting, create xarray with same structure
 
     da = da.assign(
         optimal_amplitude=optimal_amp,

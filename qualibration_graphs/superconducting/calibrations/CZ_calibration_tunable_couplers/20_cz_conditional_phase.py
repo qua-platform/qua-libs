@@ -76,6 +76,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.qubit_pairs = ["qB1-B2"]
     node.parameters.num_averages = 100
     node.parameters.num_frame_rotations = 12
+    node.parameters.load_data_id = 7287  # e.g., "2024-06-15/15-30-00_cz_conditional_phase"
     pass
 
 
@@ -291,7 +292,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     node.results["phase_figure"] = fig_phase
     node.results["raw_figure"] = fig
 
-    node.save()
+    # node.save()
 
 
 # %% {Update_state}
