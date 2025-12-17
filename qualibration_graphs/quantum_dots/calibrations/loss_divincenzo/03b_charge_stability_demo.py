@@ -24,10 +24,18 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.charge_stability import Parameters, get_voltage_arrays #, get_swept_object
 from calibration_utils.charge_stability import (
+    Parameters,
+    get_voltage_arrays,
+    process_raw_dataset,
+    fit_raw_data,
+    log_fitted_results,
     plot_raw_amplitude,
     plot_raw_phase,
+    plot_change_point_overlays,
+    plot_gap_shoulders,
+    plot_charge_state_boundaries,
+    plot_line_fit_overlays,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -178,39 +186,38 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_data(node: QualibrationNode[Parameters, Quam]):
     """Simulate the data."""
-    # Simulate the data
-    updated_cgs = [[0.001, 0.002, 0.000, 0.000, 0.000, 0.000, 0.100]]
-    model = init_dot_model(Cgs=updated_cgs)
-    n_charges = [1, 3, 0, 0, 0, 0, 5]
-    optimal_voltage_configuration = model.optimal_Vg(
-        n_charges=n_charges,
-    )
 
-    # Create voltage composer
-    voltage_composer = model.gate_voltage_composer
+    model = init_dot_model()
 
-    optimal_voltage_configuration[-1] = 4.975
+    vgs = 14.875
+    compensation1 = -0.01943306
+    compensation2 = -0.0268294
 
-    # Get sweep axes from namespace (created in create_qua_program)
     sweep_axes = node.namespace["sweep_axes"]
-    x_volts = sweep_axes["x_volts"].values
-    y_volts = sweep_axes["y_volts"].values
+    vp1 = sweep_axes["x_volts"].values * 1e3
+    vp2 = sweep_axes["y_volts"].values * 1e3
+
+    def sensor_scan(vp1, vp2s, vs=0.0, compensation1=0.0, compensation2=0.0):
+        base = np.array([vp1, 0, 0, 0, 0, 0, vs + vp1 * compensation1])
+        v_add = np.array(vp2s)[:, None] * np.array([0, 1, 0, 0, 0, 0, compensation2])
+        inputs = base + v_add
+        z, n = model.charge_sensor_open(-inputs)
+        return z.squeeze()
+    
+    zs = []
+    for vp in vp1:
+        zs.append(
+            sensor_scan(vp, vp2, vs=vgs, compensation1=compensation1, compensation2=compensation2)
+        )
+    zs = np.array(zs)
+
     sensors = node.namespace["sensors"]
     num_sensors = len(sensors)
-
-    # Define min and max values for the 2D voltage sweep matching the sweep_axes
-    vx_min, vx_max = x_volts[0] * 1e3, x_volts[-1] * 1e3
-    vy_min, vy_max = y_volts[0]* 1e3, y_volts[-1] * 1e3
-
-    # Create voltage array for 2D sweep (gates 1 and 2)
-    vg = voltage_composer.do2d(1, vx_min, vx_max, len(x_volts), 2, vy_min, vy_max, len(y_volts))
-    vg += optimal_voltage_configuration
-    z, n = model.charge_sensor_open(vg)
 
     # Create I and Q data arrays with the same structure as execute_qua_program would produce
     # z is the simulated sensor response, we'll use it as amplitude (I channel)
     # Reshape z to match the expected dimensions: (y_volts, x_volts)
-    z_reshaped = z.reshape(len(y_volts), len(x_volts))
+    z_reshaped = zs #.reshape(len(y_volts), len(x_volts))
 
     # Create I and Q arrays for each sensor
     # For simplicity, replicate the same pattern for all sensors
@@ -261,19 +268,61 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
 
 
+# %% {Analyse_data}
+@node.run_action()
+def analyse_data(node: QualibrationNode[Parameters, Quam]):
+    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    # Process raw dataset (convert ADC to volts, compute amplitude)
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+
+    # Perform charge stability analysis
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+
+    # Convert FitParameters to dictionaries for storage (JSON serializable)
+    node.results["fit_results"] = {k: v.to_dict() for k, v in fit_results.items()}
+
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+
 # %% {Plot_data}
-@node.run_action(skip_if= node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.run_in_video_mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+    # Plot basic amplitude and phase maps
     fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
     fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
-    plt.show()
+
     # Store the generated figures
     node.results["figures"] = {
         "amplitude": fig_amplitude,
         "phase": fig_phase,
     }
 
+    # Optionally plot detailed analysis results if fit_results are available
+    if "fit_results" in node.results and node.results["fit_results"]:
+        sensors = node.namespace["sensors"]
+        for sensor in sensors:
+            sensor_data = node.results["ds_raw"].sel(sensors=sensor.id)
+            fit_params = node.results["fit_results"][sensor.id]
+
+            # Plot change point overlays
+            fig_cp = plot_change_point_overlays(sensor_data, fit_params, sensor.id)
+            node.results["figures"][f"{sensor.id}_change_points"] = fig_cp
+
+            if fit_params.get("segments"):
+                fig_lines = plot_line_fit_overlays(sensor_data, fit_params, sensor.id)
+                node.results["figures"][f"{sensor.id}_line_fits"] = fig_lines
+
+            # Plot gap shoulders
+            if fit_params["success"]:
+                fig_shoulders = plot_gap_shoulders(sensor_data, fit_params, sensor.id)
+                node.results["figures"][f"{sensor.id}_gap_shoulders"] = fig_shoulders
+
+                # Plot charge state boundaries for state (0, 0)
+                fig_boundaries = plot_charge_state_boundaries(sensor_data, fit_params, sensor.id, state=(0, 0))
+                node.results["figures"][f"{sensor.id}_state_boundaries"] = fig_boundaries
+
+    # plt.show()  # Commented out to avoid blocking in non-interactive mode
 
 # %%
 # from calibration_utils.run_video_mode import create_video_mode
@@ -306,5 +355,3 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save the node results and state."""
     node.save()
-
-

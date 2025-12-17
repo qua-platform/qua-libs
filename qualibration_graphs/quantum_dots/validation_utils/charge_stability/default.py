@@ -62,12 +62,12 @@ class InitDotModel:
     @staticmethod
     def white_noise() -> WhiteNoise:
         """Return the default white noise model."""
-        return WhiteNoise(amplitude=1.25e-2)
+        return WhiteNoise(amplitude=1e-4)
 
     @staticmethod
     def telegraph_noise() -> TelegraphNoise:
         """Return the default telegraph noise model."""
-        return TelegraphNoise(amplitude=1e-3, p01=1e-3, p10=1e-2)
+        return TelegraphNoise(amplitude=1e-4, p01=1e-4, p10=1e-4)
 
     @classmethod
     def noise_model(cls) -> Any:
@@ -79,8 +79,8 @@ class InitDotModel:
         """Return the default latching model for the six-dot configuration."""
         return LatchingModel(
             n_dots=cls.n_dots,
-            p_leads=np.ones(cls.n_dots) * 0.85,
-            p_inter=0.85 * (np.ones((cls.n_dots, cls.n_dots)) - np.eye(cls.n_dots)),
+            p_leads=np.ones(cls.n_dots) * 0.995,
+            p_inter=0.995 * (np.ones((cls.n_dots, cls.n_dots)) - np.eye(cls.n_dots)),
         )
 
     def __call__(
@@ -113,7 +113,7 @@ class InitDotModel:
             algorithm=algorithm,
             implementation=implementation,
             noise_model=noise_model if noise_model is not None else self.noise_model(),
-            latching_model=latching_model if latching_model is not None else self.latching_model(),
+            latching_model=None #latching_model if latching_model is not None else self.latching_model(),
         )
 
 
