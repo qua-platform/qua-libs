@@ -145,6 +145,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         assign(virtual_detuning_phase, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
                         for ii, qp in multiplexed_qubit_pairs.items():
                             # Reset the qubits
+                            qp.coupler.update_frequency(0)
                             qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
                             qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
                             qp.align()
@@ -301,5 +302,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
 
 # %%

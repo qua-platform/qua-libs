@@ -20,7 +20,7 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 100
     num_frames: int = 17
-    operation: Literal["cz_flattop", "cz_unipolar"] = "cz_unipolar"
+    operation: Literal["cz_flattop", "cz_unipolar", "cz"] = "cz_unipolar"
     use_state_discrimination: bool = True
 
 
@@ -30,4 +30,5 @@ class Parameters(
     NodeSpecificParameters,
     QubitPairExperimentNodeParameters,
 ):
+    targets_name: ClassVar[str] = "qubit_pairs"
     targets_name: ClassVar[str] = "qubit_pairs"
