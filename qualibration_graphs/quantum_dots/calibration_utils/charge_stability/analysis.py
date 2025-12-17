@@ -1,4 +1,3 @@
-from scipy.signal import savgol_filter
 import logging
 from dataclasses import dataclass
 from typing import Tuple, Dict, List, Any, Optional
@@ -11,13 +10,6 @@ from jax import lax
 from qualibrate import QualibrationNode
 
 from bayesian_change_point.bayesian_cp import BayesianCP
-from bayesian_change_point.triple_point_finder import find_gap_shoulders
-from bayesian_change_point.localize_and_validate import (
-    Consolidator,
-    StepLocalizer,
-    recompute_stats_for_merged,
-)
-from bayesian_change_point.baseline_removal import BaselineChooser, estimate_line_from_slopes_gaussian_EM
 try:
     from .edge_line_analysis import analyze_edge_map, SegmentFit
     _edge_line_import_error: Optional[Exception] = None
@@ -30,12 +22,6 @@ except ImportError as exc:  # pragma: no cover - optional dependency guard
 class FitParameters:
     """Stores the relevant charge stability experiment fit parameters for a single sensor"""
 
-    row_peaks: np.ndarray
-    col_peaks: np.ndarray
-    row_peaks2: np.ndarray
-    col_peaks2: np.ndarray
-    results: list
-    results2: list
     cp: np.ndarray
     cp2: np.ndarray
     mean_cp: np.ndarray
@@ -48,13 +34,6 @@ class FitParameters:
 
     def to_dict(self):
         """Convert FitParameters to a JSON-serializable dictionary."""
-        def convert_result_dict(result_dict):
-            """Convert numpy arrays in result dictionaries to lists."""
-            return {
-                k: (v.tolist() if isinstance(v, (np.ndarray, jnp.ndarray)) else v)
-                for k, v in result_dict.items()
-            }
-
         def serialize_segment(seg: Any):
             """Convert SegmentFit or dict to serializable dict."""
             if isinstance(seg, dict):
@@ -71,12 +50,6 @@ class FitParameters:
             return {}
 
         return {
-            "row_peaks": np.asarray(self.row_peaks).tolist() if self.row_peaks is not None and len(self.row_peaks) > 0 else [],
-            "col_peaks": np.asarray(self.col_peaks).tolist() if self.col_peaks is not None and len(self.col_peaks) > 0 else [],
-            "row_peaks2": np.asarray(self.row_peaks2).tolist() if self.row_peaks2 is not None and len(self.row_peaks2) > 0 else [],
-            "col_peaks2": np.asarray(self.col_peaks2).tolist() if self.col_peaks2 is not None and len(self.col_peaks2) > 0 else [],
-            "results": [convert_result_dict(r) for r in self.results],
-            "results2": [convert_result_dict(r) for r in self.results2],
             "cp": np.asarray(self.cp).tolist() if self.cp is not None else [],
             "cp2": np.asarray(self.cp2).tolist() if self.cp2 is not None else [],
             "mean_cp": np.asarray(self.mean_cp).tolist() if self.mean_cp is not None else [],
@@ -140,15 +113,13 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
         s_sensor = f"Results for sensor {q}: "
-        num_transitions_v = f"\tVertical transitions found: {len(fit_results[q]['results'])}\n"
-        num_transitions_h = f"\tHorizontal transitions found: {len(fit_results[q]['results2'])}\n"
         num_segments = f"\tLine segments fitted: {len(fit_results[q].get('segments', []))}\n"
         num_intersections = f"\tIntersections found: {len(fit_results[q].get('intersections', []))}\n"
         if fit_results[q]["success"]:
             s_sensor += " SUCCESS!\n"
         else:
             s_sensor += " FAIL!\n"
-        log_callable(s_sensor + num_transitions_v + num_transitions_h + num_segments + num_intersections)
+        log_callable(s_sensor + num_segments + num_intersections)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
@@ -263,86 +234,13 @@ def fit_individual_raw_data(data: xr.Dataset, sensor_id: str, node: Qualibration
         show=False,
     )
 
-    # Find peaks in change point detections
-    masks = jax.vmap(peak_mask, in_axes=(0, None, None))(cp, 5, 0.75)
-    rows1, cols1 = np.nonzero(masks)
-
-    masks2 = jax.vmap(peak_mask, in_axes=(0, None, None))(cp2, 5, 0.75)
-    rows2, cols2 = np.nonzero(masks2)
-
-    # Extract peak locations (up to 3 peaks)
-    peaks = np.arange(min(3, np.max(rows1) if len(rows1) > 0 else 0))
-    row_peaks, col_peaks = [], []
-    row_peaks2, col_peaks2 = [], []
-
-    for peak_index in peaks:
-        row_index = np.arange(np.max(rows1))
-        col_index = [cols1[rows1 == i][peak_index] if len(cols1[rows1 == i]) > peak_index else 0
-                     for i in row_index]
-
-        row_index2 = np.arange(np.max(rows2))
-        col_index2 = [cols2[rows2 == i][peak_index] if len(cols2[rows2 == i]) > peak_index else 0
-                      for i in row_index2]
-
-        row_peaks.append(row_index)
-        col_peaks.append(col_index)
-        row_peaks2.append(row_index2)
-        col_peaks2.append(col_index2)
-
-    # Convert to arrays
-    row = jnp.array(row_peaks).squeeze() if row_peaks else jnp.array([])
-    col = jnp.array(col_peaks).squeeze() if col_peaks else jnp.array([])
-    row2 = jnp.array(row_peaks2).squeeze() if row_peaks2 else jnp.array([])
-    col2 = jnp.array(col_peaks2).squeeze() if col_peaks2 else jnp.array([])
-
-    # Find gap shoulders along horizontal transitions
-    results2 = []
-    if len(row2) > 0 and len(col2) > 0:
-        for r, c in zip(row2, col2):
-            x = r
-            y = c
-            res2 = find_gap_shoulders(
-                x, y,
-                sg_window=9, sg_poly=2,
-                valley_prominence=3.0,
-                valley_min_sep=8,
-                deriv_near0=0.2,
-                max_side_span=12,
-                refine_win_pts=7
-            )
-            results2.append(res2)
-
-    # Find gap shoulders along vertical transitions
-    results = []
-    if len(row) > 0 and len(col) > 0:
-        for r, c in zip(row, col):
-            x = r
-            y = c
-            res = find_gap_shoulders(
-                x, y,
-                sg_window=9, sg_poly=2,
-                valley_prominence=3.0,
-                valley_min_sep=8,
-                deriv_near0=0.2,
-                max_side_span=12,
-                refine_win_pts=7
-            )
-            results.append(res)
-
-    # Assess success based on whether we found transitions
-    success = len(results) > 0 and len(results2) > 0
-
     intersections = (
         np.vstack(edge_analysis["intersections"]) if edge_analysis["intersections"] else np.empty((0, 2))
     )
 
+    success = len(edge_analysis["segments"]) > 0
+
     return FitParameters(
-        row_peaks=row,
-        col_peaks=col,
-        row_peaks2=row2,
-        col_peaks2=col2,
-        results=results,
-        results2=results2,
         cp=cp,
         cp2=cp2,
         mean_cp=mean_cp,
@@ -351,5 +249,5 @@ def fit_individual_raw_data(data: xr.Dataset, sensor_id: str, node: Qualibration
         segments=edge_analysis["segments"],
         intersections=intersections,
         edge_threshold=edge_threshold,
-        success=success
+        success=success,
     )
