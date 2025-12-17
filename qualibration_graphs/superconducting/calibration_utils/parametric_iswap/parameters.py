@@ -61,7 +61,7 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 100
     modulation_range_mhz: int = 10
-    modulation_step_mhz: int = 1
+    modulation_step_mhz: float = 1
     modulation_amplitude: float = 0.01
     min_time: int = 16
     max_time: int = 400

@@ -79,15 +79,15 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
     operation = node.parameters.operation
 
-    def abs_amp(qp, amp):
-        return amp * 1
+    # def abs_amp(qp, amp):
+    #     return amp * 1
 
-    def detuning(qp, amp):
-        amplitude_squared = (amp * 1) ** 2
-        return -amplitude_squared * qp.qubit_control.freq_vs_flux_01_quad_term
+    # def detuning(qp, amp):
+    #     amplitude_squared = (amp * 1) ** 2
+    #     return -amplitude_squared * qp.qubit_control.freq_vs_flux_01_quad_term
 
-    ds = ds.assign_coords({"amp_full": (["qubit_pair", "amp"], np.array([abs_amp(qp, ds.amp) for qp in qubit_pairs]))})
-    ds = ds.assign_coords({"detuning": (["qubit_pair", "amp"], np.array([detuning(qp, ds.amp) for qp in qubit_pairs]))})
+    # ds = ds.assign_coords({"amp": (["qubit_pair", "amp"], np.array([abs_amp(qp, ds.amp) for qp in qubit_pairs]))})
+    # ds = ds.assign_coords({"detuning": (["qubit_pair", "amp"], np.array([detuning(qp, ds.amp) for qp in qubit_pairs]))})
 
     return ds
 
@@ -145,21 +145,21 @@ def fit_routine(da):
     # Fit tanh curve to find optimal amplitude
     try:
         # The initial guess for the tanh fit is important and needs to be adjusted based on the amplitude range
-        amp_range = np.max(phase_diff.amp_full.values) - np.min(phase_diff.amp_full.values)
+        amp_range = np.max(phase_diff.amp.values) - np.min(phase_diff.amp.values)
         p0 = [
             -0.5,  # a
             1 / amp_range,  # b
-            -np.mean(phase_diff.amp_full.values) / amp_range,  # c
+            -np.mean(phase_diff.amp.values) / amp_range,  # c
             0.5,  # d
         ]
-        fit_params, _ = curve_fit(tanh_fit, phase_diff.amp_full.values[0], phase_diff.values[0], p0=p0)
+        fit_params, _ = curve_fit(tanh_fit, phase_diff.amp.values[0], phase_diff.values[0], p0=p0)
         optimal_amp = (np.arctanh((0.5 - fit_params[3]) / fit_params[0]) - fit_params[2]) / fit_params[1]
-        fitted_curve = tanh_fit(phase_diff.amp_full, *fit_params)
+        fitted_curve = tanh_fit(phase_diff.amp, *fit_params)
         success = True
 
     except Exception as e:
         # Fallback: find amplitude closest to π phase difference (0.5 in normalized units)
-        optimal_amp = float(np.abs(phase_diff - 0.5).idxmin("amp_full"))
+        optimal_amp = float(np.abs(phase_diff - 0.5).idxmin("amp"))
         fitted_curve = np.full_like(phase_diff.values, np.nan)
         success = False
 

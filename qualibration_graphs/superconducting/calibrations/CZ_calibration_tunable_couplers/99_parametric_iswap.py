@@ -93,7 +93,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for qp in qubit_pairs
         ]
 
-
     print("Central frequencies (MHz): ", central_frequencies)
 
     # Define the frequency sweep around the central frequency
@@ -300,7 +299,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for qp in node.namespace["qubit_pairs"]:
             fit_result = node.results["fit_results"].get(qp.name)
             qp.coupler.intermediate_frequency = fit_result.get("f0")
-            # qp.c = fit_result.get("optimal_qubit_flux")
+            qp.macros["cz"].coupler_pulse.amplitude = fit_result.get("cz_amp")
+            qp.macros["cz"].coupler_pulse.length = fit_result.get("cz_len")
 
 
 # %% {Save_results}

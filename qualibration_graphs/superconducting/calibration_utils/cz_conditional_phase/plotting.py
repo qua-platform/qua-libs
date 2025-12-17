@@ -2,9 +2,9 @@ from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
+import xarray as xr
 from calibration_utils.cz_conditional_phase.analysis import FitResults
 from qualibration_libs.core import BatchableList
-import xarray as xr
 
 
 def plot_raw_data_with_fit(
@@ -40,11 +40,11 @@ def plot_raw_data_with_fit(
         fit_result = fit_results.sel(qubit_pair=qp_name)
 
         # Plot phase difference data
-        fit_result.phase_diff.plot.line(ax=ax, x="amp_full")
+        fit_result.phase_diff.plot.line(ax=ax, x="amp")
 
         # Plot fitted curve if available
         if fit_result.success and not np.all(np.isnan(fit_result.fitted_curve)):
-            ax.plot(fit_result.phase_diff.amp_full, fit_result.fitted_curve)
+            ax.plot(fit_result.phase_diff.amp, fit_result.fitted_curve)
 
         # Mark optimal point
         ax.plot([fit_result.optimal_amplitude], [0.5], marker="o", color="red")
@@ -62,7 +62,7 @@ def plot_raw_data_with_fit(
         secax.set_xlabel("Detuning (MHz)")
 
         ax.set_title(qp_name)
-        ax.set_xlabel("Amplitude (V)")
+        ax.set_xlabel("Frequency [Hz]")
         ax.set_ylabel("Phase difference")
 
     # Hide unused axes
