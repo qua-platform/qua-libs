@@ -144,7 +144,7 @@ if __name__ == '__main__':
     plt.xlabel('$Vx$')
     plt.ylabel('Signal (au)')
     plt.show()
-
+    print('Sensor optimum : ', sensor_sweep[np.argmax(z)])
     optimal_voltage_configuration[-1] = sensor_sweep[np.argmax(z)]
     # Define min and max values for the 2D voltage sweep
     vx_min, vx_max = -50, 50

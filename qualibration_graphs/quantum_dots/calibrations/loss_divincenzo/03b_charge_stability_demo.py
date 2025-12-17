@@ -1,4 +1,16 @@
 # %% {Imports}
+import sys
+from pathlib import Path
+
+# Ensure local packages are importable when running this file directly
+# Script path: .../quantum_dots/calibrations/loss_divincenzo/03b_charge_stability_demo.py
+# We want siblings of 'calibrations', i.e. .../quantum_dots/quam_config and .../quantum_dots/validation_utils
+_QUANTUM_DOTS_DIR = Path(__file__).resolve().parents[2]
+
+# Add the quantum_dots directory to sys.path so that quam_config and validation_utils can be imported
+if str(_QUANTUM_DOTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_QUANTUM_DOTS_DIR))
+
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -12,15 +24,15 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.charge_stability import Parameters, get_voltage_arrays, get_swept_object
+from calibration_utils.charge_stability import Parameters, get_voltage_arrays #, get_swept_object
 from calibration_utils.charge_stability import (
-    plot_raw_amplitude, 
-    plot_raw_phase
+    plot_raw_amplitude,
+    plot_raw_phase,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-
 from calibration_utils.common_utils.experiment import get_dots, get_sensors
+from validation_utils import init_dot_model
 
 description = """
             2D CHARGE STABILITY MAP
@@ -48,11 +60,15 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.multiplexed = True
     # node.parameters.num_shots = 2
-    pass
+    node.parameters.simulate = True
+    node.namespace['sensors']=['sensor_1']
+    node.parameters.virtual_gate_set_id = 'main_qpu'
+    node.parameters.x_axis_name = 'virtual_dot_1'
+    node.parameters.y_axis_name = 'virtual_dot_2'
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
+node.machine = Quam.load('/Users/sebastian/Documents/GitHub/quam-builder/quam_builder/architecture/quantum_dots/examples/quam_state')
 
 
 # %% {Create_QUA_program}
@@ -96,8 +112,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Simultaneous stepping of the voltage of the virtualised gates. 
                         # If ramps are preferred, specify ramp_duration as arg in simultaneous()
                         with seq.simultaneous():
-                            x_obj.go_to_voltages(x)
-                            y_obj.go_to_voltages(y)
+                            x_obj.go_to_voltages({node.parameters.x_axis_name: x}, duration=100)
+                            y_obj.go_to_voltages({node.parameters.y_axis_name: y}, duration=100)
 
                         
                         align()
@@ -116,12 +132,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for i in range(num_sensors):
-                I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I")
-                Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q")
+                I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+                Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+# @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -135,7 +151,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode)
+# @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -163,7 +179,75 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 def simulate_data(node: QualibrationNode[Parameters, Quam]):
     """Simulate the data."""
     # Simulate the data
-    pass
+    updated_cgs = [[0.001, 0.002, 0.000, 0.000, 0.000, 0.000, 0.100]]
+    model = init_dot_model(Cgs=updated_cgs)
+    n_charges = [1, 3, 0, 0, 0, 0, 5]
+    optimal_voltage_configuration = model.optimal_Vg(
+        n_charges=n_charges,
+    )
+
+    # Create voltage composer
+    voltage_composer = model.gate_voltage_composer
+
+    optimal_voltage_configuration[-1] = 4.975
+
+    # Get sweep axes from namespace (created in create_qua_program)
+    sweep_axes = node.namespace["sweep_axes"]
+    x_volts = sweep_axes["x_volts"].values
+    y_volts = sweep_axes["y_volts"].values
+    sensors = node.namespace["sensors"]
+    num_sensors = len(sensors)
+
+    # Define min and max values for the 2D voltage sweep matching the sweep_axes
+    vx_min, vx_max = x_volts[0] * 1e3, x_volts[-1] * 1e3
+    vy_min, vy_max = y_volts[0]* 1e3, y_volts[-1] * 1e3
+
+    # Create voltage array for 2D sweep (gates 1 and 2)
+    vg = voltage_composer.do2d(1, vx_min, vx_max, len(x_volts), 2, vy_min, vy_max, len(y_volts))
+    vg += optimal_voltage_configuration
+    z, n = model.charge_sensor_open(vg)
+
+    # Create I and Q data arrays with the same structure as execute_qua_program would produce
+    # z is the simulated sensor response, we'll use it as amplitude (I channel)
+    # Reshape z to match the expected dimensions: (y_volts, x_volts)
+    z_reshaped = z.reshape(len(y_volts), len(x_volts))
+
+    # Create I and Q arrays for each sensor
+    # For simplicity, replicate the same pattern for all sensors
+    # I represents the amplitude, Q can be set to small values or zero
+    I_data = np.stack([z_reshaped] * num_sensors, axis=0)  # Shape: (sensors, y_volts, x_volts)
+    Q_data = np.zeros_like(I_data)  # Phase information (set to zero for simplicity)
+
+    # Create xarray Dataset matching the structure expected by plotting functions
+    # The dataset needs a "sensors" dimension with "I" and "Q" variables
+    sensor_names = sweep_axes["sensors"].values
+
+    ds_raw = xr.Dataset(
+        {
+            "I": xr.DataArray(
+                I_data,
+                dims=["sensors", "y_volts", "x_volts"],
+                coords={
+                    "sensors": sensor_names,
+                    "x_volts": sweep_axes["x_volts"].values,
+                    "y_volts": sweep_axes["y_volts"].values,
+                }
+            ),
+            "Q": xr.DataArray(
+                Q_data,
+                dims=["sensors", "y_volts", "x_volts"],
+                coords={
+                    "sensors": sensor_names,
+                    "x_volts": sweep_axes["x_volts"].values,
+                    "y_volts": sweep_axes["y_volts"].values,
+                }
+            ),
+        }
+    )
+
+    node.results['ds_raw'] = ds_raw
+
+
 
 # %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
@@ -178,7 +262,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Plot_data}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(skip_if= node.parameters.run_in_video_mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
     fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
@@ -192,8 +276,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %%
-from calibration_utils.run_video_mode import create_video_mode
-@node.run_action(skip_if = node.parameters.run_in_video_mode is False)
+# from calibration_utils.run_video_mode import create_video_mode
+# @node.run_action(skip_if = node.parameters.run_in_video_mode is False)
 def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     x_axis_name = node.parameters.x_axis_name
     y_axis_name = node.parameters.y_axis_name
