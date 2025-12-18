@@ -1,4 +1,17 @@
 # %% {Imports}
+from platform import machine
+import sys
+from pathlib import Path
+
+# Ensure local packages are importable when running this file directly
+# Script path: .../quantum_dots/calibrations/loss_divincenzo/03b_charge_stability_demo.py
+# We want siblings of 'calibrations', i.e. .../quantum_dots/quam_config and .../quantum_dots/validation_utils
+_QUANTUM_DOTS_DIR = Path(__file__).resolve().parents[2]
+
+# Add the quantum_dots directory to sys.path so that quam_config and validation_utils can be imported
+if str(_QUANTUM_DOTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_QUANTUM_DOTS_DIR))
+
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -12,15 +25,21 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.charge_stability import Parameters, get_voltage_arrays #, get_swept_object
 from calibration_utils.charge_stability import (
-    plot_raw_amplitude, 
-    plot_raw_phase
+    Parameters,
+    get_voltage_arrays,
+    process_raw_dataset,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_amplitude,
+    plot_raw_phase,
+    plot_change_point_overlays,
+    plot_line_fit_overlays,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-
 from calibration_utils.common_utils.experiment import get_dots, get_sensors
+from validation_utils import init_dot_model
 
 description = """
             2D CHARGE STABILITY MAP
@@ -37,7 +56,7 @@ Prerequisites:
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="03a_charge_stability", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](name="03b_charge_stability", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -48,15 +67,20 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.multiplexed = True
     # node.parameters.num_shots = 2
-    pass
+    node.parameters.simulate = True
+    node.parameters.use_validation = True
+    node.parameters.sensor_names = ['virtual_sensor_1']
+    node.parameters.virtual_gate_set_id = 'main_qpu'
+    node.parameters.x_axis_name = 'virtual_dot_1'
+    node.parameters.y_axis_name = 'virtual_dot_2'
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
+node.machine = Quam.load('/Users/sebastian/Documents/GitHub/quam-builder/quam_builder/architecture/quantum_dots/examples/quam_state')
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None)
+@node.run_action(skip_if=node.parameters.load_data_id is not None and not node.parameters.simulate)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
@@ -96,8 +120,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Simultaneous stepping of the voltage of the virtualised gates. 
                         # If ramps are preferred, specify ramp_duration as arg in simultaneous()
                         with seq.simultaneous():
-                            x_obj.go_to_voltages(x)
-                            y_obj.go_to_voltages(y)
+                            x_obj.go_to_voltages({node.parameters.x_axis_name: x}, duration=100)
+                            y_obj.go_to_voltages({node.parameters.y_axis_name: y}, duration=100)
 
                         
                         align()
@@ -116,12 +140,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for i in range(num_sensors):
-                I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I")
-                Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q")
+                I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+                Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate or node.parameters.use_validation)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -159,6 +183,121 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
+# %% {Simulate validation data}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.use_validation)
+def simulate_data(node: QualibrationNode[Parameters, Quam]):
+    """Simulate the data."""
+
+    model = init_dot_model()
+
+    # Sensor gate voltage
+    vgs = 14.875
+
+    # Compensation vector for cross-coupling (6 plungers + 1 sensor)
+    # These values compensate for cross-talk between gates
+    # compensation_vector = np.array([-0.01943306, -0.0268294, 0.0, 0.0, 0.0, 0.0, 0.0])
+    compensation_vector = np.array([-0.020406, -0.029189, -0.007986, -0.010645, -0.010643, -0.0905586, 0.0])
+    # Extract plunger gate indices from axis names
+    # virtual_dot_{n+1} maps to plunger gate index n
+    # e.g., virtual_dot_1 -> index 0, virtual_dot_2 -> index 1
+    x_axis_name = node.parameters.x_axis_name
+    y_axis_name = node.parameters.y_axis_name
+
+    # Parse the gate indices (assumes format "virtual_dot_{n}")
+    x_gate_idx = int(x_axis_name.split('_')[-1]) - 1  # virtual_dot_1 -> index 0
+    y_gate_idx = int(y_axis_name.split('_')[-1]) - 1  # virtual_dot_2 -> index 1
+
+    sweep_axes = node.namespace["sweep_axes"]
+    vp1 = sweep_axes["x_volts"].values * 1e3  # Convert to mV
+    vp2 = sweep_axes["y_volts"].values * 1e3  # Convert to mV
+
+    def sensor_scan(vp1_val, vp2_vals, vs=0.0, x_idx=0, y_idx=1, compensation=None):
+        """
+        Simulate sensor scan for given plunger voltages.
+
+        Args:
+            vp1_val: Voltage for x-axis plunger (scalar)
+            vp2_vals: Voltages for y-axis plunger (array)
+            vs: Sensor gate voltage
+            x_idx: Index of x-axis plunger (0-5)
+            y_idx: Index of y-axis plunger (0-5)
+            compensation: Compensation vector for cross-coupling
+        """
+        if compensation is None:
+            compensation = np.zeros(7)
+
+        # Build base voltage array (6 plungers + 1 sensor)
+        # Set x-axis plunger voltage
+        base = np.zeros(7)
+        base[x_idx] = vp1_val
+        # Set sensor voltage with compensation from x-axis plunger
+        base[6] = vs + vp1_val * compensation[x_idx]
+
+        # Build additive voltage array for y-axis sweep
+        # This adds the y-axis plunger voltage and its compensation on the sensor
+        v_add_template = np.zeros(7)
+        v_add_template[y_idx] = 1.0  # y-axis plunger
+        v_add_template[6] = compensation[y_idx]  # compensation on sensor
+        v_add = np.array(vp2_vals)[:, None] * v_add_template
+
+        # Combine base and sweep voltages
+        inputs = base + v_add
+
+        # Run simulation (note the negative sign for model input)
+        z, n = model.charge_sensor_open(-inputs)
+        return z.squeeze()
+
+    zs = []
+    for vp in vp1:
+        zs.append(
+            sensor_scan(vp, vp2, vs=vgs, x_idx=x_gate_idx, y_idx=y_gate_idx, compensation=compensation_vector)
+        )
+    zs = np.array(zs)
+
+    sensors = node.namespace["sensors"]
+    num_sensors = len(sensors)
+
+    # Create I and Q data arrays with the same structure as execute_qua_program would produce
+    # z is the simulated sensor response, we'll use it as amplitude (I channel)
+    # Reshape z to match the expected dimensions: (y_volts, x_volts)
+    z_reshaped = zs #.reshape(len(y_volts), len(x_volts))
+
+    # Create I and Q arrays for each sensor
+    # For simplicity, replicate the same pattern for all sensors
+    # I represents the amplitude, Q can be set to small values or zero
+    I_data = np.stack([z_reshaped] * num_sensors, axis=0)  # Shape: (sensors, y_volts, x_volts)
+    Q_data = np.zeros_like(I_data)  # Phase information (set to zero for simplicity)
+
+    # Create xarray Dataset matching the structure expected by plotting functions
+    # The dataset needs a "sensors" dimension with "I" and "Q" variables
+    sensor_names = sweep_axes["sensors"].values
+
+    ds_raw = xr.Dataset(
+        {
+            "I": xr.DataArray(
+                I_data,
+                dims=["sensors", "y_volts", "x_volts"],
+                coords={
+                    "sensors": sensor_names,
+                    "x_volts": sweep_axes["x_volts"].values,
+                    "y_volts": sweep_axes["y_volts"].values,
+                }
+            ),
+            "Q": xr.DataArray(
+                Q_data,
+                dims=["sensors", "y_volts", "x_volts"],
+                coords={
+                    "sensors": sensor_names,
+                    "x_volts": sweep_axes["x_volts"].values,
+                    "y_volts": sweep_axes["y_volts"].values,
+                }
+            ),
+        }
+    )
+
+    node.results['ds_raw'] = ds_raw
+
+
 
 # %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
@@ -172,23 +311,56 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
 
 
+# %% {Analyse_data}
+@node.run_action(skip_if=node.parameters.run_in_video_mode)
+def analyse_data(node: QualibrationNode[Parameters, Quam]):
+    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    # Process raw dataset (convert ADC to volts, compute amplitude)
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+
+    # Perform charge stability analysis
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+
+    # Convert FitParameters to dictionaries for storage (JSON serializable)
+    node.results["fit_results"] = {k: v.to_dict() for k, v in fit_results.items()}
+
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+
 # %% {Plot_data}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.run_in_video_mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+    # Plot basic amplitude and phase maps
     fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
     fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
-    plt.show()
+
     # Store the generated figures
     node.results["figures"] = {
         "amplitude": fig_amplitude,
         "phase": fig_phase,
     }
 
+    # Optionally plot detailed analysis results if fit_results are available
+    if "fit_results" in node.results and node.results["fit_results"]:
+        sensors = node.namespace["sensors"]
+        for sensor in sensors:
+            sensor_data = node.results["ds_raw"].sel(sensors=sensor.id)
+            fit_params = node.results["fit_results"][sensor.id]
+
+            # Plot change point overlays
+            fig_cp = plot_change_point_overlays(sensor_data, fit_params, sensor.id)
+            node.results["figures"][f"{sensor.id}_change_points"] = fig_cp
+
+            if fit_params.get("segments"):
+                fig_lines = plot_line_fit_overlays(sensor_data, fit_params, sensor.id)
+                node.results["figures"][f"{sensor.id}_line_fits"] = fig_lines
+
+    # plt.show()  # Commented out to avoid blocking in non-interactive mode
 
 # %%
-from calibration_utils.run_video_mode import create_video_mode
-@node.run_action(skip_if = node.parameters.run_in_video_mode is False)
+# from calibration_utils.run_video_mode import create_video_mode
+# @node.run_action(skip_if = node.parameters.run_in_video_mode is False)
 def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     x_axis_name = node.parameters.x_axis_name
     y_axis_name = node.parameters.y_axis_name
@@ -217,5 +389,3 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save the node results and state."""
     node.save()
-
-
