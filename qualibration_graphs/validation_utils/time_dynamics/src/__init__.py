@@ -1,6 +1,6 @@
 """Time dynamics source modules for quantum dot simulations."""
 
-from .device import QuantumDeviceBase, TwoSpinDevice
+from .device import QuantumDeviceBase
 from .circuit import Gate, Circuit, X, Y, ExchangeRampGate
 from .pulse import Pulse, GaussianPulse, SquarePulse, CouplingPulse
 from .utils import (
@@ -23,7 +23,6 @@ from .utils import (
 __all__ = [
     # Device
     "QuantumDeviceBase",
-    "TwoSpinDevice",
     # Circuit
     "Gate",
     "Circuit",

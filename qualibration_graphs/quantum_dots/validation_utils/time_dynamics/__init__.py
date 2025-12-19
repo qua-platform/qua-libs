@@ -1,9 +1,7 @@
-"""Time dynamics validation utilities for quantum dots."""
+"""Quantum dots time dynamics validation utilities."""
 
-from . import src
-from .src import *
+from .device import TwoSpinDevice
 
 __all__ = [
-    *src.__all__,
+    "TwoSpinDevice",
 ]
-

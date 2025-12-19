@@ -30,9 +30,10 @@ See the bottom of this file for complete usage examples demonstrating:
 """
 
 from __future__ import annotations
-from typing import Tuple, Any
 import numpy as np
 import jax.numpy as jnp
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 
 try:
@@ -40,9 +41,13 @@ try:
 except ModuleNotFoundError:
     print("Failed to import dynamiqs")
 
-from src.device import TwoSpinDevice
-from src.circuit import Circuit
-from src.utils import embed_single_qubit_op, SZ, sweep_circuit
+from .device import TwoSpinDevice
+from qualibration_graphs.validation_utils.time_dynamics import (
+    Circuit,
+    embed_single_qubit_op,
+    SZ,
+    sweep_circuit,
+)
 
 # =============================================================================
 # Usage Examples
@@ -61,8 +66,12 @@ if __name__ == "__main__":
     """
 
     # Import gate definitions
-    from src.circuit import X, Y, ExchangeRampGate
-    from src.pulse import GaussianPulse
+    from qualibration_graphs.validation_utils.time_dynamics import (
+        X,
+        Y,
+        ExchangeRampGate,
+        GaussianPulse,
+    )
 
     print("=" * 70)
     print("Time-Dependent Simulation Examples")
