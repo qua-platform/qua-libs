@@ -137,8 +137,8 @@ def fit_jazz_zz_routine(da, node):
                 time_us,
                 ydata,
                 p0=[0.3, 1.0, 5.0, 0.0, 0.0],
-                bounds=([-np.inf, -np.inf, -np.inf, -np.pi, -np.inf], [np.inf, np.inf, np.inf, np.pi, np.inf]),
-                maxfev=5000,
+                # bounds=([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf], [np.inf, np.inf, np.inf, np.inf, np.inf]),
+                maxfev=10000,
             )
             freq_mhz = popt[2]
             jeff_raw.append(freq_mhz)
@@ -153,7 +153,7 @@ def fit_jazz_zz_routine(da, node):
     # Smooth only the valid (nonzero) portion if there are enough valid points
     if np.sum(fit_mask) >= 9:  # Need at least 9 points for window_length=9
         jeff_smooth = np.zeros_like(jeff_raw)
-        jeff_smooth[fit_mask] = savgol_filter(jeff_raw[fit_mask], window_length=9, polyorder=3)
+        jeff_smooth[fit_mask] = savgol_filter(jeff_raw[fit_mask], window_length=5, polyorder=3)
     else:
         jeff_smooth = jeff_raw.copy()
 

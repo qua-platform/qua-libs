@@ -85,11 +85,12 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.num_averages = 100
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
+    node.parameters.load_data_id = 121
     pass
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load()
+# node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}

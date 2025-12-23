@@ -54,7 +54,7 @@ def plot_raw_data_with_fit(
         plt.sca(ax)
         ax.plot(
             flux_bias[~fit_mask],
-            np.abs(jeff_raw[~fit_mask] - artificial_detuning),
+            jeff_raw[~fit_mask] - artificial_detuning,
             "o",
             color="blue",
             alpha=0.5,
@@ -64,7 +64,7 @@ def plot_raw_data_with_fit(
         # Plot valid fits - Gold
         ax.plot(
             flux_bias[fit_mask],
-            np.abs(jeff_raw[fit_mask] - artificial_detuning),
+            jeff_raw[fit_mask] - artificial_detuning,
             "o",
             color="gold",
             alpha=0.6,
@@ -75,7 +75,7 @@ def plot_raw_data_with_fit(
         if np.any(fit_mask):
             ax.plot(
                 flux_bias[fit_mask],
-                np.abs(jeff_smooth[fit_mask] - artificial_detuning),
+                jeff_smooth[fit_mask] - artificial_detuning,
                 "-",
                 color="orange",
                 linewidth=2,
