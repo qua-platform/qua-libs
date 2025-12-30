@@ -218,7 +218,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                                     # Reset the frame of the qubits in order not to accumulate rotations
                                     reset_frame(*cr_elems)
-                                    
+
                                     # Wait for the qubit to decay to the ground state - Can be replaced by active reset
                                     qc.resonator.wait(qc.resonator.depletion_time // 4)
                                     qt.resonator.wait(qt.resonator.depletion_time // 4)
