@@ -22,18 +22,29 @@ instruments.add_mw_fem(controller=1, slots=[1, 2])
 # %%                                 Define which qubit ids are present in the system
 ########################################################################################################################
 qubits = [
-    1, 2, 3, 4,
-    5, 6, 7, 8,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
 ]
 qubit_idxes = {q: i for i, q in enumerate(qubits)}
 qubit_pairs = [
-    (1, 2), (2, 1),
-    (2, 3), (3, 2),
-    (3, 4), (4, 3),
-
-    (5, 6), (6, 5),
-    (6, 7), (7, 6),
-    (7, 8), (8, 7),
+    (1, 2),
+    (2, 1),
+    (2, 3),
+    (3, 2),
+    (3, 4),
+    (4, 3),
+    (5, 6),
+    (6, 5),
+    (6, 7),
+    (7, 6),
+    (7, 8),
+    (8, 7),
 ]
 
 # Flatten the pairs
@@ -48,16 +59,34 @@ assert flattened_qubits.issubset(set(qubits))
 ########################################################################################################################
 con = 1
 rr_slots = [
-    1, 1, 1, 1,
-    2, 2, 2, 2,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2,
 ]
 rr_out_ports = [
-    1, 1, 1, 1,
-    1, 1, 1, 1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
 ]
 rr_in_ports = [
-    1, 1, 1, 1,
-    1, 1, 1, 1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
 ]
 
 assert len(rr_slots) == len(qubits)
@@ -65,12 +94,24 @@ assert len(rr_out_ports) == len(qubits)
 assert len(rr_in_ports) == len(qubits)
 
 xy_slots = [
-    1, 1, 1, 1,
-    2, 2, 2, 2,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2,
 ]
 xy_ports = [
-    2, 3, 4, 5,
-    2, 3, 4, 5,
+    2,
+    3,
+    4,
+    5,
+    2,
+    3,
+    4,
+    5,
 ]
 
 assert len(xy_slots) == len(qubits)
@@ -87,19 +128,17 @@ for i, qb in enumerate(qubits):
         qubits=qb,
         constraints=mw_fem_spec(con=con, slot=rr_slots[i], in_port=rr_in_ports[i], out_port=rr_out_ports[i]),
     )
-    # Don't block the xy channels to connect the CR and ZZ drives to the same ports
     allocate_wiring(connectivity, instruments, block_used_channels=False)
 
     connectivity.add_qubit_drive_lines(
         qubits=qb,
         constraints=mw_fem_spec(con=con, slot=xy_slots[i], out_port=xy_ports[i]),
     )
-    # Don't block the xy channels to connect the CR and ZZ drives to the same ports
     allocate_wiring(connectivity, instruments, block_used_channels=False)
 
 
 # Two-qubit drives
-for (qc, qt) in qubit_pairs:
+for qc, qt in qubit_pairs:
     idc, idt = qubit_idxes[qc], qubit_idxes[qt]
 
     # Add CR lines
@@ -107,21 +146,6 @@ for (qc, qt) in qubit_pairs:
         qubit_pairs=(qc, qt),
         constraints=mw_fem_spec(con=con, slot=xy_slots[idc], out_port=xy_ports[idc]),
     )
-    allocate_wiring(connectivity, instruments, block_used_channels=False)
-
-    # Add ZZ lines
-    connectivity.add_qubit_pair_zz_drive_lines(
-        qubit_pairs=(qc, qt),
-        constraints=mw_fem_spec(con=con, slot=xy_slots[idc], out_port=xy_ports[idc]),
-    )
-    allocate_wiring(connectivity, instruments, block_used_channels=False)
-
-    # Add XY detuned for ZZ lines
-    connectivity.add_qubit_detuned_drive_lines(
-        qubits=qt,
-        constraints=mw_fem_spec(con=con, slot=xy_slots[idt], out_port=xy_ports[idt]),
-    )
-    # Don't block the xy channels to connect the CR and ZZ drives to the same ports
     allocate_wiring(connectivity, instruments, block_used_channels=False)
 
 
