@@ -190,7 +190,7 @@ with program() as rb:
                     align()  # Play the laser pulse after the Echo sequence
                     # Measure and detect the photons on SPCM1
                     play("laser_ON", "AOM1")
-                    measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
+                    measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
                     save(counts, counts_st)  # save counts
                     wait(wait_between_runs * u.ns)  # wait in between iterations
 
@@ -216,7 +216,7 @@ with program() as rb:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
 #######################
 # Simulate or execute #
@@ -240,7 +240,7 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(rb)
     # Get results from QUA program

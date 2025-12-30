@@ -33,6 +33,9 @@ class QDACII:
 
         self._visa.write_termination = "\n"
         self._visa.read_termination = "\n"
+        self._visa.baud_rate = 921600
+        # self._visa.send_end = False
+
         print(self._visa.query("*IDN?"))
         print(self._visa.query("syst:err:all?"))
 
@@ -44,6 +47,9 @@ class QDACII:
 
     def write_binary_values(self, cmd, values):
         self._visa.write_binary_values(cmd, values)
+
+    def close(self):
+        self._visa.close()
 
     def __exit__(self):
         self._visa.close()
@@ -106,7 +112,7 @@ def set_qdac_voltage(
     voltage: float,
 ):
     """
-    Configure a QDAC2 channel to play a specicif voltage, using pyvisa commands.
+    Configure a QDAC2 channel to play a specific voltage, using pyvisa commands.
 
     :param qdac: the QDAC2 object.
     :param channel: the QDAC2 channel that will output the desired voltage.

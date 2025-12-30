@@ -37,7 +37,7 @@ with program() as TimeTagging_calibration:
         # Drive the AOM to play the readout laser pulse
         play("laser_ON", "AOM1")
         # Record the raw ADC traces in the stream called "adc_st"
-        measure("long_readout", "SPCM1", adc_st)
+        measure("long_readout", "SPCM1", adc_stream=adc_st)
         # Waits for the
         wait(1000, "SPCM1")
 
@@ -50,7 +50,7 @@ with program() as TimeTagging_calibration:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
 simulate = False
 
@@ -71,7 +71,7 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open Quantum Machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(config, close_other_machines=True)
     # Execute program
     job = qm.execute(TimeTagging_calibration)
     # create a handle to get results
@@ -81,17 +81,21 @@ else:
     # Fetch results and convert traces to volts
     adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
     adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
+    # Determine time axis from the sampling rate: 1e9 for OPX+, 1e9 or 2e9 for OPX1000
+    time_bin = 1 / (sampling_rate * 1e-9)  # in ns
+    time_array = time_bin * np.arange(len(adc1))  # in ns
+
     # Plot data
     plt.figure()
     plt.subplot(121)
     plt.title("Single run")
-    plt.plot(adc1_single_run, label="Input 1")
+    plt.plot(time_array, adc1_single_run, label="Input 1")
     plt.xlabel("Time [ns]")
     plt.ylabel("Signal amplitude [V]")
 
     plt.subplot(122)
     plt.title("Averaged run")
-    plt.plot(adc1, label="Input 1")
+    plt.plot(time_array, adc1, label="Input 1")
     plt.xlabel("Time [ns]")
     plt.tight_layout()
 

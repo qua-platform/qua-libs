@@ -80,7 +80,7 @@ with program() as blue_sideband:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
 
 ###########################
 # Run or Simulate Program #

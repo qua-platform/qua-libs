@@ -155,6 +155,10 @@ bloch_sphere.label_bra(bloch_sphere.West * 1.1, "Y")
 # Parameters Definition
 n_avg = 1_000_000  # Number of averaging iterations
 
+# Determine reference readout during single laser pulse
+reference_wait = initialization_len_1 // 4 - 2 * meas_len_1 // 4 - 25  # in clock cycles
+reference_readout = reference_wait >= 4
+
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
@@ -168,7 +172,7 @@ with program() as state_tomography:
     times = declare(int, size=100)  # QUA vector for storing the time-tags
     counts = declare(int)  # variable for number of counts
     counts_st = declare_stream()  # stream for counts
-    counts_dark_st = declare_stream()  # stream for counts
+    counts_ref_st = declare_stream()  # stream for counts
     f = declare(int)  # frequencies
     n = declare(int)  # number of iterations
     n_st = declare_stream()  # stream for number of iterations
@@ -187,19 +191,27 @@ with program() as state_tomography:
             align()  # Play the laser pulse after the mw sequence
             # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
-            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
+            measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_st)  # save counts
+            # Measure reference photon counts at end of laser pulse
+            if reference_readout:
+                wait(reference_wait, "SPCM1")
+                measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
+            else:
+                assign(counts, 1)
+            save(counts, counts_ref_st)
             wait(wait_between_runs * u.ns, "AOM1")
         save(n, n_st)
 
     with stream_processing():
         n_st.save("iteration")
         counts_st.buffer(3).average().save("counts")
+        counts_ref_st.buffer(3).average().save("counts_ref")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
 #######################
 # Simulate or execute #
@@ -223,15 +235,16 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(state_tomography)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["counts", "counts_ref", "iteration"], mode="live")
     # Live plotting
     while results.is_processing():
         # Fetch results
-        state, iteration = results.fetch_all()
+        counts, counts_ref, iteration = results.fetch_all()
+        state = counts / counts_ref
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot the Bloch vector on the Bloch sphere
@@ -250,5 +263,7 @@ else:
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
     save_data_dict.update({"counts_data": counts})
+    save_data_dict.update({"counts_ref_data": counts_ref})
+    save_data_dict.update({"state_data": state})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
