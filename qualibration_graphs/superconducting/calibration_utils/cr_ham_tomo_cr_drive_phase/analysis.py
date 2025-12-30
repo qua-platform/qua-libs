@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
 from ..cr_utils import *
-from calibration_utils.data_process_utils import reshape_control_target_val2dim 
+from calibration_utils.data_process_utils import reshape_control_target_val2dim
 
 
 @dataclass
@@ -60,14 +60,10 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         Dataset containing the fit results.
     """
 
-    ds_fit = ds.assign({
-        col.replace("state", "bloch"): -2 * ds[col] + 1
-        for col in ds.data_vars
-        if "state" in col
-    })
+    ds_fit = ds.assign({col.replace("state", "bloch"): -2 * ds[col] + 1 for col in ds.data_vars if "state" in col})
     # Extract the relevant fitted parameters
     fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
-    
+
     phases = fit_data.coords["phase"].values
 
     if node.parameters.use_state_discrimination:
@@ -99,7 +95,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
             # Plot the estimated interaction coefficients
             fig_summary = plot_interaction_coeffs(coeffs, phases, xlabel="cr drive phase")
             fig_summary.suptitle(f"Qc: {qp.qubit_control.name}, Qt: {qp.qubit_target.name}")
-    
+
             node.results[f"figure_summary_{qp.name}"] = fig_summary
 
     return fit_data, fit_results

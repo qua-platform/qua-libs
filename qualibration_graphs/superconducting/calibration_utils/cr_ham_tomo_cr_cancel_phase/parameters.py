@@ -2,7 +2,11 @@ from typing import Optional, Literal, Union, List
 import numpy as np
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import QubitsExperimentNodeParameters, QubitPairExperimentNodeParameters, CommonNodeParameters
+from qualibration_libs.parameters import (
+    QubitsExperimentNodeParameters,
+    QubitPairExperimentNodeParameters,
+    CommonNodeParameters,
+)
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -19,19 +23,22 @@ class NodeSpecificParameters(RunnableParameters):
         target_peak_width (Optional[float]): Target peak width in Hz. Default is 3e6 Hz.
     """
 
-    num_shots: int = 3
-    min_pulse_duration_in_ns: int = 16
-    max_pulse_duration_in_ns: int = 250
-    time_step_in_ns: int = 4
+    num_shots: int = 100
     cr_type: Literal["direct", "direct+cancel", "direct+echo", "direct+cancel+echo"] = "direct"
+    wf_type: Literal["square", "flattop"] = "square"
+
     cr_drive_amp_scaling: Union[float, List[float]] = 1.0
-    cr_drive_phase_2pi: Union[float, List[float]] = 1.0
+    cr_drive_phase_2pi: Union[float, List[float]] = 0.0
     cr_cancel_amp_scaling: Union[float, List[float]] = 0.0
     cr_cancel_phase_2pi: Union[float, List[float]] = 0.0
-    min_cr_cancel_phase_2pi: float = 0.0
-    max_cr_cancel_phase_2pi: float = 2.0
+
+    min_pulse_duration_in_ns: int = 16
+    max_pulse_duration_in_ns: int = 400
+    step_pulse_duration_in_ns: int = 16
+
+    min_cr_cancel_phase_2pi: float = -1.0
+    max_cr_cancel_phase_2pi: float = 1.0
     step_cr_cancel_phase_2pi: float = 0.1
-    wf_type: Literal["square", "cosine", "gauss", "flattop"] = "square"
 
 
 class QubitPairExperimentNodeParametersCustom(QubitPairExperimentNodeParameters):

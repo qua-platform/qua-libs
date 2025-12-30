@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 from qualang_tools.units import unit
 from qualibration_libs.plotting import QubitGrid, grid_iter
+
 # from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from quam_builder.architecture.superconducting.qubit_pair import AnyTransmonPair
 from calibration_utils.cr_utils import *
@@ -44,7 +45,6 @@ def plot_raw_data_with_fit(
         fig, axes = plt.subplots(2, 2, figsize=(8, 6), sharex=True, sharey=True)
 
         for row, tt in enumerate(corr_qubits):
-
             for col, ct in enumerate(control_targets):
                 ax = axes[row, col]
 
@@ -65,14 +65,6 @@ def plot_raw_data_with_fit(
         figs.append(fig)
 
     return figs
-
-
-
-
-
-
-
-
 
 
 # def plot_raw_data_with_fit(ds: xr.Dataset, qubit_pairs: List[AnyTransmonPair], fits: xr.Dataset):

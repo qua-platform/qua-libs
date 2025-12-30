@@ -36,7 +36,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubit_pairs: List[AnyTransmonPair], f
     - The function creates a grid of subplots, one for each qubit.
     - Each subplot contains the raw data and the fitted curve.
     """
-    
+
     figs = []
     for qp in qubit_pairs:
         qc = qp.qubit_control

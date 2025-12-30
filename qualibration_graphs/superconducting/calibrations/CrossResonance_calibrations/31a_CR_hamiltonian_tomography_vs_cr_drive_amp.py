@@ -65,7 +65,15 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # You can get type hinting in your IDE by typing node.parameters.
+    # # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.num_shots = 3
+    # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
+    # node.parameters.wf_type = "square"
+    # node.parameters.cr_type = "direct+cancel+echo"
+    # node.parameters.cr_drive_amp_scaling = [0.89, 0.89]
+    # node.parameters.cr_drive_phase_2pi = [0.12, 0.12]
+    # node.parameters.cr_cancel_amp_scaling = [0.34, 0.34]
+    # node.parameters.cr_cancel_phase_2pi = [0.23, 0.23]
     pass
 
 
@@ -99,10 +107,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     cr_cancel_phase = broadcast_param_to_list(node.parameters.cr_cancel_phase_2pi, num_qubit_pairs)
 
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
-    pulse_durations = np.arange(
-        node.parameters.min_wait_time_in_ns // 4,
-        node.parameters.max_wait_time_in_ns // 4,
-        node.parameters.time_step_in_ns // 4,
+    pulse_duration_clocks = np.arange(
+        node.parameters.min_pulse_duration_in_ns // 4,
+        node.parameters.max_pulse_duration_in_ns // 4,
+        node.parameters.step_pulse_duration_in_ns // 4,
     )
     amp_scalings = np.arange(
         node.parameters.min_cr_drive_amp_scaling,
@@ -119,19 +127,19 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "amp_scaling": xr.DataArray(amp_scalings, attrs={"long_name": "cr drive amplitude scaling"}),
-        "pulse_duration": xr.DataArray(pulse_durations, attrs={"long_name": "qubit pulse duration", "units": "ns"}),
+        "pulse_duration": xr.DataArray(
+            pulse_duration_clocks * 4, attrs={"long_name": "qubit pulse duration", "units": "ns"}
+        ),
         "qst_basis": xr.DataArray(qst_basis, attrs={"long_name": "qst basis"}),
         "control_state": xr.DataArray(control_state, attrs={"long_name": "control state"}),
     }
 
     with program() as node.namespace["qua_program"]:
-        I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
-        I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
-        if state_discrimination:
-            state_c = [declare(int) for _ in range(num_qubit_pairs)]
-            state_t = [declare(int) for _ in range(num_qubit_pairs)]
-            state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
-            state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
+        _, _, _, _, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
+        state_c = [declare(int) for _ in range(num_qubit_pairs)]
+        state_t = [declare(int) for _ in range(num_qubit_pairs)]
+        state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
+        state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
         t = declare(int)
         s = declare(int)  # QUA variable for the control state
         c = declare(int)  # QUA variable for the projection index in QST
@@ -151,7 +159,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(n, n_st)
 
                 with for_(*from_array(amp_scaling_qua, amp_scalings)):
-                    with for_(*from_array(t, pulse_durations)):
+                    with for_(*from_array(t, pulse_duration_clocks)):
                         with for_(c, 0, c < 3, c + 1):  # bases
                             with for_(s, 0, s < 2, s + 1):  # states
                                 # Reset the qubits to the ground state
@@ -208,19 +216,22 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     save(state_c[i], state_c_st[i])
                                     save(state_t[i], state_t_st[i])
 
+                                    # Reset the frame of the qubits in order not to accumulate rotations
+                                    reset_frame(*cr_elems)
+
                                     # Wait for the qubit to decay to the ground state - Can be replaced by active reset
-                                    qc.resonator.wait(qc.resonator.depletion_time * u.ns)
-                                    qt.resonator.wait(qt.resonator.depletion_time * u.ns)
+                                    qc.resonator.wait(qc.resonator.depletion_time // 4)
+                                    qt.resonator.wait(qt.resonator.depletion_time // 4)
 
         with stream_processing():
             n_st.save("n")
             for i, qp in enumerate(qubit_pairs):
-                state_c_st[i].buffer(len(control_state)).buffer(len(qst_basis)).buffer(len(pulse_durations)).buffer(
-                    len(amp_scalings)
-                ).average().save(f"state_c{i + 1}")
-                state_t_st[i].buffer(len(control_state)).buffer(len(qst_basis)).buffer(len(pulse_durations)).buffer(
-                    len(amp_scalings)
-                ).average().save(f"state_t{i + 1}")
+                state_c_st[i].buffer(len(control_state)).buffer(len(qst_basis)).buffer(
+                    len(pulse_duration_clocks)
+                ).buffer(len(amp_scalings)).average().save(f"state_c{i + 1}")
+                state_t_st[i].buffer(len(control_state)).buffer(len(qst_basis)).buffer(
+                    len(pulse_duration_clocks)
+                ).buffer(len(amp_scalings)).average().save(f"state_t{i + 1}")
 
 
 # %% {Simulate}
@@ -321,14 +332,26 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 if node.outcomes[qp.name] == "failed":
                     continue
 
+                # # quam component for cr
+                # qp.cross_resonance.drive_amplitude_scaling = 0.87
+                # qp.cross_resonance.drive_phase = 0.23
+                # qp.cross_resonance.cancel_amplitude_scaling = 0.12
+                # qp.cross_resonance.cancel_phase = 0.34
+                # qp.cross_resonance.qc_correction_phase = 0.45
+                # qp.cross_resonance.qt_correction_phase = 0.56
+
+                # # quam macro for cr
+                # qp.macros["cr"].qc_correction_phase = 0.45
+                # qp.macros["cr"].qt_correction_phase = 0.56
+
                 # # cr drive
                 # operation_c = qp.cross_resonance.operations[node.parameters.wf_type]
-                # operation_c.amplitude = node.parameters.cr_drive_amp_scaling[i] * operation_c.amplitude
-                # operation_c.axis_angle = node.parameters.cr_drive_phase[i] * 2 * np.pi
+                # operation_c.amplitude = qp.cross_resonance.drive_amplitude_scaling * operation_c.amplitude
+                # operation_c.axis_angle = 2 * np.pi * qp.cross_resonance.drive_phase
                 # # cr cancel
                 # operation_t = qp.qubit_target.xy.operations[f"cr_{node.parameters.wf_type}_{qp.name}"]
-                # operation_t.amplitude = node.parameters.cr_cancel_amp_scaling[i] * operation_t.amplitude
-                # operation_t.axis_angle = node.parameters.cr_cancel_phase[i] * 2 * np.pi
+                # operation_t.amplitude = qp.cross_resonance.cancel_amplitude_scaling * operation_t.amplitude
+                # operation_t.axis_angle = 2 * np.pi * qp.cross_resonance.cancel_phase
                 pass
 
 

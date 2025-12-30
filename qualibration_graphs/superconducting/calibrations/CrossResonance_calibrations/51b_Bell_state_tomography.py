@@ -45,7 +45,11 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # You can get type hinting in your IDE by typing node.parameters.
+    # # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.num_shots = 3
+    # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
+    # node.parameters.wf_type = "square"
+    # node.parameters.cr_type = "direct+cancel+echo"
     pass
 
 
@@ -73,6 +77,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     n_shots = node.parameters.num_shots  # The number of averages
     state_discrimination = node.parameters.use_state_discrimination
     wf_type = node.parameters.wf_type
+    cr_type = node.parameters.cr_type
 
     assert node.parameters.use_state_discrimination, "this protocol requires to use state discriminations"
 
@@ -115,31 +120,31 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         for i, qp in multiplexed_qubit_pairs.items():
                             qc = qp.qubit_control
                             qt = qp.qubit_target
-                            zz = qp.zz_drive
-                            zz_elems = [zz.name, qc.xy.name, qt.xy.name, qt.xy_detuned.name]
+                            cr = qp.cross_resonance
+                            cr_elems = [cr.name, qc.xy.name, qt.xy.name]
 
                             # Reset the qubits to the ground state
                             qc.reset(node.parameters.reset_type, node.parameters.simulate, log_callable=node.log)
                             qt.reset(node.parameters.reset_type, node.parameters.simulate, log_callable=node.log)
+                            reset_frame(cr.name, qc.xy.name, qt.xy.name)
 
-                            align(*zz_elems)
+                            align(*cr_elems)
 
                             # Play Hadamard
                             qc.xy.play("x180")
                             qc.xy.play("y90")
 
-                            align(*zz_elems)
+                            align(*cr_elems)
 
                             # Play CNOT
-                            qt.xy.play("x180")
-                            qt.xy.play("y90")
-                            align(*zz_elems)
-                            qp.apply("stark_cz")
-                            align(*zz_elems)
-                            qt.xy.play("x180")
-                            qt.xy.play("y90")
+                            # CNOT decomposition into [Z(-pi/2) x I] * [I x X(-pi/2)] * ZX(pi/2)
+                            qt.xy.play("-x90")  # X(-pi/2)
+                            align(*cr_elems)
+                            qp.apply("cr", cr_type=cr_type, wf_type=wf_type)
+                            align(*cr_elems)
+                            frame_rotation_2pi(-0.25, qc.xy.name)  # Z(-pi/2)
 
-                            align(*zz_elems)
+                            align(*cr_elems)
 
                             # Tomography gates
                             with if_(tomo_axis_control == 0):  # X axis
@@ -151,7 +156,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             with elif_(tomo_axis_target == 1):  # Y axis
                                 qt.xy.play("x90")
 
-                            align(*zz_elems)
+                            align(qc.resonator.name, qt.resonator.name, *cr_elems)
 
                             # Measure the state of the resonators
                             qc.readout_state(state_c[i])
@@ -160,10 +165,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             save(state_t[i], state_t_st[i])
 
                             # Reset the frame of the qubits in order not to accumulate rotations
-                            reset_frame(zz.name)
-                            reset_frame(qt.xy_detuned.name)
-                            reset_frame(qt.xy.name)
-                            reset_frame(qt.xy.name)
+                            reset_frame(*cr_elems)
 
                             # Wait for the qubit to decay to the ground state - Can be replaced by active reset
                             qc.resonator.wait(qc.resonator.depletion_time // 4)
@@ -274,7 +276,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for i, qp in enumerate(node.namespace["qubit_pairs"]):
             if node.outcomes[qp.name] == "failed":
                 continue
-            print("here")
+
             pass
 
 

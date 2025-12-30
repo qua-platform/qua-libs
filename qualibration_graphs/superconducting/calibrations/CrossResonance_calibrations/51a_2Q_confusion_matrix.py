@@ -75,7 +75,9 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # You can get type hinting in your IDE by typing node.parameters.
+    # # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.num_shots = 3
+    # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
     pass
 
 
@@ -142,8 +144,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         for i, qp in multiplexed_qubit_pairs.items():
                             qc = qp.qubit_control
                             qt = qp.qubit_target
-                            zz = qp.zz_drive
-                            zz_elems = [zz.name, qc.xy.name, qt.xy.name, qt.xy_detuned.name]
+                            cr = qp.cross_resonance
+                            cr_elems = [cr.name, qc.xy.name, qt.xy.name]
 
                             # Reset the qubits to the ground state
                             qc.reset(
@@ -156,7 +158,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 node.parameters.simulate,
                                 log_callable=node.log,
                             )
-                            align(*zz_elems)
+                            align(*cr_elems)
 
                             # Prepare initial states
                             with if_(s_c == 1):  # states 0:g or 1:e
@@ -168,7 +170,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qt.xy.play("x180")
                             with else_():  # states 0:g or 1:e
                                 qt.xy.wait(qt.xy.operations["x180"].length // 4)
-                            align(*zz_elems)
+                            align(*cr_elems)
 
                             # Measure the state of the resonators
                             qc.readout_state(state_c[i])

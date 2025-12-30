@@ -32,26 +32,52 @@ from qualibration_libs.core import tracked_updates
 description = """
         Cross-Resonance Phase Correction (Qc & Qt)
 
-Find per-gate virtual-Z phases that cancel any net Z-type phase on the selected qubit (Qc or Qt)
-during the CR block, independent of whether it comes from ZI/IZ/ZZ/Stark/etc.
+Find per-gate virtual-Z phases that cancel any net Z-type phase on the selected qubit (Qc or Qt) during the CR block, 
+independent of whether it comes from ZI/IZ/ZZ/Stark/etc.
 
 Protocol (per qubit pair)
 1) Reset both qubits; align.
-2) Role assignment:
-   • If corr_qubit = "c":  q2 = Qc (Ramsey), q1 = Qt (prepared |0/1⟩ by s)
-   • If corr_qubit = "t":  q2 = Qt (Ramsey), q1 = Qc (prepared |0/1⟩ by s)
-3) State prep:
-   • If s==1: apply x180 on q1; always apply y90 on q2 (put Ramsey qubit on equator).
-4) Apply the CR block with:
-   • qc_correction_phase = ph if corr_qubit=="c" else fixed
-   • qt_correction_phase = ph if corr_qubit=="t" else fixed
-5) Analysis: apply −y90 on q2 (the Ramsey qubit).
-6) Read out both qubits; repeat over ph (and s=0,1). Reset frames between shots.
-
-Extraction & application
-• Fit Ramsey fringe of q2 vs ph to find ϕ* that nulls the residual phase.
-• Set virtual-Z after CR on the calibrated qubit to −ϕ*.
-• Optional ZZ: from the two datasets (s=0,1), take half-difference of fitted phases to log ϕ_ZZ.
+2) Perform the following Ramsey sequence on the qubit to be calibrated (Qc or Qt, labeled as q_0, q_1 respectively):
+    
+    Control prepared in |0>, measure Target Ramsey (C0)
+                     ░ ┌───────────┐               ░              ░ ┌─┐   
+    q_0: ────────────░─┤0          ├───────────────░──────────────░─┤M├───
+         ┌─────────┐ ░ │  Rzx(π/2) │┌────────────┐ ░ ┌──────────┐ ░ └╥┘┌─┐
+    q_1: ┤ Ry(π/2) ├─░─┤1          ├┤ Rz(2π*phi) ├─░─┤ Ry(-π/2) ├─░──╫─┤M├
+         └─────────┘ ░ └───────────┘└────────────┘ ░ └──────────┘ ░  ║ └╥┘
+    c: 2/════════════════════════════════════════════════════════════╩══╩═
+                                                                     1  0  
+    
+    Control prepared in |1>, measure Target Ramsey (C1)
+          ┌───────┐  ░ ┌───────────┐               ░              ░ ┌─┐   
+    q_0: ─┤ Rx(π) ├──░─┤0          ├───────────────░──────────────░─┤M├───
+         ┌┴───────┴┐ ░ │  Rzx(π/2) │┌────────────┐ ░ ┌──────────┐ ░ └╥┘┌─┐
+    q_1: ┤ Ry(π/2) ├─░─┤1          ├┤ Rz(2π*phi) ├─░─┤ Ry(-π/2) ├─░──╫─┤M├
+         └─────────┘ ░ └───────────┘└────────────┘ ░ └──────────┘ ░  ║ └╥┘
+    c: 2/════════════════════════════════════════════════════════════╩══╩═
+                                                                     1  0  
+    
+    Target prepared in |0>, measure Control Ramsey (T0)
+         ┌─────────┐ ░ ┌───────────┐┌────────────┐ ░ ┌──────────┐ ░ ┌─┐   
+    q_0: ┤ Ry(π/2) ├─░─┤0          ├┤ Rz(2π*phi) ├─░─┤ Rx(-π/2) ├─░─┤M├───
+         ├─────────┤ ░ │  Rzx(π/2) │└────────────┘ ░ ├──────────┤ ░ └╥┘┌─┐
+    q_1: ┤ Ry(π/2) ├─░─┤1          ├───────────────░─┤ Ry(-π/2) ├─░──╫─┤M├
+         └─────────┘ ░ └───────────┘               ░ └──────────┘ ░  ║ └╥┘
+    c: 2/════════════════════════════════════════════════════════════╩══╩═
+                                                                     1  0  
+    
+    Target prepared in |1>, measure Control Ramsey (T1)
+         ┌─────────┐            ░ ┌───────────┐┌────────────┐ ░ ┌──────────┐ ░ ┌─┐   
+    q_0: ┤ Ry(π/2) ├────────────░─┤0          ├┤ Rz(2π*phi) ├─░─┤ Rx(-π/2) ├─░─┤M├───
+         └┬───────┬┘┌─────────┐ ░ │  Rzx(π/2) │└────────────┘ ░ ├──────────┤ ░ └╥┘┌─┐
+    q_1: ─┤ Rx(π) ├─┤ Ry(π/2) ├─░─┤1          ├───────────────░─┤ Ry(-π/2) ├─░──╫─┤M├
+          └───────┘ └─────────┘ ░ └───────────┘               ░ └──────────┘ ░  ║ └╥┘
+    c: 2/═══════════════════════════════════════════════════════════════════════╩══╩═
+                                                                                1  0  
+3) The purpose is to analyze residual Z-rotations on the qubit being calibrated by attempting to compensate it with 
+    virtual z (phi).
+4) In the above protocol, the T0, T1 identifies the IZ and ZZ rotations on the control qubit; while only ZI is obtained 
+    from C0, C1 since the ZZ rotation is cancelled.
 """
 
 
@@ -68,7 +94,15 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # You can get type hinting in your IDE by typing node.parameters.
+    # # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.num_shots = 3
+    # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
+    # node.parameters.wf_type = "square"
+    # node.parameters.cr_type = "direct+cancel+echo"
+    # node.parameters.cr_drive_amp_scaling = [0.89, 0.89]
+    # node.parameters.cr_drive_phase_2pi = [0.12, 0.12]
+    # node.parameters.cr_cancel_amp_scaling = [0.34, 0.34]
+    # node.parameters.cr_cancel_phase_2pi = [0.23, 0.23]
     pass
 
 
@@ -123,7 +157,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "correction_qubit": xr.DataArray(corr_qubits, attrs={"long_name": "correction phase for qubit Qc or Qt"}),
-        "correction_phase": xr.DataArray(corr_phases, attrs={"long_name": "correction phase"}),
+        "correction_phase": xr.DataArray(corr_phases, attrs={"long_name": "correction phase (2pi)"}),
         "control_state": xr.DataArray(control_state, attrs={"long_name": "control state"}),
     }
 
@@ -172,21 +206,22 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                                 if corr_qubit == "c":
                                     # Ramsey the CONTROL; prepare TARGET in |0/1>
-                                    q1 = qt  # prepared 0/1
-                                    q2 = qc  # Ramsey (y90 ... -y90)
+                                    with if_(s == 1):
+                                        qc.xy.play("y90")
+                                        qt.xy.play("x180")
+                                    with if_(s == 0):
+                                        qc.xy.play("y90")
+                                        qt.xy.wait(qt.xy.operations["x180"].length // 4)
                                 elif corr_qubit == "t":
                                     # Ramsey the TARGET; prepare CONTROL in |0/1>
-                                    q1 = qc  # prepared 0/1
-                                    q2 = qt  # Ramsey
+                                    with if_(s == 1):
+                                        qc.xy.play("x180")
+                                    with if_(s == 0):
+                                        qc.xy.wait(qc.xy.operations["x180"].length // 4)
+                                align(*cr_elems)
 
-                                # Prepare Q1 at 0/1 and Play pi/2 for Q2
-                                with if_(s == 1):
-                                    q1.xy.play("x180")
-                                    q2.xy.play("y90")
-                                with if_(s == 0):
-                                    q1.xy.wait(q1.xy.operations["x180"].length * u.ns)
-                                    q2.xy.play("y90")
-
+                                # Convert to ZZ by IY90 ZX90 -IY90
+                                qt.xy.play("y90")
                                 align(*cr_elems)
 
                                 # Play CR
@@ -202,9 +237,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     qt_correction_phase=ph if corr_qubit == "t" else qt_correction_phases[i],
                                 )
                                 align(*cr_elems)
-
-                                # -y90
-                                q2.xy.play("-y90")
+                                qt.xy.play("-y90")
+                                if corr_qubit == "c":
+                                    qc.xy.play("x90")
                                 align(*cr_elems, qc.resonator.name, qt.resonator.name)
 
                                 # readout
@@ -215,13 +250,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 align(qc.resonator.name, qt.resonator.name, *cr_elems)
 
                                 # Reset the frame of the qubits in order not to accumulate rotations
-                                reset_frame(cr.name)
-                                reset_frame(qc.xy.name)
-                                reset_frame(qt.xy.name)
+                                reset_frame(*cr_elems)
 
                                 # Wait for the qubit to decay to the ground state - Can be replaced by active reset
-                                qc.resonator.wait(qc.resonator.depletion_time * u.ns)
-                                qt.resonator.wait(qt.resonator.depletion_time * u.ns)
+                                qc.resonator.wait(qc.resonator.depletion_time // 4)
+                                qt.resonator.wait(qt.resonator.depletion_time // 4)
 
         with stream_processing():
             n_st.save("n")
@@ -334,9 +367,26 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 if node.outcomes[qp.name] == "failed":
                     continue
 
-                # # update the parameter with optimal value
-                # qp.macros["cr"].qc_correction_phase = 0.0
-                # qp.macros["cr"].qt_correction_phase = 0.0
+                # # quam component for cr
+                # qp.cross_resonance.drive_amplitude_scaling = 0.87
+                # qp.cross_resonance.drive_phase = 0.23
+                # qp.cross_resonance.cancel_amplitude_scaling = 0.12
+                # qp.cross_resonance.cancel_phase = 0.34
+                # qp.cross_resonance.qc_correction_phase = 0.45
+                # qp.cross_resonance.qt_correction_phase = 0.56
+
+                # # quam macro for cr
+                # qp.macros["cr"].qc_correction_phase = 0.45
+                # qp.macros["cr"].qt_correction_phase = 0.56
+
+                # # cr drive
+                # operation_c = qp.cross_resonance.operations[node.parameters.wf_type]
+                # operation_c.amplitude = qp.cross_resonance.drive_amplitude_scaling * operation_c.amplitude
+                # operation_c.axis_angle = 2 * np.pi * qp.cross_resonance.drive_phase
+                # # cr cancel
+                # operation_t = qp.qubit_target.xy.operations[f"cr_{node.parameters.wf_type}_{qp.name}"]
+                # operation_t.amplitude = qp.cross_resonance.cancel_amplitude_scaling * operation_t.amplitude
+                # operation_t.axis_angle = 2 * np.pi * qp.cross_resonance.cancel_phase
                 pass
 
 

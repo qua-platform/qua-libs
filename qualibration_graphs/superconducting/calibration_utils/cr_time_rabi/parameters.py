@@ -2,7 +2,11 @@ from typing import Optional, Literal, Union, List
 import numpy as np
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import QubitsExperimentNodeParameters, QubitPairExperimentNodeParameters, CommonNodeParameters
+from qualibration_libs.parameters import (
+    QubitsExperimentNodeParameters,
+    QubitPairExperimentNodeParameters,
+    CommonNodeParameters,
+)
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -20,15 +24,17 @@ class NodeSpecificParameters(RunnableParameters):
     """
 
     num_shots: int = 100
-    min_pulse_duration_in_ns: int = 16
-    max_pulse_duration_in_ns: int = 1600
-    time_step_in_ns: int = 16
     cr_type: Literal["direct", "direct+cancel", "direct+echo", "direct+cancel+echo"] = "direct"
+    wf_type: Literal["square", "flattop"] = "square"
+
     cr_drive_amp_scaling: Union[float, List[float]] = 1.0
-    cr_drive_phase_2pi: Union[float, List[float]] = 1.0
+    cr_drive_phase_2pi: Union[float, List[float]] = 0.0
     cr_cancel_amp_scaling: Union[float, List[float]] = 0.0
     cr_cancel_phase_2pi: Union[float, List[float]] = 0.0
-    wf_type: Literal["square", "cosine", "gauss", "flattop"] = "square"
+
+    min_pulse_duration_in_ns: int = 16
+    max_pulse_duration_in_ns: int = 400
+    step_pulse_duration_in_ns: int = 16
 
 
 class QubitPairExperimentNodeParametersCustom(QubitPairExperimentNodeParameters):
