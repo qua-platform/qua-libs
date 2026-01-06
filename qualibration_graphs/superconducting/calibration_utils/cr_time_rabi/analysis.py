@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Tuple, Dict, Literal
 import numpy as np
 import xarray as xr
+import matplotlib.pyplot as plt
 
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
@@ -75,10 +76,14 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
             )
             try:
                 crht.fit_params()
-                fig_analysis = crht.plot_fit_result(do_show=False)
+                fig_analysis, axs = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
+                crht.plot_data(fig_analysis, axs)
+                crht.plot_fit_result(fig_analysis, axs, do_show=False)
+                fig_analysis.suptitle(f"#{node.snapshot_idx} - Qc: {qp.qubit_control.name}, Qt: {qp.qubit_target.name}")
+                fig_analysis.subplots_adjust(top=0.9)
                 node.results[f"figure_analysis_{qp.name}"] = fig_analysis
-            except:
-                print(f"-> failed")
+            except Exception as e:
+                print(f"-> failed with error: {e}")
                 crht.interaction_coeffs_MHz = {p: None for p in PAULI_2Q}
 
             node.results[f"interaction_coefficients_{qp.name}"] = crht.interaction_coeffs_MHz

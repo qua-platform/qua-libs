@@ -44,7 +44,7 @@ def plot_raw_data_with_fit(node, ds: xr.Dataset, qubit_pairs: List[AnyTransmonPa
         qt = qp.qubit_target
         fig, axss = plt.subplots(3, 2, figsize=(8, 8), sharex=True)
         # Plots
-        plt.suptitle(f"CR Time Rabi")
+        plt.suptitle(f"#{node.snapshot_idx} - CR Time Rabi")
         for i, (axs, bss) in enumerate(zip(axss, ["X", "Y", "Z"])):
             for j, stc in enumerate(["g", "e"]):
                 ds_sliced = ds.sel(qubit_pair=qp.name, qst_basis=i, control_state=j)
@@ -76,6 +76,7 @@ def plot_raw_data_with_fit(node, ds: xr.Dataset, qubit_pairs: List[AnyTransmonPa
                 axs[1].set_title(f"target: {qp.qubit_target.name}") if i == 0 else None
                 for ax in axs:
                     ax.set_xlabel("cr durations [ns]") if i == 2 else None
+                    ax.set_ylim(0, 1)
                     ax.legend([f"{qc.name}=g", f"{qc.name}=e"])
         plt.tight_layout()
         figs.append(fig)

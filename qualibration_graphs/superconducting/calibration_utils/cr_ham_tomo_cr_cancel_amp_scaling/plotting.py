@@ -46,12 +46,12 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubit_pairs: List[AnyTransmonPair], f
         fig.suptitle(f"Qc: {qc.name}, Qt: {qt.name}")
 
         # Prepare the figure for live plotting
-        ds_sliced = ds.sel(qubit_pair=qp.name)
+        ds_sliced = fits.sel(qubit_pair=qp.name)
         amp_scalings = ds_sliced.coords["amp_scaling"].values
         # plotting data
         plot_cr_duration_vs_scan_param(
-            ds_sliced.sel(control_target="c")["state"].data,
-            ds_sliced.sel(control_target="t")["state"].data,
+            ds_sliced.sel(control_target="c")["bloch"].data,
+            ds_sliced.sel(control_target="t")["bloch"].data,
             ds_sliced.pulse_duration.data,
             amp_scalings,
             "cr cancel amp scaling",
