@@ -20,10 +20,12 @@ class FitParameters:
     """List of flux bias values where avoided crossings occur (V)."""
     num_crossings: int
     """Number of avoided crossings found."""
-    hyperbolic_fit_params: dict | None = None
+    hyperbolic_fit_params: list[dict] | None = None
     """
-    Parameters of the fitted hyperbolic function.
-    Keys: 'f0' (center_freq), 'delta_f' (gap), 'g' (coupling), 'phi0' (offset)
+    List of parameters for fitted avoided crossing models, one per crossing.
+    Each dict contains: 'w_r' (resonator frequency), 'w_q0' (qubit frequency at phi0),
+    'alpha' (qubit frequency slope), 'phi0' (crossing position), 'g' (coupling strength),
+    'flux_range' (fit window), 'branch_assignments' (branch assignments for each data point)
     """
 
 
@@ -48,6 +50,14 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         if num_crossings > 0:
             crossings_str = ", ".join([f"{fc * 1e3:.1f} mV" for fc in fit_results[q]["avoided_crossing_flux_biases"]])
             s_crossings += f"at: {crossings_str}"
+
+            # Log hyperbolic fit information
+            hyperbolic_fits = fit_results[q].get("hyperbolic_fit_params")
+            if hyperbolic_fits is not None:
+                num_fits = len(hyperbolic_fits)
+                s_crossings += f" | {num_fits}/{num_crossings} hyperbolic fit(s) successful"
+            else:
+                s_crossings += " | No hyperbolic fits"
         else:
             s_crossings += "none found"
         if fit_results[q]["success"]:
@@ -229,38 +239,186 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, pe
             crossing_flux_biases = [float(flux_bias_array[idx]) for idx in crossing_indices]
             crossing_flux_biases = sorted(crossing_flux_biases)  # Sort by flux bias value
 
-            # Fit hyperbolic function to the peak frequency vs flux data
-            # Hyperbolic form: f(φ) = f₀ ± √((Δf/2)² + (g·(φ-φ₀))²)
-            hyperbolic_fit_params = None
-            try:
-                # Define hyperbolic function for avoided crossing
-                def hyperbolic_func(phi, f0, delta_f, g, phi0):
-                    """Hyperbolic function for avoided crossing: f(φ) = f₀ + √((Δf/2)² + (g·(φ-φ₀))²)"""
-                    return f0 + np.sqrt((delta_f / 2) ** 2 + (g * (phi - phi0)) ** 2)
+            # Fit hyperbolic function locally around each crossing
+            # Hyperbolic form: f(φ) = f₀ + √((Δf/2)² + (g·(φ-φ₀))²)
+            hyperbolic_fit_params = []
 
-                # Initial parameter guesses
-                f0_guess = np.mean(peak_freq_smooth)  # Center frequency
-                delta_f_guess = np.std(peak_freq_smooth) * 0.1  # Small gap estimate
-                g_guess = np.std(dfreq_dflux) * np.std(flux_bias_array)  # Coupling strength estimate
-                phi0_guess = np.mean(flux_bias_array)  # Flux offset
+            if len(crossing_flux_biases) > 0:
+                # Automatically calculate window size based on data characteristics
+                # Calculate typical flux spacing
+                if len(flux_bias_array) > 1:
+                    flux_step = np.mean(np.diff(flux_bias_array))
+                    flux_range_total = np.max(flux_bias_array) - np.min(flux_bias_array)
+                else:
+                    flux_step = 0.001  # Fallback
+                    flux_range_total = 0.1  # Fallback
 
-                # Fit the hyperbolic function
-                popt, _ = optimize.curve_fit(
-                    hyperbolic_func,
-                    flux_bias_array,
-                    peak_freq_smooth,
-                    p0=[f0_guess, delta_f_guess, g_guess, phi0_guess],
-                    maxfev=5000,
-                )
+                # Target window: use ~30-40 data points, but adapt to data density
+                target_points = 35
+                base_window_volts = target_points * abs(flux_step)
 
-                hyperbolic_fit_params = {
-                    "f0": float(popt[0]),  # Center frequency (Hz)
-                    "delta_f": float(popt[1]),  # Gap size (Hz)
-                    "g": float(popt[2]),  # Coupling strength (Hz/V)
-                    "phi0": float(popt[3]),  # Flux offset (V)
-                }
-            except Exception as e:
-                logging.warning(f"Failed to fit hyperbolic function for qubit {q_name}: {e}")
+                # Ensure minimum and maximum window sizes relative to scanning range
+                # At least 5% of range or 15 points
+                min_window_volts = max(0.05 * flux_range_total, 15 * abs(flux_step))
+                max_window_volts = 0.5 * flux_range_total  # At most 50% of range
+                base_window_volts = np.clip(base_window_volts, min_window_volts, max_window_volts)
+
+                # Define avoided crossing model (2x2 eigenvalues, with linear bare tunable mode)
+                def avoided_crossing(phi, w_r, w_q0, alpha, phi0, g, branch):
+                    """
+                    Avoided crossing model with both branches.
+                    branch = +1 for upper eigenvalue, -1 for lower eigenvalue
+                    """
+                    w1 = w_r
+                    w2 = w_q0 + alpha * (phi - phi0)
+                    avg = 0.5 * (w1 + w2)
+                    det = 0.5 * (w1 - w2)
+                    split = np.sqrt(det**2 + g**2)
+                    return avg + branch * split
+
+                def model(xdata, w_r, w_q0, alpha, phi0, g):
+                    """Model function for curve_fit"""
+                    phi, br = xdata
+                    return avoided_crossing(phi, w_r, w_q0, alpha, phi0, g, br)
+
+                # Fit around each crossing
+                for i, crossing_flux in enumerate(crossing_flux_biases):
+                    try:
+                        # Calculate adaptive window size for this crossing
+                        # Consider distance to neighboring crossings
+                        window_volts = base_window_volts
+
+                        # If there are neighboring crossings, reduce window to avoid overlap
+                        if len(crossing_flux_biases) > 1:
+                            # Find distances to nearest neighbors
+                            distances = []
+                            for other_crossing in crossing_flux_biases:
+                                if other_crossing != crossing_flux:
+                                    distances.append(abs(other_crossing - crossing_flux))
+
+                            if distances:
+                                min_distance = min(distances)
+                                # Use at most 60% of distance to nearest crossing, but not less than minimum
+                                adaptive_window = min(0.6 * min_distance, base_window_volts)
+                                window_volts = max(adaptive_window, min_window_volts)
+
+                        # Find indices within the window around this crossing
+                        window_mask = np.abs(flux_bias_array - crossing_flux) <= window_volts
+
+                        # Extract data within window
+                        flux_window = flux_bias_array[window_mask]
+                        freq_window = peak_freq_smooth[window_mask]
+
+                        # Ensure we have enough points for fitting
+                        if len(flux_window) < 10:
+                            logging.warning(
+                                f"Insufficient data points ({len(flux_window)}) for avoided crossing fit "
+                                f"around crossing at {crossing_flux * 1e3:.1f} mV for qubit {q_name}. Skipping."
+                            )
+                            continue
+
+                        # Initial guesses (heuristics)
+                        left = flux_window < crossing_flux
+                        right = flux_window > crossing_flux
+
+                        w_r0 = np.median(freq_window[left]) if np.any(left) else np.median(freq_window)
+                        w_q00 = np.median(freq_window[right]) if np.any(right) else np.median(freq_window)
+
+                        # Slope guess from right side (rough linear fit)
+                        if np.sum(right) >= 5:
+                            alpha0, _ = np.polyfit(flux_window[right], freq_window[right], 1)
+                        elif np.sum(left) >= 5:
+                            alpha0, _ = np.polyfit(flux_window[left], freq_window[left], 1)
+                        else:
+                            alpha0, _ = np.polyfit(flux_window, freq_window, 1)
+
+                        # Crossing guess at the identified crossing position
+                        phi00 = float(crossing_flux)
+
+                        # Coupling guess from overall scale (kept >= 1 MHz)
+                        g0 = max(1e6, 0.25 * (np.percentile(freq_window, 95) - np.percentile(freq_window, 5)))
+
+                        p = np.array([w_r0, w_q00, alpha0, phi00, g0], dtype=float)
+
+                        def fit_with_branches(flux_, freq_, branch_, p0):
+                            """Fit model with given branch assignments"""
+                            popt, _ = optimize.curve_fit(model, (flux_, branch_), freq_, p0=p0, maxfev=50000)
+                            return popt
+
+                        # EM-style loop: assign branch using current params, then refit
+                        branch = np.ones_like(freq_window, dtype=float)
+                        for iteration in range(30):
+                            upper = avoided_crossing(flux_window, *p, branch=+1.0)
+                            lower = avoided_crossing(flux_window, *p, branch=-1.0)
+
+                            new_branch = np.where(
+                                np.abs(freq_window - upper) <= np.abs(freq_window - lower), +1.0, -1.0
+                            )
+
+                            p_new = fit_with_branches(flux_window, freq_window, new_branch, p)
+
+                            # Stop if stable
+                            if np.all(new_branch == branch) and np.allclose(p_new, p, rtol=1e-5, atol=1e-3):
+                                p = p_new
+                                branch = new_branch
+                                break
+
+                            p = p_new
+                            branch = new_branch
+
+                        # Optional robust cleanup: drop large-residual outliers once, refit
+                        upper = avoided_crossing(flux_window, *p, branch=+1.0)
+                        lower = avoided_crossing(flux_window, *p, branch=-1.0)
+                        pred = np.where(branch > 0, upper, lower)
+                        resid = freq_window - pred
+
+                        mad = np.median(np.abs(resid - np.median(resid))) + 1e-12
+                        sigma = 1.4826 * mad
+                        keep = np.abs(resid) < 4.5 * sigma  # ~4.5-sigma rule
+
+                        if np.sum(keep) >= 10:  # Ensure enough points after outlier removal
+                            p_final = fit_with_branches(flux_window[keep], freq_window[keep], branch[keep], p)
+                            # Recompute branch assignments with final parameters
+                            upper_final = avoided_crossing(flux_window[keep], *p_final, branch=+1.0)
+                            lower_final = avoided_crossing(flux_window[keep], *p_final, branch=-1.0)
+                            branch_final = np.where(
+                                np.abs(freq_window[keep] - upper_final) <= np.abs(freq_window[keep] - lower_final),
+                                +1.0,
+                                -1.0,
+                            )
+                        else:
+                            p_final = p
+                            branch_final = branch[keep] if np.any(keep) else branch
+
+                        w_r, w_q0, alpha, phi0_fit, g = p_final
+
+                        # Store fit parameters
+                        fit_params = {
+                            "w_r": float(w_r),  # Resonator frequency (Hz)
+                            "w_q0": float(w_q0),  # Qubit frequency at phi0 (Hz)
+                            "alpha": float(alpha),  # Qubit frequency slope (Hz/V)
+                            "phi0": float(phi0_fit),  # Crossing flux position (V)
+                            "g": float(g),  # Coupling strength (Hz)
+                            "flux_range": [
+                                float(np.min(flux_window)),
+                                float(np.max(flux_window)),
+                            ],  # Fit window range
+                            "branch_assignments": (
+                                branch_final.tolist() if hasattr(branch_final, "tolist") else branch_final
+                            ),
+                        }
+                        hyperbolic_fit_params.append(fit_params)
+
+                    except Exception as e:
+                        logging.warning(
+                            f"Failed to fit hyperbolic function around crossing at "
+                            f"{crossing_flux * 1e3:.1f} mV for qubit {q_name}: {e}"
+                        )
+                        # Continue with other crossings
+                        continue
+
+            # Set to None if no fits were successful
+            if len(hyperbolic_fit_params) == 0:
                 hyperbolic_fit_params = None
 
             # Assess success: found at least one crossing
@@ -303,6 +461,29 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode, pe
     # Ensure all values are native Python types (not numpy) for JSON serialization
     crossing_dict = {q: [float(x) for x in fit_results[q].avoided_crossing_flux_biases] for q in qubit_names}
     fit.attrs["avoided_crossing_flux_biases"] = json.dumps(crossing_dict)
+
+    # Store hyperbolic fit parameters as JSON string
+    hyperbolic_fits_dict = {}
+    for q in qubit_names:
+        if fit_results[q].hyperbolic_fit_params is not None:
+            # Convert each fit dict to ensure all values are native Python types
+            hyperbolic_fits_dict[q] = []
+            for fp in fit_results[q].hyperbolic_fit_params:
+                fit_dict = {
+                    "w_r": float(fp["w_r"]),
+                    "w_q0": float(fp["w_q0"]),
+                    "alpha": float(fp["alpha"]),
+                    "phi0": float(fp["phi0"]),
+                    "g": float(fp["g"]),
+                    "flux_range": [float(fp["flux_range"][0]), float(fp["flux_range"][1])],
+                }
+                # Store branch assignments if available (may be large, so optional)
+                if "branch_assignments" in fp:
+                    fit_dict["branch_assignments"] = fp["branch_assignments"]
+                hyperbolic_fits_dict[q].append(fit_dict)
+        else:
+            hyperbolic_fits_dict[q] = []
+    fit.attrs["hyperbolic_fit_params"] = json.dumps(hyperbolic_fits_dict)
 
     # Ensure smoothed_peak_frequency has proper coordinates
     if "smoothed_peak_frequency" in fit.data_vars:

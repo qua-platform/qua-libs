@@ -64,6 +64,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.min_flux = -2.2
     node.parameters.max_flux = 0.5
     node.parameters.num_flux_points = 101
+    node.parameters.load_data_id = 8038
 
     pass
 
@@ -297,6 +298,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
         for qubit_pair_name, measured_qubit_name in zip(qubit_pair_names, measured_qubit_names)
     }
     # Convert boolean outcomes to "successful"/"failed" strings
+
     node.outcomes = {k: ("successful" if v else "failed") for k, v in node.outcomes.items()}
 
 

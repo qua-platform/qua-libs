@@ -204,7 +204,7 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
                             )
 
                             # Mark avoided crossings with red crosses using the smoothed fit
-                            for crossing_flux in crossing_flux_biases:
+                            for i, crossing_flux in enumerate(crossing_flux_biases):
                                 # Find the frequency at this flux bias by interpolating on smoothed data
                                 crossing_freq_GHz = np.interp(
                                     crossing_flux, flux_bias_vals_smooth.data, smoothed_freq_GHz.data
@@ -217,9 +217,103 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
                                     "r+",
                                     markersize=15,
                                     markeredgewidth=3,
-                                    label="Avoided crossing" if crossing_flux == crossing_flux_biases[0] else "",
+                                    label="Avoided crossing" if i == 0 else "",
                                     zorder=10,
                                 )
+
+                            # Plot hyperbolic fits if available
+                            if "hyperbolic_fit_params" in fit.attrs:
+                                try:
+                                    hyperbolic_fits_str = fit.attrs["hyperbolic_fit_params"]
+                                    if isinstance(hyperbolic_fits_str, str):
+                                        hyperbolic_fits_dict = json.loads(hyperbolic_fits_str)
+                                    else:
+                                        hyperbolic_fits_dict = hyperbolic_fits_str
+
+                                    hyperbolic_fits = hyperbolic_fits_dict.get(qubit_name, [])
+
+                                    # Define avoided crossing model for plotting
+                                    def avoided_crossing(phi, w_r, w_q0, alpha, phi0, g, branch):
+                                        """
+                                        Avoided crossing model with both branches.
+                                        branch = +1 for upper eigenvalue, -1 for lower eigenvalue
+                                        """
+                                        w1 = w_r
+                                        w2 = w_q0 + alpha * (phi - phi0)
+                                        avg = 0.5 * (w1 + w2)
+                                        det = 0.5 * (w1 - w2)
+                                        split = np.sqrt(det**2 + g**2)
+                                        return avg + branch * split
+
+                                    # Plot fit for each crossing
+                                    for i, fit_params in enumerate(hyperbolic_fits):
+                                        try:
+                                            flux_range = fit_params.get("flux_range", None)
+                                            if flux_range is None:
+                                                # Fallback: use window around crossing
+                                                crossing_flux = crossing_flux_biases[i]
+                                                flux_range = [
+                                                    crossing_flux - 0.01,
+                                                    crossing_flux + 0.01,
+                                                ]
+
+                                            # Generate flux points for fit curve
+                                            flux_fit = np.linspace(flux_range[0], flux_range[1], 200)
+
+                                            # Evaluate both branches of the avoided crossing
+                                            upper_fit_Hz = avoided_crossing(
+                                                flux_fit,
+                                                fit_params["w_r"],
+                                                fit_params["w_q0"],
+                                                fit_params["alpha"],
+                                                fit_params["phi0"],
+                                                fit_params["g"],
+                                                branch=+1.0,
+                                            )
+                                            lower_fit_Hz = avoided_crossing(
+                                                flux_fit,
+                                                fit_params["w_r"],
+                                                fit_params["w_q0"],
+                                                fit_params["alpha"],
+                                                fit_params["phi0"],
+                                                fit_params["g"],
+                                                branch=-1.0,
+                                            )
+
+                                            # Convert to full frequency and GHz
+                                            upper_fit_full_Hz = upper_fit_Hz + rf_freq
+                                            lower_fit_full_Hz = lower_fit_Hz + rf_freq
+                                            upper_fit_GHz = upper_fit_full_Hz / 1e9
+                                            lower_fit_GHz = lower_fit_full_Hz / 1e9
+
+                                            # Plot both branches of the fit curve
+                                            ax.plot(
+                                                flux_fit,
+                                                upper_fit_GHz,
+                                                color="violet",
+                                                linestyle="-",
+                                                linewidth=3,
+                                                alpha=0.8,
+                                                label=f"Avoided crossing fit #{i + 1} (upper)" if i == 0 else "",
+                                                zorder=8,
+                                            )
+                                            ax.plot(
+                                                flux_fit,
+                                                lower_fit_GHz,
+                                                color="violet",
+                                                linestyle="-",
+                                                linewidth=3,
+                                                alpha=0.8,
+                                                label=f"Avoided crossing fit #{i + 1} (lower)" if i == 0 else "",
+                                                zorder=8,
+                                            )
+                                        except (KeyError, ValueError, TypeError) as e:
+                                            # Skip this fit if there's an error
+                                            continue
+
+                                except (KeyError, json.JSONDecodeError, AttributeError):
+                                    # If fit parameters not available, skip plotting fits
+                                    pass
                     except (KeyError, ValueError, IndexError):
                         # If smoothed data selection fails, mark crossings at middle of y-axis
                         y_mid = np.mean(ax.get_ylim())
@@ -236,17 +330,116 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
 
                 # If smoothed fit is not available, fallback to marking crossings at middle of y-axis
                 if "smoothed_peak_frequency" not in fit.data_vars:
+                    # Get RF frequency for conversion (needed for hyperbolic fits)
+                    rf_freq_fallback = ds_plot.full_freq.mean(dim=["detuning"]).values
+                    if np.isnan(rf_freq_fallback) or rf_freq_fallback == 0:
+                        rf_freq_fallback = float(ds_plot.full_freq.isel(flux_bias=0).mean(dim="detuning").values)
+
                     y_mid = np.mean(ax.get_ylim())
-                    for crossing_flux in crossing_flux_biases:
+                    for i, crossing_flux in enumerate(crossing_flux_biases):
                         ax.plot(
                             crossing_flux,
                             y_mid,
                             "r+",
                             markersize=15,
                             markeredgewidth=3,
-                            label="Avoided crossing" if crossing_flux == crossing_flux_biases[0] else "",
+                            label="Avoided crossing" if i == 0 else "",
                             zorder=10,
                         )
+
+                    # Still try to plot hyperbolic fits if available
+                    if "hyperbolic_fit_params" in fit.attrs:
+                        try:
+                            hyperbolic_fits_str = fit.attrs["hyperbolic_fit_params"]
+                            if isinstance(hyperbolic_fits_str, str):
+                                hyperbolic_fits_dict = json.loads(hyperbolic_fits_str)
+                            else:
+                                hyperbolic_fits_dict = hyperbolic_fits_str
+
+                            hyperbolic_fits = hyperbolic_fits_dict.get(qubit_name, [])
+
+                            # Define avoided crossing model for plotting
+                            def avoided_crossing(phi, w_r, w_q0, alpha, phi0, g, branch):
+                                """
+                                Avoided crossing model with both branches.
+                                branch = +1 for upper eigenvalue, -1 for lower eigenvalue
+                                """
+                                w1 = w_r
+                                w2 = w_q0 + alpha * (phi - phi0)
+                                avg = 0.5 * (w1 + w2)
+                                det = 0.5 * (w1 - w2)
+                                split = np.sqrt(det**2 + g**2)
+                                return avg + branch * split
+
+                            # Plot fit for each crossing
+                            for i, fit_params in enumerate(hyperbolic_fits):
+                                try:
+                                    flux_range = fit_params.get("flux_range", None)
+                                    if flux_range is None:
+                                        # Fallback: use window around crossing
+                                        crossing_flux = crossing_flux_biases[i]
+                                        flux_range = [
+                                            crossing_flux - 0.01,
+                                            crossing_flux + 0.01,
+                                        ]
+
+                                    # Generate flux points for fit curve
+                                    flux_fit = np.linspace(flux_range[0], flux_range[1], 200)
+
+                                    # Evaluate both branches of the avoided crossing
+                                    upper_fit_Hz = avoided_crossing(
+                                        flux_fit,
+                                        fit_params["w_r"],
+                                        fit_params["w_q0"],
+                                        fit_params["alpha"],
+                                        fit_params["phi0"],
+                                        fit_params["g"],
+                                        branch=+1.0,
+                                    )
+                                    lower_fit_Hz = avoided_crossing(
+                                        flux_fit,
+                                        fit_params["w_r"],
+                                        fit_params["w_q0"],
+                                        fit_params["alpha"],
+                                        fit_params["phi0"],
+                                        fit_params["g"],
+                                        branch=-1.0,
+                                    )
+
+                                    # Convert to full frequency and GHz
+                                    upper_fit_full_Hz = upper_fit_Hz + rf_freq_fallback
+                                    lower_fit_full_Hz = lower_fit_Hz + rf_freq_fallback
+                                    upper_fit_GHz = upper_fit_full_Hz / 1e9
+                                    lower_fit_GHz = lower_fit_full_Hz / 1e9
+
+                                    # Plot both branches of the fit curve
+                                    ax.plot(
+                                        flux_fit,
+                                        upper_fit_GHz,
+                                        color="pink",
+                                        linestyle="-",
+                                        linewidth=3,
+                                        alpha=0.8,
+                                        label=f"Avoided crossing fit #{i + 1} (upper)" if i == 0 else "",
+                                        zorder=8,
+                                    )
+                                    ax.plot(
+                                        flux_fit,
+                                        lower_fit_GHz,
+                                        color="pink",
+                                        linestyle="-",
+                                        linewidth=3,
+                                        alpha=0.8,
+                                        label=f"Avoided crossing fit #{i + 1} (lower)" if i == 0 else "",
+                                        zorder=8,
+                                    )
+                                except (KeyError, ValueError, TypeError) as e:
+                                    # Skip this fit if there's an error
+                                    continue
+
+                        except (KeyError, json.JSONDecodeError, AttributeError):
+                            # If fit parameters not available, skip plotting fits
+                            pass
         except (KeyError, AttributeError, ValueError):
             # Fit results not available, skip marking
             pass
