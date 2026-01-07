@@ -19,7 +19,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.parameters import get_qubits
+from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
@@ -53,8 +53,8 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qB2"]
-    node.parameters.coupler = "qB2-B3"
+    node.parameters.qubit_pairs = ["qB2-B3"]
+    node.parameters.measure_qubit = "target"
     node.parameters.operation_amplitude_factor = 0.2
     node.parameters.operation = "x180"
     node.parameters.operation_len_in_ns = 200
@@ -78,12 +78,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
-    # Get the active qubits from the node and organize them by batches
-    node.namespace["qubits"] = qubits = get_qubits(node)
-    num_qubits = len(qubits)
-    # Check if the qubits have a z-line attached
-    if any([q.z is None for q in qubits]):
-        warnings.warn("Found qubits without a flux line. Skipping")
+    # Get the active qubit pairs from the node and organize them by batches
+    node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
+    num_qubit_pairs = len(qubit_pairs)
+
+    # Extract the measured qubits based on measure_qubit parameter
+    measured_qubits = []
+    for qp in qubit_pairs:
+        if node.parameters.measure_qubit == "control":
+            measured_qubits.append(qp.qubit_control)
+        else:
+            measured_qubits.append(qp.qubit_target)
+    node.namespace["measured_qubits"] = measured_qubits
+    # Also set in qubits for compatibility with utility functions
+    node.namespace["qubits"] = measured_qubits
 
     operation = node.parameters.operation  # The qubit operation to play
     n_avg = node.parameters.num_shots
@@ -101,69 +109,83 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num = node.parameters.num_flux_points
     dcs = np.linspace(min_flux, max_flux, num)
 
-    coupler = node.machine.qubit_pairs[node.parameters.coupler].coupler
-
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
-        "qubit": xr.DataArray(qubits.get_names()),
+        "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "detuning": xr.DataArray(dfs, attrs={"long_name": "qubit frequency", "units": "Hz"}),
         "flux_bias": xr.DataArray(dcs, attrs={"long_name": "flux bias", "units": "V"}),
     }
 
     with program() as node.namespace["qua_program"]:
-        # Macro to declare I, Q, n and their respective streams for a given number of qubit
+        # Macro to declare I, Q, n and their respective streams for a given number of qubit pairs
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         df = declare(int)  # QUA variable for the qubit frequency
         dc = declare(fixed)  # QUA variable for the flux dc level
 
-        for multiplexed_qubits in qubits.batch():
+        for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
-            for qubit in multiplexed_qubits.values():
-                node.machine.initialize_qpu(target=qubit)
+            for qp in multiplexed_qubit_pairs.values():
+                node.machine.initialize_qpu(target=qp.qubit_control)
+                node.machine.initialize_qpu(target=qp.qubit_target)
             align()
 
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(df, dfs)):
                     with for_(*from_array(dc, dcs)):
-                        # Qubit initialization
-                        for i, qubit in multiplexed_qubits.items():
+                        # Select the measured qubit based on measure_qubit parameter
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            if node.parameters.measure_qubit == "control":
+                                protagonist_qubit = qp.qubit_control
+                            else:
+                                protagonist_qubit = qp.qubit_target
+
                             # Update the qubit frequency
-                            qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
+                            protagonist_qubit.xy.update_frequency(df + protagonist_qubit.xy.intermediate_frequency)
                             # Wait for the qubits to decay to the ground state
-                            qubit.reset_qubit_thermal()
+                            protagonist_qubit.reset_qubit_thermal()
                             # Flux sweeping for a qubit
                             duration = (
                                 operation_len * u.ns
                                 if operation_len is not None
-                                else qubit.xy.operations[operation].length * u.ns
+                                else protagonist_qubit.xy.operations[operation].length * u.ns
                             )
                         align()
 
                         # Qubit manipulation
-                        for i, qubit in multiplexed_qubits.items():
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            if node.parameters.measure_qubit == "control":
+                                protagonist_qubit = qp.qubit_control
+                            else:
+                                protagonist_qubit = qp.qubit_target
+
                             # Bring the qubit to the desired point during the saturation pulse
-                            coupler.play(
+                            qp.coupler.play(
                                 "const",
-                                amplitude_scale=dc / coupler.operations["const"].amplitude,
+                                amplitude_scale=dc / qp.coupler.operations["const"].amplitude,
                                 duration=duration + 200,
                             )
-                            qubit.xy.wait(50)
-                            # Apply saturation pulse to all qubits
-                            qubit.xy.play(
+                            protagonist_qubit.xy.wait(50)
+                            # Apply saturation pulse to the measured qubit
+                            protagonist_qubit.xy.play(
                                 operation,
                                 amplitude_scale=operation_amp,
                                 duration=duration,
                             )
                         align()
 
-                        # Qubit readout
-                        for i, qubit in multiplexed_qubits.items():
-                            qubit.resonator.wait(50)
-                            qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                        # Qubit readout - only measure the selected qubit
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            if node.parameters.measure_qubit == "control":
+                                protagonist_qubit = qp.qubit_control
+                            else:
+                                protagonist_qubit = qp.qubit_target
+
+                            protagonist_qubit.resonator.wait(50)
+                            protagonist_qubit.resonator.measure("readout", qua_vars=(I[ii], Q[ii]))
                             # save data
-                            save(I[i], I_st[i])
-                            save(Q[i], Q_st[i])
+                            save(I[ii], I_st[ii])
+                            save(Q[ii], Q_st[ii])
 
             # Measure sequentially
             if not node.parameters.multiplexed:
@@ -171,7 +193,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         with stream_processing():
             n_st.save("n")
-            for i, qubit in enumerate(qubits):
+            for i in range(num_qubit_pairs):
                 I_st[i].buffer(len(dcs)).buffer(len(dfs)).average().save(f"I{i + 1}")
                 Q_st[i].buffer(len(dcs)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
@@ -216,6 +238,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
     # Register the raw dataset
+    # Rename qubit_pair dimension to qubit for compatibility with analysis functions
+    if "qubit_pair" in dataset.dims:
+        qubit_names = [q.name for q in node.namespace["measured_qubits"]]
+        dataset = dataset.rename({"qubit_pair": "qubit"})
+        dataset = dataset.assign_coords(qubit=qubit_names)
     node.results["ds_raw"] = dataset
 
 
@@ -227,10 +254,22 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active qubits from the loaded node parameters
-    # node.namespace["qubits"] = get_qubits(node)
-    # ds_processed = process_raw_dataset(node.results["ds_raw"], node)
-    # ds_processed.IQ_abs.plot()
+    # Get the active qubit pairs from the loaded node parameters
+    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+    # Extract measured qubits
+    measured_qubits = []
+    for qp in node.namespace["qubit_pairs"]:
+        if node.parameters.measure_qubit == "control":
+            measured_qubits.append(qp.qubit_control)
+        else:
+            measured_qubits.append(qp.qubit_target)
+    node.namespace["measured_qubits"] = measured_qubits
+    node.namespace["qubits"] = measured_qubits
+    # Rename qubit_pair dimension to qubit for compatibility with analysis functions
+    if "qubit_pair" in node.results["ds_raw"].dims:
+        qubit_names = [q.name for q in measured_qubits]
+        node.results["ds_raw"] = node.results["ds_raw"].rename({"qubit_pair": "qubit"})
+        node.results["ds_raw"] = node.results["ds_raw"].assign_coords(qubit=qubit_names)
 
 
 # %% {Analyse_data}
@@ -240,23 +279,38 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     Analyse the raw data and store the fitted data in another xarray dataset "ds_fit"
     and the fitted results in the "fit_results" dictionary.
     """
+    # Ensure qubits namespace is set for utility functions
+    if "qubits" not in node.namespace:
+        node.namespace["qubits"] = node.namespace["measured_qubits"]
+
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    # Map outcomes to qubit_pair names for state update
+    qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
+    measured_qubit_names = [q.name for q in node.namespace["measured_qubits"]]
     node.outcomes = {
-        qubit_name: ("successful" if fit_result["success"] else "failed")
-        for qubit_name, fit_result in node.results["fit_results"].items()
+        qubit_pair_name: node.results["fit_results"].get(measured_qubit_name, {}).get("success", False)
+        for qubit_pair_name, measured_qubit_name in zip(qubit_pair_names, measured_qubit_names)
     }
+    # Convert boolean outcomes to "successful"/"failed" strings
+    node.outcomes = {k: ("successful" if v else "failed") for k, v in node.outcomes.items()}
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    # Ensure qubits namespace is set for plotting function
+    if "qubits" not in node.namespace:
+        node.namespace["qubits"] = node.namespace["measured_qubits"]
+
+    fig_raw_fit = plot_raw_data_with_fit(
+        node.results["ds_raw"], node.namespace["measured_qubits"], node.results["ds_fit"]
+    )
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
@@ -269,11 +323,11 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
-        for q in node.namespace["qubits"]:
-            if node.outcomes[q.name] == "failed":
+        for qp in node.namespace["qubit_pairs"]:
+            if node.outcomes[qp.name] == "failed":
                 continue
             else:
-                # fit_results = node.results["fit_results"][q.name]
+                # fit_results = node.results["fit_results"][measured_qubit_name]
                 # Store avoided crossing positions for reference
                 # The avoided crossings are recorded but not automatically used to update state
                 # This allows the user to manually inspect and decide how to use them

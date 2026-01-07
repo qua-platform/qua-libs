@@ -1,8 +1,9 @@
-from typing import Optional
+from typing import ClassVar, Literal, Optional
 
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
+from qualibration_libs.parameters import (CommonNodeParameters,
+                                          QubitPairExperimentNodeParameters)
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -28,13 +29,14 @@ class NodeSpecificParameters(RunnableParameters):
     """Input line impedance in ohms. Default is 50 Ohm."""
     line_attenuation_in_db: Optional[int] = 0
     """Line attenuation in dB. Default is 0 dB."""
-    coupler: str = "coupler"
+    measure_qubit: Literal["control", "target"] = "target"
+    """Which qubit to measure: 'control' or 'target'. Default is 'target'."""
 
 
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    QubitsExperimentNodeParameters,
+    QubitPairExperimentNodeParameters,
 ):
-    pass
+    targets_name: ClassVar[str] = "qubit_pairs"
