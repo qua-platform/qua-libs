@@ -346,8 +346,8 @@ class SuperconductingDeviceRot:
         i: int,
         j: int,
         g_t: Callable[[jnp.ndarray], jnp.ndarray],
-        delta_ij: float,
-        sigma_ij: float,
+        delta_ij: jnp.ndarray,
+        sigma_ij: jnp.ndarray,
     ) -> Sequence[tuple[Callable[[jnp.ndarray], jnp.ndarray], dq.QArray]]:
         """
         Construct coupling operator terms for modes i and j.
@@ -363,10 +363,10 @@ class SuperconductingDeviceRot:
             Mode index j.
         g_t : Callable
             Time-dependent coupling function g(t).
-        delta_ij : float
-            Frequency difference Δ_ij = ω_i^(0) - ω_j^(0).
-        sigma_ij : float
-            Frequency sum Σ_ij = ω_i^(0) + ω_j^(0).
+        delta_ij : jnp.ndarray
+            Frequency difference Δ_ij = ω_i^(0) - ω_j^(0) (JAX array).
+        sigma_ij : jnp.ndarray
+            Frequency sum Σ_ij = ω_i^(0) + ω_j^(0) (JAX array).
 
         Returns
         -------
@@ -552,15 +552,15 @@ class SuperconductingDeviceRot:
             omega_q_right_idle = jnp.asarray(self.idling_qubit_freqs[q_right])
             omega_c_idle = jnp.asarray(self.idling_coupler_freqs[k])
 
-            # Frequency differences for RWA phases
-            delta_left_c = float(omega_q_left_idle - omega_c_idle)
-            delta_right_c = float(omega_q_right_idle - omega_c_idle)
-            delta_left_right = float(omega_q_left_idle - omega_q_right_idle)
+            # Frequency differences for RWA phases (keep as JAX arrays)
+            delta_left_c = omega_q_left_idle - omega_c_idle
+            delta_right_c = omega_q_right_idle - omega_c_idle
+            delta_left_right = omega_q_left_idle - omega_q_right_idle
 
-            # Frequency sums for full coupling
-            sigma_left_c = float(omega_q_left_idle + omega_c_idle)
-            sigma_right_c = float(omega_q_right_idle + omega_c_idle)
-            sigma_left_right = float(omega_q_left_idle + omega_q_right_idle)
+            # Frequency sums for full coupling (keep as JAX arrays)
+            sigma_left_c = omega_q_left_idle + omega_c_idle
+            sigma_right_c = omega_q_right_idle + omega_c_idle
+            sigma_left_right = omega_q_left_idle + omega_q_right_idle
 
             # Qubit-coupler couplings
             g_left_max, g_right_max = self.max_g_qubit_coupler[k]

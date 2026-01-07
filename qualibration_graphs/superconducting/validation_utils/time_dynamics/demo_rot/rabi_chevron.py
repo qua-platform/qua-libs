@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 import jax.numpy as jnp
-from jax import vmap
+from jax import vmap, jit
 import dynamiqs as dq
 import matplotlib.pyplot as plt
 from dynamiqs.method import Tsit5
@@ -111,8 +111,9 @@ def main():
     omega_idle = device.idling_qubit_freqs[0]
 
     # Sweep parameters (reduced for faster testing - increase for higher resolution)
-    n_freqs = 21  # Number of frequency points
-    n_durations = 21  # Number of duration points
+    # Note: JIT compilation makes larger sweeps much faster after initial compilation
+    n_freqs = 41  # Number of frequency points
+    n_durations = 41  # Number of duration points
 
     # Frequency sweep: ±50 MHz around idling frequency
     freq_span = 0.05  # GHz
@@ -142,10 +143,14 @@ def main():
         return kron_n(ops)
 
     z_op = create_z_operator()
+    # Pre-convert to JAX array for faster expectation value computation
+    z_op_jax = z_op.to_jax() if hasattr(z_op, "to_jax") else z_op
 
+    @jit
     def single_simulation(drive_freq: float, duration: float) -> float:
         """
         Run a single simulation for given drive frequency and duration.
+        JIT compiled for performance.
 
         Parameters
         ----------
@@ -172,23 +177,25 @@ def main():
         # Build Hamiltonian
         Ht = device.construct_h(drives=((0, pulse),))
 
-        # Time points: save only at the end
+        # Time points: save only at the end (minimal output for speed)
         tsave = jnp.asarray([0.0, duration])
 
-        # Solve Schrödinger equation
+        # Solve Schrödinger equation with optimized settings for speed
+        # Relaxed tolerances: rtol=1e-6, atol=1e-8 (was 1e-8, 1e-10)
+        # Reduced max_steps: 100k (was 1M) - sufficient for most cases
         res = dq.sesolve(
             Ht,
             psi0,
             tsave=tsave,
-            method=Tsit5(max_steps=1_000_000, rtol=1e-8, atol=1e-10),
+            method=Tsit5(max_steps=100_000, rtol=1e-6, atol=1e-8),
             options=dq.Options(save_states=True, progress_meter=False),
         )
 
-        # Get final state - keep as QArray for dq.expect
-        final_state = res.states[-1]
+        # Get final state and convert to JAX array
+        final_state = res.states[-1].to_jax()
 
-        # Compute z-projection for qubit 0
-        z_proj = jnp.real(dq.expect(z_op, final_state))
+        # Compute z-projection for qubit 0 (using pre-converted operator)
+        z_proj = jnp.real(dq.expect(z_op_jax, final_state))
         return z_proj  # Return JAX array, not float
 
     # Create parameter grid
@@ -197,8 +204,15 @@ def main():
     freq_flat = freq_grid.flatten()
     duration_flat = duration_grid.flatten()
 
-    print("Running vectorized simulations with vmap...")
+    print("Compiling JIT function (this may take a moment on first run)...")
+    # Warm-up compilation: compile the function once with example inputs
+    # This ensures the first real computation is fast
+    _ = single_simulation(freq_flat[0], duration_flat[0]).block_until_ready()
+    
+    print("Running vectorized simulations with vmap (JIT compiled)...")
+    print("  (Optimizations: JIT compilation, relaxed solver tolerances, reduced max_steps)")
     # Vectorize over all parameter combinations
+    # vmap will use the already JIT-compiled single_simulation function
     z_projections_flat = vmap(single_simulation)(freq_flat, duration_flat)
 
     # Reshape back to 2D (freq x duration) and convert to numpy for plotting
