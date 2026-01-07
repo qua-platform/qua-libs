@@ -9,6 +9,7 @@ from calibration_utils.JAZZ_ZZ import (
     Parameters,
     fit_raw_data,
     log_fitted_results,
+    plot_decay_rate_data,
     plot_oscillation_data,
     plot_raw_data_with_fit,
     process_raw_dataset,
@@ -74,17 +75,18 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubit_pairs = ["q1-q2"]
-    node.parameters.qubit_pairs = ["qB1-B2"]
+    node.parameters.qubit_pairs = ["qC4-C5"]
     node.parameters.time_min_ns = 16
-    node.parameters.time_max_ns = 2000
-    node.parameters.time_step_ns = 12
-    node.parameters.artificial_detuning_mhz = 5
-    node.parameters.amp_min = -1
-    node.parameters.amp_max = 0.3
-    node.parameters.amp_step = 0.01
-    node.parameters.num_averages = 100
+    node.parameters.time_max_ns = 500
+    node.parameters.time_step_ns = 4
+    node.parameters.artificial_detuning_mhz = 10
+    node.parameters.amp_min = -0.04
+    node.parameters.amp_max = 0.04
+    node.parameters.amp_step = 0.001
+    node.parameters.num_averages = 200
     node.parameters.use_state_discrimination = True
     node.parameters.reset_type = "active"
+    node.parameters.measure_qubit = "target"
     pass
 
 
@@ -151,8 +153,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Reset the frames of both qubits
                             reset_frame(qp.qubit_target.xy.name)
                             reset_frame(qp.qubit_control.xy.name)
-                            # setting both qubits to the initial state
-                            qp.qubit_target.xy.play("x90")
+                            if node.parameters.measure_qubit == "control":
+                                protagonist_qubit = qp.qubit_control
+                                antagonist_qubit = qp.qubit_target
+                            else:
+                                protagonist_qubit = qp.qubit_target
+                                antagonist_qubit = qp.qubit_control
+                            protagonist_qubit.xy.play("x90")
                             qp.align()
                             # play the CZ gate
                             qp.coupler.play(
@@ -160,8 +167,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             )
                             qp.align()
                             # Echo pulse
-                            qp.qubit_control.xy.play("x180")
-                            qp.qubit_target.xy.play("x180")
+                            protagonist_qubit.xy.play("x180")
+                            antagonist_qubit.xy.play("x180")
                             qp.align()
                             # play the CZ gate
                             qp.coupler.play(
@@ -169,18 +176,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             )
                             qp.align()
                             # rotate the frame
-                            qp.qubit_target.xy.frame_rotation_2pi(virtual_detuning_phase)
+                            protagonist_qubit.xy.frame_rotation_2pi(virtual_detuning_phase)
                             # Tomographic rotation on the target qubit
-                            qp.qubit_target.xy.play("x90")
+                            protagonist_qubit.xy.play("x90")
                             qp.align()
 
                             if node.parameters.use_state_discrimination:
                                 # measure both qubits
-                                qp.qubit_target.readout_state(state_t[ii])
+                                protagonist_qubit.readout_state(state_t[ii])
                                 save(state_t[ii], state_t_st[ii])
 
                         else:
-                            qp.qubit_target.resonator.measure("readout", qua_vars=(I_t[ii], Q_t[ii]))
+                            protagonist_qubit.resonator.measure("readout", qua_vars=(I_t[ii], Q_t[ii]))
                             save(I_t[ii], I_t_st[ii])
                             save(Q_t[ii], Q_t_st[ii])
 
@@ -271,16 +278,20 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the JAZZ_ZZ coupling analysis and oscillation traces."""
+    """Plot the JAZZ_ZZ coupling analysis, decay time constant analysis, and oscillation traces."""
     qubit_pairs = node.namespace["qubit_pairs"]
 
     # Plot coupling vs flux bias
     fig_coupling = plot_raw_data_with_fit(node.results["ds_fit"], qubit_pairs, node)
 
+    # Plot decay time constant vs coupler amplitude
+    fig_decay_time = plot_decay_rate_data(node.results["ds_fit"], qubit_pairs, node)
+
     # Plot oscillation traces for verification
     fig_oscillations = plot_oscillation_data(node.results["ds_raw"], qubit_pairs)
 
     node.results["coupling_figure"] = fig_coupling
+    node.results["decay_time_figure"] = fig_decay_time
     node.results["oscillation_figure"] = fig_oscillations
 
 
@@ -295,11 +306,15 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.outcomes[qp.name] == "failed":
                 continue
             node.machine.qubit_pairs[qp.name].coupler.decouple_offset += fit_results[qp.name]["optimal_amplitude"]
-
+            # node.machine.qubit_pairs[qp.name].coupler.decouple_offset += fit_results[qp.name][
+            #     "max_decay_time_amplitude"
+            # ]
+            # pass
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
 
 # %%

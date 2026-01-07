@@ -19,6 +19,7 @@ class NodeSpecificParameters(RunnableParameters):
     artificial_detuning_mhz: int = 1
     use_state_discrimination: bool = True
     """Whether to use state discrimination for readout. Default is True."""
+    measure_qubit: Literal["control", "target"] = "target"
 
 
 class Parameters(
