@@ -1,8 +1,6 @@
 from typing import List, Union
 
-from quam_builder.architecture.quantum_dots.components.readout_resonator import (
-    ReadoutResonatorSingle
-)
+from quam_builder.architecture.quantum_dots.components.readout_resonator import ReadoutResonatorSingle
 from qualibration_libs.core import tracked_updates
 from calibration_utils.time_of_flight.parameters import Parameters
 

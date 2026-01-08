@@ -1,6 +1,7 @@
 from qualibrate.parameters import RunnableParameters
 from typing import List, Optional
 
+
 class VideoModeCommonParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""

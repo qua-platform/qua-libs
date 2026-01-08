@@ -4,6 +4,7 @@ from qualibration_libs.parameters import CommonNodeParameters
 
 from typing import List
 
+
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
@@ -23,7 +24,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Whether to run this measurement in Video Mode."""
     dc_control: bool = False
     """Includes VoltageControlComponent in Video Mode."""
-
 
 
 class Parameters(

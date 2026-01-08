@@ -28,7 +28,6 @@ from qualibration_libs.core import tracked_updates
 
 from calibration_utils.common_utils.experiment import get_sensors
 
-
 # %% {Node initialisation}
 description = """
         RESONATOR SPECTROSCOPY VERSUS READOUT POWER
@@ -161,7 +160,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
+)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -250,12 +251,14 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             s.readout_resonator.intermediate_frequency += node.results["fit_results"][s.name]["frequency_shift"]
 
 
-
 # %%
 from calibration_utils.run_video_mode import create_video_mode
-@node.run_action(skip_if = node.parameters.run_in_video_mode is False)
+
+
+@node.run_action(skip_if=node.parameters.run_in_video_mode is False)
 def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     from qualang_tools.units.units import unit
+
     machine = node.machine
     sensors = get_sensors(node)
     readout_pulses = [list(item.values())[0].readout_resonator.operations["readout"] for item in sensors.batch()]
@@ -263,29 +266,28 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     y_axis_name = x_axis_name
 
     num_points = int(node.parameters.frequency_span_in_mhz // node.parameters.frequency_step_in_mhz)
-    f_span = int(node.parameters.frequency_span_in_mhz*1e6)
+    f_span = int(node.parameters.frequency_span_in_mhz * 1e6)
     num_software_averages = node.parameters.num_shots
 
     a_span = unit.dBm2volts(node.parameters.max_power_dbm) - unit.dBm2volts(node.parameters.min_power_dbm)
     a_points = node.parameters.num_power_points
 
-
     create_video_mode(
-        machine = machine, 
-        log = node.log, 
-        x_axis_name = x_axis_name, 
-        y_axis_name = y_axis_name, 
-        x_span = f_span, 
-        x_points = num_points,
-        y_points = a_points,
-        y_span = a_span,
-        x_mode = "Frequency",
-        y_mode = "Amplitude",
-        num_software_averages = num_software_averages,
-        virtual_gate_id = node.parameters.virtual_gate_set_id, 
-        dc_control = node.parameters.dc_control, 
-        readout_pulses = readout_pulses, 
-        save_path = "/Users/User/.qualibrate/quam_state"
+        machine=machine,
+        log=node.log,
+        x_axis_name=x_axis_name,
+        y_axis_name=y_axis_name,
+        x_span=f_span,
+        x_points=num_points,
+        y_points=a_points,
+        y_span=a_span,
+        x_mode="Frequency",
+        y_mode="Amplitude",
+        num_software_averages=num_software_averages,
+        virtual_gate_id=node.parameters.virtual_gate_set_id,
+        dc_control=node.parameters.dc_control,
+        readout_pulses=readout_pulses,
+        save_path="/Users/User/.qualibrate/quam_state",
     )
 
 

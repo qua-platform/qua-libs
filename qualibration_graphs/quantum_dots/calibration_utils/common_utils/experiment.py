@@ -22,9 +22,11 @@ class BaseExperimentNodeParameters(RunnableParameters):
     sensor_names: Optional[List[str]] = None
     """The list of sensor dot names to be included in the measurement. """
 
+
 class QuantumDotExperimentNodeParameters(BaseExperimentNodeParameters):
     quantum_dots: Optional[List[str]] = None
     """The virtualised names of the QuantumDots in your VirtualGateSet."""
+
 
 class QubitsExperimentNodeParameters(BaseExperimentNodeParameters):
     qubits: Optional[List[str]] = None
@@ -44,17 +46,20 @@ def _make_batchable_list_from_multiplexed(items: List, multiplexed: bool) -> Bat
 
     return BatchableList(items, batched_groups)
 
-def _get_dots(machine:BaseQuamQD, node_parameters: QuantumDotExperimentNodeParameters):
+
+def _get_dots(machine: BaseQuamQD, node_parameters: QuantumDotExperimentNodeParameters):
     if node_parameters.quantum_dots is None or node_parameters.quantum_dots == "":
         dots = list(machine.quantum_dots.values())
     else:
         dots = [machine.quantum_dots[s] for s in node_parameters.quantum_dots]
     return dots
 
+
 def get_dots(node: QualibrationNode) -> BatchableList[QuantumDot]:
     dots = _get_dots(node.machine, node.parameters)
     dots_batchable_list = _make_batchable_list_from_multiplexed(dots, True)
     return dots_batchable_list
+
 
 def _get_sensors(machine: BaseQuamQD, node_parameters: BaseExperimentNodeParameters):
     if node_parameters.sensor_names is None or node_parameters.sensor_names == "":
@@ -67,9 +72,9 @@ def _get_sensors(machine: BaseQuamQD, node_parameters: BaseExperimentNodeParamet
 def get_sensors(node: QualibrationNode) -> BatchableList[SensorDot]:
     sensors = _get_sensors(node.machine, node.parameters)
 
-    if isinstance(node.parameters, BaseExperimentNodeParameters): 
+    if isinstance(node.parameters, BaseExperimentNodeParameters):
         multiplexed = node.parameters.multiplexed
-    else: 
+    else:
         multiplexed = False
 
     sensors_batchable_list = _make_batchable_list_from_multiplexed(sensors, multiplexed)
@@ -119,6 +124,3 @@ def _get_qubit_pairs(machine: BaseQuamQD, node_parameters: QubitPairExperimentNo
         qubit_pairs = [machine.qubit_pairs[q] for q in node_parameters.qubit_pairs]
 
     return qubit_pairs
-
-
-

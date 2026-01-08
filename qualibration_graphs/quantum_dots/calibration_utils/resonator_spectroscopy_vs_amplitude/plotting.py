@@ -33,12 +33,12 @@ def plot_raw_data_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Da
     - Each subplot contains the raw data and the fitted curve.
     """
     num_sensors = len(sensors)
-    fig, axes = plt.subplots(1, num_sensors, figsize = (5*num_sensors, 4), squeeze = False)
+    fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
     axes = axes.flatten()
 
-    for ax, sensor in zip(axes, sensors): 
-        sensor_data = ds.sel(sensor = sensor.id)
-        fit_data = fits.sel(sensor = sensor.id) if fits is not None else None
+    for ax, sensor in zip(axes, sensors):
+        sensor_data = ds.sel(sensor=sensor.id)
+        fit_data = fits.sel(sensor=sensor.id) if fits is not None else None
 
         plot_individual_raw_data_with_fit(ax, sensor_data, fit_data)
 
@@ -83,5 +83,3 @@ def plot_individual_raw_data_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_
                 ax2.axvline(x=float(fit.freq_shift) * 1e-6, color="blue", linestyle="--")
         except Exception:
             pass
-
-

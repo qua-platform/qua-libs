@@ -4,6 +4,7 @@ from qualibration_libs.parameters import CommonNodeParameters
 
 from typing import List
 
+
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
@@ -29,7 +30,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Includes VoltageControlComponent in Video Mode."""
 
 
-
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
@@ -37,10 +37,15 @@ class Parameters(
 ):
     pass
 
+
 import numpy as np
-def get_voltage_arrays(node): 
+
+
+def get_voltage_arrays(node):
     """Extract the X and Y voltage arrays from a given node."""
     x_span, x_center, x_points = node.parameters.x_span, 0, node.parameters.x_points
     y_span, y_center, y_points = node.parameters.y_span, 0, node.parameters.y_points
-    x_volts, y_volts = np.linspace(x_center - x_span/2, x_center + x_span/2, x_points), np.linspace(y_center - y_span/2, y_center + y_span/2, y_points)
+    x_volts, y_volts = np.linspace(x_center - x_span / 2, x_center + x_span / 2, x_points), np.linspace(
+        y_center - y_span / 2, y_center + y_span / 2, y_points
+    )
     return x_volts, y_volts

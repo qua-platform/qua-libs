@@ -58,10 +58,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             node.namespace["calibration_results"][sensor.name] = {
                 "resonator": calibration_results,
             }
-        for qubit in qubits: 
+        for qubit in qubits:
             calibration_results = qubit.calibrate_octave(
-                qm, 
-                calibrate_drive = node.parameters.calibrate_drive,
+                qm,
+                calibrate_drive=node.parameters.calibrate_drive,
             )
             node.namespace["calibration_results"][qubit.name] = {
                 "xy_drive": calibration_results,

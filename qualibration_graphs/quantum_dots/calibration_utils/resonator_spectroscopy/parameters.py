@@ -5,6 +5,7 @@ from qualibration_libs.parameters import CommonNodeParameters
 
 from typing import List, Optional
 
+
 class NodeSpecificParameters(RunnableParameters):
     run_in_video_mode: bool = False
     """Optionally open Video Mode with the qualibration node."""
@@ -18,8 +19,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Step size for frequency sweep in MHz. Default is 0.1 MHz."""
     dc_control: bool = False
     """If an associated external DC offset exists."""
-
-
 
 
 class Parameters(

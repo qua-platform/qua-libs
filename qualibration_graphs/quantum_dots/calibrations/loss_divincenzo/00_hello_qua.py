@@ -48,7 +48,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     u = unit(coerce_to_integer=True)
 
     virtual_gate_set = node.machine.virtual_gate_sets[node.parameters.virtual_gate_set_id]
-    
+
     node.namespace["quantum_dots"] = quantum_dots = get_dots(node)
     node.namespace["sensors"] = sensors = get_sensors(node)
 
@@ -59,7 +59,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     v_span = node.parameters.v_span
     n_points = node.parameters.num_points
 
-    voltages = np.linspace(v_center-v_span/2, v_center+v_span/2, n_points)
+    voltages = np.linspace(v_center - v_span / 2, v_center + v_span / 2, n_points)
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "quantum_dot": xr.DataArray(target_qd.id),
@@ -85,7 +85,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Select the resonator tied to the sensor
                         rr = sensor.readout_resonator
                         # Measure using said resonator
-                        rr.measure("readout", qua_vars = (I[i], Q[i]))
+                        rr.measure("readout", qua_vars=(I[i], Q[i]))
                         # Post-measurement wait (Optional)
                         rr.wait(500)
 
@@ -145,9 +145,12 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save the node results and state."""
     node.save()
 
+
 # %%
 from calibration_utils.run_video_mode import create_video_mode
-@node.run_action(skip_if = node.parameters.Video_Mode is False)
+
+
+@node.run_action(skip_if=node.parameters.Video_Mode is False)
 def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     dot_list = [node.machine.quantum_dots[qd] for qd in node.parameters.quantum_dots]
     x_axis_name = dot_list[0].id
@@ -155,14 +158,16 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     num_points = node.parameters.num_points
     v_span = node.parameters.v_span
     create_video_mode(
-        machine = node.machine, 
-        x_axis_name = x_axis_name, 
-        y_axis_name = y_axis_name, 
-        x_span = v_span, 
-        x_points = num_points,
-        virtual_gate_id = node.parameters.virtual_gate_set_id, 
-        dc_control = node.parameters.dc_control, 
-        readout_pulses = [node.machine.sensor_dots[name].readout_resonator.operations["readout"] for name in node.parameters.sensor_names], 
-        save_path = "/Users/kalidu_laptop/.qualibrate/user_storage"
+        machine=node.machine,
+        x_axis_name=x_axis_name,
+        y_axis_name=y_axis_name,
+        x_span=v_span,
+        x_points=num_points,
+        virtual_gate_id=node.parameters.virtual_gate_set_id,
+        dc_control=node.parameters.dc_control,
+        readout_pulses=[
+            node.machine.sensor_dots[name].readout_resonator.operations["readout"]
+            for name in node.parameters.sensor_names
+        ],
+        save_path="/Users/kalidu_laptop/.qualibrate/user_storage",
     )
-

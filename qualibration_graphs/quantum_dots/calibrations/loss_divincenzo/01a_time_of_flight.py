@@ -25,7 +25,6 @@ from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
 
-
 # %% {Node initialisation}
 description = """
         TIME OF FLIGHT - OPX+ & LF-FEM
@@ -231,7 +230,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             fit_result = node.results["fit_results"][s.name]
             if node.parameters.time_of_flight_in_ns is not None:
-                sensor.readout_resonator.time_of_flight = node.parameters.time_of_flight_in_ns + fit_result["tof_to_add"]
+                sensor.readout_resonator.time_of_flight = (
+                    node.parameters.time_of_flight_in_ns + fit_result["tof_to_add"]
+                )
             else:
                 sensor.readout_resonator.time_of_flight = fit_result["tof_to_add"]
             if sensor.readout_resonator.opx_input.controller_id in controllers_to_update:

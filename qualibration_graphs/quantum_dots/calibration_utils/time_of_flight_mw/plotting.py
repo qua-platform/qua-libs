@@ -35,12 +35,12 @@ def plot_single_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.
     num_sensors = len(sensors)
     fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
     axes = axes.flatten()
-    
+
     for ax, sensor in zip(axes, sensors):
         sensor_data = ds.sel(sensor=sensor.name)
         fit_data = fits.sel(sensor=sensor.name)
         plot_individual_single_run_with_fit(ax, sensor_data, sensor.name, fit_data)
-    
+
     fig.suptitle("Single run")
     fig.tight_layout()
     return fig
@@ -72,15 +72,16 @@ def plot_averaged_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: x
     num_sensors = len(sensors)
     fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
     axes = axes.flatten()
-    
+
     for ax, sensor in zip(axes, sensors):
         sensor_data = ds.sel(sensor=sensor.name)
         fit_data = fits.sel(sensor=sensor.name)
         plot_individual_averaged_run_with_fit(ax, sensor_data, sensor.name, fit_data)
-    
+
     fig.suptitle("Averaged run")
     fig.tight_layout()
     return fig
+
 
 def plot_individual_single_run_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_name: str, fit: xr.Dataset = None):
     """

@@ -4,6 +4,7 @@ from qualibration_libs.parameters import CommonNodeParameters
 
 from typing import List, Literal
 
+
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
@@ -23,7 +24,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Whether to include DC Control channels in Video Mode"""
     result_type: Literal["I", "Q", "Amplitude", "Phase"] = "I"
     """Result type to display. Can be 'I', 'Q', 'Amplitude', 'Phase'."""
-    
+
 
 class Parameters(
     NodeParameters,

@@ -23,18 +23,17 @@ def plot_raw_data_with_fit(node: QualibrationNode):
     """
     figures = {}
     for sensor in node.namespace["sensors"]:
-            figs = plot_individual_data_with_fit(
-                node.namespace["calibration_results"], 
-                sensor.name
-            )
-            figures[sensor.name] = figs
+        figs = plot_individual_data_with_fit(node.namespace["calibration_results"], sensor.name)
+        figures[sensor.name] = figs
     for qubit in node.namespace["qubits"]:
         figs = plot_individual_data_with_fit(node.namespace["calibration_results"], qubit.name)
         figures["qubit.name"] = figs
     return figures
 
 
-def plot_individual_data_with_fit(calibration_results: Dict[str, Dict[str, MixerCalibrationResults]], element_name: str):
+def plot_individual_data_with_fit(
+    calibration_results: Dict[str, Dict[str, MixerCalibrationResults]], element_name: str
+):
     """
     Plots individual element data on a given axis with optional fit.
     """

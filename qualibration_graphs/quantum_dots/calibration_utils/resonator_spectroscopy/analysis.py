@@ -45,22 +45,19 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     """Process raw dataset to add amplitude and phase information."""
-    
+
     has_iq = "I" in ds.data_vars and "Q" in ds.data_vars
-    
+
     if has_iq:
         ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     else:
         if "IQ_abs" not in ds.data_vars:
             ds["IQ_abs"] = ds.get("signal", ds.get("amplitude", None))
-    
-    full_freq = np.array([
-        ds.detuning + q.readout_resonator.intermediate_frequency 
-        for q in node.namespace["sensors"]
-    ])
+
+    full_freq = np.array([ds.detuning + q.readout_resonator.intermediate_frequency for q in node.namespace["sensors"]])
     ds = ds.assign_coords(full_freq=(["sensors", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
-    
+
     return ds
 
 
