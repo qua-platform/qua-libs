@@ -12,11 +12,8 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.charge_stability import Parameters, get_voltage_arrays #, get_swept_object
-from calibration_utils.charge_stability import (
-    plot_raw_amplitude, 
-    plot_raw_phase
-)
+from calibration_utils.charge_stability import Parameters, get_voltage_arrays  # , get_swept_object
+from calibration_utils.charge_stability import plot_raw_amplitude, plot_raw_phase
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
@@ -65,8 +62,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     virtual_gate_set = node.machine.virtual_gate_sets[node.parameters.virtual_gate_set_id]
 
     node.namespace["sensors"] = sensors = get_sensors(node)
-    
-    x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(node.parameters.y_axis_name)
+
+    x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(
+        node.parameters.y_axis_name
+    )
     x_volts, y_volts = get_voltage_arrays(node)
     num_sensors = len(sensors)
 
@@ -82,7 +81,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     with program() as node.namespace["qua_program"]:
         seq = virtual_gate_set.new_sequence()
 
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs = num_sensors)
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
         x = declare(fixed)
         y = declare(fixed)
 
@@ -93,19 +92,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 with for_(*from_array(x, x_volts)):
                     with for_(*from_array(y, y_volts)):
 
-                        # Simultaneous stepping of the voltage of the virtualised gates. 
+                        # Simultaneous stepping of the voltage of the virtualised gates.
                         # If ramps are preferred, specify ramp_duration as arg in simultaneous()
                         with seq.simultaneous():
                             x_obj.go_to_voltages(x)
                             y_obj.go_to_voltages(y)
 
-                        
                         align()
                         for i, sensor in multiplexed_sensors.items():
                             # Select the resonator tied to the sensor
                             rr = sensor.readout_resonator
                             # Measure using said resonator
-                            rr.measure("readout", qua_vars = (I[i], Q[i]))
+                            rr.measure("readout", qua_vars=(I[i], Q[i]))
                             # Post-measurement wait (Optional)
                             rr.wait(500)
 
@@ -135,7 +133,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
+)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -188,7 +188,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 # %%
 from calibration_utils.run_video_mode import create_video_mode
-@node.run_action(skip_if = node.parameters.run_in_video_mode is False)
+
+
+@node.run_action(skip_if=node.parameters.run_in_video_mode is False)
 def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     x_axis_name = node.parameters.x_axis_name
     y_axis_name = node.parameters.y_axis_name
@@ -196,19 +198,22 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     y_span, y_points = node.parameters.y_span, node.parameters.y_points
 
     create_video_mode(
-        machine = node.machine, 
+        machine=node.machine,
         num_software_averages=node.parameters.num_shots,
-        log = node.log,
-        x_axis_name = x_axis_name, 
-        y_axis_name = y_axis_name, 
-        x_span = x_span, 
-        x_points = x_points,
-        y_span = y_span, 
-        y_points = y_points,
-        virtual_gate_id = node.parameters.virtual_gate_set_id, 
-        dc_control = node.parameters.dc_control, 
-        readout_pulses = [node.machine.sensor_dots[name].readout_resonator.operations["readout"] for name in node.parameters.sensor_names], 
-        save_path = "/Users/User/.qualibrate/user_storage"
+        log=node.log,
+        x_axis_name=x_axis_name,
+        y_axis_name=y_axis_name,
+        x_span=x_span,
+        x_points=x_points,
+        y_span=y_span,
+        y_points=y_points,
+        virtual_gate_id=node.parameters.virtual_gate_set_id,
+        dc_control=node.parameters.dc_control,
+        readout_pulses=[
+            node.machine.sensor_dots[name].readout_resonator.operations["readout"]
+            for name in node.parameters.sensor_names
+        ],
+        save_path="/Users/User/.qualibrate/user_storage",
     )
 
 
@@ -217,5 +222,3 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save the node results and state."""
     node.save()
-
-
