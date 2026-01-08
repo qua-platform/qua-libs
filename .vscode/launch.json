@@ -1,0 +1,18 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Debug 03b_charge_stability_demo (qarray312)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/qualibration_graphs/quantum_dots/calibrations/loss_divincenzo/03b_charge_stability_demo.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "python": "/Users/sebastian/miniforge3/envs/qarray312/bin/python",
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
