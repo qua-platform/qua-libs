@@ -31,6 +31,7 @@ class NodeSpecificParameters(RunnableParameters):
     use_validation: bool = True
     """Whether to use validation with simulated data."""
 
+
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
