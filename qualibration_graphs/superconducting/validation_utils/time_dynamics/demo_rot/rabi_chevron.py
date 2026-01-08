@@ -112,19 +112,19 @@ def main():
 
     # Sweep parameters (reduced for faster testing - increase for higher resolution)
     # Note: JIT compilation makes larger sweeps much faster after initial compilation
-    n_freqs = 41  # Number of frequency points
-    n_durations = 41  # Number of duration points
+    n_freqs = 51  # Number of frequency points
+    n_durations = 51  # Number of duration points
 
     # Frequency sweep: ±50 MHz around idling frequency
     freq_span = 0.05  # GHz
-    drive_freqs = jnp.linspace(omega_idle - freq_span, omega_idle + freq_span, n_freqs)
+    drive_freqs = jnp.linspace(omega_idle, omega_idle + freq_span, n_freqs)
 
     # Duration sweep: 0 to 200 ns
-    duration_max = 800.0  # ns
+    duration_max = 1000.0  # ns
     durations = jnp.linspace(4.0, duration_max, n_durations)
 
     # Pulse amplitude (Rabi frequency in GHz)
-    pulse_amp = 0.05  # GHz
+    pulse_amp = 0.01  # GHz
 
     print(f"Idling frequency: {omega_idle:.4f} GHz")
     print(f"Frequency sweep: [{omega_idle - freq_span:.4f}, {omega_idle + freq_span:.4f}] GHz")
