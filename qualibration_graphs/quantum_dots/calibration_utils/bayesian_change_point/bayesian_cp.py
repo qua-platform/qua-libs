@@ -57,12 +57,12 @@ import jax.numpy as jnp
 from .bayesian_base import BayesianMCMCBase
 from .standardization import Standardization
 
-
 # =============================================================================
 # Normal-Gamma Conjugate Prior Utilities
 # =============================================================================
 # The Normal-Gamma distribution is the conjugate prior for a Normal likelihood
 # with unknown mean and variance. It allows closed-form Bayesian updates.
+
 
 def _posterior_from_suff(
     n: jnp.ndarray,
@@ -175,9 +175,7 @@ def _segment_log_marginal(
     a segment is to be homogeneous (no changepoints) under the prior assumptions.
     """
     # Compute posterior hyperparameters
-    mu_n, kappa_n, alpha_n, beta_n = _posterior_from_suff(
-        n, s1, s2, mu0, kappa0, alpha0, beta0
-    )
+    mu_n, kappa_n, alpha_n, beta_n = _posterior_from_suff(n, s1, s2, mu0, kappa0, alpha0, beta0)
 
     # Compute log marginal likelihood using closed-form Student-t formula
     log_marginal = (
@@ -195,6 +193,7 @@ def _segment_log_marginal(
 # =============================================================================
 # Bayesian Changepoint Detector
 # =============================================================================
+
 
 @dataclass
 class BayesianCP(BayesianMCMCBase):
@@ -256,6 +255,7 @@ class BayesianCP(BayesianMCMCBase):
     This is exact inference; for very long sequences (T > 10,000), consider
     online approximations or windowing strategies.
     """
+
     hazard: float = 1 / 200.0
     standardize: bool = True
 
@@ -263,8 +263,8 @@ class BayesianCP(BayesianMCMCBase):
     # Weaker priors (smaller kappa0, alpha0, beta0) => broader/sharper peaks
     kappa0: float = 5e-3  # Prior precision (pseudo-count)
     alpha0: float = 5e-2  # Prior shape for variance
-    beta0: float = 5e-3   # Prior scale for variance
-    mu0: float = 0.0      # Prior mean (typically 0 for standardized data)
+    beta0: float = 5e-3  # Prior scale for variance
+    mu0: float = 0.0  # Prior mean (typically 0 for standardized data)
 
     # Posterior temperature (>1 flattens, <1 sharpens)
     temp: float = 1.3
@@ -391,9 +391,7 @@ class BayesianCP(BayesianMCMCBase):
         # Geometric prior: P(length = n) = h * (1-h)^(n-1)
         # where h = hazard rate
         n_vec = jnp.arange(1, T + 1)  # Possible segment lengths
-        log_duration_prior = (
-            jnp.log(self.hazard) + (n_vec - 1) * jnp.log1p(-self.hazard)
-        )
+        log_duration_prior = jnp.log(self.hazard) + (n_vec - 1) * jnp.log1p(-self.hazard)
 
         # -----------------------------------------------------------------
         # Step 4: Build log-likelihood matrix L[s, t] for all segments
@@ -422,8 +420,7 @@ class BayesianCP(BayesianMCMCBase):
 
         # Compute log marginal likelihood for each segment
         segment_log_likelihood = _segment_log_marginal(
-            n_safe, s1_segment, s2_segment,
-            self.mu0, self.kappa0, self.alpha0, self.beta0
+            n_safe, s1_segment, s2_segment, self.mu0, self.kappa0, self.alpha0, self.beta0
         )
 
         # Apply temperature to likelihood (not duration prior)
@@ -432,9 +429,7 @@ class BayesianCP(BayesianMCMCBase):
 
         # Combine likelihood with duration prior
         # Note: n_safe - 1 gives index into log_duration_prior (0-indexed)
-        segment_log_likelihood = segment_log_likelihood + jnp.take(
-            log_duration_prior, n_safe - 1
-        )
+        segment_log_likelihood = segment_log_likelihood + jnp.take(log_duration_prior, n_safe - 1)
 
         # Mask invalid segments with -inf (will be ignored in logsumexp)
         L = jnp.where(valid_segments, segment_log_likelihood, -jnp.inf)
@@ -487,9 +482,7 @@ class BayesianCP(BayesianMCMCBase):
 
             # Compute log Σ exp(L[t, u-1] + B[u]) over all u > t
             # Note: B[1:] aligns with segments ending at u=1..T
-            log_sum = jax.scipy.special.logsumexp(
-                segments_starting_at_t + B_array[1:]
-            )
+            log_sum = jax.scipy.special.logsumexp(segments_starting_at_t + B_array[1:])
 
             return B_array.at[t].set(log_sum)
 

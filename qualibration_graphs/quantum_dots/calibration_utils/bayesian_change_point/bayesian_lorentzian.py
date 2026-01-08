@@ -78,10 +78,17 @@ class LorentzMixtureFitter(BayesianMCMCBase):
         waic_lin = self._waic(self._linear_model, xp, yp, smp_lin)
         k_lin = 3
         bic_lin = self._bic(ll_max_lin, k_lin, n)
-        candidates.append(dict(
-            type="linear", K=0, bic=float(bic_lin),
-            waic=float(waic_lin), loglik_max=float(ll_max_lin), k_params=k_lin, samples=smp_lin
-        ))
+        candidates.append(
+            dict(
+                type="linear",
+                K=0,
+                bic=float(bic_lin),
+                waic=float(waic_lin),
+                loglik_max=float(ll_max_lin),
+                k_params=k_lin,
+                samples=smp_lin,
+            )
+        )
 
         # Lorentz mixtures with K peaks
         for K in range(1, self.max_components + 1):
@@ -93,10 +100,17 @@ class LorentzMixtureFitter(BayesianMCMCBase):
             waicK = self._waic(modelK, xp, yp, sK)
             kK = 3 + 3 * K
             bicK = self._bic(ll_maxK, kK, n)
-            candidates.append(dict(
-                type="lorentzian", K=K, bic=float(bicK),
-                waic=float(waicK), loglik_max=float(ll_maxK), k_params=kK, samples=sK
-            ))
+            candidates.append(
+                dict(
+                    type="lorentzian",
+                    K=K,
+                    bic=float(bicK),
+                    waic=float(waicK),
+                    loglik_max=float(ll_maxK),
+                    k_params=kK,
+                    samples=sK,
+                )
+            )
 
         # Model selection (lowest BIC)
         waics = jnp.array([cand["waic"] for cand in candidates])
@@ -131,10 +145,7 @@ class LorentzMixtureFitter(BayesianMCMCBase):
             "k_params": int(best["k_params"]),
             "posterior_peak_means": posterior_peak_means,
         }
-        self._candidates = [
-            {k: c[k] for k in ("type", "K", "bic", "loglik_max", "k_params")}
-            for c in candidates
-        ]
+        self._candidates = [{k: c[k] for k in ("type", "K", "bic", "loglik_max", "k_params")} for c in candidates]
         self._samples_best = samples_best
 
         posterior_mean, posterior_std = self.posterior_predictive_stats(x)
@@ -170,9 +181,7 @@ class LorentzMixtureFitter(BayesianMCMCBase):
         Deterministic mean prediction in original units using posterior medians.
         """
         assert (
-            self.best is not None
-            and self._samples_best is not None
-            and self.std is not None
+            self.best is not None and self._samples_best is not None and self.std is not None
         ), "Call fit() before predict()."
 
         params = self._points_unstd(self._samples_best)
@@ -193,9 +202,7 @@ class LorentzMixtureFitter(BayesianMCMCBase):
         observation noise implied by the posterior samples.
         """
         assert (
-            self.best is not None
-            and self._samples_best is not None
-            and self.std is not None
+            self.best is not None and self._samples_best is not None and self.std is not None
         ), "Call fit() before posterior_predictive_stats()."
 
         x_new = jnp.asarray(x_new)
@@ -266,7 +273,6 @@ class LorentzMixtureFitter(BayesianMCMCBase):
         waic = -2.0 * (lppd - p_waic)
         return float(waic)
 
-
     @staticmethod
     def _linear_model(xp, yp=None):
         n = xp.shape[0]
@@ -327,7 +333,7 @@ class LorentzMixtureFitter(BayesianMCMCBase):
 
                 # amplitude-weighted repulsion: big peaks repel more than tiny ones
                 w = a / (jnp.mean(a) + 1e-12)  # scale-free weights
-                penalty_matrix = (w[:, None] * w[None, :]) * jnp.exp(- (d / (rho * gbar)) ** 2)
+                penalty_matrix = (w[:, None] * w[None, :]) * jnp.exp(-((d / (rho * gbar)) ** 2))
 
                 # only i<j terms (upper triangle), avoid self terms
                 iu = jnp.triu_indices(K, k=1)
@@ -360,9 +366,7 @@ class LorentzMixtureFitter(BayesianMCMCBase):
         std = self.std
         assert std is not None
 
-        a_u, x0_u, g_u = std.unstandardize_peak(
-            samples["a"], samples["x0"], samples["gamma"]
-        )
+        a_u, x0_u, g_u = std.unstandardize_peak(samples["a"], samples["x0"], samples["gamma"])
 
         # Evaluate each posterior draw on the original x-grid
         kernels = 1.0 / (1.0 + ((x[None, None, :] - x0_u[:, :, None]) / g_u[:, :, None]) ** 2)
@@ -391,11 +395,7 @@ class LorentzMixtureFitter(BayesianMCMCBase):
         b0p = samples["b0"]
         b1p = samples["b1"]
         sigp = samples["sigma"]
-        idx = (
-            jnp.linspace(0, b0p.shape[0] - 1, min(300, b0p.shape[0]))
-            .round()
-            .astype(int)
-        )
+        idx = jnp.linspace(0, b0p.shape[0] - 1, min(300, b0p.shape[0])).round().astype(int)
         inter, slope = std.unstandardize_linear(b0p[idx], b1p[idx])
         out = {
             "intercept": qdict(inter),
@@ -511,12 +511,7 @@ if __name__ == "__main__":
 
     rng = np.random.default_rng(1)
     x = np.linspace(-5, 5, 400)
-    y_true = (
-        0.7
-        - 0.05 * x
-        + 1.8 / (1 + ((x - (-1.0)) / 0.6) ** 2)
-        + 0.9 / (1 + ((x - 1.8) / 0.4) ** 2)
-    )
+    y_true = 0.7 - 0.05 * x + 1.8 / (1 + ((x - (-1.0)) / 0.6) ** 2) + 0.9 / (1 + ((x - 1.8) / 0.4) ** 2)
     y = y_true + 0.08 * rng.normal(size=x.size)
 
     fitter = LorentzMixtureFitter(max_components=3, rng_seed=42)
