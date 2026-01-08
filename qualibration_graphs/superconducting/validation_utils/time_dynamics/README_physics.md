@@ -16,6 +16,52 @@ Each element is a multi‑level transmon (default 3 levels). Indices:
 Units are **GHz for energies** and **ns for time** (numerically stable for the
 ODE solver). All frequencies and couplings in the code use these units.
 
+## Second‑quantization primer (operators used in code)
+
+Each transmon mode is represented in a truncated harmonic‑oscillator basis
+`|0>, |1>, |2>, ...` with `levels` states. The ladder operators are:
+
+- `a |n> = sqrt(n) |n-1>`
+- `a† |n> = sqrt(n+1) |n+1>`
+
+From these we build:
+
+- Number operator: `n = a† a`
+- Kerr (Duffing) operator: `a† a† a a`
+- Quadrature operators:
+  - `X = a + a†`
+  - `Y = -i (a - a†)`
+
+In the full system, each operator is embedded into the tensor product space
+by taking a Kronecker product with identity operators for all other modes.
+This is what `_embed_op(...)` does: it places a single‑mode operator at a
+chosen index and identities elsewhere.
+
+### Truncation note (important approximation)
+
+Each mode is **truncated** to a finite number of levels (`levels`, default 3).
+This means the Hilbert space is limited to `levels^N_modes` basis states.
+The approximation is accurate when the dynamics stay in the lowest few
+levels (typical for transmons under weak/medium drives). Strong drives or
+large couplings can populate higher levels that are not represented.
+
+In code, truncation happens when we construct the local basis and ladder
+operators with `dq.destroy(levels)` and `dq.create(levels)`. Increasing
+`levels` improves accuracy but increases the Hilbert‑space dimension and
+runtime.
+
+## How flux tunes the transmon
+
+A SQUID replaces a single Josephson junction with two junctions in a loop.
+The effective Josephson energy is flux‑dependent:
+
+```
+EJ(phi) = sqrt(EJ_small^2 + EJ_large^2 + 2 EJ_small EJ_large cos(phi))
+```
+
+The reduced flux is `phi = 2 pi Phi / Phi0`. For a **symmetric SQUID**,
+`EJ_small = EJ_large`, and the frequency tuning is widest.
+
 ## Hamiltonian structure (Appendix B)
 
 The total Hamiltonian is built as:
@@ -82,6 +128,28 @@ This is the exact structure implemented in `SuperconductingDevice` for:
 These terms are constructed using embedded ladder operators and the exact
 operator combination `(a a† + a† a − a a − a† a†)` from the paper.
 
+### How the coupling operator is built
+
+For a pair of modes `i` and `j`, the code constructs:
+
+```
+O_ij = a_i a_j† + a_i† a_j - a_i a_j - a_i† a_j†
+```
+
+This expression is a compact form of the **charge‑charge coupling** in the
+paper. In operator language, the charge operator is proportional to `(a - a†)`,
+so a bilinear charge term produces the mix of `a a`, `a a†`, `a† a`, `a† a†`
+terms. The sign pattern is important and matches Eq. (B19).
+
+In `device.py`, these are built as:
+
+- `op_lc` for left qubit–coupler
+- `op_rc` for right qubit–coupler
+- `op_lr` for direct qubit–qubit
+
+Each is embedded into the full Hilbert space with `_embed_op(...)` and then
+summed into the full Hamiltonian with the appropriate coupling rate `g`.
+
 ### 4) Coupling strengths from coupling energies
 
 Appendix B gives:
@@ -124,13 +192,66 @@ In the rotating frame, `ω_d` is interpreted relative to `ref_qubit_freqs`.
 
 At runtime `construct_h(...)`:
 
-1) Builds **time‑dependent** `ω_k(t)` and `K_k(t)` for each mode using EJ(φ).
-2) Adds **qubit–coupler** and **direct qubit–qubit** coupling terms with the
-   charge‑coupling operator structure from Eq. (B19).
-3) Adds **drive terms** for any listed microwave pulses.
+1) **Initialize** a zero Hamiltonian for the full tensor product space.
+2) **Compute per‑mode operators** (`a`, `a†`, `n`, `a†a†aa`, `X`, `Y`) and embed
+   them into the full Hilbert space (cached in `__post_init__`).
+3) **Add mode terms**:
+   - If a flux pulse is attached to a mode, define time‑dependent functions
+     `omega(t)` and `Kerr(t)` and use `dynamiqs.modulated(...)`.
+   - Otherwise, add static `omega * n` and `-Kerr * a†a†aa` terms.
+4) **Add coupling terms**:
+   - Build `op_lc`, `op_rc`, and `op_lr` for the operator structure
+     `a a† + a† a − a a − a† a†`.
+   - If coupling energies `E_couplings` are given, compute `g(t)` from the
+     instantaneous EJ values. Otherwise use the provided `g` values.
+5) **Add drive terms**:
+   - For each drive pulse, build the `X` and `Y` quadrature terms and modulate
+     them by the envelope and carrier frequency.
 
-All time‑dependent components are created via `dynamiqs.modulated(...)` so the
-system can be solved with JAX/dynamiqs time‑dependent solvers.
+Because each piece is built as a `dynamiqs.TimeQArray`, the solver can evaluate
+the Hamiltonian at any time `t` while integrating the dynamics.
+
+## Worked two‑mode example (concrete operator matrices)
+
+For intuition, consider two modes (i and j) truncated to 2 levels each,
+so the basis is `{ |00>, |01>, |10>, |11> }`. In this basis:
+
+```
+a = [[0, 1],
+     [0, 0]]
+```
+
+The embedded operators are:
+
+```
+a_i = a ⊗ I
+a_j = I ⊗ a
+```
+
+The charge‑coupling operator in the paper is:
+
+```
+O_ij = a_i a_j† + a_i† a_j - a_i a_j - a_i† a_j†
+```
+
+In the 2‑level truncation this becomes:
+
+```
+O_ij =
+[[ 0,  0,  0, -1],
+ [ 0,  0,  1,  0],
+ [ 0,  1,  0,  0],
+ [-1,  0,  0,  0]]
+```
+
+You can see the physical meaning:
+
+- The `a_i† a_j` and `a_i a_j†` terms swap `|01>` and `|10>` (exchange).
+- The `a_i a_j` and `a_i† a_j†` terms couple `|00>` to `|11>` (pair creation/annihilation).
+
+The full Hamiltonian combines this operator with a coupling rate `g_ij`.
+In the weak‑coupling regime, the exchange part dominates the effective
+interaction between `|01>` and `|10>`, while the pair terms shift energies.
 
 ## Symmetric vs asymmetric configurations
 

@@ -120,8 +120,8 @@ def main():
     drive_freqs = jnp.linspace(omega_idle - freq_span, omega_idle + freq_span, n_freqs)
 
     # Duration sweep: 0 to 200 ns
-    duration_max = 200.0  # ns
-    durations = jnp.linspace(10.0, duration_max, n_durations)
+    duration_max = 800.0  # ns
+    durations = jnp.linspace(4.0, duration_max, n_durations)
 
     # Pulse amplitude (Rabi frequency in GHz)
     pulse_amp = 0.05  # GHz

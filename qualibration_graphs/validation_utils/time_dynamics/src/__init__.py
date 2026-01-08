@@ -2,7 +2,7 @@
 
 from .device import QuantumDeviceBase
 from .circuit import Gate, Circuit, X, Y, ExchangeRampGate
-from .pulse import Pulse, GaussianPulse, SquarePulse, CouplingPulse
+from .pulse import Pulse, GaussianPulse, SquarePulse, CouplingPulse, ErfPulse
 from .utils import (
     kron_n,
     embed_single_qubit_op,
@@ -34,6 +34,7 @@ __all__ = [
     "GaussianPulse",
     "SquarePulse",
     "CouplingPulse",
+    "ErfPulse",
     # Utils
     "kron_n",
     "embed_single_qubit_op",
@@ -50,4 +51,3 @@ __all__ = [
     "SZ",
     "I2",
 ]
-

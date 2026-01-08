@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 import jax.numpy as jnp
+import jax.scipy as jsp
 
 
 # ========= Base =========
@@ -210,6 +211,49 @@ class SquarePulse(Pulse):
         """
         return self.amp * jnp.exp(1j * self.phase)
 
+
+# ========= Erf =========
+@dataclass(frozen=True)
+class ErfPulse(Pulse):
+    """
+    Error-function (erf) pulse with configurable rise/fall time.
+
+    Envelope (paper Eq. 17):
+        f(t) = 1/2 * [erf((t - t1 - t_wl)/sigma) - erf((t - t2 - t_wr)/sigma)]
+    with t1 = t_r/2, t2 = duration - t1, sigma = t1/(2*sqrt(2*ln(2))).
+
+    Attributes
+    ----------
+    amp : jnp.ndarray
+        Pulse amplitude (Rabi frequency or flux amplitude units).
+    phase : jnp.ndarray, default=0.0
+        Pulse phase in radians.
+    t_r : jnp.ndarray
+        Rise time (same time units as duration).
+    t_wl : jnp.ndarray, default=0.0
+        Left timing offset (window adjustment).
+    t_wr : jnp.ndarray, default=0.0
+        Right timing offset (window adjustment).
+    drive_freq : Optional[jnp.ndarray], default=None
+        Drive carrier frequency (handled by device frame).
+    """
+    amp: jnp.ndarray
+    phase: jnp.ndarray = 0.0
+    t_r: jnp.ndarray = 4.0
+    t_wl: jnp.ndarray = 0.0
+    t_wr: jnp.ndarray = 0.0
+    drive_freq: Optional[jnp.ndarray] = None
+
+    def _envelope(self, t: jnp.ndarray) -> jnp.ndarray:
+        t1 = self.t_r / 2.0
+        t2 = self.duration - t1
+        sigma = t1 / (2.0 * jnp.sqrt(2.0 * jnp.log(2.0)))
+        f = 0.5 * (
+            jsp.special.erf((t - t1 - self.t_wl) / sigma)
+            - jsp.special.erf((t - t2 - self.t_wr) / sigma)
+        )
+        return self.amp * f * jnp.exp(1j * self.phase)
+
 @dataclass(frozen=True)
 class CouplingPulse(Pulse):
     """
@@ -298,4 +342,3 @@ class CouplingPulse(Pulse):
             return self.Jmax * (j_up + j_hold + j_down)
 
         return j_of_t(t)
-

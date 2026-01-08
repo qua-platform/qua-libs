@@ -13,9 +13,12 @@ SuperconductingDevice
     charge-mediated coupling, supporting per-line time-dependent drives and
     flux bias.
 """
+# pylint: disable=import-error,invalid-name,too-many-instance-attributes
+# pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
+# pylint: disable=too-many-branches,too-many-statements
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Literal, Sequence, Tuple, Optional
 
 import dynamiqs as dq
@@ -84,11 +87,22 @@ class SuperconductingDevice:
     # Optional rotating-frame references
     ref_qubit_freqs: Optional[Sequence[float]] = None
     ref_coupler_freqs: Optional[Sequence[float]] = None
+    # If True, subtract the static Kerr term in the rotating frame (H0 includes Kerr).
+    rot_frame_use_kerr: bool = False
 
     # Flux-dependent coupling scaling (Υ(Φec) factor)
     use_flux_coupling_scaling: bool = True
 
+    # Cached operators (set in __post_init__)
+    _a_ops: Tuple[dq.QArray, ...] = field(init=False, default_factory=tuple)
+    _adag_ops: Tuple[dq.QArray, ...] = field(init=False, default_factory=tuple)
+    _n_ops: Tuple[dq.QArray, ...] = field(init=False, default_factory=tuple)
+    _kerr_ops: Tuple[dq.QArray, ...] = field(init=False, default_factory=tuple)
+    _x_ops: Tuple[dq.QArray, ...] = field(init=False, default_factory=tuple)
+    _y_ops: Tuple[dq.QArray, ...] = field(init=False, default_factory=tuple)
+
     def __post_init__(self) -> None:
+        # Validate inputs, normalize parameter forms, and cache per-mode operators.
         if self.n_qubits < 2:
             raise ValueError("n_qubits must be >= 2")
 
@@ -98,11 +112,21 @@ class SuperconductingDevice:
         self._validate_flux_params()
 
         g_couplings = list(self.g_couplings)
-        if len(g_couplings) != n_couplers:
-            raise ValueError("g_couplings length must be n_qubits - 1")
+        if self.E_couplings is None:
+            if len(g_couplings) != n_couplers:
+                raise ValueError("g_couplings length must be n_qubits - 1")
+        else:
+            if not g_couplings:
+                g_couplings = [(0.0, 0.0)] * n_couplers
+            elif len(g_couplings) != n_couplers:
+                raise ValueError("g_couplings length must be n_qubits - 1")
         if g_couplings and not isinstance(g_couplings[0], (tuple, list)):
             g_couplings = [(float(g), float(g)) for g in g_couplings]
-        object.__setattr__(self, "g_couplings", tuple((float(g0), float(g1)) for g0, g1 in g_couplings))
+        object.__setattr__(
+            self,
+            "g_couplings",
+            tuple((float(g0), float(g1)) for g0, g1 in g_couplings),
+        )
 
         if self.ref_qubit_freqs is None:
             object.__setattr__(self, "ref_qubit_freqs", (0.0,) * self.n_qubits)
@@ -116,7 +140,7 @@ class SuperconductingDevice:
         a = dq.destroy(self.levels)
         adag = dq.create(self.levels)
         n_local = adag @ a
-        kerr_local = adag @ adag @ a @ a
+        kerr_local = adag @ a @ adag @ a
         x_local = a + adag
         y_local = -1j * (a - adag)
 
@@ -144,27 +168,47 @@ class SuperconductingDevice:
 
     @property
     def n_couplers(self) -> int:
+        """Return number of couplers between adjacent qubits."""
+        # Number of couplers between adjacent qubits.
         return self.n_qubits - 1
 
     @property
     def n_modes(self) -> int:
+        """Return total number of modes (qubits + couplers)."""
+        # Total number of modes in the Hamiltonian (qubits + couplers).
         return self.n_qubits + self.n_couplers
 
     def _coupler_index(self, k: int) -> int:
+        """Return the global mode index for coupler k."""
+        # Map coupler index to its global mode index.
         return self.n_qubits + k
 
     def _embed_op(self, op: dq.QArray, which: int) -> dq.QArray:
+        """Embed a single-mode operator into the full tensor product space."""
+        # Embed a single-mode operator into the full Hilbert space.
         ops = [dq.eye(self.levels) for _ in range(self.n_modes)]
         ops[which] = op
         return kron_n(ops)
 
     def _pulse_callable(self, pulse: Pulse | Callable[[jnp.ndarray], jnp.ndarray]):
+        # Normalize pulse inputs to a callable signature f(t).
         return pulse.timecallable() if hasattr(pulse, "timecallable") else pulse
 
     def _validate_flux_params(self) -> None:
-        if self.qubit_EJ_small is None or self.qubit_EJ_large is None or self.qubit_EC is None or self.qubit_phi_ext is None:
+        # Check that required EJ/EC/phi arrays are provided with correct lengths.
+        if (
+            self.qubit_EJ_small is None
+            or self.qubit_EJ_large is None
+            or self.qubit_EC is None
+            or self.qubit_phi_ext is None
+        ):
             raise ValueError("qubit_EJ_small/large, qubit_EC, and qubit_phi_ext are required")
-        if self.coupler_EJ_small is None or self.coupler_EJ_large is None or self.coupler_EC is None or self.coupler_phi_ext is None:
+        if (
+            self.coupler_EJ_small is None
+            or self.coupler_EJ_large is None
+            or self.coupler_EC is None
+            or self.coupler_phi_ext is None
+        ):
             raise ValueError("coupler_EJ_small/large, coupler_EC, and coupler_phi_ext are required")
 
         if len(self.qubit_EJ_small) != self.n_qubits or len(self.qubit_EJ_large) != self.n_qubits:
@@ -172,7 +216,10 @@ class SuperconductingDevice:
         if len(self.qubit_EC) != self.n_qubits or len(self.qubit_phi_ext) != self.n_qubits:
             raise ValueError("qubit_EC and qubit_phi_ext length must match n_qubits")
 
-        if len(self.coupler_EJ_small) != self.n_couplers or len(self.coupler_EJ_large) != self.n_couplers:
+        if (
+            len(self.coupler_EJ_small) != self.n_couplers
+            or len(self.coupler_EJ_large) != self.n_couplers
+        ):
             raise ValueError("coupler_EJ_small/large length must be n_qubits - 1")
         if len(self.coupler_EC) != self.n_couplers or len(self.coupler_phi_ext) != self.n_couplers:
             raise ValueError("coupler_EC and coupler_phi_ext length must be n_qubits - 1")
@@ -182,7 +229,10 @@ class SuperconductingDevice:
         if len(self.qubit_EC) != self.n_qubits or len(self.qubit_phi_ext) != self.n_qubits:
             raise ValueError("qubit_EC and qubit_phi_ext length must match n_qubits")
 
-        if len(self.coupler_EJ_small) != self.n_couplers or len(self.coupler_EJ_large) != self.n_couplers:
+        if (
+            len(self.coupler_EJ_small) != self.n_couplers
+            or len(self.coupler_EJ_large) != self.n_couplers
+        ):
             raise ValueError("coupler_EJ_small/large length must be n_qubits - 1")
         if len(self.coupler_EC) != self.n_couplers or len(self.coupler_phi_ext) != self.n_couplers:
             raise ValueError("coupler_EC and coupler_phi_ext length must be n_qubits - 1")
@@ -192,49 +242,93 @@ class SuperconductingDevice:
         if self.E_direct is not None and len(self.E_direct) != self.n_couplers:
             raise ValueError("E_direct length must be n_qubits - 1 when provided")
 
-    def _ej_from_phi(self, EJ_small: jnp.ndarray, EJ_large: jnp.ndarray, phi: jnp.ndarray) -> jnp.ndarray:
-        return jnp.sqrt(EJ_small ** 2 + EJ_large ** 2 + 2.0 * EJ_small * EJ_large * jnp.cos(phi))
+    def _ej_from_phi(
+        self, EJ_small: jnp.ndarray, EJ_large: jnp.ndarray, phi: jnp.ndarray
+    ) -> jnp.ndarray:
+        # SQUID flux-to-Josephson energy mapping from the paper.
+        # Paper: Eq. (6) / Appendix B (EJ(phi) from SQUID loop).
+        return jnp.sqrt(
+            EJ_small ** 2 + EJ_large ** 2 + 2.0 * EJ_small * EJ_large * jnp.cos(phi)
+        )
 
     def _derive_ej_from_omega(self, omega: float, EC: float) -> float:
+        # Invert the transmon approximation to estimate EJ from omega and EC.
         # Invert ω ≈ sqrt(8 EJ EC) - EC (transmon approximation).
         return float((omega + EC) ** 2 / (8.0 * EC))
 
     def _normalize_transmon_params(self) -> None:
+        # Fill in missing EJ/EC/phi values using provided frequencies or anharmonicities.
         if self.qubit_EC is None and self.qubit_anharm is not None:
             object.__setattr__(self, "qubit_EC", tuple(float(a) for a in self.qubit_anharm))
         if self.coupler_EC is None and self.coupler_anharm is not None:
             object.__setattr__(self, "coupler_EC", tuple(float(a) for a in self.coupler_anharm))
 
-        if self.qubit_EJ_small is None and self.qubit_EJ_large is None and self.qubit_freqs is not None and self.qubit_EC is not None:
-            EJ_max = tuple(self._derive_ej_from_omega(w, ec) for w, ec in zip(self.qubit_freqs, self.qubit_EC))
+        if (
+            self.qubit_EJ_small is None
+            and self.qubit_EJ_large is None
+            and self.qubit_freqs is not None
+            and self.qubit_EC is not None
+        ):
+            EJ_max = tuple(
+                self._derive_ej_from_omega(w, ec)
+                for w, ec in zip(self.qubit_freqs, self.qubit_EC)
+            )
             object.__setattr__(self, "qubit_EJ_small", tuple(0.5 * ej for ej in EJ_max))
             object.__setattr__(self, "qubit_EJ_large", tuple(0.5 * ej for ej in EJ_max))
             if self.qubit_phi_ext is None:
                 object.__setattr__(self, "qubit_phi_ext", (0.0,) * len(EJ_max))
 
-        if self.coupler_EJ_small is None and self.coupler_EJ_large is None and self.coupler_freqs is not None and self.coupler_EC is not None:
-            EJ_max = tuple(self._derive_ej_from_omega(w, ec) for w, ec in zip(self.coupler_freqs, self.coupler_EC))
+        if (
+            self.coupler_EJ_small is None
+            and self.coupler_EJ_large is None
+            and self.coupler_freqs is not None
+            and self.coupler_EC is not None
+        ):
+            EJ_max = tuple(
+                self._derive_ej_from_omega(w, ec)
+                for w, ec in zip(self.coupler_freqs, self.coupler_EC)
+            )
             object.__setattr__(self, "coupler_EJ_small", tuple(0.5 * ej for ej in EJ_max))
             object.__setattr__(self, "coupler_EJ_large", tuple(0.5 * ej for ej in EJ_max))
             if self.coupler_phi_ext is None:
                 object.__setattr__(self, "coupler_phi_ext", (0.0,) * len(EJ_max))
+                
     def _xi_from_ej_ec(self, EJ: jnp.ndarray, EC: jnp.ndarray) -> jnp.ndarray:
+        # Small parameter xi = sqrt(2 EC / EJ) used in the cosine expansion.
+        # Paper: Appendix B definitions leading to Eq. (B20).
         return jnp.sqrt(2.0 * EC / EJ)
 
-    def _omega_from_phi(self, EJ_small: jnp.ndarray, EJ_large: jnp.ndarray, EC: jnp.ndarray, phi: jnp.ndarray) -> jnp.ndarray:
+    def _omega_from_phi(
+        self, EJ_small: jnp.ndarray, EJ_large: jnp.ndarray, EC: jnp.ndarray, phi: jnp.ndarray
+    ) -> jnp.ndarray:
+        # Flux-dependent frequency from the transmon expansion.
+        # Paper: Eq. (B20) for omega(phi) using xi.
         EJ = self._ej_from_phi(EJ_small, EJ_large, phi)
         xi = self._xi_from_ej_ec(EJ, EC)
         return jnp.sqrt(8.0 * EJ * EC) - EC * (1.0 + xi / 4.0)
 
-    def _kerr_from_phi(self, EJ_small: jnp.ndarray, EJ_large: jnp.ndarray, EC: jnp.ndarray, phi: jnp.ndarray) -> jnp.ndarray:
+    def _kerr_from_phi(
+        self, EJ_small: jnp.ndarray, EJ_large: jnp.ndarray, EC: jnp.ndarray, phi: jnp.ndarray
+    ) -> jnp.ndarray:
+        # Flux-dependent Kerr (self-anharmonicity) from the transmon expansion.
+        # Paper: Eq. (B20) for K(phi) using xi.
         EJ = self._ej_from_phi(EJ_small, EJ_large, phi)
         xi = self._xi_from_ej_ec(EJ, EC)
         return 0.5 * EC * (1.0 + 9.0 * xi / 16.0)
 
-    def _g_from_E(self, Eij: jnp.ndarray, EJ_i: jnp.ndarray, EC_i: jnp.ndarray, EJ_j: jnp.ndarray, EC_j: jnp.ndarray) -> jnp.ndarray:
+    def _g_from_E(
+        self,
+        Eij: jnp.ndarray,
+        EJ_i: jnp.ndarray,
+        EC_i: jnp.ndarray,
+        EJ_j: jnp.ndarray,
+        EC_j: jnp.ndarray,
+    ) -> jnp.ndarray:
+        # Convert coupling energy Eij to charge-coupling rate g_ij (Appendix B).
+        # Paper: Eq. (B21) / Eq. (B22) for g_ij from E_ij and xi.
         xi_i = self._xi_from_ej_ec(EJ_i, EC_i)
         xi_j = self._xi_from_ej_ec(EJ_j, EC_j)
-        scale = jnp.sqrt(2.0) * (EJ_i / EC_i * EJ_j / EC_j) ** 0.25
+        scale = jnp.sqrt(2.0) * ((EJ_i / EC_i) * (EJ_j / EC_j)) ** 0.25
         return Eij * scale * (1.0 - 0.125 * (xi_i + xi_j))
 
     def construct_h(
@@ -246,12 +340,24 @@ class SuperconductingDevice:
         """
         Build H(t) = H_static + H_flux_qubits(t) + H_flux_couplers(t) + H_drives(t).
         """
+        # Assemble the time-dependent Hamiltonian term-by-term.
         Ht = dq.constant(0.0 * kron_n([dq.eye(self.levels)] * self.n_modes))
 
         qubit_flux_map = {i: self._pulse_callable(p) for i, p in qubit_flux}
         coupler_flux_map = {i: self._pulse_callable(p) for i, p in coupler_flux}
 
         # Mode terms (omega and Kerr), possibly flux-modulated
+        assert self.qubit_EJ_small is not None
+        assert self.qubit_EJ_large is not None
+        assert self.qubit_EC is not None
+        assert self.qubit_phi_ext is not None
+        assert self.ref_qubit_freqs is not None
+        assert self.ref_coupler_freqs is not None
+        assert self.coupler_EJ_small is not None
+        assert self.coupler_EJ_large is not None
+        assert self.coupler_EC is not None
+        assert self.coupler_phi_ext is not None
+
         for i in range(self.n_qubits):
             EJ_s = jnp.asarray(self.qubit_EJ_small[i])
             EJ_l = jnp.asarray(self.qubit_EJ_large[i])
@@ -260,25 +366,47 @@ class SuperconductingDevice:
             n_op = self._n_ops[i]
             kerr_op = self._kerr_ops[i]
 
+            kerr_ref = None
+            if self.frame == "rot" and self.rot_frame_use_kerr:
+                kerr_ref = -self._kerr_from_phi(EJ_s, EJ_l, EC, phi0)
+
             if i in qubit_flux_map:
                 f = qubit_flux_map[i]
+                ref_freq = jnp.asarray(self.ref_qubit_freqs[i]) if self.frame == "rot" else None
 
-                def omega_t(t, EJ_s=EJ_s, EJ_l=EJ_l, EC=EC, phi0=phi0, f=f):
+                def omega_q_t(
+                    t,
+                    EJ_s=EJ_s,
+                    EJ_l=EJ_l,
+                    EC=EC,
+                    phi0=phi0,
+                    f=f,
+                    ref_freq=ref_freq,
+                ):
                     omega = self._omega_from_phi(EJ_s, EJ_l, EC, phi0 + jnp.real(f(t)))
-                    if self.frame == "rot":
-                        omega = omega - jnp.asarray(self.ref_qubit_freqs[i])
-                    return omega
+                    return omega - ref_freq if ref_freq is not None else omega
 
-                def kerr_t(t, EJ_s=EJ_s, EJ_l=EJ_l, EC=EC, phi0=phi0, f=f):
-                    return -self._kerr_from_phi(EJ_s, EJ_l, EC, phi0 + jnp.real(f(t)))
+                def kerr_q_t(
+                    t,
+                    EJ_s=EJ_s,
+                    EJ_l=EJ_l,
+                    EC=EC,
+                    phi0=phi0,
+                    f=f,
+                    kerr_ref=kerr_ref,
+                ):
+                    kerr = -self._kerr_from_phi(EJ_s, EJ_l, EC, phi0 + jnp.real(f(t)))
+                    return kerr - kerr_ref if kerr_ref is not None else kerr
 
-                Ht = Ht + dq.modulated(omega_t, n_op)
-                Ht = Ht + dq.modulated(kerr_t, kerr_op)
+                Ht = Ht + dq.modulated(omega_q_t, n_op)
+                Ht = Ht + dq.modulated(kerr_q_t, kerr_op)
             else:
                 omega0 = self._omega_from_phi(EJ_s, EJ_l, EC, phi0)
                 kerr0 = -self._kerr_from_phi(EJ_s, EJ_l, EC, phi0)
                 if self.frame == "rot":
                     omega0 = omega0 - jnp.asarray(self.ref_qubit_freqs[i])
+                    if kerr_ref is not None:
+                        kerr0 = kerr0 - kerr_ref
                 Ht = Ht + omega0 * n_op + kerr0 * kerr_op
 
         for k in range(self.n_couplers):
@@ -290,25 +418,47 @@ class SuperconductingDevice:
             n_op = self._n_ops[idx]
             kerr_op = self._kerr_ops[idx]
 
+            kerr_ref = None
+            if self.frame == "rot" and self.rot_frame_use_kerr:
+                kerr_ref = -self._kerr_from_phi(EJ_s, EJ_l, EC, phi0)
+
             if k in coupler_flux_map:
                 f = coupler_flux_map[k]
+                ref_freq = jnp.asarray(self.ref_coupler_freqs[k]) if self.frame == "rot" else None
 
-                def omega_t(t, EJ_s=EJ_s, EJ_l=EJ_l, EC=EC, phi0=phi0, f=f):
+                def omega_c_t(
+                    t,
+                    EJ_s=EJ_s,
+                    EJ_l=EJ_l,
+                    EC=EC,
+                    phi0=phi0,
+                    f=f,
+                    ref_freq=ref_freq,
+                ):
                     omega = self._omega_from_phi(EJ_s, EJ_l, EC, phi0 + jnp.real(f(t)))
-                    if self.frame == "rot":
-                        omega = omega - jnp.asarray(self.ref_coupler_freqs[k])
-                    return omega
+                    return omega - ref_freq if ref_freq is not None else omega
 
-                def kerr_t(t, EJ_s=EJ_s, EJ_l=EJ_l, EC=EC, phi0=phi0, f=f):
-                    return -self._kerr_from_phi(EJ_s, EJ_l, EC, phi0 + jnp.real(f(t)))
+                def kerr_c_t(
+                    t,
+                    EJ_s=EJ_s,
+                    EJ_l=EJ_l,
+                    EC=EC,
+                    phi0=phi0,
+                    f=f,
+                    kerr_ref=kerr_ref,
+                ):
+                    kerr = -self._kerr_from_phi(EJ_s, EJ_l, EC, phi0 + jnp.real(f(t)))
+                    return kerr - kerr_ref if kerr_ref is not None else kerr
 
-                Ht = Ht + dq.modulated(omega_t, n_op)
-                Ht = Ht + dq.modulated(kerr_t, kerr_op)
+                Ht = Ht + dq.modulated(omega_c_t, n_op)
+                Ht = Ht + dq.modulated(kerr_c_t, kerr_op)
             else:
                 omega0 = self._omega_from_phi(EJ_s, EJ_l, EC, phi0)
                 kerr0 = -self._kerr_from_phi(EJ_s, EJ_l, EC, phi0)
                 if self.frame == "rot":
                     omega0 = omega0 - jnp.asarray(self.ref_coupler_freqs[k])
+                    if kerr_ref is not None:
+                        kerr0 = kerr0 - kerr_ref
                 Ht = Ht + omega0 * n_op + kerr0 * kerr_op
 
         # Couplings (direct and via couplers)
@@ -328,6 +478,7 @@ class SuperconductingDevice:
             op_rc = (a_r @ ad_c + ad_r @ a_c - a_r @ a_c - ad_r @ ad_c).asdense()
             op_lr = (a_l @ ad_r + ad_l @ a_r - a_l @ a_r - ad_l @ ad_r).asdense()
 
+            # Paper: Eq. (B19) charge-coupling operator structure.
             g12 = jnp.asarray(self.g_direct[k]).reshape(())
             Ht = Ht + g12 * op_lr
 
@@ -360,59 +511,143 @@ class SuperconductingDevice:
                 f_l = qubit_flux_map.get(q_left)
                 f_r = qubit_flux_map.get(q_right)
 
-                def EJ_l_t(t, EJ_s=jnp.asarray(self.qubit_EJ_small[q_left]), EJ_l=jnp.asarray(self.qubit_EJ_large[q_left]), phi0=jnp.asarray(self.qubit_phi_ext[q_left]), f_l=f_l):
+                # Capture loop variables for EJ calculations
+                EJ_s_l = jnp.asarray(self.qubit_EJ_small[q_left])
+                EJ_l_l = jnp.asarray(self.qubit_EJ_large[q_left])
+                phi0_l = jnp.asarray(self.qubit_phi_ext[q_left])
+                EJ_s_r = jnp.asarray(self.qubit_EJ_small[q_right])
+                EJ_l_r = jnp.asarray(self.qubit_EJ_large[q_right])
+                phi0_r = jnp.asarray(self.qubit_phi_ext[q_right])
+                EJ_s_c = jnp.asarray(self.coupler_EJ_small[k])
+                EJ_l_c = jnp.asarray(self.coupler_EJ_large[k])
+                phi0_c = jnp.asarray(self.coupler_phi_ext[k])
+                EC_l = jnp.asarray(self.qubit_EC[q_left])
+                EC_r = jnp.asarray(self.qubit_EC[q_right])
+                EC_c = jnp.asarray(self.coupler_EC[k])
+
+                def EJ_l_t(
+                    t,
+                    EJ_l0=EJ_l0,
+                    EJ_s_l=EJ_s_l,
+                    EJ_l_l=EJ_l_l,
+                    phi0_l=phi0_l,
+                    f_l=f_l,
+                ):
                     if f_l is None:
                         return EJ_l0
-                    return self._ej_from_phi(EJ_s, EJ_l, phi0 + jnp.real(f_l(t)))
+                    return self._ej_from_phi(EJ_s_l, EJ_l_l, phi0_l + jnp.real(f_l(t)))
 
-                def EJ_r_t(t, EJ_s=jnp.asarray(self.qubit_EJ_small[q_right]), EJ_l=jnp.asarray(self.qubit_EJ_large[q_right]), phi0=jnp.asarray(self.qubit_phi_ext[q_right]), f_r=f_r):
+                def EJ_r_t(
+                    t,
+                    EJ_r0=EJ_r0,
+                    EJ_s_r=EJ_s_r,
+                    EJ_l_r=EJ_l_r,
+                    phi0_r=phi0_r,
+                    f_r=f_r,
+                ):
                     if f_r is None:
                         return EJ_r0
-                    return self._ej_from_phi(EJ_s, EJ_l, phi0 + jnp.real(f_r(t)))
+                    return self._ej_from_phi(EJ_s_r, EJ_l_r, phi0_r + jnp.real(f_r(t)))
 
-                def EJ_c_t(t, EJ_s=jnp.asarray(self.coupler_EJ_small[k]), EJ_l=jnp.asarray(self.coupler_EJ_large[k]), phi0=jnp.asarray(self.coupler_phi_ext[k]), f_c=f_c):
+                def EJ_c_t(
+                    t,
+                    EJ_c0=EJ_c0,
+                    EJ_s_c=EJ_s_c,
+                    EJ_l_c=EJ_l_c,
+                    phi0_c=phi0_c,
+                    f_c=f_c,
+                ):
                     if f_c is None:
                         return EJ_c0
-                    return self._ej_from_phi(EJ_s, EJ_l, phi0 + jnp.real(f_c(t)))
+                    return self._ej_from_phi(EJ_s_c, EJ_l_c, phi0_c + jnp.real(f_c(t)))
 
-                def g_left_t(t, E_left=E_left, EC_l=jnp.asarray(self.qubit_EC[q_left]), EC_c=jnp.asarray(self.coupler_EC[k])):
-                    EJ_l = EJ_l_t(t)
-                    EJ_c = EJ_c_t(t)
-                    g = self._g_from_E(E_left, EJ_l, EC_l, EJ_c, EC_c)
+                def g_left_t(
+                    t,
+                    E_left=E_left,
+                    EC_l=EC_l,
+                    EC_c=EC_c,
+                    EJ_c0=EJ_c0,
+                    EJ_c_t=EJ_c_t,
+                    EJ_l_t=EJ_l_t,
+                ):
+                    ej_c_val = EJ_c_t(t)
+                    g_val = self._g_from_E(E_left, EJ_l_t(t), EC_l, ej_c_val, EC_c)
                     if self.use_flux_coupling_scaling:
-                        g = g * (EJ_c0 / EJ_c) ** 0.25
-                    return g
+                        g_val = g_val * (EJ_c0 / ej_c_val) ** 0.25
+                    return g_val
 
-                def g_right_t(t, E_right=E_right, EC_r=jnp.asarray(self.qubit_EC[q_right]), EC_c=jnp.asarray(self.coupler_EC[k])):
-                    EJ_r = EJ_r_t(t)
-                    EJ_c = EJ_c_t(t)
-                    g = self._g_from_E(E_right, EJ_r, EC_r, EJ_c, EC_c)
+                def g_right_t(
+                    t,
+                    E_right=E_right,
+                    EC_r=EC_r,
+                    EC_c=EC_c,
+                    EJ_c0=EJ_c0,
+                    EJ_c_t=EJ_c_t,
+                    EJ_r_t=EJ_r_t,
+                ):
+                    ej_c_val = EJ_c_t(t)
+                    g_val = self._g_from_E(E_right, EJ_r_t(t), EC_r, ej_c_val, EC_c)
                     if self.use_flux_coupling_scaling:
-                        g = g * (EJ_c0 / EJ_c) ** 0.25
-                    return g
+                        g_val = g_val * (EJ_c0 / ej_c_val) ** 0.25
+                    return g_val
 
                 if f_c is not None or f_l is not None or f_r is not None:
                     Ht = Ht + dq.modulated(g_left_t, op_lc)
                     Ht = Ht + dq.modulated(g_right_t, op_rc)
                 else:
-                    g_l = jnp.asarray(self._g_from_E(E_left, EJ_l0, jnp.asarray(self.qubit_EC[q_left]), EJ_c0, jnp.asarray(self.coupler_EC[k]))).reshape(())
-                    g_r = jnp.asarray(self._g_from_E(E_right, EJ_r0, jnp.asarray(self.qubit_EC[q_right]), EJ_c0, jnp.asarray(self.coupler_EC[k]))).reshape(())
+                    g_l = jnp.asarray(
+                        self._g_from_E(
+                            E_left,
+                            EJ_l0,
+                            jnp.asarray(self.qubit_EC[q_left]),
+                            EJ_c0,
+                            jnp.asarray(self.coupler_EC[k]),
+                        )
+                    ).reshape(())
+                    g_r = jnp.asarray(
+                        self._g_from_E(
+                            E_right,
+                            EJ_r0,
+                            jnp.asarray(self.qubit_EC[q_right]),
+                            EJ_c0,
+                            jnp.asarray(self.coupler_EC[k]),
+                        )
+                    ).reshape(())
                     Ht = Ht + g_l * op_lc + g_r * op_rc
             else:
                 if self.use_flux_coupling_scaling:
                     f_c = coupler_flux_map.get(k)
+                    EJ_s_c = jnp.asarray(self.coupler_EJ_small[k])
+                    EJ_l_c = jnp.asarray(self.coupler_EJ_large[k])
+                    phi0_c = jnp.asarray(self.coupler_phi_ext[k])
+                    EJ_c0 = self._ej_from_phi(EJ_s_c, EJ_l_c, phi0_c)
 
-                    def scale_t(t, EJ_s=jnp.asarray(self.coupler_EJ_small[k]), EJ_l=jnp.asarray(self.coupler_EJ_large[k]), phi0=jnp.asarray(self.coupler_phi_ext[k]), f_c=f_c, EJ_c0=self._ej_from_phi(jnp.asarray(self.coupler_EJ_small[k]), jnp.asarray(self.coupler_EJ_large[k]), jnp.asarray(self.coupler_phi_ext[k]))):
+                    def scale_t(
+                        t,
+                        EJ_s_c=EJ_s_c,
+                        EJ_l_c=EJ_l_c,
+                        phi0_c=phi0_c,
+                        f_c=f_c,
+                        EJ_c0=EJ_c0,
+                    ):
                         if f_c is None:
                             return 1.0
-                        EJ_c = self._ej_from_phi(EJ_s, EJ_l, phi0 + jnp.real(f_c(t)))
-                        return (EJ_c0 / EJ_c) ** 0.25
+                        EJ_c_val = self._ej_from_phi(
+                            EJ_s_c, EJ_l_c, phi0_c + jnp.real(f_c(t))
+                        )
+                        return (EJ_c0 / EJ_c_val) ** 0.25
 
                     if f_c is None:
                         Ht = Ht + g_left * op_lc + g_right * op_rc
                     else:
-                        Ht = Ht + dq.modulated(lambda t, g=g_left: g * scale_t(t), op_lc)
-                        Ht = Ht + dq.modulated(lambda t, g=g_right: g * scale_t(t), op_rc)
+                        def scaled_left(t, g_left=g_left, scale_t=scale_t):
+                            return g_left * scale_t(t)
+
+                        def scaled_right(t, g_right=g_right, scale_t=scale_t):
+                            return g_right * scale_t(t)
+
+                        Ht = Ht + dq.modulated(scaled_left, op_lc)
+                        Ht = Ht + dq.modulated(scaled_right, op_rc)
                 else:
                     Ht = Ht + g_left * op_lc + g_right * op_rc
 
@@ -424,13 +659,25 @@ class SuperconductingDevice:
         return Ht
 
     def _static_h(self) -> dq.QArray:
+        # Placeholder for a static Hamiltonian; retained for interface symmetry.
         return 0.0 * kron_n([dq.eye(self.levels)] * self.n_modes)
 
     def _drive_terms(
         self, which: int, pulse: GaussianPulse
     ) -> Sequence[tuple[Callable[[jnp.ndarray], jnp.ndarray], dq.QArray]]:
+        # Build X/Y quadrature drive terms with optional carrier frequency.
         s_base = self._pulse_callable(pulse)
         drive_freq = getattr(pulse, "drive_freq", None)
+
+        if self.frame == "lab" and drive_freq is not None:
+            omega = jnp.asarray(drive_freq)
+            Xj = self._x_ops[which]
+
+            def s_cos(t):
+                env = s_base(t)
+                return jnp.real(env) * jnp.cos(omega * t) - jnp.imag(env) * jnp.sin(omega * t)
+
+            return ((s_cos, Xj),)
 
         if self.frame == "rot":
             wref = jnp.asarray(self.ref_qubit_freqs[which])
