@@ -14,6 +14,7 @@ from .analysis import (
     log_fitted_results,
     FitParameters,
 )
+
 try:
     from .edge_line_analysis import analyze_edge_map, SegmentFit
 except ImportError:  # pragma: no cover - optional dependency guard

@@ -22,9 +22,7 @@ import numpy as np
 try:
     from skimage.morphology import skeletonize
 except ImportError as exc:  # pragma: no cover - dependency guard
-    raise ImportError(
-        "scikit-image is required for skeletonization. Install with `pip install scikit-image`."
-    ) from exc
+    raise ImportError("scikit-image is required for skeletonization. Install with `pip install scikit-image`.") from exc
 
 
 _NEIGHBORS: Tuple[Tuple[int, int], ...] = (
@@ -307,7 +305,9 @@ def analyze_edge_map(
     intersections: List[np.ndarray] = []
     for i in range(len(segments)):
         for j in range(i + 1, len(segments)):
-            pt = _segment_intersection(segments[i], segments[j], parallel_tol=parallel_tol, on_segment_tol=on_segment_tol)
+            pt = _segment_intersection(
+                segments[i], segments[j], parallel_tol=parallel_tol, on_segment_tol=on_segment_tol
+            )
             if pt is not None:
                 intersections.append(pt)
 

@@ -10,13 +10,16 @@ from jax import lax
 from qualibrate import QualibrationNode
 
 from bayesian_change_point.bayesian_cp import BayesianCP
+
 try:
     from .edge_line_analysis import analyze_edge_map, SegmentFit
+
     _edge_line_import_error: Optional[Exception] = None
 except ImportError as exc:  # pragma: no cover - optional dependency guard
     analyze_edge_map = None
     SegmentFit = None
     _edge_line_import_error = exc
+
 
 @dataclass
 class FitParameters:
@@ -34,6 +37,7 @@ class FitParameters:
 
     def to_dict(self):
         """Convert FitParameters to a JSON-serializable dictionary."""
+
         def serialize_segment(seg: Any):
             """Convert SegmentFit or dict to serializable dict."""
             if isinstance(seg, dict):
@@ -78,10 +82,7 @@ def peak_mask(cp, window=5, threshold=0.0):
 
     # local max within window
     local_max = lax.reduce_window(
-        x, -jnp.inf, lax.max,
-        window_dimensions=(w,),
-        window_strides=(1,),
-        padding=((pad, pad),)  # "same"
+        x, -jnp.inf, lax.max, window_dimensions=(w,), window_strides=(1,), padding=((pad, pad),)  # "same"
     )
 
     # mark points that are the unique (or leftmost in a tie) local max and over threshold
@@ -168,7 +169,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         - Dataset containing the fit results
         - Dictionary of FitParameters for each sensor
     """
-    sensors = node.namespace['sensors']
+    sensors = node.namespace["sensors"]
     ds_fit = ds.copy()
 
     # Fit each sensor individually
@@ -185,12 +186,10 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit = ds_fit.assign_coords(success=("sensors", success_list))
 
     # Set node outcomes
-    node.outcomes = {
-        sensor.id: "successful" if fit_results[sensor.id].success else "fail"
-        for sensor in sensors
-    }
+    node.outcomes = {sensor.id: "successful" if fit_results[sensor.id].success else "fail" for sensor in sensors}
 
     return ds_fit, fit_results
+
 
 def fit_individual_raw_data(data: xr.Dataset, sensor_id: str, node: QualibrationNode) -> FitParameters:
     """
@@ -219,11 +218,13 @@ def fit_individual_raw_data(data: xr.Dataset, sensor_id: str, node: Qualibration
     cp, _ = jax.vmap(model.fit)(zs)  # cp has length T-1 (probability at each boundary)
     cp2, _ = jax.vmap(model.fit)(zs.T)
 
-    mean_cp = (cp[1:] + cp2[1:].T) / 2.
+    mean_cp = (cp[1:] + cp2[1:].T) / 2.0
     edge_threshold = 0.25
 
     if analyze_edge_map is None:
-        raise ImportError("Line fitting requires scikit-image; install it to enable edge analysis.") from _edge_line_import_error
+        raise ImportError(
+            "Line fitting requires scikit-image; install it to enable edge analysis."
+        ) from _edge_line_import_error
 
     # Line-segment fitting on the edge map
     edge_base = zs[1:, 1:] if zs.shape[0] > 1 and zs.shape[1] > 1 else zs
@@ -234,9 +235,7 @@ def fit_individual_raw_data(data: xr.Dataset, sensor_id: str, node: Qualibration
         show=False,
     )
 
-    intersections = (
-        np.vstack(edge_analysis["intersections"]) if edge_analysis["intersections"] else np.empty((0, 2))
-    )
+    intersections = np.vstack(edge_analysis["intersections"]) if edge_analysis["intersections"] else np.empty((0, 2))
 
     success = len(edge_analysis["segments"]) > 0
 

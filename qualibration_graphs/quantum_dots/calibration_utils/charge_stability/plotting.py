@@ -23,80 +23,81 @@ def _align_base_to_overlay(base_array: np.ndarray, overlay_array: np.ndarray) ->
         return base_array[1:, :]
     return base_array
 
+
 def plot_raw_amplitude(ds: xr.Dataset, sensors: List[SensorDot]) -> Figure:
     """
     Plots the raw amplitude for charge stability measurements.
-    
+
     Parameters
     ----------
     ds : xr.Dataset
         The dataset containing the I and Q quadrature data.
     sensors : List[SensorDot]
         A list of sensors to plot.
-    
+
     Returns
     -------
     Figure
         The matplotlib figure object containing the plots.
-    
+
     Notes
     -----
     - The function creates a grid of subplots, one for each sensor.
     - Each subplot contains the amplitude heatmap.
     """
     num_sensors = len(sensors)
-    fig, axes = plt.subplots(1, num_sensors, figsize=(6*num_sensors, 5), squeeze=False)
+    fig, axes = plt.subplots(1, num_sensors, figsize=(6 * num_sensors, 5), squeeze=False)
     axes = axes.flatten()
-    
+
     for ax, sensor in zip(axes, sensors):
         sensor_data = ds.sel(sensors=sensor.id)
         plot_individual_raw_amplitude(ax, sensor_data, sensor.id)
-    
+
     fig.suptitle("Charge Stability Map - Amplitude")
     fig.tight_layout()
-    
+
     return fig
 
 
 def plot_raw_phase(ds: xr.Dataset, sensors: List[SensorDot]) -> Figure:
     """
     Plots the raw phase for charge stability measurements.
-    
+
     Parameters
     ----------
     ds : xr.Dataset
         The dataset containing the I and Q quadrature data.
     sensors : List[SensorDot]
         A list of sensors to plot.
-    
+
     Returns
     -------
     Figure
         The matplotlib figure object containing the plots.
-    
+
     Notes
     -----
     - The function creates a grid of subplots, one for each sensor.
     - Each subplot contains the phase heatmap.
     """
     num_sensors = len(sensors)
-    fig, axes = plt.subplots(1, num_sensors, figsize=(6*num_sensors, 5), squeeze=False)
+    fig, axes = plt.subplots(1, num_sensors, figsize=(6 * num_sensors, 5), squeeze=False)
     axes = axes.flatten()
-    
+
     for ax, sensor in zip(axes, sensors):
         sensor_data = ds.sel(sensors=sensor.id)
         plot_individual_raw_phase(ax, sensor_data, sensor.id)
-    
+
     fig.suptitle("Charge Stability Map - Phase")
     fig.tight_layout()
-    
+
     return fig
 
 
 def plot_individual_raw_amplitude(ax: Axes, sensor_data: xr.Dataset, sensor_id: str):
     """
     Plots individual sensor amplitude data on a given axis.
-    
+
     Parameters
     ----------
     ax : matplotlib.axes.Axes
@@ -108,20 +109,15 @@ def plot_individual_raw_amplitude(ax: Axes, sensor_data: xr.Dataset, sensor_id: 
     """
     # Compute amplitude from I and Q
     amplitude = np.sqrt(sensor_data.I**2 + sensor_data.Q**2)
-    
+
     # Plot using xarray's plot method
     amplitude.plot(
-        ax=ax,
-        x='x_volts',
-        y='y_volts',
-        cmap='viridis',
-        add_colorbar=True,
-        cbar_kwargs={'label': 'Amplitude (a.u.)'}
+        ax=ax, x="x_volts", y="y_volts", cmap="viridis", add_colorbar=True, cbar_kwargs={"label": "Amplitude (a.u.)"}
     )
-    
-    ax.set_xlabel('X Voltage (V)')
-    ax.set_ylabel('Y Voltage (V)')
-    ax.set_title(f'{sensor_id}')
+
+    ax.set_xlabel("X Voltage (V)")
+    ax.set_ylabel("Y Voltage (V)")
+    ax.set_title(f"{sensor_id}")
 
 
 def plot_individual_raw_phase(ax: Axes, sensor_data: xr.Dataset, sensor_id: str):
@@ -142,27 +138,22 @@ def plot_individual_raw_phase(ax: Axes, sensor_data: xr.Dataset, sensor_id: str)
 
     # Plot using xarray's plot method
     phase.plot(
-        ax=ax,
-        x='x_volts',
-        y='y_volts',
-        cmap='twilight',
-        add_colorbar=True,
-        cbar_kwargs={'label': 'Phase (rad)'}
+        ax=ax, x="x_volts", y="y_volts", cmap="twilight", add_colorbar=True, cbar_kwargs={"label": "Phase (rad)"}
     )
 
-    ax.set_xlabel('X Voltage (V)')
-    ax.set_ylabel('Y Voltage (V)')
-    ax.set_title(f'{sensor_id}')
+    ax.set_xlabel("X Voltage (V)")
+    ax.set_ylabel("Y Voltage (V)")
+    ax.set_title(f"{sensor_id}")
 
 
 def overlay_binary_mask(
-        ax: Axes,
-        base_array: np.ndarray,
-        overlay_array: np.ndarray,
-        threshold: float,
-        base_cmap: str = "viridis",
-        overlay_color: str = "red",
-        alpha: float = 0.9,
+    ax: Axes,
+    base_array: np.ndarray,
+    overlay_array: np.ndarray,
+    threshold: float,
+    base_cmap: str = "viridis",
+    overlay_color: str = "red",
+    alpha: float = 0.9,
 ):
     """
     Overlay a binary threshold mask on top of a base image.
@@ -189,7 +180,7 @@ def overlay_binary_mask(
     base_array = _align_base_to_overlay(base_array, overlay_array)
 
     # Base layer
-    im0 = ax.imshow(base_array, cmap=base_cmap, origin='lower')
+    im0 = ax.imshow(base_array, cmap=base_cmap, origin="lower")
 
     # Binary mask overlay
     mask = np.where(overlay_array > threshold, 1, np.nan)
@@ -198,16 +189,13 @@ def overlay_binary_mask(
     overlay_cmap = ListedColormap([overlay_color])
 
     # Plot only where mask==1
-    ax.imshow(mask, cmap=overlay_cmap, origin='lower', alpha=alpha)
+    ax.imshow(mask, cmap=overlay_cmap, origin="lower", alpha=alpha)
 
     ax.set_title(f"Threshold overlay (>{threshold})")
 
 
 def plot_change_point_overlays(
-        sensor_data: xr.Dataset,
-        fit_params: dict,
-        sensor_id: str,
-        threshold: float = 0.25
+    sensor_data: xr.Dataset, fit_params: dict, sensor_id: str, threshold: float = 0.25
 ) -> Figure:
     """
     Plot change point detection overlays for a sensor.
@@ -231,9 +219,9 @@ def plot_change_point_overlays(
     amplitude = np.sqrt(sensor_data.I**2 + sensor_data.Q**2).values
 
     # Convert lists to numpy arrays if needed
-    mean_cp = np.array(fit_params['mean_cp'])
-    cp = np.array(fit_params['cp'])
-    cp2 = np.array(fit_params['cp2'])
+    mean_cp = np.array(fit_params["mean_cp"])
+    cp = np.array(fit_params["cp"])
+    cp2 = np.array(fit_params["cp2"])
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
@@ -244,7 +232,7 @@ def plot_change_point_overlays(
         overlay_array=mean_cp,
         threshold=threshold,
     )
-    axes[0].set_title(f'{sensor_id} - Mean CP')
+    axes[0].set_title(f"{sensor_id} - Mean CP")
 
     # Horizontal change points
     overlay_binary_mask(
@@ -253,7 +241,7 @@ def plot_change_point_overlays(
         overlay_array=cp,
         threshold=threshold,
     )
-    axes[1].set_title(f'{sensor_id} - Horizontal CP')
+    axes[1].set_title(f"{sensor_id} - Horizontal CP")
 
     # Vertical change points
     overlay_binary_mask(
@@ -262,16 +250,16 @@ def plot_change_point_overlays(
         overlay_array=cp2.T,
         threshold=threshold,
     )
-    axes[2].set_title(f'{sensor_id} - Vertical CP')
+    axes[2].set_title(f"{sensor_id} - Vertical CP")
 
     fig.tight_layout()
     return fig
 
 
 def plot_line_fit_overlays(
-        sensor_data: xr.Dataset,
-        fit_params: dict,
-        sensor_id: str,
+    sensor_data: xr.Dataset,
+    fit_params: dict,
+    sensor_id: str,
 ) -> Figure:
     """
     Plot line-segment fits and intersections extracted from the edge map.
@@ -334,7 +322,16 @@ def plot_line_fit_overlays(
         if intersections.ndim == 1 and intersections.size == 0:
             pass
         else:
-            ax1.scatter(intersections[:, 1], intersections[:, 0], marker="*", s=120, c="gold", edgecolor="k", zorder=5, label="triple points")
+            ax1.scatter(
+                intersections[:, 1],
+                intersections[:, 0],
+                marker="*",
+                s=120,
+                c="gold",
+                edgecolor="k",
+                zorder=5,
+                label="triple points",
+            )
 
     ax1.set_title(f"{sensor_id} - Fitted segments & intersections")
     ax1.set_xlabel("col (V2)")
@@ -344,4 +341,3 @@ def plot_line_fit_overlays(
 
     # constrained_layout is already enabled in subplots; avoid tight_layout clashes with colorbars
     return fig
-
