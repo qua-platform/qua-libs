@@ -48,6 +48,7 @@ QArrayLike = dq.QArrayLike
 StateLike = QArrayLike  # ket |psi> or density matrix rho
 Solver = Literal["se", "me"]  # Schrödinger or Master eq.
 
+
 # --------- Gate library ----------
 @dataclass(frozen=True)
 class Gate:
@@ -71,6 +72,7 @@ class Gate:
         Type of gate: "drive" for single-qubit operations, "coupling" for
         two-qubit interactions
     """
+
     name: str
     which: Union[int, tuple[int]]
     pulse: GaussianPulse | CouplingPulse | SquarePulse
@@ -133,9 +135,7 @@ def Y(which: int, t0, pulse_class=GaussianPulse, **kwargs) -> Gate:
     return Gate("Y", which, pulse, "drive")
 
 
-def HeisenbergRampGate(
-    which: tuple[int, int], t0, pulse_class=CouplingPulse, **kwargs
-) -> Gate:
+def HeisenbergRampGate(which: tuple[int, int], t0, pulse_class=CouplingPulse, **kwargs) -> Gate:
     """
     Create a two-qubit Heisenberg coupling gate with ramp profile.
 
@@ -169,6 +169,7 @@ def HeisenbergRampGate(
     """
     pulse = pulse_class(t0=t0, **kwargs)
     return Gate("HeisRamp", which, pulse, "coupling")
+
 
 # --------- Circuit abstraction ----------
 @dataclass(frozen=True)
@@ -217,6 +218,7 @@ class Circuit:
     >>> state0 = basis([2, 2], [0, 0])  # |00>
     >>> t, states = circuit.apply(state0, solver="se")
     """
+
     device: QuantumDeviceBase
     gates: list[Gate]
     tsave: jnp.ndarray | None = None
@@ -260,9 +262,7 @@ class Circuit:
         # Determine time points
         tsave = self.tsave
         if tsave is None:
-            tsave = build_tsave_synced_fixed_n(
-                drives, couplings, n_points=self.n_points, pad=self.pad
-            )
+            tsave = build_tsave_synced_fixed_n(drives, couplings, n_points=self.n_points, pad=self.pad)
 
         # Solve dynamics
         if solver == "se":

@@ -53,6 +53,7 @@ class Pulse(ABC):
     __call__(t)
         Evaluates the windowed pulse at time(s) t
     """
+
     t0: jnp.ndarray
     duration: jnp.ndarray
 
@@ -111,6 +112,7 @@ class Pulse(ABC):
         val = val * mask.astype(val.dtype)
         return val
 
+
 # ========= Gaussian =========
 @dataclass(frozen=True)
 class GaussianPulse(Pulse):
@@ -140,6 +142,7 @@ class GaussianPulse(Pulse):
         Larger sigma means narrower Gaussian. sigma=5 means the duration
         spans ±2.5 standard deviations from center.
     """
+
     amp: jnp.ndarray
     phase: jnp.ndarray = 0.0
     drive_freq: Optional[jnp.ndarray] = None
@@ -168,6 +171,7 @@ class GaussianPulse(Pulse):
         # Full complex envelope (device adds exp(+i ω_eff t) separately)
         return self.amp * env * jnp.exp(1j * self.phase)
 
+
 # ========= Square =========
 @dataclass(frozen=True)
 class SquarePulse(Pulse):
@@ -190,6 +194,7 @@ class SquarePulse(Pulse):
     drive_freq : Optional[jnp.ndarray], default=None
         Drive carrier frequency in rad/s (handled by device frame)
     """
+
     amp: jnp.ndarray
     phase: jnp.ndarray = 0.0
     drive_freq: Optional[jnp.ndarray] = None
@@ -209,6 +214,7 @@ class SquarePulse(Pulse):
             Constant complex amplitude: amp * exp(i * phase)
         """
         return self.amp * jnp.exp(1j * self.phase)
+
 
 @dataclass(frozen=True)
 class CouplingPulse(Pulse):
@@ -238,6 +244,7 @@ class CouplingPulse(Pulse):
     -----
     The total duration must be at least 2*t_ramp to accommodate both ramps.
     """
+
     Jmax: jnp.ndarray
     t_ramp: jnp.ndarray
     shape: str = "cos"
@@ -298,4 +305,3 @@ class CouplingPulse(Pulse):
             return self.Jmax * (j_up + j_hold + j_down)
 
         return j_of_t(t)
-

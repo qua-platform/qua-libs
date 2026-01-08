@@ -37,9 +37,11 @@ class PulseLike(Protocol):
     Any object implementing this protocol can be used as a pulse in
     device Hamiltonians.
     """
+
     def timecallable(self):
         """Return a callable that evaluates the pulse as a function of time."""
         ...
+
 
 # =======================
 # Base class (generic)
@@ -52,13 +54,14 @@ class QuantumDeviceBase:
     You can also override `_drive_xy_ops()` or `_effective_drive_phase_evolution()`
     to change how drives are mapped.
     """
+
     n: int
-    frame: Literal["lab","rot"] = "rot"
+    frame: Literal["lab", "rot"] = "rot"
 
     # ---- overridables ----
     def static_h(self) -> dq.QArray:
         """Return time-independent Hamiltonian as a dq.QArray with dims=(2,)*n."""
-        return 0.0 * kron_n([dq.eye(2)]*self.n)  # default: zero
+        return 0.0 * kron_n([dq.eye(2)] * self.n)  # default: zero
 
     def _drive_xy_ops(self, which: int):
         """
@@ -74,10 +77,7 @@ class QuantumDeviceBase:
         tuple[dq.QArray, dq.QArray]
             Tuple of (X_j, Y_j) operators acting on qubit `which`
         """
-        return (
-            embed_single_qubit_op(dq.sigmax(), which, self.n),
-            embed_single_qubit_op(dq.sigmay(), which, self.n)
-        )
+        return (embed_single_qubit_op(dq.sigmax(), which, self.n), embed_single_qubit_op(dq.sigmay(), which, self.n))
 
     def _effective_drive_phase_evolution(self, which: int, drive_freq: jnp.ndarray | None):
         """
@@ -131,9 +131,7 @@ class QuantumDeviceBase:
 
         for which, pulse in pulses:
             s_base = pulse.timecallable()  # complex envelope
-            wobble = self._effective_drive_phase_evolution(
-                which, getattr(pulse, "drive_freq", None)
-            )
+            wobble = self._effective_drive_phase_evolution(which, getattr(pulse, "drive_freq", None))
 
             def s_re(t):
                 val = s_base(t) * wobble(t)
@@ -147,6 +145,7 @@ class QuantumDeviceBase:
             Ht = Ht + dq.modulated(s_re, Xj) + dq.modulated(s_im, Yj)
 
         return Ht
+
     def hamiltonian_with_controls(
         self,
         drives: Sequence[tuple[int, GaussianPulse]] = (),
@@ -182,9 +181,7 @@ class QuantumDeviceBase:
         # --- single-qubit drives ---
         for which, pulse in drives:
             s_base = pulse.timecallable()
-            wobble = self._effective_drive_phase_evolution(
-                which, getattr(pulse, "drive_freq", None)
-            )
+            wobble = self._effective_drive_phase_evolution(which, getattr(pulse, "drive_freq", None))
 
             def s_re(t):
                 return jnp.real(s_base(t) * wobble(t))
@@ -227,6 +224,7 @@ class QuantumDeviceBase:
         """
         raise NotImplementedError("Subclass must implement _jump_operators for master equation")
 
+
 # ===================================
 # Child class: Two-spin Heisenberg / ZZ
 # ===================================
@@ -242,8 +240,9 @@ class TwoSpinDevice(QuantumDeviceBase):
       H = 0.5 * Σ_j Δ_j Z_j + 0.25*(Jzz Z⊗Z)   (Jxx/Jyy typically RWA-dropped)
       where Δ_j = ω_j - ω_ref,j  (if ref_omega provided)
     """
+
     n: int = 2
-    frame: Literal["lab","rot"] = "rot"
+    frame: Literal["lab", "rot"] = "rot"
 
     # physical qubit angular frequencies (rad/s)
     omega: Sequence[float] = (0.0, 0.0)
@@ -293,17 +292,11 @@ class TwoSpinDevice(QuantumDeviceBase):
         # Two-qubit coupling terms
         if self.n >= 2:
             if self.Jxx != 0.0:
-                H = H + 0.25 * self.Jxx * kron_n(
-                    [dq.sigmax(), dq.sigmax()] + [dq.eye(2)] * (self.n - 2)
-                )
+                H = H + 0.25 * self.Jxx * kron_n([dq.sigmax(), dq.sigmax()] + [dq.eye(2)] * (self.n - 2))
             if self.Jyy != 0.0:
-                H = H + 0.25 * self.Jyy * kron_n(
-                    [dq.sigmay(), dq.sigmay()] + [dq.eye(2)] * (self.n - 2)
-                )
+                H = H + 0.25 * self.Jyy * kron_n([dq.sigmay(), dq.sigmay()] + [dq.eye(2)] * (self.n - 2))
             if self.Jzz != 0.0:
-                H = H + 0.25 * self.Jzz * kron_n(
-                    [dq.sigmaz(), dq.sigmaz()] + [dq.eye(2)] * (self.n - 2)
-                )
+                H = H + 0.25 * self.Jzz * kron_n([dq.sigmaz(), dq.sigmaz()] + [dq.eye(2)] * (self.n - 2))
         return H
 
     def _effective_drive_phase_evolution(self, which: int, drive_freq: jnp.ndarray | None):

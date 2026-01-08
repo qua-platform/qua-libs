@@ -3,11 +3,12 @@ from typing import Any, List, Optional, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
+
 try:
     from qarray import ChargeSensedDotArray, WhiteNoise, TelegraphNoise, LatchingModel
     from qarray.functions import charge_state_changes
 except ImportError:
-     print(f'Failed to import ChargeSensedDotArray due to missing dependencies.')
+    print(f"Failed to import ChargeSensedDotArray due to missing dependencies.")
 
 
 class InitDotModel:
@@ -62,7 +63,7 @@ class InitDotModel:
     @staticmethod
     def white_noise() -> WhiteNoise:
         """Return the default white noise model."""
-        return WhiteNoise(amplitude=2.e-2)
+        return WhiteNoise(amplitude=2.0e-2)
 
     @staticmethod
     def telegraph_noise() -> TelegraphNoise:
@@ -91,12 +92,12 @@ class InitDotModel:
         Cds: Optional[Sequence[Sequence[float]]] = None,
         Cgs: Optional[Sequence[Sequence[float]]] = None,
         noise_model: Optional[Any] = None,
-        latching_model: Optional['LatchingModel'] = None,
+        latching_model: Optional["LatchingModel"] = None,
         coulomb_peak_width: float = 0.9,
         T: float = 50.0,
-        algorithm: str = 'default',
-        implementation: str = 'jax',
-    ) -> 'ChargeSensedDotArray':
+        algorithm: str = "default",
+        implementation: str = "jax",
+    ) -> "ChargeSensedDotArray":
         """
         Build and return the default charge-sensed dot array model.
 
@@ -117,11 +118,10 @@ class InitDotModel:
         )
 
 
-
 init_dot_model: InitDotModel = InitDotModel()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     updated_cgs = [[0.001, 0.002, 0.000, 0.000, 0.000, 0.000, 0.100]]
     model = init_dot_model(Cgs=updated_cgs)
     n_charges = [1, 3, 0, 0, 0, 0, 5]
@@ -136,15 +136,13 @@ if __name__ == '__main__':
     vs_min, vs_max = -10, 10
     ns = 200
     sensor_sweep = np.linspace(vs_min, vs_max, ns)
-    z, n = model.do1d_open(
-        7, vs_min, vs_max, ns
-    )
+    z, n = model.do1d_open(7, vs_min, vs_max, ns)
 
     plt.plot(sensor_sweep, z)
-    plt.xlabel('$Vx$')
-    plt.ylabel('Signal (au)')
+    plt.xlabel("$Vx$")
+    plt.ylabel("Signal (au)")
     plt.show()
-    print('Sensor optimum : ', sensor_sweep[np.argmax(z)])
+    print("Sensor optimum : ", sensor_sweep[np.argmax(z)])
     optimal_voltage_configuration[-1] = sensor_sweep[np.argmax(z)]
     # Define min and max values for the 2D voltage sweep
     vx_min, vx_max = -50, 50
@@ -157,19 +155,20 @@ if __name__ == '__main__':
     # Compute charge sensor response
     t0 = perf_counter()
     z, n = model.charge_sensor_open(vg)
-    print(f'Compute time: {perf_counter() - t0:.2f} s')
+    print(f"Compute time: {perf_counter() - t0:.2f} s")
 
     # Create figure with two subplots
     fig, axes = plt.subplots(1, 2, sharex=True, sharey=True)
     fig.set_size_inches(10, 5)
 
     # Plot charge stability diagram
-    axes[0].imshow(z, extent=[vx_min, vx_max, vy_min, vy_max], origin='lower', aspect='auto', cmap='hot')
-    axes[0].set_xlabel('$Vx$')
-    axes[0].set_ylabel('$Vy$')
-    axes[0].set_title('$z$')
+    axes[0].imshow(z, extent=[vx_min, vx_max, vy_min, vy_max], origin="lower", aspect="auto", cmap="hot")
+    axes[0].set_xlabel("$Vx$")
+    axes[0].set_ylabel("$Vy$")
+    axes[0].set_title("$z$")
 
     # Plot charge state changes
-    axes[1].imshow(charge_state_changes(n), extent=[vx_min, vx_max, vy_min, vy_max], origin='lower', aspect='auto',
-                   cmap='hot')
+    axes[1].imshow(
+        charge_state_changes(n), extent=[vx_min, vx_max, vy_min, vy_max], origin="lower", aspect="auto", cmap="hot"
+    )
     plt.show()

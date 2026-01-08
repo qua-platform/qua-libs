@@ -84,7 +84,9 @@ if __name__ == "__main__":
         n=2,
         frame="lab",
         omega=(omega1, omega2),
-        Jxx=J, Jyy=J, Jzz=J,
+        Jxx=J,
+        Jyy=J,
+        Jzz=J,
         Tphi1=500.0,
         Tphi2=500.0,
     )
@@ -162,10 +164,10 @@ if __name__ == "__main__":
     # - Uses JAX vmap for efficient vectorization
     expectations = sweep_circuit(
         make_circuit_from_amp,  # Circuit factory
-        psi0,                    # Initial state
-        amps,                    # Parameter(s) to sweep
-        projector=proj_z0,       # Observable to measure
-        solver="me",             # Master equation (includes dephasing)
+        psi0,  # Initial state
+        amps,  # Parameter(s) to sweep
+        projector=proj_z0,  # Observable to measure
+        solver="me",  # Master equation (includes dephasing)
     )
 
     print(f"Swept {len(amps)} amplitude values")
@@ -190,9 +192,9 @@ if __name__ == "__main__":
     print("-" * 70)
 
     # Chevron parameters
-    amp_chevron = 1.0e-2       # Fixed amplitude
-    delta_omega = 5e-2         # Detuning window around omega1
-    n = 31                     # Grid resolution
+    amp_chevron = 1.0e-2  # Fixed amplitude
+    delta_omega = 5e-2  # Detuning window around omega1
+    n = 31  # Grid resolution
 
     # Define sweep parameters
     drive_freqs = jnp.linspace(-delta_omega, delta_omega, n) + omega1
@@ -225,10 +227,10 @@ if __name__ == "__main__":
     # The circuit factory should accept the same number of parameters
     expectations_flat = sweep_circuit(
         circuit_from_time_and_drive,  # Takes (time, freq) -> Circuit
-        psi0,                          # Initial state
-        times_flat,                    # First parameter array
-        freqs_flat,                    # Second parameter array
-        projector=proj_z0,             # Observable
+        psi0,  # Initial state
+        times_flat,  # First parameter array
+        freqs_flat,  # Second parameter array
+        projector=proj_z0,  # Observable
         solver="me",
     )
 
@@ -267,8 +269,8 @@ if __name__ == "__main__":
     psi0 = dq.basis([2, 2], [1, 0])
 
     # Exchange pulse parameters
-    t_ramp = 16.0          # Ramp-up/down time
-    n_exchange = 101       # Grid resolution
+    t_ramp = 16.0  # Ramp-up/down time
+    n_exchange = 101  # Grid resolution
 
     # Define sweep ranges
     jmaxs = jnp.linspace(1e-5, 2.5, n_exchange)
@@ -280,10 +282,10 @@ if __name__ == "__main__":
         """Build circuit with Heisenberg exchange pulse."""
         gates = [
             HeisenbergRampGate(
-                which=(0, 1),      # Acts on qubit pair (0,1)
-                Jmax=jmax,         # Maximum exchange strength
+                which=(0, 1),  # Acts on qubit pair (0,1)
+                Jmax=jmax,  # Maximum exchange strength
                 t0=0.0,
-                t_ramp=t_ramp,     # Smooth turn-on/off
+                t_ramp=t_ramp,  # Smooth turn-on/off
                 duration=total_time,
             )
         ]
@@ -307,9 +309,7 @@ if __name__ == "__main__":
     print(f"Swept {n_exchange}×{n_exchange} = {n_exchange**2} parameter combinations")
 
     # Reshape and plot
-    expectations_exchange_2d = np.asarray(expectations_exchange_flat.real).reshape(
-        n_exchange, n_exchange
-    )
+    expectations_exchange_2d = np.asarray(expectations_exchange_flat.real).reshape(n_exchange, n_exchange)
     print(f"⟨Z₀⟩ range: [{expectations_exchange_2d.min():.3f}, {expectations_exchange_2d.max():.3f}]")
 
     plt.figure()

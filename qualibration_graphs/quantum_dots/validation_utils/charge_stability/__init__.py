@@ -6,4 +6,3 @@ __all__ = [
     "InitDotModel",
     "init_dot_model",
 ]
-
