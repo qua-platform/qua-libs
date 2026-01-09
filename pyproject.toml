@@ -29,3 +29,50 @@ check_format="black --check ."
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+# UV dependency management (new)
+[dependency-groups]
+dev = [
+    "black>=24.3.0",
+    "pylint>=3.3.2",
+    "pytest>=8.3.5",
+    "pytest-cov>=4.1.0",
+    "pre-commit>=3.6.0",
+]
+
+[tool.uv]
+prerelease = "allow"
+
+[tool.uv.pip]
+prerelease = "allow"
+
+# Pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests", "Quantum-Control-Applications", "Tutorials"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/conftest.py",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+precision = 2
+show_missing = true

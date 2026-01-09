@@ -44,6 +44,61 @@ Code standard guidelines:
 1. When you are ready to merge your code into the main repository, you need to make sure that all of your commits and commit messages are good and descriptive. You can always squash your commits into a few (or a single) commits.
 2. We use [black](https://pypi.org/project/black/) to make sure that our code is standardized. Format your code before opening the PR by first install black:```pip install black``` and then type in the terminal ```black .``` (At the root of the repository)
 
+### Development Setup (Recommended)
+
+For the best development experience, we recommend using `uv` for dependency management and setting up pre-commit hooks.
+
+#### Install Dependencies
+
+Using uv (recommended):
+```bash
+uv sync --group dev --prerelease=allow
+```
+
+Or using Poetry (legacy):
+```bash
+poetry install
+```
+
+#### Set up Pre-commit Hooks
+
+Pre-commit hooks automatically check your code for formatting and linting issues before each commit.
+
+Install pre-commit hooks:
+```bash
+uv run pre-commit install
+```
+
+Run pre-commit manually on all files:
+```bash
+uv run pre-commit run --all-files
+```
+
+#### Running Tests
+
+```bash
+uv run pytest
+```
+
+#### Code Formatting
+
+Check formatting:
+```bash
+uv run black --check .
+```
+
+Format code:
+```bash
+uv run black .
+```
+
+#### Linting
+
+Run pylint to check code quality:
+```bash
+uv run pylint <your_file_or_directory>
+```
+
 # Contributor License Agreement
 
 Submitting code to this project is conditioned upon all contributors to signing a contributor license agreement.
