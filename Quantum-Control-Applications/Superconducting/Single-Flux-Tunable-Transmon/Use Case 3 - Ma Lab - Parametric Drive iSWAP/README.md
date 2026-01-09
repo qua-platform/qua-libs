@@ -41,7 +41,7 @@ To replicate the figure presented below, refer to the protocol in red_sideband_c
                 update_frequency("flux_line_rs", f)  # update the frequency of the flux line
                 wait(cooldown_time, "qubit1", "flux_line_rs")   # Wait for the qubit to decay
                 play("pi" * amp(q1_ge_amp), "qubit1")  # drive the qubit to the |e> state
-                align("qubit1", "flux_line_rs")  
+                align("qubit1", "flux_line_rs")
                 play("offset" * amp(a), "flux_line_rs", duration=tau)  # Play the red sideband after the qubit pulse with varying duration
                 align("resonator1", "flux_line_rs")   # Measure the state of the resonator after the flux pulse
                 measure(

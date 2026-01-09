@@ -1,7 +1,7 @@
 """
 <<<<<<< HEAD:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/18c_CR_calib_cr_drive_phase.py
         CR_calib_cr_drive_phase
-        
+
 This script is to calibrate the phase of CR drive, corresponding to Fig. 3(a) of the referenced paper.
 CR drive (cancellation) pulse is applied to the control(target) qubit at the target qubit frequency.
 =======

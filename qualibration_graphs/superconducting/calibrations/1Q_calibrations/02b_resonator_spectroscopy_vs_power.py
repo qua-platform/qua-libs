@@ -45,7 +45,7 @@ Prerequisites:
 State update:
     - The readout frequency at the optimal readout power: qubit.resonator.f_01 & qubit.resonator.RF_frequency
     - The readout power: qubit.resonator.set_output_power()
-    - The readout frequency for the optimal readout power. 
+    - The readout frequency for the optimal readout power.
 """
 
 

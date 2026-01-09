@@ -19,17 +19,17 @@ This feature is fully backward compatible. You can still use the traditional wor
 
 ### Configuration File Structure
 We divide the full configuration into two parts: the controller configuration and logical configuration. The controller configuration specifies Digital Upconverters frequency, Digital Filters to compensate cable effects (e.g. skin effect) and Mixer Correction Matrix to correct for analog-mixer imperfections, etc. The logical configuration provides device-specific settings for the quantum device, such as, elements, pulses to define the elements' operations, waveforms to defines different pulses, etc.
- 
+
 Imagine an admin who has a quantum device and grants a user access. The admin opens the QM and updates calibration values as needed. The user can then submit jobs/experiments with only the logical configuration, without providing all the calibration details. This results in a simpler, more user-friendly workflow.
 
 The new division is as follows,
 
-1. **Controller Configuration**  
+1. **Controller Configuration**
    Contains:
    - controllers
    - mixers
 
-2. **Logical Configuration**  
+2. **Logical Configuration**
    - elements
    - pulses
    - waveforms

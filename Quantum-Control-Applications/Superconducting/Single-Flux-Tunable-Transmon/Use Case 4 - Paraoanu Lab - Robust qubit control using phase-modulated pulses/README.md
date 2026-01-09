@@ -1,6 +1,6 @@
 # Robust qubit control by implementing phase-modulated pulses
 
-This project contains code to generate robust phase-modulated waveforms for qubit experiments and perform a Rabi amplitude-frequency sweeps. 
+This project contains code to generate robust phase-modulated waveforms for qubit experiments and perform a Rabi amplitude-frequency sweeps.
 
 You can find more information about this technique in:
 
@@ -57,9 +57,4 @@ In this case using a rectangular pulse shows high sensitivity to detuning and am
 
 ## References
 
-The code was provided by Kuzmanović, M. 
-
-
-
-
-
+The code was provided by Kuzmanović, M.

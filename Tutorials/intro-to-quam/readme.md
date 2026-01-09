@@ -17,7 +17,7 @@ Welcome to your Quantum Abstract Machine (QUAM) introductory tutorial! This exam
 - 3. [Installation Guide](#3--installation-guide)
 - 4. [Get Started](#4--get-started)
 - 5. [Migrating to QUAM](#5--migrating-to-quam)
-- 
+-
 ---
 
 ## 1. 🧠 What is QUAM
@@ -60,7 +60,7 @@ By transitioning from an hardware-centric to a operation-centric paradigm, QUAM 
 
 ## 3. 🛠 Installation Guide
 
-To install QUAM and prepare your environment, follow the official instructions:  
+To install QUAM and prepare your environment, follow the official instructions:
 👉 [QUAM Installation Guide](https://qua-platform.github.io/quam/installation/)
 
 ---

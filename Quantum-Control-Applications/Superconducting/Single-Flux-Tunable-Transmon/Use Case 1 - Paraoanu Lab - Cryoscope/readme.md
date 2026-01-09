@@ -1,12 +1,12 @@
 # Cryoscope
 
-*Demonstrated on the experiment of Marko Kuzmanovic and Aidar Sultanov in the Lab of Prof. Sorin Paraoanu in Aalto University, 
+*Demonstrated on the experiment of Marko Kuzmanovic and Aidar Sultanov in the Lab of Prof. Sorin Paraoanu in Aalto University,
 only two days after connecting the OPX to the quantum device.*
 
 *Important note: the code in this folder is the exact code that was used for running this measurement*
 *and it is tailored for a very specific setup and software environment. Thus, the code is here only for insipiration.*
 
-The goal of this use-case is to implement Cryoscope [[1]](#1). 
+The goal of this use-case is to implement Cryoscope [[1]](#1).
 The idea of the method is to measure the step response of the flux line using the qubit phase measured in a Ramsey-like experiment.
 The possibly distorted response can then be pre-corrected by designing suitable IIR and FIR filters.
 
@@ -30,7 +30,7 @@ In principle, the program detailed below can be easily modified if a different s
 
 Before running Cryoscope, several calibration steps are required.
 
-* The first calibration to run is the 2D readout resonator spectroscopy (flux amplitude and frequency). This spectroscopy will show the resonator frequency as a function of flux biasing, the qubit flux insensitive point (qubit frequency independent of flux bias), the qubit zero-frequency point (where the flux bias is ...), and the avoided crossing when the qubit and resonator have the same frequency. For Cryoscope, we want to set the flux line to the qubit flux insensitive point and bias it around $\phi_0/4$ during the sequence.   
+* The first calibration to run is the 2D readout resonator spectroscopy (flux amplitude and frequency). This spectroscopy will show the resonator frequency as a function of flux biasing, the qubit flux insensitive point (qubit frequency independent of flux bias), the qubit zero-frequency point (where the flux bias is ...), and the avoided crossing when the qubit and resonator have the same frequency. For Cryoscope, we want to set the flux line to the qubit flux insensitive point and bias it around $\phi_0/4$ during the sequence.
 * The second important quantity to calibrate is the $\pi/2$ pulse. This can be done using a simple Rabi sequence where both the amplitude and frequency are scanned while the flux bias is set to the qubit flux insensitive point found previously.
 * The last calibration to perform is the qubit detuning versus flux bias. This will be used to validate the qubit flux insensitive point and the avoided level crossing, as well as the cryoscope measurement. The sequence can be found in the [Cryoscope_amplitude_calibration](cryoscope_amplitude_calibration.py) file and consist in performing the cryoscope sequence with a flux pulse of constant duration but varying amplitude. The quadratic dependence of the qubit frequency on the flux pulse amplitude should be found. More details can be found in the python file and in section 3.5.
 
@@ -44,7 +44,7 @@ The configuration consists of 3 elements:
 
 
 ### 3.2 The operations, pulse and waveforms
-The `qubit` has several operations defined that correspond to constant amplitude X/2 and Y/2 gates. 
+The `qubit` has several operations defined that correspond to constant amplitude X/2 and Y/2 gates.
 Gaussian and optimal control DRAG pulses can also be used instead.
 
 The `resonator` has just one readout operation defined as a constant amplitude pulse.
@@ -141,7 +141,7 @@ def ge_calibration(n_avg_cal):
 As explained in [[1]](#1), Cryoscope consists of 4 steps:
 1. play a X/2 pulse
 2. play the flux pulse truncated at time tau
-3. play either a X/2 or a Y/2 pulse 
+3. play either a X/2 or a Y/2 pulse
 4. measure the qubit state
 
 For each truncation time tau, the sequence has to be repeated twice with a 90° phaseshift of the second $\pi/2$ pulse (X/2 -> Y/2) in order to measure the Bloch vector in the equator plane of the Bloch sphere (Sx + iSy)
@@ -179,12 +179,12 @@ with for_(n, 0, n < n_avg, n + 1):
 			save(I, I_st)
 			save(Q, Q_st)
 ```
-The data is stored in a 2d array where the first column corresponds to the I and Q data for the X/2-X/2 sequence 
+The data is stored in a 2d array where the first column corresponds to the I and Q data for the X/2-X/2 sequence
 and the second column to the I and Q data for the X/2-Y/2 sequence.
 Each row corresponds to a different truncation time.
 
 ### 3.4 Calculating the detuning and flux response
-From the previously acquired data, we first extract the resonator phase as the angle between I and Q and renormalize it by the phase 
+From the previously acquired data, we first extract the resonator phase as the angle between I and Q and renormalize it by the phase
 of the ground and excited states in order to get the population of the excited state defined as: `Pe = (phase - phase_ground) / (phase_excited - phase_ground)`.
 
 Then the qubit phase is simply the angle of the Bloch vector, defined as `S = 2Pe(X/2)-1 + 2iPe(Y/2)-i`, in the complex plane.
@@ -194,21 +194,21 @@ Finally, the qubit phase is filtered and derived with a Savitzky-Golay filter to
 ### 3.5 Calibration of the detuning versus flux pulse amplitude
 In order to validate the validity of the experiment, another calibration stage was performed.
 It consist in applying the same cryoscope sequence but this time a simple square flux pulse is used and its amplitude is scanned instead of its truncated duration.
-This way, we can measure the detuning induced by the flux pulse for different amplitude and fit this curve with a simple parabolic law that we will use to estimate the 
+This way, we can measure the detuning induced by the flux pulse for different amplitude and fit this curve with a simple parabolic law that we will use to estimate the
 expected detuning with the arbitrary flux waveform defined at the begining of the cryoscope sequence.
 
 This sequence is written in a separated program in the file [Cryoscope_amplitude_calibration](cryoscope_amplitude_calibration.py).
 
 ## 4. Results
-The main results of this experiment are grouped on the figure below. 
+The main results of this experiment are grouped on the figure below.
 For all the plots, the x-axis represents the truncated flux pulse duration in nanoseconds.
 
-The two upper plots corresponds to the amplitude defined as $\sqrt{I^2+Q^2}$ (left) and phase defined as the angle between 
+The two upper plots corresponds to the amplitude defined as $\sqrt{I^2+Q^2}$ (left) and phase defined as the angle between
 the I and Q quadratures (right), for the X/2-wait-X/2 (blue) and X/2-wait-Y/2 (orange) sequences.
 
-The bottom left plot represents the temporal evolution of excited state population derived in section [3.4](#3.4-Calculating-the-detuning-and-flux-response). 
-The bottom right plot represents the qubit detuning induced by the flux bias. The blue dots are experimental data derived 
-in section [3.4](#3.4-Calculating-the-detuning-and-flux-response) and the red dashed line has been derived using the 
+The bottom left plot represents the temporal evolution of excited state population derived in section [3.4](#3.4-Calculating-the-detuning-and-flux-response).
+The bottom right plot represents the qubit detuning induced by the flux bias. The blue dots are experimental data derived
+in section [3.4](#3.4-Calculating-the-detuning-and-flux-response) and the red dashed line has been derived using the
 flux waveform and the calibrated detuning versus flux pulse amplitude law obtained in section [3.5](#3.5-Calibration-of-the-detuning-versus-flux-pulse-amplitude).
 
 ![results](cryoscope_results.PNG)

@@ -1,7 +1,7 @@
 # Single Yb center in a cyrogenic nanophotonic cavity
 
 ## Basic Files
-These files showcase various experiments that can be done on a Yb center in cryogenic nanophotonic cavity with a SNSPD 
+These files showcase various experiments that can be done on a Yb center in cryogenic nanophotonic cavity with a SNSPD
 and an AOM which is controlled via a digital channel.
 
 These files were tested in a real setup, but are given as-is with no guarantee.
@@ -16,9 +16,9 @@ The configuration and QUA programs were inspired by the following papers J. M. K
 not saturated and defining the threshold for time tagging
 4. [Counter](03_counter.py) - Starts a counter which reports the current counts from the SNSPD
 5. [CW ODMR](04_cw_odmr.py) - Counts photons while sweeping the frequency of the applied MW
-6. [Calibrate Delays](05a_calibrate_delays.py) - Plays a MW pulse during a laser pulse, while performing time tagging 
+6. [Calibrate Delays](05a_calibrate_delays.py) - Plays a MW pulse during a laser pulse, while performing time tagging
 throughout the sequence. This allows measuring all the delays in the system, as well as the NV initialization duration
-    * [Calibrate Delays Python Histogram](05b_calibrate_delays_python_histogram.py) - This version process the data in 
+    * [Calibrate Delays Python Histogram](05b_calibrate_delays_python_histogram.py) - This version process the data in
 Python, which makes it slower but works better when the counts are high.
 7. [Time Rabi](06a_time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse
 8. [Power Rabi](06b_power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse

@@ -153,5 +153,3 @@ The sequence prepares the |++⟩ state, applies the CZ pulse, and reconstructs e
 # Summary
 
 This repository provides a complete workflow for implementing and calibrating flux-activated CZ gates on tunable-frequency transmons with fixed couplers. It covers the physical principles, distortion compensation techniques, and step-by-step calibration procedures required to reach high-fidelity gate performance.
-
-

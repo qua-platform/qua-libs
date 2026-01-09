@@ -5,7 +5,7 @@
 ## Experimental setup and context
 
 These files showcase various experiments that can be done on a single flux tunable transmon.
-The readout pulses are sent through an IQ mixer and down-converted through an IQ mixer. 
+The readout pulses are sent through an IQ mixer and down-converted through an IQ mixer.
 Qubit addressing is being done with and IQ mixer.
 
 These files were tested in a real setup shown on the right, but are given as-is with no guarantee.
@@ -16,7 +16,7 @@ Use with care.
 ## Basic Files
 0. [Hello QUA](./Single-Flux-Tunable-Transmon/00_hello_qua.py) - A script used for playing with QUA.
 1. [Mixer Calibration](./Single-Flux-Tunable-Transmon/01_manual_mixer_calibration.py) - A script used to calibrate the corrections for mixer imbalances.
-2. [Raw ADC Traces](./Single-Flux-Tunable-Transmon/02_raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC 
+2. [Raw ADC Traces](./Single-Flux-Tunable-Transmon/02_raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC
 is not saturated, correct for DC offsets.
 3. [time_of_flight](./Single-Flux-Tunable-Transmon/03_time_of_flight.py) - A script to measure the ADC offsets and calibrate the time of flight.
 4. [Resonator Spectroscopy](./Single-Flux-Tunable-Transmon/04_resonator_spectroscopy.py) - Performs a 1D frequency sweep on the resonator.
@@ -30,7 +30,7 @@ is not saturated, correct for DC offsets.
 7. **Rabi chevrons** - Quickly find the qubit for a given pulse amplitude or duration:
     * [duration vs frequency](./Single-Flux-Tunable-Transmon/07a_rabi_chevron_duration.py) - Performs a 2D sweep (frequency vs qubit drive duration) to acquire the Rabi chevron.
     * [amplitude vs frequency](./Single-Flux-Tunable-Transmon/07b_rabi_chevron_amplitude.py) - Performs a 2D sweep (frequency vs qubit drive amplitude) to acquire the Rabi chevron.
-8. **1D Rabi** - Precisely calibrate a $\pi$ pulse: 
+8. **1D Rabi** - Precisely calibrate a $\pi$ pulse:
     * [Time Rabi](./Single-Flux-Tunable-Transmon/08a_time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse.
     * [Power Rabi](./Single-Flux-Tunable-Transmon/08b_power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse.
     * [Power Rabi with error amplification](./Single-Flux-Tunable-Transmon/08c_power_rabi_error_amplification.py) - A multi-pulse Rabi experiment sweeping the amplitude of the MW pulses to better estimate the $\pi$ pulse amplitude.
@@ -57,14 +57,14 @@ fidelity.
     * [Single Qubit Randomized Benchmarking for gates > 40ns](./Single-Flux-Tunable-Transmon/16a_randomized_benchmarking.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates longer than 40ns.
     * [Interleaved Single Qubit Randomized Benchmarking for gates > 20ns](./Single-Flux-Tunable-Transmon/16d_randomized_benchmarking_interleaved_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity for gates as short as 20ns (currently limited to a depth of 1000 Clifford gates).
     * [Single Qubit Randomized Benchmarking for gates > 20ns](./Single-Flux-Tunable-Transmon/16c_randomized_benchmarking_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates as short as 20ns (currently limited to a depth of 2600 Clifford gates).
-17. **Cryoscope**: Cryoscope measurement to estimate the distortion on the flux lines based on [Appl. Phys. Lett. 116, 054001 (2020)](https://pubs.aip.org/aip/apl/article/116/5/054001/38884/Time-domain-characterization-and-correction-of-on) 
+17. **Cryoscope**: Cryoscope measurement to estimate the distortion on the flux lines based on [Appl. Phys. Lett. 116, 054001 (2020)](https://pubs.aip.org/aip/apl/article/116/5/054001/38884/Time-domain-characterization-and-correction-of-on)
     * [Cryoscope_amplitude_calibration](./Single-Flux-Tunable-Transmon/17_cryoscope_amplitude_calibration.py) - Performs the detuning vs flux pulse amplitude calibration prior to the cryoscope measurement. This gives the relation between the qubit detuning and flux pulse amplitude which should be quadratic.
     * [Cryoscope with 1ns resolution](./Single-Flux-Tunable-Transmon/17_cryoscope_1ns.py) - Performs the cryoscope measurement with 1ns resolution using the baking tool, but limited to 260ns flux pulses.
     * [Cryoscope with 4ns resolution](./Single-Flux-Tunable-Transmon/17_cryoscope_4ns.py) - Performs the cryoscope measurement with 4ns granularity but no limitation of the flux pulse duration.
 18. **DRAG calibration** - Calibrates the DRAG coefficient $`\alpha`$ and AC-Stark shift:
-    * [Google method](./Single-Flux-Tunable-Transmon/18_DRAG_calibration_Google.py) - Performs `x180` and `-x180` pulses to obtain 
+    * [Google method](./Single-Flux-Tunable-Transmon/18_DRAG_calibration_Google.py) - Performs `x180` and `-x180` pulses to obtain
 the DRAG coefficient $`\alpha`$.
-    * [Yale method](./Single-Flux-Tunable-Transmon/18_DRAG_calibration_Yale.py) - Performs `x180y90` and `y180x90` pulses to obtain 
+    * [Yale method](./Single-Flux-Tunable-Transmon/18_DRAG_calibration_Yale.py) - Performs `x180y90` and `y180x90` pulses to obtain
 the DRAG coefficient $`\alpha`$.
     * [AC Stark-shift calibration](./Single-Flux-Tunable-Transmon/19_AC_Stark_calibration_Google.py) - Calibrates the AC Stark shift using a sequence of `x180` and `-x180` pulses by plotting the 2D map DRAG pulse detuning versus number of iterations.
 20. **Tomography:**
@@ -76,18 +76,18 @@ the DRAG coefficient $`\alpha`$.
 These folders contain various examples of protocols made with the OPX, including the results. The scripts are tailored to
 a specific setup and would require changes to run on different setups. Current use-cases:
 
-* [Ma Lab - Parametric Drive between flux-tunable-qubit and qubit-coupler](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon/Use%20Case%203%20-%20Ma%20Lab%20-%20Parametric%20Drive%20iSWAP#parametric-drive-between-flux-tunable-qubit-and-qubit-coupler) 
+* [Ma Lab - Parametric Drive between flux-tunable-qubit and qubit-coupler](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon/Use%20Case%203%20-%20Ma%20Lab%20-%20Parametric%20Drive%20iSWAP#parametric-drive-between-flux-tunable-qubit-and-qubit-coupler)
   In this use-case, the parametric drive is demonstrated through the red- and blue-sideband transitions between a superconducting resonator and a flux-tunable transmon.
 * [Paraoanu Lab - Cryoscope](./Use%20Case%201%20-%20Paraoanu%20Lab%20-%20Cryoscope)
 The goal of this use-case is to implement Cryoscope.
-* [DRAG coefficient calibration](./Use%20Case%202%20-%20DRAG%20coefficient%20calibration) 
+* [DRAG coefficient calibration](./Use%20Case%202%20-%20DRAG%20coefficient%20calibration)
 The goal of this experiment is to calibrate the DRAG coefficient and AC Start shift
 to increase the single qubit gate fidelity as well as to minimize the leakage out of the
 computational space.
 
 ## Set-ups with Octave
 
-The configuration included in this folder correspond to a set-up without Octave. 
+The configuration included in this folder correspond to a set-up without Octave.
 However, a few files are there to facilitate the integration of the Octave:
 1. [configuration_with_octave.py](./Single-Flux-Tunable-Transmon/configuration_with_octave.py): An example of a configuration including the octave. You can replace the content of the file called `configuration.py` by this one so that it will be imported in all the scripts above.
 2. [octave_clock_and_calibration.py](./Single-Flux-Tunable-Transmon/octave_clock_and_calibration.py): A file __to execute__ in order to configure the Octave's clock and calibrate the Octave.

@@ -9,28 +9,28 @@
 # QUA Libraries
 
 Hey! Glad to see you there!
- 
-Welcome to the QUA library's repository. Your one-stop-shop for a batteries-included QUA experience. 
+
+Welcome to the QUA library's repository. Your one-stop-shop for a batteries-included QUA experience.
 
 This repo is where we share particularly useful tools and protocols
-which can jump start many common tasks in and around QUA. 
+which can jump start many common tasks in and around QUA.
 
 It includes:
 * The ["Tutorials"](https://github.com/qua-platform/qua-libs/tree/main/Tutorials) folder contains various tutorials and guides for working with the OPX.
 
-* The ["Quantum Control Applications"](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications) 
-  folder contains scripts and examples for different qubits types, all the way from basic to advanced protocols. 
+* The ["Quantum Control Applications"](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications)
+  folder contains scripts and examples for different qubits types, all the way from basic to advanced protocols.
   It also includes various examples and results from labs.
   Note that several codes there make use of the [py-qua-tools](https://github.com/qua-platform/py-qua-tools) that make QUA program more efficient and easy to write.
   It is thus advised to download the last version.
-* The ["QUAlibration Graphs"](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs) 
+* The ["QUAlibration Graphs"](https://github.com/qua-platform/qua-libs/tree/main/qualibration_graphs)
   folder contains the framework to build calibration nodes and graphs for various qubit architectures and using the [QUAM](https://qua-platform.github.io/quam/) framework and [QUAlibrate](https://qua-platform.github.io/qualibrate/) platform.
   The creation of the qubit-specific QUAM structure is made seamless thanks to the set of QUAM components and building functions provided by the [quam-builder](https://github.com/qua-platform/quam-builder) repository.
   The [qualibration-libs](https://github.com/qua-platform/qualibration-libs) repository provides a set of utility functions supporting calibration nodes and graphs for the QUAlibration graphs platform.
 
 ## Support and Contribution
-This is a beta version of the repo, and thus, if you see quirks and inaccuracies please tell us! 
-Love to see some example that's not yet included? tell us! Have a request for a general purpose procedure? tell us! 
+This is a beta version of the repo, and thus, if you see quirks and inaccuracies please tell us!
+Love to see some example that's not yet included? tell us! Have a request for a general purpose procedure? tell us!
 Already have something cool that others could use? Open a pull request! You can follow [this guide](https://github.com/qua-platform/qua-libs/blob/main/CONTRIBUTING.md) and feel free to contact us if you need any help.
 Issue reporting and requests should be done via the [GitHub issues system](https://github.com/qua-platform/qua-libs/issues), that should give a transparent experience where all users can see what's coming and which issues are already known.
 We hope this repo becomes a useful resource, giving real contribution to the community, and we'd love to see your ideas and contributions too!

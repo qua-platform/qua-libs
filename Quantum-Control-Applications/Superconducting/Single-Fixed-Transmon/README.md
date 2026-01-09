@@ -11,7 +11,7 @@ Use with care.
 
 0. [Hello QUA](./Single-Fixed-Transmon/00_hello_qua.py) - A script used for playing with QUA.
 1. [Mixer Calibration](./Single-Fixed-Transmon/01_manual_mixer_calibration.py) - A script used to calibrate the corrections for mixer imbalances.
-2. [Raw ADC Traces](./Single-Fixed-Transmon/02_raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC 
+2. [Raw ADC Traces](./Single-Fixed-Transmon/02_raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC
 is not saturated, correct for DC offsets.
 3. [time_of_flight](./Single-Fixed-Transmon/03_time_of_flight.py) - A script to measure the ADC offsets and calibrate the time of flight.
 4. [Resonator Spectroscopy](./Single-Fixed-Transmon/04_resonator_spectroscopy.py) - Performs a 1D frequency sweep on the resonator.
@@ -26,7 +26,7 @@ is not saturated, correct for DC offsets.
 7. **Rabi chevrons** - Quickly find the qubit for a given pulse amplitude or duration:
     * [duration vs frequency](./Single-Fixed-Transmon/07a_rabi_chevron_duration.py) - Performs a 2D sweep (frequency vs qubit drive duration) to acquire the Rabi chevron.
     * [amplitude vs frequency](./Single-Fixed-Transmon/07b_rabi_chevron_amplitude.py) - Performs a 2D sweep (frequency vs qubit drive amplitude) to acquire the Rabi chevron.
-8. **1D Rabi** - Precisely calibrate a $\pi$ pulse: 
+8. **1D Rabi** - Precisely calibrate a $\pi$ pulse:
     * [Time Rabi](./Single-Fixed-Transmon/08a_time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse.
     * [Power Rabi](./Single-Fixed-Transmon/08b_power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse.
     * [Power Rabi with error amplification](./Single-Fixed-Transmon/08c_power_rabi_error_amplification.py) - A multi-pulse Rabi experiment sweeping the amplitude of the MW pulses to better estimate the $\pi$ pulse amplitude.
@@ -54,9 +54,9 @@ fidelity.
     * [Interleaved Single Qubit Randomized Benchmarking for gates > 20ns](./Single-Fixed-Transmon/16d_randomized_benchmarking_interleaved_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity for gates as short as 20ns (currently limited to a depth of 1000 Clifford gates).
     * [Single Qubit Randomized Benchmarking for gates > 20ns](./Single-Fixed-Transmon/16c_randomized_benchmarking_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates as short as 20ns (currently limited to a depth of 2600 Clifford gates).
 17. **DRAG calibration** - Calibrates the DRAG coefficient $`\alpha`$ and AC-Stark shift:
-    * [Google method](./Single-Fixed-Transmon/17_DRAG_calibration_Google.py) - Performs `x180` and `-x180` pulses to obtain 
+    * [Google method](./Single-Fixed-Transmon/17_DRAG_calibration_Google.py) - Performs `x180` and `-x180` pulses to obtain
 the DRAG coefficient $`\alpha`$.
-    * [Yale method](./Single-Fixed-Transmon/17_DRAG_calibration_Yale.py) - Performs `x180y90` and `y180x90` pulses to obtain 
+    * [Yale method](./Single-Fixed-Transmon/17_DRAG_calibration_Yale.py) - Performs `x180y90` and `y180x90` pulses to obtain
 the DRAG coefficient $`\alpha`$.
     * [AC Stark shift](./Single-Fixed-Transmon/18_AC_Stark_calibration_Google.py) - Calibrates the AC Stark shift using a sequence of `x180` and `-x180` pulses by plotting the 2D map DRAG pulse detuning versus number of iterations.
 19. **Tomography:**
@@ -70,13 +70,13 @@ a specific setup and would require changes to run on different setups. Current u
 
 * [Schuster Lab - Qubit Frequency Tracking](./Use%20Case%201%20-%20Schuster%20Lab%20-%20Qubit%20Frequency%20Tracking)
 The goal of this measurement is to track the frequency fluctuations of the transmon qubit, and update the frequency of the qubit element accordingly using a closed-loop feedback.
-* [Optimized Readout with Optimal Weights](./Use%20Case%202%20-%20Optimized%20readout%20with%20optimal%20weights) 
+* [Optimized Readout with Optimal Weights](./Use%20Case%202%20-%20Optimized%20readout%20with%20optimal%20weights)
 The goal of this experiment is to optimize the information obtained from the readout of a superconducting resonator by deriving the optimal integration weights. With the usage of optimal integration weights we maximize the separation of the IQ blobs when the ground and excited state are measured.
 
 
 ## Set-ups with Octave
 
-The configuration included in this folder correspond to a set-up without an Octave. 
+The configuration included in this folder correspond to a set-up without an Octave.
 However, a few files are there to facilitate the integration of the Octave:
 1. [configuration_with_octave.py](./Single-Fixed-Transmon/configuration_with_octave.py): An example of a configuration including the octave. You can replace the content of the file called `configuration.py` by this one so that it will be imported in all the scripts above.
 2. [octave_clock_and_calibration.py](./Single-Fixed-Transmon/octave_clock_and_calibration.py): A file __to execute__ in order to configure the Octave's clock and calibrate the Octave.

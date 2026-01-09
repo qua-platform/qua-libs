@@ -1,13 +1,13 @@
 """
         Echoed Cross-Resonance (with Cancel Drive) Time Rabi with 1Q QST
-The experiment consists of two consecutive pulse sequences, with qubit thermal relaxation occurring in between.  
+The experiment consists of two consecutive pulse sequences, with qubit thermal relaxation occurring in between.
 In the first sequence, the control qubit is initialized in the ground state (|g⟩), followed by the application
 of a rectangular cross-resonance (CR) pulse to the control qubit while simultaneously applying a cancellation
 drive to the target qubit. After the CR pulse, an echo sequence is performed, where a pulse with the same amplitude
 but opposite sign is applied to both the control and target qubits. Additionally, π pulses are applied to the control
-qubit before and after the echo pulse. The duration of the cross-resonance pulse is varied throughout the sequence.  
+qubit before and after the echo pulse. The duration of the cross-resonance pulse is varied throughout the sequence.
 
-In the second sequence, the control qubit is initialized in the excited state (|e⟩), and the same pulse sequence is applied.  
+In the second sequence, the control qubit is initialized in the excited state (|e⟩), and the same pulse sequence is applied.
 In both sequences, the target qubit starts in the ground state (|g⟩).
 
 Prerequisites:

@@ -17,7 +17,7 @@ The examples and the figures of each example are described below:
 
     ![Two pulses from different elements](timing_example1.PNG)
 
-   The two pulses start at the same time since they relate to different elements.   
+   The two pulses start at the same time since they relate to different elements.
 
 2. Two pulses from different elements with wait command.
 
@@ -51,5 +51,3 @@ Since in the non deterministic case it takes few cycles to pass the information 
     ![Two pulses from the same element](timing_example5.PNG)
 
    The two play commands are played one after the other since they are played from the same element.
-
- 
