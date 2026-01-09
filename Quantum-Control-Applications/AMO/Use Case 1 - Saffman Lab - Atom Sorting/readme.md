@@ -14,7 +14,7 @@ id: index
 *and it is tailored for a very specific setup and software environment. Thus, the code is only for insipiration.*
 
 The goal of this usecase is to show how to implement a two dimensional atom sorting sequence with the OPX.
-The idea is to implement a real-time algorithm that will derive the trajectories required to displace the atoms from 
+The idea is to implement a real-time algorithm that will derive the trajectories required to displace the atoms from
 their initial positions to an arbitrary target defined by the user.
 The real-time sequence can be divided into four parts:
 1. Get the current occupation matrix
@@ -42,7 +42,7 @@ The full sequence is successful when the initial unsorted atom array matches the
 The configuration consists of 3 elements:
 * `fpga` defines the element sending the analog occupation matrix to the OPX
 * `row_selector` is the AOD controlling the rows of the atom array (single tone for row by row sorting logic)
-* `column_i` with 1 < i < n_tweezers is the ith tone sent to the AOD controlling the columns of the atom array. 
+* `column_i` with 1 < i < n_tweezers is the ith tone sent to the AOD controlling the columns of the atom array.
 These elements are defined in a for loop outside of the config dictionary:
 ```python
 # Iteratively add the column tweezers
@@ -61,7 +61,7 @@ for i in range(1, n_tweezers + 1):
 ```
 
 ### 3.2 The operations, pulse and waveforms
-The `fpga` just has one operation called `readout_fpga` defined as constant pulse with zero amplitude waveform  
+The `fpga` just has one operation called `readout_fpga` defined as constant pulse with zero amplitude waveform
 (required for measurement) used to read the occupation matrix.
 
 The `row_selector` and `column_i` elements have the same 3 operations defined:
@@ -76,7 +76,7 @@ The logic starts by retreiving the current occupation matrix from the camera.
 Here the transfer is done via an FPGA board (Artiq) which does the image processing, finds the occupation matrix and sends it to the OPX using analog and digital signals.
 
 For each lattice site, the FPGA will send two pulses:
-- a digital pulse to trigger the OPX and indicate that it can start measuring the analog input 
+- a digital pulse to trigger the OPX and indicate that it can start measuring the analog input
 - a long analog pulse whose amplitude depends on whether an atom is there or not.
 
 A robust and timming insensitive way of transmitting the information is to first send the long analog pulse and a few nanoseconds later send the digital pulse to trigger the OPX.
@@ -113,9 +113,9 @@ with while_(~received_full_array):
 
 Once the occupation matrix has been received, the sorting logic can be implemented.
 The first parameter to derive is the number of tweezers needed to reach the traget matrix.
-In this exemple, since the sorting is implemented row by row, it is simply defined as the minimum of 
+In this exemple, since the sorting is implemented row by row, it is simply defined as the minimum of
 - the number of atoms in the current row
-- the number of atoms in the target row 
+- the number of atoms in the target row
 - the number of available tweezers
 
 #### 3.2.1 Dummy simple sorting
@@ -145,7 +145,7 @@ In order to be able to match a target occupation matrix, a slightly more sophist
 
 Many different options exists and the one illustrated here consists in the following logic:
 1. Find one atom in the target row
-2. Start at the target atom location and 
+2. Start at the target atom location and
    1. if there are enough atoms on the right to complete the sorting, then assign one tweezer to the closest atom on the left
    2. else, assign one tweezer to the closest atom on the right
 
@@ -211,10 +211,10 @@ with for_(j, 0, j < number_of_tweezers, j + 1):
                Cast.to_int(Cast.mul_int_by_fixed(tweezers_detunings[j],
                                                  linear_piece) / 1000))  # /1000 to go to 'mHz/ns'
 ```
-    
+
 
 ### 3.4 Apply the calculated pulses
-Now that each tweezer chirp has been computed, we just need to update their phases and initial frequencies 
+Now that each tweezer chirp has been computed, we just need to update their phases and initial frequencies
 (that will place the tweezers on the current atoms to be sorted) and apply the pulses.
 
 For each row, the playing sequence follows these steps:
@@ -251,23 +251,23 @@ for element_index in range(max_number_of_tweezers):
 
 ### 4.1 Results with linear chirps
 
-The spectrograms below are acquired by connecting the "column" port to one analog input of the OPX. 
-They correspond to the linear frequency chirps applied for each row, namely each frequency of the 
-row selector element, to match the target pattern displayed at the bottom right from a random initial 
+The spectrograms below are acquired by connecting the "column" port to one analog input of the OPX.
+They correspond to the linear frequency chirps applied for each row, namely each frequency of the
+row selector element, to match the target pattern displayed at the bottom right from a random initial
 occupation matrix.
 
 ![Sorting_results_linear](Sorting_results_linear.PNG)
 
-The picture below represents real pictures of the atom array after rearrangement using the OPX and 
+The picture below represents real pictures of the atom array after rearrangement using the OPX and
 the program detailed above and for different target occupation matrices.
 
 ![Experimental_results](Experimental_result.PNG)
 
 ### 4.1 Results with minimum jerk trajectory chirps
 
-The spectrograms below are acquired by connecting the "column" port to one analog input of the OPX. 
-They correspond to the piecewise linear frequency chirps applied for each row, namely each frequency of the 
-row selector element, to match the target pattern displayed at the bottom right from a random initial 
+The spectrograms below are acquired by connecting the "column" port to one analog input of the OPX.
+They correspond to the piecewise linear frequency chirps applied for each row, namely each frequency of the
+row selector element, to match the target pattern displayed at the bottom right from a random initial
 occupation matrix.
 
 ![Sorting_results_piecewise.PNG](Sorting_results_piecewise.PNG)

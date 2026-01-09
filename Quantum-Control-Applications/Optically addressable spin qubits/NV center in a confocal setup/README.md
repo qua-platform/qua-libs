@@ -12,9 +12,9 @@ Use with care.
 2. [Raw ADC Traces](02_raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC is
 not saturated and defining the threshold for time tagging
 3. [Counter](03_counter.py) - Starts a counter which reports the current counts from the SPCM
-4. [Calibrate Delays](04a_calibrate_delays.py) - Plays a MW pulse during a laser pulse, while performing time tagging 
+4. [Calibrate Delays](04a_calibrate_delays.py) - Plays a MW pulse during a laser pulse, while performing time tagging
 throughout the sequence. This allows measuring all the delays in the system, as well as the NV initialization duration
-    * [Calibrate Delays Python Histogram](04b_calibrate_delays_python_histogram.py) - This version processes the data in 
+    * [Calibrate Delays Python Histogram](04b_calibrate_delays_python_histogram.py) - This version processes the data in
 Python, which makes it slower but works better when the counts are high.
 5. ODMR - Counts photons while sweeping the frequency of the applied MW
    * [CW ODMR](05a_cw_odmr.py) - Plays microwave and laser readout simultaneously

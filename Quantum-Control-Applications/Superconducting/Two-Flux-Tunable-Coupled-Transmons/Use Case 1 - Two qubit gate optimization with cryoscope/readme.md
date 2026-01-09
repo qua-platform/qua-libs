@@ -17,7 +17,7 @@ The goal of this use-case is threefold:
 <img align="right" src="setup.PNG" alt="drawing" width="400"/>
 
 ### 1.1 Experimental set-up
-The chip contains 5 2D-transmons, where some of them have nearest-neighbor connectivity, 
+The chip contains 5 2D-transmons, where some of them have nearest-neighbor connectivity,
 with flux tunable lines.
 
 The experimental setup specific to this experiment consists of two flux tunable transmons (with a SQUID loop as nonlinear inductor and a flux line next to it) coupled to readout resonators located on a common transmission line.
@@ -36,9 +36,9 @@ In principle, the program detailed below can be easily modified if a different s
 
 Before running Cryoscope, several calibration steps are required.
 
-* The first calibration to run is the 2D readout resonator spectroscopy (flux amplitude and readout frequency). This spectroscopy will show the resonator frequency as a function of flux biasing, the qubit flux insensitive point (qubit frequency independent of flux bias), the qubit zero-frequency point, and the avoided crossing when the qubit and resonator have the same frequency. For Cryoscope, we want to set the flux line to the qubit flux insensitive point and bias it around $\phi_0/4$ during the sequence.   
+* The first calibration to run is the 2D readout resonator spectroscopy (flux amplitude and readout frequency). This spectroscopy will show the resonator frequency as a function of flux biasing, the qubit flux insensitive point (qubit frequency independent of flux bias), the qubit zero-frequency point, and the avoided crossing when the qubit and resonator have the same frequency. For Cryoscope, we want to set the flux line to the qubit flux insensitive point and bias it around $\phi_0/4$ during the sequence.
 * The second important quantity to calibrate is the $\pi/2$ pulse. This can be done using a simple Rabi sequence where both the pulse amplitude and frequency are scanned while the flux bias is set to the qubit flux insensitive point found previously.
-* (optional) If the qubit pulses are relatively short (< 100ns), then the use of optimal DRAG waveforms can enhance the fidelity of the gates [[3]](#3). 
+* (optional) If the qubit pulses are relatively short (< 100ns), then the use of optimal DRAG waveforms can enhance the fidelity of the gates [[3]](#3).
 * The last calibration to perform is the qubit detuning versus flux bias. This will be used to validate the qubit flux insensitive point and the avoided level crossing, as well as the Cryoscope measurement. The sequence can be found in the [Cryoscope use-case](#2).
 
 ## 2. [The configuration](configuration.py)
@@ -69,7 +69,7 @@ The QUA program consists of three distinct parts:
 
 ### 3.1 [Cryoscope](cryoscope.py)
 
- The idea of the method is to measure the step response of the flux line using the qubit phase measured in a Ramsey-like experiment [[1]](#1). 
+ The idea of the method is to measure the step response of the flux line using the qubit phase measured in a Ramsey-like experiment [[1]](#1).
  The possibly distorted response can then be pre-corrected by designing suitable IIR and FIR filters.
 
 This experiment and implementation in QUA has already been documented in the following [use-case](#2).
@@ -78,8 +78,8 @@ The main difference here is that a constant amplitude flux pulse has been used t
 
 ### 3.2 [IIR and FIR filter implementation](cryoscope.py)
 
-The method used to design the filters is to fit the flux step response with one or several exponential decay functions 
-and use analytical formulas to derive the corresponding FIR and IIR taps. 
+The method used to design the filters is to fit the flux step response with one or several exponential decay functions
+and use analytical formulas to derive the corresponding FIR and IIR taps.
 This exponential behaviour is characteristic of the effect of a bias-T on the flux line.
 
 These functions can be found in [filter_functions.py](filter_functions.py) and their usage is shown in the snippet below.
@@ -96,7 +96,7 @@ fir, iir = filter_calc(exponential=[(A, tau)])
 print(f"FIR: {fir}\nIIR: {iir}")
 ```
 Once the filter parameters have been found, the configuration needs to be updated accordingly.
-An example is shown on the snippet below 
+An example is shown on the snippet below
 and more details about the implementation of FIR and IIR filters in QUA can be found [here](https://qm-docs.qualang.io/guides/output_filter#id1).
 ```python
 "controllers": {

@@ -8,10 +8,10 @@ XEB is a method to estimate the fidelity of a quantum computer. Fidelity represe
 
 ## How does the script work?
 
-The protocol relies on the ability to perform random circuits on the quantum computer and compare the results with the ideal simulation. 
+The protocol relies on the ability to perform random circuits on the quantum computer and compare the results with the ideal simulation.
 The advantage of using QUA is that the randomization of the circuits can be done in parallel to circuit execution through real-time processing and random sampling.
 
-The user can choose which gate set to use to generate random unitaries. Usually, the experiment is performed with layers of random single-qubit gates followed by one fixed two-qubit gate. 
+The user can choose which gate set to use to generate random unitaries. Usually, the experiment is performed with layers of random single-qubit gates followed by one fixed two-qubit gate.
 The script will generate random circuits with the chosen gate set and run them on the quantum computer. The script will then calculate the cross-entropy between the ideal and actual probability distributions to estimate the layer fidelity (from which the two-qubit gate fidelity can be inferred).
 
 As opposed to Randomized Benchmarking, we do not invert the randomly generated circuit by applying an inverse, but we rather perform a fidelity estimation over the statistics of the outcomes when measuring the system in the computational basis.

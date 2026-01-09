@@ -26,27 +26,27 @@ Each calibration script instantiates a `QualbirationNode` close to the top of th
   node.machine = Quam.load()
   ```
   This step is optional, if it is omitted, the QUAM state won't be saved in the data folder when calling `node.save()`.
-- **`node.modes`**: A collection of different modes in which the node is used.  
+- **`node.modes`**: A collection of different modes in which the node is used.
   For example, the node may be run from the web app (`modes.external is True`), or directly through the IDE (`modes.interactive is True`).
 - **`node.name`**: The unique name of the `QualibrationNode`, typically matches the filename.
 - **`node.namespace`**: A shared container for any variables that need to be accessed by multiple node actions.
   An example is the QUA program, which is created in the action `create_qua_program`, but then used by other actions `simulate` and `execute_qua_program`.
-- **`node.outcomes`**: The node outcome per qubit (target).  
+- **`node.outcomes`**: The node outcome per qubit (target).
   Each value is either "successful" or "failed".
   This is used when the node is run as a calibration graph to determine what the next action should be.
-- **`node.parameters`**: An instance of the `NodeParameters`, which are specific to the calibration node.  
+- **`node.parameters`**: An instance of the `NodeParameters`, which are specific to the calibration node.
   The parameters typically include the parameter `qubits`, which are referred to as the _node targets_.
-- **`node.results`**: A dictionary containing all the results that should be saved.  
+- **`node.results`**: A dictionary containing all the results that should be saved.
   This can include values, numpy arrays, Xarray data arrays or datasets, and matplotlib figures.
 
 ### `QualibrationNode` methods
 
-- **`node.copy()`**: Create an identical copy of the node, useful when the node is defined as part of a graph.  
+- **`node.copy()`**: Create an identical copy of the node, useful when the node is defined as part of a graph.
   Additional node parameters can be passed, which can override the default parameters.
 - **`node.log()`**: Emit a log message with additional metadata to clarify what node emitted the log message.
-- **`node.run_action()`** Define a node action through the decorator `@node.run_action`.  
+- **`node.run_action()`** Define a node action through the decorator `@node.run_action`.
   This is followed by the action's function. The function is immediately executed after its definition.
-- **`node.save()`**: Save all the contents of the `QualibrationNode` into a data folder.  
+- **`node.save()`**: Save all the contents of the `QualibrationNode` into a data folder.
   This includes the parameters, results, outcomes, and the QUAM state if specified.
 
 ## Node Anatomy Explained
@@ -59,7 +59,7 @@ You can easily extend this library by adding your own custom calibration nodes. 
 
 - Using the `# %%` separators for code cells.
 - Defining parameters in a separate `Parameters` class (usually imported).
-- Structuring the workflow using functions decorated with `@node.run_action`.  
+- Structuring the workflow using functions decorated with `@node.run_action`.
   It is recommended to implement the same actions as those defined in the other calibration nodes
 - Loading and interacting with the `QUAM` object.
 - Using `node.results`, `node.outcomes` for storing outputs.

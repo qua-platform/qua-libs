@@ -40,7 +40,7 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Pick an amplitude for cr_drive_square_amp_c1t2.
-      Set cr_drive_square_amp_c1t2 in the configuration file. 
+      Set cr_drive_square_amp_c1t2 in the configuration file.
       In the end, we want to make the CR gate as short short as possible with highest fidelity.
       Thus, we want to pick a large enough amplitude for the CR drive however without causing too much of leakage and AC Stark shift.
 

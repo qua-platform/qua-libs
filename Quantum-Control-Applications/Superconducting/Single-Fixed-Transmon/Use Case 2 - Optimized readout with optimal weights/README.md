@@ -15,7 +15,7 @@ IQ blobs when the ground and excited state are measured.
 
 ## The device
 
-The chip contains 5 2D-transoms, where some of them have nearest-neighboor connectivity, 
+The chip contains 5 2D-transoms, where some of them have nearest-neighboor connectivity,
 with flux tunable lines. For this experiment, we focus only in one transmon with a drive
 to its flux line to put the transom  in the **sweep-spot**. All other transmons are left
 unbiased and signal is send to them.
@@ -30,7 +30,7 @@ the experiment. Inside these files there are Python classes that are used during
 the training, benchmarking, and later usage in other QUA programs.
 
 First, we will briefly describe each of these files. `TimeDiffCalibrator.py` calculates
-the `time_diff` variable that we used to demodulate analog signals (in post-processing) 
+the `time_diff` variable that we used to demodulate analog signals (in post-processing)
 to match the values of demodulation in the FPGA. `TwoStateDiscriminator.py` contains
 functions to update the `configuration` and to perform measurements with the optimal weights.
 Last, `StateDiscriminator.py` contains the `train` function that from measured analog signals
@@ -56,7 +56,7 @@ resulting in a readout fidelity of `91.3 %`.
 ![constant_weights](IQblobs_constant_weights.png)
 
 As mentioned above, we obtain the *time traces* of the ground and excited state in the
-trainin phase. We can visualize the `I` and `Q` time traces in the image below. Note 
+trainin phase. We can visualize the `I` and `Q` time traces in the image below. Note
 that the readout only lasts `380 ns`. The rightmost, subplot displays the optimal weights
 defined as `|g> - |e>`, and we can see that in the original data most of the information
 is already encoded in `I`. These derived optimal weights are the ones reintroduced in the
@@ -69,30 +69,30 @@ separation between the `|g>` and `|e>` states.
 There are two advantages of using *optimal weights*. First, when there is little to zero
 information to tell apart the `|g>` and `|e>` states, the assigned weights are close to
 zero, thus reducing the accumulation of noise in contrast to using constant weights.
-For example, the first `100 ns` of this measurement (see *optimal weights* subplot) 
-have a small contribution towards total demodulated signal. Second, the demodulated 
+For example, the first `100 ns` of this measurement (see *optimal weights* subplot)
+have a small contribution towards total demodulated signal. Second, the demodulated
 signal is projected along one axis in the IQ plane, thus allowing state discrimination
 with a single variable.
 
 Note that at the end of the measurement window the *optimal weights* does not end in zero.
-It is likely that more information can be obtained if the ring-down of the resonator 
+It is likely that more information can be obtained if the ring-down of the resonator
 would be included in the measurement window. This can be achieved by tuning the `time of flight`
 and `smearing` parameters in the configuration.
 
 ### Step 2: Benchmarking
 
 Having calibrated the optimal weights in the `IQ_blobs_opt_weigths_train.py`, now we focus on
-`IQ_blobs_opt_weights_benchmark.py` to use the macro `discriminator.measure_state()` that is 
+`IQ_blobs_opt_weights_benchmark.py` to use the macro `discriminator.measure_state()` that is
 part of `TwoStateDiscriminator.py`.
 
-In the *Original Data* subplot we can see the result of FPGA demodulation with optimal 
+In the *Original Data* subplot we can see the result of FPGA demodulation with optimal
 weights and observe that the blobs are already projected along the `I-axis`. In *1D Histogram*
 subplot we can visualize the peaks from `|g>` and `|e>` are further separated from each other
-in contrast to the *1D Histograms* of the first image in this use-case. 
+in contrast to the *1D Histograms* of the first image in this use-case.
 
 The readout fidelity is `94.5 %` when the optimal weights are used in contrast to `91.3%` when the
-weights are not used. We can also notice that the residual populations in the ground and 
-excited state are very close to each other. 
+weights are not used. We can also notice that the residual populations in the ground and
+excited state are very close to each other.
 
 Thus, the utilization of optimal weights boost the readout to a superconducting resonator
 coupled to a qubit. It boosts it by providing results projected along one-axis, and also
@@ -100,4 +100,3 @@ by minimizing the noise in the time when there is no discrimination between `|g>
 states.
 
 ![opt_w](IQblobs_opt_weights.png)
-

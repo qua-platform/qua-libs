@@ -55,7 +55,7 @@ def bake_cz(baker: Baking, q1, q2):
 ```
 
 ## Initialization
-Before each circuit, it is important to implement a initialization protocol to reset the qubits to the ground state. In the example the *prep* function contains a single QUA command *wait* and is called before each circuit execution to assure that the initial state is set to ∣00⟩. The time inside the *wait* statement is chosen to be a multiple of the characteristic decay time of the qubits *T1* to leave enough time for the qubit to relax after it has been excited to the excited state ∣1⟩. If single shot readout is implemented, it is possible to use active feedback to reset the qubit to the ground state ∣0⟩ by sending a pi-pulse if the qubit was measured in the excited state ∣1⟩. 
+Before each circuit, it is important to implement a initialization protocol to reset the qubits to the ground state. In the example the *prep* function contains a single QUA command *wait* and is called before each circuit execution to assure that the initial state is set to ∣00⟩. The time inside the *wait* statement is chosen to be a multiple of the characteristic decay time of the qubits *T1* to leave enough time for the qubit to relax after it has been excited to the excited state ∣1⟩. If single shot readout is implemented, it is possible to use active feedback to reset the qubit to the ground state ∣0⟩ by sending a pi-pulse if the qubit was measured in the excited state ∣1⟩.
 
 ```python
 def prep():
@@ -112,7 +112,7 @@ res.plot_fidelity()
 #### How are all the 11,520 2Q Cliffords loaded onto the OPX?
 In order to both:
  1. Efficiently generate random two-qubit clifford sequences and the recovery gate
- 2. Use minimal OPX resources within the compiled program, 
+ 2. Use minimal OPX resources within the compiled program,
 
 each Clifford is decomposed into two commands (out of 736 total).
 Every command is [baked](https://github.com/qua-platform/py-qua-tools/blob/main/qualang_tools/bakery/README.md) as a pulse in advance, loaded onto the OPX, and can be addressed according to its "command id", which is an index from 0 to 735. Thus, when a random sequence is generated, it is [streamed as input](https://docs.quantum-machines.co/1.1.7/qm-qua-sdk/docs/Guides/features/?h=input+stream#input-streams) into the OPX as *2 x (circuit_depth + 1)* command IDs. Once the program receives the input stream, it is fed into a loop of switch cases, which plays the pulse corresponding to the command ID.
@@ -174,7 +174,7 @@ The runtime depends on the input-arguments *num_circuits_per_depth*, *num_shots_
 - 2.34 seconds / num_circuits_per_depth
 - 35 seconds / 1000 num_shots_per_circuit
 - The runtime depends not only on the value of the individual elements but also on the length of the depth vector (number of different depths). The figure below shows both dependencies for selected values.
-  
+
 <img width="1000" src="runtime.png">
 
 ### Questions?

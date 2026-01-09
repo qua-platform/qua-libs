@@ -34,7 +34,7 @@ description = """
 This sequence involves measuring the resonator by sending a readout pulse and
 demodulating the signals to extract the 'I' and 'Q' quadratures for all resonators
 simultaneously. This is done across various readout frequencies and amplitudes.
-Based on the results, one can then adjust the readout amplitude, choosing a 
+Based on the results, one can then adjust the readout amplitude, choosing a
 readout amplitude value just before the observed frequency splitting.
 
 Prerequisites:
@@ -42,7 +42,7 @@ Prerequisites:
 
 State update:
     - The readout power: sensor.readout_resonator.set_output_power()
-    - The readout frequency for the optimal readout power. 
+    - The readout frequency for the optimal readout power.
 """
 
 
