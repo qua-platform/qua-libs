@@ -9,7 +9,7 @@ from jax import lax
 
 from qualibrate import QualibrationNode
 
-from bayesian_change_point.bayesian_cp import BayesianCP
+from ..bayesian_change_point import BayesianCP
 
 try:
     from .edge_line_analysis import analyze_edge_map, SegmentFit
