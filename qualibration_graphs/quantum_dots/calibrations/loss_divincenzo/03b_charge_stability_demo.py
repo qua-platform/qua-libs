@@ -344,7 +344,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     # Store the generated figures
     node.results["figures"] = {
         "amplitude": fig_amplitude,
-        "phase": fig_phase,
+        # "phase": fig_phase,
     }
 
     # Optionally plot detailed analysis results if fit_results are available
