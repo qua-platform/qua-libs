@@ -18,7 +18,7 @@ This tutorial is ideal for users who are familiar with QUA and want to learn how
 
 ## Table of Contents
 
-1. [What is QUAlibrate?](#1--what-is-qualibrate) 
+1. [What is QUAlibrate?](#1--what-is-qualibrate)
 2. [Installation Guide](#2--installation-guide)
 3. [Project Structure](#3--project-structure)
 4. [How to convert your QUA program to a QUAlibration Node?](#4--how-to-convert-your-qua-program-into-a-qualibration-node)
@@ -43,7 +43,7 @@ This tutorial focuses on the first step: converting a QUA protocol into a struct
 
 ## 2. 🛠 Installation Guide
 
-To install QUAlibrate and prepare your environment, follow the official instructions:  
+To install QUAlibrate and prepare your environment, follow the official instructions:
 👉 [QUAlibrate Installation Guide](https://qua-platform.github.io/qualibrate/installation/)
 
 ---

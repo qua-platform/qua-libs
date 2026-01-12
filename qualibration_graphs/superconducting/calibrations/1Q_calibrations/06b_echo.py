@@ -26,7 +26,7 @@ from qualibration_libs.data import XarrayDataFetcher
 # %% {Description}
 description = """
         T2 echo MEASUREMENT
-The sequence consists in playing an echo sequence (x90 - idle_time - x180 - idle_time - -x90 - measurement) for 
+The sequence consists in playing an echo sequence (x90 - idle_time - x180 - idle_time - -x90 - measurement) for
 different idle times.
 The qubit T2 echo is extracted by fitting the exponential decay of the measured quadratures/state.
 

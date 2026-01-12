@@ -10,7 +10,7 @@ _Important note: The code in this folder is the exact code that was used for run
 
 ## The goal
 The goal of this measurement is to track the frequency fluctuations of the transmon qubit, and update the frequency of the qubit element accordingly using a closed-loop feedback. This should enable us to stay in the reference frame of the qubit. More precisecly, our goal is to calibrate a frequency-tracking-macro (the two-point-Ramsey macro) that can be interleaved in a general experiment\routine, and correct actively for the frequency fluctuations.
- 
+
 ## The device
 The device consist of a single Transmon qubit coupled to a multimode 3D resonator. However, during the all experiment the 3D resonator is ideally in the vacuum state.
 
@@ -31,7 +31,7 @@ The parameter Delta determines the oscillation frequency, and it is the shift of
 ![td_ramsey0](td_ramsey0.png)
 
 The raw data is in blue and the purple curve is the fit (ignore the red dashed line). For the analysis we used the method `time_domain_ramesy_full_sweep_analysis(self, result_handles, stream_name)`.
-Note that the fit method `_fit_ramsey` is slightly different from the equation above, so to enable better fitting. 
+Note that the fit method `_fit_ramsey` is slightly different from the equation above, so to enable better fitting.
 From the fit we extract T2, the new resonance frequency of the qubit and phi.
 In order to verify that frequency calibration worked properly we are running the TD Ramsey again and check that we get the red dot on the first peak
 
@@ -40,7 +40,7 @@ In order to verify that frequency calibration worked properly we are running the
 
 ### Step 2: Frequency-domain Ramsey
 
-In this step we are fixing tau and sweeping over Delta (by sweeping the frequency of the `"qubit"` element). Since tau is constant we are getting rid of the exponential decay, and remain with 
+In this step we are fixing tau and sweeping over Delta (by sweeping the frequency of the `"qubit"` element). Since tau is constant we are getting rid of the exponential decay, and remain with
 
 <img src="https://latex.codecogs.com/svg.image?\mathcal{P}(e)\sim&space;A\left(1&plus;\cos\text{(2\ensuremath{\pi}\ensuremath{\frac{1}{f_{ref}}}\ensuremath{\Delta}&plus;\ensuremath{\phi})}\right)" />
 
@@ -49,7 +49,7 @@ Since we want later an error signal symmetric around zero detuning, we took the 
 ![fd_ramsey.png](fd_ramsey.png)
 
 In order to analyze the data we used the method `freq_domain_ramsey_full_sweep_analysis(self, result_handles, stream_name)`. From the fit we extracted the coefficient `A`.
- 
+
 ### Step 3: Two point Ramsey
 
 In this step we are using the `two_points_ramsey(self)` method in order to actively track and correct for the frequency drift of the qubit. Our error signal is based on the difference between two points in the FD Ramsey that are ideally centered around the zero detuning (see the two red stars in the figure above). We chose the points to be detuned from resonance in `+-(1/4)*f_ref`, in order to have the highest sensitivity to frequency drifts. In the equation below we are calculating the drift (d) as a function of the error signal (delta P):
@@ -64,5 +64,4 @@ Finally, in order to show that the two-point-Ramsey method is actually working, 
 
 ![active_frequency_tracking.PNG](active_frequency_tracking.PNG)
 
-We can see that with the active feedback the qubit frequency is much more stable! 
-
+We can see that with the active feedback the qubit frequency is much more stable!

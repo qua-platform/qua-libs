@@ -21,16 +21,16 @@ from calibration_utils.common_utils.experiment import get_dots, get_sensors
 
 description = """
             2D CHARGE STABILITY MAP
-This script involves a simple 2D voltage map, done by stepping the X and Y Quantum Dots 
+This script involves a simple 2D voltage map, done by stepping the X and Y Quantum Dots
 to their corresponding voltages, sending a readout pulse, and demodulating the 'I' and 'Q'
-quadratures. 
+quadratures.
 
-Prerequisites: 
+Prerequisites:
     - Having calibrated the IQ mixer/Octave connected to the readout line (node 01a_mixer_calibration.py).
     - Having calibrated the time of flight, offsets, and gains (node 01a_time_of_flight.py).
     - Having calibrated the resonators coupled to the SensorDot components (nodes 02a_resonator_spectroscopy.py, 02b_resonator_spectroscopy_vs_power.py).
     - Having initialized the QUAM state parameters for the readout pulse amplitude and duration.
-    - Having registered the QuantumDot elements and your SensorDot elements in your QUAM state. 
+    - Having registered the QuantumDot elements and your SensorDot elements in your QUAM state.
 """
 
 

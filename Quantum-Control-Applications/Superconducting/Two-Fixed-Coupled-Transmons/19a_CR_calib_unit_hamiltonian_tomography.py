@@ -16,7 +16,7 @@ applying quantum state tomography (QST) on the target qubit.
 <<<<<<< HEAD:Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/18a_CR_calib_unit_hamiltonian_tomography.py
 For the calibration sequences, one need to choose one of the following CR drive configurations:
 "direct," "direct + echo," "direct + cancel," or "direct + cancel + echo."
-                                   ____      ____ 
+                                   ____      ____
 =======
 For the calibration sequences, we employ echoed CR drive.
                                    ____      ____

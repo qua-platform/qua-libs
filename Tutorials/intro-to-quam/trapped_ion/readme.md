@@ -6,7 +6,7 @@ The system of interest is based on the recent work on the global single-qubit ad
 
 <img src="../images/ion_trap.png" width=50% height=50%>
 
-To trap an ion in an electric field, one requires both the RF (~10 MHz) and DC signals applied on their respective electrode. The presence of multiple DC electrodes is to facilitate the shuttling and re-arrangement of the ions. The qubit is defined by the hyperfine levels due to the static magnetic field (labelled B) which determines the quantization axis. 
+To trap an ion in an electric field, one requires both the RF (~10 MHz) and DC signals applied on their respective electrode. The presence of multiple DC electrodes is to facilitate the shuttling and re-arrangement of the ions. The qubit is defined by the hyperfine levels due to the static magnetic field (labelled B) which determines the quantization axis.
 
 The coherent operation in this scheme is achieved by the application of near-field microwave via two counter-propagating electrodes such that the magnetic-field parallel to the quantization axis drives the qubit transition. Adjusting the DC voltage allows for the controlled displacement of the ion, and the magnetic field gradient acting on each ion leading to tunable Rabi frequencies.
 
@@ -165,7 +165,7 @@ We used macros here instead of defining the method under the `HyperfineQubit` be
 <summary>📝 <code>measure_integrated</code> is a custom function added to <code>InOutSingleChannel</code> following the code below. The default <code>measure</code> implemented in QUAM performs demodulation at the IF frequency which is unnecessary for fluorescence measurement.
 </summary>
 
-Instead, we implemented the integration of the TTL photon counting signal of the PMT to obtain the total fluorescence count. When the fluorescence exceeds a threshold in a pre-calibrated time frame, we can discriminate the state.  
+Instead, we implemented the integration of the TTL photon counting signal of the PMT to obtain the total fluorescence count. When the fluorescence exceeds a threshold in a pre-calibrated time frame, we can discriminate the state.
 
 ```python
 def measure_integrated(
@@ -200,15 +200,15 @@ InOutSingleChannel.measure_integrated = measure_integrated
 Alternatively, one can also extend `InOutSingleChannel` as follows
 
 ```python
-@quam_dataclass  
-class IonReadoutChannel(InOutSingleChannel):  
-    def measure_integrated():  
+@quam_dataclass
+class IonReadoutChannel(InOutSingleChannel):
+    def measure_integrated():
         ...
 
-@quam_dataclass  
-class HyperfineQubit(Qubit):  
-    shelving: SingleChannel = None  
-    readout: IonReadoutChannel = None  
+@quam_dataclass
+class HyperfineQubit(Qubit):
+    shelving: SingleChannel = None
+    readout: IonReadoutChannel = None
 ```
 </details>
 
@@ -454,7 +454,7 @@ machine = Quam.load("state_after.json")
 ```
 
 # Last word
-In this tutorial, we realized the abstraction of a physical experiment using QUAM for an operation-centric and readable structure. For physicists, this is an ideal framework for describing an experiment and book-keeping. 
+In this tutorial, we realized the abstraction of a physical experiment using QUAM for an operation-centric and readable structure. For physicists, this is an ideal framework for describing an experiment and book-keeping.
 
 # References
 1. Leibfried, D., Blatt, R., Monroe, C., & Wineland, D. (2003). Quantum dynamics of single trapped ions. Reviews of Modern Physics, 75(1), 281. https://doi.org/10.1103/RevModPhys.75.281

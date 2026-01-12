@@ -43,7 +43,7 @@ Prerequisites:
     - Having calibrated the qubit parameters precisely (nodes 04b_power_rabi.py and 06a_ramsey.py).
     - (optional) Having optimized the readout parameters (nodes 08a, 08b and 08c).
     - Having specified the desired flux point if relevant (qubit.z.flux_point).
-    
+
 Next steps before going to the next node:
     - Update the DRAG coefficient (alpha): qubit.xy.operations[operation].alpha.
 """

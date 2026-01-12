@@ -29,7 +29,7 @@ Pound-Drever-Hall (PDH) locking is a widely-used technique for stabilizing the f
 The corresponding experimental setup is as follows (cf. figure below):
 * Each cavity uses one analog output to drive their respective piezo-electric motor controller (AO 6, 7 & 8).
 * Another analog output is used to provide the Pound-Drever-Hall modulation signal to the phase modulator (AO 6).
-* One analog input is connected to an RF switch which allows probing the optical signal acquired by a photodiode placed after each cavity (AI 2). 
+* One analog input is connected to an RF switch which allows probing the optical signal acquired by a photodiode placed after each cavity (AI 2).
 * The state of the RF switch (3 pins) is controlled by three digital markers provided by three OPX digital outputs (DO 7-9).
 * Four additional digital markers are used to control the optical switches rerouting the light in different sections of the full setup not part of the lock setup (DO 1-4).
 * Other channels are used for qubit control and readout, AOM drive, and optical switches.
@@ -89,7 +89,7 @@ def measure_macro(RFconfig,single_shot_DC_st,single_shot_AC_st,I,Q,savedata,N_av
         frame_rotation_2pi(angle, "phase_modulator")
         # Sync all the elements
         align() # Wait for previous block of pulses (from previous loop iteration) to be finished
-        
+
         # Select which photodiode signal is sent to the OPX input, using SP8T RF swich
         RFswitch_control(RFconfig_number)
         # Configure laser path with optical switches
@@ -106,7 +106,7 @@ def measure_macro(RFconfig,single_shot_DC_st,single_shot_AC_st,I,Q,savedata,N_av
     with if_(savedata==True):
         save(single_shot_DC, single_shot_DC_st)
         save(single_shot_AC, single_shot_AC_st)
-        
+
     return(single_shot_AC)
 ```
 
@@ -135,7 +135,7 @@ def fastLock(cavity,single_shot_DC_st,single_shot_AC_st,I,Q,offset_opti,correcti
 ```python
 def fullock(locktime,dc_offset_cav1,dc_offset_cav2,dc_offset_cav3,single_shot_DC_cav1_st,single_shot_DC_cav2_st,single_shot_DC_cav3_st,single_shot_AC_cav1_st,single_shot_AC_cav2_st,single_shot_AC_cav3_st,correction_cav1,correction_cav2,correction_cav3,error_cav1,error_cav2,error_cav3,integrator_error_cav1,integrator_error_cav2,integrator_error_cav3,derivative_error_cav1,derivative_error_cav2,derivative_error_cav3,old_error_cav1,old_error_cav2,old_error_cav3,gain_P_qua,gain_I_qua,gain_D_qua,alpha_qua,target_qua,bitshift_scale_factor_qua,savedata=True):
     '''Uses fastLock to lock three cavities in series, one after another'''
-    
+
     savedata_qua=declare(bool,value=savedata)
 
     I = declare(fixed)
@@ -163,7 +163,7 @@ def fullock(locktime,dc_offset_cav1,dc_offset_cav2,dc_offset_cav3,single_shot_DC
 ### The Configuration File Elements
 * `filter_cavity_1`, `filter_cavity_2`, and `filter_cavity_3`: Each cavity necessitates one analog output to drive their respective piezo-electric motor controller (AO 6, 7 & 10).
 * `phase_modulator`: Another analog output is used to provide the Pound-Drever-Hall modulation signal to the phase modulator (AO 8).
-* One analog input is connected to an RF switch which allows probing the optical signal acquired by a photodiode placed after each cavity (AI 1). 
+* One analog input is connected to an RF switch which allows probing the optical signal acquired by a photodiode placed after each cavity (AI 1).
 * `RFswitch_pin0`, `RFswitch_pin1`, and `RFswitch_pin2`: The state of the RF switch (3 pins) is controlled by three digital markers provided by three OPX digital outputs (DO 7-9).
 * Other channels are used for qubit control and readout, AOM drive, and optical switches.
 
@@ -176,7 +176,7 @@ The figure below shows results of a lock of a single optical cavity using the [C
 
 ![lock_characterization](lock_characterization.png)
 
-Furthermore, the FFT in the figure below allows assessing the quality of the lock. This is practical when the integrator gain of the PID is being fine-tuned to dampen self-oscillations of the PID lock. 
+Furthermore, the FFT in the figure below allows assessing the quality of the lock. This is practical when the integrator gain of the PID is being fine-tuned to dampen self-oscillations of the PID lock.
 
 ![FFT](FFT.png)
 

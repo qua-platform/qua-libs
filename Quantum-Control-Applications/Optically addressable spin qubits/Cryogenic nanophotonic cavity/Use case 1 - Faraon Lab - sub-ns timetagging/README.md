@@ -33,7 +33,7 @@ the OPX and amplified to source the AOM that amplitude modulates the laser light
 After a settle period `500 ns`, we trigger a shutter AOM for `40 ns`. The calibrated
 detection window is delayed with respect to the shutter AOM and `time_tagging.highres`
 from QUA is used. The time tags are histogrammed in the stream processing and the final
-result can be visualized in the figure below. 
+result can be visualized in the figure below.
 The pulse sequence can be found in [beatnotes_test_threshold.py](beatnotes_test_threshold.py).
 
 ![Beat_note](Beatnote_detection.png)
@@ -47,7 +47,7 @@ counts = A\times((cos(2\pi\times f_{beatnote}\times t + phase)+1)/2)\times exp(-
 $$
 
 From the fitting parameters, we find that the counts oscillate at `536.3 +/- 0.4 MHz`, which
-is equal to a period of `1.8647 +/- 0.0015 ns`. 
+is equal to a period of `1.8647 +/- 0.0015 ns`.
 
 As seen in the figure, with a `50 ps` binning,
 each period of oscillation contains many data points, thus demonstrating that the OPX high

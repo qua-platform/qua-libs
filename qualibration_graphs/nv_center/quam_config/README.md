@@ -1,6 +1,6 @@
 # Creating the QUAM State
 
-This document explains the process of defining, generating, and initializing the Quantum Abstract Machine (QUAM) state, which serves as the central configuration object for your quantum system within the QUAlibrate software ecosystem. 
+This document explains the process of defining, generating, and initializing the Quantum Abstract Machine (QUAM) state, which serves as the central configuration object for your quantum system within the QUAlibrate software ecosystem.
 The QUAM object holds information about hardware configuration, connectivity, elements (qubits, laser, spcm, etc.), pulses, and operations.
 
 ## Folder Contents (`quam_config/`)

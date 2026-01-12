@@ -67,10 +67,10 @@ $$
 
 ![decays](cpmg_iq_decays_1.png)
 
-The table below list the key parameters extracted from the CPMG sequence. $T_{2}$ values are in the 
+The table below list the key parameters extracted from the CPMG sequence. $T_{2}$ values are in the
 order of $\mu$s and are listed in the first column. Note that the $T_{2}$ does not increase
 monotonically as $\tau$ increases. BW is the intrinsic linewidth for a Lorentzian peak and is calculated
-as $\frac{1}{2\pi T_{2}}$. The CPMG sequence acts as a filter of the power spectral density, thus the center 
+as $\frac{1}{2\pi T_{2}}$. The CPMG sequence acts as a filter of the power spectral density, thus the center
 frequency can be calculated as $\pi/\tau$. The relative amplitude of the contribution
 of $T_{2}$ with respect to the tail are listed in the last column.
 

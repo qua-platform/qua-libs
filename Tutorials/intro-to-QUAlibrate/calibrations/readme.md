@@ -18,10 +18,10 @@ This guide walks you through converting the [`time_of_flight.py`](https://github
 
 A `QualibrationNode` is the core abstraction in QUAlibrate. It represents a **self-contained calibration unit** that bundles:
 
-- User-configurable parameters  
+- User-configurable parameters
 - A configuration
-- A QUA program (simulation or execution)  
-- Analysis and visualization logic  
+- A QUA program (simulation or execution)
+- Analysis and visualization logic
 - Results and metadata
 
 Nodes can be executed individually (via Python or the Web UI), saved, visualized, and reused across experiments or workflows.
@@ -66,8 +66,8 @@ Add a detailed description to explain the calibration's purpose. Then create the
 
 ```python
 node = QualibrationNode[Parameters, None](
-    name="time_of_flight", 
-    description=description, # Describe what the node is doing, which is also reflected in the QUAlibrate GUI 
+    name="time_of_flight",
+    description=description, # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters() # Node parameters defined under calibration_utils/node_name/parameters
 )
 ```
@@ -85,12 +85,12 @@ def custom_param(node):
     node.parameters.num_shots = 10
     node.parameters.depletion_time = 10 * u.us
 ```
-> 💡 **Note**  
-> The `@node.run_action` decorator is a feature of QUAlibrate that simplifies how calibration logic is organized and executed.  
-> 
+> 💡 **Note**
+> The `@node.run_action` decorator is a feature of QUAlibrate that simplifies how calibration logic is organized and executed.
+>
 > - The `@` symbol is Python syntax for a *decorator*, which modifies or wraps the function immediately below it. In this case, it registers that function as part of the node's workflow.
 > - When the script runs, the decorated function is **automatically executed**, unless its `skip_if` condition evaluates to `True`.
-> - This enables a **flat and modular structure** for your calibration code—each logical step (e.g., parameter definition, program creation, execution, analysis) lives in its own clearly defined function.  
+> - This enables a **flat and modular structure** for your calibration code—each logical step (e.g., parameter definition, program creation, execution, analysis) lives in its own clearly defined function.
 > - You no longer need nested `if/else` statements scattered throughout your code; conditional behavior is handled cleanly via the `skip_if` argument.
 > - For example, in `custom_param()`, the action is skipped when `node.modes.external` is `True`, meaning that the node is being run from the Web Interface and parameters should be taken from the GUI instead of being hardcoded.
 >
@@ -110,12 +110,12 @@ def create_qua_program(node):
             for i, resonator in enumerate(resonators):
                 ...
 ```
-Replace ["q1_resonator"] → node.parameters.resonators, 10 shots → node.parameters.num_shots, and so on. 
+Replace ["q1_resonator"] → node.parameters.resonators, 10 shots → node.parameters.num_shots, and so on.
 
 > 🔍 This is a key section: convert your QUA logic into parameterized form using node.parameters instead of hardcoded values.
 
 
-### 5️⃣ Simulate the Program 
+### 5️⃣ Simulate the Program
 
 Move your `qmm.simulate(...)` logic into a dedicated run action. You can either keep your original simulation and plotting code, or optionally use the `simulate_and_plot()` utility from qualibration_libs.runtime for convenience.
 ```python
@@ -156,9 +156,9 @@ def execute_qua_program(node):
 > 📥 This step connects to the OPX, runs the program, fetches the data, and stores results in node.results.
 
 
-### 7️⃣ Data Loading 
+### 7️⃣ Data Loading
 If reusing saved results:
-```python 
+```python
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node):
      node.load_from_id(node.parameters.load_data_id)
@@ -166,8 +166,8 @@ def load_data(node):
 > 📁 Useful for loading previously saved datasets during debugging or reanalysis.
 
 
-### 8️⃣ Data Analysis 
-Wrap your analysis logic inside a dedicated run action. 
+### 8️⃣ Data Analysis
+Wrap your analysis logic inside a dedicated run action.
 
 You can optionally move your processing and fitting functions to `calibration_utils/time_of_flight/analysis.py` for modularity and reuse — but you're also free to define them directly inside `analyse_data()` function.
 ```python
@@ -179,7 +179,7 @@ def analyse_data(node):
 
 
 ### 9️⃣ Data Plotting
-Wrap your plotting logic inside a dedicated run action. 
+Wrap your plotting logic inside a dedicated run action.
 As with the analysis step, you can optionally move your plotting functions into `calibration_utils/time_of_flight/plotting.py` for reuse and cleaner code organization. However, it’s equally valid to define plotting code directly inside `plot_data()` function.
 ```python
 @node.run_action(skip_if=node.parameters.simulate)
@@ -205,8 +205,8 @@ def save_results(node):
 ```
 
 > 💾 This saves:
-> 
-> - All parameters and metadata  
+>
+> - All parameters and metadata
 > - Analysis results and plots
 
 ---
@@ -224,7 +224,7 @@ You can easily extend this library by adding your own custom calibration nodes. 
 - Using the `# %%` separators for code cells. This  enables interactive execution in supported IDEs like Jupyter, VS Code, or the professional edition of PyCharm. While helpful during development, is it optional and not required for functionality.
 - Defining parameters in a separate `Parameters` class. This class is usually imported, for example:
 `from calibration_utils.time_of_flight import Parameters`.
-- Structuring the workflow using functions decorated with `@node.run_action`.  
+- Structuring the workflow using functions decorated with `@node.run_action`.
   It is recommended to implement the same actions as those defined in [time_of_flight.py](./time_of_flight.py).
 - Using `node.results`, for storing outputs.
 - Calling `node.save()` at the end.

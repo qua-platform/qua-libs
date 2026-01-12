@@ -9,3 +9,5 @@ assets
 tempCodeRunnerFile.python
 **/calibration_data
 **/quam_config/quam_state
+.DS_Store
+**/.DS_Store

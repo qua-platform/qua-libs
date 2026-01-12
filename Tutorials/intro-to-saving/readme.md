@@ -8,20 +8,20 @@ id: index
 This example shows five QUA programs where variables are saved.
 Each one shows a slightly different variation on how this can be achieved:
 either by saving directly to a tag that is then collected from the `result_handles`
-structure, or by saving to a `stream` and processing it in various ways. 
+structure, or by saving to a `stream` and processing it in various ways.
 
 ## Config
 
-The configuration for this example is included, but irrelevant as no pulses are 
-played to any output and no data is read in. 
+The configuration for this example is included, but irrelevant as no pulses are
+played to any output and no data is read in.
 
 ## Programs
 
-Four programs are included: 
+Four programs are included:
 1. Assigning values to variables and saving variables to tags.
-This program saves literal values and values calculated with math operations. 
+This program saves literal values and values calculated with math operations.
 It then saves them directly to `tags`. This is a less powerful method of saving
-that is not the recommended mode of operation, yet it is still supported as a legacy method. 
+that is not the recommended mode of operation, yet it is still supported as a legacy method.
 ```python
 with program() as saving_a_var:
     a = declare(int, value=5)
@@ -35,8 +35,8 @@ with program() as saving_a_var:
     save(b, "b_var")
 ```
 2. Saving variables to streams and using stream processing.
-The `stream` construct is a powerful way to save and manipulate data on the server. 
-It is described in detail in the [QUA docs](https://qm-docs.qualang.io/guides/stream_proc). This example shows basic usage. 
+The `stream` construct is a powerful way to save and manipulate data on the server.
+It is described in detail in the [QUA docs](https://qm-docs.qualang.io/guides/stream_proc). This example shows basic usage.
 ```python
 with program() as streamProg:
     out_str = declare_stream()
@@ -50,11 +50,11 @@ with program() as streamProg:
 ```
 3. Using the buffer operator in stream processing.
 
-Streams can be acted upon with various operators. The buffer operator is a 
-particularly useful one which allows to reshape incoming data into buffers of 
-a predefined size. Using additional operators, such as the `average()` operator 
-as shown here, allows averaging such buffers with one another. In this case 
-all average buffers are saved, such that you can track the evolution of the average.  
+Streams can be acted upon with various operators. The buffer operator is a
+particularly useful one which allows to reshape incoming data into buffers of
+a predefined size. Using additional operators, such as the `average()` operator
+as shown here, allows averaging such buffers with one another. In this case
+all average buffers are saved, such that you can track the evolution of the average.
 ```python
 with program() as streamProg_buffer:
     out_str = declare_stream()
@@ -76,7 +76,7 @@ with program() as streamProg_buffer:
 4. Saving a stream to multiple tags.
 
 This examples shows how multiple output variables can be defined in one `steam_processing`
-environment. 
+environment.
 ```python
 with program() as multiple_tags:
     out_str1 = declare_stream()
@@ -109,7 +109,7 @@ with program() as streamProg_buffer:
         out_str.buffer(11, 3).save("out")
 ```
 
-## Post processing 
+## Post processing
 
 N/A
 

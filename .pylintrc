@@ -1,0 +1,78 @@
+[MAIN]
+# Use multiple processes to speed up Pylint
+jobs=0
+
+# Pickle collected data for later comparisons
+persistent=yes
+
+[MESSAGES CONTROL]
+# Disable messages that are not relevant for an examples/tutorial repository
+disable=
+    # Import related
+    import-error,
+    no-name-in-module,
+    # Naming conventions (examples often use simpler names)
+    invalid-name,
+    # Code style (handled by Black)
+    line-too-long,
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    # Common in examples
+    wildcard-import,
+    unused-wildcard-import,
+    pointless-string-statement,
+    undefined-variable,
+    # Duplicate code is common in examples showing similar patterns
+    duplicate-code,
+    # Design issues less critical for examples
+    too-many-locals,
+    too-many-branches,
+    too-many-statements,
+    too-many-arguments,
+    too-few-public-methods,
+    # Less important for tutorial code
+    broad-except,
+    bare-except,
+    global-statement,
+    redefined-outer-name,
+    consider-using-f-string,
+    # Style issues common in examples
+    f-string-without-interpolation,
+    expression-not-assigned,
+    unnecessary-pass,
+    # Import order less critical for examples
+    wrong-import-order,
+    ungrouped-imports,
+    # Unused code common in examples showing patterns
+    unused-import,
+    unused-argument,
+    unused-variable,
+    # Reimports sometimes useful in examples
+    reimported,
+    # Assignment issues less critical
+    assignment-from-no-return,
+    undefined-loop-variable,
+    # TODO/FIXME common in examples
+    fixme,
+    # Other minor issues
+    use-maxsplit-arg,
+    use-a-generator
+
+[FORMAT]
+# Maximum number of characters on a single line (match Black's setting)
+max-line-length=120
+
+[BASIC]
+# Good variable names which should always be accepted
+good-names=i,j,k,n,x,y,z,t,I,Q,u,_
+
+[DESIGN]
+# Maximum number of arguments for function / method
+max-args=10
+
+# Maximum number of locals for function / method body
+max-locals=25
+
+# Maximum number of branch for function / method body
+max-branches=20

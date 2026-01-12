@@ -2,9 +2,9 @@
 
 ## Experimental setup and context
 
-These files showcase various experiments that can be done on Two flux tunable transmons with individual qubit drive lines 
+These files showcase various experiments that can be done on Two flux tunable transmons with individual qubit drive lines
 and a single readout transmission line.
-The readout pulses are sent through an IQ mixer and down-converted through an IQ mixer. 
+The readout pulses are sent through an IQ mixer and down-converted through an IQ mixer.
 Qubit addressing is being done with IQ mixers.
 
 These files were tested in a real setup shown on the right, but are given as-is with no guarantee.
@@ -15,7 +15,7 @@ Use with care.
 ## Basic Files
 0. [Hello QUA](00_hello_qua.py) - A script used for playing with QUA.
 1. [Mixer Calibration](01_manual_mixer_calibration.py) - A script used to calibrate the corrections for mixer imbalances.
-2. [Raw ADC Traces](02_raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC 
+2. [Raw ADC Traces](02_raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC
 is not saturated, correct for DC offsets and check the multiplexed readout levels.
 3. [time_of_flight](03_time_of_flight.py) - A script to measure the ADC offsets and calibrate the time of flight.
 4. [Resonator Spectroscopy](04_resonator_spectroscopy_single.py) - Performs a 1D frequency sweep on a given resonator.
@@ -59,7 +59,7 @@ fidelity.
 21. ** CZ spectroscopy ** by driving the energy exchange |11> <--> |20>: ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
     * [CZ](21_CZ.py) - Performs the CZ spectroscopy by scanning the flux pulse with a 4ns granularity.
     * [CZ pulsed](21_CZ_1ns.py) - Performs the CZ spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
-    
+
 
 ## Use Cases
 
@@ -67,18 +67,17 @@ These folders contain various examples of protocols made with the OPX, including
 a specific setup and would require changes to run on different setups. Current use-cases:
 
 * [Two qubit gate optimization with cryoscope](../Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope)
-The goal of this use-case is to perform SWAP spectroscopy and improve the SWAP fidelity by correcting for the flux pulse 
+The goal of this use-case is to perform SWAP spectroscopy and improve the SWAP fidelity by correcting for the flux pulse
 distortion using Cryoscope and the OPX IIR and FIR filters..
 * [Two-qubit randomized benchmarking](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Use%20Case%202%20-%20Two-Qubit-Randomized-Benchmarking#two-qubit-randomized-benchmarking).
 This use-case showcases an implementation of two-qubit randomized benchmarking with the OPX.
 
 ## Set-ups with Octave
 
-The configuration included in this folder correspond to a set-up without Octave. 
+The configuration included in this folder correspond to a set-up without Octave.
 However, a few files are there to facilitate the integration of the Octave:
 1. [configuration_with_octave.py](configuration_with_octave.py): An example of a configuration including the octave. You can replace the content of the file called `configuration.py` by this one so that it will be imported in all the scripts above.
 2. [octave_clock_and_calibration.py](octave_clock_and_calibration.py): A file __to execute__ in order to configure the Octave's clock and calibrate the Octave.
 3. [set_octave.py](set_octave.py): A helper function to ease the octave initialization.
 
 If you are a new Octave user, then it is recommended to start with the [Octave tutorial](https://github.com/qua-platform/qua-libs/blob/main/Tutorials/intro-to-octave/README.md).
-
