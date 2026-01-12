@@ -28,6 +28,8 @@ class NodeSpecificParameters(RunnableParameters):
     """The Y axis span in volts"""
     dc_control: bool = False
     """Includes VoltageControlComponent in Video Mode."""
+    use_validation: bool = True
+    """Whether to use validation with simulated data."""
 
 
 class Parameters(
