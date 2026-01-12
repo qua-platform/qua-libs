@@ -18,13 +18,13 @@ class NodeSpecificParameters(RunnableParameters):
     """The name of the swept element in the X axis."""
     y_axis_name: str = None
     """The name of the swept element in the Y axis."""
-    x_points: int = 51
+    x_points: int = 201
     """Number of measurement points in the X axis."""
-    y_points: int = 51
+    y_points: int = 201
     """Number of measurement points in the Y axis."""
-    x_span: float = 0.03
+    x_span: float = 0.05
     """The X axis span in volts"""
-    y_span: float = 0.03
+    y_span: float = 0.05
     """The Y axis span in volts"""
     dc_control: bool = False
     """Includes VoltageControlComponent in Video Mode."""
