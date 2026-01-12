@@ -339,7 +339,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
     # Plot basic amplitude and phase maps
     fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
-    fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
+    # fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
 
     # Store the generated figures
     node.results["figures"] = {
