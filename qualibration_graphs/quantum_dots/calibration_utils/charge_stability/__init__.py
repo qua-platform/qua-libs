@@ -1,4 +1,4 @@
-from .parameters import Parameters, get_voltage_arrays, get_swept_object
+from .parameters import Parameters, get_voltage_arrays
 from .plotting import (
     plot_raw_amplitude,
     plot_raw_phase,
@@ -24,7 +24,6 @@ except ImportError:  # pragma: no cover - optional dependency guard
 __all__ = [
     "Parameters",
     "get_voltage_arrays",
-    "get_swept_object",
     "plot_raw_amplitude",
     "plot_raw_phase",
     "plot_individual_raw_amplitude",
