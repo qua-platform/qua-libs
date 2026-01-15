@@ -82,19 +82,23 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
                 try:
                     crht.fit_params()
                     coeffs.append(crht.interaction_coeffs_MHz)
-                    fig_analysis, axs = plt.subplots(4, 1, figsize=(10, 10), sharex=True, sharey=True)
-                    fig_analysis.suptitle(f"Qc: {qp.qubit_control.name}, Qt: {qp.qubit_target.name}")
-                    fig_analysis = crht.plot_fit_result(fig_analysis, axs, do_show=False)
+                    fig_analysis, axs = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
+                    crht.plot_data(fig_analysis, axs)
+                    crht.plot_fit_result(fig_analysis, axs, do_show=False)
+                    fig_analysis.suptitle(
+                        f"#{node.snapshot_idx} - Qc: {qp.qubit_control.name}, Qt: {qp.qubit_target.name}"
+                    )
+                    fig_analysis.subplots_adjust(top=0.9)
                     plt.tight_layout()
                     node.results[f"figure_analysis_{qp.name}_amp_scaling={_amp:5.4f}".replace(".", "-")] = fig_analysis
-                except:
-                    print(f"-> failed")
+                except Exception as e:
+                    print(f"-> failed with error: {e}")
                     crht.interaction_coeffs_MHz = {p: None for p in PAULI_2Q}
                     coeffs.append({p: None for p in PAULI_2Q})
 
             # Plot the estimated interaction coefficients
             fig_summary = plot_interaction_coeffs(coeffs, amp_scalings, xlabel="cr drive amplitude scaling")
-            fig_summary.suptitle(f"Qc: {qp.qubit_control.name}, Qt: {qp.qubit_target.name}")
+            fig_summary.suptitle(f"#{node.snapshot_idx} - Qc: {qp.qubit_control.name}, Qt: {qp.qubit_target.name}")
             node.results[f"figure_summary_{qp.name}"] = fig_summary
 
     return fit_data, fit_results

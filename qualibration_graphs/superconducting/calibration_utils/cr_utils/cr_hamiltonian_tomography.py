@@ -6,11 +6,23 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 
+try:
+    from fit_oscillation import fit_exp_decay_Bloch, plot_Bloch_fit
+except ImportError:
+    from .fit_oscillation import fit_exp_decay_Bloch, plot_Bloch_fit
 
 CONTROL_STATES = ["0", "1"]  # control state: 0 or 1
 TARGET_BASES = ["x", "y", "z"]  # target basiss x, y, z
 PARAM_NAMES = ["delta", "omega_x", "omega_y"]
 PAULI_2Q = ["IX", "IY", "IZ", "ZX", "ZY", "ZZ"]
+PAULI_2Q_PLOT_STYLES = [
+    {"color": "C0", "linestyle": "--", "marker": "."},
+    {"color": "C1", "linestyle": "--", "marker": "."},
+    {"color": "C2", "linestyle": "--", "marker": "."},
+    {"color": "C0", "linestyle": "-", "marker": "x"},
+    {"color": "C1", "linestyle": "-", "marker": "x"},
+    {"color": "C2", "linestyle": "-", "marker": "x"},
+]
 
 # generate a set of points on sphere for initial values for delta, omega_x, omega_y
 signss = itertools.product([-1, 1], repeat=3)
@@ -57,7 +69,8 @@ class CRHamiltonianTomographyFunctions:
         """
         m2 = self._compute_omega_squared(d, mx, my)
         m = np.sqrt(m2)
-        return (-d * mx + d * mx * np.cos(m * ts) + m * my * np.sin(m * ts)) / m2
+        mt = m * ts
+        return (d * mx * (1 - np.cos(mt)) + m * my * np.sin(mt)) / m2
 
     def _compute_Y(self, ts, d, mx, my):
         """
@@ -72,7 +85,8 @@ class CRHamiltonianTomographyFunctions:
         """
         m2 = self._compute_omega_squared(d, mx, my)
         m = np.sqrt(m2)
-        return (+d * my - d * my * np.cos(m * ts) - m * mx * np.sin(m * ts)) / m2
+        mt = m * ts
+        return (d * my * (1 - np.cos(mt)) - m * mx * np.sin(mt)) / m2
 
     def _compute_Z(self, ts, d, mx, my):
         """
@@ -87,7 +101,9 @@ class CRHamiltonianTomographyFunctions:
         """
         m2 = self._compute_omega_squared(d, mx, my)
         m = np.sqrt(m2)
-        return (+(d**2) + (mx**2 + my**2) * np.cos(m * ts)) / m2
+        mt = m * ts
+        cos_mt = np.cos(mt)
+        return ((d**2) * (1 - cos_mt)) / m2 + cos_mt
 
     def compute_R(self, xyz0, xyz1):
         """
@@ -249,29 +265,14 @@ class CRHamiltonianTomographyAnalysis(CRHamiltonianTomographyFunctions):
         :return: Self.
         """
         for st in CONTROL_STATES:
-            # prepare a set of initial values
-            p0s = self._pick_params_inits(xyz=self.data_dict[st])
-
-            # fit the model
-            errs = []
-            params_fitted_list = []
-            for p0 in p0s:
-                params_fitted, _ = self._fit_bloch_vec_evolution(
-                    xyz=self.data_dict[st],
-                    p0=p0,
-                )
-                crqst_fitted_dict = self.compute_XYZ(self.ts, *params_fitted)
-                # squared error
-                err = np.array(
-                    [((crqst_fitted_dict[bss] - self.data_dict[st][bss]) ** 2).sum() for bss in TARGET_BASES]
-                ).sum()
-                errs.append(err)
-                params_fitted_list.append(params_fitted)
-
-            # pick the best fitted (minimal error)
-            idx_best_fit = np.argmin(np.array(errs))
-            self.params_fitted[st] = params_fitted_list[idx_best_fit]
-            # for clarity
+            t = self.ts
+            Xd = self.data_dict[st]["x"]
+            Yd = self.data_dict[st]["y"]
+            Zd = self.data_dict[st]["z"]
+            # parameters here are delta, Ox, Oy, taux, tauy, tauz
+            params = fit_exp_decay_Bloch(t, Xd, Yd, Zd, refine_guess=False, plot=False)
+            self.params_fitted[st] = params[:3]
+            self.params_fitted_decay = params[3:]
             self.params_fitted_dict[st] = {nm: p for nm, p in zip(PARAM_NAMES, self.params_fitted[st])}
 
         # compute interaction rates based on the fitted params
@@ -320,7 +321,7 @@ class CRHamiltonianTomographyAnalysis(CRHamiltonianTomographyFunctions):
         :return: The matplotlib figure object containing the plots.
         """
         if fig is None:
-            fig, axs = plt.subplots(4, 1, figsize=(10, 10), sharex=True, sharey=True)
+            fig, axs = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
 
         # x, y, z
         axs[0].set_title(label)
@@ -337,7 +338,7 @@ class CRHamiltonianTomographyAnalysis(CRHamiltonianTomographyFunctions):
             ax = axs[3]
             ax.cla()
             R = self.compute_R(self.data_dict["0"], self.data_dict["1"])
-            ax.plot(self.ts, R, "k")
+            ax.scatter(self.ts, R, color="k")
             ax.set_xlabel("time")
             ax.set_ylabel("R", fontsize=16)
 
@@ -360,28 +361,33 @@ class CRHamiltonianTomographyAnalysis(CRHamiltonianTomographyFunctions):
         if any(value is None for value in self.interaction_coeffs_MHz.values()):
             raise RuntimeError("some of the interaction coefficients have not been computed yet.")
 
+        xyz0_fit = {}
+        xyz1_fit = {}
+        ts_fit = np.linspace(self.ts[0], self.ts[-1], 500)
         for ax, bss in zip(axs, TARGET_BASES):
             v0 = self.data_dict["0"][bss]
             v1 = self.data_dict["1"][bss]
             if bss == "x":
-                eV0 = self._compute_X(self.ts, *self.params_fitted["0"])
-                eV1 = self._compute_X(self.ts, *self.params_fitted["1"])
+                eV0 = self._compute_X(ts_fit, *self.params_fitted["0"])
+                eV1 = self._compute_X(ts_fit, *self.params_fitted["1"])
             elif bss == "y":
-                eV0 = self._compute_Y(self.ts, *self.params_fitted["0"])
-                eV1 = self._compute_Y(self.ts, *self.params_fitted["1"])
+                eV0 = self._compute_Y(ts_fit, *self.params_fitted["0"])
+                eV1 = self._compute_Y(ts_fit, *self.params_fitted["1"])
             elif bss == "z":
-                eV0 = self._compute_Z(self.ts, *self.params_fitted["0"])
-                eV1 = self._compute_Z(self.ts, *self.params_fitted["1"])
+                eV0 = self._compute_Z(ts_fit, *self.params_fitted["0"])
+                eV1 = self._compute_Z(ts_fit, *self.params_fitted["1"])
+            xyz0_fit[bss] = eV0
+            xyz1_fit[bss] = eV1
 
-            ax.scatter(self.ts, v0, s=20, color="b", label="ctrl in |0>")
-            ax.scatter(self.ts, v1, s=20, color="r", label="ctrl in |1>")
-            ax.plot(self.ts, eV0, lw=4.0, color="b", alpha=0.5)
-            ax.plot(self.ts, eV1, lw=4.0, color="r", alpha=0.5)
+            # ax.scatter(self.ts, v0, s=20, color="b", label="ctrl in |0>")
+            # ax.scatter(self.ts, v1, s=20, color="r", label="ctrl in |1>")
+            ax.plot(ts_fit, eV0, lw=4.0, color="b", alpha=0.5)
+            ax.plot(ts_fit, eV1, lw=4.0, color="r", alpha=0.5)
             ax.set_ylabel(f"<{bss}(t)>", fontsize=16)
 
             if bss == "x":
                 ax.set_title("Pauli Expectation Value", fontsize=16)
-                ax.legend(["0 meas", "1 meas", "0 fit", "1 fit"], fontsize=10)
+                ax.legend(["0 meas", "1 meas", "0 fit", "1 fit"], fontsize=10, ncol=2)
             elif bss == "y":
                 ax.set_title(
                     "IX = %.2f MHz, IY = %.2f MHz, IZ = %.2f MHz"
@@ -403,15 +409,25 @@ class CRHamiltonianTomographyAnalysis(CRHamiltonianTomographyFunctions):
                     fontsize=16,
                 )
 
-        for ax in axs:
+        for ax in axs[:-1]:
             ax.hlines(y=0, xmin=self.ts[0], xmax=self.ts[-1], lw=1.0, color="k", alpha=0.2)
             ax.set_xlim((self.ts[0], self.ts[-1]))
+            ax.set_ylim((-1.05, 1.05))
 
-        # plot "R"
-        R = self.compute_R(self.data_dict["0"], self.data_dict["1"])
-        axs[3].plot(self.ts, R, "k")
+        # plot "R"]
+        R = self.compute_R(xyz0_fit, xyz1_fit)
+        axs[3].plot(ts_fit, R, "k")
         axs[3].set_xlabel("time")
         axs[3].set_ylabel("R", fontsize=16)
+        axs[3].hlines(
+            y=[0, 1],
+            xmin=self.ts[0],
+            xmax=self.ts[-1],
+            lw=1.0,
+            color="k",
+            alpha=0.2,
+        )
+        axs[3].set_ylim((-0.05, 1.05))
 
         return fig
 
@@ -426,10 +442,10 @@ def plot_interaction_coeffs(coeffs, xaxis, xlabel="amplitude", fig=None):
         fig, ax = plt.subplots(1, 1, figsize=(6, 5))
 
     coeffs_array_dict = {p: np.array([coeff[p] for coeff in coeffs]) for p in PAULI_2Q}
-    for p in PAULI_2Q:
+    for p, styles in zip(PAULI_2Q, PAULI_2Q_PLOT_STYLES):
         filt = ~np.isnan(xaxis)
-        ax.plot(xaxis[filt], coeffs_array_dict[p][filt], ".-")
-    ax.axhline(y=0, color="k", alpha=0.3, linestyle="--")
+        ax.plot(xaxis[filt], coeffs_array_dict[p][filt], **styles)
+    ax.axhline(y=0, color="k", alpha=0.3, linestyle="-")
     ax.set_xlabel(xlabel)
     ax.set_ylabel("interaction coefficients [MHz]")
     ax.legend(PAULI_2Q)
@@ -442,7 +458,7 @@ def plot_cr_duration_vs_scan_param(data_c, data_t, ts_ns, scan_param, scan_param
     for i, (axs, bss) in enumerate(zip(axss, TARGET_BASES)):
         for j, (ax, dt, st) in enumerate(zip(axs, data, 2 * CONTROL_STATES)):
             ax.cla()
-            ax.pcolor(ts_ns, scan_param, dt[:, :, i, j % 2])
+            ax.pcolormesh(ts_ns, scan_param, dt[:, :, i, j % 2], cmap="PiYG", vmin=-1, vmax=1)
             if i == 0 and j < 2:
                 ax.set_title(f"Q_C={st}")
             if i == 0 and j >= 2:
