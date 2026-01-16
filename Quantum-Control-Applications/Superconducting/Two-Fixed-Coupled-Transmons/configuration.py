@@ -1,6 +1,6 @@
 # %%
 """
-Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
+Octave configuration working for QOP244 and qm-qua==1.2.1 and newer.
 """
 
 from pathlib import Path

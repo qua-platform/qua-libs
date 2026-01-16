@@ -4,12 +4,10 @@ QUA-Config supporting OPX1000 w/ LF-FEM & Octave
 
 from pathlib import Path
 
-import numpy as np
 import plotly.io as pio
 from qualang_tools.units import unit
 from qualang_tools.voltage_gates import VoltageGateSequence
 from scipy.signal.windows import gaussian
-from set_octave import OctaveUnit, octave_declaration
 
 pio.renderers.default = "browser"
 
@@ -41,25 +39,6 @@ default_additional_files = {
 #####################
 con = "con1"
 fem = 5  # Should be the LF-FEM index, e.g., 1
-
-############################
-# Set octave configuration #
-############################
-# The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
-# the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
-octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con=con)
-# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con=con)
-
-# If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
-# or directly to the Octave (without QM the router), use the local octave IP and port 80.
-# octave_ip = "192.168.88.X"
-# octave_1 = OctaveUnit("octave1", octave_ip, port=80, con=con)
-
-# Add the octaves
-octaves = [octave_1]
-# Configure the Octaves
-octave_config = octave_declaration(octaves)
-
 
 #####################
 # OPX configuration #
@@ -236,6 +215,9 @@ config = {
             "operations": {
                 "step": "P1_step_pulse",
                 "coulomb_step": "P1_coulomb_step_pulse",
+                "init": "P1_init_pulse",
+                "manip": "P1_manip_pulse",
+                "readout": "P1_readout_pulse",
             },
         },
         "P1_sticky": {
@@ -263,6 +245,9 @@ config = {
             "sticky": {"analog": True, "duration": hold_offset_duration},
             "operations": {
                 "step": "P2_step_pulse",
+                "init": "P2_init_pulse",
+                "manip": "P2_manip_pulse",
+                "readout": "P2_readout_pulse",
             },
         },
         "sensor_gate": {
@@ -307,7 +292,7 @@ config = {
             },
         },
         "qubit": {
-            "RF_inputs": {"port": ("octave1", 2)},
+            "RF_inputs": {"port": ("oct1", 2)},
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "cw_pulse",
@@ -351,7 +336,7 @@ config = {
         },
     },
     "octaves": {
-        "octave1": {
+        "oct1": {
             "RF_outputs": {
                 2: {
                     "LO_frequency": qubit_LO,
@@ -371,11 +356,53 @@ config = {
                 "single": "P1_step_wf",
             },
         },
+        "P1_init_pulse": {
+            "operation": "control",
+            "length": duration_init,
+            "waveforms": {
+                "single": "P1_init_wf",
+            },
+        },
+        "P1_manip_pulse": {
+            "operation": "control",
+            "length": duration_manip,
+            "waveforms": {
+                "single": "P1_manip_wf",
+            },
+        },
+        "P1_readout_pulse": {
+            "operation": "control",
+            "length": duration_readout,
+            "waveforms": {
+                "single": "P1_readout_wf",
+            },
+        },
         "P2_step_pulse": {
             "operation": "control",
             "length": step_length,
             "waveforms": {
                 "single": "P2_step_wf",
+            },
+        },
+        "P2_init_pulse": {
+            "operation": "control",
+            "length": duration_init,
+            "waveforms": {
+                "single": "P2_init_wf",
+            },
+        },
+        "P2_manip_pulse": {
+            "operation": "control",
+            "length": duration_manip,
+            "waveforms": {
+                "single": "P2_manip_wf",
+            },
+        },
+        "P2_readout_pulse": {
+            "operation": "control",
+            "length": duration_readout,
+            "waveforms": {
+                "single": "P2_readout_wf",
             },
         },
         "P1_coulomb_step_pulse": {
@@ -494,7 +521,13 @@ config = {
     },
     "waveforms": {
         "P1_step_wf": {"type": "constant", "sample": P1_step_amp},
+        "P1_init_wf": {"type": "constant", "sample": level_init[0]},
+        "P1_manip_wf": {"type": "constant", "sample": level_manip[0]},
+        "P1_readout_wf": {"type": "constant", "sample": level_readout[0]},
         "P2_step_wf": {"type": "constant", "sample": P2_step_amp},
+        "P2_init_wf": {"type": "constant", "sample": level_init[1]},
+        "P2_manip_wf": {"type": "constant", "sample": level_manip[1] - level_init[1]},
+        "P2_readout_wf": {"type": "constant", "sample": level_readout[1] - level_manip[1]},
         "charge_sensor_step_wf": {"type": "constant", "sample": charge_sensor_amp},
         "x180_wf": {"type": "constant", "sample": x180_amp},
         "y180_wf": {"type": "constant", "sample": y180_amp},

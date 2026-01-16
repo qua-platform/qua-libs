@@ -107,7 +107,7 @@ with program() as T1_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-# qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+# qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_83")
 
 ###########################

@@ -115,9 +115,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 align()
                 # Qubit readout
                 for i, qubit in multiplexed_qubits.items():
+                    # Measure the state of the resonators
                     qubit.resonator.measure(operation, qua_vars=(I_g[i], Q_g[i]))
+                    # Wait for the resonator to empty in case active reset is used
                     qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
-                    # save data
+                    # save data to their respective streams
                     save(I_g[i], I_g_st[i])
                     save(Q_g[i], Q_g_st[i])
                 align()
@@ -130,10 +132,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 # Qubit readout
                 for i, qubit in multiplexed_qubits.items():
+                    # Play the x180 gate to put the qubits in the excited state
                     qubit.xy.play("x180")
+                    # Align the elements to measure after playing the qubit pulses.
+                    qubit.align()
+                    # Measure the state of the resonators
                     qubit.resonator.measure(operation, qua_vars=(I_e[i], Q_e[i]))
+                    # Wait for the resonator to empty in case active reset is used
                     qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
-                    # save data
+                    # save data to their respective streams
                     save(I_e[i], I_e_st[i])
                     save(Q_e[i], Q_e_st[i])
 

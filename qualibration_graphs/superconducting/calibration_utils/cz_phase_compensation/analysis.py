@@ -44,8 +44,8 @@ def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
 
     for qp_name, fit_result in fit_results.items():
         s_qubit = f"Results for qubit pair {qp_name}: "
-        s_control = f"\tControl qubit phase correction: {fit_results[qp_name]["control_phase_correction"]:.6f} a.u."
-        s_target = f"\tTarget qubit phase correction: {fit_results[qp_name]["target_phase_correction"]:.6f} a.u."
+        s_control = f"\tControl qubit phase correction: {fit_results[qp_name]['control_phase_correction']:.6f} a.u."
+        s_target = f"\tTarget qubit phase correction: {fit_results[qp_name]['target_phase_correction']:.6f} a.u."
 
         if fit_results[qp_name]["success"]:
             s_qubit += "SUCCESS!\n"

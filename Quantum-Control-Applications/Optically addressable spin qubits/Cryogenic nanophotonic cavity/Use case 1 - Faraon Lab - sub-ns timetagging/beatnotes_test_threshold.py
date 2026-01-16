@@ -54,7 +54,7 @@ with program() as calib_delays:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 # Update signal threshold before opening the quantum machine
 new_signal_threshold = 600
 config["elements"]["SNSPD"]["outputPulseParameters"]["signalThreshold"] = new_signal_threshold

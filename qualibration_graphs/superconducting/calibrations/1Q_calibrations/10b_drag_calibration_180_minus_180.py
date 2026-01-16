@@ -109,7 +109,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state_st = [declare_stream() for _ in range(num_qubits)]
         a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
         npi = declare(int)  # QUA variable for the number of qubit pulses
-        count = declare(int)  # QUA variable for counting the qubit pulses
 
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
@@ -128,6 +127,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Qubit manipulation
                         for i, qubit in multiplexed_qubits.items():
                             # Loop for error amplification (perform many qubit pulses)
+                            count = declare(int)  # QUA variable for counting the qubit pulses
                             with for_(count, 0, count < npi, count + 1):
                                 if node.parameters.operation == "x180":
                                     play(

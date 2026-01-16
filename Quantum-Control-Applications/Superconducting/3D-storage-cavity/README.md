@@ -30,13 +30,4 @@ one can continue to the following files:
 9. [Swapping operation](./10_Swapping_operation.py) - Swaps the resonator cavity and the storage cavity states. 
 
 
-
-## Set-ups with Octave
-
-The configuration included in this folder correspond to a set-up with an Octave. 
-However, a few files are there to facilitate the integration of the Octave:
-1. [configuration_with_octave.py](./3D-Storage-Cavity/configuration_with_octave.py): An example of a configuration including the octave. You can replace the content of the file called `configuration.py` by this one so that it will be imported in all the scripts above.
-2. [octave_clock_and_calibration.py](./3D-Storage-Cavity/octave_clock_and_calibration.py): A file __to execute__ in order to configure the Octave's clock and calibrate the Octave.
-3. [set_octave.py](./3D-Storage-Cavity/set_octave.py): A helper function to ease the octave initialization.
-
 If you are a new Octave user, then it is recommended to start with the [Octave tutorial](https://github.com/qua-platform/qua-libs/blob/main/Tutorials/intro-to-octave/README.md).

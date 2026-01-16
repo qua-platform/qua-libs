@@ -23,7 +23,7 @@ with program() as hello_QUA:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
 ###########################
 # Run or Simulate Program #
@@ -47,9 +47,9 @@ if simulate:
     # Visualize and save the waveform report
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(config, close_other_machines=True)
     job = qm.execute(hello_QUA)
     # Execute does not block python! As this is an infinite loop, the job would run forever. In this case, we've put a 10
     # seconds sleep and then halted the job.
     time.sleep(10)
-    job.halt()
+    job.cancel()

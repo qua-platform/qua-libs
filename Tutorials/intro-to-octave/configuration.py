@@ -1,8 +1,6 @@
 """
-Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
+Octave configuration working for QOP244 and qm-qua==1.2.1 and newer.
 """
-
-from set_octave import OctaveUnit, octave_declaration
 
 ######################
 # Network parameters #
@@ -10,17 +8,6 @@ from set_octave import OctaveUnit, octave_declaration
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
-
-############################
-# Set octave configuration #
-############################
-octave_port = 11250  # Must be 11xxx, where xxx are the last three digits of the Octave IP address
-octave_1 = OctaveUnit("octave1", qop_ip, port=octave_port, con="con1")
-
-# Add the octaves
-octaves = [octave_1]
-# Configure the Octaves
-octave_config = octave_declaration(octaves)
 
 #####################
 # OPX configuration #

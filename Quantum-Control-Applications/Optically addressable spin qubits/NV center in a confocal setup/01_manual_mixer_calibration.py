@@ -28,14 +28,14 @@ with program() as cw_output:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
-qm = qmm.open_qm(config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
+qm = qmm.open_qm(config, close_other_machines=True)
 
 job = qm.execute(cw_output)
 
-# When done, the halt command can be called and the offsets can be written directly into the config file.
+# When done, the cancel command can be called and the offsets can be written directly into the config file.
 
-# job.halt()
+# job.cancel()
 
 # These are the 2 commands used to correct for mixer imperfections. The first is used to set the DC of the `I` and `Q`
 # channels to compensate for the LO leakage. Since this compensation depends on the 'I' & 'Q' powers, it is advised to

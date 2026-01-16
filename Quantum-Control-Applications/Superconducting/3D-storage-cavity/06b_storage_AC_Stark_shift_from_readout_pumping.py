@@ -104,7 +104,7 @@ with program() as storage_AC_stark_shift:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 ###########################
 # Run or Simulate Program #
