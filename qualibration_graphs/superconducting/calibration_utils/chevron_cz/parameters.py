@@ -29,7 +29,6 @@ class NodeSpecificParameters(RunnableParameters):
     update_all_pulses: bool = True
 
 
-
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
