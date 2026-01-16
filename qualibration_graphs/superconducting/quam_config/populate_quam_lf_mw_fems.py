@@ -20,7 +20,7 @@ from quam_builder.architecture.superconducting.custom_gates.flux_tunable_transmo
 from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
 from quam_config import Quam
 
-from quam.components.pulses import CosineBipolarPulse, FlatTopGaussianPulse, SquarePulse
+from quam.components.pulses import _CosineBipolarPulse, _FlatTopGaussianPulse, SquarePulse
 
 ########################################################################################################################
 # %%                                 QUAM loading and auxiliary functions
@@ -193,11 +193,11 @@ for k, qubit in enumerate(machine.qubits.values()):
 #     SquarePulse,
 #     DragGaussianPulse,
 #     DragCosinePulse,
-#     FlatTopGaussianPulse,
+#     _FlatTopGaussianPulse,
 #     WaveformPulse,
 #     SquareReadoutPulse,
 # )
-# e.g., machine.qubits[q].xy.operations["new_pulse"] = FlatTopGaussianPulse(...)
+# e.g., machine.qubits[q].xy.operations["new_pulse"] = _FlatTopGaussianPulse(...)
 
 ## Update pulses
 for k, q in enumerate(machine.qubits):
@@ -275,7 +275,7 @@ for qp in qubit_pairs:
     control_qb.z.operations[pulse_name].amplitude = pulse_amp
 
     print(f"Creating CZ Flattop gate macro for {pair.name}")
-    cz_pulse = FlatTopGaussianPulse(
+    cz_pulse = _FlatTopGaussianPulse(
         amplitude=0.1,
         flat_length=cz_interaction_duration,
         smoothing_length=smoothing_duration,
@@ -290,7 +290,7 @@ for qp in qubit_pairs:
     pulse_padding = pair.macros["cz_flattop"].flux_pulse_control.get_reference() + "/post_zero_padding_length"
     pulse_name = pair.macros["cz_flattop"].flux_pulse_control_label
     control_qb = pair.qubit_control
-    control_qb.z.operations[pulse_name] = FlatTopGaussianPulse(
+    control_qb.z.operations[pulse_name] = _FlatTopGaussianPulse(
         amplitude=0.1,
         flat_length=cz_interaction_duration,
         smoothing_length=smoothing_duration,
@@ -302,7 +302,7 @@ for qp in qubit_pairs:
     control_qb.z.operations[pulse_name].post_zero_padding_length = pulse_padding
 
     print(f"Creating CZ Bipolar gate macro for {pair.name}")
-    cz_pulse = CosineBipolarPulse(
+    cz_pulse = _CosineBipolarPulse(
         amplitude=0.1,
         smoothing_length=smoothing_duration,
         id="cz_bipolar_pulse",
@@ -317,7 +317,7 @@ for qp in qubit_pairs:
     pulse_padding = pair.macros["cz_bipolar"].flux_pulse_control.get_reference() + "/post_zero_padding_length"
     pulse_name = pair.macros["cz_bipolar"].flux_pulse_control_label
     control_qb = pair.qubit_control
-    control_qb.z.operations[pulse_name] = CosineBipolarPulse(
+    control_qb.z.operations[pulse_name] = _CosineBipolarPulse(
         amplitude=0.1,
         flat_length=cz_interaction_duration,
         smoothing_length=smoothing_duration,

@@ -128,11 +128,11 @@ for k, qubit in enumerate(machine.qubits.values()):
 #     SquarePulse,
 #     DragGaussianPulse,
 #     DragCosinePulse,
-#     FlatTopGaussianPulse,
+#     _FlatTopGaussianPulse,
 #     WaveformPulse,
 #     SquareReadoutPulse,
 # )
-# e.g., machine.qubits[q].xy.operations["new_pulse"] = FlatTopGaussianPulse(...)
+# e.g., machine.qubits[q].xy.operations["new_pulse"] = _FlatTopGaussianPulse(...)
 
 ## Update pulses
 for k, q in enumerate(machine.qubits):
