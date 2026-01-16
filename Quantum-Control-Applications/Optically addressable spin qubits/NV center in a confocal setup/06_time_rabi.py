@@ -2,7 +2,7 @@
         TIME RABI
 The program consists in playing a mw pulse and measure the photon counts received by the SPCM
 across varying mw pulse durations.
-The sequence is repeated without playing the mw pulses to measure the dark counts on the SPCM.
+The sequence has a reference measurement window at the end of the laser pulse to normalize the photon counts.
 
 The data is then post-processed to determine the pi pulse duration for the specified amplitude.
 
@@ -30,6 +30,10 @@ from qualang_tools.results.data_handler import DataHandler
 t_vec = np.arange(4, 400, 1)  # Pulse durations in clock cycles (4ns)
 n_avg = 1_000_000  # Number of averaging loops
 
+# Determine reference readout during single laser pulse
+reference_wait = initialization_len_1 // 4 - 2 * meas_len_1 // 4 - 25  # in clock cycles
+reference_readout = reference_wait >= 4
+
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
@@ -43,7 +47,7 @@ save_data_dict = {
 with program() as time_rabi:
     counts = declare(int)  # variable for number of counts
     counts_st = declare_stream()  # stream for counts
-    counts_dark_st = declare_stream()  # stream for counts
+    counts_ref_st = declare_stream()  # stream for counts
     times = declare(int, size=100)  # QUA vector for storing the time-tags
     t = declare(int)  # variable to sweep over in time
     n = declare(int)  # variable to for_loop
@@ -61,20 +65,16 @@ with program() as time_rabi:
             align()  # Play the laser pulse after the mw pulse
             play("laser_ON", "AOM1")
             # Measure and detect the photons on SPCM1
-            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
+            measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_st)  # save counts
+            # Measure reference photon counts at end of laser pulse
+            if reference_readout:
+                wait(reference_wait, "SPCM1")
+                measure("readout", "SPCM1", time_tagging.analog(times, meas_len_1, counts))
+            else:
+                assign(counts, 1)
+            save(counts, counts_ref_st)
 
-            # Wait and align all elements before measuring the dark events
-            wait(wait_between_runs * u.ns)
-            align()
-
-            # Play the Rabi pulse with zero amplitude
-            play("x180" * amp(0), "NV", duration=t)  # pulse of varied lengths
-            align()  # Play the laser pulse after the mw pulse
-            play("laser_ON", "AOM1")
-            # Measure and detect the dark counts on SPCM1
-            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
-            save(counts, counts_dark_st)  # save dark counts
             wait(wait_between_runs * u.ns)
 
         save(n, n_st)  # save number of iteration inside for_loop
@@ -82,13 +82,13 @@ with program() as time_rabi:
     with stream_processing():
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
         counts_st.buffer(len(t_vec)).average().save("counts")
-        counts_dark_st.buffer(len(t_vec)).average().save("counts_dark")
+        counts_ref_st.buffer(len(t_vec)).average().save("counts_ref")
         n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
 #######################
 # Simulate or execute #
@@ -112,26 +112,25 @@ if simulate:
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
 else:
     # Open the quantum machine
-    qm = qmm.open_qm(config)
+    qm = qmm.open_qm(config, close_other_machines=True)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(time_rabi)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["counts", "counts_dark", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["counts", "counts_ref", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     while results.is_processing():
         # Fetch results
-        counts, counts_dark, iteration = results.fetch_all()
+        counts, counts_ref, iteration = results.fetch_all()
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(t_vec * 4, counts / 1000 / (meas_len_1 / u.s), label="photon counts")
-        plt.plot(t_vec * 4, counts_dark / 1000 / (meas_len_1 / u.s), label="dark counts")
+        plt.plot(t_vec * 4, counts / counts_ref, label="norm. photon counts")
         plt.xlabel("Rabi pulse duration [ns]")
-        plt.ylabel("Intensity [kcps]")
+        plt.ylabel("Norm. Signal")
         plt.title("Time Rabi")
         plt.legend()
         plt.pause(0.1)
@@ -139,7 +138,8 @@ else:
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
     save_data_dict.update({"counts_data": counts})
-    save_data_dict.update({"counts_dark_data": counts_dark})
+    save_data_dict.update({"counts_dark_data": counts_ref})
+    save_data_dict.update({"normalized_data": counts / counts_ref})
     save_data_dict.update({"fig_live": fig})
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
     data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

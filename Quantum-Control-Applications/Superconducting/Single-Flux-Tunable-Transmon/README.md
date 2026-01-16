@@ -85,12 +85,4 @@ The goal of this experiment is to calibrate the DRAG coefficient and AC Start sh
 to increase the single qubit gate fidelity as well as to minimize the leakage out of the
 computational space.
 
-## Set-ups with Octave
-
-The configuration included in this folder correspond to a set-up without Octave. 
-However, a few files are there to facilitate the integration of the Octave:
-1. [configuration_with_octave.py](./Single-Flux-Tunable-Transmon/configuration_with_octave.py): An example of a configuration including the octave. You can replace the content of the file called `configuration.py` by this one so that it will be imported in all the scripts above.
-2. [octave_clock_and_calibration.py](./Single-Flux-Tunable-Transmon/octave_clock_and_calibration.py): A file __to execute__ in order to configure the Octave's clock and calibrate the Octave.
-3. [set_octave.py](./Single-Flux-Tunable-Transmon/set_octave.py): A helper function to ease the octave initialization.
-
 If you are a new Octave user, then it is recommended to start with the [Octave tutorial](https://github.com/qua-platform/qua-libs/blob/main/Tutorials/intro-to-octave/README.md).

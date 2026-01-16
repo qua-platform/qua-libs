@@ -8,7 +8,6 @@ import numpy as np
 import plotly.io as pio
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-from set_octave import OctaveUnit, octave_declaration
 
 pio.renderers.default = "browser"
 
@@ -36,30 +35,11 @@ default_additional_files = {
     "optimal_weights.npz": "optimal_weights.npz",
 }
 
-############################
-# Set octave configuration #
-############################
-con = "con1"
-fem = 1  # Should be the LF-FEM index, e.g., 1
-
-# The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
-# the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
-octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con=con)
-# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con=con)
-
-# If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
-# or directly to the Octave (without QM the router), use the local octave IP and port 80.
-# octave_ip = "192.168.88.X"
-# octave_1 = OctaveUnit("octave1", octave_ip, port=80, con=con)
-
-# Add the octaves
-octaves = [octave_1]
-# Configure the Octaves
-octave_config = octave_declaration(octaves)
-
 #####################
 # OPX configuration #
 #####################
+con = "con1"
+fem = 1  # Should be the LF-FEM index, e.g., 1
 sampling_rate = int(1e9)  # or, int(2e9)
 
 #############################################
@@ -417,8 +397,8 @@ config = {
     },
     "elements": {
         "rr1": {
-            "RF_inputs": {"port": ("octave1", 1)},
-            "RF_outputs": {"port": ("octave1", 1)},
+            "RF_inputs": {"port": ("oct1", 1)},
+            "RF_outputs": {"port": ("oct1", 1)},
             "intermediate_frequency": resonator_IF_q1,  # frequency at offset ch7
             "operations": {
                 "cw": "const_pulse",
@@ -428,8 +408,8 @@ config = {
             "smearing": 0,
         },
         "rr2": {
-            "RF_inputs": {"port": ("octave1", 1)},
-            "RF_outputs": {"port": ("octave1", 1)},
+            "RF_inputs": {"port": ("oct1", 1)},
+            "RF_outputs": {"port": ("oct1", 1)},
             "intermediate_frequency": resonator_IF_q2,  # frequency at offset ch8
             "operations": {
                 "cw": "const_pulse",
@@ -439,7 +419,7 @@ config = {
             "smearing": 0,
         },
         "q1_xy": {
-            "RF_inputs": {"port": ("octave1", 2)},
+            "RF_inputs": {"port": ("oct1", 2)},
             "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
             "operations": {
                 "cw": "const_pulse",
@@ -453,7 +433,7 @@ config = {
             },
         },
         "q2_xy": {
-            "RF_inputs": {"port": ("octave1", 3)},
+            "RF_inputs": {"port": ("oct1", 3)},
             "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
             "operations": {
                 "cw": "const_pulse",

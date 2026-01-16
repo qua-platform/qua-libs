@@ -176,6 +176,9 @@ config = {
             },
             "operations": {
                 "step": "P1_step_pulse",
+                "init": "P1_init_pulse",
+                "manip": "P1_manip_pulse",
+                "readout": "P1_readout_pulse",
             },
         },
         "P1_sticky": {
@@ -202,6 +205,9 @@ config = {
             "sticky": {"analog": True, "duration": hold_offset_duration},
             "operations": {
                 "step": "P2_step_pulse",
+                "init": "P2_init_pulse",
+                "manip": "P2_manip_pulse",
+                "readout": "P2_readout_pulse",
             },
         },
         "sensor_gate": {
@@ -305,11 +311,53 @@ config = {
                 "single": "P1_step_wf",
             },
         },
+        "P1_init_pulse": {
+            "operation": "control",
+            "length": duration_init,
+            "waveforms": {
+                "single": "P1_init_wf",
+            },
+        },
+        "P1_manip_pulse": {
+            "operation": "control",
+            "length": duration_manip,
+            "waveforms": {
+                "single": "P1_manip_wf",
+            },
+        },
+        "P1_readout_pulse": {
+            "operation": "control",
+            "length": duration_readout,
+            "waveforms": {
+                "single": "P1_readout_wf",
+            },
+        },
         "P2_step_pulse": {
             "operation": "control",
             "length": step_length,
             "waveforms": {
                 "single": "P2_step_wf",
+            },
+        },
+        "P2_init_pulse": {
+            "operation": "control",
+            "length": duration_init,
+            "waveforms": {
+                "single": "P2_init_wf",
+            },
+        },
+        "P2_manip_pulse": {
+            "operation": "control",
+            "length": duration_manip,
+            "waveforms": {
+                "single": "P2_manip_wf",
+            },
+        },
+        "P2_readout_pulse": {
+            "operation": "control",
+            "length": duration_readout,
+            "waveforms": {
+                "single": "P2_readout_wf",
             },
         },
         "bias_charge_pulse": {
@@ -438,7 +486,13 @@ config = {
     },
     "waveforms": {
         "P1_step_wf": {"type": "constant", "sample": P1_step_amp},
+        "P1_init_wf": {"type": "constant", "sample": level_init[0]},
+        "P1_manip_wf": {"type": "constant", "sample": level_manip[0]},
+        "P1_readout_wf": {"type": "constant", "sample": level_readout[0]},
         "P2_step_wf": {"type": "constant", "sample": P2_step_amp},
+        "P2_init_wf": {"type": "constant", "sample": level_init[1]},
+        "P2_manip_wf": {"type": "constant", "sample": level_manip[1] - level_init[1]},
+        "P2_readout_wf": {"type": "constant", "sample": level_readout[1] - level_manip[1]},
         "charge_sensor_step_wf": {"type": "constant", "sample": charge_sensor_amp},
         "pi_wf": {"type": "constant", "sample": pi_amp},
         "pi_half_wf": {"type": "constant", "sample": pi_half_amp},
