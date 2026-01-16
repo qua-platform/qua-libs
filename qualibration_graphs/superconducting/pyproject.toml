@@ -45,3 +45,10 @@ allow-direct-references = true
 # [tool.uv.sources]
 # quam-builder = { git = "https://github.com/qua-platform/quam-builder.git" }
 # qualibration-libs = { git = "https://github.com/qua-platform/qualibration-libs.git" }
+
+
+[tool.uv.pip]
+prerelease = "allow"
+
+[tool.uv]
+prerelease = "allow"
