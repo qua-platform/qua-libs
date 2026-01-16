@@ -1,7 +1,5 @@
 # %% {Imports}
-import warnings
-from dataclasses import asdict, dataclass
-from typing import List, Literal, Optional
+from dataclasses import asdict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,22 +12,17 @@ from calibration_utils.chevron_cz import (
     plot_raw_data_with_fit,
     process_raw_dataset,
 )
-from qm import SimulationConfig
 from qm.qua import *
-from qualang_tools.bakery import baking
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-from qualibrate import NodeParameters, QualibrationNode
+from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.parameters import get_qubit_pairs, get_qubits
+from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_builder.architecture.superconducting.custom_gates.flux_tunable_transmon_pair.two_qubit_gates import CZGate
 from quam_config import Quam
-from scipy.optimize import curve_fit
-
-from quam.components.pulses import FlatTopGaussianPulse, SquarePulse
 
 # %% {Node_parameters}
 description = """
@@ -124,7 +117,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Pre-compute the baked short segments (1..16 samples) for each control qubit in the pairs
     baked_signals = {
-        qp.qubit_control.name: baked_waveform(qp.qubit_control, baked_config, base_level=0.5, max_samples=16)
+        qp.qubit_control.name: baked_waveform(
+            qp.qubit_control, baked_config, base_level=pulse_amplitudes[qp.name], max_samples=16
+        )
         for qp in qubit_pairs
     }
 
@@ -181,9 +176,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     for j in range(1, 17):
                                         with case_(j):
                                             baked_signals[qp.qubit_control.name][j - 1].run(
-                                                amp_array=[
-                                                    (qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * a)
-                                                ]
+                                                amp_array=[(qp.qubit_control.z.name, a)]
                                             )
 
                             # For pulse durations above 16ns we combine baking with regular play statements.
@@ -212,16 +205,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                             p = pulse_amplitudes[qp.name]
                                             denom = qp.qubit_control.z.operations["const"].amplitude
                                             scale = (p / denom) * a
-                                            qp.qubit_control.z.play(
-                                                "const",
-                                                duration=t_cycles,
-                                                amplitude_scale=scale,
-                                            )
-                                            baked_signals[qp.qubit_control.name][j - 1].run(
-                                                amp_array=[
-                                                    (qp.qubit_control.z.name, pulse_amplitudes[qp.name] / 0.5 * a)
-                                                ]
-                                            )
+                                            with strict_timing_():
+                                                qp.qubit_control.z.play(
+                                                    "const",
+                                                    duration=t_cycles,
+                                                    amplitude_scale=scale,
+                                                )
+                                                baked_signals[qp.qubit_control.name][j - 1].run(
+                                                    amp_array=[(qp.qubit_control.z.name, a)]
+                                                )
                             align()
 
                             if node.parameters.use_state_discrimination:
@@ -257,7 +249,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
-    config = node.machine.generate_config()
+    config = node.namespace["baked_config"]
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
@@ -349,68 +341,30 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
 
-    for qp in node.namespace["qubit_pairs"]:
-        if hasattr(qp.macros, "cz_unipolar"):
-            continue
-        else:
-            print(f"Creating CZ Unipolar gate macro for {qp.name}")
-            cz_pulse = SquarePulse(length=100, amplitude=0.5, id="cz_unipolar_pulse")
-            cz = CZGate(flux_pulse_control=cz_pulse)
-            node.machine.qubit_pairs[qp.name].macros["cz_unipolar"] = cz
-            pulse_length = (
-                node.machine.qubit_pairs[qp.name].macros["cz_unipolar"].flux_pulse_control.get_reference() + "/length"
-            )
-            pulse_amp = (
-                node.machine.qubit_pairs[qp.name].macros["cz_unipolar"].flux_pulse_control.get_reference()
-                + "/amplitude"
-            )
-            pulse_name = node.machine.qubit_pairs[qp.name].macros["cz_unipolar"].flux_pulse_control_label
-            control_qb = node.machine.qubit_pairs[qp.name].qubit_control
-            control_qb.z.operations[pulse_name] = SquarePulse(length=100, amplitude=0.25)
-            control_qb.z.operations[pulse_name].length = pulse_length
-            control_qb.z.operations[pulse_name].amplitude = pulse_amp
-
-        if hasattr(qp.macros, "cz_flattop"):
-            continue
-        else:
-            print(f"Creating CZ Flattop gate macro for {qp.name}")
-            cz_pulse = FlatTopGaussianPulse(length=100, amplitude=0.5, flat_length=50, id="cz_flattop_pulse")
-            cz = CZGate(flux_pulse_control=cz_pulse)
-            node.machine.qubit_pairs[qp.name].macros["cz_flattop"] = cz
-            pulse_length = (
-                node.machine.qubit_pairs[qp.name].macros["cz_flattop"].flux_pulse_control.get_reference() + "/length"
-            )
-            flat_length = (
-                node.machine.qubit_pairs[qp.name].macros["cz_flattop"].flux_pulse_control.get_reference()
-                + "/flat_length"
-            )
-            pulse_amp = (
-                node.machine.qubit_pairs[qp.name].macros["cz_flattop"].flux_pulse_control.get_reference() + "/amplitude"
-            )
-            pulse_name = node.machine.qubit_pairs[qp.name].macros["cz_flattop"].flux_pulse_control_label
-            control_qb = node.machine.qubit_pairs[qp.name].qubit_control
-            control_qb.z.operations[pulse_name] = FlatTopGaussianPulse(length=100, amplitude=0.5, flat_length=50)
-            control_qb.z.operations[pulse_name].length = pulse_length
-            control_qb.z.operations[pulse_name].amplitude = pulse_amp
-            control_qb.z.operations[pulse_name].flat_length = flat_length
-
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
                 continue
             else:
                 qp.macros["cz_unipolar"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
-                qp.macros["cz_flattop"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
                 # Round up to the upper 4 ns to be compatible with the hardware time resolution
                 qp.macros["cz_unipolar"].flux_pulse_control.length = int(
                     np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4
                 )
-                qp.macros["cz_flattop"].flux_pulse_control.flat_length = int(
-                    np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4
-                )
-                qp.macros["cz_flattop"].flux_pulse_control.length = (
-                    int(np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4) + 20
-                )
+                if node.parameters.update_all_pulses:
+                    qp.macros["cz_bipolar"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name][
+                        "cz_amp"
+                    ]
+                    qp.macros["cz_flattop"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name][
+                        "cz_amp"
+                    ]
+                    # Round up to the upper 4 ns to be compatible with the hardware time resolution
+                    qp.macros["cz_flattop"].flux_pulse_control.flat_length = int(
+                        np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 2) * 2
+                    )
+                    qp.macros["cz_bipolar"].flux_pulse_control.flat_length = int(
+                        np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 2) * 2
+                    )
 
 
 # %% {Save_results}

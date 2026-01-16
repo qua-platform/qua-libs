@@ -26,6 +26,7 @@ class NodeSpecificParameters(RunnableParameters):
     amp_range: float = 0.1
     amp_step: float = 0.003
     use_state_discrimination: bool = True
+    update_all_pulses: bool = True
 
 
 class Parameters(

@@ -173,6 +173,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Reset the qubits
                         for i, qubit in multiplexed_qubits.items():
                             qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                            # Extra wait to ensure long distortions have fully decayed between experiment repetitions
+                            qubit.wait(times.max())
                         align()
 
                         for i, qubit in multiplexed_qubits.items():
