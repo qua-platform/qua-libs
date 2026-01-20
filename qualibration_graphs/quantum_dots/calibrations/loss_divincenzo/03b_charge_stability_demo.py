@@ -203,8 +203,8 @@ def simulate_data(node: QualibrationNode[Parameters, Quam]):
 
     # Compensation vector for cross-coupling (6 plungers + 1 sensor)
     # These values compensate for cross-talk between gates
-    # compensation_vector = np.array([-0.01943306, -0.0268294, 0.0, 0.0, 0.0, 0.0, 0.0])
-    compensation_vector = np.array([-0.020406, -0.029189, -0.007986, -0.010645, -0.010643, -0.0905586, 0.0])
+    compensation_vector = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    # compensation_vector = np.array([-0.020406, -0.029189, -0.007986, -0.010645, -0.010643, -0.0905586, 0.0])
     # Extract plunger gate indices from axis names
     # virtual_dot_{n+1} maps to plunger gate index n
     # e.g., virtual_dot_1 -> index 0, virtual_dot_2 -> index 1

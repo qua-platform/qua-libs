@@ -63,7 +63,7 @@ class InitDotModel:
     @staticmethod
     def white_noise() -> WhiteNoise:
         """Return the default white noise model."""
-        return WhiteNoise(amplitude=2.0e-2)
+        return WhiteNoise(amplitude=1.0e-2)
 
     @staticmethod
     def telegraph_noise() -> TelegraphNoise:
