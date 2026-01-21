@@ -8,12 +8,12 @@ from calibration_utils.common_utils.experiment import BaseExperimentNodeParamete
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    time_of_flight_in_ns: Optional[int] = None
+    time_of_flight_in_ns: Optional[int] = 28
     """Time of flight in nanoseconds. Default is 28 ns."""
-    readout_amplitude_in_v: Optional[float] = 0.03
+    readout_amplitude_in_v: Optional[float] = 0.1
     """Readout amplitude in volts. Default is 0.1 V."""
     readout_length_in_ns: Optional[int] = 1000
-    """Readout length in nanoseconds. Default is the pulse predefined pulse length."""
+    """Readout length in nanoseconds. Default is 1µs."""
 
 
 class Parameters(
