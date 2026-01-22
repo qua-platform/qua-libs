@@ -28,7 +28,10 @@ quam_config/
 
 **`instrument_limits.py`**: Defines instrument operational limits (e.g., power, frequency) used for validation or constraints during analysis and subsequent QUAM state updates.
 
-**`wiring_examples/`**: Contains example scripts showing how to define hardware wiring/connectivity within QUAM for various setups, serving as templates. The appropriate script's contents should be copied to `generate_quam.py` and adjusted accordingly.
+**`wiring_examples/`**: Contains example scripts showing how to define hardware wiring/connectivity within QUAM for various setups, serving as templates. The appropriate script's contents should be copied to `generate_quam.py` and adjusted accordingly. Examples include:
+- `wiring_opxp_octave.py`: OPX+ with Octave modules
+- `wiring_lffem_mwfem.py`: LF-FEM and MW-FEM setup
+- `wiring_mwfem_transmon_cavity.py`: MW-FEM with transmon and bosonic cavity (requires `FixedFrequencyTransmonSingleCavityQuam`)
 
 ## Workflow for Creating the QUAM State
 
@@ -41,13 +44,18 @@ All relevant scripts reside here.
 ### 2️⃣ Define the QUAM Root Class Structure (in `my_quam.py`)
 
 Edit `my_quam.py` to define the Python classes representing your system's hierarchy.
-It contains a class definition `Quam`, which should typically inherit from `FluxTunableQuam` or `FixedFrequencyQuam` depending on the qubit type and can be customized if needed.
+It contains a class definition `Quam`, which should typically inherit from one of the following depending on your setup:
+- `FluxTunableQuam`: For flux-tunable transmons without cavities
+- `FixedFrequencyQuam`: For fixed-frequency transmons without cavities
+- `FixedFrequencyTransmonSingleCavityQuam`: For fixed-frequency transmons with bosonic cavity modes
+
+The class can be customized if needed.
 
 ### 3️⃣ Generate Static Configuration & Wiring (using `generate_quam.py`)
 
 This step creates the static part of the QUAM state, primarily defining the hardware layout, connectivity, and the initial (mostly empty) state file.
 
-- Find the example script in the `wiring_examples/` directory that most closely matches your hardware setup (e.g., `wiring_opxp_octave.py`, `wiring_lffem_mwfem.py`).
+- Find the example script in the `wiring_examples/` directory that most closely matches your hardware setup (e.g., `wiring_opxp_octave.py`, `wiring_lffem_mwfem.py`, `wiring_mwfem_transmon_cavity.py`).
 - Copy the entire content of the chosen example script into `generate_quam.py`.
 - Modify the `generate_quam.py` script:
   - Adjust static parameters like IP addresses and cluster names.
@@ -66,6 +74,7 @@ This step populates the QUAM state file (e.g., `state.json`) created in the prev
 - Choose the correct initialization script based on your hardware:
   - For OPX+/Octave setups: Use `populate_quam_opxp_octave.py`.
   - For OPX1000 setups: Use `populate_quam_lf_mw_fems.py`.
+  - For transmon with cavity setups: Use `populate_quam_transmon_cavity.py`.
   - Adapt or create a new script if your setup differs significantly.
 - Edit the chosen script: These files contain initial guesses for parameters like qubit/resonator frequencies, pulse amplitudes/durations, gains, etc.. **You must adjust these values** to be reasonable starting points for your specific qubits and setup.
 - Run the script: Execute `python populate_quam_{hw_type}.py` (replacing `{hw_type}` accordingly). This loads the existing QUAM state, populates the dynamic parameters based on the script's logic and values, and saves the updated, populated QUAM state file (e.g., `state.json`).
