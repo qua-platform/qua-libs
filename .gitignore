@@ -6,6 +6,7 @@ __pycache__
 **/data
 assets
 .venv*
+venv/
 tempCodeRunnerFile.python
 **/calibration_data
 **/quam_config/quam_state
