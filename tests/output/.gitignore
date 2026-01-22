@@ -1,0 +1,3 @@
+# Ignore generated test output files
+*.json
+!/.gitignore

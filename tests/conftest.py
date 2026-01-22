@@ -1,6 +1,7 @@
 """Pytest configuration and fixtures for cavity wiring tests."""
 import json
 import shutil
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -8,6 +9,9 @@ import numpy as np
 import pytest
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring
 from qualang_tools.wirer.wirer.channel_specs import mw_fem_spec
+
+# Add quam_config to Python path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / "qualibration_graphs" / "superconducting"))
 
 
 @pytest.fixture
