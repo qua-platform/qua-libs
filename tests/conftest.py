@@ -36,6 +36,8 @@ def transmon_cavity_connectivity(mwfem_instruments):
     connectivity = Connectivity()
     connectivity.add_resonator_line(qubits=qubits, constraints=rr_ch)
     connectivity.add_qubit_drive_lines(qubits=qubits, constraints=xy_ch)
+    
+    # Add cavity line
     connectivity.add_cavity_lines(qubit=1, constraints=cavity_ch)
     
     # Allocate wiring
@@ -63,11 +65,13 @@ def multi_qubit_cavity_connectivity(mwfem_instruments):
     connectivity = Connectivity()
     connectivity.add_resonator_line(qubits=[1], constraints=rr1_ch)
     connectivity.add_qubit_drive_lines(qubits=[1], constraints=xy1_ch)
+    
+    # Add cavity lines for both qubits
     connectivity.add_cavity_lines(qubit=1, constraints=cavity1_ch)
+    connectivity.add_cavity_lines(qubit=2, constraints=cavity2_ch)
     
     connectivity.add_resonator_line(qubits=[2], constraints=rr2_ch)
     connectivity.add_qubit_drive_lines(qubits=[2], constraints=xy2_ch)
-    connectivity.add_cavity_lines(qubit=2, constraints=cavity2_ch)
     
     # Allocate wiring
     allocate_wiring(connectivity, mwfem_instruments)

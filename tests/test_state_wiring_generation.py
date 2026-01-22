@@ -23,8 +23,11 @@ class TestStateWiringGeneration:
         test_dir.mkdir(parents=True, exist_ok=True)
         
         original_cwd = os.getcwd()
+        original_state_path = os.environ.get("QUAM_STATE_PATH")
         try:
             os.chdir(test_dir)
+            # Set QUAM_STATE_PATH environment variable for saving
+            os.environ["QUAM_STATE_PATH"] = str(test_dir)
             
             # Create QUAM instance
             machine = Quam()
@@ -34,12 +37,12 @@ class TestStateWiringGeneration:
                 transmon_cavity_connectivity,
                 host_ip="127.0.0.1",
                 cluster_name="test_cluster",
-                machine=machine
+                quam_instance=machine
             )
             
             # Verify wiring.json was created
             wiring_file = test_dir / "wiring.json"
-            assert wiring_file.exists(), "wiring.json should be created"
+            assert wiring_file.exists(), f"wiring.json should be created at {test_dir}"
             
             # Load and validate structure
             with open(wiring_file) as f:
@@ -67,6 +70,11 @@ class TestStateWiringGeneration:
             
         finally:
             os.chdir(original_cwd)
+            # Restore environment variable
+            if original_state_path is not None:
+                os.environ["QUAM_STATE_PATH"] = original_state_path
+            elif "QUAM_STATE_PATH" in os.environ:
+                del os.environ["QUAM_STATE_PATH"]
     
     def test_generate_state_json(self, transmon_cavity_connectivity, test_output_dir):
         """Test that state.json is generated with cavity parameters."""
@@ -79,8 +87,11 @@ class TestStateWiringGeneration:
         test_dir.mkdir(parents=True, exist_ok=True)
         
         original_cwd = os.getcwd()
+        original_state_path = os.environ.get("QUAM_STATE_PATH")
         try:
             os.chdir(test_dir)
+            # Set QUAM_STATE_PATH environment variable for saving
+            os.environ["QUAM_STATE_PATH"] = str(test_dir)
             
             # Step 1: Build wiring
             machine = Quam()
@@ -88,7 +99,7 @@ class TestStateWiringGeneration:
                 transmon_cavity_connectivity,
                 host_ip="127.0.0.1",
                 cluster_name="test_cluster",
-                machine=machine
+                quam_instance=machine
             )
             
             # Step 2: Reload and build QUAM structure
@@ -122,6 +133,11 @@ class TestStateWiringGeneration:
             
         finally:
             os.chdir(original_cwd)
+            # Restore environment variable
+            if original_state_path is not None:
+                os.environ["QUAM_STATE_PATH"] = original_state_path
+            elif "QUAM_STATE_PATH" in os.environ:
+                del os.environ["QUAM_STATE_PATH"]
     
     def test_generate_complete_quam_setup(self, test_output_dir):
         """Test complete QUAM setup with cavity: wiring + state + population."""
@@ -149,8 +165,11 @@ class TestStateWiringGeneration:
         test_dir.mkdir(parents=True, exist_ok=True)
         
         original_cwd = os.getcwd()
+        original_state_path = os.environ.get("QUAM_STATE_PATH")
         try:
             os.chdir(test_dir)
+            # Set QUAM_STATE_PATH environment variable for saving
+            os.environ["QUAM_STATE_PATH"] = str(test_dir)
             
             # Step 1: Generate wiring
             machine = Quam()
@@ -158,7 +177,7 @@ class TestStateWiringGeneration:
                 connectivity,
                 host_ip="127.0.0.1",
                 cluster_name="test_cluster",
-                machine=machine
+                quam_instance=machine
             )
             
             # Step 2: Build QUAM structure
@@ -204,6 +223,11 @@ class TestStateWiringGeneration:
             
         finally:
             os.chdir(original_cwd)
+            # Restore environment variable
+            if original_state_path is not None:
+                os.environ["QUAM_STATE_PATH"] = original_state_path
+            elif "QUAM_STATE_PATH" in os.environ:
+                del os.environ["QUAM_STATE_PATH"]
     
     def test_wiring_json_structure_validation(self, transmon_cavity_connectivity, test_output_dir):
         """Test that wiring.json has correct structure for cavity setup."""
@@ -214,15 +238,18 @@ class TestStateWiringGeneration:
         test_dir.mkdir(parents=True, exist_ok=True)
         
         original_cwd = os.getcwd()
+        original_state_path = os.environ.get("QUAM_STATE_PATH")
         try:
             os.chdir(test_dir)
+            # Set QUAM_STATE_PATH environment variable for saving
+            os.environ["QUAM_STATE_PATH"] = str(test_dir)
             
             machine = Quam()
             build_quam_wiring(
                 transmon_cavity_connectivity,
                 host_ip="127.0.0.1",
                 cluster_name="test_cluster",
-                machine=machine
+                quam_instance=machine
             )
             
             wiring_file = test_dir / "wiring.json"
@@ -246,6 +273,11 @@ class TestStateWiringGeneration:
                 
         finally:
             os.chdir(original_cwd)
+            # Restore environment variable
+            if original_state_path is not None:
+                os.environ["QUAM_STATE_PATH"] = original_state_path
+            elif "QUAM_STATE_PATH" in os.environ:
+                del os.environ["QUAM_STATE_PATH"]
     
     def test_state_json_cavity_parameters(self, transmon_cavity_connectivity, test_output_dir):
         """Test that state.json contains cavity parameters when populated."""
@@ -257,8 +289,11 @@ class TestStateWiringGeneration:
         test_dir.mkdir(parents=True, exist_ok=True)
         
         original_cwd = os.getcwd()
+        original_state_path = os.environ.get("QUAM_STATE_PATH")
         try:
             os.chdir(test_dir)
+            # Set QUAM_STATE_PATH environment variable for saving
+            os.environ["QUAM_STATE_PATH"] = str(test_dir)
             
             # Build wiring and state
             machine = Quam()
@@ -266,7 +301,7 @@ class TestStateWiringGeneration:
                 transmon_cavity_connectivity,
                 host_ip="127.0.0.1",
                 cluster_name="test_cluster",
-                machine=machine
+                quam_instance=machine
             )
             
             machine = Quam.load()
@@ -306,3 +341,8 @@ class TestStateWiringGeneration:
             
         finally:
             os.chdir(original_cwd)
+            # Restore environment variable
+            if original_state_path is not None:
+                os.environ["QUAM_STATE_PATH"] = original_state_path
+            elif "QUAM_STATE_PATH" in os.environ:
+                del os.environ["QUAM_STATE_PATH"]
