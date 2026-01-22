@@ -1,0 +1,7 @@
+# Test dependencies with feature branches for cavity support
+quam-builder @ git+https://github.com/qua-platform/quam-builder.git@feature/add-bosonic-mode-qpu
+qualang-tools @ git+https://github.com/qua-platform/py-qua-tools.git@add-cavity-lines
+quam>=0.5.0a1
+pytest>=8.3.5
+numpy>=1.20.0
+matplotlib>=3.5.0
