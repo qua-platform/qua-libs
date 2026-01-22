@@ -9,6 +9,7 @@ from qua_dashboards.core import build_dashboard
 from qua_dashboards.virtual_gates import VirtualLayerEditor, ui_update
 from qcodes.parameters import DelegateParameter
 import threading
+import webbrowser
 
 _DASHBOARD_THREAD: Optional[threading.Thread] = None
 _DASHBOARD_SERVER = None
@@ -130,6 +131,9 @@ def launch_video_mode(
 
     _DASHBOARD_THREAD = threading.Thread(target=run_server, daemon=True, name="VideoMode")
     _DASHBOARD_THREAD.start()
+    time.sleep(0.5)
+    webbrowser.open(f"http://localhost:{port}")
+    
     log("Dashboard running at http://localhost:8050")
 
 
