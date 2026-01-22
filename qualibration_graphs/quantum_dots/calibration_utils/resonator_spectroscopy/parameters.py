@@ -7,12 +7,8 @@ from typing import List, Optional
 
 
 class NodeSpecificParameters(RunnableParameters):
-    run_in_video_mode: bool = False
-    """Optionally open Video Mode with the qualibration node."""
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    virtual_gate_set_id: str = None
-    """Name of the associated VirtualGateSet in your QPU. """
     frequency_span_in_mhz: int = 30
     """Span of frequencies to sweep in MHz. Default is 30 MHz."""
     frequency_step_in_mhz: float = 0.1
