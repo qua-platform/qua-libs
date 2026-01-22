@@ -9,6 +9,7 @@ from qua_dashboards.core import build_dashboard
 from qua_dashboards.virtual_gates import VirtualLayerEditor, ui_update
 from qcodes.parameters import DelegateParameter
 import threading
+import webbrowser
 
 _DASHBOARD_THREAD: Optional[threading.Thread] = None
 _DASHBOARD_SERVER = None
@@ -63,6 +64,26 @@ def launch_video_mode(
             "Spiral_Scan": scan_modes.SpiralScan(),
         }
 
+    dc_set = None
+    if dc_control: 
+        external_qdac = "qdac_ip" in machine.network
+        machine.connect_to_external_source(external_qdac = external_qdac)
+        dc_set = machine.virtual_dc_sets.get(virtual_gate_id, None)
+
+    voltage_control_tab, voltage_control_component = None, None
+    if dc_set is not None: 
+        voltage_control_component = VoltageControlComponent(
+            component_id="Voltage_Control",
+            dc_set = dc_set,
+            update_interval_ms=1000,
+        )
+        from qua_dashboards.video_mode.tab_controllers import (
+            VoltageControlTabController,
+        )
+        voltage_control_tab = VoltageControlTabController(
+            voltage_control_component=voltage_control_component
+        )
+
     qmm = machine.connect()
     virtual_gate_set = machine.virtual_gate_sets[virtual_gate_id]
     data_acquirer = OPXDataAcquirer(
@@ -77,6 +98,7 @@ def launch_video_mode(
         num_software_averages=num_software_averages,
         x_mode=x_mode,
         y_mode=y_mode,
+        voltage_control_component = voltage_control_component
     )
 
     def find_default(mode):
@@ -98,22 +120,13 @@ def launch_video_mode(
         y_sweepaxis.span = y_span if y_span is not None else find_default(x_mode)[1]
         y_sweepaxis.points = y_points if y_points is not None else find_default(x_mode)[0]
 
+    virtual_gates_component = VirtualLayerEditor(gateset=virtual_gate_set, component_id="Virtual_Gates", dc_set = dc_set)
+
     video_mode_component = VideoModeComponent(
-        data_acquirer=data_acquirer, data_polling_interval_s=0.2, save_path=save_path, shutdown_callback=stop_dashboard
+        data_acquirer=data_acquirer, data_polling_interval_s=0.2, save_path=save_path, shutdown_callback=stop_dashboard, voltage_control_tab = voltage_control_tab
     )
 
-    virtual_gates_component = VirtualLayerEditor(gateset=virtual_gate_set, component_id="Virtual_Gates")
-
     components = [video_mode_component, virtual_gates_component]
-    if dc_control:
-        voltage_parameters = []
-        physical_channels = machine.physical_channels
-        for ch in list(physical_channels.values()):
-            voltage_parameters.append(DelegateParameter(name=ch.id, label=ch.id, source=ch.offset_parameter))
-        voltage_control_component = VoltageControlComponent(
-            component_id="Voltage_Control", voltage_parameters=voltage_parameters, update_interval_ms=1000
-        )
-        components.append(voltage_control_component)
 
     app = build_dashboard(
         components=components,
@@ -130,6 +143,9 @@ def launch_video_mode(
 
     _DASHBOARD_THREAD = threading.Thread(target=run_server, daemon=True, name="VideoMode")
     _DASHBOARD_THREAD.start()
+    time.sleep(0.5)
+    webbrowser.open(f"http://localhost:{port}")
+
     log("Dashboard running at http://localhost:8050")
 
 
