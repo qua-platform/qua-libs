@@ -152,11 +152,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for qubit in node.namespace["qubits"]:
             if not node.results["fit_results"][qubit.name]["success"]:
                 continue
-
+            # TODO: do we want to automatically extract the duration and frequency of x180?
             fit_result = node.results["fit_results"][qubit.name]
             qubit.xy.operations[node.parameters.operation].length = fit_result["optimal_duration"]
-            # Update qubit frequency if optimal frequency is extracted
-            # qubit.xy.intermediate_frequency = fit_result["optimal_frequency"]
+            qubit.xy.intermediate_frequency = fit_result["optimal_frequency"]
 
 
 # %% {Save_results}

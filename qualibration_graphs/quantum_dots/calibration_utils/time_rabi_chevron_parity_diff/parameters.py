@@ -13,10 +13,10 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum pulse duration in nanoseconds. Default is 10000 ns (10 µs)."""
     tau_step: int = 52
     """Step size for the pulse duration sweep in nanoseconds. Default is 52 ns."""
-    frequency_min_in_mhz: float = -0.5
-    """Minimum frequency detuning in MHz. Default is -0.5 MHz."""
-    frequency_max_in_mhz: float = 0.525
-    """Maximum frequency detuning in MHz. Default is 0.525 MHz."""
+    frequency_min_in_mhz: float = -1
+    """Minimum frequency detuning in MHz. Default is -1 MHz."""
+    frequency_max_in_mhz: float = 1
+    """Maximum frequency detuning in MHz. Default is 1 MHz."""
     frequency_step_in_mhz: float = 0.025
     """Step size for the frequency detuning sweep in MHz. Default is 0.025 MHz."""
     operation: str = "x180"
