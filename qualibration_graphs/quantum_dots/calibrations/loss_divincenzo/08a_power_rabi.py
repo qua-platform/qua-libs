@@ -234,9 +234,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             opt_amplitude = node.results["fit_results"][q.name]["opt_amp"]
-            q.xy_channel.operations[node.parameters.operation].amplitude = opt_amplitude
+            q.xy.operations[node.parameters.operation].amplitude = opt_amplitude
             if node.parameters.operation == "x180" and node.parameters.update_x90:
-                q.xy_channel.operations["x90"].amplitude = opt_amplitude / 2
+                q.xy.operations["x90"].amplitude = opt_amplitude / 2
 
 
 # %% {Save_results}
