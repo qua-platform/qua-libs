@@ -21,19 +21,19 @@ from qualibration_libs.core import tracked_updates
 # %% {Node initialisation}
 description = """
         TIME RABI CHEVRON PARITY DIFFERENCE
-This sequence performs a 2D chevron measurement with parity difference to characterize qubit coherence and 
-coupling as a function of both pulse duration and frequency detuning. The measurement involves sweeping both 
-the duration of a qubit control pulse (typically an X180 pulse) and the frequency detuning while measuring 
+This sequence performs a 2D chevron measurement with parity difference to characterize qubit coherence and
+coupling as a function of both pulse duration and frequency detuning. The measurement involves sweeping both
+the duration of a qubit control pulse (typically an X180 pulse) and the frequency detuning while measuring
 the parity state before and after the pulse using charge sensing via RF reflectometry or DC current sensing.
 
-The sequence uses voltage gate sequences to navigate through a triangle in voltage space (empty - 
-initialization - measurement) using OPX channels on the fast lines of the bias-tees. At each combination 
-of pulse duration and frequency detuning, the parity is measured before (P1) and after (P2) the qubit pulse, 
+The sequence uses voltage gate sequences to navigate through a triangle in voltage space (empty -
+initialization - measurement) using OPX channels on the fast lines of the bias-tees. At each combination
+of pulse duration and frequency detuning, the parity is measured before (P1) and after (P2) the qubit pulse,
 and the parity difference (P_diff) is calculated. When P1 == P2, P_diff = 0; otherwise P_diff = 1.
 
-The 2D chevron pattern in the parity difference signal reveals the qubit coupling strength as a function 
-of both time and frequency, creating a characteristic chevron shape. This measurement is particularly useful 
-for characterizing two-qubit gates, understanding the dynamics of coupled quantum dots, and identifying 
+The 2D chevron pattern in the parity difference signal reveals the qubit coupling strength as a function
+of both time and frequency, creating a characteristic chevron shape. This measurement is particularly useful
+for characterizing two-qubit gates, understanding the dynamics of coupled quantum dots, and identifying
 optimal operating points for qubit control.
 
 Prerequisites:
