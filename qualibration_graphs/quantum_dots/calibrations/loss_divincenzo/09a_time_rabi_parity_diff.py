@@ -149,7 +149,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             fit_result = node.results["fit_results"][qubit.name]
             qubit.xy.operations[node.parameters.operation].length = fit_result["optimal_duration"]
-            # or store Rabi frequency: qubit.rabi_frequency = fit_result["rabi_frequency"]
 
 
 # %% {Save_results}
