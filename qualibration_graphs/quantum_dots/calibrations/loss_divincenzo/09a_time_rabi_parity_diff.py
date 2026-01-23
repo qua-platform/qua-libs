@@ -21,17 +21,17 @@ from qualibration_libs.core import tracked_updates
 # %% {Node initialisation}
 description = """
         TIME RABI PARITY DIFFERENCE
-This sequence performs a time Rabi measurement with parity difference to characterize qubit coherence and 
-coupling. The measurement involves sweeping the duration of a qubit control pulse (typically an X180 pulse) 
-while measuring the parity state before and after the pulse using charge sensing via RF reflectometry or DC 
+This sequence performs a time Rabi measurement with parity difference to characterize qubit coherence and
+coupling. The measurement involves sweeping the duration of a qubit control pulse (typically an X180 pulse)
+while measuring the parity state before and after the pulse using charge sensing via RF reflectometry or DC
 current sensing.
 
-The sequence uses voltage gate sequences to navigate through a triangle in voltage space (empty - 
-initialization - measurement) using OPX channels on the fast lines of the bias-tees. At each pulse duration, 
-the parity is measured before (P1) and after (P2) the qubit pulse, and the parity difference (P_diff) is 
+The sequence uses voltage gate sequences to navigate through a triangle in voltage space (empty -
+initialization - measurement) using OPX channels on the fast lines of the bias-tees. At each pulse duration,
+the parity is measured before (P1) and after (P2) the qubit pulse, and the parity difference (P_diff) is
 calculated. When P1 == P2, P_diff = 0; otherwise P_diff = 1.
 
-The parity difference signal reveals Rabi oscillations as a function of pulse duration, which can be used 
+The parity difference signal reveals Rabi oscillations as a function of pulse duration, which can be used
 to extract the qubit coupling strength, coherence time, and optimal pulse parameters.
 
 Prerequisites:
