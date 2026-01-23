@@ -12,8 +12,8 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.charge_stability import Parameters, get_voltage_arrays
-from calibration_utils.charge_stability import plot_raw_amplitude, plot_raw_phase
+from calibration_utils.charge_stability_opx import Parameters, get_voltage_arrays
+from calibration_utils.charge_stability_opx import plot_raw_amplitude, plot_raw_phase
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
