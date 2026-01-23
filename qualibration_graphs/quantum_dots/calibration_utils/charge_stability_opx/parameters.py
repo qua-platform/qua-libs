@@ -2,12 +2,14 @@ from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 from calibration_utils.run_video_mode.video_mode_specific_parameters import VideoModeCommonParameters
-from typing import List
+from typing import List, Literal
 
 
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
+    scan_pattern: Literal["raster", "switch_raster", "spiral"] = "switch_raster"
+    """The scanning pattern. """
     sensor_names: List[str] = None
     """List of sensor dot names to measure in your measurement."""
     x_axis_name: str = None
