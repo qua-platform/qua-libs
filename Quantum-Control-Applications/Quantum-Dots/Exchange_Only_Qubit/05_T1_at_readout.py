@@ -1,12 +1,13 @@
 # %%
 """
-        T1 at readout
+T1 at readout
 """
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
+from qualang_tools.voltage_gates import VoltageGateSequence
 from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
@@ -29,7 +30,7 @@ x_plot = np.arange(division_length * 4, lock_in_readout_length + 1, division_len
 
 local_config = copy.deepcopy(config)
 
-seq = OPX_virtual_gate_sequence(local_config, ["P5_sticky", "P6_sticky"])
+seq = VoltageGateSequence(local_config, ["P5_sticky", "P6_sticky"])
 seq.add_points("dephasing", level_dephasing, duration_dephasing)
 seq.add_points("readout", level_readout, duration_readout)
 
@@ -126,8 +127,8 @@ else:
         progress_counter(iteration, n_shots, start_time=results.start_time)
         plt.clf()
         plt.plot(x_plot, R)
-        plt.xlabel('Readout time [ns]')
-        plt.ylabel('Magnitude [V]')
+        plt.xlabel("Readout time [ns]")
+        plt.ylabel("Magnitude [V]")
 
     qm.close()
     S_shots = u.demod2volts(I_shots + 1j * Q_shots, division_length * 4)
@@ -135,6 +136,5 @@ else:
     phase = np.angle(S_shots)  # Phase
     plt.figure()
     plt.pcolor(x_plot, range(n_shots), R_shots)
-    plt.xlabel('Readout time [ns]')
-    plt.ylabel('Shots')
-        
+    plt.xlabel("Readout time [ns]")
+    plt.ylabel("Shots")

@@ -1,6 +1,6 @@
 # %%
 """
-        Initialization search vs duration at initialization
+Initialization search vs duration at initialization
 """
 
 from qm.qua import *
@@ -9,6 +9,7 @@ from qm import SimulationConfig
 from qualang_tools.loops import from_array
 
 from configuration import *
+from qualang_tools.voltage_gates import VoltageGateSequence
 from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
@@ -19,7 +20,7 @@ import copy
 
 local_config = copy.deepcopy(config)
 
-seq = OPX_virtual_gate_sequence(local_config, ["P5_sticky", "P6_sticky"])
+seq = VoltageGateSequence(local_config, ["P5_sticky", "P6_sticky"])
 seq.add_points("dephasing", level_dephasing, duration_dephasing)
 seq.add_points("readout", level_readout, duration_readout)
 seq.add_points("just_outsidePSB_20", [0.1, 0.1], duration_init_jumps)
@@ -110,7 +111,7 @@ with program() as init_search_duration_prog:
 print(generate_qua_script(init_search_duration_prog))
 
 # %%
-        
+
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 simulate = True

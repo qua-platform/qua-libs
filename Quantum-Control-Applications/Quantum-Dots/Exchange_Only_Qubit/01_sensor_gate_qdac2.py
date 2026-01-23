@@ -52,10 +52,10 @@ with program() as charge_sensor_sweep:
             # Wait for the voltages to settle (depends on the voltage source bandwidth)
             wait(500 * u.us)
 
-            align('qdac_trigger1', 'QDS')
+            align("qdac_trigger1", "QDS")
 
-            reset_phase('QDS')
-            measure('readout', 'QDS', None, demod.full("cos", I, 'out2'), demod.full("sin", Q, 'out2'))
+            reset_phase("QDS")
+            measure("readout", "QDS", None, demod.full("cos", I, "out2"), demod.full("sin", Q, "out2"))
 
             save(I, I_st)
             save(Q, Q_st)
@@ -107,8 +107,8 @@ else:
 
     # Live plotting
     fig = plt.figure()
-    interrupt_on_close(fig, job)  # Interrupts the job when closing the 
-    
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the
+
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
 
     while results.is_processing():

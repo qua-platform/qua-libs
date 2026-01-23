@@ -1,5 +1,5 @@
 """
-        CHARGE STABILITY DIAGRAM
+CHARGE STABILITY DIAGRAM
 """
 
 from qm.qua import *
@@ -8,6 +8,7 @@ from scipy.signal import butter, lfilter
 from typing import Union
 from numpy.typing import NDArray
 import numpy as np
+
 
 def round_to_fixed(x, number_of_bits=12):
     """
@@ -37,6 +38,7 @@ def lock_in_macro(
     measure(operation, element, None, demod.full("cos", I, element_output), demod.full("sin", Q, element_output))
     save(I, I_st)
     save(Q, Q_st)
+
 
 def DC_current_sensing_macro(
     operation: str = "readout", element: str = "TIA", element_output: str = "out2", dc_signal=None, dc_signal_st=None
@@ -78,11 +80,13 @@ def get_filtered_voltage(
     print(f"Error: {np.mean(np.abs((y-y_filtered)/(max(y)-min(y))))*100:.2f} %")
     return y, y_filtered
 
+
 def round_to_fixed(x, number_of_bits=12):  # should it be 16 bits instead?
     """
     function which rounds 'x' to 'number_of_bits' of precision to help reduce the accumulation of fixed point arithmetic errors
     """
     return round((2**number_of_bits) * x) / (2**number_of_bits)
+
 
 def spiral_order(N: int):
     # casting to int if necessary

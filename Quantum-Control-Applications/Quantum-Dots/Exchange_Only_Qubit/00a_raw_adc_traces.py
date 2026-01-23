@@ -21,7 +21,6 @@ from configuration import *
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 
-
 ###################
 # The QUA program #
 ###################
@@ -36,7 +35,7 @@ with program() as tof_prog:
         reset_phase("QDS")
         # Sends the readout pulse and stores the raw ADC traces in the stream called "adc_st"
         measure("readout", "QDS", adc_st)
-        # Wait 
+        # Wait
         wait(1_000 * u.ns, "QDS")
 
     with stream_processing():

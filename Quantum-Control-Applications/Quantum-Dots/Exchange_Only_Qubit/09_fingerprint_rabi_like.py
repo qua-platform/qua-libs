@@ -1,12 +1,13 @@
 # %%
 """
-        Power-Time Rabi like / rotation along n
+Power-Time Rabi like / rotation along n
 """
 
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
+from qualang_tools.voltage_gates import VoltageGateSequence
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
@@ -26,7 +27,7 @@ duration_init_jumps = 16
 manipulation_ramp = 100
 duration_manipulation = step_length
 
-seq = OPX_virtual_gate_sequence(local_config, ["P5_sticky", "P6_sticky"])
+seq = VoltageGateSequence(local_config, ["P5_sticky", "P6_sticky"])
 seq.add_points("dephasing", level_dephasing, duration_dephasing)
 seq.add_points("readout", level_readout, duration_readout)
 seq.add_points("initialization", level_init, duration_init)
@@ -56,7 +57,7 @@ with program() as finger_print:
     y = declare(fixed)
     a = declare(fixed)
     t = declare(int)
-    
+
     # Ensure that the result variables are assign to the pulse processor used for readout
     assign_variables_to_element("QDS", I, Q)
 
@@ -65,7 +66,7 @@ with program() as finger_print:
         save(n, n_st)
 
         with for_each_((x, y), (p5_voltages.tolist(), p6_voltages.tolist())):
-            
+
             with for_(*from_array(a, amps)):
 
                 seq.add_step(voltage_point_name="initialization", ramp_duration=init_ramp)  # duration in nanoseconds
@@ -73,7 +74,9 @@ with program() as finger_print:
                 seq.add_step(voltage_point_name="just_outsidePSB_11", ramp_duration=init_ramp)
                 seq.add_step(voltage_point_name="quick_return_11", ramp_duration=init_ramp)
 
-                seq.add_step(duration=duration_manipulation, level=[x, y], ramp_duration=manipulation_ramp)  # to manipulate the barrier
+                seq.add_step(
+                    duration=duration_manipulation, level=[x, y], ramp_duration=manipulation_ramp
+                )  # to manipulate the barrier
 
                 seq.add_step(voltage_point_name="readout", ramp_duration=readout_ramp)
                 seq.add_compensation_pulse(max_amplitude=0.49)
@@ -81,11 +84,14 @@ with program() as finger_print:
                 seq.ramp_to_zero()
 
                 # pulse the barrier
-                wait((duration_init + init_ramp*3 + manipulation_ramp) * u.ns, "X4")
-                play("step"*amp(a), "X4")
+                wait((duration_init + init_ramp * 3 + manipulation_ramp) * u.ns, "X4")
+                play("step" * amp(a), "X4")
 
                 # Measure the dot right after the qubit manipulation
-                wait((duration_init + readout_ramp + init_ramp*3 + duration_init_jumps*3 + manipulation_ramp) * u.ns, "QDS")
+                wait(
+                    (duration_init + readout_ramp + init_ramp * 3 + duration_init_jumps * 3 + manipulation_ramp) * u.ns,
+                    "QDS",
+                )
                 lock_in_macro(I=I, Q=Q, I_st=I_st, Q_st=Q_st)
 
                 align()
@@ -103,7 +109,7 @@ with program() as finger_print:
 print(generate_qua_script(finger_print))
 
 # %%
-        
+
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 simulate = True
@@ -138,8 +144,8 @@ else:
         plt.pcolor(p5_voltages * np.sqrt(2), amps, R)
         plt.colorbar()
         plt.tight_layout()
-        plt.xlabel('Detuning voltage [V]')
-        plt.ylabel('X4 scaling amp [a.u.]')
+        plt.xlabel("Detuning voltage [V]")
+        plt.ylabel("X4 scaling amp [a.u.]")
         plt.pause(0.1)
 
     qm.close()

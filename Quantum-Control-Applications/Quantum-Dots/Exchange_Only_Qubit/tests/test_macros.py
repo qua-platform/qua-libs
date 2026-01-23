@@ -31,7 +31,9 @@ def test_spiral_order_unique_indices():
     flattened = order.flatten()
     expected_set = set(range(7 * 7))
     actual_set = set(flattened)
-    assert actual_set == expected_set, f"Missing or duplicate indices. Expected {len(expected_set)} unique values, got {len(actual_set)}"
+    assert (
+        actual_set == expected_set
+    ), f"Missing or duplicate indices. Expected {len(expected_set)} unique values, got {len(actual_set)}"
 
 
 def test_spiral_order_odd_size():
@@ -55,10 +57,10 @@ def test_spiral_order_spiral_pattern():
     """Verify the spiral pattern: center=0, then spiraling outward"""
     order = spiral_order(5)
     center = (5 - 1) // 2
-    
+
     # Center should be 0
     assert order[center, center] == 0
-    
+
     # Values should increase as we move outward
     # Check immediate neighbors (should be 1-4)
     neighbors = [
@@ -76,9 +78,9 @@ def test_get_filtered_voltage_high_pass():
     step_duration = 1e-9  # 1 ns per step
     voltage = [0.1] * 1000 + [0.2] * 1000 + [0.1] * 1000
     bias_tee_cut_off = 10000  # 10 kHz
-    
+
     _, filtered = get_filtered_voltage(voltage, step_duration, bias_tee_cut_off, plot=False)
-    
+
     # After high-pass, the DC component should be removed
     # The mean of the filtered signal should be close to zero
     # (allowing for some numerical error and edge effects)
@@ -91,9 +93,9 @@ def test_get_filtered_voltage_shape():
     step_duration = 1e-9  # 1 ns per step
     voltage = [0.1, 0.2, 0.1]
     bias_tee_cut_off = 10000
-    
+
     unfiltered, filtered = get_filtered_voltage(voltage, step_duration, bias_tee_cut_off, plot=False)
-    
+
     # Each step should be expanded to 1e9 samples per second * step_duration
     expected_length = len(voltage) * int(step_duration * 1e9)
     assert len(unfiltered) == expected_length, f"Expected length {expected_length}, got {len(unfiltered)}"
@@ -106,14 +108,14 @@ def test_get_filtered_voltage_step_response():
     # Create a clear step: low, then high
     voltage = [0.0] * 500 + [0.5] * 500
     bias_tee_cut_off = 10000
-    
+
     _, filtered = get_filtered_voltage(voltage, step_duration, bias_tee_cut_off, plot=False)
-    
+
     # After the step, there should be a transient response
     # The filtered signal should show some variation around the step point
     step_point = 500 * int(step_duration * 1e9)
-    window_after = filtered[step_point:step_point + 100]
-    
+    window_after = filtered[step_point : step_point + 100]
+
     # Should have some variation (not all zeros)
     assert np.std(window_after) > 0.01, "Filter should show response to step change"
 
@@ -122,9 +124,9 @@ def test_round_to_fixed_precision():
     """Verify rounding to fixed point precision"""
     x = 0.123456789
     bits = 12
-    
+
     result = round_to_fixed(x, bits)
-    
+
     # Should round to nearest value representable with 12 bits
     expected = round((2**bits) * x) / (2**bits)
     assert abs(result - expected) < 1e-10, f"Expected {expected}, got {result}"
@@ -134,9 +136,9 @@ def test_round_to_fixed_reduces_precision():
     """Verify that rounding actually reduces precision"""
     x = 0.12345678901234567890  # High precision
     bits = 8  # Low bit precision
-    
+
     result = round_to_fixed(x, bits)
-    
+
     # Result should have limited precision
     # Check that it's different from original (due to rounding)
     # But close to the quantized value
@@ -154,7 +156,7 @@ def test_round_to_fixed_negative():
     """Verify rounding works for negative numbers"""
     x = -0.123456789
     bits = 12
-    
+
     result = round_to_fixed(x, bits)
     expected = round((2**bits) * x) / (2**bits)
     assert abs(result - expected) < 1e-10, f"Expected {expected}, got {result}"

@@ -1,14 +1,10 @@
 # %%
 """
-        SPIRAL SCAN
+SPIRAL SCAN
 """
 
 from qm.qua import *
-from macros import (
-    round_to_fixed,
-    spiral_order,
-    lock_in_macro
-)
+from macros import round_to_fixed, spiral_order, lock_in_macro
 import numpy as np
 from scipy import signal
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -77,7 +73,7 @@ with program() as spiral_scan:
         save(y, y_st)
         # for the first pixel it is unnecessary to move before measuring
         lock_in_macro(I=I, Q=Q, I_st=I_st, Q_st=Q_st)
-        
+
         with while_(completed_moves < resolution * (resolution - 1)):
             # for_ loop to move the required number of moves in the x direction
             with for_(i, 0, i < moves_per_edge, i + 1):
@@ -207,7 +203,7 @@ else:
         Q = Q[order]
         S = u.demod2volts(I + 1j * Q, lock_in_readout_length)
         R = np.abs(S)  # Amplitude
-        phase = np.unwrap(np.angle(S))  # Phase        
+        phase = np.unwrap(np.angle(S))  # Phase
         # Plot results
         plt.cla()
         plt.pcolor(x_axis, y_axis, np.sqrt(I**2 + Q**2))

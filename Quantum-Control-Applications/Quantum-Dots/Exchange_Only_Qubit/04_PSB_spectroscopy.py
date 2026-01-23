@@ -30,6 +30,7 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
+from qualang_tools.voltage_gates import VoltageGateSequence
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
@@ -53,7 +54,7 @@ duration_dephasing = 2000  # nanoseconds
 
 local_config = copy.deepcopy(config)
 
-seq = OPX_virtual_gate_sequence(local_config, ["P5_sticky", "P6_sticky"])
+seq = VoltageGateSequence(local_config, ["P5_sticky", "P6_sticky"])
 seq.add_points("dephasing", level_dephasing, duration_dephasing)
 
 n_shots = 100
@@ -79,7 +80,9 @@ with program() as PSB_search_prog:
 
             # Play fast pulse
             seq.add_step(voltage_point_name="dephasing", ramp_duration=dephasing_ramp)
-            seq.add_step(duration=lock_in_readout_length, level=[x,y], ramp_duration=readout_ramp)  # duration in nanoseconds
+            seq.add_step(
+                duration=lock_in_readout_length, level=[x, y], ramp_duration=readout_ramp
+            )  # duration in nanoseconds
             seq.add_compensation_pulse(max_amplitude=0.49)
             # Ramp the voltage down to zero at the end of the triangle (needed with sticky elements)
             seq.ramp_to_zero()

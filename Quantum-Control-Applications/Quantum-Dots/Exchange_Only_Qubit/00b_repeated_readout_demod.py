@@ -1,8 +1,9 @@
 # %%
 """
-    Repeated Readout
+Repeated Readout
 
 """
+
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -29,30 +30,29 @@ with program() as repeated_readout:
     Q = [declare(fixed) for _ in range(2)]
     I_st = [declare_stream() for _ in range(2)]
     Q_st = [declare_stream() for _ in range(2)]
-    
-    assign_variables_to_element('QDS', n, I[0], Q[0])
-    assign_variables_to_element('QDS_twin', n1, I[1], Q[1])
+
+    assign_variables_to_element("QDS", n, I[0], Q[0])
+    assign_variables_to_element("QDS_twin", n1, I[1], Q[1])
 
     align()
 
-    wait((lock_in_readout_length + 16) * u.ns, 'QDS_twin')  # needed to delay second for_loop
+    wait((lock_in_readout_length + 16) * u.ns, "QDS_twin")  # needed to delay second for_loop
 
     with for_(n, 0, n < shots, n + 1):  # QUA for_ loop for averaging
-        measure('readout', 'QDS', None, demod.full("cos", I[0], 'out2'), demod.full("sin", Q[0], 'out2'))
+        measure("readout", "QDS", None, demod.full("cos", I[0], "out2"), demod.full("sin", Q[0], "out2"))
         save(I[0], I_st[0])
         save(Q[0], Q_st[0])
         save(n, n_st)
-        wait(lock_in_readout_length * u.ns, 'QDS')
+        wait(lock_in_readout_length * u.ns, "QDS")
 
     with for_(n1, 0, n1 < shots, n1 + 1):  # QUA for_ loop for averaging
-        measure('readout', 'QDS_twin', None, demod.full("cos", I[1], 'out2'), demod.full("sin", Q[1], 'out2'))
+        measure("readout", "QDS_twin", None, demod.full("cos", I[1], "out2"), demod.full("sin", Q[1], "out2"))
         save(I[1], I_st[1])
         save(Q[1], Q_st[1])
-        wait(lock_in_readout_length * u.ns, 'QDS_twin')
+        wait(lock_in_readout_length * u.ns, "QDS_twin")
 
-    
     with stream_processing():
-        n_st.save('iteration')
+        n_st.save("iteration")
         for ind in range(2):
             I_st[ind].buffer(shots).save(f"I_{ind}")
             Q_st[ind].buffer(shots).save(f"Q_{ind}")
@@ -85,7 +85,7 @@ else:
 
         job = qm.execute(repeated_readout)
 
-        fetch_names = ['iteration']
+        fetch_names = ["iteration"]
 
         results = fetching_tool(job, fetch_names, mode="live")
 
@@ -111,17 +111,17 @@ else:
         complete_Q[0::2] = res[2]
         complete_Q[1::2] = res[4]
 
-        complete_Z = complete_I + 1j*complete_Q
+        complete_Z = complete_I + 1j * complete_Q
 
         phase = np.unwrap(np.angle(complete_Z))
         phase -= np.mean(phase)
-        f, pxx = signal.welch(phase, nperseg=int(len(phase)/32), fs=1e9/lock_in_readout_length)
+        f, pxx = signal.welch(phase, nperseg=int(len(phase) / 32), fs=1e9 / lock_in_readout_length)
 
         plt.plot(f, pxx)
-        plt.yscale('log')
-        plt.xscale('log')
-        plt.xlabel('Frequency [Hz]')
-        plt.ylabel('PSD [a.u.]')
+        plt.yscale("log")
+        plt.xscale("log")
+        plt.xlabel("Frequency [Hz]")
+        plt.ylabel("PSD [a.u.]")
 
     else:
         print("Lock in readout length is less than 1 microsecond or shots > 10 million")

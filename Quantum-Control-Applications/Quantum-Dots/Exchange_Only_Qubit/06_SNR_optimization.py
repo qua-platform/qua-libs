@@ -1,6 +1,6 @@
 # %%
 """
-        SNR optimization
+SNR optimization
 """
 
 from qm.qua import *
@@ -9,6 +9,7 @@ from qm import SimulationConfig
 
 import snr_utils
 from configuration import *
+from qualang_tools.voltage_gates import VoltageGateSequence
 from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
@@ -35,7 +36,7 @@ print("The readout has been sliced in the following number of divisions", number
 # Time axis for the plots at the end
 x_plot = np.arange(division_length * 4, lock_in_readout_length + 1, division_length * 4)
 
-seq = OPX_virtual_gate_sequence(local_config, ["P5_sticky", "P6_sticky"])
+seq = VoltageGateSequence(local_config, ["P5_sticky", "P6_sticky"])
 seq.add_points("dephasing", level_dephasing, duration_dephasing)
 seq.add_points("readout", level_readout, lock_in_readout_length)
 
@@ -73,7 +74,7 @@ with program() as snr_opt:
             wait((duration_dephasing + dephasing_ramp + readout_ramp) * u.ns, "QDS")
 
             measure(
-                "readout"*amp(a),
+                "readout" * amp(a),
                 "QDS",
                 None,
                 demod.accumulated("cos", I, division_length, "out2"),
@@ -87,7 +88,6 @@ with program() as snr_opt:
 
             # Ramp the voltage down to zero at the end of the triangle (needed with sticky elements)
             align()
-
 
             align()
 
@@ -133,7 +133,7 @@ else:
         progress_counter(iteration, n_shots, start_time=results.start_time)
 
     # Convert results into Volts
-    S = I + 1j*Q
+    S = I + 1j * Q
 
     # Re-scale segments by the corresponding accumulated length
     for i in range(len(x_plot)):
@@ -141,7 +141,7 @@ else:
 
     R = np.abs(S)  # Amplitude
     phase = np.angle(S)  # Phase
-        
+
 snr_map = snr_utils.snr_map_crude(R, shot_axis=0)
 # snr_map = snr_utils.snr_map_double_gaussian(R, shot_axis=0)
 plt.pcolor(amps, range(number_of_divisions), snr_map)

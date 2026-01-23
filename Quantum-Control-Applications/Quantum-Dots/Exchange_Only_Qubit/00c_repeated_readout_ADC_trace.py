@@ -1,8 +1,9 @@
 # %%
 """
-    Repeated Readout
+Repeated Readout
 
 """
+
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -24,20 +25,19 @@ with program() as repeated_readout:
     n1 = declare(int)  # QUA variable for the averaging loop
     adc_st = [declare_stream(adc_trace=True) for _ in range(2)]
 
-    wait((lock_in_readout_length + 16) * u.ns, 'QDS_twin')
+    wait((lock_in_readout_length + 16) * u.ns, "QDS_twin")
 
     with for_(n, 0, n < shots, n + 1):  # QUA for_ loop for averaging
-        measure('readout', 'QDS', adc_st[0])
+        measure("readout", "QDS", adc_st[0])
         save(n, n_st)
-        wait(lock_in_readout_length * u.ns, 'QDS')
+        wait(lock_in_readout_length * u.ns, "QDS")
 
     with for_(n1, 0, n1 < shots, n1 + 1):  # QUA for_ loop for averaging
-        measure('readout', 'QDS_twin', adc_st[1])
-        wait(lock_in_readout_length * u.ns, 'QDS_twin')
+        measure("readout", "QDS_twin", adc_st[1])
+        wait(lock_in_readout_length * u.ns, "QDS_twin")
 
-    
     with stream_processing():
-        n_st.save('iteration')
+        n_st.save("iteration")
         for ind in range(2):
             adc_st[ind].input2().buffer(shots).save(f"adc_{ind}")
 
@@ -75,7 +75,7 @@ else:
 
         job = qm.execute(repeated_readout)
 
-        fetch_names = ['iteration']
+        fetch_names = ["iteration"]
 
         results = fetching_tool(job, fetch_names, mode="live")
 
@@ -99,10 +99,10 @@ else:
         f, pxx = signal.periodogram(complete_adc.flatten(), fs=1e9)
 
         plt.plot(f, pxx)
-        plt.yscale('log')
-        plt.xscale('log')
-        plt.xlabel('Frequency [Hz]')
-        plt.ylabel('PSD [a.u.]')
+        plt.yscale("log")
+        plt.xscale("log")
+        plt.xlabel("Frequency [Hz]")
+        plt.ylabel("PSD [a.u.]")
 
     else:
         print("Lock in readout length is less than 1 microsecond or shots > 10 million")

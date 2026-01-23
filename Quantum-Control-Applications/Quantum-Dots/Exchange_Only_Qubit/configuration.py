@@ -3,8 +3,6 @@ from qualang_tools.units import unit
 from qualang_tools.voltage_gates import VoltageGateSequence
 from qdac2_driver import QDACII, load_voltage_list
 
-# Backward-compatible alias for experiment files that use the old name
-OPX_virtual_gate_sequence = VoltageGateSequence
 
 ####################
 # Helper functions #
@@ -24,7 +22,8 @@ def update_readout_length(new_readout_length, config):
         "cosine": [(0.0, new_readout_length)],
         "sine": [(-1.0, new_readout_length)],
     }
-    
+
+
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
@@ -106,10 +105,10 @@ config = {
     "controllers": {
         "con1": {
             "analog_outputs": {
-                1: {"offset": 0.0},  # 
+                1: {"offset": 0.0},  #
                 2: {"offset": 0.0},  # QDS 1 MHz drive
-                3: {"offset": 0.0},  # 
-                4: {"offset": 0.0},  # 
+                3: {"offset": 0.0},  #
+                4: {"offset": 0.0},  #
                 5: {"offset": 0.0},  # P4
                 6: {"offset": 0.0},  # X4
                 7: {"offset": 0.0},  # P5

@@ -1,6 +1,6 @@
 # %%
 """
-        Initialization search
+Initialization search
 """
 
 from qm.qua import *
@@ -9,6 +9,7 @@ from qm import SimulationConfig
 from qualang_tools.loops import from_array
 
 from configuration import *
+from qualang_tools.voltage_gates import VoltageGateSequence
 from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
@@ -19,7 +20,7 @@ import copy
 
 local_config = copy.deepcopy(config)
 
-seq = OPX_virtual_gate_sequence(local_config, ["P5_sticky", "P6_sticky"])
+seq = VoltageGateSequence(local_config, ["P5_sticky", "P6_sticky"])
 seq.add_points("dephasing", level_dephasing, duration_dephasing)
 seq.add_points("readout", level_readout, duration_readout)
 seq.add_points("just_outsidePSB_20", [-0.001, 0.001], duration_init_jumps)
@@ -58,7 +59,7 @@ with program() as init_search_prog:
                 # MEASURE DEPHASE
 
                 # Play fast pulse
-                seq.add_step(duration=duration_init, level=[x,y], ramp_duration=init_ramp)  # duration in nanoseconds
+                seq.add_step(duration=duration_init, level=[x, y], ramp_duration=init_ramp)  # duration in nanoseconds
                 seq.add_step(voltage_point_name="just_outsidePSB_20", ramp_duration=init_ramp)
                 seq.add_step(voltage_point_name="just_outsidePSB_11", ramp_duration=init_ramp)
                 seq.add_step(voltage_point_name="dephasing", ramp_duration=init_ramp)
@@ -68,7 +69,11 @@ with program() as init_search_prog:
                 seq.ramp_to_zero()
 
                 # Measure the dot right after the qubit manipulation
-                wait((duration_init + duration_dephasing + readout_ramp + init_ramp*4 + duration_init_jumps*2) * u.ns, "QDS")
+                wait(
+                    (duration_init + duration_dephasing + readout_ramp + init_ramp * 4 + duration_init_jumps * 2)
+                    * u.ns,
+                    "QDS",
+                )
                 lock_in_macro(I=Id, Q=Qd, I_st=Id_st, Q_st=Qd_st)
 
                 align()
@@ -79,7 +84,7 @@ with program() as init_search_prog:
 
                 # MEASURE INITIALIZAION
 
-                seq.add_step(duration=duration_init, level=[x,y], ramp_duration=init_ramp)  # duration in nanoseconds
+                seq.add_step(duration=duration_init, level=[x, y], ramp_duration=init_ramp)  # duration in nanoseconds
                 seq.add_step(voltage_point_name="just_outsidePSB_20", ramp_duration=init_ramp)
                 seq.add_step(voltage_point_name="just_outsidePSB_11", ramp_duration=init_ramp)
                 seq.add_step(voltage_point_name="quick_return_11", ramp_duration=init_ramp)
@@ -89,7 +94,7 @@ with program() as init_search_prog:
                 seq.ramp_to_zero()
 
                 # Measure the dot right after the qubit manipulation
-                wait((duration_init + readout_ramp + init_ramp*4 + duration_init_jumps*3) * u.ns, "QDS")
+                wait((duration_init + readout_ramp + init_ramp * 4 + duration_init_jumps * 3) * u.ns, "QDS")
                 lock_in_macro(I=Ii, Q=Qi, I_st=Ii_st, Q_st=Qi_st)
 
                 align()

@@ -2,8 +2,8 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
-
 SHOT_AXIS = 0
+
 
 def snr_map_double_gaussian(map: np.ndarray, shot_axis: int):
     """
@@ -20,20 +20,26 @@ def snr_map_double_gaussian(map: np.ndarray, shot_axis: int):
     for i in range(shape[0]):
         for j in range(shape[1]):
             n_bins = round(np.sqrt(map.shape[SHOT_AXIS]))
-            hist, bins = np.histogram(map[:,i,j], bins=n_bins)
+            hist, bins = np.histogram(map[:, i, j], bins=n_bins)
             bins = np.mean(np.vstack([bins[:-1], bins[1:]]), axis=SHOT_AXIS)
 
             amp_guess = hist.max()
 
-            initial_guess = [amp_guess, singlet_mean[i,j], singlet_std[i,j],
-                             amp_guess, triplet_mean[i,j], triplet_std[i,j]]
+            initial_guess = [
+                amp_guess,
+                singlet_mean[i, j],
+                singlet_std[i, j],
+                amp_guess,
+                triplet_mean[i, j],
+                triplet_std[i, j],
+            ]
 
             # plt.plot(bins, hist)
             # plt.plot(bins, double_gaussian(bins, *initial_guess))
 
             try:
-                popt, pcov = curve_fit(double_gaussian, bins, hist, p0=initial_guess,maxfev=10_000)
-                (_, mean_s_fit, std_s_fit, _, mean_t_fit, std_t_fit) = popt
+                popt, pcov = curve_fit(double_gaussian, bins, hist, p0=initial_guess, maxfev=10_000)
+                _, mean_s_fit, std_s_fit, _, mean_t_fit, std_t_fit = popt
                 fitted_snr[i][j] = snr(mean_s_fit, std_s_fit, mean_t_fit, std_t_fit)
                 # plt.plot(bins, double_gaussian(bins, *popt))
             except:
@@ -42,6 +48,7 @@ def snr_map_double_gaussian(map: np.ndarray, shot_axis: int):
             # plt.show()
 
     return fitted_snr
+
 
 def snr_map_crude(map: np.ndarray, shot_axis: int):
     """
@@ -96,4 +103,4 @@ def guess_individual_means_stds(map: np.ndarray):
 
 
 def double_gaussian(x, a1, m1, s1, a2, m2, s2):
-    return a1 * np.exp(-((x - m1) / s1) ** 2) + a2 * np.exp(-((x - m2) / s2) ** 2)
+    return a1 * np.exp(-(((x - m1) / s1) ** 2)) + a2 * np.exp(-(((x - m2) / s2) ** 2))

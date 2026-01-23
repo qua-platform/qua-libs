@@ -71,7 +71,7 @@ with program() as charge_stability_prog:
         with for_(i, 0, i < n_points_slow, i + 1):
             # Trigger the QDAC2 channel to output the next voltage level from the list
             play("trigger", "qdac_trigger2")
-            
+
             with for_(j, 0, j < n_points_fast, j + 1):
                 # Trigger the QDAC2 channel to output the next voltage level from the list
                 play("trigger", "qdac_trigger1")
