@@ -18,7 +18,6 @@ from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
 
-
 # %% {Node initialisation}
 description = """
         CHARGE SENSOR GATE SWEEP with the OPX
@@ -39,7 +38,6 @@ Prerequisites:
 
 State update:
     - Update the optimal voltage bias of each sensor dot.
-    TODO: how to update the optimal sensor_dot point?
 """
 
 
@@ -138,15 +136,17 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor data analysis was successful."""
 
-    # with node.record_state_updates():
-    #     for sensor in node.namespace["sensors"]:
-    #         if not node.results["fit_results"][sensor.name]["success"]:
-    #             continue
-    #         optimal_offset = find_optimal_offset(node.results["ds_fit"], sensor.name)
-        # TODO: how to update the optimal sensor_dot point for a given qubit?
-        # Case 1: OPX connected --> sensor.physical_channel.offset = optimal_offset
-        # Case 2: DC source connected --> sensor.physical_channel.offset_parameter.set(optimal_offset)
-        # Case 3: OPX+DC source connected --> sensor.physical_channel.offset_parameter.set(optimal_offset) + sensor.readout_projectors[""]?
+    with node.record_state_updates():
+        for sensor in node.namespace["sensors"]:
+            if not node.results["fit_results"][sensor.name]["success"]:
+                continue
+            optimal_offset = 0.0  # find_optimal_offset(node.results["ds_fit"], sensor.name)
+        # TODO: replace "measure" by its enum
+        sensor.add_point(
+            "measure",
+            voltages={sensor.name: optimal_offset},
+            duration=sensor.readout_resonator.operation["readout"].duration,
+        )
 
 
 # %% {Save_results}
