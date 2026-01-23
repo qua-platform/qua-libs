@@ -38,9 +38,8 @@ Prerequisites:
     - Having calibrated the resonators coupled to the SensorDot components.
 
 State update:
-    - This is a characterization measurement and typically does not update state parameters.
-    - If needed in the future, optimal sensing points could be stored based on the measured response.
-    TODO: how to update the optimal sensor_dot point for a given qubit?
+    - Update the optimal voltage bias of each sensor dot.
+    TODO: how to update the optimal sensor_dot point?
 """
 
 
@@ -139,16 +138,15 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor data analysis was successful."""
 
-    with node.record_state_updates():
-        # This is a characterization measurement and typically does not update state parameters.
-        # If needed in the future, optimal sensing points could be stored based on the measured response.
-        # Example of potential state update (commented out):
-        # for sensor in node.namespace["sensors"]:
-        #     if not node.results["fit_results"][sensor.name]["success"]:
-        #         continue
-        #     # Update sensor parameters if needed
+    # with node.record_state_updates():
+    #     for sensor in node.namespace["sensors"]:
+    #         if not node.results["fit_results"][sensor.name]["success"]:
+    #             continue
+    #         optimal_offset = find_optimal_offset(node.results["ds_fit"], sensor.name)
         # TODO: how to update the optimal sensor_dot point for a given qubit?
-        pass
+        # Case 1: OPX connected --> sensor.physical_channel.offset = optimal_offset
+        # Case 2: DC source connected --> sensor.physical_channel.offset_parameter.set(optimal_offset)
+        # Case 3: OPX+DC source connected --> sensor.physical_channel.offset_parameter.set(optimal_offset) + sensor.readout_projectors[""]?
 
 
 # %% {Save_results}
