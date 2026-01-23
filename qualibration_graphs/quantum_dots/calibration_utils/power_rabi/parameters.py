@@ -23,7 +23,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Flag to update the x90 pulse amplitude after calibrating x180. Default is True."""
 
 
-
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
