@@ -27,7 +27,7 @@ from qualibration_libs.data import XarrayDataFetcher
 # %% {Description}
 description = """
         POWER RABI
-This sequence involves parking the qubit at the manipulation bias point, playing the qubit pulse (such as x180) and 
+This sequence involves parking the qubit at the manipulation bias point, playing the qubit pulse (such as x180) and
 measuring the state of the resonator across different qubit pulse amplitudes, exhibit Rabi oscillations.
 The results are then analyzed to determine the qubit pulse amplitude suitable for the selected gate duration.
 
