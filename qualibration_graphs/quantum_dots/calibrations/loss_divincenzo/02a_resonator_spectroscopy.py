@@ -61,71 +61,71 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-# node.machine = Quam.load()
+node.machine = Quam.load()
 
 
-# # %% {Create_QUA_program}
-# @node.run_action(skip_if=node.parameters.load_data_id is not None)
-# def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-#     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-#     # Class containing tools to help handle units and conversions.
-#     u = unit(coerce_to_integer=True)
+# %% {Create_QUA_program}
+@node.run_action(skip_if=node.parameters.load_data_id is not None)
+def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    # # Class containing tools to help handle units and conversions.
+    # u = unit(coerce_to_integer=True)
 
-#     # Get the relevant sensor dots rom the node
-#     node.namespace["sensors"] = sensors = get_sensors(node)
+    # # Get the relevant sensor dots rom the node
+    # node.namespace["sensors"] = sensors = get_sensors(node)
 
-#     num_sensors = len(sensors)
+    # num_sensors = len(sensors)
 
-#     # Extract the sweep parameters and axes from the node parameters
-#     n_avg = node.parameters.num_shots
+    # # Extract the sweep parameters and axes from the node parameters
+    # n_avg = node.parameters.num_shots
 
-#     # The frequency sweep around the resonator resonance frequency
-#     span = node.parameters.frequency_span_in_mhz * u.MHz
-#     step = node.parameters.frequency_step_in_mhz * u.MHz
-#     dfs = np.arange(-span / 2, +span / 2, step)
+    # # The frequency sweep around the resonator resonance frequency
+    # span = node.parameters.frequency_span_in_mhz * u.MHz
+    # step = node.parameters.frequency_step_in_mhz * u.MHz
+    # dfs = np.arange(-span / 2, +span / 2, step)
 
-#     # Register the sweep axes to be added to the dataset when fetching data
-#     node.namespace["sweep_axes"] = {
-#         "sensors": xr.DataArray(sensors.get_names()),
-#         "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
-#     }
+    # # Register the sweep axes to be added to the dataset when fetching data
+    # node.namespace["sweep_axes"] = {
+    #     "sensors": xr.DataArray(sensors.get_names()),
+    #     "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
+    # }
 
-#     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
-#     with program() as node.namespace["qua_program"]:
+    # # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
+    # with program() as node.namespace["qua_program"]:
 
-#         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
-#         df = declare(int)  # QUA variable for the readout frequency
+    #     I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
+    #     df = declare(int)  # QUA variable for the readout frequency
 
-#         for multiplexed_sensors in sensors.batch():
-#             align()
-#             with for_(n, 0, n < n_avg, n + 1):
-#                 save(n, n_st)
-#                 with for_(*from_array(df, dfs)):
+    #     for multiplexed_sensors in sensors.batch():
+    #         align()
+    #         with for_(n, 0, n < n_avg, n + 1):
+    #             save(n, n_st)
+    #             with for_(*from_array(df, dfs)):
 
-#                     for i, sensor in multiplexed_sensors.items():
-#                         rr = sensor.readout_resonator
-#                         # Update the resonator frequencies for all resonators
-#                         rr.update_frequency(df + rr.intermediate_frequency)
-#                         # Measure the resonator
-#                         rr.measure("readout", qua_vars=(I[i], Q[i]))
-#                         # wait for the resonator to deplete
-#                         rr.wait(1000)
-#                         # save data
-#                         save(I[i], I_st[i])
-#                         save(Q[i], Q_st[i])
-#                     align()
+    #                 for i, sensor in multiplexed_sensors.items():
+    #                     rr = sensor.readout_resonator
+    #                     # Update the resonator frequencies for all resonators
+    #                     rr.update_frequency(df + rr.intermediate_frequency)
+    #                     # Measure the resonator
+    #                     rr.measure("readout", qua_vars=(I[i], Q[i]))
+    #                     # wait for the resonator to deplete
+    #                     rr.wait(1000)
+    #                     # save data
+    #                     save(I[i], I_st[i])
+    #                     save(Q[i], Q_st[i])
+    #                 align()
 
-#         with stream_processing():
-#             n_st.save("n")
-#             for i in range(num_sensors):
-#                 I_st[i].buffer(len(dfs)).average().save(f"I{i + 1}")
-#                 Q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
+    #     with stream_processing():
+    #         n_st.save("n")
+    #         for i in range(num_sensors):
+    #             I_st[i].buffer(len(dfs)).average().save(f"I{i + 1}")
+    #             Q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 
-# # %% {Simulate}
-# @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
-# def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-#     """Connect to the QOP and simulate the QUA program"""
+# %% {Simulate}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP and simulate the QUA program"""
 #     # Connect to the QOP
 #     qmm = node.machine.connect()
 #     # Get the config from the machine
@@ -136,13 +136,13 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 #     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
-# # %% {Execute}
-# @node.run_action(
-#     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
-# )
-# def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-#     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
-#     # Connect to the QOP
+# %% {Execute}
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
+)
+def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    # Connect to the QOP
 #     qmm = node.machine.connect()
 #     # Get the config from the machine
 #     config = node.machine.generate_config()
@@ -164,10 +164,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 #     node.results["ds_raw"] = dataset
 
 
-# # %% {Load_historical_data}
-# @node.run_action(skip_if=node.parameters.load_data_id is None)
-# def load_data(node: QualibrationNode[Parameters, Quam]):
-#     """Load a previously acquired dataset."""
+# %% {Load_historical_data}
+@node.run_action(skip_if=node.parameters.load_data_id is None)
+def load_data(node: QualibrationNode[Parameters, Quam]):
+    """Load a previously acquired dataset."""
 #     load_data_id = node.parameters.load_data_id
 #     # Load the specified dataset
 #     node.load_from_id(node.parameters.load_data_id)
@@ -176,10 +176,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 #     node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
 
 
-# # %% {Analyse_data}
-# @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
-# def analyse_data(node: QualibrationNode[Parameters, Quam]):
-#     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+# %% {Analyse_data}
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+def analyse_data(node: QualibrationNode[Parameters, Quam]):
+    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
 #     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
 #     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
 #     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
@@ -192,10 +192,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 #     }
 
 
-# # %% {Plot_data}
-# @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
-# def plot_data(node: QualibrationNode[Parameters, Quam]):
-#     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+# %% {Plot_data}
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+def plot_data(node: QualibrationNode[Parameters, Quam]):
+    """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
 #     fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
 #     fig_fit_amplitude = plot_raw_amplitude_with_fit(
 #         node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
@@ -213,45 +213,45 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor_name data analysis was successful."""
     with node.record_state_updates():
-        for q in node.namespace["sensors"]:
-            if node.outcomes[q.name] == "failed":
+        for s in node.namespace["sensors"]:
+            if node.outcomes[s.name] == "failed":
                 continue
 
-            q.readout_resonator.intermediate_frequency = float(node.results["fit_results"][q.name]["frequency"])
+            s.readout_resonator.intermediate_frequency = float(node.results["fit_results"][s.name]["frequency"])
 
 
-# # %%
-# from calibration_utils.run_video_mode import create_video_mode
+# %%
+from calibration_utils.run_video_mode import create_video_mode
 
 
-# @node.run_action(skip_if=node.parameters.run_in_video_mode is False)
-# def run_video_mode(node: QualibrationNode[Parameters, Quam]):
-#     machine = node.machine
-#     readout_pulses = [
-#         sensor.readout_resonator.operations["readout"]
-#         for sensor in [node.machine.sensor_dots[sensor] for sensor in node.parameters.sensor_names]
-#     ]
-#     x_axis_name = [rp.channel.name for rp in readout_pulses][0]
-#     num_points = int(node.parameters.frequency_span_in_mhz // node.parameters.frequency_step_in_mhz)
-#     f_span = int(node.parameters.frequency_span_in_mhz * 1e6)
-#     num_software_averages = node.parameters.num_shots
-#     create_video_mode(
-#         machine=machine,
-#         log=node.log,
-#         x_axis_name=x_axis_name,
-#         y_axis_name=None,
-#         x_span=f_span,
-#         x_points=num_points,
-#         x_mode="Frequency",
-#         num_software_averages=num_software_averages,
-#         virtual_gate_id=node.parameters.virtual_gate_set_id,
-#         dc_control=node.parameters.dc_control,
-#         readout_pulses=readout_pulses,
-#         save_path="/Users/User/.qualibrate/quam_state",
-#     )
+@node.run_action(skip_if=node.parameters.run_in_video_mode is False)
+def run_video_mode(node: QualibrationNode[Parameters, Quam]):
+    # machine = node.machine
+    # readout_pulses = [
+    #     sensor.readout_resonator.operations["readout"]
+    #     for sensor in [node.machine.sensor_dots[sensor] for sensor in node.parameters.sensor_names]
+    # ]
+    # x_axis_name = [rp.channel.name for rp in readout_pulses][0]
+    # num_points = int(node.parameters.frequency_span_in_mhz // node.parameters.frequency_step_in_mhz)
+    # f_span = int(node.parameters.frequency_span_in_mhz * 1e6)
+    # num_software_averages = node.parameters.num_shots
+    # create_video_mode(
+    #     machine=machine,
+    #     log=node.log,
+    #     x_axis_name=x_axis_name,
+    #     y_axis_name=None,
+    #     x_span=f_span,
+    #     x_points=num_points,
+    #     x_mode="Frequency",
+    #     num_software_averages=num_software_averages,
+    #     virtual_gate_id=node.parameters.virtual_gate_set_id,
+    #     dc_control=node.parameters.dc_control,
+    #     readout_pulses=readout_pulses,
+    #     save_path="/Users/User/.qualibrate/quam_state",
+    # )
 
 
-# # %% {Save_results}
-# @node.run_action()
+# %% {Save_results}
+@node.run_action()
 # def save_results(node: QualibrationNode[Parameters, Quam]):
 #     node.save()
