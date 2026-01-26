@@ -38,8 +38,8 @@ optimal operating points for qubit control.
 
 Prerequisites:
     - Having calibrated the resonators coupled to the SensorDot components.
-    - Having calibrated the voltage points (empty - initialization - measurement).
-    - Qubit pulse calibration (X180 pulse amplitude and frequency).
+    - Having calibrated the voltage points (empty - initialization - measurement), including sensor the dot bias.
+    - Rough guess of the qubit pulse calibration (X180 pulse amplitude and frequency).
 
 State update:
     - The qubit x180 operation duration and frequency.
