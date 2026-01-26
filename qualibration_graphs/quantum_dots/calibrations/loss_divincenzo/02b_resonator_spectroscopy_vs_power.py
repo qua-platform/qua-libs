@@ -61,14 +61,14 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     pass
 
 
-# # Instantiate the QUAM class from the state file
-# node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
+# Instantiate the QUAM class from the state file
+node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 
 
-# # %% {Create_QUA_program}
-# @node.run_action(skip_if=node.parameters.load_data_id is not None)
-# def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-#     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+# %% {Create_QUA_program}
+@node.run_action(skip_if=node.parameters.load_data_id is not None)
+def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 #     # Class containing tools to help handle units and conversions.
 #     u = unit(coerce_to_integer=True)
 #     # Get the active sensors from the node and organize them by batches
@@ -142,10 +142,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 #                 Q_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 
-# # %% {Simulate}
-# @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
-# def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-#     """Connect to the QOP and simulate the QUA program"""
+# %% {Simulate}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP and simulate the QUA program"""
 #     # Connect to the QOP
 #     qmm = node.machine.connect()
 #     # Get the config from the machine
@@ -156,13 +156,13 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 #     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
-# # %% {Execute}
-# @node.run_action(
-#     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
-# )
-# def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-#     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
-#     # Connect to the QOP
+# %% {Execute}
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
+)
+def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    # Connect to the QOP
 #     qmm = node.machine.connect()
 #     # Get the config from the machine
 #     config = node.machine.generate_config()
@@ -184,10 +184,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 #     node.results["ds_raw"] = dataset
 
 
-# # %% {Load_historical_data}
-# @node.run_action(skip_if=node.parameters.load_data_id is None)
-# def load_data(node: QualibrationNode[Parameters, Quam]):
-#     """Load a previously acquired dataset."""
+# %% {Load_historical_data}
+@node.run_action(skip_if=node.parameters.load_data_id is None)
+def load_data(node: QualibrationNode[Parameters, Quam]):
+    """Load a previously acquired dataset."""
 #     load_data_id = node.parameters.load_data_id
 #     # Load the specified dataset
 #     node.load_from_id(node.parameters.load_data_id)
@@ -196,10 +196,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 #     node.namespace["sensors"] = get_sensors(node)
 
 
-# # %% {Analyse_data}
-# @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
-# def analyse_data(node: QualibrationNode[Parameters, Quam]):
-#     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+# %% {Analyse_data}
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+def analyse_data(node: QualibrationNode[Parameters, Quam]):
+    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
 #     # TODO: requires manual setting of the readout power since the analysis isn't robust enough...
 #     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
 #     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
@@ -213,10 +213,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 #     }
 
 
-# # %% {Plot_data}
-# @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
-# def plot_data(node: QualibrationNode[Parameters, Quam]):
-#     """Plot the raw and fitted data."""
+# %% {Plot_data}
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+def plot_data(node: QualibrationNode[Parameters, Quam]):
+    """Plot the raw and fitted data."""
 #     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"])
 #     plt.show()
 #     # Store the generated figures
@@ -248,12 +248,12 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             s.readout_resonator.intermediate_frequency += node.results["fit_results"][s.name]["frequency_shift"]
 
 
-# # %%
-# from calibration_utils.run_video_mode import create_video_mode
+# %%
+from calibration_utils.run_video_mode import create_video_mode
 
 
-# @node.run_action(skip_if=node.parameters.run_in_video_mode is False)
-# def run_video_mode(node: QualibrationNode[Parameters, Quam]):
+@node.run_action(skip_if=node.parameters.run_in_video_mode is False)
+def run_video_mode(node: QualibrationNode[Parameters, Quam]):
 #     from qualang_tools.units.units import unit
 
 #     machine = node.machine
@@ -288,7 +288,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 #     )
 
 
-# # %% {Save_results}
-# @node.run_action()
-# def save_results(node: QualibrationNode[Parameters, Quam]):
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
 #     node.save()
