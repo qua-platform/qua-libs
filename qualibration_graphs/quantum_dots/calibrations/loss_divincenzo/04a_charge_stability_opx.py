@@ -34,7 +34,7 @@ Prerequisites:
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="04a_charge_stability_opx", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](name="05a_charge_stability_opx", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -49,13 +49,13 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
+node.machine = Quam.load()
 
 
-# # %% {Create_QUA_program}
-# @node.run_action(skip_if=node.parameters.load_data_id is not None)
-# def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-#     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+# %% {Create_QUA_program}
+@node.run_action(skip_if=node.parameters.load_data_id is not None)
+def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 #     # Class containing tools to help handle units and conversions.
 #     u = unit(coerce_to_integer=True)
 
@@ -118,10 +118,10 @@ node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 #                 Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q")
 
 
-# # %% {Simulate}
-# @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
-# def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-#     """Connect to the QOP and simulate the QUA program"""
+# %% {Simulate}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP and simulate the QUA program"""
 #     # Connect to the QOP
 #     qmm = node.machine.connect()
 #     # Get the config from the machine
@@ -132,13 +132,13 @@ node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 #     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
-# # %% {Execute}
-# @node.run_action(
-#     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
-# )
-# def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-#     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
-#     # Connect to the QOP
+# %% {Execute}
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
+)
+def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    # Connect to the QOP
 #     qmm = node.machine.connect()
 #     # Get the config from the machine
 #     config = node.machine.generate_config()
@@ -160,10 +160,10 @@ node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 #     node.results["ds_raw"] = dataset
 
 
-# # %% {Load_historical_data}
-# @node.run_action(skip_if=node.parameters.load_data_id is None)
-# def load_data(node: QualibrationNode[Parameters, Quam]):
-#     """Load a previously acquired dataset."""
+# %% {Load_historical_data}
+@node.run_action(skip_if=node.parameters.load_data_id is None)
+def load_data(node: QualibrationNode[Parameters, Quam]):
+    """Load a previously acquired dataset."""
 #     load_data_id = node.parameters.load_data_id
 #     # Load the specified dataset
 #     node.load_from_id(node.parameters.load_data_id)
@@ -172,10 +172,10 @@ node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 #     node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
 
 
-# # %% {Plot_data}
-# @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
-# def plot_data(node: QualibrationNode[Parameters, Quam]):
-#     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+# %% {Plot_data}
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+def plot_data(node: QualibrationNode[Parameters, Quam]):
+    """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
 #     fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
 #     fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
 #     plt.show()
@@ -186,12 +186,12 @@ node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 #     }
 
 
-# # %%
-# from calibration_utils.run_video_mode import create_video_mode
+# %%
+from calibration_utils.run_video_mode import create_video_mode
 
 
-# @node.run_action(skip_if=node.parameters.run_in_video_mode is False)
-# def run_video_mode(node: QualibrationNode[Parameters, Quam]):
+@node.run_action(skip_if=node.parameters.run_in_video_mode is False)
+def run_video_mode(node: QualibrationNode[Parameters, Quam]):
 #     x_axis_name = node.parameters.x_axis_name
 #     y_axis_name = node.parameters.y_axis_name
 #     x_span, x_points = node.parameters.x_span, node.parameters.x_points
@@ -217,8 +217,8 @@ node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 #     )
 
 
-# # %% {Save_results}
-# @node.run_action()
-# def save_results(node: QualibrationNode[Parameters, Quam]):
-#     """Save the node results and state."""
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Save the node results and state."""
 #     node.save()
