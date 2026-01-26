@@ -41,7 +41,7 @@ Prerequisites:
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="04b_charge_stability_qdac", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](name="05b_charge_stability_qdac", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -55,14 +55,14 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     pass
 
 
-# # Instantiate the QUAM class from the state file
-# node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
+# Instantiate the QUAM class from the state file
+node.machine = Quam.load()
 
-# # %% {Create_QUA_program}
-# @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
-# def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-#     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-#     # Class containing tools to help handle units and conversions.
+# %% {Create_QUA_program}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
+def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    # Class containing tools to help handle units and conversions.
 #     u = unit(coerce_to_integer=True)
 
 #     virtual_gate_set = node.machine.virtual_gate_sets[node.parameters.virtual_gate_set_id]
@@ -258,3 +258,148 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 #                     I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
 #                     Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
 
+# %% {Simulate}
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate or node.parameters.use_validation
+)
+def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP and simulate the QUA program"""
+    # Connect to the QOP
+    # qmm = node.machine.connect()
+    # # Get the config from the machine
+    # config = node.machine.generate_config()
+    # # Simulate the QUA program, generate the waveform report and plot the simulated samples
+    # samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    # # Store the figure, waveform report and simulated samples
+    # node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
+
+
+# %% {Execute}
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
+)
+def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    # Connect to the QOP
+    # qmm = node.machine.connect()
+    # # Get the config from the machine
+    # config = node.machine.generate_config()
+    # # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    # with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    #     # The job is stored in the node namespace to be reused in the fetching_data run_action
+    #     node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+    #     # Display the progress bar
+    #     data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+    #     for dataset in data_fetcher:
+    #         progress_counter(
+    #             data_fetcher.get("n", 0),
+    #             node.parameters.num_shots,
+    #             start_time=data_fetcher.t_start,
+    #         )
+    #     # Display the execution report to expose possible runtime errors
+    #     print(job.execution_report())
+    # # Register the raw dataset
+    # node.results["ds_raw"] = dataset
+
+
+# %% {Simulate validation data}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.use_validation)
+def simulate_data(node: QualibrationNode[Parameters, Quam]):
+    """Simulate the data."""
+
+
+# %% {Load_historical_data}
+@node.run_action(skip_if=node.parameters.load_data_id is None)
+def load_data(node: QualibrationNode[Parameters, Quam]):
+    """Load a previously acquired dataset."""
+    # load_data_id = node.parameters.load_data_id
+    # # Load the specified dataset
+    # node.load_from_id(node.parameters.load_data_id)
+    # node.parameters.load_data_id = load_data_id
+    # # Get the sensors from the loaded node parameters
+    # node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
+
+
+# %% {Analyse_data}
+@node.run_action(skip_if=node.parameters.run_in_video_mode)
+def analyse_data(node: QualibrationNode[Parameters, Quam]):
+    # """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    # # Process raw dataset (convert ADC to volts, compute amplitude)
+    # node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+
+    # # Perform charge stability analysis
+    # node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+
+    # # Convert FitParameters to dictionaries for storage (JSON serializable)
+    # node.results["fit_results"] = {k: v.to_dict() for k, v in fit_results.items()}
+
+    # # Log the relevant information extracted from the data analysis
+    # log_fitted_results(node.results["fit_results"], log_callable=node.log)
+
+
+# %% {Plot_data}
+@node.run_action(skip_if=node.parameters.run_in_video_mode)
+def plot_data(node: QualibrationNode[Parameters, Quam]):
+    """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+    # Plot basic amplitude and phase maps
+    # fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
+    # # fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
+
+    # # Store the generated figures
+    # node.results["figures"] = {
+    #     "amplitude": fig_amplitude,
+    #     # "phase": fig_phase,
+    # }
+
+    # # Optionally plot detailed analysis results if fit_results are available
+    # if "fit_results" in node.results and node.results["fit_results"]:
+    #     sensors = node.namespace["sensors"]
+    #     for sensor in sensors:
+    #         sensor_data = node.results["ds_raw"].sel(sensors=sensor.id)
+    #         fit_params = node.results["fit_results"][sensor.id]
+
+    #         # Plot change point overlays
+    #         fig_cp = plot_change_point_overlays(sensor_data, fit_params, sensor.id)
+    #         node.results["figures"][f"{sensor.id}_change_points"] = fig_cp
+
+    #         if fit_params.get("segments"):
+    #             fig_lines = plot_line_fit_overlays(sensor_data, fit_params, sensor.id)
+    #             node.results["figures"][f"{sensor.id}_line_fits"] = fig_lines
+
+    # plt.show()  # Commented out to avoid blocking in non-interactive mode
+
+
+# %%
+from calibration_utils.run_video_mode import create_video_mode
+@node.run_action(skip_if = node.parameters.run_in_video_mode is False)
+# def run_video_mode(node: QualibrationNode[Parameters, Quam]):
+#     x_axis_name = node.parameters.x_axis_name
+#     y_axis_name = node.parameters.y_axis_name
+#     x_span, x_points = node.parameters.x_span, node.parameters.x_points
+#     y_span, y_points = node.parameters.y_span, node.parameters.y_points
+
+#     create_video_mode(
+#         machine=node.machine,
+#         num_software_averages=node.parameters.num_shots,
+#         log=node.log,
+#         x_axis_name=x_axis_name,
+#         y_axis_name=y_axis_name,
+#         x_span=x_span,
+#         x_points=x_points,
+#         y_span=y_span,
+#         y_points=y_points,
+#         virtual_gate_id=node.parameters.virtual_gate_set_id,
+#         dc_control=node.parameters.dc_control,
+#         readout_pulses=[
+#             node.machine.sensor_dots[name].readout_resonator.operations["readout"]
+#             for name in node.parameters.sensor_names
+#         ],
+#         save_path="/Users/User/.qualibrate/user_storage",
+#     )
+
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
+    # """Save the node results and state."""
+    # node.save()
