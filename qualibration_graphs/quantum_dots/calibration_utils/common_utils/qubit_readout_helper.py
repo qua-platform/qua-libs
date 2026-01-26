@@ -1,4 +1,4 @@
-from typing import List, Set, Dict, Optional, Tuple
+from typing import List, Set, Dict, Optional, Tuple, Literal
 from dataclasses import dataclass
 
 from qualibrate import QualibrationNode
@@ -100,9 +100,15 @@ def _build_readout_batches(footprints: List[QubitReadoutFootprint], compatible_s
     return batches
 
 
-def get_qubits_batched_by_readout(node: QualibrationNode, sensor_batches: BatchableList[SensorDot] = None) -> BatchableList[AnySpinQubit]: 
+def get_qubits_batched_by_readout(node: QualibrationNode, sensor_batches: BatchableList[SensorDot] = None, execution_mode: Literal["parallel", "sequential"] = "sequential") -> BatchableList[AnySpinQubit]: 
     """
     Get qubits into batches that can be read out simultaneously. 
+    Args: 
+        - node: QualibrationNode, the QualibrationNode which is used in the Qualibrate script. 
+        - sensor_batches: BatchableList[SensorDot], a BatchableList of SensorDot objects. This will be broken down into the constituent batches with no footprint overlap. 
+        - execution_mode: Literal["parallel", "sequential"]: The order in which the qubits are operated.
+            - "sequential": Each qubit is operated one at a time (default).
+            - "parallel": Qubits are batched to maximize parallelism while avoiding footprint conflicts. 
     """
 
     machine = node.machine
@@ -110,6 +116,10 @@ def get_qubits_batched_by_readout(node: QualibrationNode, sensor_batches: Batcha
 
     if not qubits: 
         return BatchableList([],[])
+    
+    if execution_mode == "sequential":
+        batched_groups = [[i] for i in range(len(qubits))]
+        return BatchableList(qubits, batched_groups)
     
     if sensor_batches is None: 
         sensors = list(machine.sensor_dots.values())
