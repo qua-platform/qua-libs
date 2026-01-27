@@ -80,10 +80,10 @@ with program() as cpmg:
             # Sweep over idle times (tau)
             with for_(*from_array(tau, taus)):
                 # CPMG Sequence: x90 - [tau - y180 - tau]xN - -x90 - measure
-                
+
                 # Initial x90 pulse to create superposition
                 play("x90", "qubit")
-                
+
                 # CPMG refocusing loop: N repetitions of (tau - y180 - tau)
                 with for_(i, 0, i < n_pi, i + 1):
                     # Wait for idle time tau
@@ -92,13 +92,13 @@ with program() as cpmg:
                     play("y180", "qubit")
                     # Wait for idle time tau
                     wait(tau, "qubit")
-                
+
                 # Final -x90 pulse to project back
                 play("-x90", "qubit")
-                
+
                 # Align qubit and resonator for measurement
                 align("qubit", "resonator")
-                
+
                 # Measure the state of the resonator
                 measure(
                     "readout",
@@ -107,14 +107,14 @@ with program() as cpmg:
                     dual_demod.full("rotated_cos", "rotated_sin", I),
                     dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
                 )
-                
+
                 # Wait for the qubit to decay to the ground state
                 wait(thermalization_time * u.ns, "resonator")
-                
+
                 # Save the 'I' & 'Q' quadratures to their respective streams
                 save(I, I_st)
                 save(Q, Q_st)
-        
+
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
 
@@ -146,7 +146,7 @@ if simulate:
     samples.con1.plot()
     plt.title("CPMG Simulated Waveforms")
     plt.tight_layout()
-    
+
     # Get the waveform report object
     waveform_report = job.get_simulated_waveform_report()
     # Cast the waveform report to a python dictionary
@@ -162,45 +162,45 @@ else:
     job = qm.execute(cpmg)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
-    
+
     # Live plotting
     fig, axes = plt.subplots(2, 1, figsize=(10, 8))
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    
+
     # Calculate total evolution time for each (n_pi, tau) combination
     # Total time = 2 * n_pi * tau * 4ns (convert from clock cycles to ns)
     evolution_times = 8 * np.outer(n_pi_values, taus)  # Shape: [n_pi_values, taus] in ns
-    
+
     while results.is_processing():
         # Fetch results
         I, Q, iteration = results.fetch_all()
         # Convert the results into Volts
         I_volts = u.demod2volts(I, readout_len)
         Q_volts = u.demod2volts(Q, readout_len)
-        
+
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
-        
+
         # Plot results for each number of pi pulses
         axes[0].cla()
         axes[1].cla()
-        
+
         for idx, n_pi_val in enumerate(n_pi_values):
             # Total evolution time for this n_pi value
             t_evolution = evolution_times[idx, :] * 1e-3  # Convert to microseconds
             axes[0].plot(t_evolution, I_volts[idx, :], ".-", label=f"N={n_pi_val}")
             axes[1].plot(t_evolution, Q_volts[idx, :], ".-", label=f"N={n_pi_val}")
-        
+
         axes[0].set_ylabel("I quadrature [V]")
         axes[0].legend(loc="upper right")
         axes[0].set_title(f"CPMG measurement (iteration {iteration}/{n_avg})")
-        
+
         axes[1].set_xlabel("Total evolution time [us]")
         axes[1].set_ylabel("Q quadrature [V]")
         axes[1].legend(loc="upper right")
-        
+
         plt.tight_layout()
-        plt.pause(0.1)
+        plt.pause(2)
 
     # Fit the results to extract T2_CPMG for each number of pi pulses
     try:
@@ -208,38 +208,37 @@ else:
 
         fit = Fit()
         T2_cpmg_values = []
-        
+
         # Create a new figure for the fitted results
         fig_fit, axes_fit = plt.subplots(1, 2, figsize=(14, 5))
-        
+
         # Plot 1: I quadrature with fits for each N
         ax1 = axes_fit[0]
         for idx, n_pi_val in enumerate(n_pi_values):
             t_evolution = evolution_times[idx, :]  # in ns
             I_data = I_volts[idx, :]
-            
+
             # Fit exponential decay (T1 fit works for any exponential decay)
             try:
                 fit_result = fit.T1(t_evolution, I_data, plot=False)
                 T2_cpmg = np.abs(fit_result["T1"][0])
                 T2_cpmg_values.append(T2_cpmg)
-                
+
                 # Plot data and fit
                 ax1.plot(t_evolution * 1e-3, I_data, "o", label=f"N={n_pi_val}")
                 t_fit = np.linspace(t_evolution.min(), t_evolution.max(), 200)
                 I_fit = fit_result["fit_func"](t_fit)
-                ax1.plot(t_fit * 1e-3, I_fit, "-", 
-                        label=f"T2={T2_cpmg*1e-3:.1f} us")
+                ax1.plot(t_fit * 1e-3, I_fit, "-", label=f"T2={T2_cpmg*1e-3:.1f} us")
             except Exception as e:
                 print(f"Fitting failed for N={n_pi_val}: {e}")
                 T2_cpmg_values.append(np.nan)
                 ax1.plot(t_evolution * 1e-3, I_data, "o", label=f"N={n_pi_val}")
-        
+
         ax1.set_xlabel("Total evolution time [us]")
         ax1.set_ylabel("I quadrature [V]")
         ax1.set_title("CPMG: I quadrature decay")
         ax1.legend(loc="upper right", fontsize=8)
-        
+
         # Plot 2: T2_CPMG vs number of pi pulses (N)
         ax2 = axes_fit[1]
         valid_mask = ~np.isnan(T2_cpmg_values)
@@ -249,21 +248,21 @@ else:
         ax2.set_title("T2 coherence time vs CPMG order")
         ax2.set_xscale("log", base=2)
         ax2.grid(True, alpha=0.3)
-        
+
         plt.tight_layout()
         plt.show()
-        
+
         # Print results
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("CPMG Results Summary")
-        print("="*50)
+        print("=" * 50)
         for n_pi_val, T2 in zip(n_pi_values, T2_cpmg_values):
             if not np.isnan(T2):
                 print(f"N = {n_pi_val:3d} pi pulses: T2_CPMG = {T2*1e-3:.2f} us ({T2:.0f} ns)")
             else:
                 print(f"N = {n_pi_val:3d} pi pulses: Fit failed")
-        print("="*50)
-        
+        print("=" * 50)
+
     except (Exception,) as e:
         print(f"Fitting module not available or fitting failed: {e}")
         T2_cpmg_values = []
@@ -272,7 +271,7 @@ else:
     # Save results
     script_name = Path(__file__).name
     data_handler = DataHandler(root_data_folder=save_dir)
-    
+
     # Update save dictionary with measured data
     save_data_dict.update({"I_data": I_volts})
     save_data_dict.update({"Q_data": Q_volts})
@@ -281,11 +280,11 @@ else:
     save_data_dict.update({"fig_live": fig})
     if fig_fit is not None:
         save_data_dict.update({"fig_fit": fig_fit})
-    
+
     # Add additional files to save alongside the data
     data_handler.additional_files = {script_name: script_name, **default_additional_files}
-    
+
     # Save all data
     data_handler.save_data(data=save_data_dict, name="cpmg")
-    
+
     print(f"\nData saved to: {save_dir}")
