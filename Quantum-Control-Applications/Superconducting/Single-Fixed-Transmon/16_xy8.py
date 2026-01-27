@@ -197,3 +197,51 @@ if simulate:
     # Visualize and save the waveform report
     waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
     plt.show()
+
+else:
+    # Open the quantum machine
+    qm = qmm.open_qm(config)
+    # Send the QUA program to the OPX, which compiles and executes it
+    job = qm.execute(xy8)
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+
+    # Live plotting
+    fig, axes = plt.subplots(2, 1, figsize=(10, 8))
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+
+    # Calculate total evolution time for each (n_xy8, tau) combination
+    # Total time = 16 * n_xy8 * tau * 4ns (8 pulses per XY8, each with 2*tau spacing)
+    # More precisely: each XY8 unit has 8 pulses with tau before and after each = 16*tau per XY8 unit
+    evolution_times = 16 * np.outer(n_xy8_values, taus) * 4  # Shape: [n_xy8_values, taus] in ns
+
+    while results.is_processing():
+        # Fetch results
+        I, Q, iteration = results.fetch_all()
+        # Convert the results into Volts
+        I_volts = u.demod2volts(I, readout_len)
+        Q_volts = u.demod2volts(Q, readout_len)
+
+        # Progress bar
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+
+        # Plot results for each number of XY8 repetitions
+        axes[0].cla()
+        axes[1].cla()
+
+        for idx, n_xy8_val in enumerate(n_xy8_values):
+            # Total evolution time for this n_xy8 value
+            t_evolution = evolution_times[idx, :] * 1e-3  # Convert to microseconds
+            axes[0].plot(t_evolution, I_volts[idx, :], ".-", label=f"N={n_xy8_val}")
+            axes[1].plot(t_evolution, Q_volts[idx, :], ".-", label=f"N={n_xy8_val}")
+
+        axes[0].set_ylabel("I quadrature [V]")
+        axes[0].legend(loc="upper right")
+        axes[0].set_title(f"XY8 measurement (iteration {iteration}/{n_avg})")
+
+        axes[1].set_xlabel("Total evolution time [us]")
+        axes[1].set_ylabel("Q quadrature [V]")
+        axes[1].legend(loc="upper right")
+
+        plt.tight_layout()
+        plt.pause(2)
