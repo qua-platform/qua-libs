@@ -38,6 +38,7 @@ build-backend = "poetry.core.masonry.api"
 dev = [
     "black>=24.3.0",
     "pylint>=3.3.2",
+    "astroid>=3.3.0",
     "pytest>=8.3.5",
     "pytest-cov>=4.1.0",
     "pre-commit>=3.6.0",

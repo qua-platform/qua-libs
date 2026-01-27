@@ -18,10 +18,14 @@ repos:
         language_version: python3
         args: [--line-length=120]
 
-  # 3. Pylint: linting (disabled for now - too strict for examples repository)
-  # Can be re-enabled later with more lenient configuration
-  # - repo: https://github.com/pycqa/pylint
-  #   rev: v3.3.2
-  #   hooks:
-  #     - id: pylint
-  #       args: [--rcfile=.pylintrc]
+  # 3. Pylint: linting with QUA plugin (only for qualibration_graphs)
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: python -m pylint
+        language: system
+        types: [python]
+        args: [--rcfile=.pylintrc]
+        files: ^qualibration_graphs/
+        exclude: ^pylint_qua_plugin/

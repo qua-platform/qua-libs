@@ -1,4 +1,8 @@
 [MAIN]
+# Load the QUA plugin to suppress false positives in QUA code
+init-hook=import sys, os; d = os.getcwd(); exec('while d != os.path.dirname(d):\n if os.path.isfile(os.path.join(d, "pyproject.toml")): sys.path.insert(0, d); break\n d = os.path.dirname(d)')
+load-plugins=pylint_qua_plugin
+
 # Use multiple processes to speed up Pylint
 jobs=0
 

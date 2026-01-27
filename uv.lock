@@ -9,6 +9,7 @@ prerelease-mode = "allow"
 
 [manifest.dependency-groups]
 dev = [
+    { name = "astroid", specifier = ">=3.3.0" },
     { name = "black", specifier = ">=24.3.0" },
     { name = "pre-commit", specifier = ">=3.6.0" },
     { name = "pylint", specifier = ">=3.3.2" },
