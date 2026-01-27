@@ -311,3 +311,24 @@ else:
         print(f"Fitting module not available or fitting failed: {e}")
         T2_xy8_values = []
         fig_fit = None
+
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+
+    # Update save dictionary with measured data
+    save_data_dict.update({"I_data": I_volts})
+    save_data_dict.update({"Q_data": Q_volts})
+    save_data_dict.update({"evolution_times_ns": evolution_times})
+    save_data_dict.update({"T2_xy8_values_ns": T2_xy8_values})
+    save_data_dict.update({"fig_live": fig})
+    if fig_fit is not None:
+        save_data_dict.update({"fig_fit": fig_fit})
+
+    # Add additional files to save alongside the data
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+
+    # Save all data
+    data_handler.save_data(data=save_data_dict, name="xy8")
+
+    print(f"\nData saved to: {save_dir}")
