@@ -201,3 +201,68 @@ else:
         
         plt.tight_layout()
         plt.pause(0.1)
+
+    # Fit the results to extract T2_CPMG for each number of pi pulses
+    try:
+        from qualang_tools.plot.fitting import Fit
+
+        fit = Fit()
+        T2_cpmg_values = []
+        
+        # Create a new figure for the fitted results
+        fig_fit, axes_fit = plt.subplots(1, 2, figsize=(14, 5))
+        
+        # Plot 1: I quadrature with fits for each N
+        ax1 = axes_fit[0]
+        for idx, n_pi_val in enumerate(n_pi_values):
+            t_evolution = evolution_times[idx, :]  # in ns
+            I_data = I_volts[idx, :]
+            
+            # Fit exponential decay (T1 fit works for any exponential decay)
+            try:
+                fit_result = fit.T1(t_evolution, I_data, plot=False)
+                T2_cpmg = np.abs(fit_result["T1"][0])
+                T2_cpmg_values.append(T2_cpmg)
+                
+                # Plot data and fit
+                ax1.plot(t_evolution * 1e-3, I_data, "o", label=f"N={n_pi_val}")
+                t_fit = np.linspace(t_evolution.min(), t_evolution.max(), 200)
+                I_fit = fit_result["fit_func"](t_fit)
+                ax1.plot(t_fit * 1e-3, I_fit, "-", 
+                        label=f"T2={T2_cpmg*1e-3:.1f} us")
+            except Exception as e:
+                print(f"Fitting failed for N={n_pi_val}: {e}")
+                T2_cpmg_values.append(np.nan)
+                ax1.plot(t_evolution * 1e-3, I_data, "o", label=f"N={n_pi_val}")
+        
+        ax1.set_xlabel("Total evolution time [us]")
+        ax1.set_ylabel("I quadrature [V]")
+        ax1.set_title("CPMG: I quadrature decay")
+        ax1.legend(loc="upper right", fontsize=8)
+        
+        # Plot 2: T2_CPMG vs number of pi pulses (N)
+        ax2 = axes_fit[1]
+        valid_mask = ~np.isnan(T2_cpmg_values)
+        ax2.plot(n_pi_values[valid_mask], np.array(T2_cpmg_values)[valid_mask] * 1e-3, "o-", markersize=10)
+        ax2.set_xlabel("Number of pi pulses (N)")
+        ax2.set_ylabel("T2_CPMG [us]")
+        ax2.set_title("T2 coherence time vs CPMG order")
+        ax2.set_xscale("log", base=2)
+        ax2.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.show()
+        
+        # Print results
+        print("\n" + "="*50)
+        print("CPMG Results Summary")
+        print("="*50)
+        for n_pi_val, T2 in zip(n_pi_values, T2_cpmg_values):
+            if not np.isnan(T2):
+                print(f"N = {n_pi_val:3d} pi pulses: T2_CPMG = {T2*1e-3:.2f} us ({T2:.0f} ns)")
+            else:
+                print(f"N = {n_pi_val:3d} pi pulses: Fit failed")
+        print("="*50)
+        
+    except (Exception,) as e:
+        print(f"Fitting module not available or fitting failed: {e}")
