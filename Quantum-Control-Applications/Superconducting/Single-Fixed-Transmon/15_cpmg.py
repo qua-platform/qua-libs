@@ -123,3 +123,34 @@ with program() as cpmg:
         I_st.buffer(len(taus)).buffer(len(n_pi_values)).average().save("I")
         Q_st.buffer(len(taus)).buffer(len(n_pi_values)).average().save("Q")
         n_st.save("iteration")
+
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)
+
+###########################
+# Run or Simulate Program #
+###########################
+simulate = True
+
+if simulate:
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
+    job = qmm.simulate(config, cpmg, simulation_config)
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    plt.figure()
+    samples.con1.plot()
+    plt.title("CPMG Simulated Waveforms")
+    plt.tight_layout()
+    
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path=str(Path(__file__).resolve()))
+    plt.show()
