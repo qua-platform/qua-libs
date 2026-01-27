@@ -26,8 +26,8 @@ Unlike the Ramsey experiment which measures T2* (sensitive to low-frequency nois
 the Hahn echo refocuses static dephasing, yielding the intrinsic T2 coherence time which is always >= T2*.
 
 The QUA program is divided into three sections:
-    1) step between the initialization point and the operation point using sticky elements (long timescale).
-    2) apply the Hahn echo pulse sequence: pi/2 - tau - pi - tau - pi/2 (short timescale).
+    1) step between the initialization point and the operation point using sticky elements.
+    2) apply the Hahn echo pulse sequence: pi/2 - tau - pi - tau - pi/2.
     3) measure the state of the qubit using RF reflectometry via parity readout.
 
 The Hahn echo sequence works by:
@@ -42,12 +42,8 @@ high-frequency noise that cannot be refocused. This is the simplest dynamical de
 and forms the basis for more advanced sequences (CPMG, XY-n) that extend coherence further.
 
 Prerequisites:
-    - Readout calibration (resonance frequency for RF reflectometry and sensor operating point).
-    - Setting the DC offsets of the external DC voltage source.
-    - Connecting the OPX to the fast line of the plunger gates.
-    - Having calibrated the initialization and readout point from the charge stability map.
+    - Having run the Ramsey node to calibrate the qubit frequency and T2*, and the corresponding prerequisites.
     - Having calibrated pi and pi/2 pulse parameters from Rabi measurements.
-    - Having measured T2* from Ramsey experiments (T2 from Hahn echo should be longer).
 
 Before proceeding to the next node:
     - Extract T2 from exponential fit of the echo decay curve.
@@ -55,7 +51,7 @@ Before proceeding to the next node:
     - Consider dynamical decoupling sequences if longer coherence is needed.
 
 State update:
-    - T2*
+    - T2echo
 """
 
 
@@ -68,15 +64,8 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1"]
-    # node.parameters.num_shots = 10
-    # node.parameters.tau_min = 16
-    # node.parameters.tau_max = 10000
-    # node.parameters.tau_step = 52
-    # node.parameters.frequency_min_in_mhz = -0.5
-    # node.parameters.frequency_max_in_mhz = 0.525
-    # node.parameters.frequency_step_in_mhz = 0.025
+
     pass
 
 
@@ -165,7 +154,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if not node.results["fit_results"][qubit.name]["success"]:
                 continue
             fit_result = node.results["fit_results"][qubit.name]
-            qubit.T2_echo = fit_result["T2_echo"]
+            qubit.T2echo = fit_result["T2_echo"]
 
 # %% {Save_results}
 @node.run_action()
