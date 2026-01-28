@@ -39,7 +39,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
 
-
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -74,6 +73,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     for i, qubit in multiplexed_qubits.items():
                         # qubit.z.play("const", duration=qubit.xy.operations["x180"].length * u.ns)
                         qubit.xy.play("x180", amplitude_scale=a)
+                        node.machine.cavities["c1"].xy.play("saturation")
                         qubit.wait(250 * u.ns)
                     align()
 

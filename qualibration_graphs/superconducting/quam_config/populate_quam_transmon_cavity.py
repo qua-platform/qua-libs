@@ -175,8 +175,8 @@ for k, qubit in enumerate(machine.qubits.values()):
 # Bosonic cavities are harmonic oscillators with equally spaced energy levels
 # Typical cavity frequencies are in the 6-10 GHz range
 
-cavity_freq = 8.0 * u.GHz  # Cavity frequency
-cavity_LO = 8.0 * u.GHz  # Local oscillator frequency (can be same as cavity freq for MW-FEM)
+cavity_freq = 6.5 * u.GHz  # Cavity frequency
+cavity_LO = 6.5 * u.GHz  # Local oscillator frequency (can be same as cavity freq for MW-FEM)
 cavity_if = cavity_freq - cavity_LO  # Intermediate frequency
 assert np.abs(cavity_if) < 400 * u.MHz, (
     "The cavity intermediate frequency must be within [-400; 400] MHz. \n"

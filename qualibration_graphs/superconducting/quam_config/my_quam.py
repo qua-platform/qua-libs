@@ -12,5 +12,5 @@ from quam_builder.architecture.superconducting.qpu import (
 #   - FluxTunableQuam: For flux-tunable transmons without cavities
 #   - FixedFrequencyTransmonSingleCavityQuam: For fixed-frequency transmons with bosonic cavity modes
 @quam_dataclass
-class Quam(FluxTunableQuam):
+class Quam(FixedFrequencyTransmonSingleCavityQuam):
     pass

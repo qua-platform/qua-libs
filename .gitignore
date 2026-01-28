@@ -10,3 +10,4 @@ venv/
 tempCodeRunnerFile.python
 **/calibration_data
 **/quam_config/quam_state
+QUA_RULES.md
