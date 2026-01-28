@@ -74,6 +74,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # qubit.z.play("const", duration=qubit.xy.operations["x180"].length * u.ns)
                         qubit.xy.play("x180", amplitude_scale=a)
                         node.machine.cavities["c1"].xy.play("saturation")
+                        node.machine.twpas["twpa1"].pump.play("pump")
                         qubit.wait(250 * u.ns)
                     align()
 
