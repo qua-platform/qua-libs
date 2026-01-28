@@ -205,6 +205,42 @@ for k, (cavity_id, cavity) in enumerate(machine.cavities.items()):
 
 
 ########################################################################################################################
+# %%                                    TWPA parameters
+########################################################################################################################
+# TWPA (Traveling Wave Parametric Amplifier) pump frequency and amplitude for readout amplification
+# TWPAs are standalone elements not associated with specific qubits but amplify signals from all qubits
+# Typical TWPA pump frequencies are in the 6-10 GHz range
+
+twpa_pump_freq = 7.5 * u.GHz  # TWPA pump frequency
+twpa_pump_LO = 7.5 * u.GHz  # Local oscillator frequency (can be same as pump freq for MW-FEM)
+twpa_pump_if = twpa_pump_freq - twpa_pump_LO  # Intermediate frequency
+assert np.abs(twpa_pump_if) < 400 * u.MHz, (
+    "The TWPA pump intermediate frequency must be within [-400; 400] MHz. \n"
+    f"TWPA pump frequency: {twpa_pump_freq} \n"
+    f"TWPA pump LO frequency: {twpa_pump_LO} \n"
+    f"TWPA pump IF frequency: {twpa_pump_if} \n"
+)
+
+# Desired pump power in dBm - typically around -10 to 0 dBm for TWPA operation
+twpa_pump_power = -10
+# Get the full_scale_power_dBm and waveform amplitude corresponding to the desired power
+twpa_full_scale, twpa_amplitude = get_full_scale_power_dBm_and_amplitude(twpa_pump_power)
+
+# Update TWPA parameters
+for twpa_id, twpa in machine.twpas.items():
+    # Set pump frequency (the frequency at which the TWPA is driven)
+    twpa.pump_frequency = twpa_pump_freq
+    # Set pump amplitude for the continuous-wave pump signal
+    twpa.pump_amplitude = twpa_amplitude
+    # Associate TWPA with all qubits (since it amplifies readout signals from all qubits)
+    twpa.qubits = list(machine.qubits.keys())
+    # Configure the pump channel output settings
+    twpa.pump.opx_output.full_scale_power_dbm = twpa_full_scale  # Max pump power in dBm
+    twpa.pump.opx_output.upconverter_frequency = twpa_pump_LO  # Pump up-converter frequency
+    twpa.pump.opx_output.band = get_band(twpa_pump_LO)  # Pump band for the up-conversion
+
+
+########################################################################################################################
 # %%                                        Pulse parameters
 ########################################################################################################################
 # Update pulses for qubits
@@ -232,6 +268,13 @@ for cavity_id in machine.cavities:
     # Unlike transmons, cavities are harmonic oscillators and don't require DRAG corrections
     machine.cavities[cavity_id].xy.operations["saturation"].length = 20 * u.us
     machine.cavities[cavity_id].xy.operations["saturation"].amplitude = 0.1 * cavity_amplitude
+
+# Update pulses for TWPAs
+for twpa_id in machine.twpas:
+    # TWPA pump pulse (continuous-wave signal for parametric amplification)
+    # The pump is typically played during readout to amplify the signal
+    machine.twpas[twpa_id].pump.operations["pump"].length = 1000  # 1us default pump length
+    machine.twpas[twpa_id].pump.operations["pump"].amplitude = twpa_amplitude
 
 ########################################################################################################################
 # %%                                         Save the updated QUAM
