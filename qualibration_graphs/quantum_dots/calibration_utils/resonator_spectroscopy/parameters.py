@@ -18,7 +18,6 @@ class NodeSpecificParameters(RunnableParameters):
 
 class Parameters(
     NodeParameters,
-    VideoModeCommonParameters,
     BaseExperimentNodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
