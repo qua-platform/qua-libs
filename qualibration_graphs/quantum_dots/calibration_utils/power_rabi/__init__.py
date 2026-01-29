@@ -1,5 +1,6 @@
-from .parameters import Parameters
+from .parameters import Parameters, ErrorAmplifiedParameters
 
 __all__ = [
     "Parameters",
+    "ErrorAmplifiedParameters",
 ]

@@ -14,8 +14,8 @@ from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.common_utils.experiment import get_sensors, get_qubits
-from calibration_utils.power_rabi_error_amplification import (
-    Parameters,
+from calibration_utils.power_rabi import (
+    ErrorAmplifiedParameters,
     # process_raw_dataset,
     # fit_raw_data,
     # log_fitted_results,
@@ -27,9 +27,11 @@ from qualibration_libs.data import XarrayDataFetcher
 # %% {Description}
 description = """
         Power Rabi with Error Amplification
-This sequence involves parking the qubit at the manipulation bias point, playing the qubit pulse (such as x180) and
-measuring the state of the resonator across different qubit pulse amplitudes, exhibit Rabi oscillations.
-The results are then analyzed to determine the qubit pulse amplitude suitable for the selected gate duration.
+This sequence is a power Rabi sequence augmented with error-amplification. It involves parking the qubit at the 
+manipulation bias point, playing a pulse sequence with N pulses, and measuring the state of the resonator across
+different qubit pulse amplitudes, showing Rabi oscillations. With error amplification, small amplitude errors accumulate
+rapidly, allowing for a more precise calibration of the pulse amplitude. The results are then analyzed to determine the 
+qubit pulse amplitude suitable for the selected gate duration.
 
 Prerequisites:
     - Having calibrated the relevant voltage points.
@@ -41,17 +43,17 @@ State update:
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
-node = QualibrationNode[Parameters, Quam](
-    name="08a_power_rabi",  # Name should be unique
+node = QualibrationNode[ErrorAmplifiedParameters, Quam](
+    name="08b_power_rabi_error_amplification",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
-    parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
+    parameters=ErrorAmplifiedParameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
 
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[Parameters, Quam]):
+def custom_param(node: QualibrationNode[ErrorAmplifiedParameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1", "q2"]
@@ -64,7 +66,7 @@ node.machine = Quam.load()
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
-def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+def create_qua_program(node: QualibrationNode[ErrorAmplifiedParameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # # Get the active qubits from the node and organize them by batches
     # node.namespace["qubits"] = qubits = get_qubits(node)
@@ -142,7 +144,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
-def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+def simulate_qua_program(node: QualibrationNode[ErrorAmplifiedParameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -156,7 +158,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
-def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+def execute_qua_program(node: QualibrationNode[ErrorAmplifiedParameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -182,7 +184,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
-def load_data(node: QualibrationNode[Parameters, Quam]):
+def load_data(node: QualibrationNode[ErrorAmplifiedParameters, Quam]):
     """Load a previously acquired dataset."""
     load_data_id = node.parameters.load_data_id
     # Load the specified dataset
@@ -194,7 +196,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
-def analyse_data(node: QualibrationNode[Parameters, Quam]):
+def analyse_data(node: QualibrationNode[ErrorAmplifiedParameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     # node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     # node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
@@ -210,7 +212,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
-def plot_data(node: QualibrationNode[Parameters, Quam]):
+def plot_data(node: QualibrationNode[ErrorAmplifiedParameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
     # fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
     # fig_fit_amplitude = plot_raw_amplitude_with_fit(
@@ -226,8 +228,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
-def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the sensor_name data analysis was successful."""
+def update_state(node: QualibrationNode[ErrorAmplifiedParameters, Quam]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
@@ -241,5 +243,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Save_results}
 @node.run_action()
-def save_results(node: QualibrationNode[Parameters, Quam]):
+def save_results(node: QualibrationNode[ErrorAmplifiedParameters, Quam]):
     node.save()
