@@ -2,22 +2,24 @@ from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 
-from typing import List
+from typing import List, Literal
 
 
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    run_in_video_mode: bool = False
-    """Whether to run this measurement in Video Mode."""
-    virtual_gate_set_id: str = None
-    """Name of the VirtualGateSet of this measurement."""
+    scan_pattern: Literal["raster", "switch_raster", "spiral"] = "switch_raster"
+    """The scanning pattern. """
     sensor_names: List[str] = None
     """List of sensor dot names to measure in your measurement."""
     x_axis_name: str = None
     """The name of the swept element in the X axis."""
+    x_from_qdac: bool = False
+    "Check to perform 2D map using the QDAC instead of the OPX"
     y_axis_name: str = None
     """The name of the swept element in the Y axis."""
+    y_from_qdac: bool = False
+    "Check to perform 2D map using the QDAC instead of the OPX"
     x_points: int = 201
     """Number of measurement points in the X axis."""
     y_points: int = 201
@@ -26,11 +28,8 @@ class NodeSpecificParameters(RunnableParameters):
     """The X axis span in volts"""
     y_span: float = 0.05
     """The Y axis span in volts"""
-    dc_control: bool = False
-    """Includes VoltageControlComponent in Video Mode."""
-    use_validation: bool = True
-    """Whether to use validation with simulated data."""
-
+    points_duration: int = 1000
+    """Dwell time on each point in nanoseconds. If using the QDAC, this must be slow enough."""
 
 class Parameters(
     NodeParameters,
