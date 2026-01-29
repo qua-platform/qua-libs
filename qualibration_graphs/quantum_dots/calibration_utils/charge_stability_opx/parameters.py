@@ -1,17 +1,15 @@
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
-
-from typing import List
+from calibration_utils.run_video_mode.video_mode_specific_parameters import VideoModeCommonParameters
+from typing import List, Literal
 
 
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    run_in_video_mode: bool = False
-    """Whether to run this measurement in Video Mode."""
-    virtual_gate_set_id: str = None
-    """Name of the VirtualGateSet of this measurement."""
+    scan_pattern: Literal["raster", "switch_raster", "spiral"] = "switch_raster"
+    """The scanning pattern. """
     sensor_names: List[str] = None
     """List of sensor dot names to measure in your measurement."""
     x_axis_name: str = None
@@ -26,14 +24,13 @@ class NodeSpecificParameters(RunnableParameters):
     """The X axis span in volts"""
     y_span: float = 0.05
     """The Y axis span in volts"""
-    dc_control: bool = False
-    """Includes VoltageControlComponent in Video Mode."""
     use_validation: bool = True
     """Whether to use validation with simulated data."""
 
 
 class Parameters(
     NodeParameters,
+    VideoModeCommonParameters, 
     CommonNodeParameters,
     NodeSpecificParameters,
 ):
