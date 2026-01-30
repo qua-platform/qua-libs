@@ -70,3 +70,97 @@ save_data_dict = {
     "delta_clifford": delta_clifford,
     "config": config,
 }
+
+###################################
+# Helper functions and QUA macros #
+###################################
+def power_law(depth, a, b, u):
+    """Purity decay model: P(m) = A * u^m + B where u is unitarity."""
+    return a * (u**depth) + b
+
+
+def generate_sequence():
+    """Generate random Clifford sequence without recovery gate (Purity RB)."""
+    sequence = declare(int, size=max_circuit_depth)
+    i = declare(int)
+    rand = Random(seed=seed)
+
+    with for_(i, 0, i < max_circuit_depth, i + 1):
+        assign(sequence[i], rand.rand_int(24))
+
+    return sequence
+
+
+def play_sequence(sequence_list, depth):
+    i = declare(int)
+    with for_(i, 0, i <= depth, i + 1):
+        with switch_(sequence_list[i], unsafe=True):
+            with case_(0):
+                wait(x180_len // 4, "qubit")
+            with case_(1):
+                play("x180", "qubit")
+            with case_(2):
+                play("y180", "qubit")
+            with case_(3):
+                play("y180", "qubit")
+                play("x180", "qubit")
+            with case_(4):
+                play("x90", "qubit")
+                play("y90", "qubit")
+            with case_(5):
+                play("x90", "qubit")
+                play("-y90", "qubit")
+            with case_(6):
+                play("-x90", "qubit")
+                play("y90", "qubit")
+            with case_(7):
+                play("-x90", "qubit")
+                play("-y90", "qubit")
+            with case_(8):
+                play("y90", "qubit")
+                play("x90", "qubit")
+            with case_(9):
+                play("y90", "qubit")
+                play("-x90", "qubit")
+            with case_(10):
+                play("-y90", "qubit")
+                play("x90", "qubit")
+            with case_(11):
+                play("-y90", "qubit")
+                play("-x90", "qubit")
+            with case_(12):
+                play("x90", "qubit")
+            with case_(13):
+                play("-x90", "qubit")
+            with case_(14):
+                play("y90", "qubit")
+            with case_(15):
+                play("-y90", "qubit")
+            with case_(16):
+                play("-x90", "qubit")
+                play("y90", "qubit")
+                play("x90", "qubit")
+            with case_(17):
+                play("-x90", "qubit")
+                play("-y90", "qubit")
+                play("x90", "qubit")
+            with case_(18):
+                play("x180", "qubit")
+                play("y90", "qubit")
+            with case_(19):
+                play("x180", "qubit")
+                play("-y90", "qubit")
+            with case_(20):
+                play("y180", "qubit")
+                play("x90", "qubit")
+            with case_(21):
+                play("y180", "qubit")
+                play("-x90", "qubit")
+            with case_(22):
+                play("x90", "qubit")
+                play("y90", "qubit")
+                play("x90", "qubit")
+            with case_(23):
+                play("-x90", "qubit")
+                play("y90", "qubit")
+                play("-x90", "qubit")
