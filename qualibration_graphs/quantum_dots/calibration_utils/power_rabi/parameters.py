@@ -6,8 +6,8 @@ from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
 
 
-class NodeSpecificParameters(RunnableParameters):
-    """Parameters shared by both 04b (GE power Rabi) and 12b (EF power Rabi) nodes."""
+class BaseRabiSpecificParameters(RunnableParameters):
+    """Parameters shared by nodes 08a (Power Rabi), 08b (Error Amplified Power Rabi), and 08c (Error Amplified Power Rabi Overtime)."""
 
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
@@ -23,10 +23,24 @@ class NodeSpecificParameters(RunnableParameters):
     """Flag to update the x90 pulse amplitude after calibrating x180. Default is True."""
 
 
+class ErrorAmplifiedSpecificParameters(BaseRabiSpecificParameters): 
+    n_pulses: int = 1
+    """Number of pulses in the error-amplified power Rabi pulse sequence."""
+
+
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
-    NodeSpecificParameters,
+    BaseRabiSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
-    """Parameter set for 04b_power_rabi."""
+    """Parameter set for 08a_power_rabi."""
+
+
+class ErrorAmplifiedParameters(
+    NodeParameters, 
+    CommonNodeParameters,
+    ErrorAmplifiedSpecificParameters, 
+    QubitsExperimentNodeParameters,
+): 
+    """Parameter set for 08b_power_rabi_error_amplification"""
