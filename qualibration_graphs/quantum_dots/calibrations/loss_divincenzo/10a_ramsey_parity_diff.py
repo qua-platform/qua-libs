@@ -21,7 +21,7 @@ from qualibration_libs.core import tracked_updates
 # %% {Node initialisation}
 description = """
         RAMSEY PARITY DIFFERENCE
-This sequence performs a Ramsey measurement with parity difference to characterize the qubit detuning 
+This sequence performs a Ramsey measurement with parity difference to characterize the qubit frequency 
 and the qubit Ramsey dephasing time T2*. The measurement involves sweeping the idle time of the qubit between 
 two π/2 rotations. PSB is used to measure the parity of the resulting state. 
 
