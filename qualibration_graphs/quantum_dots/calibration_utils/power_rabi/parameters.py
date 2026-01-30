@@ -7,7 +7,7 @@ from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentN
 
 
 class BaseRabiSpecificParameters(RunnableParameters):
-    """Parameters shared by both 04b (GE power Rabi) and 12b (EF power Rabi) nodes."""
+    """Parameters shared by nodes 08a (Power Rabi), 08b (Error Amplified Power Rabi), and 08c (Error Amplified Power Rabi Overtime)."""
 
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
@@ -34,7 +34,7 @@ class Parameters(
     BaseRabiSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
-    """Parameter set for 04b_power_rabi."""
+    """Parameter set for 08a_power_rabi."""
 
 
 class ErrorAmplifiedParameters(
