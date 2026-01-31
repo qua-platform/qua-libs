@@ -156,7 +156,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Step 3: X180 - move to sweet spot and apply pi pulse
                         # ---------------------------------------------------------
                         for i, qubit in batched_qubits.items():
-                            # X180 macro handles step_to('operate') + X180 pulse
+                            # X180 macro handles X180 pulse
                             qubit.x180(duration=t)
 
                         # Synchronize before measurement
