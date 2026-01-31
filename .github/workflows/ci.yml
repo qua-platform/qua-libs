@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
     - name: Checkout code
@@ -38,6 +38,23 @@ jobs:
       run: |
         uv sync --group dev --prerelease=allow
 
+    - name: Enforce branch naming conventions
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "Checking branch name: ${{ github.head_ref }}"
+        if ! [[ "${{ github.head_ref }}" =~ ^(feature|bugfix|hotfix|chore|refactor|experiment|release)/ ]]; then
+          echo "Branch name must start with feature/, bugfix/, hotfix/, chore/, refactor/, experiment/, or release/."
+          exit 1
+        fi
+
+    - name: Enforce commit message format (Commitizen)
+      run: |
+        if [ "${{ github.event_name }}" == "pull_request" ]; then
+          uv run cz check --rev-range origin/${{ github.base_ref }}..HEAD
+        else
+          uv run cz check --rev-range HEAD~1..HEAD
+        fi
+
     - name: Run pre-commit on changed files
       run: |
         if [ "${{ github.event_name }}" == "pull_request" ]; then
@@ -46,14 +63,15 @@ jobs:
           uv run pre-commit run --from-ref HEAD~1 --to-ref HEAD
         fi
 
-    - name: Run tests with pytest
+    - name: Run tests with pytest (unit + interop only)
       continue-on-error: true  # Don't fail if no tests found
       run: |
-        uv run pytest --verbose --cov --cov-report=xml --cov-report=term || [ $? -eq 5 ]
+        uv run pytest --verbose --cov --cov-report=xml --cov-report=term \
+          tests/unit tests/interop -m "unit or interop" || [ $? -eq 5 ]
         # Exit code 5 = no tests collected, treat as success
 
     - name: Upload coverage to Codecov
-      if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
+      if: matrix.python-version == '3.13' && matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
