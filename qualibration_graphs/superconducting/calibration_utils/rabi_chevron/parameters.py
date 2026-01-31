@@ -25,6 +25,7 @@ class NodeSpecificParameters(RunnableParameters):
     time_step_in_ns: int = 4
     frequency_step_in_mhz: float = 4
     frequency_span_in_mhz: float = 100
+    gap_wait_time_in_ns: float = 128
 
 
 class Parameters(
