@@ -69,7 +69,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.num_shots = 3
+    # node.parameters.num_shots = 100
     # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
     # node.parameters.wf_type = "square"
     # node.parameters.cr_type = "direct+cancel+echo"
@@ -336,26 +336,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 if node.outcomes[qp.name] == "failed":
                     continue
 
-                # # quam component for cr
-                # qp.cross_resonance.drive_amplitude_scaling = 0.87
-                # qp.cross_resonance.drive_phase = 0.23
-                # qp.cross_resonance.cancel_amplitude_scaling = 0.12
-                # qp.cross_resonance.cancel_phase = 0.34
-                # qp.cross_resonance.qc_correction_phase = 0.45
-                # qp.cross_resonance.qt_correction_phase = 0.56
-
                 # # quam macro for cr
-                # qp.macros["cr"].qc_correction_phase = 0.45
-                # qp.macros["cr"].qt_correction_phase = 0.56
-
-                # # cr drive
-                # operation_c = qp.cross_resonance.operations[node.parameters.wf_type]
-                # operation_c.amplitude = qp.cross_resonance.drive_amplitude_scaling * operation_c.amplitude
-                # operation_c.axis_angle = 2 * np.pi * qp.cross_resonance.drive_phase
-                # # cr cancel
-                # operation_t = qp.qubit_target.xy.operations[f"cr_{node.parameters.wf_type}_{qp.name}"]
-                # operation_t.amplitude = qp.cross_resonance.cancel_amplitude_scaling * operation_t.amplitude
-                # operation_t.axis_angle = 2 * np.pi * qp.cross_resonance.cancel_phase
+                # qp.macros["cr"].cr_cancel_phase = 0.34
                 pass
 
 

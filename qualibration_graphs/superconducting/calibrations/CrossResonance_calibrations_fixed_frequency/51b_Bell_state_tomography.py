@@ -46,7 +46,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.num_shots = 3
+    # node.parameters.num_shots = 100
     # node.parameters.qubit_pairs = ["q1-2", "q3-4"]
     # node.parameters.wf_type = "square"
     # node.parameters.cr_type = "direct+cancel+echo"
@@ -139,11 +139,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Play CNOT
                             # CNOT decomposition into [Z(-pi/2) x I] * [I x X(-pi/2)] * ZX(pi/2)
                             qt.xy.play("-x90")  # X(-pi/2)
+                            frame_rotation_2pi(-0.25, qc.xy.name)  # Z(-pi/2)
+                            # # Alternative to the virtual rotation: Z(theta) = X(-x90) Y(-theta) X(x90)
+                            # qc.xy.play("x90")
+                            # qc.xy.play("y90")
+                            # qc.xy.play("-x90")
                             align(*cr_elems)
                             qp.apply("cr", cr_type=cr_type, wf_type=wf_type)
-                            align(*cr_elems)
-                            frame_rotation_2pi(-0.25, qc.xy.name)  # Z(-pi/2)
-
                             align(*cr_elems)
 
                             # Tomography gates
