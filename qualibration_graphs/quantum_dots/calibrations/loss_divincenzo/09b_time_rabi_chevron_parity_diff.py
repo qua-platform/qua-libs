@@ -8,6 +8,7 @@ from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
+from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
@@ -55,15 +56,6 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1"]
-    # node.parameters.num_shots = 10
-    # node.parameters.tau_min = 16
-    # node.parameters.tau_max = 10000
-    # node.parameters.tau_step = 52
-    # node.parameters.frequency_min_in_mhz = -0.5
-    # node.parameters.frequency_max_in_mhz = 0.525
-    # node.parameters.frequency_step_in_mhz = 0.025
     pass
 
 
@@ -75,6 +67,133 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    u = unit(coerce_to_integer=True)
+
+    node.namespace["qubits"] = qubits = get_qubits(node)
+    num_qubits = len(qubits)
+
+    n_avg = node.parameters.num_shots  # The number of averages
+    # state_discrimination = node.parameters.use_state_discrimination
+    # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+    pulse_durations = np.arange(
+        node.parameters.min_wait_time_in_ns,
+        node.parameters.max_wait_time_in_ns,
+        node.parameters.time_step_in_ns,
+    )
+    # Qubit detuning sweep with respect to their resonance frequencies
+    span = node.parameters.frequency_span_in_mhz * u.MHz
+    step = node.parameters.frequency_step_in_mhz * u.MHz
+    dfs = np.arange(-span // 2, +span // 2, step)
+
+    # Register the sweep axes to be added to the dataset when fetching data
+    node.namespace["sweep_axes"] = {
+        "qubit": xr.DataArray(qubits.get_names()),
+        "detuning": xr.DataArray(dfs, attrs={"long_name": "qubit frequency", "units": "Hz"}),
+        "pulse_duration": xr.DataArray(pulse_durations, attrs={"long_name": "qubit pulse duration", "units": "ns"}),
+    }
+
+    with program() as node.namespace["qua_program"]:
+        # Declare QUA variables using machine's method
+        t = declare(int)
+        df = declare(int)
+        n = declare(int)
+
+        # Additional variables for pre/post measurement comparison
+        # Use int instead of bool so we can average in stream processing
+        p1 = declare(int, size=num_qubits)
+        p2 = declare(int, size=num_qubits)
+        # Streams keyed by qubit name; each qubit appears in exactly one batch.
+        p1_st = {qubit.name: declare_stream() for qubit in qubits}
+        p2_st = {qubit.name: declare_stream() for qubit in qubits}
+        pdiff_st = {qubit.name: declare_stream() for qubit in qubits}
+        n_st = declare_stream()
+
+        # Main experiment loop
+        for batched_qubits in qubits.batch():
+            with for_(n, 0, n < n_avg, n + 1):
+                save(n, n_st)
+
+                with for_(*from_array(df, dfs)):
+                    with for_(*from_array(t, pulse_durations // 4)):
+                        # ---------------------------------------------------------
+                        # Pre-measurement: Check initial state
+                        # ---------------------------------------------------------
+                        for i, qubit in batched_qubits.items():
+                            # Set drive frequency for this iteration
+                            qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
+
+                        # ---------------------------------------------------------
+                        # Step 1: Empty - step to empty point (fixed duration)
+                        # ---------------------------------------------------------
+                        align()
+                        for i, qubit in batched_qubits.items():
+                            qubit.empty()
+
+                        align()
+                        for i, qubit in batched_qubits.items():
+                            # Measure initial state (includes step_to('readout'))
+                            # Cast bool to int for stream averaging
+                            assign(p1[i], Cast.to_int(qubit.measure()))
+
+                        # ---------------------------------------------------------
+                        # Step 2: Initialize - load electron into dot (variable duration)
+                        # ---------------------------------------------------------
+                        align()
+
+                        for i, qubit in batched_qubits.items():
+                            qubit.initialize(hold_duration=4 * t + node.parameters.gap_wait_time_in_ns)
+
+                        # ---------------------------------------------------------
+                        # Step 3: X180 - apply pi pulse
+                        # ---------------------------------------------------------
+                        for i, qubit in batched_qubits.items():
+                            # X180 macro handles X180 pulse
+                            qubit.x180(duration=t)
+
+                        # Synchronize before measurement
+                        align()
+
+                        # ---------------------------------------------------------
+                        # Step 4: Measure - move to PSB and measure
+                        # ---------------------------------------------------------
+                        for i, qubit in batched_qubits.items():
+                            # Measure macro handles step_to('readout') + measurement
+                            # Cast bool to int for stream averaging
+                            assign(p2[i], Cast.to_int(qubit.measure()))
+
+                        # Synchronize before compensation
+                        align()
+
+                        # ---------------------------------------------------------
+                        # Step 5: Apply compensation pulse to reset DC bias
+                        # ---------------------------------------------------------
+                        for i, qubit in batched_qubits.items():
+                            qubit.voltage_sequence.apply_compensation_pulse()
+
+                        # ---------------------------------------------------------
+                        # Save results
+                        # ---------------------------------------------------------
+                        for i, qubit in batched_qubits.items():
+                            save(p1[i], p1_st[qubit.name])
+                            save(p2[i], p2_st[qubit.name])
+
+                            # Calculate state difference
+                            with if_(p1[i] == p2[i]):
+                                save(0, pdiff_st[qubit.name])
+                            with else_():
+                                save(1, pdiff_st[qubit.name])
+
+        # Stream processing
+        with stream_processing():
+            n_st.save("n")
+
+            n_durations = len(pulse_durations)
+            n_freqs = len(dfs)
+
+            for qubit in qubits:
+                p1_st[qubit.name].buffer(n_freqs, n_durations).average().save(f"p1_{qubit.name}")
+                p2_st[qubit.name].buffer(n_freqs, n_durations).average().save(f"p2_{qubit.name}")
+                pdiff_st[qubit.name].buffer(n_freqs, n_durations).average().save(f"pdiff_{qubit.name}")
 
 
 # %% {Simulate}
@@ -151,7 +270,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for qubit in node.namespace["qubits"]:
             if not node.results["fit_results"][qubit.name]["success"]:
                 continue
-            # TODO: do we want to automatically extract the duration and frequency of x180?
+
             fit_result = node.results["fit_results"][qubit.name]
             qubit.xy.operations[node.parameters.operation].length = fit_result["optimal_duration"]
             qubit.xy.intermediate_frequency = fit_result["optimal_frequency"]

@@ -37,10 +37,13 @@ build-backend = "poetry.core.masonry.api"
 [dependency-groups]
 dev = [
     "black>=24.3.0",
+    "commitizen",
     "pylint>=3.3.2",
     "pytest>=8.3.5",
     "pytest-cov>=4.1.0",
     "pre-commit>=3.6.0",
+    "qm-qua>=1.2.5",
+    "qm-saas>=1.1.7",
 ]
 
 [tool.uv]
@@ -49,6 +52,12 @@ prerelease = "allow"
 [tool.uv.pip]
 prerelease = "allow"
 
+# Commitizen configuration
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.0.0"
+tag_format = "v$version"
+
 # Pytest configuration
 [tool.pytest.ini_options]
 testpaths = ["tests", "Quantum-Control-Applications", "Tutorials"]
@@ -56,6 +65,26 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore:Passing field metadata as keyword arguments is deprecated.*:DeprecationWarning",
+    "ignore:qm.results is deprecated.*:DeprecationWarning",
+    "ignore:qm.results.simulator_samples is deprecated.*:DeprecationWarning",
+    "ignore:.*qualibrate_config.*:DeprecationWarning",
+    "ignore:Accessing the 'model_fields' attribute on the instance is deprecated.*:pydantic.warnings.PydanticDeprecatedSince211",
+    "ignore:Accessing the 'model_computed_fields' attribute on the instance is deprecated.*:pydantic.warnings.PydanticDeprecatedSince211",
+    "ignore:QuaConfigMixInputs.lo_frequency is deprecated.*:DeprecationWarning",
+    "ignore:QuaConfigCorrectionEntry.frequency is deprecated.*:DeprecationWarning",
+    "ignore:QuaConfigCorrectionEntry.lo_frequency is deprecated.*:DeprecationWarning",
+    "ignore:This component is not part of any QuamRoot.*:UserWarning",
+]
+markers = [
+    "unit: fast pure-Python unit tests",
+    "analysis: analysis/fit/graph tests over data",
+    "interop: controller API contract tests (mocked or dry-run)",
+    "simulation: cloud simulator tests (opt-in; not run in CI)",
+    "hw: hardware sanity checks (manual/nightly)",
+    "perf: performance and scaling benchmarks",
+]
 
 # Coverage configuration
 [tool.coverage.run]

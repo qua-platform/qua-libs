@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "QM Quantum Dots Calibration Graphs"
 readme = "../README.md"
 license = { text = "BSD-3-Clause" }
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: BSD License",
