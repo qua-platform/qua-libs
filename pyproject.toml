@@ -42,6 +42,8 @@ dev = [
     "pytest>=8.3.5",
     "pytest-cov>=4.1.0",
     "pre-commit>=3.6.0",
+    "qm-qua>=1.2.5",
+    "qm-saas>=1.1.7",
 ]
 
 [tool.uv]

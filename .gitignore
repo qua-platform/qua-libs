@@ -12,3 +12,4 @@ tempCodeRunnerFile.python
 .DS_Store
 **/.DS_Store
 tests/.qm_saas_credentials.json
+tests/.qm_cluster_config.json

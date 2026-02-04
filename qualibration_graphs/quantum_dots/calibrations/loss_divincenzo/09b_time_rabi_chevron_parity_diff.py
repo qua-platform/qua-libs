@@ -56,15 +56,6 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1"]
-    # node.parameters.num_shots = 10
-    # node.parameters.tau_min = 16
-    # node.parameters.tau_max = 10000
-    # node.parameters.tau_step = 52
-    # node.parameters.frequency_min_in_mhz = -0.5
-    # node.parameters.frequency_max_in_mhz = 0.525
-    # node.parameters.frequency_step_in_mhz = 0.025
     pass
 
 
@@ -153,7 +144,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qubit.initialize(hold_duration=4 * t + node.parameters.gap_wait_time_in_ns)
 
                         # ---------------------------------------------------------
-                        # Step 3: X180 - move to sweet spot and apply pi pulse
+                        # Step 3: X180 - apply pi pulse
                         # ---------------------------------------------------------
                         for i, qubit in batched_qubits.items():
                             # X180 macro handles X180 pulse
