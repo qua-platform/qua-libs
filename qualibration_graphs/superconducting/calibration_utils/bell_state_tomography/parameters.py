@@ -23,9 +23,10 @@ class NodeSpecificParameters(RunnableParameters):
         target_peak_width (Optional[float]): Target peak width in Hz. Default is 3e6 Hz.
     """
 
-    num_shots: int = 3
-    bell_state: Literal["00-11"] = "00-11"
+    num_shots: int = 100
     wf_type: Literal["square", "cosine", "gauss", "flattop"] = "square"
+    cr_type: Literal["direct", "direct+cancel", "direct+echo", "direct+cancel+echo"] = "direct"
+    bell_state: Literal["00-11"] = "00-11"
 
 
 class QubitPairExperimentNodeParametersCustom(QubitPairExperimentNodeParameters):

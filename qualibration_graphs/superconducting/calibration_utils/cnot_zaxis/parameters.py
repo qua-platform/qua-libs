@@ -23,7 +23,8 @@ class NodeSpecificParameters(RunnableParameters):
         target_peak_width (Optional[float]): Target peak width in Hz. Default is 3e6 Hz.
     """
 
-    num_shots: int = 3
+    num_shots: int = 100
+    cr_type: Literal["direct", "direct+cancel", "direct+echo", "direct+cancel+echo"] = "direct"
     wf_type: Literal["square", "cosine", "gauss", "flattop"] = "square"
 
 
