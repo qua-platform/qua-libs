@@ -19,8 +19,6 @@ class BaseExperimentNodeParameters(RunnableParameters):
     quadratures 'I' and 'Q'. Default is False."""
     reset_wait_time: int = 5000
     """The wait time for qubit reset."""
-    sensor_names: Optional[List[str]] = None
-    """The list of sensor dot names to be included in the measurement. """
 
 
 class QuantumDotExperimentNodeParameters(BaseExperimentNodeParameters):
