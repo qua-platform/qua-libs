@@ -23,7 +23,7 @@ description = """
             2D OPX CHARGE STABILITY MAP
 This script involves a simple 2D voltage map, done by stepping the X and Y Quantum Dots
 to their corresponding voltages, sending a readout pulse, and demodulating the 'I' and 'Q'
-quadratures. This is performed solely using the OPX to sweep/step the axes. 
+quadratures. This is performed solely using the OPX to sweep/step the axes.
 
 Prerequisites:
     - Having calibrated the IQ mixer/Octave connected to the readout line (node 01a_mixer_calibration.py).
@@ -34,7 +34,9 @@ Prerequisites:
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="05a_charge_stability_opx", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](
+    name="05a_charge_stability_opx", description=description, parameters=Parameters()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -51,6 +53,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
 
+
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -64,8 +67,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.parameters.y_axis_name
     )
 
-    if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id: 
-        raise ValueError(f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}")
+    if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
+        raise ValueError(
+            f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
+        )
     vgs_id = x_obj.voltage_sequence.gate_set.id
 
     x_volts, y_volts = get_voltage_arrays(node)
@@ -93,10 +98,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             align()
             with for_(n, 0, n < node.parameters.num_shots, n + 1):
                 save(n, n_st)
-                for x,y in scan_mode.scan(x_volts, y_volts):
+                for x, y in scan_mode.scan(x_volts, y_volts):
                     # Simultaneous stepping of the voltage of the virtualised gates.
                     # If ramps are preferred, specify ramp_duration as arg in simultaneous()
-                    seq.ramp_to_voltages({x_obj.name: x, y_obj.name:y}, duration = node.parameters.hold_duration, ramp_duration = node.parameters.ramp_duration)
+                    seq.ramp_to_voltages(
+                        {x_obj.name: x, y_obj.name: y},
+                        duration=node.parameters.hold_duration,
+                        ramp_duration=node.parameters.ramp_duration,
+                    )
                     # with seq.simultaneous(duration = node.parameters.hold_duration, ramp_duration = node.parameters.ramp_duration):
                     #     x_obj.go_to_voltages(x, duration = node.parameters.hold_duration)
                     #     y_obj.go_to_voltages(y, duration = node.parameters.hold_duration)
@@ -168,6 +177,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
+
+
 #     load_data_id = node.parameters.load_data_id
 #     # Load the specified dataset
 #     node.load_from_id(node.parameters.load_data_id)
@@ -180,6 +191,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+
+
 #     fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
 #     fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
 #     plt.show()
@@ -220,9 +233,10 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
         save_path="/Users/User/.qualibrate/user_storage",
     )
 
+
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save the node results and state."""
-#     node.save()
+    #     node.save()
     pass

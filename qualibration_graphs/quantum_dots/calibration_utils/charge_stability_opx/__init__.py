@@ -16,9 +16,9 @@ from .analysis import (
 )
 
 from .scan_modes import (
-    ScanMode, 
-    RasterScan, 
-    SwitchRasterScan, 
+    ScanMode,
+    RasterScan,
+    SwitchRasterScan,
 )
 
 try:
@@ -43,7 +43,7 @@ __all__ = [
     "FitParameters",
     "analyze_edge_map",
     "SegmentFit",
-    "ScanMode", 
-    "RasterScan", 
+    "ScanMode",
+    "RasterScan",
     "SwitchRasterScan",
 ]
