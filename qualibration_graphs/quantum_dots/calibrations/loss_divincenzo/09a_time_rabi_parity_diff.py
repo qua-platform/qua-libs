@@ -8,12 +8,13 @@ from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
+from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.time_rabi_parity_diff import Parameters
-from calibration_utils.common_utils.experiment import get_sensors, get_qubit_pairs
+from calibration_utils.common_utils.experiment import get_sensors, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -70,6 +71,115 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    node.namespace["qubits"] = qubits = get_qubits(node)
+    num_qubits = len(qubits)
+
+    n_avg = node.parameters.num_shots  # The number of averages
+    # Pulse duration sweep in nanoseconds
+    pulse_durations = np.arange(
+        node.parameters.min_wait_time_in_ns,
+        node.parameters.max_wait_time_in_ns,
+        node.parameters.time_step_in_ns,
+    )
+
+    # Register the sweep axes to be added to the dataset when fetching data
+    node.namespace["sweep_axes"] = {
+        "qubit": xr.DataArray(qubits.get_names()),
+        "pulse_duration": xr.DataArray(pulse_durations, attrs={"long_name": "qubit pulse duration", "units": "ns"}),
+    }
+
+    with program() as node.namespace["qua_program"]:
+        # Declare QUA variables
+        t = declare(int)
+        n = declare(int)
+
+        # Additional variables for pre/post measurement comparison
+        # Use int instead of bool so we can average in stream processing
+        p1 = declare(int, size=num_qubits)
+        p2 = declare(int, size=num_qubits)
+        # Streams keyed by qubit name; each qubit appears in exactly one batch.
+        p1_st = {qubit.name: declare_stream() for qubit in qubits}
+        p2_st = {qubit.name: declare_stream() for qubit in qubits}
+        pdiff_st = {qubit.name: declare_stream() for qubit in qubits}
+        n_st = declare_stream()
+
+        # Main experiment loop
+        for batched_qubits in qubits.batch():
+            with for_(n, 0, n < n_avg, n + 1):
+                save(n, n_st)
+
+                with for_(*from_array(t, pulse_durations // 4)):
+                    # ---------------------------------------------------------
+                    # Step 1: Empty - step to empty point (fixed duration)
+                    # ---------------------------------------------------------
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        qubit.empty()
+
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        # Measure initial state (includes step_to('readout'))
+                        # Cast bool to int for stream averaging
+                        assign(p1[i], Cast.to_int(qubit.measure()))
+
+                    # ---------------------------------------------------------
+                    # Step 2: Initialize - load electron into dot (variable duration)
+                    # ---------------------------------------------------------
+                    align()
+
+                    for i, qubit in batched_qubits.items():
+                        qubit.initialize(hold_duration=4 * t + node.parameters.gap_wait_time_in_ns)
+
+                    # ---------------------------------------------------------
+                    # Step 3: X180 - apply pi pulse
+                    # ---------------------------------------------------------
+                    for i, qubit in batched_qubits.items():
+                        # X180 macro handles X180 pulse
+                        qubit.x180(duration=t)
+
+                    # Synchronize before measurement
+                    align()
+
+                    # ---------------------------------------------------------
+                    # Step 4: Measure - move to PSB and measure
+                    # ---------------------------------------------------------
+                    for i, qubit in batched_qubits.items():
+                        # Measure macro handles step_to('readout') + measurement
+                        # Cast bool to int for stream averaging
+                        assign(p2[i], Cast.to_int(qubit.measure()))
+
+                    # Synchronize before compensation
+                    align()
+
+                    # ---------------------------------------------------------
+                    # Step 5: Apply compensation pulse to reset DC bias
+                    # ---------------------------------------------------------
+                    for i, qubit in batched_qubits.items():
+                        qubit.voltage_sequence.apply_compensation_pulse()
+
+                    # ---------------------------------------------------------
+                    # Save results
+                    # ---------------------------------------------------------
+                    for i, qubit in batched_qubits.items():
+                        save(p1[i], p1_st[qubit.name])
+                        save(p2[i], p2_st[qubit.name])
+
+                        # Calculate state difference
+                        with if_(p1[i] == p2[i]):
+                            save(0, pdiff_st[qubit.name])
+                        with else_():
+                            save(1, pdiff_st[qubit.name])
+
+        # Stream processing
+        with stream_processing():
+            n_st.save("n")
+
+            n_durations = len(pulse_durations)
+
+            for qubit in qubits:
+                p1_st[qubit.name].buffer(n_durations).average().save(f"p1_{qubit.name}")
+                p2_st[qubit.name].buffer(n_durations).average().save(f"p2_{qubit.name}")
+                pdiff_st[qubit.name].buffer(n_durations).average().save(f"pdiff_{qubit.name}")
 
 
 # %% {Simulate}
@@ -120,9 +230,9 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active sensors and qubit pairs from the loaded node parameters
+    # Get the active sensors and qubits from the loaded node parameters
     node.namespace["sensors"] = get_sensors(node)
-    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+    node.namespace["qubits"] = get_qubits(node)
 
 
 # %% {Analyse_data}
