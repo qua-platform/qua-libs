@@ -66,78 +66,117 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    # # Get the active qubits from the node and organize them by batches
-    # node.namespace["qubits"] = qubits = get_qubits(node)
-    # num_qubits = len(qubits)
-    # # Get the relevant sensor dots rom the node
-    # # node.namespace["sensors"] = sensors = get_sensors(node)
-    # # num_sensors = len(sensors)
-    #
-    # n_avg = node.parameters.num_shots  # The number of averages
-    # operation = node.parameters.operation  # The qubit operation to play
-    # # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
-    # amps = np.arange(
-    #     node.parameters.min_amp_factor,
-    #     node.parameters.max_amp_factor,
-    #     node.parameters.amp_factor_step,
-    # )
-    # # Register the sweep axes to be added to the dataset when fetching data
-    # node.namespace["sweep_axes"] = {
-    #     "qubit": xr.DataArray(qubits.get_names()),
-    #     "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "pulse amplitude prefactor"}),
-    # }
-    #
-    # # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
-    # with program() as node.namespace["qua_program"]:
-    #
-    #     I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubits)
-    #     if node.parameters.use_state_discrimination:
-    #         state = [declare(int) for _ in range(num_qubits)]
-    #         state_st = [declare_stream() for _ in range(num_qubits)]
-    #     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
-    #
-    #     for multiplexed_qubits in qubits.batch():
-    #         # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
-    #         for qubit in multiplexed_qubits.values():
-    #             # node.machine.initialize_qpu(target=qubit)
-    #             qubit.step_to_point("empty")
-    #         align()
-    #
-    #         with for_(n, 0, n < n_avg, n + 1):
-    #             save(n, n_st)
-    #             with for_(*from_array(a, amps)):
-    #                 # Qubit initialization
-    #                 for i, qubit in multiplexed_qubits.items():
-    #                     qubit.initialize(node.parameters.reset_type, node.parameters.target_state, node.parameters.simulate)
-    #                     # qubit.step_to_point("initialization")
-    #                 align()
-    #
-    #                 # Qubit manipulation
-    #                 for i, qubit in multiplexed_qubits.items():
-    #                     # qubit.step_to_point("manipulation", duration=t)
-    #                     qubit.xy_channel.play(operation, amplitude_scale=a)
-    #
-    #                 align()
-    #
-    #                 # Qubit readout
-    #                 for i, qubit in multiplexed_qubits.items():
-    #                     qubit.step_to_point("readout")
-    #                     qubit.quantum_dot_pair.sensor_dot.resonator.measure()
-    #                     qubit.machine.sensor_dots
-    #                     if node.parameters.use_state_discrimination:
-    #                         # qubit.readout_state(state[i])
-    #                         save(state[i], state_st[i])
-    #                     else:
-    #                         qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-    #                         save(I[i], I_st[i])
-    #                         save(Q[i], Q_st[i])
-    #                 align()
-    #
-    #     with stream_processing():
-    #         n_st.save("n")
-    #         for i in range(num_qubits):
-    #             I_st[i].buffer(len(amps)).average().save(f"I{i + 1}")
-    #             Q_st[i].buffer(len(amps)).average().save(f"Q{i + 1}")
+    node.namespace["qubits"] = qubits = get_qubits(node)
+    num_qubits = len(qubits)
+
+    n_avg = node.parameters.num_shots  # The number of averages
+    operation = node.parameters.operation  # The qubit operation to play
+    # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+    amps = np.arange(
+        node.parameters.min_amp_factor,
+        node.parameters.max_amp_factor,
+        node.parameters.amp_factor_step,
+    )
+
+    # Register the sweep axes to be added to the dataset when fetching data
+    node.namespace["sweep_axes"] = {
+        "qubit": xr.DataArray(qubits.get_names()),
+        "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "pulse amplitude prefactor"}),
+    }
+
+    with program() as node.namespace["qua_program"]:
+        # Declare QUA variables
+        a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
+        n = declare(int)
+
+        # Additional variables for pre/post measurement comparison
+        # Use int instead of bool so we can average in stream processing
+        p1 = declare(int, size=num_qubits)
+        p2 = declare(int, size=num_qubits)
+        # Streams keyed by qubit name; each qubit appears in exactly one batch.
+        p1_st = {qubit.name: declare_stream() for qubit in qubits}
+        p2_st = {qubit.name: declare_stream() for qubit in qubits}
+        pdiff_st = {qubit.name: declare_stream() for qubit in qubits}
+        n_st = declare_stream()
+
+        # Main experiment loop
+        for batched_qubits in qubits.batch():
+            with for_(n, 0, n < n_avg, n + 1):
+                save(n, n_st)
+
+                with for_(*from_array(a, amps)):
+                    # ---------------------------------------------------------
+                    # Step 1: Empty - step to empty point (fixed duration)
+                    # ---------------------------------------------------------
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        qubit.empty()
+
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        # Measure initial state (includes step_to('readout'))
+                        # Cast bool to int for stream averaging
+                        assign(p1[i], Cast.to_int(qubit.measure()))
+
+                    # ---------------------------------------------------------
+                    # Step 2: Initialize - load electron into dot
+                    # ---------------------------------------------------------
+                    align()
+
+                    for i, qubit in batched_qubits.items():
+                        # Get operation duration in ns from QUAM state
+                        op_length_ns = qubit.xy.operations[operation].length
+                        qubit.initialize(hold_duration=op_length_ns + node.parameters.gap_wait_time_in_ns)
+
+                    # ---------------------------------------------------------
+                    # Step 3: Apply qubit pulse with variable amplitude
+                    # ---------------------------------------------------------
+                    for i, qubit in batched_qubits.items():
+                        qubit.xy.play(operation, amplitude_scale=a)
+
+                    # Synchronize before measurement
+                    align()
+
+                    # ---------------------------------------------------------
+                    # Step 4: Measure - move to PSB and measure
+                    # ---------------------------------------------------------
+                    for i, qubit in batched_qubits.items():
+                        # Measure macro handles step_to('readout') + measurement
+                        # Cast bool to int for stream averaging
+                        assign(p2[i], Cast.to_int(qubit.measure()))
+
+                    # Synchronize before compensation
+                    align()
+
+                    # ---------------------------------------------------------
+                    # Step 5: Apply compensation pulse to reset DC bias
+                    # ---------------------------------------------------------
+                    for i, qubit in batched_qubits.items():
+                        qubit.voltage_sequence.apply_compensation_pulse()
+
+                    # ---------------------------------------------------------
+                    # Save results
+                    # ---------------------------------------------------------
+                    for i, qubit in batched_qubits.items():
+                        save(p1[i], p1_st[qubit.name])
+                        save(p2[i], p2_st[qubit.name])
+
+                        # Calculate state difference
+                        with if_(p1[i] == p2[i]):
+                            save(0, pdiff_st[qubit.name])
+                        with else_():
+                            save(1, pdiff_st[qubit.name])
+
+        # Stream processing
+        with stream_processing():
+            n_st.save("n")
+
+            n_amps = len(amps)
+
+            for qubit in qubits:
+                p1_st[qubit.name].buffer(n_amps).average().save(f"p1_{qubit.name}")
+                p2_st[qubit.name].buffer(n_amps).average().save(f"p2_{qubit.name}")
+                pdiff_st[qubit.name].buffer(n_amps).average().save(f"pdiff_{qubit.name}")
 
 
 # %% {Simulate}
@@ -188,14 +227,17 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the sensors from the loaded node parameters
-    node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
+    # Get the active sensors and qubits from the loaded node parameters
+    node.namespace["sensors"] = get_sensors(node)
+    node.namespace["qubits"] = get_qubits(node)
 
 
 # %% {Analyse_data}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    # TODO: Implement analysis - remove pass when complete
+    pass
     # node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     # node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     # node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
@@ -209,9 +251,11 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Plot_data}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+    # TODO: Implement plotting - remove pass when complete
+    pass
     # fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
     # fig_fit_amplitude = plot_raw_amplitude_with_fit(
     #     node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
@@ -225,7 +269,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor_name data analysis was successful."""
     with node.record_state_updates():
