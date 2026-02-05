@@ -23,7 +23,7 @@ description = """
             2D OPX CHARGE STABILITY MAP
 This script involves a simple 2D voltage map, done by stepping the X and Y Quantum Dots
 to their corresponding voltages, sending a readout pulse, and demodulating the 'I' and 'Q'
-quadratures. This is performed solely using the OPX to sweep/step the axes. 
+quadratures. This is performed solely using the OPX to sweep/step the axes.
 
 Prerequisites:
     - Having calibrated the IQ mixer/Octave connected to the readout line (node 01a_mixer_calibration.py).
@@ -34,7 +34,9 @@ Prerequisites:
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="05a_charge_stability_opx", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](
+    name="05a_charge_stability_opx", description=description, parameters=Parameters()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -56,6 +58,8 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+
+
 #     # Class containing tools to help handle units and conversions.
 #     u = unit(coerce_to_integer=True)
 
@@ -122,6 +126,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
+
+
 #     # Connect to the QOP
 #     qmm = node.machine.connect()
 #     # Get the config from the machine
@@ -139,6 +145,8 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
+
+
 #     qmm = node.machine.connect()
 #     # Get the config from the machine
 #     config = node.machine.generate_config()
@@ -164,6 +172,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
+
+
 #     load_data_id = node.parameters.load_data_id
 #     # Load the specified dataset
 #     node.load_from_id(node.parameters.load_data_id)
@@ -176,6 +186,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+
+
 #     fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
 #     fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
 #     plt.show()
@@ -192,6 +204,10 @@ from calibration_utils.run_video_mode import create_video_mode
 
 @node.run_action(skip_if=node.parameters.run_in_video_mode is False)
 def run_video_mode(node: QualibrationNode[Parameters, Quam]):
+    # TODO: Implement video mode - remove pass when complete
+    pass
+
+
 #     x_axis_name = node.parameters.x_axis_name
 #     y_axis_name = node.parameters.y_axis_name
 #     x_span, x_points = node.parameters.x_span, node.parameters.x_points
@@ -218,7 +234,10 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Save_results}
-@node.run_action()
-def save_results(node: QualibrationNode[Parameters, Quam]):
-    """Save the node results and state."""
+# TODO: Remove fmt: off once node is complete
+# fmt: off
+# @node.run_action()
+# def save_results(node: QualibrationNode[Parameters, Quam]):
+#     """Save the node results and state."""
 #     node.save()
+# fmt: on

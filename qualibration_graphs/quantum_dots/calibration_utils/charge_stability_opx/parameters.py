@@ -30,7 +30,7 @@ class NodeSpecificParameters(RunnableParameters):
 
 class Parameters(
     NodeParameters,
-    VideoModeCommonParameters, 
+    VideoModeCommonParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
 ):

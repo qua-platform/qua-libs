@@ -65,24 +65,23 @@ def launch_video_mode(
         }
 
     dc_set = None
-    if dc_control: 
+    if dc_control:
         external_qdac = "qdac_ip" in machine.network
-        machine.connect_to_external_source(external_qdac = external_qdac)
+        machine.connect_to_external_source(external_qdac=external_qdac)
         dc_set = machine.virtual_dc_sets.get(virtual_gate_id, None)
 
     voltage_control_tab, voltage_control_component = None, None
-    if dc_set is not None: 
+    if dc_set is not None:
         voltage_control_component = VoltageControlComponent(
             component_id="Voltage_Control",
-            dc_set = dc_set,
+            dc_set=dc_set,
             update_interval_ms=1000,
         )
         from qua_dashboards.video_mode.tab_controllers import (
             VoltageControlTabController,
         )
-        voltage_control_tab = VoltageControlTabController(
-            voltage_control_component=voltage_control_component
-        )
+
+        voltage_control_tab = VoltageControlTabController(voltage_control_component=voltage_control_component)
 
     qmm = machine.connect()
     virtual_gate_set = machine.virtual_gate_sets[virtual_gate_id]
@@ -98,7 +97,7 @@ def launch_video_mode(
         num_software_averages=num_software_averages,
         x_mode=x_mode,
         y_mode=y_mode,
-        voltage_control_component = voltage_control_component
+        voltage_control_component=voltage_control_component,
     )
 
     def find_default(mode):
@@ -120,10 +119,14 @@ def launch_video_mode(
         y_sweepaxis.span = y_span if y_span is not None else find_default(x_mode)[1]
         y_sweepaxis.points = y_points if y_points is not None else find_default(x_mode)[0]
 
-    virtual_gates_component = VirtualLayerEditor(gateset=virtual_gate_set, component_id="Virtual_Gates", dc_set = dc_set)
+    virtual_gates_component = VirtualLayerEditor(gateset=virtual_gate_set, component_id="Virtual_Gates", dc_set=dc_set)
 
     video_mode_component = VideoModeComponent(
-        data_acquirer=data_acquirer, data_polling_interval_s=0.2, save_path=save_path, shutdown_callback=stop_dashboard, voltage_control_tab = voltage_control_tab
+        data_acquirer=data_acquirer,
+        data_polling_interval_s=0.2,
+        save_path=save_path,
+        shutdown_callback=stop_dashboard,
+        voltage_control_tab=voltage_control_tab,
     )
 
     components = [video_mode_component, virtual_gates_component]
