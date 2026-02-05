@@ -125,14 +125,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     for i, qubit in batched_qubits.items():
                         # Get operation duration in ns from QUAM state
-                        op_length_ns = qubit.xy.operations[operation].length
-                        qubit.initialize(hold_duration=op_length_ns + node.parameters.gap_wait_time_in_ns)
+                        op_length_ns = qubit.macros['x180'].duration
+                        qubit.initialize(duration=op_length_ns + node.parameters.gap_wait_time_in_ns + 1000)
 
                     # ---------------------------------------------------------
                     # Step 3: Apply qubit pulse with variable amplitude
                     # ---------------------------------------------------------
                     for i, qubit in batched_qubits.items():
-                        qubit.xy.play(operation, amplitude_scale=a)
+                        qubit.x180(amplitude_scale=a)
 
                     # Synchronize before measurement
                     align()

@@ -16,8 +16,8 @@ class X180Macro(QuamMacro):  # pylint: disable=too-few-public-methods
     """Macro for X180 gate: step to operate point and apply pi pulse."""
 
     pulse_name: str = "X180"
-    amplitude_scale: Optional[float] = None
-    duration: Optional[int] = None
+    amplitude_scale: Optional[float] = 1.
+    duration: Optional[int] = 100
 
     def _validate(self, xy_channel, duration, amplitude_scale) -> None:
         if xy_channel is None:

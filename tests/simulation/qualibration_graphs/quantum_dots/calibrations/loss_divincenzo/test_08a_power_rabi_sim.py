@@ -16,5 +16,6 @@ def test_power_rabi_simulation(simulation_runner):
             "num_shots": 10,
             "simulation_duration_ns": 10_000,
             "timeout": 30,
+            "min_amp_factor": 1.0
         },
     )
