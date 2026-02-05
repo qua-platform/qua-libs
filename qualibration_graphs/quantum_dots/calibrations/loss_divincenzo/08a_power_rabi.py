@@ -125,7 +125,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     for i, qubit in batched_qubits.items():
                         # Get operation duration in ns from QUAM state
-                        op_length_ns = qubit.macros['x180'].duration
+                        op_length_ns = qubit.macros["x180"].duration
                         qubit.initialize(duration=op_length_ns + node.parameters.gap_wait_time_in_ns + 1000)
 
                     # ---------------------------------------------------------

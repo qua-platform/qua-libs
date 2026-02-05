@@ -12,10 +12,5 @@ def test_power_rabi_simulation(simulation_runner):
     """Run simulation and generate artifacts for power rabi."""
     simulation_runner(
         node_name=NODE_NAME,
-        param_overrides={
-            "num_shots": 10,
-            "simulation_duration_ns": 10_000,
-            "timeout": 30,
-            "min_amp_factor": 1.0
-        },
+        param_overrides={"num_shots": 10, "simulation_duration_ns": 10_000, "timeout": 30, "min_amp_factor": 1.0},
     )
