@@ -2,67 +2,6 @@ import xarray as xr
 from typing import Iterable, List, Optional, Tuple
 
 
-# def reshape_control_target_val2dim(
-#     ds: xr.Dataset,
-#     state_discrimination: bool = False,
-#     control_target=["c", "t"],
-#     control_target_dim_name="control_target",
-# ) -> xr.Dataset:
-#     """
-#     Transforms a dataset with variables I_c, Q_c, I_t, Q_t (or state_c/state_t)
-#     into a dataset with a new 'control_target' dimension ('c' or 't') and
-#     renamed variables ('I', 'Q') or 'state'.
-
-#     Parameters
-#     ----------
-#     ds : xr.Dataset
-#         Input dataset containing either:
-#         - ['I_c', 'Q_c', 'I_t', 'Q_t'] if state_discrimination is False, or
-#         - ['state_c', 'state_t'] if state_discrimination is True.
-#     state_discrimination : bool
-#         If True, convert ['state_c', 'state_t'] into a single 'state' variable.
-#         If False, convert ['I_c', 'Q_c', 'I_t', 'Q_t'] into 'I' and 'Q'.
-
-#     Returns
-#     -------
-#     xr.Dataset
-#         Reshaped dataset with a 'control_target' dimension (values 'c', 't'),
-#         and reordered dimensions: ('qubit_pair', 'control_target', ...)
-#     """
-#     c_, t_ = control_target
-#     target_dims = ("qubit_pair", control_target_dim_name)
-
-#     if state_discrimination:
-#         state = xr.concat(
-#             [ds[f"state_{c_}"], ds[f"state_{t_}"]],
-#             dim=xr.DataArray(control_target, dims=control_target_dim_name, name=control_target_dim_name),
-#         ).transpose("qubit_pair", control_target_dim_name, ...)
-
-#         new_ds = xr.Dataset({"state": state})
-
-#     else:
-#         I = xr.concat(
-#             [ds[f"I_{c_}"], ds[f"I_{t_}"]], dim=xr.DataArray(control_target, dims=control_target_dim_name, name=control_target_dim_name)
-#         ).transpose("qubit_pair", control_target_dim_name, ...)
-
-#         Q = xr.concat(
-#             [ds[f"Q_{c_}"], ds[f"Q_{t_}"]], dim=xr.DataArray(control_target, dims=control_target_dim_name, name=control_target_dim_name)
-#         ).transpose("qubit_pair", control_target_dim_name, ...)
-
-#         new_ds = xr.Dataset({"I": I, "Q": Q})
-
-#     # Add missing coordinates from the original dataset (if not already present)
-#     for coord in ds.coords:
-#         if coord not in new_ds.coords:
-#             new_ds = new_ds.assign_coords({coord: ds.coords[coord]})
-
-#     # Make sure to order the dims
-#     new_ds = new_ds.transpose(*target_dims, ...)
-
-#     return new_ds
-
-
-
 def reshape_control_target_val2dim(
     ds: xr.Dataset,
     state_discrimination: bool = False,
@@ -133,9 +72,7 @@ def reshape_control_target_val2dim(
             leading_dims = (suffix_dim_name,)
 
     # Build the coordinate for the new suffix dimension
-    suffix_coord = xr.DataArray(
-        suffixes, dims=suffix_dim_name, name=suffix_dim_name
-    )
+    suffix_coord = xr.DataArray(suffixes, dims=suffix_dim_name, name=suffix_dim_name)
 
     # Validate that required variables exist
     missing = []
@@ -145,17 +82,12 @@ def reshape_control_target_val2dim(
             if name not in ds:
                 missing.append(name)
     if missing:
-        raise KeyError(
-            "The following expected variables are missing from the dataset: "
-            + ", ".join(missing)
-        )
+        raise KeyError("The following expected variables are missing from the dataset: " + ", ".join(missing))
 
     # Concatenate for each prefix across the new suffix dimension
     data_vars = {}
     for p in prefixes:
-        stacked = xr.concat(
-            [ds[f"{p}_{s}"] for s in suffixes], dim=suffix_coord
-        )
+        stacked = xr.concat([ds[f"{p}_{s}"] for s in suffixes], dim=suffix_coord)
         # Just in case, transpose to move suffix dim next to qubit-like dim(s)
         # (final strict ordering handled below)
         data_vars[p] = stacked.transpose(...)

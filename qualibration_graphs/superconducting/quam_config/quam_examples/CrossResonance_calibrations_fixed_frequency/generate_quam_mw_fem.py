@@ -22,8 +22,14 @@ instruments.add_mw_fem(controller=1, slots=[1, 2])
 # %%                                 Define which qubit ids are present in the system
 ########################################################################################################################
 qubits = [
-    1, 2, 3, 4,
-    5, 6, 7, 8,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
 ]
 qubit_idxes = {q: i for i, q in enumerate(qubits)}
 qubit_pairs = [
@@ -45,16 +51,34 @@ assert flattened_qubits.issubset(set(qubits))
 ########################################################################################################################
 con = 1
 rr_slots = [
-    1, 1, 1, 1,
-    2, 2, 2, 2,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2,
 ]
 rr_out_ports = [
-    1, 1, 1, 1,
-    1, 1, 1, 1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
 ]
 rr_in_ports = [
-    1, 1, 1, 1,
-    1, 1, 1, 1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
 ]
 
 assert len(rr_slots) == len(qubits)
@@ -62,12 +86,24 @@ assert len(rr_out_ports) == len(qubits)
 assert len(rr_in_ports) == len(qubits)
 
 xy_slots = [
-    1, 1, 1, 1,
-    2, 2, 2, 2,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2,
 ]
 xy_ports = [
-    2, 3, 4, 5,
-    2, 3, 4, 5,
+    2,
+    3,
+    4,
+    5,
+    2,
+    3,
+    4,
+    5,
 ]
 
 assert len(xy_slots) == len(qubits)

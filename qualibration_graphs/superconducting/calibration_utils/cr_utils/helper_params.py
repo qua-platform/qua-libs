@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from typing import Any, List
 
+
 def broadcast_param_to_list(value: Any, n: int) -> List[Any]:
     """
     Normalize a parameter to a list of length n.
