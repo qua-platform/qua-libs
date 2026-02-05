@@ -14,8 +14,9 @@ def test_ramsey_parity_diff_simulation(simulation_runner):
         node_name=NODE_NAME,
         param_overrides={
             "num_shots": 10,
-            "simulation_duration_ns": 10_000,
+            "simulation_duration_ns": 20_000,
             "timeout": 30,
             "tau_min": 500,
+            "tau_step": 500,
         },
     )

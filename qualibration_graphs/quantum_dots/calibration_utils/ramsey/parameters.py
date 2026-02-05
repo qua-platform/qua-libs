@@ -14,7 +14,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Step size for the idle time sweep in nanoseconds. Default is 16 ns."""
     frequency_detuning_in_mhz: float = 1.0
     """Frequency detuning in MHz. Default is 1.0 MHz."""
-    gap_wait_time_in_ns: int = 128
+    gap_wait_time_in_ns: int = 2_048
     """Wait time between initialization and first X90 pulse in nanoseconds. Default is 128 ns."""
 
 
