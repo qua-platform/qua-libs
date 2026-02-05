@@ -8,11 +8,11 @@ from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
+from qualang_tools.loops import from_array
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.time_rabi_chevron_parity_diff import Parameters
+from calibration_utils.T1_parity_diff import Parameters
 from calibration_utils.common_utils.experiment import get_sensors, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -83,7 +83,100 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    pass
+    node.namespace["qubits"] = qubits = get_qubits(node)
+    num_qubits = len(qubits)
+
+    n_avg = node.parameters.num_shots
+    tau_values = np.arange(
+        node.parameters.tau_min,
+        node.parameters.tau_max,
+        node.parameters.tau_step,
+    )
+
+    node.namespace["sweep_axes"] = {
+        "qubit": xr.DataArray(qubits.get_names()),
+        "tau": xr.DataArray(tau_values, attrs={"long_name": "idle time", "units": "ns"}),
+    }
+
+    with program() as node.namespace["qua_program"]:
+        t = declare(int)
+        n = declare(int)
+
+        p1 = declare(int, size=num_qubits)
+        p2 = declare(int, size=num_qubits)
+
+        p1_st = {qubit.name: declare_stream() for qubit in qubits}
+        p2_st = {qubit.name: declare_stream() for qubit in qubits}
+        pdiff_st = {qubit.name: declare_stream() for qubit in qubits}
+        n_st = declare_stream()
+
+        for batched_qubits in qubits.batch():
+            with for_(n, 0, n < n_avg, n + 1):
+                save(n, n_st)
+
+                with for_(*from_array(t, tau_values // 4)):
+                    # ---------------------------------------------------------
+                    # Step 1: Empty - step to empty point (fixed duration)
+                    # ---------------------------------------------------------
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        qubit.empty()
+
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        assign(p1[i], Cast.to_int(qubit.measure()))
+
+                    # ---------------------------------------------------------
+                    # Step 2: Initialize - load electron into dot (fixed duration)
+                    # ---------------------------------------------------------
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        op_length = qubit.macros["x180"].duration
+                        qubit.initialize(
+                            duration=node.parameters.gap_wait_time_in_ns + op_length + 4 * t
+                        )
+
+                    # ---------------------------------------------------------
+                    # Step 3: X180 - apply pi pulse and idle
+                    # ---------------------------------------------------------
+                    for i, qubit in batched_qubits.items():
+                        qubit.x180()
+                        qubit.xy.wait(t)
+
+                    # ---------------------------------------------------------
+                    # Step 4: Measure - move to PSB and measure
+                    # ---------------------------------------------------------
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        assign(p2[i], Cast.to_int(qubit.measure()))
+
+                    # ---------------------------------------------------------
+                    # Step 5: Apply compensation pulse to reset DC bias
+                    # ---------------------------------------------------------
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        qubit.voltage_sequence.apply_compensation_pulse()
+
+                    # ---------------------------------------------------------
+                    # Save results
+                    # ---------------------------------------------------------
+                    for i, qubit in batched_qubits.items():
+                        save(p1[i], p1_st[qubit.name])
+                        save(p2[i], p2_st[qubit.name])
+
+                        with if_(p1[i] == p2[i]):
+                            save(0, pdiff_st[qubit.name])
+                        with else_():
+                            save(1, pdiff_st[qubit.name])
+
+        with stream_processing():
+            n_st.save("n")
+
+            n_tau = len(tau_values)
+            for qubit in qubits:
+                p1_st[qubit.name].buffer(n_tau).average().save(f"p1_{qubit.name}")
+                p2_st[qubit.name].buffer(n_tau).average().save(f"p2_{qubit.name}")
+                pdiff_st[qubit.name].buffer(n_tau).average().save(f"pdiff_{qubit.name}")
 
 
 # %% {Simulate}
@@ -143,6 +236,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    # TODO: Implement analysis for T1 parity diff.
     pass
 
 
@@ -150,6 +244,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
+    # TODO: Implement plotting for T1 parity diff.
     pass
 
 
