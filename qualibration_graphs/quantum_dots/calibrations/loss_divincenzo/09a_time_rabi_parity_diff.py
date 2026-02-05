@@ -128,7 +128,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
 
                     for i, qubit in batched_qubits.items():
-                        qubit.initialize(hold_duration=4 * t + node.parameters.gap_wait_time_in_ns)
+                        qubit.initialize(duration=4 * t + node.parameters.gap_wait_time_in_ns)
 
                     # ---------------------------------------------------------
                     # Step 3: X180 - apply pi pulse
