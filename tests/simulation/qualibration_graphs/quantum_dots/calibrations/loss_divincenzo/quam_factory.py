@@ -23,7 +23,7 @@ from quam_builder.architecture.quantum_dots.components.readout_resonator import 
 from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam  # type: ignore[import-not-found]
 from quam_builder.architecture.quantum_dots.qubit import LDQubit  # type: ignore[import-not-found]
 
-from .macros import MeasureMacro, X180Macro  # type: ignore[import-not-found]
+from .macros import MeasureMacro, X180Macro, X90Macro  # type: ignore[import-not-found]
 
 # Compatibility shim for quam-builder feat/quantum_dots: ReadoutResonatorIQ.__post_init__
 # expects opx_output, but InOutIQChannel defines opx_output_I/Q only.
@@ -179,9 +179,7 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
             add_default_pulses=True,
         )
         length = 100
-        xy_drives[i].operations["X180"] = pulses.GaussianPulse(
-            length=length, amplitude=0.2, sigma=length / 6
-        )
+        xy_drives[i].operations["X180"] = pulses.GaussianPulse(length=length, amplitude=0.2, sigma=length / 6)
 
     machine.create_virtual_gate_set(
         virtual_channel_mapping={
@@ -279,6 +277,7 @@ def _register_qubits_with_points(
         )
 
         qubit.macros["x180"] = X180Macro(pulse_name="X180", amplitude_scale=1.0)
+        qubit.macros["x90"] = X90Macro(pulse_name="X180", amplitude_scale=0.5)
         qubit.macros["measure"] = MeasureMacro(
             pulse_name="readout",
             readout_duration=2000,

@@ -21,9 +21,7 @@ class X180Macro(QuamMacro):  # pylint: disable=too-few-public-methods
 
     def _validate(self, xy_channel, duration, amplitude_scale) -> None:
         if xy_channel is None:
-            raise ValueError(
-                "Cannot apply X180 gate: xy_channel is not configured on parent qubit."
-            )
+            raise ValueError("Cannot apply X180 gate: xy_channel is not configured on parent qubit.")
 
         missing = []
         if duration is None:
@@ -56,6 +54,15 @@ class X180Macro(QuamMacro):  # pylint: disable=too-few-public-methods
 
 
 @quam_dataclass
+class X90Macro(X180Macro):  # pylint: disable=too-few-public-methods
+    """Macro for X90 gate using the X180 pulse."""
+
+    pulse_name: str = "X180"
+    amplitude_scale: Optional[float] = 0.5
+    duration: Optional[int] = 100
+
+
+@quam_dataclass
 class MeasureMacro(QuamMacro):  # pylint: disable=too-few-public-methods
     """Macro for measurement with integrated voltage point navigation and thresholding."""
 
@@ -75,9 +82,7 @@ class MeasureMacro(QuamMacro):  # pylint: disable=too-few-public-methods
             raise ValueError("Cannot measure: quantum_dot is not configured on parent qubit.")
 
         if parent_qubit.preferred_readout_quantum_dot is None:
-            raise ValueError(
-                "Cannot measure: preferred_readout_quantum_dot is not set on parent qubit."
-            )
+            raise ValueError("Cannot measure: preferred_readout_quantum_dot is not set on parent qubit.")
 
     def apply(self, *args, **kwargs) -> QuaVariableBool:
         """Execute measurement sequence and return qubit state (parity)."""
