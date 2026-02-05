@@ -126,6 +126,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
+
+
 #     # Connect to the QOP
 #     qmm = node.machine.connect()
 #     # Get the config from the machine
@@ -137,12 +139,12 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
+
+
 #     qmm = node.machine.connect()
 #     # Get the config from the machine
 #     config = node.machine.generate_config()
@@ -168,6 +170,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
+
+
 #     load_data_id = node.parameters.load_data_id
 #     # Load the specified dataset
 #     node.load_from_id(node.parameters.load_data_id)
@@ -180,6 +184,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+
+
 #     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
 #     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
 #     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
@@ -196,6 +202,8 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+
+
 #     fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
 #     fig_fit_amplitude = plot_raw_amplitude_with_fit(
 #         node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
@@ -221,6 +229,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Save_results}
-@node.run_action()
+# TODO: Remove fmt: off once node is complete
+# fmt: off
+# @node.run_action()
 # def save_results(node: QualibrationNode[Parameters, Quam]):
 #     node.save()
+# fmt: on

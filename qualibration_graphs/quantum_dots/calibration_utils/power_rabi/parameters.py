@@ -23,7 +23,7 @@ class BaseRabiSpecificParameters(RunnableParameters):
     """Flag to update the x90 pulse amplitude after calibrating x180. Default is True."""
 
 
-class ErrorAmplifiedSpecificParameters(BaseRabiSpecificParameters): 
+class ErrorAmplifiedSpecificParameters(BaseRabiSpecificParameters):
     n_pulses: int = 1
     """Number of pulses in the error-amplified power Rabi pulse sequence."""
 
@@ -38,9 +38,9 @@ class Parameters(
 
 
 class ErrorAmplifiedParameters(
-    NodeParameters, 
+    NodeParameters,
     CommonNodeParameters,
-    ErrorAmplifiedSpecificParameters, 
+    ErrorAmplifiedSpecificParameters,
     QubitsExperimentNodeParameters,
-): 
+):
     """Parameter set for 08b_power_rabi_error_amplification"""

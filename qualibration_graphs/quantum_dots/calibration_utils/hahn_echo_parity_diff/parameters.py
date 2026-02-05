@@ -8,6 +8,7 @@ from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentN
 
 class NodeSpecificParameters(RunnableParameters):
     """Node specific parameters for 11_hahn_echo_parity_diff."""
+
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
     tau_min: int = 16
@@ -18,6 +19,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Step size for the pulse duration sweep in nanoseconds. Default is 16 ns."""
     operation: str = "x180"
     """Name of the qubit operation to perform. Default is 'x180'."""
+
 
 class Parameters(
     NodeParameters,

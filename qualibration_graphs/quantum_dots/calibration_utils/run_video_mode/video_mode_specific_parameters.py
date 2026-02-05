@@ -1,6 +1,7 @@
 from qualibrate.parameters import RunnableParameters
 from typing import List, Optional
 
+
 class VideoModeCommonParameters(RunnableParameters):
     run_in_video_mode: bool = False
     """Optionally open Video Mode with the qualibration node."""

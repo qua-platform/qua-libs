@@ -31,6 +31,7 @@ class NodeSpecificParameters(RunnableParameters):
     points_duration: int = 1000
     """Dwell time on each point in nanoseconds. If using the QDAC, this must be slow enough."""
 
+
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
