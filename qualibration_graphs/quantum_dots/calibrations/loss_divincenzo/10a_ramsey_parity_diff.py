@@ -126,36 +126,30 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
                     for i, qubit in batched_qubits.items():
                         op_length = qubit.macros["x90"].duration
-                        qubit.initialize(duration=node.parameters.gap_wait_time_in_ns + op_length)
+                        qubit.initialize(duration=node.parameters.gap_wait_time_in_ns + op_length + 4 * t)
 
                     # ---------------------------------------------------------
                     # Step 3: First X90 pulse
                     # ---------------------------------------------------------
                     for i, qubit in batched_qubits.items():
                         qubit.x90()
-
-                    # ---------------------------------------------------------
-                    # Step 4: Idle - wait before second pulse
-                    # ---------------------------------------------------------
-                    align()
-                    for i, qubit in batched_qubits.items():
                         qubit.xy.wait(t)
 
                     # ---------------------------------------------------------
-                    # Step 5: Second X90 pulse
+                    # Step 4: Second X90 pulse
                     # ---------------------------------------------------------
                     for i, qubit in batched_qubits.items():
                         qubit.x90()
 
                     # ---------------------------------------------------------
-                    # Step 6: Measure - move to PSB and measure
+                    # Step 5: Measure - move to PSB and measure
                     # ---------------------------------------------------------
                     align()
                     for i, qubit in batched_qubits.items():
                         assign(p2[i], Cast.to_int(qubit.measure()))
 
                     # ---------------------------------------------------------
-                    # Step 7: Apply compensation pulse to reset DC bias
+                    # Step 6: Apply compensation pulse to reset DC bias
                     # ---------------------------------------------------------
                     align()
                     for i, qubit in batched_qubits.items():

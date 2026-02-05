@@ -16,5 +16,6 @@ def test_ramsey_parity_diff_simulation(simulation_runner):
             "num_shots": 10,
             "simulation_duration_ns": 10_000,
             "timeout": 30,
+            "tau_min": 500,
         },
     )
