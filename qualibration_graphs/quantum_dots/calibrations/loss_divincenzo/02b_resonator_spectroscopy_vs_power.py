@@ -36,7 +36,7 @@ readout amplitude value just before the observed frequency splitting.
 
 Prerequisites:
     - Having calibrated the resonator frequency (node 02a_resonator_spectroscopy.py).
-    - Having instantiated a starting readout amplitude. 
+    - Having instantiated a starting readout amplitude.
 
 State update:
     - The readout power: sensor.readout_resonator.set_output_power()
@@ -65,6 +65,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
 
+
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -87,11 +88,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["tracked_resonators"] = []
     for i, sensor in enumerate(sensors):
         with tracked_updates(sensor.readout_resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
-            if isinstance(resonator._obj, ReadoutResonatorSingle): 
+            if isinstance(resonator._obj, ReadoutResonatorSingle):
                 base_amplitude = u.dBm2volts(node.parameters.max_power_dbm, Z=50)
-                # Set the resonator power to the max of the sweep. 
+                # Set the resonator power to the max of the sweep.
                 resonator.operations["readout"].amplitude = base_amplitude
-            else: 
+            else:
                 resonator.set_output_power(
                     power_in_dbm=node.parameters.max_power_dbm,
                     max_amplitude=node.parameters.max_amp,
@@ -196,6 +197,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
+
+
 #     load_data_id = node.parameters.load_data_id
 #     # Load the specified dataset
 #     node.load_from_id(node.parameters.load_data_id)
@@ -208,6 +211,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+
+
 #     # TODO: requires manual setting of the readout power since the analysis isn't robust enough...
 #     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
 #     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
@@ -225,6 +230,8 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
+
+
 #     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"])
 #     plt.show()
 #     # Store the generated figures
@@ -259,5 +266,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
-#     node.save()
+    #     node.save()
     pass
