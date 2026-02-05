@@ -35,6 +35,16 @@ class ScanMode(ABC):
         """Yield (x, y) QUA variables while generating the scan loop structure."""
         pass
 
+    @abstractmethod
+    def get_outer_loop(self, outer_vals: Sequence[float]) -> np.ndarray:
+        """Return the values of the outer loop, for external triggering."""
+        pass
+
+    @abstractmethod
+    def inner_loop(self, inner_vals: Sequence[float]):
+        """Generator for the inner loop."""
+        pass
+
 
 class RasterScan(ScanMode):
     """Standard row-by-row raster scan."""
@@ -52,6 +62,14 @@ class RasterScan(ScanMode):
         with for_(*from_array(y, y_vals)):
             with for_(*from_array(x, x_vals)):
                 yield x, y
+
+    def get_outer_loop(self, outer_vals: Sequence[float]) -> np.ndarray:
+        return np.asarray(outer_vals)
+
+    def inner_loop(self, inner_vals: Sequence[float]):
+        x = declare(fixed)
+        with for_(*from_array(x, inner_vals)):
+            yield x
 
 
 class SwitchRasterScan(ScanMode):
@@ -89,3 +107,11 @@ class SwitchRasterScan(ScanMode):
         with for_each_(y, y_vals_interleaved.tolist()):
             with for_(*from_array(x, x_vals)):
                 yield x, y
+
+    def get_outer_loop(self, outer_vals: Sequence[float]) -> np.ndarray:
+        return self.interleave_arr(np.asarray(outer_vals), self.start_from_middle)
+
+    def inner_loop(self, inner_vals: Sequence[float]):
+        x = declare(fixed)
+        with for_(*from_array(x, inner_vals)):
+            yield x
