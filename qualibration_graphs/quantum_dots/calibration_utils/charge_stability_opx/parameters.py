@@ -21,9 +21,15 @@ class NodeSpecificParameters(RunnableParameters):
     y_points: int = 201
     """Number of measurement points in the Y axis."""
     x_span: float = 0.05
-    """The X axis span in volts"""
+    """The X axis span in volts."""
     y_span: float = 0.05
-    """The Y axis span in volts"""
+    """The Y axis span in volts."""
+    ramp_duration: int = 100
+    """The ramp duration to each pixel. Set to zero for a step."""
+    hold_duration: int = 1000
+    """The dwell time on each pixel, after the ramp."""
+    pre_measurement_delay: int = 0
+    """A deliberate delay time after the hold_duration and before the resonator measurement."""
     use_validation: bool = True
     """Whether to use validation with simulated data."""
 
