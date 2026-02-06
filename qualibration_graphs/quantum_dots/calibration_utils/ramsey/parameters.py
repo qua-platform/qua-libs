@@ -8,6 +8,8 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
+    gap_wait_time_in_ns: int = 128
+    """Wait time between initialization and qubit pulse in nanoseconds. Default is 128 ns."""
 
 class RamseyParameters(
     NodeParameters,
@@ -43,7 +45,7 @@ class RamseyChevronParameters(
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
-    """Parameter set for 10b_ramsey_detuning_parity_diff."""
+    """Parameter set for 10c_ramsey_chevron_parity_diff."""
 
     detuning_span_in_mhz: float = 5.0
     """Frequency detuning span. Default 5MHz."""
