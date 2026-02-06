@@ -22,28 +22,25 @@ from qualibration_libs.core import tracked_updates
 # %% {Node initialisation}
 description = """
         PAULI SPIN BLOCKADE SEARCH - Fixed Detuning
-The goal of this sequence is to find the Pauli Spin Blockade (PSB) region according to the protocol described in
-Nano Letters 2020 20 (2), 947-952. To do so, a charge stability map is acquired by scanning voltages on the plunger
-gates while navigating through a triangle in voltage space (empty - random initialization - measurement) using OPX channels
-on the fast lines of the bias-tees.
+The goal of this sequence is to find the Pauli Spin Blockade (PSB) region.
+To do so, the following triangle in voltage space (empty - random initialization - measurement) is applied using OPX
+channels on the fast lines of the bias-tees.
 
-The sequence uses a fixed detuning value and performs measurements at each point in the 2D voltage space. The OPX measures
-the response via RF reflectometry or DC current sensing during the readout window (last segment of the triangle).
-A single-point averaging is performed and the data is extracted while the program is running to display the results.
+The OPX measures the response via RF reflectometry or DC current sensing during the readout window
+(last segment of the triangle). The sequence is repeated several time in order to build up histograms.
 
 Depending on the cut-off frequency of the bias-tee, it may be necessary to adjust the barycenter (voltage offset) of each
 triangle so that the fast line of the bias-tees sees zero voltage on average. Otherwise, the high-pass filtering effect
-of the bias-tee will distort the fast pulses over time.
+of the bias-tee will distort the fast pulses over time, unless a compensation pulse is played.
 
 Prerequisites:
-    - Readout calibration (resonance frequency for RF reflectometry and sensor operating point for DC current sensing).
     - Having initialized the Quam (quam_config/populate_quam_state_*.py).
     - Having calibrated the resonators coupled to the SensorDot components.
-    - Connect the OPX to the fast line of the plunger gates for playing the triangle pulse sequence.
+    - Having calibrated the "empty" and "initialization" voltage points, and having defined the detuning axis.
 
 State update:
-    - This is a characterization measurement and typically does not update state parameters.
-    - If needed in the future, the identified PSB region coordinates could be stored.
+    TODO: It seems to me that this node is just to quickly check the readout region and nothing should be updated,
+    unless we use it to rotate the IQ blobs and define a threshold for state discrimination.
 """
 
 
@@ -59,8 +56,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.sensor_names = ["sensor_1"]
     # node.parameters.num_shots = 10
-    # node.parameters.n_points_slow = 51
-    # node.parameters.n_points_fast = 50
     pass
 
 

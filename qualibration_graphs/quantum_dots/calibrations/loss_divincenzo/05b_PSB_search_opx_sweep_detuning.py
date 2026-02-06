@@ -22,30 +22,25 @@ from qualibration_libs.core import tracked_updates
 # %% {Node initialisation}
 description = """
         PAULI SPIN BLOCKADE SEARCH - Sweep Detuning
-The goal of this sequence is to find the Pauli Spin Blockade (PSB) region according to the protocol described in
-Nano Letters 2020 20 (2), 947-952. To do so, a charge stability map is acquired by scanning voltages on the plunger
-gates while navigating through a triangle in voltage space (empty - random initialization - measurement) using OPX channels
-on the fast lines of the bias-tees.
+The goal of this sequence is to find the Pauli Spin Blockade (PSB) region.
+To do so, the following triangle in voltage space (empty - random initialization - measurement) is applied using OPX
+channels on the fast lines of the bias-tees while sweeping the "measure" voltage point along the detuning axis.
 
-The sequence sweeps the detuning value across a specified range and performs measurements at each point in the 3D space
-(voltage_slow, voltage_fast, detuning). The OPX measures the response via RF reflectometry or DC current sensing during
-the readout window (last segment of the triangle). A single-point averaging is performed and the data is extracted while
+The OPX measures the response via RF reflectometry or DC current sensing during the readout window
+(last segment of the triangle). A single-point averaging is performed and the data is extracted while
 the program is running to display the results.
 
 Depending on the cut-off frequency of the bias-tee, it may be necessary to adjust the barycenter (voltage offset) of each
 triangle so that the fast line of the bias-tees sees zero voltage on average. Otherwise, the high-pass filtering effect
-of the bias-tee will distort the fast pulses over time.
+of the bias-tee will distort the fast pulses over time, unless a compensation pulse is played.
 
 Prerequisites:
-    - Readout calibration (resonance frequency for RF reflectometry and sensor operating point for DC current sensing).
     - Having initialized the Quam (quam_config/populate_quam_state_*.py).
     - Having calibrated the resonators coupled to the SensorDot components.
-    - Connect the OPX to the fast line of the plunger gates for playing the triangle pulse sequence.
+    - Having calibrated the "empty" and "initialization" voltage points, and having defined the detuning axis.
 
 State update:
-    - This is a characterization measurement and typically does not update state parameters.
-    - If needed in the future, the identified PSB region coordinates and optimal detuning could be stored.
-    TODO: how to update the PSB region coordinates and optimal detuning for a given qubit pair?
+    TODO: how to update the PSB region coordinates and optimal detuning for a given qubit/dot?
 """
 
 
