@@ -19,6 +19,7 @@ from quam_builder.architecture.quantum_dots.components import (  # type: ignore[
 )
 from quam_builder.architecture.quantum_dots.components.readout_resonator import (  # type: ignore[import-not-found]
     ReadoutResonatorIQ,
+    ReadoutResonatorSingle,
 )
 from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam  # type: ignore[import-not-found]
 from quam_builder.architecture.quantum_dots.qubit import LDQubit  # type: ignore[import-not-found]
@@ -88,33 +89,94 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
         ),
     }
 
+    # readout_resonators = {
+    #     1: ReadoutResonatorIQ(
+    #         id="sensor_resonator_1",
+    #         opx_output_I=LFFEMAnalogOutputPort(
+    #             controller_id=controller,
+    #             fem_id=lf_fem_slot_1,
+    #             port_id=4,
+    #             output_mode="direct",
+    #         ),
+    #         opx_output_Q=LFFEMAnalogOutputPort(
+    #             controller_id=controller,
+    #             fem_id=lf_fem_slot_1,
+    #             port_id=5,
+    #             output_mode="direct",
+    #         ),
+    #         opx_input_I=LFFEMAnalogInputPort(
+    #             controller_id=controller,
+    #             fem_id=lf_fem_slot_1,
+    #             port_id=1,
+    #         ),
+    #         opx_input_Q=LFFEMAnalogInputPort(
+    #             controller_id=controller,
+    #             fem_id=lf_fem_slot_1,
+    #             port_id=2,
+    #         ),
+    #         frequency_converter_up=FrequencyConverter(
+    #             local_oscillator=LocalOscillator(frequency=5e9),
+    #         ),
+    #         intermediate_frequency=50e6,
+    #         operations={
+    #             "readout": pulses.SquareReadoutPulse(
+    #                 length=1000,
+    #                 amplitude=0.1,
+    #                 integration_weights_angle=0.0,
+    #             )
+    #         },
+    #     ),
+    #     2: ReadoutResonatorIQ(
+    #         id="sensor_resonator_2",
+    #         opx_output_I=LFFEMAnalogOutputPort(
+    #             controller_id=controller,
+    #             fem_id=lf_fem_slot_2,
+    #             port_id=4,
+    #             output_mode="direct",
+    #         ),
+    #         opx_output_Q=LFFEMAnalogOutputPort(
+    #             controller_id=controller,
+    #             fem_id=lf_fem_slot_2,
+    #             port_id=5,
+    #             output_mode="direct",
+    #         ),
+    #         opx_input_I=LFFEMAnalogInputPort(
+    #             controller_id=controller,
+    #             fem_id=lf_fem_slot_2,
+    #             port_id=1,
+    #         ),
+    #         opx_input_Q=LFFEMAnalogInputPort(
+    #             controller_id=controller,
+    #             fem_id=lf_fem_slot_2,
+    #             port_id=2,
+    #         ),
+    #         frequency_converter_up=FrequencyConverter(
+    #             local_oscillator=LocalOscillator(frequency=5e9),
+    #         ),
+    #         intermediate_frequency=50e6,
+    #         operations={
+    #             "readout": pulses.SquareReadoutPulse(
+    #                 length=1000,
+    #                 amplitude=0.1,
+    #                 integration_weights_angle=0.0,
+    #             )
+    #         },
+    #     ),
+    # }
+
     readout_resonators = {
-        1: ReadoutResonatorIQ(
+        1: ReadoutResonatorSingle(
             id="sensor_resonator_1",
-            opx_output_I=LFFEMAnalogOutputPort(
+            opx_output=LFFEMAnalogOutputPort(
                 controller_id=controller,
                 fem_id=lf_fem_slot_1,
                 port_id=4,
                 output_mode="direct",
             ),
-            opx_output_Q=LFFEMAnalogOutputPort(
-                controller_id=controller,
-                fem_id=lf_fem_slot_1,
-                port_id=5,
-                output_mode="direct",
-            ),
-            opx_input_I=LFFEMAnalogInputPort(
+            opx_input=LFFEMAnalogInputPort(
                 controller_id=controller,
                 fem_id=lf_fem_slot_1,
                 port_id=1,
-            ),
-            opx_input_Q=LFFEMAnalogInputPort(
-                controller_id=controller,
-                fem_id=lf_fem_slot_1,
-                port_id=2,
-            ),
-            frequency_converter_up=FrequencyConverter(
-                local_oscillator=LocalOscillator(frequency=5e9),
             ),
             intermediate_frequency=50e6,
             operations={
@@ -125,32 +187,18 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
                 )
             },
         ),
-        2: ReadoutResonatorIQ(
+        2: ReadoutResonatorSingle(
             id="sensor_resonator_2",
-            opx_output_I=LFFEMAnalogOutputPort(
+            opx_output=LFFEMAnalogOutputPort(
                 controller_id=controller,
                 fem_id=lf_fem_slot_2,
                 port_id=4,
                 output_mode="direct",
             ),
-            opx_output_Q=LFFEMAnalogOutputPort(
-                controller_id=controller,
-                fem_id=lf_fem_slot_2,
-                port_id=5,
-                output_mode="direct",
-            ),
-            opx_input_I=LFFEMAnalogInputPort(
-                controller_id=controller,
-                fem_id=lf_fem_slot_2,
-                port_id=1,
-            ),
-            opx_input_Q=LFFEMAnalogInputPort(
+            opx_input=LFFEMAnalogInputPort(
                 controller_id=controller,
                 fem_id=lf_fem_slot_2,
                 port_id=2,
-            ),
-            frequency_converter_up=FrequencyConverter(
-                local_oscillator=LocalOscillator(frequency=5e9),
             ),
             intermediate_frequency=50e6,
             operations={
@@ -179,9 +227,7 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
             add_default_pulses=True,
         )
         length = 100
-        xy_drives[i].operations["X180"] = pulses.GaussianPulse(
-            length=length, amplitude=0.2, sigma=length / 6
-        )
+        xy_drives[i].operations["X180"] = pulses.GaussianPulse(length=length, amplitude=0.2, sigma=length / 6)
 
     machine.create_virtual_gate_set(
         virtual_channel_mapping={

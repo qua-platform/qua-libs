@@ -58,7 +58,7 @@ node = QualibrationNode[Parameters, Quam](name="01a_time_of_flight", description
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1"]
+    # node.parameters.sensor_names = ["sensor_resonator_1"]
     pass
 
 
@@ -89,7 +89,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 resonator.operations["readout"].length = node.parameters.readout_length_in_ns
             node.namespace["tracked_resonators"].append(resonator)
 
-    sensor_index = {s.name: i for i, s in enumerate(sensors)}
     sensor_input = [s.readout_resonator.opx_input.port_id for s in sensors]
 
     # Register the sweep axes to be added to the dataset when fetching data
@@ -102,28 +101,30 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
+        # Declare QUA variables
         n = declare(int)  # QUA variable for the averaging loop
+        # Streams keyed by qubit name; each qubit appears in exactly one batch.
+        adc_st = {sensor.name: declare_stream(adc_trace=True) for sensor in sensors}
         n_st = declare_stream()
-        adc_st = [declare_stream(adc_trace=True) for _ in range(num_sensors)]  # The stream to store the raw ADC trace
 
+        # Main experiment loop
         for multiplexed_sensors in sensors.batch():
             align()
             with for_(n, 0, n < node.parameters.num_shots, n + 1):
                 save(n, n_st)
                 for sensor in multiplexed_sensors.values():
-                    i = sensor_index[s.name]
                     # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
                     reset_if_phase(sensor.readout_resonator.name)
                     # Measure the resonator (send a readout pulse and record the raw ADC trace)
-                    sensor.readout_resonator.measure("readout", stream=adc_st[i])
+                    sensor.readout_resonator.measure("readout", stream=adc_st[sensor.name])
                     # Wait for the resonator to deplete
-                    sensor.readout_resonator.wait(1000)
+                    sensor.readout_resonator.wait(250)
                 align()
 
         with stream_processing():
             n_st.save("n")
-            for i in range(num_sensors):
-                inp = adc_st[i].input1() if sensor_input[i] == 1 else adc_st[i].input2()
+            for i, s in enumerate(sensors):
+                inp = adc_st[s.name].input1() if sensor_input[i] == 1 else adc_st[s.name].input2()
                 inp.average().save(f"adc{i + 1}")
                 inp.save(f"adc_single_run{i + 1}")
 
