@@ -12,7 +12,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.psb_search_fixed_detuning import Parameters
+from calibration_utils.psb_search_sweep_detuning import Parameters
 from calibration_utils.common_utils.experiment import get_sensors
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -21,18 +21,19 @@ from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
 description = """
-        PAULI SPIN BLOCKADE SEARCH - Fixed Detuning
-The goal of this sequence is to find the Pauli Spin Blockade (PSB) region according to the protocol described in 
-Nano Letters 2020 20 (2), 947-952. To do so, a charge stability map is acquired by scanning voltages on the plunger 
-gates while navigating through a triangle in voltage space (empty - random initialization - measurement) using OPX channels 
+        PAULI SPIN BLOCKADE SEARCH - Sweep Detuning
+The goal of this sequence is to find the Pauli Spin Blockade (PSB) region according to the protocol described in
+Nano Letters 2020 20 (2), 947-952. To do so, a charge stability map is acquired by scanning voltages on the plunger
+gates while navigating through a triangle in voltage space (empty - random initialization - measurement) using OPX channels
 on the fast lines of the bias-tees.
 
-The sequence uses a fixed detuning value and performs measurements at each point in the 2D voltage space. The OPX measures 
-the response via RF reflectometry or DC current sensing during the readout window (last segment of the triangle). 
-A single-point averaging is performed and the data is extracted while the program is running to display the results.
+The sequence sweeps the detuning value across a specified range and performs measurements at each point in the 3D space
+(voltage_slow, voltage_fast, detuning). The OPX measures the response via RF reflectometry or DC current sensing during
+the readout window (last segment of the triangle). A single-point averaging is performed and the data is extracted while
+the program is running to display the results.
 
-Depending on the cut-off frequency of the bias-tee, it may be necessary to adjust the barycenter (voltage offset) of each 
-triangle so that the fast line of the bias-tees sees zero voltage on average. Otherwise, the high-pass filtering effect 
+Depending on the cut-off frequency of the bias-tee, it may be necessary to adjust the barycenter (voltage offset) of each
+triangle so that the fast line of the bias-tees sees zero voltage on average. Otherwise, the high-pass filtering effect
 of the bias-tee will distort the fast pulses over time.
 
 Prerequisites:
@@ -43,11 +44,14 @@ Prerequisites:
 
 State update:
     - This is a characterization measurement and typically does not update state parameters.
-    - If needed in the future, the identified PSB region coordinates could be stored.
+    - If needed in the future, the identified PSB region coordinates and optimal detuning could be stored.
+    TODO: how to update the PSB region coordinates and optimal detuning for a given qubit pair?
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="07a_PSB_search_opx_fixed_detuning", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](
+    name="05b_PSB_search_opx_sweep_detuning", description=description, parameters=Parameters()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -59,6 +63,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.num_shots = 10
     # node.parameters.n_points_slow = 51
     # node.parameters.n_points_fast = 50
+    # node.parameters.detuning_points = 11
     pass
 
 
@@ -143,13 +148,13 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
     with node.record_state_updates():
         # This is a characterization measurement and typically does not update state parameters.
-        # If needed in the future, the identified PSB region coordinates could be stored.
+        # If needed in the future, the identified PSB region coordinates and optimal detuning could be stored.
         # Example of potential state update (commented out):
         # for qubit_pair in node.namespace["qubit_pairs"]:
         #     if not node.results["fit_results"][qubit_pair.name]["success"]:
         #         continue
-        #     # Update PSB region coordinates if needed
-        # TODO: how to update the PSB region coordinates for a given qubit pair?
+        #     # Update PSB region coordinates and optimal detuning if needed
+        # TODO: how to update the PSB region coordinates and optimal detuning for a given qubit pair?
         pass
 
 

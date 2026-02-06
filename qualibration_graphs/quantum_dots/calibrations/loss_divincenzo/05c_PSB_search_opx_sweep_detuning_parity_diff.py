@@ -22,19 +22,19 @@ from qualibration_libs.core import tracked_updates
 # %% {Node initialisation}
 description = """
         PAULI SPIN BLOCKADE SEARCH - Sweep Detuning with Parity Difference
-The goal of this sequence is to find the Pauli Spin Blockade (PSB) region according to the protocol described in 
-Nano Letters 2020 20 (2), 947-952. To do so, a charge stability map is acquired by scanning voltages on the plunger 
-gates while navigating through a triangle in voltage space (empty - random initialization - measurement) using OPX channels 
+The goal of this sequence is to find the Pauli Spin Blockade (PSB) region according to the protocol described in
+Nano Letters 2020 20 (2), 947-952. To do so, a charge stability map is acquired by scanning voltages on the plunger
+gates while navigating through a triangle in voltage space (empty - random initialization - measurement) using OPX channels
 on the fast lines of the bias-tees.
 
-The sequence sweeps the detuning value across a specified range and performs measurements at each point in the 3D space 
-(voltage_slow, voltage_fast, detuning). The measurement calculates the parity difference, which is the difference between 
-the measured signal for even and odd parity states. This helps identify the PSB region more clearly. The OPX measures the 
-response via RF reflectometry or DC current sensing during the readout window (last segment of the triangle). 
+The sequence sweeps the detuning value across a specified range and performs measurements at each point in the 3D space
+(voltage_slow, voltage_fast, detuning). The measurement calculates the parity difference, which is the difference between
+the measured signal for even and odd parity states. This helps identify the PSB region more clearly. The OPX measures the
+response via RF reflectometry or DC current sensing during the readout window (last segment of the triangle).
 A single-point averaging is performed and the data is extracted while the program is running to display the results.
 
-Depending on the cut-off frequency of the bias-tee, it may be necessary to adjust the barycenter (voltage offset) of each 
-triangle so that the fast line of the bias-tees sees zero voltage on average. Otherwise, the high-pass filtering effect 
+Depending on the cut-off frequency of the bias-tee, it may be necessary to adjust the barycenter (voltage offset) of each
+triangle so that the fast line of the bias-tees sees zero voltage on average. Otherwise, the high-pass filtering effect
 of the bias-tee will distort the fast pulses over time.
 
 Prerequisites:
@@ -49,7 +49,9 @@ State update:
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="07c_PSB_search_opx_sweep_detuning_parity_diff", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](
+    name="05c_PSB_search_opx_sweep_detuning_parity_diff", description=description, parameters=Parameters()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here
