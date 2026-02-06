@@ -14,6 +14,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Readout amplitude in volts. Default is 0.1 V."""
     readout_length_in_ns: Optional[int] = 1000
     """Readout length in nanoseconds. Default is 1µs."""
+    sensor_names: Optional[list[str]] = None
+    """List of sensor names. Default is None."""
 
 
 class Parameters(

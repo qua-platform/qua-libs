@@ -58,7 +58,7 @@ node = QualibrationNode[Parameters, Quam](name="01a_time_of_flight", description
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1"]
+    # node.parameters.sensor_names = ["sensor_resonator_1"]
     pass
 
 
@@ -70,102 +70,103 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    # # Class containing tools to help handle units and conversions.
-    # u = unit(coerce_to_integer=True)
-    # # Get the active sensors from the node and organize them by batches
-    # node.namespace["sensors"] = sensors = get_sensors(node)
-    # num_sensors = len(sensors)
-    #
-    # node.namespace["tracked_resonators"] = []
-    # for s in sensors:
-    #     resonator = s.readout_resonator
-    #     # make temporary updates before running the program and revert at the end.
-    #     with tracked_updates(resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
-    #         if node.parameters.time_of_flight_in_ns is not None:
-    #             resonator.time_of_flight = node.parameters.time_of_flight_in_ns
-    #         if node.parameters.readout_amplitude_in_v is not None:
-    #             resonator.operations["readout"].amplitude = node.parameters.readout_amplitude_in_v
-    #         if node.parameters.readout_length_in_ns is not None:
-    #             resonator.operations["readout"].length = node.parameters.readout_length_in_ns
-    #         node.namespace["tracked_resonators"].append(resonator)
-    #
-    # sensor_index = {s.name: i for i, s in enumerate(sensors)}
-    # sensor_input = [s.readout_resonator.opx_input.port_id for s in sensors]
-    #
-    # # Register the sweep axes to be added to the dataset when fetching data
-    # node.namespace["sweep_axes"] = {
-    #     "sensor": xr.DataArray(sensors.get_names()),
-    #     "readout_time": xr.DataArray(
-    #         np.arange(0, node.parameters.readout_length_in_ns, 1),
-    #         attrs={"long_name": "readout time", "units": "ns"},
-    #     ),
-    # }
-    #
-    # with program() as node.namespace["qua_program"]:
-    #     n = declare(int)  # QUA variable for the averaging loop
-    #     n_st = declare_stream()
-    #     adc_st = [declare_stream(adc_trace=True) for _ in range(num_sensors)]  # The stream to store the raw ADC trace
-    #
-    #     for multiplexed_sensors in sensors.batch():
-    #         align()
-    #         with for_(n, 0, n < node.parameters.num_shots, n + 1):
-    #             save(n, n_st)
-    #             for sensor in multiplexed_sensors.values():
-    #                 i = sensor_index[s.name]
-    #                 # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
-    #                 reset_if_phase(sensor.readout_resonator.name)
-    #                 # Measure the resonator (send a readout pulse and record the raw ADC trace)
-    #                 sensor.readout_resonator.measure("readout", stream=adc_st[i])
-    #                 # Wait for the resonator to deplete
-    #                 sensor.readout_resonator.wait(1000)
-    #             align()
-    #
-    #     with stream_processing():
-    #         n_st.save("n")
-    #         for i in range(num_sensors):
-    #             inp = adc_st[i].input1() if sensor_input[i] == 1 else adc_st[i].input2()
-    #             inp.average().save(f"adc{i + 1}")
-    #             inp.save(f"adc_single_run{i + 1}")
+    # Class containing tools to help handle units and conversions.
+    u = unit(coerce_to_integer=True)
+    # Get the active sensors from the node and organize them by batches
+    node.namespace["sensors"] = sensors = get_sensors(node)
+    num_sensors = len(sensors)
+
+    node.namespace["tracked_resonators"] = []
+    for s in sensors:
+        resonator = s.readout_resonator
+        # make temporary updates before running the program and revert at the end.
+        with tracked_updates(resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
+            if node.parameters.time_of_flight_in_ns is not None:
+                resonator.time_of_flight = node.parameters.time_of_flight_in_ns
+            if node.parameters.readout_amplitude_in_v is not None:
+                resonator.operations["readout"].amplitude = node.parameters.readout_amplitude_in_v
+            if node.parameters.readout_length_in_ns is not None:
+                resonator.operations["readout"].length = node.parameters.readout_length_in_ns
+            node.namespace["tracked_resonators"].append(resonator)
+
+    sensor_input = [s.readout_resonator.opx_input.port_id for s in sensors]
+
+    # Register the sweep axes to be added to the dataset when fetching data
+    node.namespace["sweep_axes"] = {
+        "sensor": xr.DataArray(sensors.get_names()),
+        "readout_time": xr.DataArray(
+            np.arange(0, node.parameters.readout_length_in_ns, 1),
+            attrs={"long_name": "readout time", "units": "ns"},
+        ),
+    }
+
+    with program() as node.namespace["qua_program"]:
+        # Declare QUA variables
+        n = declare(int)  # QUA variable for the averaging loop
+        # Streams keyed by qubit name; each qubit appears in exactly one batch.
+        adc_st = {sensor.name: declare_stream(adc_trace=True) for sensor in sensors}
+        n_st = declare_stream()
+
+        # Main experiment loop
+        for multiplexed_sensors in sensors.batch():
+            align()
+            with for_(n, 0, n < node.parameters.num_shots, n + 1):
+                save(n, n_st)
+                for sensor in multiplexed_sensors.values():
+                    # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
+                    reset_if_phase(sensor.readout_resonator.name)
+                    # Measure the resonator (send a readout pulse and record the raw ADC trace)
+                    sensor.readout_resonator.measure("readout", stream=adc_st[sensor.name])
+                    # Wait for the resonator to deplete
+                    sensor.readout_resonator.wait(250)
+                align()
+
+        with stream_processing():
+            n_st.save("n")
+            for i, s in enumerate(sensors):
+                inp = adc_st[s.name].input1() if sensor_input[i] == 1 else adc_st[s.name].input2()
+                inp.average().save(f"adc{i + 1}")
+                inp.save(f"adc_single_run{i + 1}")
 
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
-    # # Connect to the QOP
-    # qmm = node.machine.connect()
-    # # Get the config from the machine
-    # config = node.machine.generate_config()
-    # # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    # samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
-    # # Store the figure, waveform report and simulated samples
-    # node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
+    # Connect to the QOP
+    qmm = node.machine.connect()
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Simulate the QUA program, generate the waveform report and plot the simulated samples
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    # Store the figure, waveform report and simulated samples
+    node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
-    # # Connect to the QOP
-    # qmm = node.machine.connect()
-    # # Get the config from the machine
-    # config = node.machine.generate_config()
-    # # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
-    # with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-    #     # The job is stored in the node namespace to be reused in the fetching_data run_action
-    #     node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-    #     # Display the progress bar
-    #     data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
-    #     for dataset in data_fetcher:
-    #         progress_counter(
-    #             data_fetcher.get("n", 0),
-    #             node.parameters.num_shots,
-    #             start_time=data_fetcher.t_start,
-    #         )
-    #     # Display the execution report to expose possible runtime errors
-    #     node.log(job.execution_report())
-    # # Register the raw dataset
-    # node.results["ds_raw"] = dataset
+    # Connect to the QOP
+    qmm = node.machine.connect()
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        # The job is stored in the node namespace to be reused in the fetching_data run_action
+        node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        # Display the progress bar
+        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+        for dataset in data_fetcher:
+            progress_counter(
+                data_fetcher.get("n", 0),
+                node.parameters.num_shots,
+                start_time=data_fetcher.t_start,
+            )
+        # Display the execution report to expose possible runtime errors
+        node.log(job.execution_report())
+    # Register the raw dataset
+    node.results["ds_raw"] = dataset
 
 
 # %% {Load_historical_data}
