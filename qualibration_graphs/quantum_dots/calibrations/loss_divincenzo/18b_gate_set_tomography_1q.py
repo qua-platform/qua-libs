@@ -49,7 +49,7 @@ themselves, as well as short sequences of gates that are specifically chosen to 
 errors such as over- or under-rotations in the individual gates and tilt errors on
 their rotation axes. Each sequence is constructed by concatenating a preparation fiducial, a germ
 repeated a variable number of times (specified as an input), and a measurement
-fiducial.
+fiducial. (prep fiducial) + (germ)^L + (meas fiducial)
 
 The gate sequences are generated offline and expressed in terms of the native
 single-qubit basis gate set (e.g. ['rz', 'sx', 'x']). This basis gate set must be 
