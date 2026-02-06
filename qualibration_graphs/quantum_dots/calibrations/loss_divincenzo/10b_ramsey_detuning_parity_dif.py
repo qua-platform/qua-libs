@@ -20,7 +20,7 @@ from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
 description = """
-        RAMSEY PARITY DIFFERENCE
+        RAMSEY DETUNING PARITY DIFFERENCE
 This sequence performs a Ramsey measurement with parity difference to characterize the qubit detuning.
 The measurement involves sweeping the detuning frequency of the qubit and performing a sequence of
 two π/2 rotations with a fixed idle time in between. PSB is used to measure the parity of the resulting state.
@@ -30,8 +30,8 @@ initialization - measurement) using OPX channels on the fast lines of the bias-t
 the parity is measured before (P1) and after (P2) the qubit pulse, and the parity difference (P_diff) is
 calculated. When P1 == P2, P_diff = 0; otherwise P_diff = 1.
 
-The parity difference signal reveals Ramsey oscillations as a function of pulse duration, which can be used
-to extract the qubit coupling strength, coherence time, and optimal pulse parameters.
+The parity difference signal reveals oscillations as a function of pulse detuning frequency, which can be used
+to extract the qubit frequency.
 
 Prerequisites:
     - Having calibrated the resonators coupled to the SensorDot components.
