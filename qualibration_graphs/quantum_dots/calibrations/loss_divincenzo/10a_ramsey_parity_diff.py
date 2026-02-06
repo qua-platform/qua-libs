@@ -14,10 +14,10 @@ from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.ramsey import RamseyParameters
-from calibration_utils.common_utils.experiment import get_sensors, get_qubits, get_qubit_pairs
+from calibration_utils.common_utils.experiment import get_sensors, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.core import tracked_updates
+from qualibration_libs.parameters.sweep import get_idle_times_in_clock_cycles
 
 # %% {Node initialisation}
 description = """
@@ -57,9 +57,9 @@ def custom_param(node: QualibrationNode[RamseyParameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubit = ["q1"]
     # node.parameters.num_shots = 10
-    # node.parameters.tau_min = 16
-    # node.parameters.tau_max = 10000
-    # node.parameters.tau_step = 52
+    # node.parameters.min_wait_time_in_ns = 16
+    # node.parameters.max_wait_time_in_ns = 30000
+    # node.parameters.wait_time_num_points = 500
     pass
 
 
@@ -78,15 +78,14 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
 
     n_avg = node.parameters.num_shots
     detuning = node.parameters.frequency_detuning_in_mhz * u.MHz
-    tau_values = np.arange(
-        node.parameters.tau_min,
-        node.parameters.tau_max,
-        node.parameters.tau_step,
-    )
+    # Idle time sweep (in clock cycles of 4ns)
+    tau_values = get_idle_times_in_clock_cycles(node.parameters)
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "tau": xr.DataArray(tau_values, attrs={"long_name": "idle time", "units": "ns"}),
+        "tau": xr.DataArray(
+            tau_values * 4, attrs={"long_name": "idle time", "units": "ns"}
+        ),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -108,7 +107,7 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
-                with for_(*from_array(t, tau_values // 4)):
+                with for_(*from_array(t, tau_values)):
                     # ---------------------------------------------------------
                     # Step 1: Empty - step to empty point (fixed duration)
                     # ---------------------------------------------------------
@@ -126,7 +125,6 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
                     align()
                     for i, qubit in batched_qubits.items():
                         op_length = qubit.macros["x90"].duration
-                        print(node.parameters.gap_wait_time_in_ns)
                         qubit.initialize(duration=node.parameters.gap_wait_time_in_ns + op_length * 2 + 4 * t)
                     # ---------------------------------------------------------
                     # Step 3: X90 pulse, idle, X90 pulse
