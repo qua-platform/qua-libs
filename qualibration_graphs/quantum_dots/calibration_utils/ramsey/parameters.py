@@ -22,4 +22,5 @@ class Parameters(
     QubitsExperimentNodeParameters,
 ):
     """Parameter set for 10a_ramsey_parity_diff."""
+
     pass

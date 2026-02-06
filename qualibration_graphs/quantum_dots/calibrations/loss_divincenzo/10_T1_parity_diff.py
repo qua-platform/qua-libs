@@ -50,16 +50,13 @@ Prerequisites:
 Before proceeding to the next node:
     - Extract T1 from exponential fit of the decay curve.
     - Verify T1 is sufficiently long for intended gate sequences.
-    
+
 State updates:
     - T1 for each qubit
 """
 
 
-
-node = QualibrationNode[Parameters, Quam](
-    name="10_T1_parity_diff", description=description, parameters=Parameters()
-)
+node = QualibrationNode[Parameters, Quam](name="10_T1_parity_diff", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -87,6 +84,7 @@ node.machine = Quam.load()
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     pass
+
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
@@ -147,11 +145,13 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     pass
 
+
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
     pass
+
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)

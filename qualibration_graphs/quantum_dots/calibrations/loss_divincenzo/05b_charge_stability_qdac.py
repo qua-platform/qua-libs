@@ -68,6 +68,7 @@ node.parameters.x_axis_name = "virtual_dot_1"
 node.parameters.y_axis_name = "virtual_dot_2"
 
 
+
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -298,6 +299,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
 
 
+
 # %% {Simulate}
 @node.run_action(
     skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate or node.parameters.use_validation
@@ -365,7 +367,9 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.run_in_video_mode)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    # """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    # TODO: Implement analysis - remove pass when complete
+    pass
     # # Process raw dataset (convert ADC to volts, compute amplitude)
     # node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
 
@@ -384,6 +388,8 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.run_in_video_mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+    # TODO: Implement plotting - remove pass when complete
+    pass
     # Plot basic amplitude and phase maps
     # fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
     # # fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
@@ -448,6 +454,8 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
-    # """Save the node results and state."""
+    """Save the node results and state."""
+    # TODO: Uncomment when complete
+    pass
     # node.save()
     pass
