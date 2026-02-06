@@ -1,5 +1,6 @@
-from .parameters import Parameters
+from .parameters import RamseyParameters, RamseyDetuningParameters
 
 __all__ = [
-    "Parameters",
+    "RamseyParameters",
+    "RamseyDetuningParameters",
 ]

@@ -12,7 +12,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.ramsey import RamseyParameters
+from calibration_utils.ramsey import RamseyDetuningParameters
 from calibration_utils.common_utils.experiment import get_sensors, get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -21,9 +21,9 @@ from qualibration_libs.core import tracked_updates
 # %% {Node initialisation}
 description = """
         RAMSEY PARITY DIFFERENCE
-This sequence performs a Ramsey measurement with parity difference to characterize the qubit frequency
-and the qubit Ramsey dephasing time T2*. The measurement involves sweeping the idle time of the qubit between
-two π/2 rotations. PSB is used to measure the parity of the resulting state.
+This sequence performs a Ramsey measurement with parity difference to characterize the qubit detuning.
+The measurement involves sweeping the detuning frequency of the qubit and performing a sequence of
+two π/2 rotations with a fixed idle time in between. PSB is used to measure the parity of the resulting state.
 
 The sequence uses voltage sequences to navigate through a triangle in voltage space (empty -
 initialization - measurement) using OPX channels on the fast lines of the bias-tees. At each pulse duration,
@@ -40,19 +40,18 @@ Prerequisites:
 
 State update:
     - The qubit Larmor frequency.
-    - The qubit  T2* (Ramsey) time.
 """
 
 
-node = QualibrationNode[RamseyParameters, Quam](
-    name="10a_ramsey_parity_diff", description=description, parameters=RamseyParameters()
+node = QualibrationNode[RamseyDetuningParameters, Quam](
+    name="10b_ramsey_detuning_parity_diff", description=description, parameters=RamseyDetuningParameters()
 )
 
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[RamseyParameters, Quam]):
+def custom_param(node: QualibrationNode[RamseyDetuningParameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubit = ["q1"]
     # node.parameters.num_shots = 10
@@ -68,13 +67,13 @@ node.machine = Quam.load()
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
-def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
+def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
-def simulate_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
+def simulate_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -88,7 +87,7 @@ def simulate_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
 
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
-def execute_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
+def execute_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -114,7 +113,7 @@ def execute_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
 
 # %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
-def load_data(node: QualibrationNode[RamseyParameters, Quam]):
+def load_data(node: QualibrationNode[RamseyDetuningParameters, Quam]):
     """Load a previously acquired dataset."""
     load_data_id = node.parameters.load_data_id
     # Load the specified dataset
@@ -127,19 +126,19 @@ def load_data(node: QualibrationNode[RamseyParameters, Quam]):
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def analyse_data(node: QualibrationNode[RamseyParameters, Quam]):
+def analyse_data(node: QualibrationNode[RamseyDetuningParameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def plot_data(node: QualibrationNode[RamseyParameters, Quam]):
+def plot_data(node: QualibrationNode[RamseyDetuningParameters, Quam]):
     """Plot the raw and fitted data."""
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def update_state(node: QualibrationNode[RamseyParameters, Quam]):
+def update_state(node: QualibrationNode[RamseyDetuningParameters, Quam]):
     """Update the relevant parameters if the qubit pair data analysis was successful."""
 
     with node.record_state_updates():
@@ -150,10 +149,9 @@ def update_state(node: QualibrationNode[RamseyParameters, Quam]):
             fit_result = node.results["fit_results"][qubit.name]
             qubit.xy.RF_frequency -= fit_result["freq_offset"]
             qubit.larmor_frequency -= fit_result["freq_offset"]
-            qubit.T2ramsey = float(fit_result["decay"])
 
 
 # %% {Save_results}
 @node.run_action()
-def save_results(node: QualibrationNode[RamseyParameters, Quam]):
+def save_results(node: QualibrationNode[RamseyDetuningParameters, Quam]):
     node.save()
