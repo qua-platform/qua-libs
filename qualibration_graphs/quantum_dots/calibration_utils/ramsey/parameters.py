@@ -12,7 +12,6 @@ class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
 
-
 class RamseyParameters(
     NodeParameters,
     CommonNodeParameters,
@@ -24,7 +23,6 @@ class RamseyParameters(
 
     frequency_detuning_in_mhz: float = 1.0
     """Frequency detuning in MHz. Default is 1.0 MHz."""
-
 
 class RamseyDetuningParameters(
     NodeParameters,
@@ -40,3 +38,17 @@ class RamseyDetuningParameters(
     """Frequency detuning step. Default 0.1MHz"""
     idle_time_ns: int = 100
     """Fixed idle time in ns."""
+
+class RamseyChevronParameters(
+    NodeParameters,
+    CommonNodeParameters,
+    IdleTimeNodeParameters,
+    NodeSpecificParameters,
+    QubitsExperimentNodeParameters,
+):
+    """Parameter set for 10b_ramsey_detuning_parity_diff."""
+
+    detuning_span_in_mhz: float = 5.0
+    """Frequency detuning span. Default 5MHz."""
+    detuning_step_in_mhz: float = 0.1
+    """Frequency detuning step. Default 0.1MHz"""
