@@ -22,26 +22,28 @@ from calibration_utils.common_utils.experiment import get_dots, get_sensors, _ma
 
 description = """
             OPX & QDAC 2D CHARGE STABILITY MAP
-This script involves a simple 2D voltage map, done by stepping the X and Y Quantum Dots 
+This script involves a simple 2D voltage map, done by stepping the X and Y Quantum Dots
 to their corresponding voltages, sending a readout pulse, and demodulating the 'I' and 'Q'
-quadratures. In this node, you may perform the 2D map using either OPX outputs or QDAC 
-voltage source outputs, which are triggered by the OPX. 
+quadratures. In this node, you may perform the 2D map using either OPX outputs or QDAC
+voltage source outputs, which are triggered by the OPX.
 
-Note: Currently the external v external 2D map has a large number of pause() functions, which 
-    increases the runtime drastically. Use with caution. 
+Note: Currently the external v external 2D map has a large number of pause() functions, which
+    increases the runtime drastically. Use with caution.
 
-Prerequisites: 
+Prerequisites:
     - Having calibrated the IQ mixer/Octave connected to the readout line (node 01a_mixer_calibration.py).
     - Having calibrated the time of flight, offsets, and gains (node 01a_time_of_flight.py).
     - Having calibrated the resonators coupled to the SensorDot components (nodes 02a_resonator_spectroscopy.py, 02b_resonator_spectroscopy_vs_power.py).
     - Having initialized the QUAM state parameters for the readout pulse amplitude and duration.
-    - Having registered the QuantumDot elements and your SensorDot elements in your QUAM state. 
+    - Having registered the QuantumDot elements and your SensorDot elements in your QUAM state.
     - Having configured the QdacSpec on each of the VoltageGate objects.
     - Having configured the VirtualDCSet in your machine.
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="05b_charge_stability_qdac", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](
+    name="05b_charge_stability_qdac", description=description, parameters=Parameters()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -58,11 +60,14 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
 
+
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
+
+
 #     u = unit(coerce_to_integer=True)
 
 #     virtual_gate_set = node.machine.virtual_gate_sets[node.parameters.virtual_gate_set_id]
@@ -73,27 +78,26 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 #     sensor_dot_list = node.machine.quantum_dot_pairs[quantum_dot_pair].sensor_dots
 #     node.namespace["sensors"] = sensors = _make_batchable_list_from_multiplexed(
-#         sensor_dot_list, 
+#         sensor_dot_list,
 #         False
 #     )
 
 #     # Connect machine to QDAC
 #     node.machine.connect_to_external_source(external_qdac=True)
-#     # Set up the DC lists 
+#     # Set up the DC lists
 #     dc_list_x = node.machine.qdac.channel(x_obj.physical_channel.qdac_channel).dc_list(
-#             voltages = x_volts, 
-#             dwell_s = dwell_time*2, 
+#             voltages = x_volts,
+#             dwell_s = dwell_time*2,
 #             stepped = True
 #     )
 #     dc_list_x.start_on_external(trigger = 1)
 
 #     dc_list_y = node.machine.qdac.channel(y_obj.physical_channel.qdac_channel).dc_list(
-#             voltages = y_volts, 
-#             dwell_s = dwell_time*2, 
+#             voltages = y_volts,
+#             dwell_s = dwell_time*2,
 #             stepped = True
 #     )
 #     dc_list_y.start_on_external(trigger = 2)
-
 
 
 #     num_sensors = len(sensors)
@@ -110,8 +114,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 #     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
 
 #     # Case 1: Both axes OPX voltages
-#     if not x_external and not y_external: 
-#         with program() as node.namespace["qua_program"]: 
+#     if not x_external and not y_external:
+#         with program() as node.namespace["qua_program"]:
 #             seq = virtual_gate_set.new_sequence()
 
 #             I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs = num_sensors)
@@ -119,10 +123,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 #             y = declare(fixed)
 
 #             for multiplexed_sensors in sensors.batch():
-#                 align() 
+#                 align()
 #                 with for_(n, 0, n<node.parameters.num_shots, n+1):
 #                     save(n, n_st)
-#                     with for_(*from_array(x, x_volts)): 
+#                     with for_(*from_array(x, x_volts)):
 #                         with for_(*from_array(y, y_volts)):
 #                             with seq.simultaneous():
 #                                 x_obj.go_to_voltages({x_obj.id: x}, duration = dwell_time)
@@ -144,10 +148,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 #                 for i in range(num_sensors):
 #                     I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
 #                     Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
-        
+
 #     # Case 2: X external and Y OPX
-#     elif x_external and not y_external: 
-#         with program() as node.namespace["qua_program"]: 
+#     elif x_external and not y_external:
+#         with program() as node.namespace["qua_program"]:
 #             seq = virtual_gate_set.new_sequence()
 
 #             I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs = num_sensors)
@@ -157,9 +161,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 #             for multiplexed_sensors in sensors.batch():
 #                 align()
 #                 # We know that the X is the slow axis. Order it so that the X axis comes first
-#                 with for_(n, 0, n<node.parameters.num_shots, n+1): 
+#                 with for_(n, 0, n<node.parameters.num_shots, n+1):
 #                     save(n, n_st)
-#                     with for_(*from_array(x, x_volts)): 
+#                     with for_(*from_array(x, x_volts)):
 #                         x_obj.physical_channel.qdac_trigger.play("trigger")
 #                         with for_(*from_array(y, y_volts)):
 #                             y_obj.go_to_voltages({y_obj.id: y}, duration = dwell_time)
@@ -181,15 +185,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 #                     I_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save(f"I{i}")
 #                     Q_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save(f"Q{i}")
 
-#     # Case 3: X OPX and Y external 
-#     elif not x_external and y_external: 
+#     # Case 3: X OPX and Y external
+#     elif not x_external and y_external:
 #         # Transpose so that the slow (Y) is on the outer loop
 #         node.namespace["sweep_axes"] = {
 #             "sensors": xr.DataArray(sensors.get_names()),
 #             "y_volts": xr.DataArray(y_volts, attrs={"long_name": "voltage", "units": "V"}),
 #             "x_volts": xr.DataArray(x_volts, attrs={"long_name": "voltage", "units": "V"}),
 #         }
-#         with program() as node.namespace["qua_program"]: 
+#         with program() as node.namespace["qua_program"]:
 #             seq = virtual_gate_set.new_sequence()
 
 #             I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs = num_sensors)
@@ -199,9 +203,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 #             for multiplexed_sensors in sensors.batch():
 #                 align()
 #                 # We know that the Y is the slow axis. Order it so that the Y axis comes first
-#                 with for_(n, 0, n<node.parameters.num_shots, n+1): 
+#                 with for_(n, 0, n<node.parameters.num_shots, n+1):
 #                     save(n, n_st)
-#                     with for_(*from_array(y, y_volts)): 
+#                     with for_(*from_array(y, y_volts)):
 #                         y_obj.physical_channel.qdac_trigger.play("trigger")
 #                         with for_(*from_array(x, x_volts)):
 #                             x_obj.go_to_voltages({x_obj.id: x}, duration = dwell_time)
@@ -223,9 +227,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 #                     I_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"I{i}")
 #                     Q_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"Q{i}")
 
-#     # Case 4: Both external 
-#     elif x_external and y_external: 
-#         with program() as node.namespace["qua_program"]: 
+#     # Case 4: Both external
+#     elif x_external and y_external:
+#         with program() as node.namespace["qua_program"]:
 #             seq = virtual_gate_set.new_sequence()
 
 #             I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs = num_sensors)
@@ -235,9 +239,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 #             for multiplexed_sensors in sensors.batch():
 #                 align()
 #                 # We know that the Y is the slow axis. Order it so that the Y axis comes first
-#                 with for_(n, 0, n<node.parameters.num_shots, n+1): 
+#                 with for_(n, 0, n<node.parameters.num_shots, n+1):
 #                     save(n, n_st)
-#                     with for_(*from_array(x, x_volts)): 
+#                     with for_(*from_array(x, x_volts)):
 #                         x_obj.physical_channel.qdac_trigger.play("trigger")
 #                         with for_(*from_array(y, y_volts)):
 #                             y_obj.physical_channel.qdac_trigger.play("trigger")
@@ -257,6 +261,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 #                 for i in range(num_sensors):
 #                     I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
 #                     Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
+
 
 # %% {Simulate}
 @node.run_action(
@@ -323,7 +328,9 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.run_in_video_mode)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    # """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    # TODO: Implement analysis - remove pass when complete
+    pass
     # # Process raw dataset (convert ADC to volts, compute amplitude)
     # node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
 
@@ -341,6 +348,8 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.run_in_video_mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+    # TODO: Implement plotting - remove pass when complete
+    pass
     # Plot basic amplitude and phase maps
     # fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
     # # fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
@@ -371,7 +380,10 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 # %%
 from calibration_utils.run_video_mode import create_video_mode
-@node.run_action(skip_if = node.parameters.run_in_video_mode is False)
+
+# TODO: Remove fmt: off once node is complete
+# fmt: off
+# @node.run_action(skip_if = node.parameters.run_in_video_mode is False)
 # def run_video_mode(node: QualibrationNode[Parameters, Quam]):
 #     x_axis_name = node.parameters.x_axis_name
 #     y_axis_name = node.parameters.y_axis_name
@@ -396,10 +408,13 @@ from calibration_utils.run_video_mode import create_video_mode
 #         ],
 #         save_path="/Users/User/.qualibrate/user_storage",
 #     )
+# fmt: on
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
-    # """Save the node results and state."""
+    """Save the node results and state."""
+    # TODO: Uncomment when complete
+    pass
     # node.save()
