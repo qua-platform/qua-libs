@@ -21,21 +21,10 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualibrate import QualibrationNode
 from qualibrate.parameters import NodeParameters
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.parameters import get_qubit_pairs
 from quam_config import Quam
 
-# from calibration_utils.two_qubit_rb.analysis import log_fitted_results, process_raw_dataset
-
-# # from iqcc_calibration_tools.qualibrate_config.qualibrate.node import NodeParameters, QualibrationNode
-# from calibration_utils.two_qubit_rb.circuit_utils import (
-#     layerize_quantum_circuit,
-#     process_circuit_to_integers,
-# )
-# from calibration_utils.two_qubit_rb.data_utils import RBResult
 from calibration_utils.gate_set_tomography.parameters import Parameters
-# from calibration_utils.two_qubit_rb.plot_utils import gate_mapping
-# from calibration_utils.two_qubit_rb.qua_utils import QuaProgramHandler
-# from calibration_utils.two_qubit_rb.rb_utils import StandardRB
+
 
 # %% {Initialisation}
 
@@ -88,9 +77,9 @@ Prerequisites:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="18b_two_qubit_standard_rb",  # Name should be unique
+    name="18b_gate_set_tomography_1q",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
-    parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
+    parameters=Parameters(),  # Node parameters defined under calibration_utils/gate_set_tomography/parameters.py
 )
 
 
@@ -100,7 +89,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubit_pairs = ["q1-q2"]
+    # node.parameters.qubits = ["q1"]
 
 
 if node.parameters.use_input_stream:
@@ -114,47 +103,7 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-
-    # node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
-    #
-    # node.namespace["sweep_axes"] = {
-    #     "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
-    #     "shots": xr.DataArray(np.arange(node.parameters.num_shots)),
-    #     "depths": xr.DataArray(np.array(node.parameters.circuit_lengths)),
-    #     "sequence": xr.DataArray(np.arange(node.parameters.num_circuits_per_length)),
-    # }
-    #
-    # standard_RB = StandardRB(
-    #     amplification_lengths=node.parameters.circuit_lengths,
-    #     num_circuits_per_length=node.parameters.num_circuits_per_length,
-    #     num_qubits=2,
-    # )
-    #
-    # transpiled_circuits = standard_RB.transpiled_circuits
-    # transpiled_circuits_as_ints = {}
-    # for l, circuits in transpiled_circuits.items():
-    #     transpiled_circuits_as_ints[l] = [process_circuit_to_integers(layerize_quantum_circuit(qc)) for qc in circuits]
-    #
-    # # to calculate the average number of 2q layers per Clifford
-    # node.namespace["average_layers_per_clifford"] = np.mean(
-    #     [
-    #         np.mean([len(circ) for circ in circuits]) / np.array(length + 1)
-    #         for length, circuits in transpiled_circuits_as_ints.items()
-    #         if length > 0
-    #     ]
-    # )
-    #
-    # circuits_as_ints = []
-    # for circuits_per_len in transpiled_circuits_as_ints.values():
-    #     for circuit in circuits_per_len:
-    #         circuit_with_measurement = circuit + [66]  # readout
-    #         circuits_as_ints.append(circuit_with_measurement)
-    #
-    # num_pairs = len(qubit_pairs)
-    #
-    # qua_program_handler = QuaProgramHandler(node, num_pairs, circuits_as_ints, node.machine, qubit_pairs)
-    #
-    # node.namespace["qua_program"] = qua_program_handler.get_qua_program()
+    pass
 
 
 # %% {Execute}
@@ -202,56 +151,23 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analysis the raw data and store the fitted data in another xarray dataset and the fitted results."""
-    # node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+    pass
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit pair grid locations."""
-    # qubit_pairs = node.namespace["qubit_pairs"]
-    # node.results["fit_results"] = {}
-    # for qp in qubit_pairs:
-    #
-    #     rb_result = RBResult(
-    #         circuit_depths=list(node.parameters.circuit_lengths),
-    #         num_repeats=node.parameters.num_circuits_per_length,
-    #         num_averages=node.parameters.num_shots,
-    #         state=node.results["ds_raw"].state.sel(qubit_pair=qp.name).data,
-    #         average_layers_per_clifford=node.namespace["average_layers_per_clifford"],
-    #     )
-    #
-    #     fig = rb_result.plot_with_fidelity()
-    #     fig.suptitle(f"2Q Randomized Benchmarking - {qp.name}")
-    #     fig.show()
-    #
-    #     node.results[f"fig_{qp.name}"] = fig
-    #     node.results["fit_results"][qp.name] = {
-    #         "success": rb_result.fit_success,
-    #         "alpha": rb_result.alpha,
-    #         "fidelity": rb_result.fidelity,
-    #     }
-    #
-    #     log_fitted_results(node.results["fit_results"], log_callable=node.log)
-    #
-    #     node.outcomes = {
-    #         qp_name: ("successful" if fit_result.get("success") else "failed")
-    #         for qp_name, fit_result in node.results["fit_results"].items()
-    #     }
+    pass
 
 
 # %% {Update_state}
-with node.record_state_updates():
-#     for qp in node.namespace["qubit_pairs"]:
-#         if node.outcomes[qp.name] == "failed":
-#             continue
-#         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB"] = node.results[
-#             "fit_results"
-#         ][qp.name]["fidelity"]
-#         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB_alpha"] = node.results[
-#             "fit_results"
-#         ][qp.name]["alpha"]
-# # %% {Save_results}
-# node.save()
+@node.run_action(skip_if=node.parameters.simulate)
+def update_state(node: QualibrationNode[Parameters, Quam]):
+    """Update the relevant parameters if the qubit data analysis was successful."""
+    pass
 
-# %%
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
+    node.save()

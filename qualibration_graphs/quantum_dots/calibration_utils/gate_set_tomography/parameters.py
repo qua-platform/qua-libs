@@ -8,7 +8,7 @@ from typing import ClassVar, Literal
 
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
+from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -18,8 +18,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Number of averages to perform. Default is 100."""
     use_state_discrimination: bool = True
     """Whether to use state discrimination for readout. Default is True."""
-    max_germ_repetition: int = 64
-    """Maximum number of times a germ is repeated in the sequence. Default is 64."""
+    germ_lengths: list[int] = [1, 4, 16, 32, 64]
+    """Number of times a germ is repeated in the sequence. Default is [1, 4, 16, 32, 64]."""
     use_input_stream: bool = False
     """Whether to use input streams for circuit execution. Default is False."""
     reset_type: Literal["active", "thermal"] = "active"
@@ -29,6 +29,6 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    QubitPairExperimentNodeParameters,
+    QubitsExperimentNodeParameters,
 ):
     """Combined parameters for single-qubit GST experiments."""
