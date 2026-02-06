@@ -12,8 +12,8 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.time_rabi_chevron_parity_diff import Parameters
-from calibration_utils.common_utils.experiment import get_sensors, get_qubits
+from calibration_utils.crot_spectroscopy_parity_diff import Parameters
+from calibration_utils.common_utils.experiment import get_sensors, get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -75,7 +75,7 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    # node.parameters.qubits = ["q1"]
+    # node.parameters.qubit_pairs = ["q1q2"]
 
     pass
 
@@ -138,9 +138,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active sensors and qubits from the loaded node parameters
+    # Get the active sensors and qubit pairs from the loaded node parameters
     node.namespace["sensors"] = get_sensors(node)
-    node.namespace["qubits"] = get_qubits(node)
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 
@@ -166,6 +165,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if not node.results["fit_results"][qubit_pair.name]["success"]:
                 continue
             fit_result = node.results["fit_results"][qubit_pair.name]
+            qubit_pair.exchange_coupling_J = fit_result["exchange_coupling_J"]
+            qubit_pair.crot_frequency_down = fit_result["crot_frequency_down"]
+            qubit_pair.crot_frequency_up = fit_result["crot_frequency_up"]
 
 # %% {Save_results}
 @node.run_action()
