@@ -52,7 +52,7 @@ DEFAULT_SMALL_SWEEP_PARAMS: Dict[str, Any] = {
     "time_step_in_ns": 16,
     "frequency_span_in_mhz": 4,
     "frequency_step_in_mhz": 2,
-    "gap_wait_time_in_ns": 32,
+    "gap_wait_time_in_ns": 1_024,
 }
 
 
