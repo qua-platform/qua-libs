@@ -28,12 +28,12 @@ from qualibration_libs.data import XarrayDataFetcher
 description = """
         QUBIT SPECTROSCOPY PARITY DIFFERENCE
 This sequence involves parking the qubit at the manipulation bias point, and playing pulses of varying frequency
-to drive the qubit. When the pulse frequency is the Larmor frequency, the qubit is driven, and the parity is measured 
-via PSB. 
+to drive the qubit. When the pulse frequency is the Larmor frequency, the qubit is driven, and the parity is measured
+via PSB.
 
 Prerequisites:
     - Having calibrated the relevant voltage points.
-    - Having calibrated the PSB readout scheme. 
+    - Having calibrated the PSB readout scheme.
 
 
 State update:
@@ -222,6 +222,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     #     "phase": fig_raw_phase,
     #     "amplitude": fig_fit_amplitude,
     # }
+
+
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
 def update_state(node: QualibrationNode[Parameters, Quam]):
@@ -230,7 +232,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            
+
             opt_frequency = node.results["fit_results"][q.name]["frequency"]
             q.larmor_frequency = opt_frequency
             q.xy.intermediate_frequency = opt_frequency

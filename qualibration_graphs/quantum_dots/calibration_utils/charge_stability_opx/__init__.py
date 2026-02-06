@@ -15,6 +15,12 @@ from .analysis import (
     FitParameters,
 )
 
+from .scan_modes import (
+    ScanMode,
+    RasterScan,
+    SwitchRasterScan,
+)
+
 try:
     from .edge_line_analysis import analyze_edge_map, SegmentFit
 except ImportError:  # pragma: no cover - optional dependency guard
@@ -37,4 +43,7 @@ __all__ = [
     "FitParameters",
     "analyze_edge_map",
     "SegmentFit",
+    "ScanMode",
+    "RasterScan",
+    "SwitchRasterScan",
 ]

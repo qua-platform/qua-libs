@@ -27,10 +27,10 @@ from qualibration_libs.data import XarrayDataFetcher
 # %% {Description}
 description = """
         Power Rabi with Error Amplification
-This sequence is a power Rabi sequence augmented with error-amplification. It involves parking the qubit at the 
+This sequence is a power Rabi sequence augmented with error-amplification. It involves parking the qubit at the
 manipulation bias point, playing a pulse sequence with N pulses, and measuring the state of the resonator across
 different qubit pulse amplitudes, showing Rabi oscillations. With error amplification, small amplitude errors accumulate
-rapidly, allowing for a more precise calibration of the pulse amplitude. The results are then analyzed to determine the 
+rapidly, allowing for a more precise calibration of the pulse amplitude. The results are then analyzed to determine the
 qubit pulse amplitude suitable for the selected gate duration.
 
 Prerequisites:
