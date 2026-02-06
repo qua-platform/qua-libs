@@ -8,6 +8,7 @@ from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentN
 
 class NodeSpecificParameters(RunnableParameters):
     """Parameters for node Qubit Spectroscopy Parity Diff"""
+
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
     frequency_span_in_mhz: float = 100
@@ -20,7 +21,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Amplitude pre-factor for the operation. Default is 1.0."""
     operation_len_in_ns: Optional[int] = None
     """Length of the operation in nanoseconds. Default is the predefined pulse length."""
-
 
 
 class Parameters(
