@@ -13,8 +13,8 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.ramsey import Parameters
-from calibration_utils.common_utils.experiment import get_sensors, get_qubits
+from calibration_utils.ramsey import RamseyParameters
+from calibration_utils.common_utils.experiment import get_sensors, get_qubits, get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -45,15 +45,15 @@ State update:
 """
 
 
-node = QualibrationNode[Parameters, Quam](
-    name="10a_ramsey_parity_diff", description=description, parameters=Parameters()
+node = QualibrationNode[RamseyParameters, Quam](
+    name="10a_ramsey_parity_diff", description=description, parameters=RamseyParameters()
 )
 
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[Parameters, Quam]):
+def custom_param(node: QualibrationNode[RamseyParameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubit = ["q1"]
     # node.parameters.num_shots = 10
@@ -69,7 +69,7 @@ node.machine = Quam.load()
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
-def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     u = unit(coerce_to_integer=True)
 
@@ -174,7 +174,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
-def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+def simulate_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -188,7 +188,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
-def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+def execute_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -214,7 +214,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
-def load_data(node: QualibrationNode[Parameters, Quam]):
+def load_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Load a previously acquired dataset."""
     load_data_id = node.parameters.load_data_id
     # Load the specified dataset
@@ -227,7 +227,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def analyse_data(node: QualibrationNode[Parameters, Quam]):
+def analyse_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     # TODO: Implement analysis for Ramsey parity diff.
     pass
@@ -235,7 +235,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def plot_data(node: QualibrationNode[Parameters, Quam]):
+def plot_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Plot the raw and fitted data."""
     # TODO: Implement plotting for Ramsey parity diff.
     pass
@@ -243,7 +243,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def update_state(node: QualibrationNode[Parameters, Quam]):
+def update_state(node: QualibrationNode[RamseyParameters, Quam]):
     """Update the relevant parameters if the qubit pair data analysis was successful."""
 
     with node.record_state_updates():
@@ -259,5 +259,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Save_results}
 @node.run_action()
-def save_results(node: QualibrationNode[Parameters, Quam]):
+def save_results(node: QualibrationNode[RamseyParameters, Quam]):
     node.save()
