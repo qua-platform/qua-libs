@@ -54,7 +54,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.sensor_names = ["sensor_1"]
+    # node.parameters.quantum_dot_pair_names = ["virtual_dot_1_virtual_dot_2_pair"]
     # node.parameters.num_shots = 10
     pass
 
@@ -146,7 +146,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         #     if not node.results["fit_results"][qubit_pair.name]["success"]:
         #         continue
         #     # Update PSB region coordinates if needed
-        # TODO: how to update the PSB region coordinates for a given qubit pair?
+        # TODO: update threshold and rotation angle here?
         pass
 
 
