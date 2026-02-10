@@ -143,8 +143,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active qubit pairs from the loaded node parameters
-    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+    # Get the active qubits from the loaded node parameters
+    node.namespace["qubits"] = get_qubits(node)
 
 
 # %% {Analyse_data}
