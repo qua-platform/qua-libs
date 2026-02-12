@@ -24,6 +24,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from quam_config import Quam
 
 from calibration_utils.gate_set_tomography.parameters import Parameters
+from calibration_utils.common_utils.experiment import get_qubits
 
 
 # %% {Initialisation}
@@ -31,11 +32,11 @@ from calibration_utils.gate_set_tomography.parameters import Parameters
 description = """
 SINGLE-QUBIT GATE SET TOMOGRAPHY
 
-Gate set tomography (GST) is a self-consistent protocol that simultaneously 
+Gate set tomography (GST) is a self-consistent protocol that simultaneously
 characterizes the prepared state, the measurement, and the quantum gates themselves.
 The program performs GST on a single qubit by executing
 carefully designed sequences of quantum gates and measuring the qubit state
-after each sequence. 
+after each sequence.
 
 The gate sequences used in the experiment can be divided into three parts:
     - Preparation fiducials
@@ -52,8 +53,8 @@ repeated a variable number of times (specified as an input), and a measurement
 fiducial. (prep fiducial) + (germ)^L + (meas fiducial)
 
 The gate sequences are generated offline and expressed in terms of the native
-single-qubit basis gate set (e.g. ['rz', 'sx', 'x']). This basis gate set must be 
-tomographically complete, requiring at least two non-commuting single-qubit gates 
+single-qubit basis gate set (e.g. ['rz', 'sx', 'x']). This basis gate set must be
+tomographically complete, requiring at least two non-commuting single-qubit gates
 that rotate about different axes.
 The circuits are then executed using a switch_case block structure to efficiently play back the
 different gate sequences on the hardware.
@@ -166,6 +167,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     pass
+
 
 # %% {Save_results}
 @node.run_action()
