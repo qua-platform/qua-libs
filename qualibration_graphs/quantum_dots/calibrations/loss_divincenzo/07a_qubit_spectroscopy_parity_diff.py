@@ -139,27 +139,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.initialize(duration=node.parameters.gap_wait_time_in_ns)
 
                     # ---------------------------------------------------------
-                    # Step 1c: Measure state after initialization, no operation
+                    # Step 2: Measure state after initialization, no operation
                     # ---------------------------------------------------------
                     align()
                     for i, qubit in batched_qubits.items():
                         assign(
                             p1[i], Cast.to_int(qubit.measure())
                         )  # qubit.measure() handles the step to point + measurement
-
-                    # ---------------------------------------------------------
-                    # Step 2a: Empty - step to empty point (fixed duration)
-                    # ---------------------------------------------------------
-                    align()
-                    for i, qubit in batched_qubits.items():
-                        qubit.empty()
-
-                    # ---------------------------------------------------------
-                    # Step 2b: Initialize - load electron into dot (fixed duration)
-                    # ---------------------------------------------------------
-                    align()
-                    for i, qubit in batched_qubits.items():
-                        qubit.initialize(duration=node.parameters.gap_wait_time_in_ns)
 
                     # ---------------------------------------------------------
                     # Step 3: Apply operation macro
