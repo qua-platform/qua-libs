@@ -28,13 +28,14 @@ NODE_NAME = "09b_time_rabi_chevron_parity_diff"
 # ── Simulation parameters ──────────────────────────────────────────────────
 # Keep sweeps small for fast test execution.
 QUBIT_FREQ_GHZ = 10.0  # Zeeman splitting (GHz)
-DRIVE_AMP_GHZ = 0.02  # Drive amplitude (GHz)
+DRIVE_AMP_GHZ = 0.004  # Drive amplitude (GHz) — reduced for slower oscillations (~125 ns t_π)
 
-# Sweep grid
+# Sweep grid (reduced for faster MCMC; still resolves chevron)
 MAX_DURATION_NS = 400
-N_TIME_POINTS = 200  # Dense enough to resolve Rabi oscillations
+N_TIME_POINTS = 200  # Enough to resolve Rabi oscillations
 FREQ_SPAN_MHZ = 100.0
-FREQ_STEP_MHZ = 1.0
+FREQ_STEP_MHZ = 1.0  # Fewer points for faster fit
+NOISE_STD = 0.1  # Gaussian noise std on parity diff (simulates measurement/shot noise)
 
 
 def _simulate_chevron(
@@ -42,6 +43,7 @@ def _simulate_chevron(
     pulse_durations_ns: jnp.ndarray,
     drive_freqs_ghz: jnp.ndarray,
     drive_amp: float = DRIVE_AMP_GHZ,
+    noise_std: float = NOISE_STD,
 ) -> np.ndarray:
     """Simulate a time-Rabi chevron using ``sweep()`` and return the result.
 
@@ -60,6 +62,9 @@ def _simulate_chevron(
         1-D JAX array of *absolute* drive frequencies in GHz.
     drive_amp : float
         Drive amplitude in GHz.
+    noise_std : float
+        Standard deviation of Gaussian noise added to the output (simulates shot noise).
+        Default is NOISE_STD. Set to 0 for noiseless data.
 
     Returns
     -------
@@ -93,7 +98,12 @@ def _simulate_chevron(
     pop1_vs_freq = sweep(run_rabi, freq=drive_freqs_ghz)
 
     # Convert JAX array back to numpy for xarray / downstream consumers
-    return np.asarray(pop1_vs_freq)
+    pdiff = np.asarray(pop1_vs_freq)
+    if noise_std > 0:
+        rng = np.random.default_rng(seed=42)
+        pdiff = pdiff + rng.normal(0, noise_std, size=pdiff.shape)
+        pdiff = np.clip(pdiff, 0.0, 1.0)
+    return pdiff
 
 
 def _build_ds_raw(
@@ -154,42 +164,6 @@ def _build_ds_raw(
     return ds
 
 
-def _plot_chevron(
-    freq_hz: np.ndarray,
-    pulse_durations_ns: np.ndarray,
-    pdiff: np.ndarray,
-    qubit_name: str,
-    qubit_freq_hz: float = QUBIT_FREQ_GHZ * 1e9,
-) -> "matplotlib.figure.Figure":
-    """Create an imshow chevron plot of the simulated parity difference."""
-    import matplotlib.pyplot as plt
-
-    detuning_mhz = (freq_hz - qubit_freq_hz) * 1e-6  # Hz -> MHz detuning
-
-    fig, ax = plt.subplots(figsize=(8, 5))
-    im = ax.imshow(
-        pdiff,
-        aspect="auto",
-        origin="lower",
-        extent=[
-            pulse_durations_ns[0],
-            pulse_durations_ns[-1],
-            detuning_mhz[0],
-            detuning_mhz[-1],
-        ],
-        cmap="RdBu_r",
-        vmin=0.0,
-        vmax=1.0,
-        interpolation="nearest",
-    )
-    ax.set_xlabel("Pulse duration (ns)")
-    ax.set_ylabel("Drive detuning (MHz)")
-    ax.set_title(f"Simulated Rabi chevron (parity diff) — {qubit_name}")
-    fig.colorbar(im, ax=ax, label="P(spin flip)")
-    fig.tight_layout()
-    return fig
-
-
 # =============================================================================
 # Test
 # =============================================================================
@@ -239,28 +213,25 @@ def test_09b_time_rabi_chevron_analysis(analysis_runner):
 
     # The QuAM factory creates qubits Q1..Q4.
     qubit_names = ["Q1", "Q2", "Q3", "Q4"]
-    pdiff_data = {
-        qname: pdiff_q1 if qname == "Q1" else np.zeros_like(pdiff_q1)
-        for qname in qubit_names
-    }
+    pdiff_data = {qname: pdiff_q1 if qname == "Q1" else np.zeros_like(pdiff_q1) for qname in qubit_names}
 
     # ── 5. Build ds_raw ─────────────────────────────────────────────────────
     ds_raw = _build_ds_raw(qubit_names, detunings_hz, pulse_durations_ns, pdiff_data)
 
-    # ── 6. Create chevron plot ──────────────────────────────────────────────
-    fig = _plot_chevron(detunings_hz, pulse_durations_ns, pdiff_q1, "Q1")
-
-    # ── 7. Run analysis pipeline via fixture ────────────────────────────────
+    # ── 6. Run analysis pipeline via fixture (plotting done by node's plot_data) ─
     node = analysis_runner(
         node_name=NODE_NAME,
         ds_raw=ds_raw,
-        fig=fig,
+        analyse_qubits=["Q1"],
         param_overrides={
             "num_shots": 4,
             "min_wait_time_in_ns": 0,
             "max_wait_time_in_ns": MAX_DURATION_NS,
+            "time_step_in_ns": MAX_DURATION_NS // (N_TIME_POINTS - 1) if N_TIME_POINTS > 1 else 4,
             "frequency_span_in_mhz": FREQ_SPAN_MHZ,
             "frequency_step_in_mhz": FREQ_STEP_MHZ,
+            "mcmc_num_warmup": 1000,
+            "mcmc_num_samples": 1000,
         },
     )
 
@@ -271,3 +242,83 @@ def test_09b_time_rabi_chevron_analysis(analysis_runner):
     # The chevron should show non-trivial dynamics (not all zeros)
     pdiff_values = node.results["ds_raw"]["pdiff_Q1"].values
     assert np.max(pdiff_values) > 0.05, "Chevron simulation produced no spin-flip signal"
+
+    # Analysis pipeline should have run and produced fit_results
+    assert "fit_results" in node.results
+    assert "Q1" in node.results["fit_results"]
+
+    fit_q1 = node.results["fit_results"]["Q1"]
+    assert "optimal_frequency" in fit_q1
+    assert "optimal_duration" in fit_q1
+    assert "success" in fit_q1
+
+    # Fit should succeed for Q1 (we simulated real Rabi dynamics)
+    assert fit_q1["success"], "Chevron fit should succeed for simulated data"
+
+    # Resonant frequency should be near 10 GHz (QUBIT_FREQ_GHZ)
+    f_res_ghz = fit_q1["optimal_frequency"] * 1e-9
+    assert 9.5 < f_res_ghz < 10.5, f"Expected f_res ≈ 10 GHz, got {f_res_ghz:.3f} GHz"
+
+    # π-time should be in a reasonable range (simulation uses DRIVE_AMP_GHZ ≈ 0.004 → t_π ~ 125 ns)
+    t_pi_ns = fit_q1["optimal_duration"]
+    assert 50 < t_pi_ns < 400, f"Expected t_π in [50, 400] ns for slow Rabi, got {t_pi_ns:.0f} ns"
+
+
+@pytest.mark.analysis
+def test_09b_time_rabi_chevron_analysis_numpyro(analysis_runner):
+    """Same as above but with use_numpyro=True (Bayesian MCMC fit)."""
+    pytest.importorskip("numpyro", reason="bayesian extra required")
+
+    params = LossDiVincenzoParams(
+        n_qubits=2,
+        qubit_freqs=[QUBIT_FREQ_GHZ, QUBIT_FREQ_GHZ + 0.2],
+        exchange_couplings=[0.001],
+        ref_freqs=None,
+        frame="rot",
+        use_rwa=True,
+    )
+    device = LossDiVincenzoDevice(params=params)
+
+    pulse_durations_ns_jax = jnp.linspace(0, MAX_DURATION_NS, N_TIME_POINTS, dtype=jnp.float32)
+    span_ghz = FREQ_SPAN_MHZ * 1e-3
+    step_ghz = FREQ_STEP_MHZ * 1e-3
+    drive_freqs_ghz = jnp.arange(
+        QUBIT_FREQ_GHZ - span_ghz / 2,
+        QUBIT_FREQ_GHZ + span_ghz / 2,
+        step_ghz,
+        dtype=jnp.float32,
+    )
+    pdiff_q1 = _simulate_chevron(device, pulse_durations_ns_jax, drive_freqs_ghz)
+
+    pulse_durations_ns = np.asarray(pulse_durations_ns_jax)
+    detunings_hz = np.asarray(drive_freqs_ghz) * 1e9
+    qubit_names = ["Q1", "Q2", "Q3", "Q4"]
+    pdiff_data = {qname: pdiff_q1 if qname == "Q1" else np.zeros_like(pdiff_q1) for qname in qubit_names}
+    ds_raw = _build_ds_raw(qubit_names, detunings_hz, pulse_durations_ns, pdiff_data)
+
+    node = analysis_runner(
+        node_name=NODE_NAME,
+        ds_raw=ds_raw,
+        analyse_qubits=["Q1"],
+        param_overrides={
+            "num_shots": 4,
+            "min_wait_time_in_ns": 0,
+            "max_wait_time_in_ns": MAX_DURATION_NS,
+            "time_step_in_ns": MAX_DURATION_NS // (N_TIME_POINTS - 1) if N_TIME_POINTS > 1 else 4,
+            "frequency_span_in_mhz": FREQ_SPAN_MHZ,
+            "frequency_step_in_mhz": FREQ_STEP_MHZ,
+            "use_numpyro": True,
+            "mcmc_num_warmup": 1000,
+            "mcmc_num_samples": 1000,
+        },
+    )
+
+    fit_q1 = node.results["fit_results"]["Q1"]
+    assert fit_q1["success"], "NumPyro chevron fit should succeed"
+    f_res_ghz = fit_q1["optimal_frequency"] * 1e-9
+    assert 9.5 < f_res_ghz < 10.5, f"Expected f_res ≈ 10 GHz, got {f_res_ghz:.3f} GHz"
+    t_pi_ns = fit_q1["optimal_duration"]
+    assert 50 < t_pi_ns < 400, f"Expected t_π in [50, 400] ns for slow Rabi, got {t_pi_ns:.0f} ns"
+    # NumPyro fit adds uncertainty estimates
+    assert "optimal_frequency_std" in fit_q1
+    assert "optimal_duration_std" in fit_q1
