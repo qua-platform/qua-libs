@@ -53,6 +53,8 @@ virtual-qpu = { git = "https://github.com/qua-platform/virtual_qpu.git" }
 dev = [
     "ipykernel>=7.0.0a1",
     "pytest>=8.3.5",
+    "numpyro>=0.15.0",
+    "virtual-qpu; python_version >= '3.11'",
 ]
 
 [tool.hatch.build.targets.wheel]

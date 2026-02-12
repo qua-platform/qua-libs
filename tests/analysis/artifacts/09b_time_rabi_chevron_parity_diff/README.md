@@ -45,7 +45,7 @@ State update:
 | `model_config` | `{'extra': 'forbid', 'use_attribute_docstrings': True}` |  |
 | `model_extra` | `None` |  |
 | `model_fields` | `{'multiplexed': FieldInfo(annotation=bool, required=False, default=False, description='Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)\nor to play the experiment sequentially for each qubit (False). Default is False.'), 'use_state_discrimination': FieldInfo(annotation=bool, required=False, default=False, description="Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated\nquadratures 'I' and 'Q'. Default is False."), 'reset_wait_time': FieldInfo(annotation=int, required=False, default=5000, description='The wait time for qubit reset.'), 'qubits': FieldInfo(annotation=Union[List[str], NoneType], required=False, default=None, description='A list of qubit names which should participate in the execution of the node. Default is None.'), 'num_shots': FieldInfo(annotation=int, required=False, default=100, description='Number of averages to perform. Default is 100.'), 'min_wait_time_in_ns': FieldInfo(annotation=int, required=False, default=16, description='Minimum pulse duration in nanoseconds. Must be larger than 4 clock cycles. Default is 16 ns.'), 'max_wait_time_in_ns': FieldInfo(annotation=int, required=False, default=10000, description='Maximum pulse duration in nanoseconds. Default is 10000 ns (10 us).'), 'time_step_in_ns': FieldInfo(annotation=int, required=False, default=52, description='Step size for the pulse duration sweep in nanoseconds. Default is 52 ns.'), 'frequency_span_in_mhz': FieldInfo(annotation=float, required=False, default=2, description='Span of frequencies to sweep in MHz. Default is 2 MHz.'), 'frequency_step_in_mhz': FieldInfo(annotation=float, required=False, default=0.025, description='Step size for the frequency detuning sweep in MHz. Default is 0.025 MHz.'), 'gap_wait_time_in_ns': FieldInfo(annotation=int, required=False, default=128, description='Wait time between initialization and X180 pulse in nanoseconds. Default is 128 ns.'), 'operation': FieldInfo(annotation=str, required=False, default='x180', description="Name of the qubit operation to perform. Default is 'x180'."), 'use_numpyro': FieldInfo(annotation=bool, required=False, default=True, description='If True, use Bayesian (NumPyro NUTS) fit instead of scipy curve_fit. Default is True.'), 'mcmc_num_warmup': FieldInfo(annotation=int, required=False, default=500, description='Number of NUTS warmup iterations. Default is 500.'), 'mcmc_num_samples': FieldInfo(annotation=int, required=False, default=500, description='Number of posterior samples per chain. Default is 500.'), 'mcmc_num_chains': FieldInfo(annotation=int, required=False, default=1, description='Number of MCMC chains. Default is 1.'), 'simulate': FieldInfo(annotation=bool, required=False, default=False, description='Simulate the waveforms on the OPX instead of executing the program. Default is False.'), 'simulation_duration_ns': FieldInfo(annotation=int, required=False, default=50000, description='Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns.'), 'use_waveform_report': FieldInfo(annotation=bool, required=False, default=True, description='Whether to use the interactive waveform report in simulation. Default is True.'), 'timeout': FieldInfo(annotation=int, required=False, default=120, description='Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s.'), 'load_data_id': FieldInfo(annotation=Union[int, NoneType], required=False, default=None, description='Optional QUAlibrate node run index for loading historical data. Default is None.')}` |  |
-| `model_fields_set` | `{'mcmc_num_warmup', 'frequency_step_in_mhz', 'max_wait_time_in_ns', 'time_step_in_ns', 'num_shots', 'frequency_span_in_mhz', 'min_wait_time_in_ns', 'use_numpyro', 'mcmc_num_samples', 'simulate'}` |  |
+| `model_fields_set` | `{'max_wait_time_in_ns', 'num_shots', 'frequency_span_in_mhz', 'simulate', 'mcmc_num_warmup', 'frequency_step_in_mhz', 'time_step_in_ns', 'min_wait_time_in_ns', 'mcmc_num_samples'}` |  |
 | `multiplexed` | `False` | Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)
 or to play the experiment sequentially for each qubit (False). Default is False. |
 | `num_shots` | `4` | Number of averages to perform. Default is 100. |
@@ -65,15 +65,15 @@ quadratures 'I' and 'Q'. Default is False. |
 
 ## Fit Results
 
-| Qubit | f_res (GHz) | t_π (ns) | Ω_R (rad/ns) | success |
-|-------|-------------|----------|--------------|--------|
-| Q1 | 9.9995 | 62.5 | 0.050279 | True |
+| Qubit | f_res (GHz) | t_π (ns) | Ω_R (rad/ns) | γ (1/ns) | T₂* (ns) | success |
+|-------|-------------|----------|--------------|----------|----------|--------|
+| Q1 | 9.9995 | 62.9 | 0.049917 | 0.00390 | 256 | True |
 
 ## Updated State
 
 | Qubit | intermediate_frequency (Hz) | xy.operations.x180.length (ns) |
 |-------|-----------------------------|-----------------------------------------|
-| Q1 | 9999502336 | 62.5 |
+| Q1 | 9999499264 | 62.9 |
 
 ## Analysis Output
 

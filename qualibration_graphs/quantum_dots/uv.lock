@@ -3068,7 +3068,9 @@ bayesian = [
 dev = [
     { name = "ipykernel", version = "7.2.0a1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipykernel", version = "7.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "numpyro" },
     { name = "pytest" },
+    { name = "virtual-qpu", marker = "python_full_version >= '3.11'" },
 ]
 
 [package.metadata]
@@ -3096,7 +3098,9 @@ provides-extras = ["analysis", "bayesian"]
 [package.metadata.requires-dev]
 dev = [
     { name = "ipykernel", specifier = ">=7.0.0a1" },
+    { name = "numpyro", specifier = ">=0.15.0" },
     { name = "pytest", specifier = ">=8.3.5" },
+    { name = "virtual-qpu", marker = "python_full_version >= '3.11'", git = "https://github.com/qua-platform/virtual_qpu.git" },
 ]
 
 [[package]]
