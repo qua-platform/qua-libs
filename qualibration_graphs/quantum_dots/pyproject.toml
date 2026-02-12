@@ -28,6 +28,17 @@ dependencies = [
     "scikit-image>=0.20.0",
 ]
 
+[project.optional-dependencies]
+# For analysis tests. Install: uv pip install -e ".[analysis]"
+analysis = [
+    "virtual-qpu; python_version >= '3.11'",
+]
+# For Bayesian MCMC fits (Rabi, Ramsey, etc.). Install: uv pip install -e ".[bayesian]"
+# Requires jax (e.g. from virtual-qpu or analysis extra).
+bayesian = [
+    "numpyro>=0.15.0",
+]
+
 [tool.black]
 line-length = 120
 
@@ -35,8 +46,14 @@ line-length = 120
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv.sources]
+virtual-qpu = { git = "https://github.com/qua-platform/virtual_qpu.git" }
+
 [dependency-groups]
-dev = ["ipykernel>=7.0.0a1", "pytest>=8.3.5"]
+dev = [
+    "ipykernel>=7.0.0a1",
+    "pytest>=8.3.5",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["calibrations", "quam_config", "calibration_utils"]
