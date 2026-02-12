@@ -107,15 +107,19 @@ def markdown_generator():
         fit_section = ""
         if fit_results:
             fit_rows = [
-                "| Qubit | f_res (GHz) | t_π (ns) | Ω_R (rad/ns) | success |",
-                "|-------|-------------|----------|--------------|--------|",
+                "| Qubit | f_res (GHz) | t_π (ns) | Ω_R (rad/ns) | γ (1/ns) | T₂* (ns) | success |",
+                "|-------|-------------|----------|--------------|----------|----------|--------|",
             ]
             for qname, r in sorted(fit_results.items()):
                 f_ghz = r.get("optimal_frequency", 0) * 1e-9
                 t_pi = r.get("optimal_duration", float("nan"))
                 omega = r.get("rabi_frequency", float("nan"))
+                gamma = r.get("decay_rate", float("nan"))
+                t2_star = 1.0 / gamma if gamma > 0 else float("inf")
                 succ = r.get("success", False)
-                fit_rows.append(f"| {qname} | {f_ghz:.4f} | {t_pi:.1f} | {omega:.6f} | {succ} |")
+                fit_rows.append(
+                    f"| {qname} | {f_ghz:.4f} | {t_pi:.1f} | {omega:.6f} | {gamma:.5f} | {t2_star:.0f} | {succ} |"
+                )
             fit_section = "\n## Fit Results\n\n" + "\n".join(fit_rows)
 
         state_section = ""

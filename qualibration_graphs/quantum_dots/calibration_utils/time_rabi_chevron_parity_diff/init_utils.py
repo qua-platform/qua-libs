@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
 from scipy.optimize import curve_fit
 
+_logger = logging.getLogger(__name__)
+
 FFT_FREQ_MIN = 0.0005  # 1/ns (exclude DC) → t_π max ~1000 ns
 FFT_FREQ_MAX = 0.03  # 1/ns → t_π min ~17 ns; restricts to plausible Rabi range
+FFT_ZERO_PAD_FACTOR = 16  # zero-pad FFT for smoother Lorentzian fits
 
 
 def _lorentzian(x: np.ndarray, amp: float, x0: float, gamma: float) -> np.ndarray:
@@ -197,16 +201,81 @@ def _estimate_f_res_and_omega_from_chevron(
     freqs_hz: np.ndarray,
     durations_ns: np.ndarray,
     nominal_freq_hz: float,
-) -> Tuple[float, float]:
-    """Estimate f_res and Ω from chevron: FFT → peak fit → t_π per slice → fit t_π(Δ)=π/√(Ω²+δ²)."""
+) -> Tuple[float, float, float]:
+    """Estimate f_res, Ω, and γ from chevron.
+
+    FFT → peak fit → t_π(Δ) = π/√(Ω²+δ²).
+
+    γ is estimated from the Lorentzian HWHM of the on-resonance FFT peak
+    (``γ ≈ 2π · HWHM``).  The FFT uses 16× zero-padding for smoother
+    Lorentzian fits.  This estimate is approximate — it serves as a
+    starting point / prior centre for the Bayesian (NumPyro) or scipy fit.
+
+    Returns
+    -------
+    f_res_est : float  (Hz)
+    omega_est : float  (rad/ns)
+    gamma_est : float  (1/ns, decay rate)
+    """
     n_freqs, n_dur = pdiff.shape
     if n_freqs < 3 or n_dur < 4:
-        return nominal_freq_hz, np.pi / 200.0
+        return nominal_freq_hz, np.pi / 200.0, 0.0
 
     diag = compute_fft_diagnostics(pdiff, freqs_hz, durations_ns)
     f_res_est = diag["f_res_est"]
     omega_est = diag["omega_est"]
     valid = np.isfinite(diag["t_pi_per_freq"]) & (diag["t_pi_per_freq"] > 4)
     if not np.any(valid) or not (freqs_hz.min() <= f_res_est <= freqs_hz.max()):
-        return nominal_freq_hz, np.pi / 200.0
-    return float(f_res_est), float(omega_est)
+        return nominal_freq_hz, np.pi / 200.0, 0.0
+
+    # Estimate γ from the Lorentzian HWHM of the on-resonance FFT slice.
+    # An exponentially-damped sinusoid  sin(ω₀t)·exp(-γt)  has a Lorentzian
+    # FFT peak with HWHM = γ/(2π)  (frequency axis in cycles/ns).
+    # Therefore:  γ ≈ 2π · HWHM.
+    gamma_est = 0.0
+    res_idx = diag.get("resonance_idx", n_freqs // 2)
+    fft_freqs = diag.get("fft_freqs", None)
+    mag_list = diag.get("magnitude_per_slice", [])
+
+    if fft_freqs is not None and res_idx < len(mag_list):
+        hwhm = _extract_lorentzian_hwhm(fft_freqs, mag_list[res_idx])
+        if hwhm is not None:
+            gamma_est = 2.0 * np.pi * hwhm
+            _logger.debug(
+                "FFT HWHM = %.6f cycles/ns → γ_est = %.6f /ns (T₂* ≈ %.0f ns)", hwhm, gamma_est, 1.0 / gamma_est
+            )
+
+    return float(f_res_est), float(omega_est), float(gamma_est)
+
+
+def _extract_lorentzian_hwhm(
+    freqs_fft: np.ndarray,
+    magnitude: np.ndarray,
+) -> float | None:
+    """Fit Lorentzian to FFT magnitude spectrum and return HWHM (cycles/ns).
+
+    Works on the (already zero-padded) FFT data from ``compute_fft_diagnostics``.
+    Returns None if the fit fails or the peak is too broad / too narrow.
+    """
+    mask = (freqs_fft >= FFT_FREQ_MIN) & (freqs_fft <= FFT_FREQ_MAX)
+    f = freqs_fft[mask]
+    m = magnitude[mask].astype(float) if len(magnitude[mask]) else np.array([])
+    if len(f) < 4 or np.max(m) < 1e-10:
+        return None
+    peak_idx = int(np.argmax(m))
+    try:
+        popt, _ = curve_fit(
+            _lorentzian,
+            f,
+            m,
+            p0=[float(m[peak_idx]), float(f[peak_idx]), max(1e-6, (f[-1] - f[0]) / 4.0)],
+            bounds=([0, FFT_FREQ_MIN, 1e-6], [np.inf, FFT_FREQ_MAX, np.inf]),
+            maxfev=500,
+        )
+        hwhm = float(popt[2])
+        # Sanity: HWHM in [1e-6, 0.05] cycles/ns → T₂* in [3 ns, 160 µs]
+        if 1e-6 < hwhm < 0.05:
+            return hwhm
+    except Exception:
+        pass
+    return None

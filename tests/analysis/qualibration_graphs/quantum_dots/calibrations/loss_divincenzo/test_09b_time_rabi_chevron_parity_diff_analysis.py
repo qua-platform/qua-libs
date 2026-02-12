@@ -44,6 +44,7 @@ def _simulate_chevron(
     drive_freqs_ghz: jnp.ndarray,
     drive_amp: float = DRIVE_AMP_GHZ,
     noise_std: float = NOISE_STD,
+    solver: str = "me",
 ) -> np.ndarray:
     """Simulate a time-Rabi chevron using ``sweep()`` and return the result.
 
@@ -65,6 +66,9 @@ def _simulate_chevron(
     noise_std : float
         Standard deviation of Gaussian noise added to the output (simulates shot noise).
         Default is NOISE_STD. Set to 0 for noiseless data.
+    solver : str
+        Solver to use: ``"se"`` (Schrödinger, default) or ``"me"`` (Lindblad).
+        When ``"me"``, collapse operators are obtained from ``device.collapse_operators()``.
 
     Returns
     -------
@@ -73,6 +77,7 @@ def _simulate_chevron(
         drive frequency.
     """
     psi0 = device.ground_state()
+    jump_ops = device.collapse_operators() if solver == "me" else None
 
     # |↓⟩⟨↓| projector for qubit 0
     p1_local = jnp.diag(jnp.array([0.0, 1.0], dtype=jnp.complex64))
@@ -91,7 +96,7 @@ def _simulate_chevron(
         sched.play(pulse, channel="drive_q0")
         resolved = sched.resolve()
         H_t = device.hamiltonian(resolved)
-        sol = simulate(H_t, psi0, pulse_durations_ns)
+        sol = simulate(H_t, psi0, pulse_durations_ns, solver=solver, jump_ops=jump_ops)
         return expval(sol.states, P1_q0)  # (n_durations,)
 
     # Vectorised sweep over frequencies — shape (n_freqs, n_durations)
@@ -181,6 +186,8 @@ def test_09b_time_rabi_chevron_analysis(analysis_runner):
         ref_freqs=None,
         frame="rot",
         use_rwa=True,
+        t1=[500.0, 500.0],  # 500 ns T1 — visible decay in 400 ns window
+        t2=[200.0, 200.0],  # 200 ns T2
     )
     device = LossDiVincenzoDevice(params=params)
 
@@ -253,7 +260,7 @@ def test_09b_time_rabi_chevron_analysis(analysis_runner):
     assert "success" in fit_q1
 
     # Fit should succeed for Q1 (we simulated real Rabi dynamics)
-    assert fit_q1["success"], "Chevron fit should succeed for simulated data"
+    assert fit_q1["success"], f"Chevron fit should succeed for simulated data: {fit_q1}"
 
     # Resonant frequency should be near 10 GHz (QUBIT_FREQ_GHZ)
     f_res_ghz = fit_q1["optimal_frequency"] * 1e-9
@@ -262,6 +269,13 @@ def test_09b_time_rabi_chevron_analysis(analysis_runner):
     # π-time should be in a reasonable range (simulation uses DRIVE_AMP_GHZ ≈ 0.004 → t_π ~ 125 ns)
     t_pi_ns = fit_q1["optimal_duration"]
     assert 50 < t_pi_ns < 400, f"Expected t_π in [50, 400] ns for slow Rabi, got {t_pi_ns:.0f} ns"
+
+    # Decay rate should be present and finite for Lindblad simulation with T2=200 ns
+    assert "decay_rate" in fit_q1
+    gamma = fit_q1["decay_rate"]
+    assert np.isfinite(gamma), "decay_rate should be finite"
+    # With T2=200 ns, expect γ ~ 1/200 = 0.005 (allow broad range for fitting noise)
+    assert gamma > 1e-4, f"Expected measurable γ for T2=200 ns data, got {gamma:.6f}"
 
 
 @pytest.mark.analysis
@@ -276,6 +290,8 @@ def test_09b_time_rabi_chevron_analysis_numpyro(analysis_runner):
         ref_freqs=None,
         frame="rot",
         use_rwa=True,
+        t1=[500.0, 500.0],  # 500 ns T1 — visible decay in 400 ns window
+        t2=[200.0, 200.0],  # 200 ns T2
     )
     device = LossDiVincenzoDevice(params=params)
 
@@ -314,7 +330,7 @@ def test_09b_time_rabi_chevron_analysis_numpyro(analysis_runner):
     )
 
     fit_q1 = node.results["fit_results"]["Q1"]
-    assert fit_q1["success"], "NumPyro chevron fit should succeed"
+    assert fit_q1["success"], f"NumPyro chevron fit should succeed: {fit_q1}"
     f_res_ghz = fit_q1["optimal_frequency"] * 1e-9
     assert 9.5 < f_res_ghz < 10.5, f"Expected f_res ≈ 10 GHz, got {f_res_ghz:.3f} GHz"
     t_pi_ns = fit_q1["optimal_duration"]
@@ -322,3 +338,85 @@ def test_09b_time_rabi_chevron_analysis_numpyro(analysis_runner):
     # NumPyro fit adds uncertainty estimates
     assert "optimal_frequency_std" in fit_q1
     assert "optimal_duration_std" in fit_q1
+    # Decay rate + T₂* from posterior
+    assert "decay_rate" in fit_q1
+    assert "decay_rate_std" in fit_q1
+    assert "T2_star" in fit_q1
+    assert "T2_star_std" in fit_q1
+    # With T2=200 ns, expect measurable γ
+    gamma = fit_q1["decay_rate"]
+    assert gamma > 1e-4, f"Expected measurable γ for T2=200 ns data, got {gamma:.6f}"
+
+
+@pytest.mark.analysis
+def test_09b_time_rabi_chevron_analysis_lindblad(analysis_runner):
+    """Simulate a time-Rabi chevron using the Lindblad solver (mesolve) with decoherence."""
+
+    params = LossDiVincenzoParams(
+        n_qubits=2,
+        qubit_freqs=[QUBIT_FREQ_GHZ, QUBIT_FREQ_GHZ + 0.2],
+        exchange_couplings=[0.001],
+        ref_freqs=None,
+        frame="rot",
+        use_rwa=True,
+        t1=[500.0, 500.0],  # 500 ns T1 (visible decay in 400 ns window)
+        t2=[200.0, 200.0],  # 200 ns T2
+    )
+    device = LossDiVincenzoDevice(params=params)
+
+    # Verify collapse operators are generated
+    jump_ops = device.collapse_operators()
+    assert len(jump_ops) == 4, f"Expected 4 collapse ops (T1+Tphi per qubit), got {len(jump_ops)}"
+
+    pulse_durations_ns_jax = jnp.linspace(0, MAX_DURATION_NS, N_TIME_POINTS, dtype=jnp.float32)
+    span_ghz = FREQ_SPAN_MHZ * 1e-3
+    step_ghz = FREQ_STEP_MHZ * 1e-3
+    drive_freqs_ghz = jnp.arange(
+        QUBIT_FREQ_GHZ - span_ghz / 2,
+        QUBIT_FREQ_GHZ + span_ghz / 2,
+        step_ghz,
+        dtype=jnp.float32,
+    )
+
+    # Use Lindblad solver
+    pdiff_q1 = _simulate_chevron(device, pulse_durations_ns_jax, drive_freqs_ghz, solver="me")
+
+    # Lindblad result should still show Rabi dynamics (T1/T2 >> pulse duration)
+    assert np.max(pdiff_q1) > 0.05, "Lindblad chevron should show spin-flip signal"
+
+    # Build ds_raw and run analysis pipeline
+    pulse_durations_ns = np.asarray(pulse_durations_ns_jax)
+    detunings_hz = np.asarray(drive_freqs_ghz) * 1e9
+    qubit_names = ["Q1", "Q2", "Q3", "Q4"]
+    pdiff_data = {qname: pdiff_q1 if qname == "Q1" else np.zeros_like(pdiff_q1) for qname in qubit_names}
+    ds_raw = _build_ds_raw(qubit_names, detunings_hz, pulse_durations_ns, pdiff_data)
+
+    node = analysis_runner(
+        node_name=NODE_NAME,
+        ds_raw=ds_raw,
+        analyse_qubits=["Q1"],
+        param_overrides={
+            "num_shots": 4,
+            "min_wait_time_in_ns": 0,
+            "max_wait_time_in_ns": MAX_DURATION_NS,
+            "time_step_in_ns": MAX_DURATION_NS // (N_TIME_POINTS - 1) if N_TIME_POINTS > 1 else 4,
+            "frequency_span_in_mhz": FREQ_SPAN_MHZ,
+            "frequency_step_in_mhz": FREQ_STEP_MHZ,
+            "mcmc_num_warmup": 1000,
+            "mcmc_num_samples": 1000,
+        },
+    )
+
+    assert "ds_raw" in node.results
+    assert "fit_results" in node.results
+    fit_q1 = node.results["fit_results"]["Q1"]
+    assert fit_q1["success"], f"Lindblad chevron fit should succeed: {fit_q1}"
+
+    # With mild decoherence, resonant frequency should still be near qubit frequency
+    f_res_ghz = fit_q1["optimal_frequency"] * 1e-9
+    assert 9.5 < f_res_ghz < 10.5, f"Expected f_res ≈ 10 GHz, got {f_res_ghz:.3f} GHz"
+
+    # Decay rate should be positive (decoherence is present)
+    assert "decay_rate" in fit_q1
+    gamma = fit_q1["decay_rate"]
+    assert np.isfinite(gamma), "decay_rate should be finite"
