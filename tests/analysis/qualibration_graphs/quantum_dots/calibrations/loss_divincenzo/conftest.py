@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import os
 import sys
-import types
 import warnings
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from typing import Any, Dict, Optional
 from unittest.mock import patch
@@ -42,9 +42,7 @@ from .quam_factory import create_minimal_quam  # noqa: E402
 # =============================================================================
 
 REPO_ROOT = find_repo_root(CURRENT_DIR)
-CALIBRATION_LIBRARY_ROOT = (
-    REPO_ROOT / "qualibration_graphs" / "quantum_dots" / "calibrations" / "loss_divincenzo"
-)
+CALIBRATION_LIBRARY_ROOT = REPO_ROOT / "qualibration_graphs" / "quantum_dots" / "calibrations" / "loss_divincenzo"
 ARTIFACTS_BASE = ANALYSIS_ROOT / "artifacts"
 
 # ── virtual_qpu path setup ──────────────────────────────────────────────────
@@ -105,6 +103,37 @@ def markdown_generator():
 
         params_section = "\n".join(params_table)
 
+        fit_results = node.results.get("fit_results", {})
+        fit_section = ""
+        if fit_results:
+            fit_rows = [
+                "| Qubit | f_res (GHz) | t_π (ns) | Ω_R (rad/ns) | success |",
+                "|-------|-------------|----------|--------------|--------|",
+            ]
+            for qname, r in sorted(fit_results.items()):
+                f_ghz = r.get("optimal_frequency", 0) * 1e-9
+                t_pi = r.get("optimal_duration", float("nan"))
+                omega = r.get("rabi_frequency", float("nan"))
+                succ = r.get("success", False)
+                fit_rows.append(f"| {qname} | {f_ghz:.4f} | {t_pi:.1f} | {omega:.6f} | {succ} |")
+            fit_section = "\n## Fit Results\n\n" + "\n".join(fit_rows)
+
+        state_section = ""
+        if fit_results:
+            op_name = getattr(getattr(node, "parameters", None), "operation", "x180")
+            state_rows = [
+                "| Qubit | intermediate_frequency (Hz) | xy.operations." + op_name + ".length (ns) |",
+                "|-------|-----------------------------|-----------------------------------------|",
+            ]
+            for qname, r in sorted(fit_results.items()):
+                if not r.get("success", False):
+                    continue
+                f_hz = r.get("optimal_frequency", 0)
+                t_pi = r.get("optimal_duration", float("nan"))
+                state_rows.append(f"| {qname} | {f_hz:.0f} | {t_pi:.1f} |")
+            if len(state_rows) > 2:
+                state_section = "\n## Updated State\n\n" + "\n".join(state_rows)
+
         content = f"""# {getattr(node, 'name', 'Unknown Node')}
 
 ## Description
@@ -114,6 +143,8 @@ def markdown_generator():
 ## Parameters
 
 {params_section}
+{fit_section}
+{state_section}
 
 ## Analysis Output
 
@@ -193,6 +224,63 @@ def _load_library_node(node_name: str, library_root: Path) -> Any:
     return library.nodes[node_name]
 
 
+def _reimport_node_to_register_actions(node_name: str, library_root: Path) -> Any | None:
+    """Re-import the node module and return the node with registered actions.
+
+    Library scanning uses inspection mode and stops before decorators run, so
+    the scanned node has no registered actions. Re-importing with ActionManager
+    patched to register-only produces a node with analyse_data, plot_data, etc.
+    """
+    node_file = library_root / f"{node_name}.py"
+    if not node_file.exists():
+        return None
+    mod_name = f"_analysis_node_{node_name}"
+    spec = spec_from_file_location(mod_name, node_file)
+    if spec is None or spec.loader is None:
+        return None
+    mod = module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return getattr(mod, "node", None)
+
+
+def _patch_action_manager_register_only():
+    """Patch ActionManager.register_action to only register, not execute at import.
+
+    The default decorator runs the action immediately when skip_if is False, which
+    would execute create_qua_program etc. during module load. For analysis tests
+    we only want to register actions so we can call them explicitly later.
+    """
+    from functools import wraps
+
+    from qualibrate.runnables.run_action.action import Action
+    from qualibrate.runnables.run_action.action_manager import ActionManager
+
+    _original_register = ActionManager.register_action
+
+    def _register_only(
+        self,
+        node: Any,
+        func: Any = None,
+        *,
+        skip_if: bool = False,
+    ) -> Any:
+        def decorator(f: Any) -> Any:
+            action = Action(f, self)
+            action_name = f.__name__
+            # Register on self (the ActionManager) - it's the same as node._action_manager
+            self.actions[action_name] = action
+
+            @wraps(f)
+            def wrapper(*args: Any, **kwargs: Any) -> Any:
+                return self.run_action(action_name, node, *args, **kwargs)
+
+            return wrapper  # Do not call wrapper() at import time
+
+        return decorator if func is None else decorator(func)
+
+    return patch.object(ActionManager, "register_action", _register_only)
+
+
 def _get_parameters_dict(node: Any) -> Dict[str, Any]:
     params_obj = getattr(node, "parameters", None)
     params: Dict[str, Any] = {}
@@ -233,6 +321,9 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         Override the artifact sub-directory name.
     library_root : Path, optional
         Override the calibration library root.
+    analyse_qubits : list of str, optional
+        Restrict analysis to these qubits only (e.g. ``["Q1"]``). Drops other
+        qubits from ds_raw before injection so only they are fitted/plotted.
 
     Returns
     -------
@@ -247,31 +338,35 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         param_overrides: Optional[Dict[str, Any]] = None,
         artifacts_subdir: Optional[str] = None,
         library_root: Optional[Path] = None,
+        analyse_qubits: Optional[list[str]] = None,
     ) -> Any:
         # 1) Build a minimal QuAM.
         machine = minimal_quam_factory()
         library_root = library_root or CALIBRATION_LIBRARY_ROOT
 
-        # 2) Load the node via QualibrationLibrary (same as simulation tests).
-        #    Patch Quam.load() so that the module-level call in the node script
-        #    returns our programmatic machine instead of reading from disk.
+        # 2) Re-import the node module to get a node with registered run_action handlers.
+        #    Library scanning uses inspection mode and stops before decorators run.
+        #    Patch Quam.load() and ActionManager.register_action (register-only, no execute).
         from quam_config import Quam
 
-        with patch.object(Quam, "load", return_value=machine):
-            node = _load_library_node(node_name, library_root)
-
+        with patch.object(Quam, "load", return_value=machine), _patch_action_manager_register_only():
+            node = _reimport_node_to_register_actions(node_name, library_root)
+            if node is None:
+                node = _load_library_node(node_name, library_root)
         node.machine = machine
 
-        # 3) Apply parameter overrides.
-        _apply_param_overrides(node, param_overrides)
+        # 4) Apply parameter overrides.
+        # simulate=False so analyse_data, plot_data, update_state run.
+        overrides = dict(param_overrides) if param_overrides else {}
+        overrides["simulate"] = False  # Analysis tests inject ds_raw; skip QUA sim/execute.
+        _apply_param_overrides(node, overrides)
 
-        # 4) Populate the namespace with qubits.
+        # 5) Populate the namespace with qubits.
         try:
             from calibration_utils.common_utils.experiment import get_qubits
 
             node.namespace["qubits"] = get_qubits(node)
         except Exception:
-            # Fallback: use machine.qubits directly
             if hasattr(machine, "qubits"):
                 qubits = machine.qubits
                 if isinstance(qubits, dict):
@@ -279,26 +374,37 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
                 else:
                     node.namespace["qubits"] = list(qubits)
 
-        # 5) Inject synthetic ds_raw.
+        # 6) Optionally restrict to a subset of qubits for analysis.
+        if analyse_qubits:
+            keep_vars = []
+            for q in analyse_qubits:
+                for prefix in ("p1_", "p2_", "pdiff_"):
+                    v = f"{prefix}{q}"
+                    if v in ds_raw.data_vars:
+                        keep_vars.append(v)
+            if keep_vars:
+                ds_raw = ds_raw[[v for v in ds_raw.data_vars if v in keep_vars]]
+
+        # 7) Inject synthetic ds_raw.
         node.results["ds_raw"] = ds_raw
 
-        # 6) Run analysis actions.
+        # 8) Run analysis actions via the node's run_action handlers.
         _call_node_action(node, "analyse_data")
         _call_node_action(node, "plot_data")
 
-        # Only call update_state if analyse_data produced fit_results.
         if "fit_results" in node.results:
             _call_node_action(node, "update_state")
 
-        # 7) Save artifacts.
+        # 9) Save artifacts.
         artifacts_dir = ARTIFACTS_BASE / (artifacts_subdir or node_name)
-
-        if fig is not None:
-            save_analysis_plot(fig, artifacts_dir, "simulation.png")
+        # Prefer analysis figure (from plot_data) over raw simulation figure
+        fig_to_save = node.results.get("figure") or fig
+        if fig_to_save is not None:
+            save_analysis_plot(fig_to_save, artifacts_dir, "simulation.png")
 
         markdown_generator(node, _get_parameters_dict(node), artifacts_dir)
 
-        if fig is not None:
+        if fig_to_save is not None:
             assert (artifacts_dir / "simulation.png").exists(), "simulation.png not created"
         assert (artifacts_dir / "README.md").exists(), "README.md not created"
 
@@ -308,25 +414,23 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
 
 
 def _call_node_action(node: Any, action_name: str) -> None:
-    """Call a node's registered run_action by function name."""
-    run_actions = getattr(node, "_run_actions", None)
-    if run_actions is not None:
-        for action in run_actions:
-            func = getattr(action, "func", None) or getattr(action, "function", None)
-            if func is not None and getattr(func, "__name__", "") == action_name:
-                try:
-                    func(node)
-                except Exception as exc:
-                    warnings.warn(f"Action '{action_name}' raised: {exc}")
-                return
+    """Call a node's registered run_action by function name.
 
-    # Fallback: try calling a method on the node module directly.
-    func = getattr(node, action_name, None)
-    if func is not None and callable(func):
-        try:
-            func(node)
-        except Exception as exc:
-            warnings.warn(f"Action '{action_name}' raised: {exc}")
+    Analysis, plotting, and state update run via the node's run_action handlers.
+    """
+    action_manager = getattr(node, "_action_manager", None)
+    if action_manager is not None:
+        actions = getattr(action_manager, "actions", {})
+        action = actions.get(action_name)
+        if action is not None:
+            try:
+                action.execute_run_action(node)
+            except Exception as exc:
+                warnings.warn(f"Action '{action_name}' raised: {exc}")
+            return
+
+    # No registered action — tests should fail if the node does not define it.
+    pytest.fail(f"Node {getattr(node, 'name', '?')} has no registered run_action '{action_name}'.")
 
 
 # =============================================================================
