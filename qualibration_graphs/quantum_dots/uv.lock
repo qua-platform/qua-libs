@@ -3019,7 +3019,7 @@ wheels = [
 [[package]]
 name = "quam-builder"
 version = "0.2.0"
-source = { git = "https://github.com/qua-platform/quam-builder.git?rev=feature%2Fquantum_dots#90a314d103dd5a44efe3afa5871b6d51c24d61da" }
+source = { git = "https://github.com/qua-platform/quam-builder.git?rev=feature%2Fquantum_dots#62cf4b3de7798f655bc2d5c5771799a5fe7f9986" }
 dependencies = [
     { name = "qcodes-contrib-drivers", version = "0.23.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "qcodes-contrib-drivers", version = "0.24.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },

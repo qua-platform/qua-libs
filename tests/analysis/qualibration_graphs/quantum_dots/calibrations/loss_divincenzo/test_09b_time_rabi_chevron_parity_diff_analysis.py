@@ -231,6 +231,7 @@ def test_09b_time_rabi_chevron_analysis(analysis_runner):
         ds_raw=ds_raw,
         analyse_qubits=["Q1"],
         param_overrides={
+            "qubits": ["Q1"],
             "num_shots": 4,
             "min_wait_time_in_ns": 0,
             "max_wait_time_in_ns": MAX_DURATION_NS,
@@ -317,6 +318,7 @@ def test_09b_time_rabi_chevron_analysis_numpyro(analysis_runner):
         ds_raw=ds_raw,
         analyse_qubits=["Q1"],
         param_overrides={
+            "qubits": ["Q1"],
             "num_shots": 4,
             "min_wait_time_in_ns": 0,
             "max_wait_time_in_ns": MAX_DURATION_NS,
@@ -396,6 +398,7 @@ def test_09b_time_rabi_chevron_analysis_lindblad(analysis_runner):
         ds_raw=ds_raw,
         analyse_qubits=["Q1"],
         param_overrides={
+            "qubits": ["Q1"],
             "num_shots": 4,
             "min_wait_time_in_ns": 0,
             "max_wait_time_in_ns": MAX_DURATION_NS,
