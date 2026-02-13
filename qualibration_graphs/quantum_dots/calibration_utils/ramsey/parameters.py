@@ -45,7 +45,7 @@ class RamseyChevronParameters(
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
-    """Parameter set for 10c_ramsey_chevron_parity_diff."""
+    """Parameter set for 10b_ramsey_detuning_parity_diff."""
 
     detuning_span_in_mhz: float = 5.0
     """Frequency detuning span. Default 5MHz."""

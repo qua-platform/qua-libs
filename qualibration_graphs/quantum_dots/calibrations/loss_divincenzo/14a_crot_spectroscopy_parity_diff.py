@@ -90,6 +90,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     pass
 
+
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -149,11 +150,13 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     pass
 
+
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
     pass
+
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
@@ -168,6 +171,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             qubit_pair.exchange_coupling_J = fit_result["exchange_coupling_J"]
             qubit_pair.crot_frequency_down = fit_result["crot_frequency_down"]
             qubit_pair.crot_frequency_up = fit_result["crot_frequency_up"]
+
 
 # %% {Save_results}
 @node.run_action()

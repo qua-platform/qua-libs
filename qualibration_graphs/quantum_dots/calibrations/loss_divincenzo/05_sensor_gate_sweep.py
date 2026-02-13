@@ -22,8 +22,8 @@ from qualibration_libs.core import tracked_updates
 description = """
         CHARGE SENSOR GATE SWEEP with the OPX
 This sequence involves sweeping the voltage biasing the sensor gate using the OPX connected to the AC line of the bias-tee.
-A sticky element is used in order to maintain the voltage level and avoid fast voltage drops. The OPX signal can be 
-combined with an external DC source to increase the dynamics. The OPX measures the response of the sensor dot via RF 
+A sticky element is used in order to maintain the voltage level and avoid fast voltage drops. The OPX signal can be
+combined with an external DC source to increase the dynamics. The OPX measures the response of the sensor dot via RF
 reflectometry, recording the I and Q quadratures of the demodulated signal.
 
 The measurement performs a voltage sweep across a specified range with configurable step size. At each voltage point,
