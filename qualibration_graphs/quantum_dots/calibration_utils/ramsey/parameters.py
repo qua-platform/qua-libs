@@ -11,6 +11,7 @@ class NodeSpecificParameters(RunnableParameters):
     gap_wait_time_in_ns: int = 128
     """Wait time between initialization and qubit pulse in nanoseconds. Default is 128 ns."""
 
+
 class RamseyParameters(
     NodeParameters,
     CommonNodeParameters,
@@ -22,6 +23,7 @@ class RamseyParameters(
 
     frequency_detuning_in_mhz: float = 1.0
     """Frequency detuning in MHz. Default is 1.0 MHz."""
+
 
 class RamseyDetuningParameters(
     NodeParameters,
@@ -38,6 +40,7 @@ class RamseyDetuningParameters(
     idle_time_ns: int = 100
     """Fixed idle time in ns."""
 
+
 class RamseyChevronParameters(
     NodeParameters,
     CommonNodeParameters,
@@ -45,7 +48,7 @@ class RamseyChevronParameters(
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
-    """Parameter set for 10c_ramsey_chevron_parity_diff."""
+    """Parameter set for 10b_ramsey_detuning_parity_diff."""
 
     detuning_span_in_mhz: float = 5.0
     """Frequency detuning span. Default 5MHz."""

@@ -53,13 +53,14 @@ CALIBRATION_LIBRARY_ROOT = REPO_ROOT / "qualibration_graphs" / "quantum_dots" / 
 ARTIFACTS_BASE = TEST_ROOT / "artifacts"
 CLUSTER_CONFIG_PATH = REPO_ROOT / "tests" / ".qm_cluster_config.json"
 DEFAULT_SMALL_SWEEP_PARAMS: Dict[str, Any] = {
-    "num_shots": 4,
+    "num_shots": 1,
     "min_wait_time_in_ns": 16,
     "max_wait_time_in_ns": 64,
     "time_step_in_ns": 16,
     "frequency_span_in_mhz": 4,
     "frequency_step_in_mhz": 2,
     "gap_wait_time_in_ns": 1_024,
+    "simulation_duration_ns": 20_000,
 }
 
 
