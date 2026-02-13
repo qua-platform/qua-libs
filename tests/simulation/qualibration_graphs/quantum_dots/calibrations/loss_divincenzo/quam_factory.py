@@ -14,9 +14,7 @@ from quam.components.ports import (  # type: ignore[import-not-found]
 
 from quam_builder.architecture.quantum_dots.components import (  # type: ignore[import-not-found]
     VoltageGate,
-)
-from quam_builder.architecture.quantum_dots.components.xy_drive import (  # type: ignore[import-not-found]
-    XYDriveIQ,
+    XYDriveMW,
 )
 from quam_builder.architecture.quantum_dots.components.readout_resonator import (  # type: ignore[import-not-found]
     ReadoutResonatorIQ,
@@ -224,22 +222,15 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
     }
     xy_drives = {}
     for i, (fem_id, port_i, port_q) in xy_port_map.items():
-        xy_drives[i] = XYDriveIQ(
+        xy_drives[i] = XYDriveMW(
             id=f"Q{i}_xy",
-            opx_output_I=LFFEMAnalogOutputPort(
+            opx_output=MWFEMAnalogOutputPort(
                 controller_id=controller,
-                fem_id=fem_id,
-                port_id=port_i,
-                output_mode="direct",
-            ),
-            opx_output_Q=LFFEMAnalogOutputPort(
-                controller_id=controller,
-                fem_id=fem_id,
-                port_id=port_q,
-                output_mode="direct",
-            ),
-            frequency_converter_up=FrequencyConverter(
-                local_oscillator=LocalOscillator(frequency=0),
+                fem_id=mw_fem_slot,
+                port_id=i,
+                upconverter_frequency=5e9,
+                band=2,
+                full_scale_power_dbm=10,
             ),
             intermediate_frequency=100e6,
         )
