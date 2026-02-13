@@ -68,7 +68,6 @@ node.parameters.x_axis_name = "virtual_dot_1"
 node.parameters.y_axis_name = "virtual_dot_2"
 
 
-
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -297,7 +296,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 for i in range(num_sensors):
                     I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
                     Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
-
 
 
 # %% {Simulate}
