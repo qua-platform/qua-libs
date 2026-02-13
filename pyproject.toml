@@ -44,6 +44,7 @@ dev = [
     "pre-commit>=3.6.0",
     "qm-qua>=1.2.5",
     "qm-saas>=1.1.7",
+    "matplotlib>=3.10.8",
 ]
 
 [tool.uv]
