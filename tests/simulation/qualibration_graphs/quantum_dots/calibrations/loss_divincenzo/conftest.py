@@ -55,11 +55,11 @@ CLUSTER_CONFIG_PATH = REPO_ROOT / "tests" / ".qm_cluster_config.json"
 DEFAULT_SMALL_SWEEP_PARAMS: Dict[str, Any] = {
     "num_shots": 1,
     "min_wait_time_in_ns": 16,
-    "max_wait_time_in_ns": 64,
-    "time_step_in_ns": 16,
+    "max_wait_time_in_ns": 1_024,
+    "time_step_in_ns": 500,
     "frequency_span_in_mhz": 4,
     "frequency_step_in_mhz": 2,
-    "gap_wait_time_in_ns": 1_024,
+    "gap_wait_time_in_ns": 1056,
     "simulation_duration_ns": 20_000,
 }
 
