@@ -24,7 +24,10 @@ from quam_builder.architecture.quantum_dots.components.readout_resonator import 
 from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam  # type: ignore[import-not-found]
 from quam_builder.architecture.quantum_dots.qubit import LDQubit  # type: ignore[import-not-found]
 
-from .macros import MeasureMacro, X180Macro, X90Macro  # type: ignore[import-not-found]
+try:
+    from .macros import MeasureMacro, X180Macro, X90Macro
+except ImportError:
+    from macros import MeasureMacro, X180Macro, X90Macro  # type: ignore[import-not-found]
 
 # Compatibility shim for quam-builder feat/quantum_dots: ReadoutResonatorIQ.__post_init__
 # expects opx_output, but InOutIQChannel defines opx_output_I/Q only.
