@@ -16,13 +16,14 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    use_state_discrimination: bool = True
-    """Whether to use state discrimination for readout. Default is True."""
     germ_lengths: list[int] = [1, 4, 16, 32, 64]
     """Number of times a germ is repeated in the sequence. Default is [1, 4, 16, 32, 64]."""
+    use_state_discrimination: bool = True
+    """Whether to use state discrimination for readout. Default is True."""
+    use_strict_timing: bool = False
+    """Use strict timing in the QUA program. Default is False."""
     use_input_stream: bool = False
     """Whether to use input streams for circuit execution. Default is False."""
-    reset_type: Literal["active", "thermal"] = "active"
 
 
 class Parameters(
