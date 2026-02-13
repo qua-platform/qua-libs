@@ -24,6 +24,7 @@ def _import_numpyro():
     import numpyro  # type: ignore[import-untyped]
     from numpyro.infer import MCMC, NUTS  # type: ignore[import-untyped]
     from numpyro.infer.initialization import init_to_median, init_to_value  # type: ignore[import-untyped]
+
     return numpyro, MCMC, NUTS, init_to_median, init_to_value
 
 
@@ -127,11 +128,7 @@ def fit_model(
     if priors is None:
         priors = {}
 
-    init = (
-        init_to_value(values={k: jnp.asarray(v) for k, v in init_vals.items()})
-        if init_vals
-        else init_to_median()
-    )
+    init = init_to_value(values={k: jnp.asarray(v) for k, v in init_vals.items()}) if init_vals else init_to_median()
 
     model = model_fn(priors)
     kernel = NUTS_cls(

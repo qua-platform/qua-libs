@@ -79,9 +79,7 @@ def _plot_fft_2d_ax(
 ) -> dict:
     """Plot 2D FFT heatmap (detuning × Rabi frequency) with ridge fit overlaid.
 
-    Peak positions are shown as scatter points coloured by their fitted
-    amplitude (weight).  The fitted hyperbolic ridge curve is drawn in
-    cyan.
+    The fitted hyperbolic ridge curve is drawn in cyan.
 
     Returns the ``compute_fft_diagnostics`` dict for reuse by the 1-D panels.
     """
@@ -108,24 +106,6 @@ def _plot_fft_2d_ax(
     ax.set_ylabel("Drive detuning (MHz)")
     ax.set_title(f"{qubit_name} — FFT per detuning")
 
-    # Scatter per-slice peak positions, coloured by amplitude (weight)
-    peak_freqs = diag["peak_freq_per_slice"]
-    peak_amps = diag["peak_amp_per_slice"]
-    valid = np.isfinite(peak_freqs)
-    if np.any(valid):
-        sc = ax.scatter(
-            peak_freqs[valid] * 1e3,  # cycles/ns → 1/μs
-            detuning_mhz[valid],
-            c=peak_amps[valid],
-            cmap="cool",
-            s=10,
-            alpha=0.9,
-            edgecolors="white",
-            linewidths=0.3,
-            zorder=3,
-        )
-        plt.colorbar(sc, ax=ax, label="Peak amp", pad=0.01, fraction=0.04)
-
     # Overlay the fitted hyperbolic ridge curve
     ridge = diag.get("ridge_curve_cyc_ns")
     if ridge is not None and np.any(np.isfinite(ridge)):
@@ -135,7 +115,7 @@ def _plot_fft_2d_ax(
             "c-",
             lw=2,
             alpha=0.9,
-            label="Ridge fit √(Ω²+δ²)",
+            label="√(Ω²+δ²)",
         )
         ax.legend(loc="upper left", fontsize=7, framealpha=0.7)
 
@@ -237,7 +217,7 @@ def plot_raw_data_with_fit(
     Layout (per qubit row):
     * Column 1 — Chevron data heatmap with π-point marker.
     * Column 2 — 2-D FFT heatmap (detuning × Rabi frequency) with
-      per-slice peak positions overlaid.
+      hyperbolic ridge curve overlaid.
     * Column 3 — FFT at resonance (top) + t_π vs detuning (bottom)
       with Rabi fit.
     """
@@ -280,7 +260,7 @@ def plot_raw_data_with_fit(
 
             # Column 3: FFT at resonance (top) + t_π vs detuning (bottom)
             ax_diag_col.axis("off")
-            gs = ax_diag_col.get_subplotspec().subgridspec(2, 1, hspace=0.35)
+            gs = ax_diag_col.get_subplotspec().subgridspec(2, 1, hspace=0.55)
             ax_fft = fig.add_subplot(gs[0])
             ax_tpi = fig.add_subplot(gs[1])
             _plot_fft_diagnostics_ax(ax_fft, ax_tpi, diag, freq_hz, qname, f_res)
