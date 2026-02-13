@@ -1,7 +1,8 @@
-"""Chevron fit via damped Rabi with steady-state relaxation.
+"""Chevron analysis via per-slice FFT peak detection.
 
-P(t,Δ) = A·(Ω/Ω_R)²·[sin²(Ω_R t/2)·e^{-γt} + ½(1-e^{-γt})] + offset.
-Extracts f_res, t_π, γ (decay rate ≈ 1/T₂*).
+Extracts f_res, t_π (= π/Ω), and γ (decay rate ≈ 1/T₂*) from per-frequency-
+slice FFTs without assuming a specific pulse envelope.  Works for both square
+and Gaussian pulses.
 """
 
 from __future__ import annotations
@@ -12,7 +13,6 @@ from typing import Tuple, Dict, Any
 
 import numpy as np
 import xarray as xr
-from scipy.optimize import curve_fit
 
 from qualibrate import QualibrationNode
 
@@ -34,36 +34,6 @@ class FitParameters:
     success: bool
 
 
-def _rabi_chevron_model(
-    params: np.ndarray,
-    freq_hz: np.ndarray,
-    duration_ns: np.ndarray,
-) -> np.ndarray:
-    """Damped Rabi with steady-state relaxation.
-
-    P(t,Δ) = A·(Ω/Ω_R)²·[sin²(Ω_R t/2)·e^{-γt} + ½(1-e^{-γt})] + offset
-
-    At early times (γt≪1) this reduces to the coherent Rabi formula.
-    At late times the oscillation decays toward the detuning-dependent
-    steady state A·(Ω/Ω_R)²·½ + offset, matching the physical behaviour
-    of a driven dissipative two-level system.
-
-    params = (f_res, omega, A, offset, gamma).
-    Returns flat 1-D array of length ``len(freq_hz) * len(duration_ns)``.
-    """
-    f_res, omega, amplitude, offset, gamma = params
-    f_2d, t_2d = np.meshgrid(freq_hz, duration_ns, indexing="ij")
-    delta_2d = 2.0 * np.pi * (f_2d - f_res) * 1e-9  # rad/ns
-    omega_R = np.sqrt(omega**2 + delta_2d**2)
-    omega_R = np.where(omega_R > 1e-12, omega_R, 1e-12)
-    visibility = (omega / omega_R) ** 2
-    phase = omega_R * t_2d / 2.0
-    decay = np.exp(-gamma * t_2d)
-    # Oscillation decays toward steady-state ½ (time-averaged sin²)
-    osc = np.sin(phase) ** 2 * decay + 0.5 * (1.0 - decay)
-    return (amplitude * visibility * osc + offset).ravel()
-
-
 def _is_absolute_frequency(detuning_coord: np.ndarray) -> bool:
     """Heuristic: values > 0.5 GHz suggest absolute frequency."""
     return np.abs(detuning_coord).max() > 0.5e9
@@ -81,59 +51,23 @@ def _get_drive_frequencies_hz(
     return nominal + detuning
 
 
-def _fit_chevron_single_qubit(
+def _fft_analyse_single_qubit(
     pdiff: np.ndarray,
     freqs_hz: np.ndarray,
     durations_ns: np.ndarray,
     nominal_freq_hz: float,
 ) -> Tuple[Dict[str, float], np.ndarray]:
-    """Fit one qubit's chevron. Returns (result_dict, fit_surface_2d)."""
-    y_flat = pdiff.ravel().astype(float)
+    """Analyse one qubit's chevron via per-slice FFT.
 
-    # Bounds and initial guess
+    Returns (result_dict, fit_surface_2d) where fit_surface_2d is NaN
+    (no 2D model reconstruction).
+    """
     f_min, f_max = float(freqs_hz.min()), float(freqs_hz.max())
-    omega_min = 2 * np.pi * 0.001  # rad/ns (~1 MHz Rabi)
-    omega_max = 2 * np.pi * 0.5  # rad/ns (~500 MHz Rabi)
-    f_res_init, omega_init, gamma_init = _estimate_f_res_and_omega_from_chevron(
-        pdiff, freqs_hz, durations_ns, nominal_freq_hz
-    )
-    # Constrain γ around the heuristic estimate to prevent the optimizer
-    # from trading amplitude for decay rate.  Allow a 10× window around
-    # the init guess (floored at 1e-6, capped at 0.5).
-    gamma_lo = max(gamma_init / 10.0, 1e-6) if gamma_init > 0 else 0.0
-    gamma_hi = min(gamma_init * 10.0, 0.5) if gamma_init > 0 else 0.1
-    _logger.debug("gamma_init=%.6f → bounds [%.6f, %.6f]", gamma_init, gamma_lo, gamma_hi)
-    p0 = [
-        f_res_init,
-        omega_init,
-        float(np.ptp(y_flat)) if np.ptp(y_flat) > 0 else 0.5,
-        float(np.min(y_flat)),
-        gamma_init,
-    ]
-    bounds = (
-        [f_min - 1e6, omega_min, 0.0, -0.1, gamma_lo],
-        [f_max + 1e6, omega_max, 2.0, 1.1, gamma_hi],
-    )
-
-    def _model_flat(_x: np.ndarray, f_res: float, om: float, A: float, off: float, gam: float) -> np.ndarray:
-        """Wrapper for curve_fit; _x unused, uses freqs_hz/durations_ns from closure."""
-        return _rabi_chevron_model(
-            np.array([f_res, om, A, off, gam]),
-            freqs_hz,
-            durations_ns,
-        )
 
     try:
-        popt, _ = curve_fit(
-            _model_flat,
-            xdata=np.zeros(len(y_flat)),  # Unused; model uses freqs/durations from closure
-            ydata=y_flat,
-            p0=p0,
-            bounds=bounds,
-            maxfev=5000,
-        )
+        f_res, omega, gamma = _estimate_f_res_and_omega_from_chevron(pdiff, freqs_hz, durations_ns, nominal_freq_hz)
     except Exception as exc:
-        _logger.warning("curve_fit failed for chevron: %s", exc)
+        _logger.warning("FFT analysis failed: %s", exc)
         return {
             "optimal_frequency": nominal_freq_hz,
             "optimal_duration": np.nan,
@@ -142,20 +76,16 @@ def _fit_chevron_single_qubit(
             "success": False,
         }, np.full_like(pdiff, np.nan)
 
-    f_res, omega, amplitude, offset, gamma = popt
-    t_pi_ns = np.pi / omega
+    t_pi = np.pi / omega if omega > 1e-12 else np.nan
+    success = f_min <= f_res <= f_max and np.isfinite(t_pi) and np.isfinite(f_res)
 
-    # Sanity checks
-    success = f_min <= f_res <= f_max and 4 <= t_pi_ns <= 1e6 and np.isfinite(t_pi_ns) and np.isfinite(f_res)
-
-    fit_surface = _rabi_chevron_model(popt, freqs_hz, durations_ns).reshape(pdiff.shape)
     return {
         "optimal_frequency": float(f_res),
-        "optimal_duration": float(t_pi_ns),
+        "optimal_duration": float(t_pi),
         "rabi_frequency": float(omega),
         "decay_rate": float(gamma),
         "success": success,
-    }, fit_surface
+    }, np.full_like(pdiff, np.nan)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
@@ -216,31 +146,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             getattr(qubit.xy, "intermediate_frequency", float(freqs_hz.mean())) if qubit else float(freqs_hz.mean())
         )
 
-        use_numpyro = getattr(node.parameters, "use_numpyro", False)
-        if use_numpyro:
-            try:
-                from calibration_utils.bayesian_utils import MCMCConfig
-                from calibration_utils.time_rabi_chevron_parity_diff.analysis_numpyro import (
-                    _fit_chevron_single_qubit_numpyro,
-                )
-
-                mcmc_config = MCMCConfig(
-                    num_warmup=getattr(node.parameters, "mcmc_num_warmup", 500),
-                    num_samples=getattr(node.parameters, "mcmc_num_samples", 500),
-                    num_chains=getattr(node.parameters, "mcmc_num_chains", 1),
-                )
-                result, fit_surface = _fit_chevron_single_qubit_numpyro(
-                    pdiff,
-                    freqs_hz,
-                    durations_ns,
-                    nominal_freq,
-                    config=mcmc_config,
-                )
-            except (ImportError, ModuleNotFoundError):
-                _logger.warning("use_numpyro=True but bayesian extra not installed; falling back to scipy curve_fit")
-                result, fit_surface = _fit_chevron_single_qubit(pdiff, freqs_hz, durations_ns, nominal_freq)
-        else:
-            result, fit_surface = _fit_chevron_single_qubit(pdiff, freqs_hz, durations_ns, nominal_freq)
+        result, fit_surface = _fft_analyse_single_qubit(pdiff, freqs_hz, durations_ns, nominal_freq)
 
         fp = FitParameters(
             optimal_frequency=result["optimal_frequency"],
@@ -250,16 +156,6 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             success=result["success"],
         )
         fit_results[qname] = asdict(fp)
-        # Propagate uncertainty estimates from NumPyro (when available)
-        for extra_key in (
-            "optimal_frequency_std",
-            "optimal_duration_std",
-            "decay_rate_std",
-            "T2_star",
-            "T2_star_std",
-        ):
-            if extra_key in result:
-                fit_results[qname][extra_key] = result[extra_key]
         fit_arrays[f"pdiff_{qname}_fit"] = (["detuning", "pulse_duration"], fit_surface)
 
     ds_fit = ds.assign(**fit_arrays)
