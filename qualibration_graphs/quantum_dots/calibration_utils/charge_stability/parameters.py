@@ -2,58 +2,63 @@ from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 from calibration_utils.run_video_mode.video_mode_specific_parameters import VideoModeCommonParameters
-
 from typing import List, Literal
 
 
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    scan_pattern: Literal["raster", "switch_raster"] = "switch_raster"
-    """The scanning pattern."""
+    scan_pattern: Literal["raster", "switch_raster", "spiral"] = "switch_raster"
+    """The scanning pattern. """
+    per_line_compensation: bool = True
+    """Whether to send a compensation pulse at the end of each scan line. Scan pattern must be per-line"""
     sensor_names: List[str] = None
     """List of sensor dot names to measure in your measurement."""
     x_axis_name: str = None
     """The name of the swept element in the X axis."""
-    x_from_qdac: bool = False
-    "Check to perform 2D map using the QDAC instead of the OPX"
     y_axis_name: str = None
     """The name of the swept element in the Y axis."""
-    y_from_qdac: bool = False
-    "Check to perform 2D map using the QDAC instead of the OPX"
     x_points: int = 201
     """Number of measurement points in the X axis."""
     y_points: int = 201
     """Number of measurement points in the Y axis."""
     x_span: float = 0.05
-    """The X axis span in volts"""
+    """The X axis span in volts."""
     y_span: float = 0.05
-    """The Y axis span in volts"""
+    """The Y axis span in volts."""
     ramp_duration: int = 100
     """The ramp duration to each pixel. Set to zero for a step."""
     hold_duration: int = 1000
-    """Dwell time on each point in nanoseconds. If using the QDAC, this must be slow enough."""
+    """The dwell time on each pixel, after the ramp."""
     pre_measurement_delay: int = 0
     """A deliberate delay time after the hold_duration and before the resonator measurement."""
-    post_trigger_wait_ns: int = 10000
-    """A pause in the QUA programme to allow the QDAC to get to the correct level."""
     use_validation: bool = True
     """Whether to use validation with simulated data."""
 
 
-
-class Parameters(
+class OPXParameters(
     NodeParameters,
-    CommonNodeParameters,
     VideoModeCommonParameters,
+    CommonNodeParameters,
     NodeSpecificParameters,
 ):
     pass
 
+class OPXQDACParameters(
+    NodeParameters,
+    VideoModeCommonParameters,
+    CommonNodeParameters,
+    NodeSpecificParameters,
+): 
+    x_from_qdac: bool = False
+    "Check to perform 2D map using the QDAC instead of the OPX"
+    y_from_qdac: bool = False
+    "Check to perform 2D map using the QDAC instead of the OPX"
+    post_trigger_wait_ns: int = 10000
+    """A pause in the QUA programme to allow the QDAC to get to the correct level."""
+
 
 import numpy as np
-
-
 def get_voltage_arrays(node):
     """Extract the X and Y voltage arrays from a given node."""
     x_span, x_center, x_points = node.parameters.x_span, 0, node.parameters.x_points
