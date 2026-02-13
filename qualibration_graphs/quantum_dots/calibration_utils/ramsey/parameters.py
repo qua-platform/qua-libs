@@ -1,26 +1,56 @@
-from typing import Literal, Protocol, runtime_checkable
-
-import numpy as np
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
-from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
+from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters, IdleTimeNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
-    """Parameters shared by both 04b (GE power Rabi) and 12b (EF power Rabi) nodes."""
+    """Parameters for Ramsey 10a."""
 
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    frequency_detuning_in_mhz: float = 1.0
-    """Frequency detuning in MHz. Default is 1.0 MHz."""
+    gap_wait_time_in_ns: int = 128
+    """Wait time between initialization and qubit pulse in nanoseconds. Default is 128 ns."""
 
 
-class Parameters(
+class RamseyParameters(
     NodeParameters,
     CommonNodeParameters,
+    IdleTimeNodeParameters,
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
     """Parameter set for 10a_ramsey_parity_diff."""
 
-    pass
+    frequency_detuning_in_mhz: float = 1.0
+    """Frequency detuning in MHz. Default is 1.0 MHz."""
+
+
+class RamseyDetuningParameters(
+    NodeParameters,
+    CommonNodeParameters,
+    NodeSpecificParameters,
+    QubitsExperimentNodeParameters,
+):
+    """Parameter set for 10b_ramsey_detuning_parity_diff."""
+
+    detuning_span_in_mhz: float = 5.0
+    """Frequency detuning span. Default 5MHz."""
+    detuning_step_in_mhz: float = 0.1
+    """Frequency detuning step. Default 0.1MHz"""
+    idle_time_ns: int = 100
+    """Fixed idle time in ns."""
+
+
+class RamseyChevronParameters(
+    NodeParameters,
+    CommonNodeParameters,
+    IdleTimeNodeParameters,
+    NodeSpecificParameters,
+    QubitsExperimentNodeParameters,
+):
+    """Parameter set for 10b_ramsey_detuning_parity_diff."""
+
+    detuning_span_in_mhz: float = 5.0
+    """Frequency detuning span. Default 5MHz."""
+    detuning_step_in_mhz: float = 0.1
+    """Frequency detuning step. Default 0.1MHz"""

@@ -17,6 +17,7 @@ from calibration_utils.resonator_spectroscopy_vs_power import (
     Parameters,
 )
 from quam_builder.tools.power_tools import calculate_voltage_scaling_factor
+from quam_builder.architecture.quantum_dots.components import ReadoutResonatorSingle
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -62,102 +63,106 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
+node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    # Class containing tools to help handle units and conversions.
+    u = unit(coerce_to_integer=True)
+    # Extract the sweep parameters and axes from the node parameters
+    n_avg = node.parameters.num_shots
+    # Power values as an array
+    power_dbm = np.linspace(
+        node.parameters.min_power_dbm,
+        node.parameters.max_power_dbm,
+        node.parameters.num_power_points,
+    )
+    # Get the active sensors from the node and organize them by batches
+    node.namespace["sensors"] = sensors = get_sensors(node)
+    num_sensors = len(sensors)
+    # Update the readout power to match the desired range, this change will be reverted at the end of the node.
 
+    node.namespace["tracked_resonators"] = []
+    for i, sensor in enumerate(sensors):
+        with tracked_updates(sensor.readout_resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
+            if isinstance(resonator._obj, ReadoutResonatorSingle):
+                base_amplitude = u.dBm2volts(node.parameters.max_power_dbm, Z=50)
+                # Set the resonator power to the max of the sweep.
+                resonator.operations["readout"].amplitude = base_amplitude
+            else:
+                resonator.set_output_power(
+                    power_in_dbm=node.parameters.max_power_dbm,
+                    max_amplitude=node.parameters.max_amp,
+                )
+            node.namespace["tracked_resonators"].append(resonator)
 
-#     # Class containing tools to help handle units and conversions.
-#     u = unit(coerce_to_integer=True)
-#     # Get the active sensors from the node and organize them by batches
-#     node.namespace["sensors"] = sensors = get_sensors(node)
-#     num_sensors = len(sensors)
-#     # Update the readout power to match the desired range, this change will be reverted at the end of the node.
-#     node.namespace["tracked_resonators"] = []
-#     for i, sensor in enumerate(sensors):
-#         with tracked_updates(sensor.readout_resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
-#             resonator.set_output_power(
-#                 power_in_dbm=node.parameters.max_power_dbm,
-#                 max_amplitude=node.parameters.max_amp,
-#             )
-#             node.namespace["tracked_resonators"].append(resonator)
+    # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
+    amp_min = calculate_voltage_scaling_factor(node.parameters.max_power_dbm, node.parameters.min_power_dbm)
+    amps = np.geomspace(amp_min, 1, node.parameters.num_power_points)
 
-#     # Extract the sweep parameters and axes from the node parameters
-#     n_avg = node.parameters.num_shots
-#     # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
-#     amp_min = calculate_voltage_scaling_factor(node.parameters.max_power_dbm, node.parameters.min_power_dbm)
-#     amps = np.geomspace(amp_min, 1, node.parameters.num_power_points)
-#     power_dbm = np.linspace(
-#         node.parameters.min_power_dbm,
-#         node.parameters.max_power_dbm,
-#         node.parameters.num_power_points,
-#     )
-#     # The frequency sweep around the resonator resonance frequency
-#     span = node.parameters.frequency_span_in_mhz * u.MHz
-#     step = node.parameters.frequency_step_in_mhz * u.MHz
-#     dfs = np.arange(-span / 2, +span / 2, step)
+    # The frequency sweep around the resonator resonance frequency
+    span = node.parameters.frequency_span_in_mhz * u.MHz
+    step = node.parameters.frequency_step_in_mhz * u.MHz
+    dfs = np.arange(-span / 2, +span / 2, step)
 
-#     # Register the sweep axes to be added to the dataset when fetching data
-#     node.namespace["sweep_axes"] = {
-#         "sensor": xr.DataArray(sensors.get_names()),
-#         "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
-#         "power": xr.DataArray(power_dbm, attrs={"long_name": "readout power", "units": "dBm"}),
-#     }
+    # Register the sweep axes to be added to the dataset when fetching data
+    node.namespace["sweep_axes"] = {
+        "sensor": xr.DataArray(sensors.get_names()),
+        "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
+        "power": xr.DataArray(power_dbm, attrs={"long_name": "readout power", "units": "dBm"}),
+    }
 
-#     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
-#     with program() as node.namespace["qua_program"]:
-#         # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
-#         # For instance, here 'I' is a python list containing two QUA fixed variables.
-#         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
-#         a = declare(fixed)  # QUA variable for the readout amplitude pre-factor
-#         df = declare(int)  # QUA variable for the readout frequency
+    # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
+    with program() as node.namespace["qua_program"]:
+        # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
+        # For instance, here 'I' is a python list containing two QUA fixed variables.
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
+        a = declare(fixed)  # QUA variable for the readout amplitude pre-factor
+        df = declare(int)  # QUA variable for the readout frequency
 
-#         for multiplexed_sensors in sensors.batch():
-#             align()
+        for multiplexed_sensors in sensors.batch():
+            align()
 
-#             with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-#                 save(n, n_st)
-#                 with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
-#                     for i, sensor in multiplexed_sensors.items():
-#                         rr = sensor.readout_resonator
-#                         # Update the resonator frequencies for all resonators
-#                         update_frequency(rr.name, df + rr.intermediate_frequency)
-#                         # QUA for_ loop for sweeping the readout amplitude
-#                         # with for_(*from_array(a, amps)):
-#                         with for_each_(a, amps):
-#                             # readout the resonator
-#                             rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=a)
-#                             # wait for the resonator to deplete
-#                             rr.wait(1000)
-#                             # save data
-#                             save(I[i], I_st[i])
-#                             save(Q[i], Q_st[i])
+            with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
+                save(n, n_st)
+                with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
+                    for i, sensor in multiplexed_sensors.items():
+                        rr = sensor.readout_resonator
+                        # Update the resonator frequencies for all resonators
+                        update_frequency(rr.name, df + rr.intermediate_frequency)
+                        # QUA for_ loop for sweeping the readout amplitude
+                        # with for_(*from_array(a, amps)):
+                        with for_each_(a, amps):
+                            # readout the resonator
+                            rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=a)
+                            # wait for the resonator to deplete
+                            rr.wait(1000)
+                            # save data
+                            save(I[i], I_st[i])
+                            save(Q[i], Q_st[i])
 
-#         with stream_processing():
-#             n_st.save("n")
-#             for i in range(num_sensors):
-#                 I_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"I{i + 1}")
-#                 Q_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"Q{i + 1}")
+        with stream_processing():
+            n_st.save("n")
+            for i in range(num_sensors):
+                I_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"I{i + 1}")
+                Q_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
-
-
-#     # Connect to the QOP
-#     qmm = node.machine.connect()
-#     # Get the config from the machine
-#     config = node.machine.generate_config()
-#     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-#     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
-#     # Store the figure, waveform report and simulated samples
-#     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
+    # Connect to the QOP
+    qmm = node.machine.connect()
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Simulate the QUA program, generate the waveform report and plot the simulated samples
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    # Store the figure, waveform report and simulated samples
+    node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
 # %% {Execute}
@@ -167,27 +172,25 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
-
-
-#     qmm = node.machine.connect()
-#     # Get the config from the machine
-#     config = node.machine.generate_config()
-#     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
-#     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-#         # The job is stored in the node namespace to be reused in the fetching_data run_action
-#         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-#         # Display the progress bar
-#         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
-#         for dataset in data_fetcher:
-#             progress_counter(
-#                 data_fetcher.get("n", 0),
-#                 node.parameters.num_shots,
-#                 start_time=data_fetcher.t_start,
-#             )
-#         # Display the execution report to expose possible runtime errors
-#         node.log(job.execution_report())
-#     # Register the raw dataset
-#     node.results["ds_raw"] = dataset
+    qmm = node.machine.connect()
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        # The job is stored in the node namespace to be reused in the fetching_data run_action
+        node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        # Display the progress bar
+        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+        for dataset in data_fetcher:
+            progress_counter(
+                data_fetcher.get("n", 0),
+                node.parameters.num_shots,
+                start_time=data_fetcher.t_start,
+            )
+        # Display the execution report to expose possible runtime errors
+        node.log(job.execution_report())
+    # Register the raw dataset
+    node.results["ds_raw"] = dataset
 
 
 # %% {Load_historical_data}
@@ -260,54 +263,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             s.readout_resonator.intermediate_frequency += node.results["fit_results"][s.name]["frequency_shift"]
 
 
-# %%
-from calibration_utils.run_video_mode import create_video_mode
-
-
-@node.run_action(skip_if=node.parameters.run_in_video_mode is False)
-def run_video_mode(node: QualibrationNode[Parameters, Quam]):
-    # TODO: Implement video mode - remove pass when complete
-    pass
-
-
-#     from qualang_tools.units.units import unit
-
-#     machine = node.machine
-#     sensors = get_sensors(node)
-#     readout_pulses = [list(item.values())[0].readout_resonator.operations["readout"] for item in sensors.batch()]
-#     x_axis_name = [rp.channel.name for rp in readout_pulses][0]
-#     y_axis_name = x_axis_name
-
-#     num_points = int(node.parameters.frequency_span_in_mhz // node.parameters.frequency_step_in_mhz)
-#     f_span = int(node.parameters.frequency_span_in_mhz * 1e6)
-#     num_software_averages = node.parameters.num_shots
-
-#     a_span = unit.dBm2volts(node.parameters.max_power_dbm) - unit.dBm2volts(node.parameters.min_power_dbm)
-#     a_points = node.parameters.num_power_points
-
-#     create_video_mode(
-#         machine=machine,
-#         log=node.log,
-#         x_axis_name=x_axis_name,
-#         y_axis_name=y_axis_name,
-#         x_span=f_span,
-#         x_points=num_points,
-#         y_points=a_points,
-#         y_span=a_span,
-#         x_mode="Frequency",
-#         y_mode="Amplitude",
-#         num_software_averages=num_software_averages,
-#         virtual_gate_id=node.parameters.virtual_gate_set_id,
-#         dc_control=node.parameters.dc_control,
-#         readout_pulses=readout_pulses,
-#         save_path="/Users/User/.qualibrate/quam_state",
-#     )
-
-
 # %% {Save_results}
-# TODO: Remove fmt: off once node is complete
-# fmt: off
-# @node.run_action()
-# def save_results(node: QualibrationNode[Parameters, Quam]):
-#     node.save()
-# fmt: on
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
+    #     node.save()
+    pass

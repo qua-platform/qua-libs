@@ -14,6 +14,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Span of frequencies to sweep in MHz. Default is 30 MHz."""
     frequency_step_in_mhz: float = 0.1
     """Step size for frequency sweep in MHz. Default is 0.1 MHz."""
+    sensor_names: Optional[List[str]] = None
+    """The list of sensor dot names to be included in the measurement. """
 
 
 class Parameters(

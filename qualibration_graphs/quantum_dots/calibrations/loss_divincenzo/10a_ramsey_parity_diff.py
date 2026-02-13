@@ -8,15 +8,16 @@ from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
+from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.ramsey import Parameters
-from calibration_utils.common_utils.experiment import get_sensors, get_qubit_pairs
+from calibration_utils.ramsey import RamseyParameters
+from calibration_utils.common_utils.experiment import get_sensors, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.core import tracked_updates
+from qualibration_libs.parameters.sweep import get_idle_times_in_clock_cycles
 
 # %% {Node initialisation}
 description = """
@@ -44,21 +45,21 @@ State update:
 """
 
 
-node = QualibrationNode[Parameters, Quam](
-    name="10a_ramsey_parity_diff", description=description, parameters=Parameters()
+node = QualibrationNode[RamseyParameters, Quam](
+    name="10a_ramsey_parity_diff", description=description, parameters=RamseyParameters()
 )
 
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[Parameters, Quam]):
+def custom_param(node: QualibrationNode[RamseyParameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubit = ["q1"]
     # node.parameters.num_shots = 10
-    # node.parameters.tau_min = 16
-    # node.parameters.tau_max = 10000
-    # node.parameters.tau_step = 52
+    # node.parameters.min_wait_time_in_ns = 16
+    # node.parameters.max_wait_time_in_ns = 30000
+    # node.parameters.wait_time_num_points = 500
     pass
 
 
@@ -68,13 +69,110 @@ node.machine = Quam.load()
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
-def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    u = unit(coerce_to_integer=True)
+
+    node.namespace["qubits"] = qubits = get_qubits(node)
+    num_qubits = len(qubits)
+
+    n_avg = node.parameters.num_shots
+    detuning = node.parameters.frequency_detuning_in_mhz * u.MHz
+    # Idle time sweep (in clock cycles of 4ns)
+    tau_values = get_idle_times_in_clock_cycles(node.parameters)
+
+    node.namespace["sweep_axes"] = {
+        "qubit": xr.DataArray(qubits.get_names()),
+        "tau": xr.DataArray(
+            tau_values * 4, attrs={"long_name": "idle time", "units": "ns"}
+        ),
+    }
+
+    with program() as node.namespace["qua_program"]:
+        t = declare(int)
+        n = declare(int)
+
+        p1 = declare(int, size=num_qubits)
+        p2 = declare(int, size=num_qubits)
+
+        p1_st = {qubit.name: declare_stream() for qubit in qubits}
+        p2_st = {qubit.name: declare_stream() for qubit in qubits}
+        pdiff_st = {qubit.name: declare_stream() for qubit in qubits}
+        n_st = declare_stream()
+
+        for batched_qubits in qubits.batch():
+            for i, qubit in batched_qubits.items():
+                qubit.xy.update_frequency(qubit.xy.intermediate_frequency + detuning)
+
+            with for_(n, 0, n < n_avg, n + 1):
+                save(n, n_st)
+
+                with for_(*from_array(t, tau_values)):
+                    # ---------------------------------------------------------
+                    # Step 1: Empty - step to empty point (fixed duration)
+                    # ---------------------------------------------------------
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        qubit.empty()
+
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        assign(p1[i], Cast.to_int(qubit.measure()))
+
+                    # ---------------------------------------------------------
+                    # Step 2: Initialize - load electron into dot (fixed duration)
+                    # ---------------------------------------------------------
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        op_length = qubit.macros["x90"].duration
+                        qubit.initialize(duration=node.parameters.gap_wait_time_in_ns + op_length * 2 + 4 * t)
+                    # ---------------------------------------------------------
+                    # Step 3: X90 pulse, idle, X90 pulse
+                    # ---------------------------------------------------------
+                    for i, qubit in batched_qubits.items():
+                        qubit.x90()
+                        qubit.xy.wait(t)
+                        qubit.x90()
+                    # ---------------------------------------------------------
+                    # Step 4: Measure - move to PSB and measure
+                    # ---------------------------------------------------------
+                    align()
+
+                    for i, qubit in batched_qubits.items():
+                        assign(p2[i], Cast.to_int(qubit.measure()))
+
+                    # ---------------------------------------------------------
+                    # Step 6: Apply compensation pulse to reset DC bias
+                    # ---------------------------------------------------------
+                    align()
+                    for i, qubit in batched_qubits.items():
+                        qubit.voltage_sequence.apply_compensation_pulse()
+
+                    # ---------------------------------------------------------
+                    # Save results
+                    # ---------------------------------------------------------
+                    for i, qubit in batched_qubits.items():
+                        save(p1[i], p1_st[qubit.name])
+                        save(p2[i], p2_st[qubit.name])
+
+                        with if_(p1[i] == p2[i]):
+                            save(0, pdiff_st[qubit.name])
+                        with else_():
+                            save(1, pdiff_st[qubit.name])
+
+        with stream_processing():
+            n_st.save("n")
+
+            n_tau = len(tau_values)
+            for qubit in qubits:
+                p1_st[qubit.name].buffer(n_tau).average().save(f"p1_{qubit.name}")
+                p2_st[qubit.name].buffer(n_tau).average().save(f"p2_{qubit.name}")
+                pdiff_st[qubit.name].buffer(n_tau).average().save(f"pdiff_{qubit.name}")
 
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
-def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+def simulate_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -88,7 +186,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
-def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+def execute_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -114,7 +212,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
-def load_data(node: QualibrationNode[Parameters, Quam]):
+def load_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Load a previously acquired dataset."""
     load_data_id = node.parameters.load_data_id
     # Load the specified dataset
@@ -122,24 +220,28 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     # Get the active sensors and qubit pairs from the loaded node parameters
     node.namespace["sensors"] = get_sensors(node)
-    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+    node.namespace["qubits"] = get_qubits(node)
 
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def analyse_data(node: QualibrationNode[Parameters, Quam]):
+def analyse_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    # TODO: Implement analysis for Ramsey parity diff.
+    pass
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def plot_data(node: QualibrationNode[Parameters, Quam]):
+def plot_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Plot the raw and fitted data."""
+    # TODO: Implement plotting for Ramsey parity diff.
+    pass
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
-def update_state(node: QualibrationNode[Parameters, Quam]):
+def update_state(node: QualibrationNode[RamseyParameters, Quam]):
     """Update the relevant parameters if the qubit pair data analysis was successful."""
 
     with node.record_state_updates():
@@ -155,5 +257,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Save_results}
 @node.run_action()
-def save_results(node: QualibrationNode[Parameters, Quam]):
+def save_results(node: QualibrationNode[RamseyParameters, Quam]):
     node.save()

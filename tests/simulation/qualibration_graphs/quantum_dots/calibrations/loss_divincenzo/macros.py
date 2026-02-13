@@ -54,6 +54,15 @@ class X180Macro(QuamMacro):  # pylint: disable=too-few-public-methods
 
 
 @quam_dataclass
+class X90Macro(X180Macro):  # pylint: disable=too-few-public-methods
+    """Macro for X90 gate using the X180 pulse."""
+
+    pulse_name: str = "X180"
+    amplitude_scale: Optional[float] = 0.5
+    duration: Optional[int] = 100
+
+
+@quam_dataclass
 class MeasureMacro(QuamMacro):  # pylint: disable=too-few-public-methods
     """Macro for measurement with integrated voltage point navigation and thresholding."""
 
