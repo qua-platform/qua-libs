@@ -1,20 +1,18 @@
-"""Heuristic chevron analysis: per-slice FFT → amplitude-weighted ridge fit.
+r"""Heuristic chevron analysis: per-slice FFT → marginalised peak → hyperbola.
 
 Strategy
 --------
 1. For each drive-detuning slice, compute the FFT and fit the spectral
    peak with a **Gaussian** (natural line-shape for a Gaussian pulse
    envelope).  Falls back to Lorentzian if the Gaussian fit fails.
-2. Collect the per-slice peak frequencies into a *ridge* in the 2-D
-   FFT image.
-3. Fit the hyperbolic model
-
-   .. math:: f_{\\mathrm{Rabi}}(\\Delta) = \\sqrt{f_\\Omega^2 + \\Delta^2}
-
-   to the ridge, **weighted by peak amplitude** so that high-SNR
-   slices near resonance dominate.
-4. Derive *f*\\ :sub:`res` (detuning where *f*\\ :sub:`Rabi` is
-   minimal), Ω = 2π *f*\\ :sub:`Ω`, and *t*\\ :sub:`π` = π / Ω.
+2. Find **f_res** from the amplitude-weighted centroid of per-slice
+   peak positions (robust even when off-resonance fits are noisy).
+3. Extract **f_Ω** from a *marginalised* spectrum: average the top-K
+   highest-amplitude FFT slices (near resonance) and fit a single
+   Gaussian peak.  This avoids relying on scattered off-resonance
+   peak positions.
+4. Derive *t*\ :sub:`π` = π / Ω  and the analytical hyperbola
+   *f*\ :sub:`Rabi`\(δ) = √(*f*\ :sub:`Ω`\ ² + δ²) for plotting.
 """
 
 from __future__ import annotations
@@ -29,7 +27,6 @@ _logger = logging.getLogger(__name__)
 
 FFT_FREQ_MIN = 0.0005  # 1/ns (exclude DC) → t_π max ~1000 ns
 FFT_FREQ_MAX = 0.03  # 1/ns → t_π min ~17 ns; restricts to plausible Rabi range
-FFT_ZERO_PAD_FACTOR = 16  # zero-pad FFT for smoother Lorentzian fits
 
 
 # ── Peak line-shapes ──────────────────────────────────────────────────────────
@@ -92,58 +89,6 @@ def _fit_peak_to_fft(
         return None, None, None
 
 
-def _fit_lorentzian_to_fft(
-    freqs_fft: np.ndarray,
-    magnitude: np.ndarray,
-    freq_min: float,
-    freq_max: float,
-) -> Tuple[float | None, np.ndarray | None]:
-    """Backward-compatible wrapper — returns ``(peak_freq, curve)``."""
-    mu, _, curve = _fit_peak_to_fft(freqs_fft, magnitude, freq_min, freq_max, model="lorentzian")
-    return mu, curve
-
-
-def _fit_gaussian_to_fft(
-    freqs_fft: np.ndarray,
-    magnitude: np.ndarray,
-    freq_min: float,
-    freq_max: float,
-) -> Tuple[float | None, np.ndarray | None]:
-    """Backward-compatible wrapper — returns ``(peak_freq, curve)``."""
-    mu, _, curve = _fit_peak_to_fft(freqs_fft, magnitude, freq_min, freq_max, model="gaussian")
-    return mu, curve
-
-
-# ── Hyperbolic ridge model ────────────────────────────────────────────────────
-
-
-def _rabi_freq_ridge(
-    delta_hz: np.ndarray,
-    f_omega: float,
-    delta_res_hz: float,
-) -> np.ndarray:
-    r"""Generalised Rabi frequency as a function of drive detuning.
-
-    .. math:: f_{\mathrm{Rabi}}(\Delta) = \sqrt{f_\Omega^2 + \Delta^2}
-
-    Parameters
-    ----------
-    delta_hz : array
-        Drive detuning from *f*\ :sub:`center` (Hz).
-    f_omega : float
-        Bare Rabi frequency (cycles / ns).
-    delta_res_hz : float
-        Resonance offset from *f*\ :sub:`center` (Hz).
-
-    Returns
-    -------
-    f_rabi : array
-        Generalised Rabi frequency (cycles / ns).
-    """
-    delta_cyc_ns = (np.asarray(delta_hz, dtype=float) - delta_res_hz) * 1e-9
-    return np.sqrt(f_omega**2 + delta_cyc_ns**2)
-
-
 # ── Main diagnostics entry-point ──────────────────────────────────────────────
 
 
@@ -152,7 +97,7 @@ def compute_fft_diagnostics(
     freqs_hz: np.ndarray,
     durations_ns: np.ndarray,
 ) -> Dict[str, Any]:
-    """Per-slice FFT, Gaussian peak fit, and amplitude-weighted ridge fit.
+    """Per-slice FFT, Gaussian peak fit, and marginalised Ω extraction.
 
     Returns a dict with all diagnostic arrays needed by the plotting and
     analysis modules.
@@ -196,16 +141,11 @@ def compute_fft_diagnostics(
     # ==================================================================
     # Step 2 — Find f_res from amplitude-weighted peak positions
     # ==================================================================
-    # The resonance frequency is the detuning where the Rabi signal is
-    # strongest.  An amplitude-weighted centroid of the per-slice peak
-    # positions is robust even when off-resonance fits are noisy.
     valid = np.isfinite(peak_freq_per_slice) & (peak_amp_per_slice > 0)
     f_center = float(np.mean(freqs_hz))
     f_res_est = f_center
     omega_est = np.pi / 200.0  # fallback
     f_omega_est = omega_est / (2.0 * np.pi)
-    ridge_curve_cyc_ns = np.full(n_freqs, np.nan)
-    rabi_curve = np.full_like(freqs_hz, np.nan, dtype=float)
 
     if np.sum(valid) >= 1:
         w = peak_amp_per_slice[valid]
@@ -216,11 +156,7 @@ def compute_fft_diagnostics(
     # ==================================================================
     # Step 3 — Extract f_Ω from a marginalised spectrum
     # ==================================================================
-    # Average the FFT magnitudes of the top-K highest-amplitude slices
-    # (concentrated near resonance) to get a high-SNR 1-D spectrum.
-    # A single Gaussian peak fit on this gives f_Ω directly, without
-    # relying on the shape of the off-resonance ridge.
-    N_MARGINALISE = 7  # number of top slices to average
+    N_MARGINALISE = 7
     if np.sum(valid) >= 1:
         n_top = min(N_MARGINALISE, int(np.sum(valid)))
         top_idxs = np.argsort(peak_amp_per_slice)[-n_top:]
@@ -228,58 +164,34 @@ def compute_fft_diagnostics(
             np.array([magnitude_per_slice[i] for i in top_idxs], dtype=float),
             axis=0,
         )
-        mu_m, _, curve_m = _fit_peak_to_fft(freqs_fft, marginalised, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian")
+        mu_m, _, _ = _fit_peak_to_fft(freqs_fft, marginalised, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian")
         if mu_m is None:
-            mu_m, _, curve_m = _fit_peak_to_fft(freqs_fft, marginalised, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian")
+            mu_m, _, _ = _fit_peak_to_fft(freqs_fft, marginalised, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian")
         if mu_m is not None and mu_m > 1e-6:
             f_omega_est = mu_m
             omega_est = 2.0 * np.pi * f_omega_est
             _logger.debug(
-                "Marginalised FFT peak: f_Ω = %.5f cycles/ns " "(Ω = %.5f rad/ns, t_π = %.1f ns)",
+                "Marginalised FFT peak: f_Ω = %.5f cycles/ns (Ω = %.5f rad/ns, t_π = %.1f ns)",
                 f_omega_est,
                 omega_est,
                 np.pi / omega_est,
             )
 
     # ==================================================================
-    # Step 4 — Ridge fit for visualisation only
+    # Step 4 — Analytical hyperbola from marginalised f_Ω and f_res
     # ==================================================================
-    # Fit the hyperbolic model f_peak(δ) = √(f_Ω² + δ²) to the valid
-    # per-slice peaks, seeded with f_Ω from the marginalised fit.
-    # This is ONLY used for the overlay curve on the 2-D FFT plot.
-    if np.sum(valid) >= 3:
-        f_valid = peak_freq_per_slice[valid]
-        delta_valid_hz = freqs_hz[valid] - f_center
-        weights = peak_amp_per_slice[valid].copy()
-        weights /= np.max(weights) + 1e-12
-
-        delta_res_init = float(f_res_est - f_center)
-        delta_span = float(max(np.ptp(freqs_hz), 1e6))
-
-        try:
-            popt, _ = curve_fit(
-                _rabi_freq_ridge,
-                delta_valid_hz,
-                f_valid,
-                p0=[f_omega_est, delta_res_init],
-                sigma=1.0 / (weights + 0.01),
-                absolute_sigma=False,
-                bounds=([1e-6, -delta_span], [FFT_FREQ_MAX, delta_span]),
-                maxfev=2000,
-                method="trf",
-            )
-            delta_all_hz = freqs_hz - f_center
-            ridge_curve_cyc_ns = _rabi_freq_ridge(delta_all_hz, *popt)
-        except Exception:
-            _logger.debug("Ridge fit (visualisation) failed.")
-
-    # Derive t_π curve from f_Ω and the hyperbolic model
-    t_pi_from_omega = np.pi / omega_est if omega_est > 1e-12 else np.nan
+    # Both the 2-D FFT overlay (in frequency space) and the t_π-vs-
+    # detuning curve (in time space) are derived from the SAME f_Ω and
+    # f_res so they are guaranteed to be consistent.
     delta_all_hz = freqs_hz - f_res_est
-    delta_rad_ns = 2.0 * np.pi * delta_all_hz * 1e-9
+    delta_cyc_ns = delta_all_hz * 1e-9
+    ridge_curve_cyc_ns = np.sqrt(f_omega_est**2 + delta_cyc_ns**2)
+
+    delta_rad_ns = 2.0 * np.pi * delta_cyc_ns
     omega_R = np.sqrt(omega_est**2 + delta_rad_ns**2)
     rabi_curve = np.pi / np.maximum(omega_R, 1e-12)
 
+    t_pi_from_omega = np.pi / omega_est if omega_est > 1e-12 else np.nan
     _logger.debug(
         "Final estimates: f_res = %.3f GHz, Ω = %.5f rad/ns, t_π = %.1f ns",
         f_res_est * 1e-9,
@@ -305,7 +217,6 @@ def compute_fft_diagnostics(
         # Backward-compatible aliases
         "lorentzian_mean_per_slice": [float(f) if np.isfinite(f) else None for f in peak_freq_per_slice],
         "lorentzian_curve_per_slice": peak_curve_per_slice,
-        "parabola_curve": rabi_curve,
     }
 
 
@@ -315,12 +226,12 @@ def _estimate_f_res_and_omega_from_chevron(
     durations_ns: np.ndarray,
     nominal_freq_hz: float,
 ) -> Tuple[float, float, float]:
-    """Estimate f_res, Ω, and γ from a Rabi chevron via ridge fitting.
+    """Estimate f_res, Ω, and γ from a Rabi chevron.
 
     Uses :func:`compute_fft_diagnostics` which performs:
 
     1. Per-slice Gaussian peak fit (FFT of each detuning row).
-    2. Amplitude-weighted hyperbolic ridge fit in frequency space.
+    2. Marginalised spectrum for robust f_Ω extraction.
 
     γ is estimated from the Lorentzian HWHM of the on-resonance FFT
     peak.  For Gaussian pulses the spectral width is dominated by
@@ -344,9 +255,6 @@ def _estimate_f_res_and_omega_from_chevron(
         return nominal_freq_hz, np.pi / 200.0, 0.0
 
     # ── γ estimate from Lorentzian HWHM at resonance ─────────────────────
-    # An exponentially-damped sinusoid has Lorentzian FFT with HWHM = γ/(2π).
-    # For Gaussian pulses the spectral width is dominated by 1/(2πσ), so
-    # this estimate is an upper bound on γ.
     gamma_est = 0.0
     res_idx = diag.get("resonance_idx", n_freqs // 2)
     fft_freqs = diag.get("fft_freqs", None)
@@ -371,11 +279,9 @@ def _extract_lorentzian_hwhm(
     magnitude: np.ndarray,
 ) -> float | None:
     """Fit Lorentzian to FFT magnitude and return HWHM (cycles/ns)."""
-    mu, _, curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian")
-    if mu is None or curve is None:
+    _, _, curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian")
+    if curve is None:
         return None
-    # Recover HWHM by re-fitting (we could also extract from _fit_peak_to_fft
-    # but keeping the existing sanity bounds is cleaner).
     mask = (freqs_fft >= FFT_FREQ_MIN) & (freqs_fft <= FFT_FREQ_MAX)
     f = freqs_fft[mask]
     m = magnitude[mask].astype(float)
