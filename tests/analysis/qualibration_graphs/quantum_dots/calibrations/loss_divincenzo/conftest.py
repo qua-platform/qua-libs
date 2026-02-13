@@ -32,6 +32,9 @@ import matplotlib  # noqa: E402
 matplotlib.use("Agg")  # Headless backend for CI/local runs
 import matplotlib.pyplot as plt  # noqa: E402
 
+import numpy as np  # noqa: E402
+import xarray as xr  # noqa: E402
+
 from qualibrate.qualibration_library import QualibrationLibrary  # noqa: E402
 from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam  # noqa: E402
 from .....path_utils import find_repo_root  # noqa: E402
@@ -45,6 +48,11 @@ REPO_ROOT = find_repo_root(CURRENT_DIR)
 CALIBRATION_LIBRARY_ROOT = REPO_ROOT / "qualibration_graphs" / "quantum_dots" / "calibrations" / "loss_divincenzo"
 ARTIFACTS_BASE = ANALYSIS_ROOT / "artifacts"
 
+# Qubit names matching the QuAM factory (create_minimal_quam creates Q1..Q4).
+QUBIT_NAMES: list[str] = ["Q1", "Q2", "Q3", "Q4"]
+# Subset of qubits to actually simulate / analyse in tests.
+ANALYSE_QUBITS: list[str] = ["Q1"]
+
 # ── virtual_qpu path setup ──────────────────────────────────────────────────
 # If virtual_qpu is not pip-installed, look for it as a sibling repo.
 VIRTUAL_QPU_ROOT = REPO_ROOT.parent / "virtual_qpu"
@@ -54,6 +62,175 @@ if _vqpu_src not in sys.path:
     sys.path.insert(0, _vqpu_src)
 if _vqpu_platforms not in sys.path:
     sys.path.insert(0, _vqpu_platforms)
+
+
+# =============================================================================
+# virtual_qpu imports (lazy — only fail if tests actually run)
+# =============================================================================
+
+import jax.numpy as jnp  # noqa: E402
+
+from virtual_qpu.dynamics import simulate as _simulate  # noqa: E402
+from virtual_qpu.operators import expval as _expval  # noqa: E402
+from virtual_qpu.sweep import sweep as _sweep  # noqa: E402
+
+from quantum_dots.device import LossDiVincenzoDevice  # noqa: E402
+from quantum_dots.params import ExchangeModel, LossDiVincenzoParams, MU_B_OVER_H  # noqa: E402
+
+# =============================================================================
+# Default device configuration
+# =============================================================================
+
+DEFAULT_LD_PARAMS = LossDiVincenzoParams(
+    n_qubits=2,
+    g_factors=[2.0, 2.04],  # slight g-factor variation → ~200 MHz detuning
+    magnetic_field=10.0 / (2.0 * MU_B_OVER_H),  # chosen so Q1 ≈ 10 GHz Zeeman
+    exchange_models=[ExchangeModel(J_0=0.001, V_ref=0.0, lever_arm=0.050)],
+    ref_freqs=None,
+    frame="rot",
+    use_rwa=True,
+    t1=[1000.0, 1000.0],  # 1000 ns T1
+    t2=[400.0, 400.0],  # 400 ns T2
+)
+
+# Default simulation settings
+DEFAULT_SOLVER = "me"  # Lindblad master equation
+DEFAULT_NOISE_STD = 0.1  # Gaussian shot-noise std on parity diff
+
+
+# =============================================================================
+# Simulation helpers
+# =============================================================================
+
+
+def simulate_sweep(
+    device: LossDiVincenzoDevice,
+    make_schedule: Any,
+    tsave: Any,
+    *,
+    observable_qubit: int = 0,
+    observable_state: int = 1,
+    solver: str = DEFAULT_SOLVER,
+    noise_std: float = DEFAULT_NOISE_STD,
+    seed: int = 42,
+    **sweep_axes: Any,
+) -> np.ndarray:
+    """Run a vectorised parameter sweep and return expectation values.
+
+    This encapsulates the common simulation pattern:
+    ground state → collapse operators → embed observable →
+    sweep(schedule → hamiltonian → simulate → expval) → add noise.
+
+    Parameters
+    ----------
+    device : LossDiVincenzoDevice
+        Configured virtual_qpu device.
+    make_schedule : callable
+        ``make_schedule(**sweep_kwargs) -> resolved_schedule`` (dict
+        returned by ``Schedule.resolve()``).  Receives one scalar per
+        sweep axis.  This is the only node-specific part.
+    tsave : jnp.ndarray or callable
+        Time-save points (ns).  Can be:
+
+        * A **fixed array**, e.g. ``jnp.linspace(0, 500, 100)`` —
+          the same time grid is used for every sweep point.
+        * A **callable** ``tsave(**sweep_kwargs) -> jnp.ndarray`` —
+          allows the time grid to depend on sweep parameters.  The
+          returned array must always have the **same length** so that
+          ``jax.vmap`` can stack the results.  Typical usage for
+          variable-duration Gaussian pulses::
+
+              tsave=lambda dur, **_: jnp.array([0.0, dur])
+
+          This ensures each pulse is measured at its own endpoint
+          rather than at a fixed maximum time.
+    observable_qubit : int
+        Index of the qubit to measure (default 0).
+    observable_state : int
+        Which computational-basis state to project onto (default 1 = |↓⟩).
+    solver : str
+        ``"se"`` (Schrödinger) or ``"me"`` (Lindblad).
+    noise_std : float
+        Gaussian noise std added to the result.  0 for noiseless.
+    seed : int
+        RNG seed for reproducible noise.
+    **sweep_axes
+        Named 1-D arrays passed to ``virtual_qpu.sweep()``.
+        Examples: ``freq=drive_freqs``, ``freq=freqs, dur=durations``.
+
+    Returns
+    -------
+    result : np.ndarray
+        Shape ``(*sweep_shape, len(tsave))`` where *sweep_shape* is
+        determined by the sweep axes (outer-product order).
+    """
+    dim = 2  # single-qubit Hilbert space dimension
+    psi0 = device.ground_state()
+    jump_ops = device.collapse_operators() if solver == "me" else None
+    tsave_is_callable = callable(tsave)
+
+    # Build projector |state⟩⟨state| embedded in full Hilbert space
+    local_proj = jnp.zeros((dim, dim), dtype=jnp.complex64)
+    local_proj = local_proj.at[observable_state, observable_state].set(1.0)
+    observable = device.embed(local_proj, mode=observable_qubit)
+
+    def _inner(**kwargs):
+        resolved = make_schedule(**kwargs)
+        H_t = device.hamiltonian(resolved)
+        ts = tsave(**kwargs) if tsave_is_callable else tsave
+        sol = _simulate(H_t, psi0, ts, solver=solver, jump_ops=jump_ops)
+        return _expval(sol.states, observable)
+
+    result = np.asarray(_sweep(_inner, **sweep_axes))
+
+    if noise_std > 0:
+        rng = np.random.default_rng(seed=seed)
+        result = result + rng.normal(0, noise_std, size=result.shape)
+        result = np.clip(result, 0.0, 1.0)
+    return result
+
+
+def build_parity_ds_raw(
+    coords: Dict[str, tuple],
+    pdiff_per_qubit: Dict[str, np.ndarray],
+    qubit_names: Optional[list[str]] = None,
+) -> xr.Dataset:
+    """Build an xarray.Dataset in the ``execute_qua_program`` parity-diff format.
+
+    Parameters
+    ----------
+    coords : dict
+        ``{dim_name: (values, long_name, units)}`` — defines the Dataset
+        coordinates.  Example::
+
+            {"detuning": (freq_hz, "qubit frequency", "Hz"),
+             "pulse_duration": (dur_ns, "qubit pulse duration", "ns")}
+
+    pdiff_per_qubit : dict
+        ``{qubit_name: ndarray}`` for qubits with real simulation data.
+        Qubits in *qubit_names* but absent here get zero-filled arrays.
+    qubit_names : list of str, optional
+        Full set of qubit names for the Dataset (default ``QUBIT_NAMES``).
+    """
+    qubit_names = qubit_names or QUBIT_NAMES
+    dim_names = list(coords.keys())
+
+    # Determine shape from coord arrays
+    shape = tuple(len(coords[d][0]) for d in dim_names)
+
+    data_vars: Dict[str, Any] = {}
+    for qname in qubit_names:
+        pd = pdiff_per_qubit.get(qname, np.zeros(shape))
+        data_vars[f"p1_{qname}"] = xr.DataArray(np.zeros_like(pd), dims=dim_names)
+        data_vars[f"p2_{qname}"] = xr.DataArray(pd, dims=dim_names)
+        data_vars[f"pdiff_{qname}"] = xr.DataArray(pd, dims=dim_names)
+
+    xr_coords = {
+        name: xr.DataArray(vals, dims=name, attrs={"long_name": long, "units": units})
+        for name, (vals, long, units) in coords.items()
+    }
+
+    return xr.Dataset(data_vars, coords=xr_coords, attrs={"qubit_names": qubit_names})
 
 
 # =============================================================================
@@ -69,6 +246,21 @@ def minimal_quam_factory():
         return create_minimal_quam()
 
     return _factory
+
+
+@pytest.fixture
+def ld_device():
+    """A pre-configured LossDiVincenzoDevice with default parameters.
+
+    Uses ``DEFAULT_LD_PARAMS`` (2 qubits, T1=500 ns, T2=200 ns, Lindblad).
+    Tests that need different params can build their own device instead.
+    """
+    device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
+    # Sanity-check: collapse operators should be present for Lindblad
+    jump_ops = device.collapse_operators()
+    n_expected = 2 * DEFAULT_LD_PARAMS.n_qubits  # T1 + Tphi per qubit
+    assert len(jump_ops) == n_expected, f"Expected {n_expected} collapse ops, got {len(jump_ops)}"
+    return device
 
 
 # =============================================================================
@@ -344,6 +536,12 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         library_root: Optional[Path] = None,
         analyse_qubits: Optional[list[str]] = None,
     ) -> Any:
+        # Default to ANALYSE_QUBITS and auto-inject into param_overrides.
+        if analyse_qubits is None:
+            analyse_qubits = ANALYSE_QUBITS
+        overrides = dict(param_overrides) if param_overrides else {}
+        overrides.setdefault("qubits", analyse_qubits)
+
         # 1) Build a minimal QuAM.
         machine = minimal_quam_factory()
         library_root = library_root or CALIBRATION_LIBRARY_ROOT
@@ -361,7 +559,6 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
 
         # 4) Apply parameter overrides.
         # simulate=False so analyse_data, plot_data, update_state run.
-        overrides = dict(param_overrides) if param_overrides else {}
         overrides["simulate"] = False  # Analysis tests inject ds_raw; skip QUA sim/execute.
         _apply_param_overrides(node, overrides)
 
