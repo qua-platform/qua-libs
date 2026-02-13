@@ -23,14 +23,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Wait time between initialization and X180 pulse in nanoseconds. Default is 128 ns."""
     operation: str = "x180"
     """Name of the qubit operation to perform. Default is 'x180'."""
-    use_numpyro: bool = True
-    """If True, use Bayesian (NumPyro NUTS) fit instead of scipy curve_fit. Default is True."""
-    mcmc_num_warmup: int = 500
-    """Number of NUTS warmup iterations. Default is 500."""
-    mcmc_num_samples: int = 500
-    """Number of posterior samples per chain. Default is 500."""
-    mcmc_num_chains: int = 1
-    """Number of MCMC chains. Default is 1."""
 
 
 class Parameters(

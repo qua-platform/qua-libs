@@ -1,4 +1,4 @@
-"""Plot chevron heatmaps, fit surface, FFT diagnostics, and t_π vs detuning."""
+"""Plot chevron heatmap and FFT diagnostics (peak fit + t_π vs detuning)."""
 
 from __future__ import annotations
 
@@ -69,17 +69,100 @@ def _plot_chevron_ax(
         ax.plot(t_pi, det_res_mhz, "g*", markersize=12, markeredgecolor="white")
 
 
-def _plot_fft_diagnostics_ax(
-    ax_fft: "plt.Axes",
-    ax_tpi: "plt.Axes",
+def _plot_fft_2d_ax(
+    ax: "plt.Axes",
     pdiff: np.ndarray,
     freq_hz: np.ndarray,
     durations_ns: np.ndarray,
     qubit_name: str,
     f_res: float | None = None,
-) -> None:
-    """Plot FFT + peak fit (resonance slice) and t_π vs detuning + Rabi fit."""
+) -> dict:
+    """Plot 2D FFT heatmap (detuning × Rabi frequency) with ridge fit overlaid.
+
+    Peak positions are shown as scatter points coloured by their fitted
+    amplitude (weight).  The fitted hyperbolic ridge curve is drawn in
+    cyan.
+
+    Returns the ``compute_fft_diagnostics`` dict for reuse by the 1-D panels.
+    """
     diag = compute_fft_diagnostics(pdiff, freq_hz, durations_ns)
+    freqs_fft = diag["fft_freqs"]
+    mask = (freqs_fft >= FFT_FREQ_MIN) & (freqs_fft <= FFT_FREQ_MAX)
+    f_plot = freqs_fft[mask] * 1e3  # 1/ns → 1/μs
+
+    n_freqs = pdiff.shape[0]
+    mag_2d = np.array([diag["magnitude_per_slice"][i][mask] for i in range(n_freqs)])
+
+    detuning_mhz = (freq_hz - freq_hz.mean()) * 1e-6
+    extent = (float(f_plot[0]), float(f_plot[-1]), float(detuning_mhz[0]), float(detuning_mhz[-1]))
+    im = ax.imshow(
+        mag_2d,
+        aspect="auto",
+        origin="lower",
+        extent=extent,
+        cmap="inferno",
+        interpolation="nearest",
+    )
+    plt.colorbar(im, ax=ax, label="|FFT|")
+    ax.set_xlabel("Rabi frequency (1/μs)")
+    ax.set_ylabel("Drive detuning (MHz)")
+    ax.set_title(f"{qubit_name} — FFT per detuning")
+
+    # Scatter per-slice peak positions, coloured by amplitude (weight)
+    peak_freqs = diag["peak_freq_per_slice"]
+    peak_amps = diag["peak_amp_per_slice"]
+    valid = np.isfinite(peak_freqs)
+    if np.any(valid):
+        sc = ax.scatter(
+            peak_freqs[valid] * 1e3,  # cycles/ns → 1/μs
+            detuning_mhz[valid],
+            c=peak_amps[valid],
+            cmap="cool",
+            s=10,
+            alpha=0.9,
+            edgecolors="white",
+            linewidths=0.3,
+            zorder=3,
+        )
+        plt.colorbar(sc, ax=ax, label="Peak amp", pad=0.01, fraction=0.04)
+
+    # Overlay the fitted hyperbolic ridge curve
+    ridge = diag.get("ridge_curve_cyc_ns")
+    if ridge is not None and np.any(np.isfinite(ridge)):
+        ax.plot(
+            ridge * 1e3,  # cycles/ns → 1/μs
+            detuning_mhz,
+            "c-",
+            lw=2,
+            alpha=0.9,
+            label="Ridge fit √(Ω²+δ²)",
+        )
+        ax.legend(loc="upper left", fontsize=7, framealpha=0.7)
+
+    # Resonance line from analysis result
+    if f_res is not None:
+        det_res = (f_res - freq_hz.mean()) * 1e-6
+        ax.axhline(det_res, color="lime", ls="--", lw=1, alpha=0.8)
+
+    # Keep axis limits to the FFT frequency range
+    ax.set_xlim(float(f_plot[0]), float(f_plot[-1]))
+
+    return diag
+
+
+def _plot_fft_diagnostics_ax(
+    ax_fft: "plt.Axes",
+    ax_tpi: "plt.Axes",
+    diag: dict,
+    freq_hz: np.ndarray,
+    qubit_name: str,
+    f_res: float | None = None,
+) -> None:
+    """Plot FFT + peak fit (resonance slice) and t_π vs detuning + Rabi fit.
+
+    *diag* is the dict returned by :func:`_plot_fft_2d_ax` (or
+    ``compute_fft_diagnostics`` directly).
+    """
     idx = diag["resonance_idx"]
     # Use resonance slice; if it has no Lorentzian fit, pick nearest slice that does
     lcurve = diag["lorentzian_curve_per_slice"][idx]
@@ -149,7 +232,15 @@ def plot_raw_data_with_fit(
     qubits: List[Any],
     fit_results: dict,
 ) -> "plt.Figure":
-    """Plot raw data | fit | FFT+t_π for each qubit. Green marker = π-rotation point."""
+    """Plot data | 2-D FFT | FFT diagnostics for each qubit.
+
+    Layout (per qubit row):
+    * Column 1 — Chevron data heatmap with π-point marker.
+    * Column 2 — 2-D FFT heatmap (detuning × Rabi frequency) with
+      per-slice peak positions overlaid.
+    * Column 3 — FFT at resonance (top) + t_π vs detuning (bottom)
+      with Rabi fit.
+    """
     qubit_names = _get_qubit_names_from_ds(ds)
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
@@ -160,20 +251,20 @@ def plot_raw_data_with_fit(
     n = len(qubit_names)
 
     nrow = n
-    ncol = 3  # data | fit | FFT + t_π(Rabi)
+    ncol = 3  # data | 2D FFT | FFT diagnostics
     fig, axes = plt.subplots(nrow, ncol, figsize=(6 * ncol, 5 * nrow), squeeze=False)
 
     for i, qname in enumerate(qubit_names):
-        ax_data, ax_fit, ax_fft_col = axes[i, 0], axes[i, 1], axes[i, 2]
+        ax_data, ax_fft2d, ax_diag_col = axes[i, 0], axes[i, 1], axes[i, 2]
         pdiff_var = f"pdiff_{qname}"
-        fit_var = f"pdiff_{qname}_fit"
 
         qubit = qubits_by_name.get(qname) or qubit_by_index.get(qname) or (qubits[0] if qubits else None)
         freq_hz = _get_freq_axis_hz(ds, qubit) if qubit else np.asarray(ds.detuning.values, dtype=float)
         durations_ns = np.asarray(ds.pulse_duration.values, dtype=float)
         fr = fit_results.get(qname, {})
+        f_res = fr.get("optimal_frequency") if fr.get("success") else None
 
-        # Left: raw data
+        # Column 1: raw data chevron
         if pdiff_var not in ds.data_vars:
             ax_data.text(0.5, 0.5, f"No data for {qname}", transform=ax_data.transAxes, ha="center")
             ax_data.set_title(f"{qname} — data")
@@ -181,25 +272,21 @@ def plot_raw_data_with_fit(
             pdiff = np.asarray(ds[pdiff_var].values)
             _plot_chevron_ax(ax_data, pdiff, freq_hz, durations_ns, qname, "data", fit_result=fr, show_fit=True)
 
-        # Right: fitted output
-        if ds_fit is not None and fit_var in ds_fit.data_vars:
-            pdiff_fit = np.asarray(ds_fit[fit_var].values)
-            _plot_chevron_ax(ax_fit, pdiff_fit, freq_hz, durations_ns, qname, "fit", fit_result=fr, show_fit=True)
-        else:
-            ax_fit.text(0.5, 0.5, f"No fit for {qname}", transform=ax_fit.transAxes, ha="center")
-            ax_fit.set_title(f"{qname} — fit")
-
-        # Third column: FFT + peak fit and t_π vs detuning + Rabi fit
         if pdiff_var in ds.data_vars:
             pdiff = np.asarray(ds[pdiff_var].values)
-            ax_fft_col.axis("off")
-            gs = ax_fft_col.get_subplotspec().subgridspec(2, 1, hspace=0.35)
+
+            # Column 2: 2D FFT heatmap (returns diag dict for reuse)
+            diag = _plot_fft_2d_ax(ax_fft2d, pdiff, freq_hz, durations_ns, qname, f_res)
+
+            # Column 3: FFT at resonance (top) + t_π vs detuning (bottom)
+            ax_diag_col.axis("off")
+            gs = ax_diag_col.get_subplotspec().subgridspec(2, 1, hspace=0.35)
             ax_fft = fig.add_subplot(gs[0])
             ax_tpi = fig.add_subplot(gs[1])
-            f_res = fr.get("optimal_frequency") if fr.get("success") else None
-            _plot_fft_diagnostics_ax(ax_fft, ax_tpi, pdiff, freq_hz, durations_ns, qname, f_res)
+            _plot_fft_diagnostics_ax(ax_fft, ax_tpi, diag, freq_hz, qname, f_res)
         else:
-            ax_fft_col.text(0.5, 0.5, f"No data for {qname}", transform=ax_fft_col.transAxes, ha="center")
+            ax_fft2d.text(0.5, 0.5, f"No data for {qname}", transform=ax_fft2d.transAxes, ha="center")
+            ax_diag_col.text(0.5, 0.5, f"No data for {qname}", transform=ax_diag_col.transAxes, ha="center")
 
     fig.suptitle("Time Rabi chevron (parity diff)")
     fig.tight_layout()
