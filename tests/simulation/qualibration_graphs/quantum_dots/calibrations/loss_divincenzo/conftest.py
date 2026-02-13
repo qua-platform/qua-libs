@@ -31,8 +31,15 @@ from qualibrate.qualibration_library import QualibrationLibrary  # type: ignore[
 from quam_builder.architecture.quantum_dots.qpu import (  # type: ignore[import-not-found]  # noqa: E402
     LossDiVincenzoQuam,
 )
-from .....path_utils import find_repo_root  # type: ignore[import-not-found]  # noqa: E402
-from .quam_factory import create_minimal_quam  # type: ignore[import-not-found]  # noqa: E402
+
+try:
+    from .....path_utils import find_repo_root  # noqa: E402
+except ImportError:
+    from path_utils import find_repo_root  # type: ignore[import-not-found]  # noqa: E402
+try:
+    from .quam_factory import create_minimal_quam  # noqa: E402
+except ImportError:
+    from quam_factory import create_minimal_quam  # type: ignore[import-not-found]  # noqa: E402
 
 # pylint: enable=wrong-import-position
 
@@ -53,6 +60,7 @@ DEFAULT_SMALL_SWEEP_PARAMS: Dict[str, Any] = {
     "frequency_span_in_mhz": 4,
     "frequency_step_in_mhz": 2,
     "gap_wait_time_in_ns": 1056,
+    "simulation_duration_ns": 20_000,
 }
 
 

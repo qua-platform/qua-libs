@@ -2,12 +2,14 @@ from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 from calibration_utils.common_utils.experiment import BaseExperimentNodeParameters
-from calibration_utils.run_video_mode.video_mode_specific_parameters import VideoModeCommonParameters
 
+from typing import Optional, List
 
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
+    sensor_names: Optional[List[str]] = None
+    """The list of sensor dot names to be included in the measurement. """
     frequency_span_in_mhz: float = 15
     """Span of frequencies to sweep in MHz. Default is 15 MHz."""
     frequency_step_in_mhz: float = 0.1
@@ -28,7 +30,6 @@ class NodeSpecificParameters(RunnableParameters):
 
 class Parameters(
     NodeParameters,
-    VideoModeCommonParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
     BaseExperimentNodeParameters,

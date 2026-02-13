@@ -1,6 +1,7 @@
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
+from calibration_utils.run_video_mode.video_mode_specific_parameters import VideoModeCommonParameters
 
 from typing import List, Literal
 
@@ -8,8 +9,8 @@ from typing import List, Literal
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    scan_pattern: Literal["raster", "switch_raster", "spiral"] = "switch_raster"
-    """The scanning pattern. """
+    scan_pattern: Literal["raster", "switch_raster"] = "switch_raster"
+    """The scanning pattern."""
     sensor_names: List[str] = None
     """List of sensor dot names to measure in your measurement."""
     x_axis_name: str = None
@@ -28,13 +29,23 @@ class NodeSpecificParameters(RunnableParameters):
     """The X axis span in volts"""
     y_span: float = 0.05
     """The Y axis span in volts"""
-    points_duration: int = 1000
+    ramp_duration: int = 100
+    """The ramp duration to each pixel. Set to zero for a step."""
+    hold_duration: int = 1000
     """Dwell time on each point in nanoseconds. If using the QDAC, this must be slow enough."""
+    pre_measurement_delay: int = 0
+    """A deliberate delay time after the hold_duration and before the resonator measurement."""
+    post_trigger_wait_ns: int = 10000
+    """A pause in the QUA programme to allow the QDAC to get to the correct level."""
+    use_validation: bool = True
+    """Whether to use validation with simulated data."""
+
 
 
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
+    VideoModeCommonParameters,
     NodeSpecificParameters,
 ):
     pass
