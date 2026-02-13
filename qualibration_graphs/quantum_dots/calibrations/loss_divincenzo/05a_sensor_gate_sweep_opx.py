@@ -42,7 +42,9 @@ State update:
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="05_sensor_gate_sweep", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](
+    name="05a_sensor_gate_sweep_opx", description=description, parameters=Parameters()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -98,24 +100,26 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             align()
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
+
                 with for_(*from_array(offset, bias_offsets)):
                     for i, sensor in multiplexed_sensors.items():
                         # Sweep the sensor bias voltage
                         readout_len = sensor.readout_resonator.operations["readout"].length
-                        sensor.step_to_voltages({sensor.name: offset}, duration=readout_len)
+                        # sensor.physical_channel.set_dc_offset(offset=offset)
+                        with if_(offset == bias_offsets[0]):
+                            sensor.play("half_max_square", amplitude_scale=bias_offsets[0] * 4)
+                        with else_():
+                            sensor.play("half_max_square", amplitude_scale=node.parameters.offset_step * 4)
                         # Measure the resonator after settling the sensor bias point
                         sensor.readout_resonator.measure("readout", qua_vars=(I[i], Q[i]))
                         # save data
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
-                        align()
-                        sensor.voltage_sequence.apply_compensation_pulse()
-                        sensor.voltage_sequence.ramp_to_zero()
                     align()
 
-                # for i, sensor in multiplexed_sensors.items():
-                #     sensor.voltage_sequence.apply_compensation_pulse()
-                #     sensor.voltage_sequence.ramp_to_zero()
+                for i, sensor in multiplexed_sensors.items():
+                    # sensor.voltage_sequence.apply_compensation_pulse()
+                    sensor.voltage_sequence.ramp_to_zero()
 
         with stream_processing():
             n_st.save("n")

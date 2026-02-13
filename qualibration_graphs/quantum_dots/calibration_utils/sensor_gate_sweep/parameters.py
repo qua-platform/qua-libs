@@ -12,8 +12,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Minimum voltage offset for the sensor gate sweep in volts. Default is -0.2 V."""
     offset_max: float = 0.2
     """Maximum voltage offset for the sensor gate sweep in volts. Default is 0.2 V."""
-    offset_step: float = 0.005
-    """Step size for the voltage offset sweep in volts. Default is 0.005 V."""
+    offset_step: float = 0.01
+    """Step size for the voltage offset sweep in volts. Default is 0.01 V."""
     duration_after_step: int = 1000
     """Wait duration after each voltage step in nanoseconds. Default is 1000 ns (1 µs)."""
     sensor_names: Optional[List[str]] = None

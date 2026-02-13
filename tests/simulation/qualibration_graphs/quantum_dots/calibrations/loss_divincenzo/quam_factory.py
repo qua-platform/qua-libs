@@ -15,7 +15,7 @@ from quam.components.ports import (  # type: ignore[import-not-found]
 
 from quam_builder.architecture.quantum_dots.components import (  # type: ignore[import-not-found]
     VoltageGate,
-    XYDrive,
+    XYDriveMW,
 )
 from quam_builder.architecture.quantum_dots.components.readout_resonator import (  # type: ignore[import-not-found]
     ReadoutResonatorIQ,
@@ -213,7 +213,7 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
 
     xy_drives = {}
     for i in range(1, 5):
-        xy_drives[i] = XYDrive(
+        xy_drives[i] = XYDriveMW(
             id=f"Q{i}_xy",
             opx_output=MWFEMAnalogOutputPort(
                 controller_id=controller,
@@ -224,7 +224,6 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
                 full_scale_power_dbm=10,
             ),
             intermediate_frequency=100e6,
-            add_default_pulses=True,
         )
         length = 100
         xy_drives[i].operations["X180"] = pulses.GaussianPulse(length=length, amplitude=0.2, sigma=length / 6)
@@ -307,7 +306,7 @@ def _register_qubits_with_points(
         )
 
         qubit = machine.qubits[qubit_name]  # pylint: disable=unsubscriptable-object
-        qubit.name = qubit_name
+        # qubit.name = qubit_name
 
         qubit.add_point_with_step_macro(
             "empty",
