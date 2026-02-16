@@ -14,7 +14,7 @@ from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.ramsey import RamseyParameters
-from calibration_utils.common_utils.experiment import get_sensors, get_qubits
+from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.sweep import get_idle_times_in_clock_cycles
@@ -218,8 +218,7 @@ def load_data(node: QualibrationNode[RamseyParameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active sensors and qubit pairs from the loaded node parameters
-    node.namespace["sensors"] = get_sensors(node)
+    # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
 
 

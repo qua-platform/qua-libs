@@ -19,7 +19,7 @@ from calibration_utils.ramsey import (
     log_fitted_results,
     plot_ramsey_detuning,
 )
-from calibration_utils.common_utils.experiment import get_sensors, get_qubits
+from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -227,7 +227,7 @@ def load_data(node: QualibrationNode[RamseyDetuningParameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active sensors and qubits from the loaded node parameters
+    # Get the active qubits from the loaded node parameters
     node.namespace["sensors"] = get_sensors(node)
     node.namespace["qubits"] = get_qubits(node)
 

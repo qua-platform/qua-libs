@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import get_sensors, get_qubits
+from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.power_rabi import (
     ErrorAmplifiedParameters,
     # process_raw_dataset,
@@ -190,9 +190,6 @@ def load_data(node: QualibrationNode[ErrorAmplifiedParameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the sensors from the loaded node parameters
-    node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
-
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)

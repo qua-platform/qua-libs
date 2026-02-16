@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.ramsey import RamseyChevronParameters
-from calibration_utils.common_utils.experiment import get_sensors, get_qubit_pairs
+from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -121,8 +121,7 @@ def load_data(node: QualibrationNode[RamseyChevronParameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active sensors and qubit pairs from the loaded node parameters
-    node.namespace["sensors"] = get_sensors(node)
+    # Get the active qubits from the loaded node parameters
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 

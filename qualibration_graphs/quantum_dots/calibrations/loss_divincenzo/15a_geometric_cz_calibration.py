@@ -14,7 +14,7 @@ from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.geometric_cz.parameters import Parameters
-from calibration_utils.common_utils.experiment import get_sensors, get_qubit_pairs
+from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -155,9 +155,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active sensors and qubit pairs from the loaded node parameters
-    node.namespace["sensors"] = get_sensors(node)
-    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+    # Get the active qubits from the loaded node parameters
+    node.namespace["qubits"] = get_qubits(node)
 
 
 # %% {Analyse_data}
@@ -180,13 +179,13 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the CZ calibration was successful."""
 
     with node.record_state_updates():
-        for qubit_pair in node.namespace["qubit_pairs"]:
-            if not node.results["fit_results"][qubit_pair.name]["success"]:
+        for qubit in node.namespace["qubits"]:
+            if not node.results["fit_results"][qubit.name]["success"]:
                 continue
-            fit_result = node.results["fit_results"][qubit_pair.name]
-            # Update CZ gate parameters in the qubit pair
-            qubit_pair.macros["cz"].amplitude = fit_result["optimal_amplitude"]
-            qubit_pair.macros["cz"].duration = fit_result["optimal_duration"]
+            fit_result = node.results["fit_results"][qubit.name]
+            # Update CZ gate parameters in the qubit
+            qubit.macros["cz"].amplitude = fit_result["optimal_amplitude"]
+            qubit.macros["cz"].duration = fit_result["optimal_duration"]
 
 
 # %% {Save_results}
