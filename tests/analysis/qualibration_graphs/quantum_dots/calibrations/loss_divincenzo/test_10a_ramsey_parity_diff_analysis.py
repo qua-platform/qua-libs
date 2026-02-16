@@ -30,9 +30,9 @@ NODE_NAME = "10a_ramsey_parity_diff"
 
 # ── Simulation parameters ────────────────────────────────────────────────────
 PI_HALF_DUR = DEFAULT_PULSE_DURATION_NS  # ns
-MAX_TAU_NS = 800
-N_TAU_POINTS = 200
-DETUNING_MHZ = 1.0  # applied ±δ detuning
+MAX_TAU_NS = 1500
+N_TAU_POINTS = 300
+DETUNING_MHZ = 3.0  # applied ±δ detuning
 
 
 @pytest.mark.analysis

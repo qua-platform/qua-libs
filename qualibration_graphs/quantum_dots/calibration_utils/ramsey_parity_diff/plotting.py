@@ -1,12 +1,10 @@
 """Plotting for the ±δ Ramsey parity-difference analysis.
 
-Produces a three-panel figure per qubit:
+Produces a two-panel figure per qubit:
 
 1. **+δ trace** — parity-difference vs idle time at positive detuning,
    with the damped-cosine fit overlaid and fitted frequency annotated.
 2. **−δ trace** — same for the negative detuning.
-3. **Triangulation summary** — textual summary of the triangulated
-   residual offset, T₂*, and both fitted frequencies.
 """
 
 from __future__ import annotations
@@ -65,47 +63,6 @@ def _plot_trace_ax(
     ax.legend(loc="upper right", fontsize=7)
 
 
-def _plot_summary_ax(
-    ax: "plt.Axes",
-    qubit_name: str,
-    fit_result: dict | None = None,
-) -> None:
-    """Show triangulation summary as text annotations."""
-    ax.set_axis_off()
-    ax.set_title(f"{qubit_name} — Triangulation")
-
-    if fit_result is None or not fit_result.get("success"):
-        ax.text(0.5, 0.5, "Fit failed", transform=ax.transAxes,
-                ha="center", va="center", fontsize=14, color="red")
-        return
-
-    freq_off = fit_result.get("freq_offset", 0) * 1e-6
-    t2 = fit_result.get("t2_star", np.nan)
-    gamma = fit_result.get("decay_rate", np.nan)
-    f_plus = fit_result.get("freq_plus", np.nan) * 1e-6
-    f_minus = fit_result.get("freq_minus", np.nan) * 1e-6
-
-    lines = [
-        r"$f_+ = $" + f"{f_plus:.3f} MHz",
-        r"$f_- = $" + f"{f_minus:.3f} MHz",
-        "",
-        r"$\Delta = (f_- - f_+) / 2$",
-        r"$\Delta = $" + f"{freq_off:.3f} MHz",
-        "",
-        f"T2* = {t2:.0f} ns" if np.isfinite(t2) else "T2* = N/A",
-        f"γ = {gamma:.5f} 1/ns" if np.isfinite(gamma) else "γ = N/A",
-    ]
-    text = "\n".join(lines)
-    ax.text(
-        0.5, 0.5, text,
-        transform=ax.transAxes,
-        ha="center", va="center",
-        fontsize=11,
-        family="monospace",
-        bbox=dict(boxstyle="round,pad=0.5", facecolor="lightyellow", alpha=0.8),
-    )
-
-
 def plot_raw_data_with_fit(
     ds: xr.Dataset,
     ds_fit: xr.Dataset | None,
@@ -117,7 +74,6 @@ def plot_raw_data_with_fit(
     Layout (per qubit row):
     * Column 1 — +δ trace with damped-cosine fit.
     * Column 2 — −δ trace with damped-cosine fit.
-    * Column 3 — Triangulation summary (Δ, T₂*, frequencies).
     """
     qubit_names = _get_qubit_names_from_ds(ds)
     if not qubit_names:
@@ -125,7 +81,7 @@ def plot_raw_data_with_fit(
         return fig
 
     n = len(qubit_names)
-    ncol = 3
+    ncol = 2
     fig, axes = plt.subplots(n, ncol, figsize=(6 * ncol, 4 * n), squeeze=False)
 
     tau_ns = np.asarray(ds.tau.values, dtype=float)
@@ -150,7 +106,6 @@ def plot_raw_data_with_fit(
             label=f"−δ ({det_minus_mhz:+.1f} MHz)",
             color="C2", fit_color="C3",
         )
-        _plot_summary_ax(axes[i, 2], qname, fr)
 
     fig.suptitle("Ramsey ±δ triangulation (parity diff)")
     fig.tight_layout()
