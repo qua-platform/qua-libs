@@ -51,16 +51,16 @@ State updates:
 | `model_config` | `{'extra': 'forbid', 'use_attribute_docstrings': True}` |  |
 | `model_extra` | `None` |  |
 | `model_fields` | `{'multiplexed': FieldInfo(annotation=bool, required=False, default=False, description='Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)\nor to play the experiment sequentially for each qubit (False). Default is False.'), 'use_state_discrimination': FieldInfo(annotation=bool, required=False, default=False, description="Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated\nquadratures 'I' and 'Q'. Default is False."), 'reset_wait_time': FieldInfo(annotation=int, required=False, default=5000, description='The wait time for qubit reset.'), 'qubits': FieldInfo(annotation=Union[List[str], NoneType], required=False, default=None, description='A list of qubit names which should participate in the execution of the node. Default is None.'), 'num_shots': FieldInfo(annotation=int, required=False, default=100, description='Number of averages to perform. Default is 100.'), 'tau_min': FieldInfo(annotation=int, required=False, default=16, description='Minimum pulse duration in nanoseconds. Must be larger than 4 clock cycles. Default is 16 ns.'), 'tau_max': FieldInfo(annotation=int, required=False, default=10000, description='Maximum pulse duration in nanoseconds. Default is 100000 ns (10 µs).'), 'tau_step': FieldInfo(annotation=int, required=False, default=16, description='Step size for the pulse duration sweep in nanoseconds. Default is 16 ns.'), 'gap_wait_time_in_ns': FieldInfo(annotation=int, required=False, default=128, description='Wait time between initialization and X180 pulse in nanoseconds. Default is 128 ns.'), 'operation': FieldInfo(annotation=str, required=False, default='x180', description="Name of the qubit operation to perform. Default is 'x180'."), 'simulate': FieldInfo(annotation=bool, required=False, default=False, description='Simulate the waveforms on the OPX instead of executing the program. Default is False.'), 'simulation_duration_ns': FieldInfo(annotation=int, required=False, default=50000, description='Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns.'), 'use_waveform_report': FieldInfo(annotation=bool, required=False, default=True, description='Whether to use the interactive waveform report in simulation. Default is True.'), 'timeout': FieldInfo(annotation=int, required=False, default=120, description='Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s.'), 'load_data_id': FieldInfo(annotation=Union[int, NoneType], required=False, default=None, description='Optional QUAlibrate node run index for loading historical data. Default is None.')}` |  |
-| `model_fields_set` | `{'qubits', 'num_shots', 'tau_step', 'tau_max', 'simulate', 'tau_min'}` |  |
+| `model_fields_set` | `{'qubits', 'tau_max', 'tau_min', 'simulate', 'tau_step', 'num_shots'}` |  |
 | `multiplexed` | `False` | Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)
 or to play the experiment sequentially for each qubit (False). Default is False. |
 | `num_shots` | `4` | Number of averages to perform. Default is 100. |
 | `operation` | `x180` | Name of the qubit operation to perform. Default is 'x180'. |
-| `qubits` | `['Q1']` | A list of qubit names which should participate in the execution of the node. Default is None. |
+| `qubits` | `['Q1', 'Q2']` | A list of qubit names which should participate in the execution of the node. Default is None. |
 | `reset_wait_time` | `5000` | The wait time for qubit reset. |
 | `simulate` | `False` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
 | `simulation_duration_ns` | `50000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
-| `targets` | `['Q1']` |  |
+| `targets` | `['Q1', 'Q2']` |  |
 | `targets_name` | `qubits` |  |
 | `tau_max` | `4000` | Maximum pulse duration in nanoseconds. Default is 100000 ns (10 µs). |
 | `tau_min` | `16` | Minimum pulse duration in nanoseconds. Must be larger than 4 clock cycles. Default is 16 ns. |
@@ -75,12 +75,14 @@ quadratures 'I' and 'Q'. Default is False. |
 | Qubit | f_res (GHz) | t_π (ns) | Ω_R (rad/ns) | γ (1/ns) | T₂* (ns) | success |
 |-------|-------------|----------|--------------|----------|----------|--------|
 | Q1 | 0.0000 | nan | nan | 0.00101 | 991 | True |
+| Q2 | 0.0000 | nan | nan | 0.00189 | 530 | True |
 
 ## Updated State
 
 | Qubit | intermediate_frequency (Hz) | xy.operations.x180.length (ns) |
 |-------|-----------------------------|-----------------------------------------|
 | Q1 | 0 | nan |
+| Q2 | 0 | nan |
 
 ## Analysis Output
 

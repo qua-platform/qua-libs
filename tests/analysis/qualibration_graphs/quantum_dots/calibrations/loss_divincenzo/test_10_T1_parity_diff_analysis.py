@@ -21,7 +21,6 @@ from virtual_qpu.pulse import GaussianIQPulse, SquarePulse
 from virtual_qpu.schedule import Schedule
 
 from .conftest import (
-    ANALYSE_QUBITS,
     DEFAULT_PULSE_DURATION_NS,
     build_parity_ds_raw,
     simulate_sweep,
@@ -35,21 +34,21 @@ TAU_MIN_NS = 16
 TAU_MAX_NS = 4000  # well beyond T1 = 1000 ns for clear decay
 TAU_STEP_NS = 40
 
+# Qubits to analyse: Q1 from virtual_qpu, Q2 from synthetic exponential
+MULTI_QUBITS = ["Q1", "Q2"]
 
-@pytest.mark.analysis
-def test_10_T1_parity_diff_analysis(ld_device, calibrated_pi_half_amp, analysis_runner):
-    """T₁ decay fit from virtual_qpu simulation."""
-    device = ld_device
+# Synthetic Q2 parameters (different T1 for visual diversity)
+Q2_T1_NS = 500.0
+Q2_AMPLITUDE = 0.75
+Q2_OFFSET = 0.05
+
+
+def _simulate_q1_decay(device, pi_amp, tau_values_ns):
+    """Run virtual_qpu T₁ simulation for Q1."""
     qubit_freq_ghz = device.params.qubit_freqs[0]
-    pi_amp = 2.0 * calibrated_pi_half_amp  # full π amplitude
 
-    # ── Idle-time sweep values ────────────────────────────────────────
-    tau_values_ns = np.arange(TAU_MIN_NS, TAU_MAX_NS, TAU_STEP_NS)
-
-    # ── Simulate T1 decay ─────────────────────────────────────────────
     def make_t1_schedule(idle_time):
         sched = Schedule()
-        # π pulse to excite qubit
         sched.play(
             GaussianIQPulse(
                 duration=PI_PULSE_DUR,
@@ -59,7 +58,6 @@ def test_10_T1_parity_diff_analysis(ld_device, calibrated_pi_half_amp, analysis_
             ),
             channel="drive_q0",
         )
-        # Variable idle time
         sched.play(
             SquarePulse(
                 duration=idle_time,
@@ -76,17 +74,38 @@ def test_10_T1_parity_diff_analysis(ld_device, calibrated_pi_half_amp, analysis_
         tsave=lambda idle_time, **_: jnp.array([0.0, PI_PULSE_DUR + idle_time], dtype=jnp.float32),
         idle_time=jnp.array(tau_values_ns, dtype=jnp.float32),
     )
-    pdiff_1d = result[..., -1]  # (n_tau,)
+    return result[..., -1]
 
-    assert pdiff_1d.shape == (len(tau_values_ns),)
-    assert np.max(pdiff_1d) > 0.01, "Simulation should show some signal"
 
-    # ── Build ds_raw (1D: tau) ────────────────────────────────────────
+def _synthetic_q2_decay(tau_values_ns, seed=123):
+    """Generate a synthetic T₁ decay for Q2 with shorter T₁."""
+    rng = np.random.default_rng(seed)
+    signal = Q2_OFFSET + Q2_AMPLITUDE * np.exp(-tau_values_ns / Q2_T1_NS)
+    noise = rng.normal(0, 0.08, size=signal.shape)
+    return np.clip(signal + noise, 0.0, 1.0)
+
+
+@pytest.mark.analysis
+def test_10_T1_parity_diff_analysis(ld_device, calibrated_pi_half_amp, analysis_runner):
+    """T₁ decay fit from virtual_qpu simulation (2 qubits)."""
+    device = ld_device
+    pi_amp = 2.0 * calibrated_pi_half_amp
+
+    tau_values_ns = np.arange(TAU_MIN_NS, TAU_MAX_NS, TAU_STEP_NS)
+
+    # ── Simulate / generate data for both qubits ─────────────────────
+    pdiff_q1 = _simulate_q1_decay(device, pi_amp, tau_values_ns)
+    pdiff_q2 = _synthetic_q2_decay(tau_values_ns)
+
+    assert pdiff_q1.shape == (len(tau_values_ns),)
+    assert np.max(pdiff_q1) > 0.01, "Q1 simulation should show some signal"
+
+    # ── Build ds_raw (1D: tau, 2 qubits) ─────────────────────────────
     ds_raw = build_parity_ds_raw(
         coords={
             "tau": (tau_values_ns.astype(float), "idle time", "ns"),
         },
-        pdiff_per_qubit={q: pdiff_1d for q in ANALYSE_QUBITS},
+        pdiff_per_qubit={"Q1": pdiff_q1, "Q2": pdiff_q2},
     )
 
     # ── Run analysis ──────────────────────────────────────────────────
@@ -99,22 +118,26 @@ def test_10_T1_parity_diff_analysis(ld_device, calibrated_pi_half_amp, analysis_
             "tau_max": TAU_MAX_NS,
             "tau_step": TAU_STEP_NS,
         },
+        analyse_qubits=MULTI_QUBITS,
     )
 
-    # ── Assertions ────────────────────────────────────────────────────
+    # ── Assertions: Q1 (virtual_qpu, T1 ≈ 1000 ns) ──────────────────
     assert "fit_results" in node.results
     fit_q1 = node.results["fit_results"]["Q1"]
-    assert fit_q1["success"], f"Analysis should succeed: {fit_q1}"
+    assert fit_q1["success"], f"Q1 analysis should succeed: {fit_q1}"
 
-    # T1 should be close to the simulated value (1000 ns)
-    t1_ns = fit_q1["T1"]
-    assert 200 < t1_ns < 5000, f"T1 should be near 1000 ns, got {t1_ns:.1f} ns"
+    t1_q1 = fit_q1["T1"]
+    assert 200 < t1_q1 < 5000, f"Q1 T1 should be near 1000 ns, got {t1_q1:.1f} ns"
+    assert fit_q1["amplitude"] > 0.01, f"Q1 expected positive amplitude, got {fit_q1['amplitude']}"
 
-    # Amplitude should be positive (decay from excited state)
-    amp = fit_q1["amplitude"]
-    assert amp > 0.01, f"Expected positive decay amplitude, got {amp}"
+    gamma_q1 = fit_q1["decay_rate"]
+    assert np.isfinite(gamma_q1) and gamma_q1 > 0
+    assert abs(1.0 / gamma_q1 - t1_q1) < 1e-6, "decay_rate should be 1/T1"
 
-    # Decay rate should be positive and consistent with T1
-    gamma = fit_q1["decay_rate"]
-    assert np.isfinite(gamma) and gamma > 0, f"Expected finite gamma > 0, got {gamma}"
-    assert abs(1.0 / gamma - t1_ns) < 1e-6, "decay_rate should be 1/T1"
+    # ── Assertions: Q2 (synthetic, T1 ≈ 500 ns) ──────────────────────
+    fit_q2 = node.results["fit_results"]["Q2"]
+    assert fit_q2["success"], f"Q2 analysis should succeed: {fit_q2}"
+
+    t1_q2 = fit_q2["T1"]
+    assert 100 < t1_q2 < 2000, f"Q2 T1 should be near 500 ns, got {t1_q2:.1f} ns"
+    assert fit_q2["amplitude"] > 0.01, f"Q2 expected positive amplitude, got {fit_q2['amplitude']}"
