@@ -1,8 +1,6 @@
 # %% {Imports}
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
 
 from qm.qua import *
 
@@ -14,6 +12,11 @@ from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.ramsey import RamseyParameters
+from calibration_utils.ramsey_parity_diff import (
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+)
 from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -46,7 +49,9 @@ State update:
 
 
 node = QualibrationNode[RamseyParameters, Quam](
-    name="10a_ramsey_parity_diff", description=description, parameters=RamseyParameters()
+    name="10a_ramsey_parity_diff",
+    description=description,
+    parameters=RamseyParameters(),
 )
 
 
@@ -54,12 +59,6 @@ node = QualibrationNode[RamseyParameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[RamseyParameters, Quam]):
-    # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubit = ["q1"]
-    # node.parameters.num_shots = 10
-    # node.parameters.min_wait_time_in_ns = 16
-    # node.parameters.max_wait_time_in_ns = 30000
-    # node.parameters.wait_time_num_points = 500
     pass
 
 
@@ -173,30 +172,25 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
-    """Connect to the QOP and simulate the QUA program"""
-    # Connect to the QOP
+    """Connect to the QOP and simulate the QUA program."""
     qmm = node.machine.connect()
-    # Get the config from the machine
     config = node.machine.generate_config()
-    # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
-    # Store the figure, waveform report and simulated samples
-    node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
+    node.results["simulation"] = {
+        "figure": fig,
+        "wf_report": wf_report,
+        "samples": samples,
+    }
 
 
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
-    # Connect to the QOP
+    """Connect to the QOP, execute the QUA program and fetch the raw data."""
     qmm = node.machine.connect()
-    # Get the config from the machine
     config = node.machine.generate_config()
-    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-        # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
@@ -204,9 +198,7 @@ def execute_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
-        # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-    # Register the raw dataset
     node.results["ds_raw"] = dataset
 
 
@@ -215,43 +207,46 @@ def execute_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
 def load_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Load a previously acquired dataset."""
     load_data_id = node.parameters.load_data_id
-    # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
 
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[RamseyParameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    # TODO: Implement analysis for Ramsey parity diff.
-    pass
+    """Analyse the raw data to extract Ramsey frequency and T2*."""
+    ds_fit, fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["ds_fit"] = ds_fit
+    node.results["fit_results"] = fit_results
+    log_fitted_results(fit_results, log_callable=node.log)
+    node.outcomes = {qname: ("successful" if r["success"] else "failed") for qname, r in fit_results.items()}
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Plot the raw and fitted data."""
-    # TODO: Implement plotting for Ramsey parity diff.
-    pass
+    fig = plot_raw_data_with_fit(
+        node.results["ds_raw"],
+        node.results.get("ds_fit"),
+        node.namespace["qubits"],
+        node.results.get("fit_results", {}),
+    )
+    node.results["figure"] = fig
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[RamseyParameters, Quam]):
-    """Update the relevant parameters if the qubit pair data analysis was successful."""
-
+    """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for qubit in node.namespace["qubits"]:
             if not node.results["fit_results"][qubit.name]["success"]:
                 continue
 
             fit_result = node.results["fit_results"][qubit.name]
-            qubit.xy.RF_frequency -= fit_result["freq_offset"]
-            qubit.larmor_frequency -= fit_result["freq_offset"]
-            qubit.T2ramsey = float(fit_result["decay"])
+            qubit.xy.intermediate_frequency -= fit_result["freq_offset"]
 
 
 # %% {Save_results}
