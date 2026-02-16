@@ -1,9 +1,12 @@
-"""Analysis test for 10a_ramsey_parity_diff.
+"""Analysis test for 10a_ramsey_parity_diff (±δ triangulation).
 
-Uses virtual_qpu to simulate a 1-D Ramsey experiment (idle-time sweep at
-a fixed drive-frequency detuning) for a Loss-DiVincenzo spin qubit.
-The pi/2 pulse amplitude is pre-calibrated via a quick power-Rabi sweep
-(``calibrated_pi_half_amp`` fixture in conftest).
+Uses virtual_qpu to simulate a Ramsey experiment at two symmetric
+detunings ±δ from the qubit frequency.  Fitting a damped cosine to
+each trace and triangulating gives the residual frequency offset
+Δ = (f₋ − f₊) / 2.
+
+The pi/2 pulse amplitude is pre-calibrated via the
+``calibrated_pi_half_amp`` fixture in conftest.
 """
 
 from __future__ import annotations
@@ -29,37 +32,38 @@ NODE_NAME = "10a_ramsey_parity_diff"
 PI_HALF_DUR = DEFAULT_PULSE_DURATION_NS  # ns
 MAX_TAU_NS = 800
 N_TAU_POINTS = 200
-DETUNING_MHZ = 1.0  # fixed drive-frequency detuning
+DETUNING_MHZ = 1.0  # applied ±δ detuning
 
 
 @pytest.mark.analysis
 def test_10a_ramsey_parity_diff_analysis(ld_device, calibrated_pi_half_amp, analysis_runner):
-    """1-D Ramsey with pre-calibrated pi/2 pulse and damped-cosine fit."""
+    """±δ Ramsey with pre-calibrated pi/2 pulse and triangulated frequency."""
     device = ld_device
     qubit_freq_ghz = device.params.qubit_freqs[0]
     pi_half_amp = calibrated_pi_half_amp
 
-    # Drive frequency is offset from the qubit frequency
+    # ── Two symmetric drive frequencies: qubit_freq ± δ ──────────────────
     detuning_ghz = DETUNING_MHZ * 1e-3
-    drive_freq = qubit_freq_ghz + detuning_ghz
+    drive_freqs = [
+        qubit_freq_ghz + detuning_ghz,   # +δ
+        qubit_freq_ghz - detuning_ghz,   # -δ
+    ]
 
     # ── Sweep axis ────────────────────────────────────────────────────────
     tau_values = jnp.linspace(16, MAX_TAU_NS, N_TAU_POINTS, dtype=jnp.float32)
 
-    # ── Ramsey schedule factory ──────────────────────────────────────────
-    def make_ramsey_schedule(tau):
+    # ── Ramsey schedule factory (freq is the drive frequency) ────────────
+    def make_ramsey_schedule(freq, tau):
         sched = Schedule()
-        # First pi/2 pulse
         sched.play(
             GaussianIQPulse(
                 duration=PI_HALF_DUR,
                 amplitude=pi_half_amp,
-                frequency=drive_freq,
+                frequency=freq,
                 sigma=PI_HALF_DUR / 5,
             ),
             channel="drive_q0",
         )
-        # Idle wait
         sched.play(
             SquarePulse(
                 duration=tau,
@@ -68,35 +72,39 @@ def test_10a_ramsey_parity_diff_analysis(ld_device, calibrated_pi_half_amp, anal
             ),
             channel="drive_q0",
         )
-        # Second pi/2 pulse
         sched.play(
             GaussianIQPulse(
                 duration=PI_HALF_DUR,
                 amplitude=pi_half_amp,
-                frequency=drive_freq,
+                frequency=freq,
                 sigma=PI_HALF_DUR / 5,
             ),
             channel="drive_q0",
         )
         return sched.resolve()
 
-    # ── Simulate (1D sweep: tau only) ─────────────────────────────────────
+    # ── Simulate (2D sweep: freq × tau) ──────────────────────────────────
     result = simulate_sweep(
         device,
         make_ramsey_schedule,
         tsave=lambda tau, **_: jnp.array([0.0, 2 * PI_HALF_DUR + tau]),
+        freq=jnp.array(drive_freqs, dtype=jnp.float32),
         tau=tau_values,
     )
-    # result shape: (n_tau, n_tsave) -> take final time-point
-    pdiff_q1 = result[..., -1]
-    assert np.max(pdiff_q1) > 0.01, "Simulation should show some signal"
+    # result shape: (n_freq, n_tau, n_tsave) → take final time-point
+    pdiff_2d = result[..., -1]  # (2, n_tau)
+    assert pdiff_2d.shape == (2, len(tau_values))
+    assert np.max(pdiff_2d) > 0.01, "Simulation should show some signal"
 
-    # ── Build ds_raw (1D: tau only) ───────────────────────────────────────
+    # ── Build ds_raw (2D: detuning × tau) ─────────────────────────────────
+    detuning_hz = np.array([DETUNING_MHZ * 1e6, -DETUNING_MHZ * 1e6])
+
     ds_raw = build_parity_ds_raw(
         coords={
+            "detuning": (detuning_hz, "frequency detuning", "Hz"),
             "tau": (np.asarray(tau_values), "idle time", "ns"),
         },
-        pdiff_per_qubit={q: pdiff_q1 for q in ANALYSE_QUBITS},
+        pdiff_per_qubit={q: pdiff_2d for q in ANALYSE_QUBITS},
     )
 
     # ── Run analysis ─────────────────────────────────────────────────────
@@ -117,12 +125,17 @@ def test_10a_ramsey_parity_diff_analysis(ld_device, calibrated_pi_half_amp, anal
     fit_q1 = node.results["fit_results"]["Q1"]
     assert fit_q1["success"], f"Analysis should succeed: {fit_q1}"
 
-    # Ramsey frequency should be positive and in a physically reasonable
-    # range.  The exact value depends on the actual qubit frequency in
-    # the virtual QPU, which may differ slightly from the nominal value.
-    ramsey_freq_mhz = fit_q1["ramsey_freq"] * 1e-6
-    assert 0.1 < ramsey_freq_mhz < 10.0, (
-        f"Ramsey freq should be in (0.1, 10) MHz, got {ramsey_freq_mhz:.3f} MHz"
+    # Both fitted Ramsey frequencies should be positive and reasonable
+    f_plus_mhz = fit_q1["freq_plus"] * 1e-6
+    f_minus_mhz = fit_q1["freq_minus"] * 1e-6
+    assert 0.1 < f_plus_mhz < 10.0, f"f₊ should be in (0.1, 10) MHz, got {f_plus_mhz:.3f}"
+    assert 0.1 < f_minus_mhz < 10.0, f"f₋ should be in (0.1, 10) MHz, got {f_minus_mhz:.3f}"
+
+    # Triangulated freq_offset should be small — the qubit is near the
+    # nominal frequency (virtual QPU may have a small systematic offset)
+    freq_offset_mhz = fit_q1["freq_offset"] * 1e-6
+    assert abs(freq_offset_mhz) < DETUNING_MHZ, (
+        f"Triangulated offset should be smaller than δ, got {freq_offset_mhz:.3f} MHz"
     )
 
     # T2* should be finite and positive
