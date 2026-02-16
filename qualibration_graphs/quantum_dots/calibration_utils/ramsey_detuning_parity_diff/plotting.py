@@ -1,10 +1,11 @@
-"""Plotting for the Ramsey detuning-sweep parity-difference analysis.
+"""Plotting for the two-τ Ramsey detuning-sweep parity-difference analysis.
 
-Produces a two-column figure per qubit:
+Produces a two-row figure per qubit:
 
-1. **Left** — parity-difference vs detuning with the linear-cosine fit
-   overlaid and the resonance position marked.
-2. **Right** — fit residuals vs detuning.
+1. **Top** — short-τ trace: parity-difference vs detuning with the
+   joint fit overlaid and the resonance position marked.
+2. **Bottom** — long-τ trace: same, showing the narrower fringes and
+   reduced amplitude from T₂* decay.
 """
 
 from __future__ import annotations
@@ -31,19 +32,16 @@ def plot_raw_data_with_fit(
     qubits: List[Any],
     fit_results: dict,
 ) -> "plt.Figure":
-    """Plot detuning-sweep Ramsey analysis for each qubit.
+    """Plot two-τ Ramsey detuning-sweep analysis for each qubit.
 
-    Layout (per qubit row):
-
-    * Column 1 — parity-difference vs detuning with cosine fit and
-      vertical marker at the fitted resonance δ₀.
-    * Column 2 — residuals (data − fit) vs detuning.
+    Layout (per qubit): two rows showing short-τ and long-τ traces,
+    each with data, joint fit, and resonance marker.
 
     Parameters
     ----------
     ds : xr.Dataset
-        Raw (or fitted) dataset containing ``pdiff_<qubit>`` and a
-        ``detuning`` coordinate.
+        Raw dataset with ``pdiff_<qubit>``, ``detuning``, and ``tau``
+        coordinates.
     ds_fit : xr.Dataset or None
         Unused — kept for API consistency with 10a/10c plotting.
     qubits : list
@@ -57,73 +55,79 @@ def plot_raw_data_with_fit(
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
 
-    n = len(qubit_names)
-    ncol = 2
-    fig, axes = plt.subplots(n, ncol, figsize=(6 * ncol, 4 * n), squeeze=False)
-
     detuning_hz = np.asarray(ds.detuning.values, dtype=float)
     detuning_mhz = detuning_hz * 1e-6
+    tau_ns = np.asarray(ds.tau.values, dtype=float)
+    n_tau = len(tau_ns)
+    n_qubits = len(qubit_names)
 
-    for i, qname in enumerate(qubit_names):
+    nrows = n_qubits * n_tau
+    fig, axes = plt.subplots(
+        nrows, 1, figsize=(10, 3.5 * nrows), squeeze=False,
+    )
+
+    colors = ["C0", "C2", "C4", "C6"]
+    fit_colors = ["C1", "C3", "C5", "C7"]
+
+    row = 0
+    for qi, qname in enumerate(qubit_names):
         fr = fit_results.get(qname, {})
         diag = fr.get("_diag", {})
-        fitted_curve = diag.get("fitted_curve")
+        fitted_curves = diag.get("fitted_curves")
         freq_offset = fr.get("freq_offset", np.nan)
         contrast = fr.get("contrast", np.nan)
+        t2_star = fr.get("t2_star", np.nan)
         success = fr.get("success", False)
 
         pdiff_var = f"pdiff_{qname}"
         if pdiff_var in ds.data_vars:
             pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
         else:
-            pdiff = np.full(len(detuning_hz), np.nan)
+            pdiff = np.full((n_tau, len(detuning_hz)), np.nan)
 
-        # ── Left panel: data + fit ──────────────────────────────────────
-        ax_data = axes[i, 0]
-        ax_data.plot(detuning_mhz, pdiff, "b-", lw=0.8, alpha=0.7)
-        ax_data.scatter(
-            detuning_mhz, pdiff, c="b", s=8, alpha=0.5, zorder=3, label="Data",
-        )
+        for ti in range(n_tau):
+            ax = axes[row, 0]
+            tau_label = f"τ = {tau_ns[ti]:.0f} ns"
+            c = colors[ti % len(colors)]
+            fc = fit_colors[ti % len(fit_colors)]
 
-        if fitted_curve is not None and not np.all(np.isnan(fitted_curve)):
-            ax_data.plot(
-                detuning_mhz, fitted_curve, "r-", lw=1.5, alpha=0.9,
-                label="Linear cosine fit",
+            trace = pdiff[ti] if pdiff.ndim == 2 else pdiff
+            ax.plot(detuning_mhz, trace, f"-", color=c, lw=0.8, alpha=0.7)
+            ax.scatter(
+                detuning_mhz, trace, c=c, s=8, alpha=0.5,
+                zorder=3, label="Data",
             )
 
-        if success and np.isfinite(freq_offset):
-            ax_data.axvline(
-                freq_offset * 1e-6, color="k", ls="--", lw=1.0,
-                label=f"δ₀ = {freq_offset * 1e-6:.4f} MHz",
-            )
+            if fitted_curves is not None:
+                fit_trace = fitted_curves[ti]
+                ax.plot(
+                    detuning_mhz, fit_trace, "-", color=fc, lw=1.5,
+                    alpha=0.9, label="Joint DE fit",
+                )
 
-        ax_data.set_xlabel("Detuning (MHz)")
-        ax_data.set_ylabel("Parity difference")
-        ax_data.set_ylim(-0.05, 1.05)
+            if success and np.isfinite(freq_offset):
+                ax.axvline(
+                    freq_offset * 1e-6, color="k", ls="--", lw=1.0,
+                    label=f"δ₀ = {freq_offset * 1e-6:.4f} MHz",
+                )
 
-        title = f"{qname}"
-        if success:
-            title += f"  |  δ₀={freq_offset * 1e-6:.4f} MHz, A={contrast:.3f}"
-        ax_data.set_title(title)
-        ax_data.legend(loc="upper right", fontsize=7)
+            ax.set_xlabel("Detuning (MHz)")
+            ax.set_ylabel("Parity difference")
+            ax.set_ylim(-0.05, 1.05)
 
-        # ── Right panel: residuals ──────────────────────────────────────
-        ax_res = axes[i, 1]
-        if fitted_curve is not None and not np.all(np.isnan(fitted_curve)):
-            residuals = pdiff - fitted_curve
-            ax_res.scatter(
-                detuning_mhz, residuals, c="gray", s=8, alpha=0.6,
-            )
-            ax_res.axhline(0, color="k", ls="-", lw=0.5)
-            ax_res.set_ylabel("Residual")
-        else:
-            ax_res.text(
-                0.5, 0.5, "No fit data", transform=ax_res.transAxes, ha="center",
-            )
+            title = f"{qname} — {tau_label}"
+            if success and ti == 0:
+                title += (
+                    f"  |  δ₀={freq_offset * 1e-6:.4f} MHz, "
+                    f"A₀={contrast:.3f}, T₂*={t2_star:.0f} ns"
+                )
+            ax.set_title(title)
+            ax.legend(loc="upper right", fontsize=7)
+            row += 1
 
-        ax_res.set_xlabel("Detuning (MHz)")
-        ax_res.set_title(f"{qname} — residuals")
-
-    fig.suptitle("Ramsey detuning sweep (parity diff) — linear cosine decomposition")
+    fig.suptitle(
+        "Ramsey detuning sweep (parity diff) — joint two-τ DE fit",
+        fontsize=13,
+    )
     fig.tight_layout()
     return fig
