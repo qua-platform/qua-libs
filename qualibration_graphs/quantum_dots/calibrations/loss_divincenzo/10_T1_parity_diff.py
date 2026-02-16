@@ -2,7 +2,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
 
 from qm.qua import *
 
@@ -12,11 +11,15 @@ from qualang_tools.loops import from_array
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.T1_parity_diff import Parameters
+from calibration_utils.T1_parity_diff import (
+    Parameters,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+)
 from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
 description = """
@@ -47,12 +50,15 @@ Prerequisites:
     - Having calibrated the initialization and readout point from the charge stability map.
     - Having calibrated the pi pulse parameters (amplitude and duration) from Rabi measurements.
 
+Analysis:
+    - Fits P(τ) = offset + A·exp(−τ/T₁) via profiled differential
+      evolution (1-D search over T₁, linear solve for offset and A).
+
 Before proceeding to the next node:
-    - Extract T1 from exponential fit of the decay curve.
-    - Verify T1 is sufficiently long for intended gate sequences.
+    - Verify T₁ is sufficiently long for intended gate sequences.
 
 State updates:
-    - T1 for each qubit
+    - qubit.T1
 """
 
 
@@ -232,17 +238,26 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    # TODO: Implement analysis for T1 parity diff.
-    pass
+    """Fit exponential decay P(τ) = offset + A·exp(−τ/T₁) to extract T₁."""
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["fit_results"] = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results.items()}
+    node.namespace["_fit_results_full"] = fit_results
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data."""
-    # TODO: Implement plotting for T1 parity diff.
-    pass
+    """Plot parity-difference vs idle time with exponential fit."""
+    fit_with_diag = node.namespace.get("_fit_results_full", node.results.get("fit_results", {}))
+    fig = plot_raw_data_with_fit(
+        node.results["ds_raw"],
+        node.results.get("ds_fit"),
+        node.namespace["qubits"],
+        fit_with_diag,
+    )
+    plt.show()
+    node.results["figure"] = fig
 
 
 # %% {Update_state}
