@@ -20,7 +20,7 @@ from calibration_utils.time_rabi_chevron_parity_diff import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from calibration_utils.common_utils.experiment import get_sensors, get_qubits
+from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
