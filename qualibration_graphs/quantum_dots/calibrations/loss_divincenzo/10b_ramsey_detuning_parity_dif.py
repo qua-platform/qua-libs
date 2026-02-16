@@ -31,10 +31,12 @@ and τ_long) and measures the parity difference after a π/2 – idle – π/2
 sequence at each.
 
 The two traces act as a Vernier: wide fringes (short τ) localise the
-resonance coarsely, narrow fringes (long τ) sharpen the estimate.  The
-amplitude ratio between traces gives the exponential decay rate (T₂*).
-A joint differential-evolution fit with shared (bg, A₀, δ₀, γ) across
-both traces extracts the resonance detuning and T₂*.
+resonance coarsely, narrow fringes (long τ) sharpen the estimate.  Each
+trace is fitted independently with a profiled differential-evolution
+search over the oscillation frequency (linear parameters solved by
+least-squares).  The resonance detuning δ₀ is the amplitude-weighted
+mean of the per-trace estimates.  The amplitude ratio between traces
+gives the exponential decay rate γ and dephasing time T₂*.
 
 Prerequisites:
     - Calibrated resonators and voltage points (empty - init - measure).
@@ -84,14 +86,19 @@ def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
 
     n_avg = node.parameters.num_shots
     # Two idle times in clock cycles (4 ns each)
-    idle_times_cc = np.array([
-        node.parameters.idle_time_ns // 4,
-        node.parameters.idle_time_long_ns // 4,
-    ])
-    idle_times_ns = np.array([
-        node.parameters.idle_time_ns,
-        node.parameters.idle_time_long_ns,
-    ], dtype=float)
+    idle_times_cc = np.array(
+        [
+            node.parameters.idle_time_ns // 4,
+            node.parameters.idle_time_long_ns // 4,
+        ]
+    )
+    idle_times_ns = np.array(
+        [
+            node.parameters.idle_time_ns,
+            node.parameters.idle_time_long_ns,
+        ],
+        dtype=float,
+    )
     detuning_values = np.arange(
         -node.parameters.detuning_span_in_mhz / 2 * u.MHz,
         node.parameters.detuning_span_in_mhz / 2 * u.MHz,
@@ -100,12 +107,8 @@ def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "tau": xr.DataArray(
-            idle_times_ns, attrs={"long_name": "idle time", "units": "ns"}
-        ),
-        "detuning": xr.DataArray(
-            detuning_values, attrs={"long_name": "frequency detuning", "units": "Hz"}
-        ),
+        "tau": xr.DataArray(idle_times_ns, attrs={"long_name": "idle time", "units": "ns"}),
+        "detuning": xr.DataArray(detuning_values, attrs={"long_name": "frequency detuning", "units": "Hz"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -143,9 +146,7 @@ def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
                         align()
                         for i, qubit in batched_qubits.items():
                             op_length = qubit.macros["x90"].duration
-                            qubit.initialize(
-                                duration=node.parameters.gap_wait_time_in_ns + op_length * 2 + 4 * t
-                            )
+                            qubit.initialize(duration=node.parameters.gap_wait_time_in_ns + op_length * 2 + 4 * t)
 
                         # Step 3: X90 – idle – X90
                         for i, qubit in batched_qubits.items():
@@ -239,10 +240,7 @@ def load_data(node: QualibrationNode[RamseyDetuningParameters, Quam]):
 def analyse_data(node: QualibrationNode[RamseyDetuningParameters, Quam]):
     """Fit resonance detuning via joint two-τ differential evolution."""
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["fit_results"] = {
-        k: {kk: vv for kk, vv in v.items() if kk != "_diag"}
-        for k, v in fit_results.items()
-    }
+    node.results["fit_results"] = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results.items()}
     # Keep diagnostics in namespace for plotting
     node.namespace["_fit_results_full"] = fit_results
 

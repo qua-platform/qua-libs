@@ -1,37 +1,50 @@
-"""Two-τ Ramsey detuning-sweep analysis via joint differential evolution.
+"""Two-τ Ramsey detuning-sweep analysis — independent fits + joint extraction.
 
 This module analyses data from a Ramsey experiment where the
 **drive-frequency detuning δ** is swept at **two fixed idle times**
 (τ_short and τ_long).
 
-At each idle time τᵢ, the parity-difference signal is:
+Stage 1 — Independent per-trace cosine fit
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each trace follows a cosine whose frequency *f* is **not assumed known**
+(the effective evolution time includes phase accrual during the finite-
+duration π/2 pulses):
 
 .. math::
 
-    P_i(\\delta) = \\mathrm{bg}
-        + A_0\\,\\exp(-\\gamma\\,\\tau_i)\\,
-          \\cos\\bigl(2\\pi\\,\\tau_i \\cdot 10^{-9}\\,(\\delta - \\delta_0)\\bigr)
+    P_i(\\delta) = \\mathrm{bg}_i
+        + C_i\\,\\cos(2\\pi f_i\\,\\delta)
+        + S_i\\,\\sin(2\\pi f_i\\,\\delta)
 
-Using two idle times creates a **Vernier** effect: the short-τ trace
-produces wide fringes (coarse resonance localisation) while the long-τ
-trace produces narrow fringes (fine precision).  The true resonance δ₀
-is the unique detuning where both traces are simultaneously in phase.
-Meanwhile the amplitude ratio between traces gives the exponential
-decay rate:
+A **profiled differential-evolution** optimises over the single
+non-linear parameter *f*, while the linear parameters (bg, C, S) are
+solved exactly via ``np.linalg.lstsq`` at each candidate *f*.  This
+makes the per-trace fit a fast 1-D global search.
+
+From the solution:
+
+* amplitude  A_i = √(C_i² + S_i²)
+* resonance  δ₀_i = +atan2(S_i, C_i) / (2π f_i)
+
+Stage 2 — Joint extraction
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The resonance detuning δ₀ is taken as the amplitude-weighted mean of
+the per-trace estimates δ₀_short and δ₀_long.
+
+The decay rate exploits the fact that the pulse contribution to the
+amplitude cancels in the ratio:
 
 .. math::
 
-    \\gamma = -\\frac{\\ln(A_\\mathrm{long}/A_\\mathrm{short})}{\\tau_\\mathrm{long} - \\tau_\\mathrm{short}}
-
-A single :func:`scipy.optimize.differential_evolution` fit with
-**shared parameters** (bg, A₀, δ₀, γ) across both traces provides a
-globally optimal, over-constrained solution.
+    \\gamma = -\\frac{\\ln(A_\\mathrm{long} / A_\\mathrm{short})}
+                     {\\tau_\\mathrm{long} - \\tau_\\mathrm{short}}
 
 Extracted quantities
 --------------------
-* **freq_offset** — resonance detuning δ₀ (Hz), the correction to
-  apply to the qubit intermediate frequency.
-* **contrast** — bare oscillation amplitude A₀ (before decay).
+* **freq_offset** — resonance detuning δ₀ (Hz).
+* **contrast** — oscillation amplitude from the short-τ trace.
 * **decay_rate** — exponential decay rate γ (1/ns).
 * **t2_star** — dephasing time 1/γ (ns).
 """
@@ -40,7 +53,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import xarray as xr
@@ -64,13 +77,13 @@ class FitParameters:
         Resonance detuning δ₀ (Hz) — the correction to subtract from
         the qubit intermediate frequency so the drive sits on resonance.
     contrast : float
-        Bare oscillation amplitude A₀ (before exponential decay).
+        Oscillation amplitude A from the short-τ trace.
     decay_rate : float
-        Exponential decay rate γ (1/ns).
+        Exponential decay rate γ (1/ns), from amplitude ratio.
     t2_star : float
         Dephasing time T₂* = 1/γ (ns).
     success : bool
-        ``True`` if the DE fit converged with finite parameters.
+        ``True`` if both per-trace fits converged.
     """
 
     freq_offset: float
@@ -80,47 +93,126 @@ class FitParameters:
     success: bool
 
 
-# ── Joint two-τ model ────────────────────────────────────────────────────────
+# ── Per-trace profiled DE fit ────────────────────────────────────────────────
 
 
-def _joint_model(
-    params: tuple,
-    delta_hz: np.ndarray,
-    tau_ns: np.ndarray,
-) -> np.ndarray:
-    r"""Evaluate the two-τ Ramsey model for all traces.
+def _fit_single_trace(
+    pdiff: np.ndarray,
+    detuning_hz: np.ndarray,
+) -> Dict[str, Any]:
+    r"""Fit a single detuning-sweep trace with free oscillation frequency.
+
+    Uses a profiled DE approach: for each candidate frequency *f* the
+    linear parameters (bg, C, S) are solved exactly, so DE searches only
+    the 1-D non-linear parameter *f*.
 
     Parameters
     ----------
-    params : (bg, amp, delta0, gamma)
-        bg     — baseline parity level
-        amp    — bare oscillation amplitude (before decay)
-        delta0 — resonance detuning (Hz)
-        gamma  — exponential decay rate (1/ns)
-    delta_hz : 1-D array (n_det,)
+    pdiff : 1-D array (n_det,)
+        Parity-difference values.
+    detuning_hz : 1-D array (n_det,)
         Detuning values in Hz.
-    tau_ns : 1-D array (n_tau,)
-        Idle-time values in nanoseconds.
 
     Returns
     -------
-    model : 2-D array (n_tau, n_det)
+    dict
+        ``osc_freq`` (Hz⁻¹), ``amplitude``, ``delta0`` (Hz),
+        ``bg``, ``C``, ``S``, ``fitted_curve``, ``success``.
     """
-    bg, amp, delta0, gamma = params
-    delta_hz = np.asarray(delta_hz, dtype=float)
-    tau_ns = np.asarray(tau_ns, dtype=float)
+    y = np.asarray(pdiff, dtype=float)
+    delta = np.asarray(detuning_hz, dtype=float)
+    n = len(delta)
+    d_step = abs(delta[1] - delta[0]) if n > 1 else 1.0
+    d_span = abs(delta[-1] - delta[0]) if n > 1 else 1.0
 
-    model = np.empty((len(tau_ns), len(delta_hz)), dtype=float)
-    for i, tau in enumerate(tau_ns):
-        f = tau * 1e-9  # oscillation "frequency" in Hz⁻¹
-        envelope = amp * np.exp(-gamma * tau)
-        model[i, :] = bg + envelope * np.cos(
-            2.0 * np.pi * f * (delta_hz - delta0)
+    result: Dict[str, Any] = {
+        "osc_freq": np.nan,
+        "amplitude": 0.0,
+        "delta0": 0.0,
+        "bg": np.nan,
+        "C": np.nan,
+        "S": np.nan,
+        "fitted_curve": np.full_like(y, np.nan),
+        "success": False,
+    }
+
+    # ── FFT seed for oscillation frequency ───────────────────────────
+    y_centered = y - np.mean(y)
+    fft_mag = np.abs(np.fft.rfft(y_centered))
+    fft_freqs = np.fft.rfftfreq(n, d_step)
+    fft_mag[0] = 0.0
+    peak_idx = int(np.argmax(fft_mag))
+    f_fft = float(fft_freqs[peak_idx]) if peak_idx > 0 else 1.0 / d_span
+
+    # DE bounds for f: from ~1 period across span to Nyquist
+    f_lo = max(0.5 / d_span, 1e-9)
+    f_hi = 0.5 / d_step
+    # Ensure FFT seed is within bounds
+    f_fft = np.clip(f_fft, f_lo, f_hi)
+
+    def _profile_residual(f_arr):
+        f = f_arr[0]
+        phase = 2.0 * np.pi * f * delta
+        A_mat = np.column_stack(
+            [
+                np.ones(n),
+                np.cos(phase),
+                np.sin(phase),
+            ]
         )
-    return model
+        coeffs, _, _, _ = np.linalg.lstsq(A_mat, y, rcond=None)
+        return float(np.sum((y - A_mat @ coeffs) ** 2))
+
+    try:
+        de_result = differential_evolution(
+            _profile_residual,
+            bounds=[(f_lo, f_hi)],
+            seed=42,
+            maxiter=1000,
+            tol=1e-12,
+            polish=True,
+            popsize=30,
+        )
+        f_best = float(de_result.x[0])
+
+        # Solve linear system at best f
+        phase = 2.0 * np.pi * f_best * delta
+        A_mat = np.column_stack(
+            [
+                np.ones(n),
+                np.cos(phase),
+                np.sin(phase),
+            ]
+        )
+        coeffs, _, _, _ = np.linalg.lstsq(A_mat, y, rcond=None)
+        bg, C, S = coeffs
+
+        amplitude = float(np.hypot(C, S))
+        # P(δ) = bg + A·cos(2πf(δ − δ₀))  ⟹  δ₀ = +atan2(S,C)/(2πf)
+        delta0 = float(np.arctan2(S, C) / (2.0 * np.pi * f_best))
+
+        result["osc_freq"] = f_best
+        result["amplitude"] = amplitude
+        result["delta0"] = delta0
+        result["bg"] = float(bg)
+        result["C"] = float(C)
+        result["S"] = float(S)
+        result["fitted_curve"] = A_mat @ coeffs
+        result["success"] = np.isfinite(delta0) and amplitude > 1e-6
+
+        _logger.debug(
+            "Per-trace fit: f=%.4e Hz⁻¹, A=%.4f, δ₀=%.3f MHz",
+            f_best,
+            amplitude,
+            delta0 * 1e-6,
+        )
+    except Exception:
+        _logger.debug("Per-trace profiled DE fit failed", exc_info=True)
+
+    return result
 
 
-# ── Single-qubit analysis ────────────────────────────────────────────────────
+# ── Single-qubit two-τ analysis ──────────────────────────────────────────────
 
 
 def _analyse_single_qubit(
@@ -128,10 +220,12 @@ def _analyse_single_qubit(
     detuning_hz: np.ndarray,
     tau_ns: np.ndarray,
 ) -> Dict[str, Any]:
-    r"""Fit a single qubit's two-τ detuning-swept Ramsey data.
+    r"""Fit a single qubit's two-τ Ramsey data (independent + joint).
 
-    Uses differential evolution to globally optimise the 4-parameter
-    joint model (bg, A₀, δ₀, γ) across both traces simultaneously.
+    Stage 1: fits each trace independently with free oscillation
+    frequency via profiled DE.  Stage 2: extracts shared resonance
+    δ₀ (amplitude-weighted mean) and decay rate γ from the amplitude
+    ratio.
 
     Parameters
     ----------
@@ -140,31 +234,28 @@ def _analyse_single_qubit(
     detuning_hz : 1-D array (n_det,)
         Detuning values in Hz.
     tau_ns : 1-D array (n_tau,)
-        Idle-time values in nanoseconds.
+        Idle-time values in nanoseconds (short, long).
 
     Returns
     -------
     dict
         ``freq_offset`` (Hz), ``contrast``, ``decay_rate`` (1/ns),
-        ``t2_star`` (ns), ``success`` (bool), and diagnostic arrays
-        for plotting.
+        ``t2_star`` (ns), ``success`` (bool), and ``_traces`` with
+        per-trace fit diagnostics.
     """
     y = np.asarray(pdiff_2d, dtype=float)
     delta = np.asarray(detuning_hz, dtype=float)
     taus = np.asarray(tau_ns, dtype=float)
+    n_tau = len(taus)
 
-    bg0 = float(np.mean(y))
-    amp0 = float(np.ptp(y)) / 2.0
-    det_span = float(delta[-1] - delta[0]) if len(delta) > 1 else 1e6
-    tau_max = float(np.max(taus))
+    # ── Stage 1: Independent per-trace fits ──────────────────────────
+    trace_fits: List[Dict[str, Any]] = []
+    for i in range(n_tau):
+        fit = _fit_single_trace(y[i], delta)
+        fit["tau_ns"] = float(taus[i])
+        trace_fits.append(fit)
 
-    # DE bounds: [bg, amp, delta0, gamma]
-    de_bounds = [
-        (float(np.min(y)) - 0.1, float(np.max(y)) + 0.1),  # bg
-        (-1.0, 1.0),  # amp (sign handles peak vs trough)
-        (float(delta[0]), float(delta[-1])),  # delta0 within sweep
-        (0.0, 10.0 / tau_max),  # gamma: 0 to fast-decay limit
-    ]
+    all_success = all(tf["success"] for tf in trace_fits)
 
     result: Dict[str, Any] = {
         "freq_offset": 0.0,
@@ -173,48 +264,58 @@ def _analyse_single_qubit(
         "t2_star": np.nan,
         "success": False,
         "fitted_curves": None,
+        "_traces": trace_fits,
     }
 
-    try:
+    if not all_success:
+        _logger.debug("Not all per-trace fits succeeded")
+        # Collect fitted curves even from partial success
+        result["fitted_curves"] = np.array([tf["fitted_curve"] for tf in trace_fits])
+        return result
 
-        def _objective(params):
-            model = _joint_model(params, delta, taus)
-            return np.sum((y - model) ** 2)
+    # ── Stage 2: Joint extraction ────────────────────────────────────
+    amplitudes = np.array([tf["amplitude"] for tf in trace_fits])
+    delta0s = np.array([tf["delta0"] for tf in trace_fits])
 
-        de_result = differential_evolution(
-            _objective,
-            de_bounds,
-            seed=42,
-            maxiter=2000,
-            tol=1e-10,
-            polish=True,
-            popsize=25,
-        )
-        bg_fit, amp_fit, delta0_fit, gamma_fit = de_result.x
-        t2 = 1.0 / gamma_fit if gamma_fit > 1e-12 else np.nan
-        fitted_curves = _joint_model(de_result.x, delta, taus)
+    # Resonance: amplitude-weighted mean of per-trace δ₀
+    weights = amplitudes / np.sum(amplitudes)
+    freq_offset = float(np.sum(weights * delta0s))
 
-        result["freq_offset"] = float(delta0_fit)
-        result["contrast"] = float(abs(amp_fit))
-        result["decay_rate"] = float(gamma_fit)
-        result["t2_star"] = float(t2)
-        result["fitted_curves"] = fitted_curves
-        result["success"] = (
-            np.isfinite(delta0_fit)
-            and abs(amp_fit) > 1e-6
-            and gamma_fit >= 0
-        )
+    # Contrast from the short-τ trace (index 0)
+    contrast = float(amplitudes[0])
 
-        _logger.debug(
-            "Joint two-τ fit: δ₀=%.3f MHz, A₀=%.4f, γ=%.5f 1/ns, "
-            "T2*=%.1f ns",
-            delta0_fit * 1e-6,
-            amp_fit,
-            gamma_fit,
-            t2 if np.isfinite(t2) else -1,
-        )
-    except Exception:
-        _logger.debug("Joint two-τ DE fit failed", exc_info=True)
+    # Decay rate from amplitude ratio (pulse contributions cancel)
+    tau_diff = float(taus[-1] - taus[0])
+    if tau_diff > 0 and amplitudes[0] > 1e-12 and amplitudes[-1] > 1e-12:
+        ratio = amplitudes[-1] / amplitudes[0]
+        if 0 < ratio < 1:
+            gamma = -np.log(ratio) / tau_diff
+        elif ratio >= 1:
+            gamma = 0.0
+        else:
+            gamma = np.nan
+    else:
+        gamma = np.nan
+
+    t2 = 1.0 / gamma if np.isfinite(gamma) and gamma > 1e-12 else np.nan
+
+    result["freq_offset"] = freq_offset
+    result["contrast"] = contrast
+    result["decay_rate"] = float(gamma) if np.isfinite(gamma) else np.nan
+    result["t2_star"] = float(t2) if np.isfinite(t2) else np.nan
+    result["fitted_curves"] = np.array([tf["fitted_curve"] for tf in trace_fits])
+    result["success"] = np.isfinite(freq_offset) and contrast > 1e-6
+
+    _logger.debug(
+        "Joint extraction: δ₀=%.3f MHz (short=%.3f, long=%.3f), " "A_short=%.4f, A_long=%.4f, γ=%.5f 1/ns, T2*=%.1f ns",
+        freq_offset * 1e-6,
+        delta0s[0] * 1e-6,
+        delta0s[-1] * 1e-6,
+        amplitudes[0],
+        amplitudes[-1],
+        gamma if np.isfinite(gamma) else -1,
+        t2 if np.isfinite(t2) else -1,
+    )
 
     return result
 
@@ -226,7 +327,7 @@ def fit_raw_data(
     ds: xr.Dataset,
     node: QualibrationNode,
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
-    """Fit resonance detuning via joint two-τ differential evolution.
+    """Fit resonance detuning via independent per-trace DE + joint extraction.
 
     Expects a 2-D dataset with coordinates ``tau`` (ns) and
     ``detuning`` (Hz), with data variables ``pdiff_<qubit>`` of
@@ -253,9 +354,7 @@ def fit_raw_data(
     pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
     qubit_names = [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
     if not qubit_names:
-        qubit_names = [
-            getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)
-        ]
+        qubit_names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
 
     fit_results: Dict[str, Dict[str, Any]] = {}
 
@@ -313,7 +412,7 @@ def log_fitted_results(
         msg = (
             f"Results for {qname}: "
             f"δ₀={freq_off_mhz:.4f} MHz, "
-            f"A₀={contrast:.4f}, "
+            f"A_short={contrast:.4f}, "
             f"γ={gamma:.5f} 1/ns, "
             f"T2*={t2:.0f} ns, "
             f"success={success}"

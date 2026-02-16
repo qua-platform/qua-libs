@@ -5,9 +5,9 @@ Uses virtual_qpu to simulate a Ramsey experiment at two fixed idle times
 span around the qubit resonance.
 
 The two traces act as a Vernier: wide fringes (short τ) coarsely
-localise the resonance, narrow fringes (long τ) sharpen it.  A joint
-differential evolution fit with shared (bg, A₀, δ₀, γ) extracts the
-resonance detuning and T₂*.
+localise the resonance, narrow fringes (long τ) sharpen it.  Each trace
+is fitted independently via profiled differential evolution, then a
+joint extraction step derives the resonance detuning δ₀ and T₂*.
 
 The π/2 pulse amplitude is pre-calibrated via the
 ``calibrated_pi_half_amp`` fixture in conftest.
@@ -41,9 +41,7 @@ DETUNING_STEP_MHZ = 0.1
 
 
 @pytest.mark.analysis
-def test_10b_ramsey_detuning_parity_diff_analysis(
-    ld_device, calibrated_pi_half_amp, analysis_runner
-):
+def test_10b_ramsey_detuning_parity_diff_analysis(ld_device, calibrated_pi_half_amp, analysis_runner):
     """Two-τ detuning-sweep Ramsey with joint DE fit."""
     device = ld_device
     qubit_freq_ghz = device.params.qubit_freqs[0]
@@ -139,9 +137,9 @@ def test_10b_ramsey_detuning_parity_diff_analysis(
     # freq_offset should be within the detuning span
     freq_offset_mhz = fit_q1["freq_offset"] * 1e-6
     half_span = DETUNING_SPAN_MHZ / 2
-    assert abs(freq_offset_mhz) < half_span, (
-        f"freq_offset should be within ±{half_span} MHz, got {freq_offset_mhz:.4f} MHz"
-    )
+    assert (
+        abs(freq_offset_mhz) < half_span
+    ), f"freq_offset should be within ±{half_span} MHz, got {freq_offset_mhz:.4f} MHz"
 
     # Contrast should be positive
     contrast = fit_q1["contrast"]
