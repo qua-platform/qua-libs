@@ -16,7 +16,7 @@ dependencies = [
     "qualibrate>=0.2.1",
     "qm-qua>=1.2.1",
     "tomli>=2.0.1; python_version < '3.11'",
-    "quam-builder@git+https://github.com/qua-platform/quam-builder.git@feature/quantum_dots",
+    "quam-builder@git+https://github.com/qua-platform/quam-builder.git@chore/examples-compile-pass",
     "qualibration-libs@git+https://github.com/qua-platform/qualibration-libs.git",
     "xarray>=2024.7.0",
     "plotly>=5.24.1",
