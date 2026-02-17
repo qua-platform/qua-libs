@@ -15,8 +15,8 @@ from quam.components.ports import (  # type: ignore[import-not-found]
 
 from quam_builder.architecture.quantum_dots.components import (  # type: ignore[import-not-found]
     VoltageGate,
-    XYDrive,
 )
+from quam_builder.architecture.quantum_dots.components import XYDriveMW as XYDrive  # type: ignore[import-not-found]
 from quam_builder.architecture.quantum_dots.components.readout_resonator import (  # type: ignore[import-not-found]
     ReadoutResonatorIQ,
     ReadoutResonatorSingle,
@@ -227,10 +227,9 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
                 full_scale_power_dbm=10,
             ),
             intermediate_frequency=100e6,
-            add_default_pulses=True,
         )
         length = 100
-        xy_drives[i].operations["X180"] = pulses.GaussianPulse(length=length, amplitude=0.2, sigma=length / 6)
+        xy_drives[i].operations["x180"] = pulses.GaussianPulse(length=length, amplitude=0.2, sigma=length / 6)
 
     machine.create_virtual_gate_set(
         virtual_channel_mapping={
@@ -305,12 +304,12 @@ def _register_qubits_with_points(
         machine.register_qubit(
             qubit_name=qubit_name,
             quantum_dot_id=dot_id,
-            xy_channel=xy_drives[xy_idx],
+            xy=xy_drives[xy_idx],
             readout_quantum_dot=readout_dot_id,
         )
 
         qubit = machine.qubits[qubit_name]  # pylint: disable=unsubscriptable-object
-        qubit.name = qubit_name
+        qubit.id = qubit_name  # Override default (quantum_dot_id) so qubit.name == qubit_name
 
         qubit.add_point_with_step_macro(
             "empty",
@@ -327,8 +326,8 @@ def _register_qubits_with_points(
             voltages={f"virtual_dot_{xy_idx}": -0.05},
         )
 
-        qubit.macros["x180"] = X180Macro(pulse_name="X180", amplitude_scale=1.0)
-        qubit.macros["x90"] = X90Macro(pulse_name="X180", amplitude_scale=0.5)
+        qubit.macros["x180"] = X180Macro(pulse_name="x180", amplitude_scale=1.0)
+        qubit.macros["x90"] = X90Macro(pulse_name="x180", amplitude_scale=0.5)
         qubit.macros["measure"] = MeasureMacro(
             pulse_name="readout",
             readout_duration=2000,
@@ -344,12 +343,4 @@ def create_minimal_quam() -> LossDiVincenzoQuam:
     machine, xy_drives = _create_minimal_machine()
     _register_qubits_with_points(machine, xy_drives)
     machine.active_qubit_names = list(machine.qubits.keys())  # pylint: disable=no-member
-
-    for qubit in machine.qubits.values():  # pylint: disable=no-member
-        qubit.__class__ = type(
-            "LDQubitWithXY",
-            (qubit.__class__,),
-            {"xy": property(lambda self: self.xy_channel)},
-        )
-
     return machine
