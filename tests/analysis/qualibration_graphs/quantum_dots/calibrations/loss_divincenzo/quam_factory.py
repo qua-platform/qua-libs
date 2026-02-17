@@ -308,6 +308,7 @@ def _register_qubits_with_points(
         )
 
         qubit = machine.qubits[qubit_name]  # pylint: disable=unsubscriptable-object
+        qubit.id = qubit_name  # Override default (quantum_dot_id) so qubit.name == qubit_name
 
         qubit.add_point_with_step_macro(
             "empty",
