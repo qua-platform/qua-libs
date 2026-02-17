@@ -15,6 +15,13 @@ import pytest
 CURRENT_DIR = Path(__file__).resolve().parent
 SIMULATION_ROOT = CURRENT_DIR.parents[3]
 
+# Ensure local modules (quam_factory, macros, etc.) are importable regardless
+# of the working directory from which pytest is invoked.
+if str(CURRENT_DIR) not in sys.path:
+    sys.path.insert(0, str(CURRENT_DIR))
+if str(SIMULATION_ROOT) not in sys.path:
+    sys.path.insert(0, str(SIMULATION_ROOT))
+
 # Ensure matplotlib/qualibrate can write caches/logs under repo.
 _cache_base = SIMULATION_ROOT / ".pytest_cache"
 _cache_base.mkdir(parents=True, exist_ok=True)
@@ -36,6 +43,8 @@ try:
     from .....path_utils import find_repo_root  # noqa: E402
 except ImportError:
     from path_utils import find_repo_root  # type: ignore[import-not-found]  # noqa: E402
+from quam.components import pulses as quam_pulses  # type: ignore[import-not-found]  # noqa: E402
+
 try:
     from .quam_factory import create_minimal_quam  # noqa: E402
 except ImportError:
@@ -69,12 +78,55 @@ DEFAULT_SMALL_SWEEP_PARAMS: Dict[str, Any] = {
 # =============================================================================
 
 
+def _add_native_gate_operations(machine: LossDiVincenzoQuam) -> None:
+    """Register native-gate pulse operations on each qubit's XY channel.
+
+    All operations are derived from the calibrated X180 Gaussian pulse:
+      - π rotations use the full X180 amplitude.
+      - π/2 rotations use half the X180 amplitude.
+      - Y-axis rotations use the same waveform as X (the axis is
+        selected by the IQ modulation phase at play time).
+    """
+    for qubit in machine.qubits.values():  # pylint: disable=no-member
+        xy = qubit.xy
+        ref_pulse = xy.operations.get("X180")
+        if ref_pulse is None:
+            continue
+
+        ref_amp = ref_pulse.amplitude
+        ref_length = ref_pulse.length
+        ref_sigma = ref_pulse.sigma
+        half_amp = ref_amp / 2
+
+        for name, amp in [
+            ("x180", ref_amp),
+            ("x90", half_amp),
+            ("-x90", half_amp),
+            ("y180", ref_amp),
+            ("y90", half_amp),
+            ("-y90", half_amp),
+        ]:
+            if name not in xy.operations:
+                xy.operations[name] = quam_pulses.GaussianPulse(
+                    length=ref_length,
+                    amplitude=amp,
+                    sigma=ref_sigma,
+                )
+
+
 @pytest.fixture
 def minimal_quam_factory():
-    """Factory fixture that creates a minimal LossDiVincenzoQuam with 4 qubits."""
+    """Factory fixture that creates a minimal LossDiVincenzoQuam with 4 qubits.
+
+    The returned machine includes native-gate operations (x90, x180, -x90,
+    y90, y180, -y90) on every XY channel, scaled from the calibrated X180
+    pulse.
+    """
 
     def _factory() -> LossDiVincenzoQuam:
-        return create_minimal_quam()
+        machine = create_minimal_quam()
+        _add_native_gate_operations(machine)
+        return machine
 
     return _factory
 

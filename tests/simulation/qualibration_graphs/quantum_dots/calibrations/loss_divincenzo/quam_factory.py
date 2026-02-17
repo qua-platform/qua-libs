@@ -15,7 +15,7 @@ from quam.components.ports import (  # type: ignore[import-not-found]
 
 from quam_builder.architecture.quantum_dots.components import (  # type: ignore[import-not-found]
     VoltageGate,
-    XYDrive,
+    XYDriveMW,
 )
 from quam_builder.architecture.quantum_dots.components.readout_resonator import (  # type: ignore[import-not-found]
     ReadoutResonatorIQ,
@@ -216,7 +216,7 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
 
     xy_drives = {}
     for i in range(1, 5):
-        xy_drives[i] = XYDrive(
+        xy_drives[i] = XYDriveMW(
             id=f"Q{i}_xy",
             opx_output=MWFEMAnalogOutputPort(
                 controller_id=controller,
@@ -227,7 +227,6 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
                 full_scale_power_dbm=10,
             ),
             intermediate_frequency=100e6,
-            add_default_pulses=True,
         )
         length = 100
         xy_drives[i].operations["X180"] = pulses.GaussianPulse(length=length, amplitude=0.2, sigma=length / 6)
@@ -305,12 +304,11 @@ def _register_qubits_with_points(
         machine.register_qubit(
             qubit_name=qubit_name,
             quantum_dot_id=dot_id,
-            xy_channel=xy_drives[xy_idx],
+            xy=xy_drives[xy_idx],
             readout_quantum_dot=readout_dot_id,
         )
 
         qubit = machine.qubits[qubit_name]  # pylint: disable=unsubscriptable-object
-        qubit.name = qubit_name
 
         qubit.add_point_with_step_macro(
             "empty",
@@ -344,12 +342,4 @@ def create_minimal_quam() -> LossDiVincenzoQuam:
     machine, xy_drives = _create_minimal_machine()
     _register_qubits_with_points(machine, xy_drives)
     machine.active_qubit_names = list(machine.qubits.keys())  # pylint: disable=no-member
-
-    for qubit in machine.qubits.values():  # pylint: disable=no-member
-        qubit.__class__ = type(
-            "LDQubitWithXY",
-            (qubit.__class__,),
-            {"xy": property(lambda self: self.xy_channel)},
-        )
-
     return machine

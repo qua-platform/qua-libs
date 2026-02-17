@@ -32,36 +32,48 @@ State update:
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `frequency_span_in_mhz` | `4.0` | Span of frequencies to sweep in MHz. Default is 2 MHz. |
-| `frequency_step_in_mhz` | `2.0` | Step size for the frequency detuning sweep in MHz. Default is 0.025 MHz. |
-| `gap_wait_time_in_ns` | `1024` | Wait time between initialization and X180 pulse in nanoseconds. Default is 128 ns. |
+| `frequency_span_in_mhz` | `100.0` | Span of frequencies to sweep in MHz. Default is 2 MHz. |
+| `frequency_step_in_mhz` | `1.0` | Step size for the frequency detuning sweep in MHz. Default is 0.025 MHz. |
+| `gap_wait_time_in_ns` | `128` | Wait time between initialization and X180 pulse in nanoseconds. Default is 128 ns. |
 | `load_data_id` | `None` | Optional QUAlibrate node run index for loading historical data. Default is None. |
-| `max_wait_time_in_ns` | `64` | Maximum pulse duration in nanoseconds. Default is 10000 ns (10 us). |
-| `min_wait_time_in_ns` | `16` | Minimum pulse duration in nanoseconds. Must be larger than 4 clock cycles. Default is 16 ns. |
+| `max_wait_time_in_ns` | `800` | Maximum pulse duration in nanoseconds. Default is 10000 ns (10 us). |
+| `min_wait_time_in_ns` | `4` | Minimum pulse duration in nanoseconds. Must be larger than 4 clock cycles. Default is 16 ns. |
 | `model_computed_fields` | `{}` |  |
 | `model_config` | `{'extra': 'forbid', 'use_attribute_docstrings': True}` |  |
 | `model_extra` | `None` |  |
 | `model_fields` | `{'multiplexed': FieldInfo(annotation=bool, required=False, default=False, description='Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)\nor to play the experiment sequentially for each qubit (False). Default is False.'), 'use_state_discrimination': FieldInfo(annotation=bool, required=False, default=False, description="Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated\nquadratures 'I' and 'Q'. Default is False."), 'reset_wait_time': FieldInfo(annotation=int, required=False, default=5000, description='The wait time for qubit reset.'), 'qubits': FieldInfo(annotation=Union[List[str], NoneType], required=False, default=None, description='A list of qubit names which should participate in the execution of the node. Default is None.'), 'num_shots': FieldInfo(annotation=int, required=False, default=100, description='Number of averages to perform. Default is 100.'), 'min_wait_time_in_ns': FieldInfo(annotation=int, required=False, default=16, description='Minimum pulse duration in nanoseconds. Must be larger than 4 clock cycles. Default is 16 ns.'), 'max_wait_time_in_ns': FieldInfo(annotation=int, required=False, default=10000, description='Maximum pulse duration in nanoseconds. Default is 10000 ns (10 us).'), 'time_step_in_ns': FieldInfo(annotation=int, required=False, default=52, description='Step size for the pulse duration sweep in nanoseconds. Default is 52 ns.'), 'frequency_span_in_mhz': FieldInfo(annotation=float, required=False, default=2, description='Span of frequencies to sweep in MHz. Default is 2 MHz.'), 'frequency_step_in_mhz': FieldInfo(annotation=float, required=False, default=0.025, description='Step size for the frequency detuning sweep in MHz. Default is 0.025 MHz.'), 'gap_wait_time_in_ns': FieldInfo(annotation=int, required=False, default=128, description='Wait time between initialization and X180 pulse in nanoseconds. Default is 128 ns.'), 'operation': FieldInfo(annotation=str, required=False, default='x180', description="Name of the qubit operation to perform. Default is 'x180'."), 'simulate': FieldInfo(annotation=bool, required=False, default=False, description='Simulate the waveforms on the OPX instead of executing the program. Default is False.'), 'simulation_duration_ns': FieldInfo(annotation=int, required=False, default=50000, description='Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns.'), 'use_waveform_report': FieldInfo(annotation=bool, required=False, default=True, description='Whether to use the interactive waveform report in simulation. Default is True.'), 'timeout': FieldInfo(annotation=int, required=False, default=120, description='Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s.'), 'load_data_id': FieldInfo(annotation=Union[int, NoneType], required=False, default=None, description='Optional QUAlibrate node run index for loading historical data. Default is None.')}` |  |
-| `model_fields_set` | `{'load_data_id', 'simulation_duration_ns', 'use_state_discrimination', 'use_waveform_report', 'frequency_span_in_mhz', 'frequency_step_in_mhz', 'simulate', 'multiplexed', 'qubits', 'num_shots', 'reset_wait_time', 'time_step_in_ns', 'min_wait_time_in_ns', 'max_wait_time_in_ns', 'gap_wait_time_in_ns', 'operation', 'timeout'}` |  |
+| `model_fields_set` | `{'frequency_step_in_mhz', 'min_wait_time_in_ns', 'frequency_span_in_mhz', 'qubits', 'num_shots', 'time_step_in_ns', 'simulate', 'max_wait_time_in_ns'}` |  |
 | `multiplexed` | `False` | Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)
 or to play the experiment sequentially for each qubit (False). Default is False. |
-| `num_shots` | `10` | Number of averages to perform. Default is 100. |
+| `num_shots` | `4` | Number of averages to perform. Default is 100. |
 | `operation` | `x180` | Name of the qubit operation to perform. Default is 'x180'. |
-| `qubits` | `None` | A list of qubit names which should participate in the execution of the node. Default is None. |
+| `qubits` | `['Q1']` | A list of qubit names which should participate in the execution of the node. Default is None. |
 | `reset_wait_time` | `5000` | The wait time for qubit reset. |
-| `simulate` | `True` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
-| `simulation_duration_ns` | `10000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
-| `targets` | `None` |  |
+| `simulate` | `False` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
+| `simulation_duration_ns` | `50000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
+| `targets` | `['Q1']` |  |
 | `targets_name` | `qubits` |  |
-| `time_step_in_ns` | `16` | Step size for the pulse duration sweep in nanoseconds. Default is 52 ns. |
-| `timeout` | `30` | Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s. |
+| `time_step_in_ns` | `4` | Step size for the pulse duration sweep in nanoseconds. Default is 52 ns. |
+| `timeout` | `120` | Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s. |
 | `use_state_discrimination` | `False` | Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated
 quadratures 'I' and 'Q'. Default is False. |
 | `use_waveform_report` | `True` | Whether to use the interactive waveform report in simulation. Default is True. |
 
-## Simulation Output
+## Fit Results
 
-![Simulation](simulation.png)
+| Qubit | f_res (GHz) | t_π (ns) | Ω_R (rad/ns) | γ (1/ns) | T₂* (ns) | success |
+|-------|-------------|----------|--------------|----------|----------|--------|
+| Q1 | 9.9999 | 62.8 | 0.050057 | 0.00774 | 129 | True |
+
+## Updated State
+
+| Qubit | intermediate_frequency (Hz) | xy.operations.x180.length (ns) |
+|-------|-----------------------------|-----------------------------------------|
+| Q1 | 9999869490 | 62.8 |
+
+## Analysis Output
+
+![Analysis simulation](simulation.png)
 
 ---
-*Generated by simulation test infrastructure*
+*Generated by analysis test infrastructure (virtual_qpu)*
