@@ -15,6 +15,13 @@ import pytest
 CURRENT_DIR = Path(__file__).resolve().parent
 SIMULATION_ROOT = CURRENT_DIR.parents[3]
 
+# Ensure local modules (quam_factory, macros, etc.) are importable regardless
+# of the working directory from which pytest is invoked.
+if str(CURRENT_DIR) not in sys.path:
+    sys.path.insert(0, str(CURRENT_DIR))
+if str(SIMULATION_ROOT) not in sys.path:
+    sys.path.insert(0, str(SIMULATION_ROOT))
+
 # Ensure matplotlib/qualibrate can write caches/logs under repo.
 _cache_base = SIMULATION_ROOT / ".pytest_cache"
 _cache_base.mkdir(parents=True, exist_ok=True)
