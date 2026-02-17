@@ -27,8 +27,9 @@ description = """
         SINGLE QUBIT RANDOMIZED BENCHMARKING (PPU-optimized)
 The program plays random sequences of single-qubit Clifford gates and measures the
 survival probability (return to ground state) afterward.  The 24 single-qubit
-Cliffords are decomposed into native gates {x90, x180, -x90, -x180, y90, y180,
--y90, -y180} plus virtual Z rotations (frame_rotation_2pi, zero duration).
+Cliffords are decomposed via Qiskit transpilation (basis: rx, ry, rz) into native
+gates {x90, x180, -x90, y90, y180, -y90} plus virtual Z rotations
+(frame_rotation_2pi, zero duration).
 
 The PPU generates random Clifford circuits on-chip:
   1. PPU PHASE: For each circuit, random Cliffords are generated incrementally
@@ -48,7 +49,7 @@ Prerequisites:
     - Having calibrated the sensor dots and resonators (nodes 2a, b, 3).
     - Having calibrated initialization, operation and PSB measurement points (nodes 4, 5).
     - Having calibrated π and π/2 pulse parameters (nodes 08a, 08b, 10a).
-    - x90 and x180 operations defined on the qubit XY channel.
+    - Native gate operations (x90, x180, -x90, y90, y180, -y90) defined on the qubit XY channel.
 
 State update:
     - The averaged single qubit gate fidelity: qubit.gate_fidelity["averaged"].
@@ -106,8 +107,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     max_random = max_depth - 1  # d-1 random Cliffords for depth d
 
     node.log(
-        f"RB config: {num_depths} depths (max {max_depth}), "
-        f"{num_circuits} circuits, {num_shots} shots/circuit"
+        f"RB config: {num_depths} depths (max {max_depth}), " f"{num_circuits} circuits, {num_shots} shots/circuit"
     )
 
     # Register sweep axes for xarray dataset
@@ -137,12 +137,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         clifford_compose_qua = declare(int, value=clifford_tables["compose"])
         clifford_inverse_qua = declare(int, value=clifford_tables["inverse"])
         clifford_decomp_qua = declare(int, value=clifford_tables["decomp_flat"])
-        clifford_decomp_offsets_qua = declare(
-            int, value=clifford_tables["decomp_offsets"]
-        )
-        clifford_decomp_lengths_qua = declare(
-            int, value=clifford_tables["decomp_lengths"]
-        )
+        clifford_decomp_offsets_qua = declare(int, value=clifford_tables["decomp_offsets"])
+        clifford_decomp_lengths_qua = declare(int, value=clifford_tables["decomp_lengths"])
 
         # Mutable arrays for pre-computed circuit data
         circuit_array = declare(int, size=max(max_random, 1))
@@ -172,9 +168,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             # ═════════════════════════════════════════════════════════════
             # Outermost loop: circuits
             # ═════════════════════════════════════════════════════════════
-            with for_(
-                circuit_idx, 0, circuit_idx < num_circuits, circuit_idx + 1
-            ):
+            with for_(circuit_idx, 0, circuit_idx < num_circuits, circuit_idx + 1):
                 save(circuit_idx, n_st)
 
                 # ─────────────────────────────────────────────────────────
@@ -190,9 +184,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 assign(total_clifford, 0)  # identity
                 assign(prev_random_count, 0)
 
-                with for_(
-                    depth_idx, 0, depth_idx < num_depths, depth_idx + 1
-                ):
+                with for_(depth_idx, 0, depth_idx < num_depths, depth_idx + 1):
                     assign(num_random, depths_qua[depth_idx] - 1)
 
                     # Generate only the NEW Cliffords since last checkpoint
@@ -201,9 +193,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         assign(circuit_array[i], rand_clifford)
                         assign(
                             total_clifford,
-                            clifford_compose_qua[
-                                rand_clifford * num_cliffords + total_clifford
-                            ],
+                            clifford_compose_qua[rand_clifford * num_cliffords + total_clifford],
                         )
 
                     # Snapshot inverse at this depth checkpoint
@@ -216,9 +206,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # ─────────────────────────────────────────────────────────
                 # PHASE 3: Experiment (gate playback only)
                 # ─────────────────────────────────────────────────────────
-                with for_(
-                    depth_idx, 0, depth_idx < num_depths, depth_idx + 1
-                ):
+                with for_(depth_idx, 0, depth_idx < num_depths, depth_idx + 1):
                     assign(num_random, depths_qua[depth_idx] - 1)
 
                     with for_(n, 0, n < num_shots, n + 1):
@@ -234,9 +222,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                         # --- Initialize ---
                         for i_q, qubit in batched_qubits.items():
-                            qubit.initialize(
-                                duration=node.parameters.gap_wait_time_in_ns
-                            )
+                            qubit.initialize(duration=node.parameters.gap_wait_time_in_ns)
                         align()
 
                         # --- Gate sequence: d-1 random Cliffords ---
@@ -263,9 +249,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             ):
                                 assign(
                                     current_gate,
-                                    clifford_decomp_qua[
-                                        decomp_offset + gate_idx
-                                    ],
+                                    clifford_decomp_qua[decomp_offset + gate_idx],
                                 )
                                 for i_q, qubit in batched_qubits.items():
                                     play_rb_gate(qubit, current_gate)
@@ -288,9 +272,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         ):
                             assign(
                                 current_gate,
-                                clifford_decomp_qua[
-                                    decomp_offset + gate_idx
-                                ],
+                                clifford_decomp_qua[decomp_offset + gate_idx],
                             )
                             for i_q, qubit in batched_qubits.items():
                                 play_rb_gate(qubit, current_gate)
@@ -328,17 +310,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
@@ -347,21 +324,14 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch raw data."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        node.namespace["job"] = job = qm.execute(
-            node.namespace["qua_program"]
-        )
-        data_fetcher = XarrayDataFetcher(
-            job, node.namespace["sweep_axes"]
-        )
+        node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
                 data_fetcher.get("n", 0),
@@ -394,10 +364,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
     log_fitted_results(fit_results, node.log)
 
-    node.outcomes = {
-        qname: ("successful" if r["success"] else "failed")
-        for qname, r in fit_results.items()
-    }
+    node.outcomes = {qname: ("successful" if r["success"] else "failed") for qname, r in fit_results.items()}
 
 
 # %% {Plot_data}
@@ -420,9 +387,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            q.gate_fidelity["averaged"] = float(
-                node.results["fit_results"][q.name]["gate_fidelity"]
-            )
+            q.gate_fidelity["averaged"] = float(node.results["fit_results"][q.name]["gate_fidelity"])
 
 
 # %% {Save_results}

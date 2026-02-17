@@ -10,29 +10,31 @@ Native gate set
 The 24 single-qubit Cliffords are decomposed into physical and virtual gates:
 
     Physical (Gaussian pulses on the XY channel):
-        x90, x180, -x90, -x180, y90, y180, -y90, -y180
+        x90, x180, -x90, y90, y180, -y90
 
     Virtual (frame rotations, zero duration):
         z90   (π/2 about Z)
         z180  (π about Z)
         z270  (3π/2 about Z)
 
-    Identity:
-        idle  (no-op, skipped in decomposition)
+Note: ±180° rotations about the same axis are identical Cliffords
+(differ only by a global phase), so -x180 and -y180 are omitted.
+Zero-angle rotations (identity) are filtered out during decomposition.
 
-The Qiskit transpiler with ``basis_gates=["rz", "sx", "x"]`` produces
-decompositions using ``{x90, x180, rz(θ)}``.  The ``rz`` angles are
-snapped to the three discrete virtual-Z gates above.  Only a subset of
-the 8 physical gates are reached by the default basis, but all are
-available in the QUA switch/case for future basis expansions.
+The Qiskit transpiler with ``basis_gates=["rx", "ry", "rz"]`` decomposes
+each Clifford into continuous-rotation gates.  Since Cliffords only involve
+multiples of π/2, the produced angles are snapped to the discrete native
+gates above.  This basis allows the transpiler to use both X- and Y-axis
+rotations natively, yielding shorter decompositions than the older
+``["rz", "sx", "x"]`` basis which was restricted to X-axis physical gates.
 
 Gate integer encoding
 ---------------------
 Each native gate is assigned a unique integer for efficient QUA lookup:
 
-    0: x90     1: x180    2: -x90    3: -x180
-    4: y90     5: y180    6: -y90    7: -y180
-    8: z90     9: z180   10: z270   11: idle
+    0: x90     1: x180    2: -x90
+    3: y90     4: y180    5: -y90
+    6: z90     7: z180    8: z270
 """
 
 from __future__ import annotations
@@ -49,15 +51,12 @@ NATIVE_GATE_MAP: dict[str, int] = {
     "x90": 0,
     "x180": 1,
     "-x90": 2,
-    "-x180": 3,
-    "y90": 4,
-    "y180": 5,
-    "-y90": 6,
-    "-y180": 7,
-    "z90": 8,
-    "z180": 9,
-    "z270": 10,
-    "idle": 11,
+    "y90": 3,
+    "y180": 4,
+    "-y90": 5,
+    "z90": 6,
+    "z180": 7,
+    "z270": 8,
 }
 
 EPS = 1e-8
@@ -68,8 +67,53 @@ EPS = 1e-8
 # ---------------------------------------------------------------------------
 
 
+def _snap_rotation_angle(gate) -> tuple[float, str]:
+    """Normalise a parameterised rotation angle to [0, 2π) and format it.
+
+    Returns ``(angle_mod_2pi, label)`` where *label* is a human-readable
+    string used in error messages.
+    """
+    raw = float(gate.params[0])
+    angle = raw % (2 * np.pi)
+    label = f"{raw:.6f} rad ({raw * 180 / np.pi:.1f}°)"
+    return angle, label
+
+
+_QUARTER_PI_NAMES = {
+    # angle mod 2π  → gate-name pairs for the three rotation axes
+    # π/2
+    "x_quarter": "x90",
+    "y_quarter": "y90",
+    "z_quarter": "z90",
+    # π
+    "x_half": "x180",
+    "y_half": "y180",
+    "z_half": "z180",
+    # 3π/2  (= −π/2 mod 2π)
+    "x_three_quarter": "-x90",
+    "y_three_quarter": "-y90",
+    "z_three_quarter": "z270",
+}
+
+
+def _rotation_to_native(axis: str, angle: float, label: str) -> str:
+    """Map a rotation angle (already mod 2π) on a given axis to a native gate name."""
+    if np.isclose(angle, np.pi / 2, atol=EPS):
+        return _QUARTER_PI_NAMES[f"{axis}_quarter"]
+    if np.isclose(angle, np.pi, atol=EPS):
+        return _QUARTER_PI_NAMES[f"{axis}_half"]
+    if np.isclose(angle, 3 * np.pi / 2, atol=EPS):
+        return _QUARTER_PI_NAMES[f"{axis}_three_quarter"]
+    if np.isclose(angle, 0, atol=EPS) or np.isclose(angle, 2 * np.pi, atol=EPS):
+        return "idle"
+    raise ValueError(f"Unsupported R{axis.upper()} angle: {label}")
+
+
 def get_gate_name(gate) -> str:
     """Map a Qiskit gate to a native gate name.
+
+    Handles both parameterised rotation gates (``rx``, ``ry``, ``rz``)
+    and named discrete gates (``sx``, ``sxdg``, ``x``, ``y``, ``id``).
 
     Parameters
     ----------
@@ -79,35 +123,30 @@ def get_gate_name(gate) -> str:
     Returns
     -------
     str
-        One of the keys in :data:`NATIVE_GATE_MAP`.
+        One of the keys in :data:`NATIVE_GATE_MAP`, or ``"idle"`` for
+        zero-angle rotations (filtered out by :func:`process_circuit_to_integers`).
 
     Raises
     ------
     ValueError
-        If the gate or RZ angle is not supported.
+        If the gate or rotation angle is not a supported multiple of π/2.
     """
     name = gate.name.lower()
 
-    if name == "rz":
-        angle = float(gate.params[0]) % (2 * np.pi)
-        if np.isclose(angle, np.pi / 2, atol=EPS):
-            return "z90"
-        if np.isclose(angle, np.pi, atol=EPS):
-            return "z180"
-        if np.isclose(angle, 3 * np.pi / 2, atol=EPS) or np.isclose(
-            angle, (-np.pi / 2) % (2 * np.pi), atol=EPS
-        ):
-            return "z270"
-        if np.isclose(angle, 0, atol=EPS) or np.isclose(angle, 2 * np.pi, atol=EPS):
-            return "idle"
-        raise ValueError(
-            f"Unsupported RZ angle: {angle:.6f} rad ({angle * 180 / np.pi:.1f}°)"
-        )
+    # Parameterised rotation gates (default basis: rx, ry, rz)
+    if name in ("rx", "ry", "rz"):
+        angle, label = _snap_rotation_angle(gate)
+        return _rotation_to_native(name[1], angle, label)
 
+    # Named discrete gates (backward-compatible with basis ["rz", "sx", "x"])
     if name == "sx":
         return "x90"
+    if name == "sxdg":
+        return "-x90"
     if name == "x":
         return "x180"
+    if name == "y":
+        return "y180"
     if name == "id":
         return "idle"
 
@@ -205,7 +244,8 @@ def build_single_qubit_clifford_tables(
     ----------
     basis_gates : list[str] | None
         Qiskit basis gates for transpilation.  Defaults to
-        ``["rz", "sx", "x"]`` which produces ``{x90, x180, z90/z180/z270}``.
+        ``["rx", "ry", "rz"]`` which allows the transpiler to use all
+        physical X/Y rotations and virtual Z rotations natively.
 
     Returns
     -------
@@ -224,7 +264,7 @@ def build_single_qubit_clifford_tables(
         - ``max_decomp_length`` (int): Longest decomposition across all
           Cliffords.
     """
-    basis_gates = basis_gates or ["rz", "sx", "x"]
+    basis_gates = basis_gates or ["rx", "ry", "rz"]
     cliffords = _generate_single_qubit_clifford_group()
     num_cliffords = len(cliffords)
 
