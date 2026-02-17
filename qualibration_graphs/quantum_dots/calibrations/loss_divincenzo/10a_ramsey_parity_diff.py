@@ -83,9 +83,7 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "tau": xr.DataArray(
-            tau_values * 4, attrs={"long_name": "idle time", "units": "ns"}
-        ),
+        "tau": xr.DataArray(tau_values * 4, attrs={"long_name": "idle time", "units": "ns"}),
     }
 
     with program() as node.namespace["qua_program"]:

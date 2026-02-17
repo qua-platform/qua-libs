@@ -41,9 +41,7 @@ def plot_ramsey_detuning(ds: xr.Dataset, qubits: List, fit_results: dict = None)
     return fig
 
 
-def plot_individual_ramsey_detuning(
-    ax: Axes, ds: xr.Dataset, qubit, fit_results: dict = None
-):
+def plot_individual_ramsey_detuning(ax: Axes, ds: xr.Dataset, qubit, fit_results: dict = None):
     """
     Plots individual qubit parity difference data as a function of frequency detuning.
 

@@ -90,9 +90,7 @@ def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "detuning": xr.DataArray(
-            detuning_values, attrs={"long_name": "frequency detuning", "units": "Hz"}
-        ),
+        "detuning": xr.DataArray(detuning_values, attrs={"long_name": "frequency detuning", "units": "Hz"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -132,9 +130,7 @@ def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
                     align()
                     for i, qubit in batched_qubits.items():
                         op_length = qubit.macros["x90"].duration
-                        qubit.initialize(
-                            duration=node.parameters.gap_wait_time_in_ns + op_length * 2 + 4 * idle_time
-                        )
+                        qubit.initialize(duration=node.parameters.gap_wait_time_in_ns + op_length * 2 + 4 * idle_time)
                     # ---------------------------------------------------------
                     # Step 3: X90 pulse, idle, X90 pulse
                     # ---------------------------------------------------------
