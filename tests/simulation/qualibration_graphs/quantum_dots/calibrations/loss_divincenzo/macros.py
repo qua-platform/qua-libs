@@ -19,9 +19,9 @@ class X180Macro(QuamMacro):  # pylint: disable=too-few-public-methods
     amplitude_scale: Optional[float] = 1.0
     duration: Optional[int] = 100
 
-    def _validate(self, xy_channel, duration, amplitude_scale) -> None:
-        if xy_channel is None:
-            raise ValueError("Cannot apply X180 gate: xy_channel is not configured on parent qubit.")
+    def _validate(self, xy, duration, amplitude_scale) -> None:
+        if xy is None:
+            raise ValueError("Cannot apply X180 gate: xy is not configured on parent qubit.")
 
         missing = []
         if duration is None:
@@ -44,9 +44,9 @@ class X180Macro(QuamMacro):  # pylint: disable=too-few-public-methods
         if duration is None:
             duration = self.duration
 
-        self._validate(parent_qubit.xy_channel, duration, amp_scale)
+        self._validate(parent_qubit.xy, duration, amp_scale)
 
-        parent_qubit.xy_channel.play(
+        parent_qubit.xy.play(
             self.pulse_name,
             amplitude_scale=amp_scale,
             duration=duration,
