@@ -18,12 +18,12 @@ def test_single_qubit_rb_simulation(simulation_runner):
     simulation_runner(
         node_name=NODE_NAME,
         param_overrides={
-            "num_circuits_per_length": 2,
-            "num_shots": 2,
-            "max_circuit_depth": 4,
+            "num_circuits_per_length": 1,
+            "num_shots": 1,
+            "max_circuit_depth": 100,
             "log_scale": True,
-            "gap_wait_time_in_ns": 256,
-            "simulation_duration_ns": 100_000,
+            "gap_wait_time_in_ns": 1024,
+            "simulation_duration_ns": 20_000,
             "timeout": 60,
         },
     )
