@@ -10,12 +10,13 @@ from quam.components.hardware import FrequencyConverter, LocalOscillator  # type
 from quam.components.ports import (  # type: ignore[import-not-found]
     LFFEMAnalogInputPort,
     LFFEMAnalogOutputPort,
-    MWFEMAnalogOutputPort,
 )
 
 from quam_builder.architecture.quantum_dots.components import (  # type: ignore[import-not-found]
     VoltageGate,
-    XYDriveMW,
+)
+from quam_builder.architecture.quantum_dots.components.xy_drive import (  # type: ignore[import-not-found]
+    XYDriveIQ,
 )
 from quam_builder.architecture.quantum_dots.components.readout_resonator import (  # type: ignore[import-not-found]
     ReadoutResonatorIQ,
@@ -25,9 +26,9 @@ from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam  # typ
 from quam_builder.architecture.quantum_dots.qubit import LDQubit  # type: ignore[import-not-found]
 
 try:
-    from .macros import MeasureMacro, X180Macro, X90Macro
+    from .macros import MeasureMacro, XGateMacro, YGateMacro, ZGateMacro
 except ImportError:
-    from macros import MeasureMacro, X180Macro, X90Macro  # type: ignore[import-not-found]
+    from macros import MeasureMacro, XGateMacro, YGateMacro, ZGateMacro  # type: ignore[import-not-found]
 
 # Compatibility shim for quam-builder feat/quantum_dots: ReadoutResonatorIQ.__post_init__
 # expects opx_output, but InOutIQChannel defines opx_output_I/Q only.
@@ -41,9 +42,8 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
     machine = LossDiVincenzoQuam()
 
     controller = "con1"
-    lf_fem_slot_1 = 2  # For qubit pair 1 (Q1, Q2)
-    lf_fem_slot_2 = 3  # For qubit pair 2 (Q3, Q4)
-    mw_fem_slot = 1
+    lf_fem_slot_1 = 4  # For qubit pair 1 (Q1, Q2)
+    lf_fem_slot_2 = 5  # For qubit pair 2 (Q3, Q4)
 
     plungers = {}
     for i in range(1, 3):
@@ -214,22 +214,41 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
         ),
     }
 
+    # XY drives on LF-FEM IQ channels (avoids cross-FEM sticky corruption bug)
+    # Q1/Q2: FEM 4 ports 5-6 / 7-8;  Q3/Q4: FEM 5 ports 5-6 / 7-8
+    xy_port_map = {
+        1: (lf_fem_slot_1, 5, 6),
+        2: (lf_fem_slot_1, 7, 8),
+        3: (lf_fem_slot_2, 5, 6),
+        4: (lf_fem_slot_2, 7, 8),
+    }
     xy_drives = {}
-    for i in range(1, 5):
-        xy_drives[i] = XYDriveMW(
+    for i, (fem_id, port_i, port_q) in xy_port_map.items():
+        xy_drives[i] = XYDriveIQ(
             id=f"Q{i}_xy",
-            opx_output=MWFEMAnalogOutputPort(
+            opx_output_I=LFFEMAnalogOutputPort(
                 controller_id=controller,
-                fem_id=mw_fem_slot,
-                port_id=i,
-                upconverter_frequency=5e9,
-                band=2,
-                full_scale_power_dbm=10,
+                fem_id=fem_id,
+                port_id=port_i,
+                output_mode="direct",
+            ),
+            opx_output_Q=LFFEMAnalogOutputPort(
+                controller_id=controller,
+                fem_id=fem_id,
+                port_id=port_q,
+                output_mode="direct",
+            ),
+            frequency_converter_up=FrequencyConverter(
+                local_oscillator=LocalOscillator(frequency=0),
             ),
             intermediate_frequency=100e6,
         )
         length = 100
-        xy_drives[i].operations["X180"] = pulses.GaussianPulse(length=length, amplitude=0.2, sigma=length / 6)
+        xy_drives[i].operations["X180"] = pulses.GaussianPulse(
+            length=length,
+            amplitude=0.2,
+            sigma=length / 6,
+        )
 
     machine.create_virtual_gate_set(
         virtual_channel_mapping={
@@ -325,8 +344,15 @@ def _register_qubits_with_points(
             voltages={f"virtual_dot_{xy_idx}": -0.05},
         )
 
-        qubit.macros["x180"] = X180Macro(pulse_name="X180", amplitude_scale=1.0)
-        qubit.macros["x90"] = X90Macro(pulse_name="X180", amplitude_scale=0.5)
+        qubit.macros["x180"] = XGateMacro(pulse_name="x180", theta=180.0, duration=100)
+        qubit.macros["x90"] = XGateMacro(pulse_name="x180", theta=90.0, duration=100)
+        qubit.macros["xm90"] = XGateMacro(pulse_name="x180", theta=-90.0, duration=100)
+        qubit.macros["y180"] = YGateMacro(pulse_name="x180", theta=180.0, duration=100)
+        qubit.macros["y90"] = YGateMacro(pulse_name="x180", theta=90.0, duration=100)
+        qubit.macros["ym90"] = YGateMacro(pulse_name="x180", theta=-90.0, duration=100)
+        qubit.macros["z90"] = ZGateMacro(theta=90.0)
+        qubit.macros["z180"] = ZGateMacro(theta=180.0)
+        qubit.macros["zm90"] = ZGateMacro(theta=-90.0)
         qubit.macros["measure"] = MeasureMacro(
             pulse_name="readout",
             readout_duration=2000,

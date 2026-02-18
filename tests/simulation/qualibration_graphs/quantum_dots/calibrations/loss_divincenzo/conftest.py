@@ -79,13 +79,14 @@ DEFAULT_SMALL_SWEEP_PARAMS: Dict[str, Any] = {
 
 
 def _add_native_gate_operations(machine: LossDiVincenzoQuam) -> None:
-    """Register native-gate pulse operations on each qubit's XY channel.
+    """Register the lowercase ``x180`` operation alias on each qubit's XY channel.
 
-    All operations are derived from the calibrated X180 Gaussian pulse:
-      - π rotations use the full X180 amplitude.
-      - π/2 rotations use half the X180 amplitude.
-      - Y-axis rotations use the same waveform as X (the axis is
-        selected by the IQ modulation phase at play time).
+    All RB gates derive from this single calibrated pulse via
+    ``amplitude_scale`` and ``frame_rotation_2pi`` at play time:
+
+      - X rotations: amplitude_scale = theta / 180
+      - Y rotations: +90° frame shift, play X equivalent, -90° frame shift
+      - Z rotations: pure frame rotation (virtual, zero duration)
     """
     for qubit in machine.qubits.values():  # pylint: disable=no-member
         xy = qubit.xy
@@ -93,25 +94,12 @@ def _add_native_gate_operations(machine: LossDiVincenzoQuam) -> None:
         if ref_pulse is None:
             continue
 
-        ref_amp = ref_pulse.amplitude
-        ref_length = ref_pulse.length
-        ref_sigma = ref_pulse.sigma
-        half_amp = ref_amp / 2
-
-        for name, amp in [
-            ("x180", ref_amp),
-            ("x90", half_amp),
-            ("-x90", half_amp),
-            ("y180", ref_amp),
-            ("y90", half_amp),
-            ("-y90", half_amp),
-        ]:
-            if name not in xy.operations:
-                xy.operations[name] = quam_pulses.GaussianPulse(
-                    length=ref_length,
-                    amplitude=amp,
-                    sigma=ref_sigma,
-                )
+        if "x180" not in xy.operations:
+            xy.operations["x180"] = quam_pulses.GaussianPulse(
+                length=ref_pulse.length,
+                amplitude=ref_pulse.amplitude,
+                sigma=ref_pulse.sigma,
+            )
 
 
 @pytest.fixture

@@ -1,10 +1,16 @@
-"""Custom macros for programmatic QuAM construction in simulation tests."""
+"""Custom macros for programmatic QuAM construction in simulation tests.
+
+All physical gates derive from a single calibrated X180 Gaussian pulse:
+  - X(theta): play x180 with amplitude_scale = theta / 180
+  - Y(theta): frame shift +90 deg, play X(theta), frame shift -90 deg
+  - Z(theta): virtual frame rotation by theta degrees
+"""
 
 from __future__ import annotations
 
 from typing import Optional
 
-from qm.qua import assign, declare, fixed
+from qm.qua import assign, declare, fixed, frame_rotation_2pi
 
 from quam.core import quam_dataclass  # type: ignore[import-not-found]
 from quam.core.macro.quam_macro import QuamMacro  # type: ignore[import-not-found]
@@ -12,59 +18,76 @@ from quam.utils.qua_types import QuaVariableBool  # type: ignore[import-not-foun
 
 
 @quam_dataclass
-class X180Macro(QuamMacro):  # pylint: disable=too-few-public-methods
-    """Macro for X180 gate: step to operate point and apply pi pulse."""
+class XGateMacro(QuamMacro):  # pylint: disable=too-few-public-methods
+    """X-axis rotation derived from a single calibrated pi-pulse.
 
-    pulse_name: str = "X180"
-    amplitude_scale: Optional[float] = 1.0
-    duration: Optional[int] = 100
+    amplitude_scale = theta / 180, so:
+      - x(180)  → full amplitude  (pi pulse)
+      - x(90)   → half amplitude  (pi/2 pulse)
+      - x(-90)  → negative half   (-pi/2 pulse)
+    """
 
-    def _validate(self, xy, duration, amplitude_scale) -> None:
-        if xy is None:
-            raise ValueError("Cannot apply X180 gate: xy is not configured on parent qubit.")
+    pulse_name: str = "x180"
+    theta: float = 180.0
+    duration: Optional[int] = None
 
-        missing = []
-        if duration is None:
-            missing.append("duration")
-        if amplitude_scale is None:
-            missing.append("amplitude_scale")
-        if missing:
-            raise ValueError(
-                f"Missing required parameter(s): {', '.join(missing)}. "
-                "Provide via kwargs or set as class attributes."
-            )
-
-    def apply(self, *args, **kwargs) -> None:
-        """Execute X180 gate sequence."""
+    def apply(self, theta: Optional[float] = None, duration: Optional[int] = None, **kwargs) -> None:
+        theta = theta if theta is not None else self.theta
+        duration = duration if duration is not None else self.duration
         parent_qubit = self.parent.parent
-        amp_scale = kwargs.get("amplitude_scale", self.amplitude_scale)
-        duration = kwargs.pop("duration", None)
-        if duration is None and args:
-            duration = args[0]
-        if duration is None:
-            duration = self.duration
-
-        self._validate(parent_qubit.xy, duration, amp_scale)
-
+        amplitude_scale = theta / 180.0
         parent_qubit.xy.play(
             self.pulse_name,
-            amplitude_scale=amp_scale,
+            amplitude_scale=amplitude_scale,
             duration=duration,
         )
 
 
 @quam_dataclass
-class X90Macro(X180Macro):  # pylint: disable=too-few-public-methods
-    """Macro for X90 gate using the X180 pulse."""
+class YGateMacro(QuamMacro):  # pylint: disable=too-few-public-methods
+    """Y-axis rotation: frame shift +90 deg, play X(theta), frame shift -90 deg.
 
-    pulse_name: str = "X180"
-    amplitude_scale: Optional[float] = 0.5
-    duration: Optional[int] = 100
+    Uses the same calibrated pi-pulse as XGateMacro, selecting the Y axis
+    via an IQ frame rotation.
+    """
+
+    pulse_name: str = "x180"
+    theta: float = 180.0
+    duration: Optional[int] = None
+
+    def apply(self, theta: Optional[float] = None, duration: Optional[int] = None, **kwargs) -> None:
+        theta = theta if theta is not None else self.theta
+        duration = duration if duration is not None else self.duration
+        parent_qubit = self.parent.parent
+        xy = parent_qubit.xy
+        amplitude_scale = theta / 180.0
+        frame_rotation_2pi(0.25, xy.name)
+        xy.play(
+            self.pulse_name,
+            amplitude_scale=amplitude_scale,
+            duration=duration,
+        )
+        frame_rotation_2pi(-0.25, xy.name)
+
+
+@quam_dataclass
+class ZGateMacro(QuamMacro):  # pylint: disable=too-few-public-methods
+    """Z-axis rotation: virtual frame rotation (zero hardware duration).
+
+    frame_rotation_2pi(theta / 360) applies an R_z(theta) rotation.
+    """
+
+    theta: float = 180.0
+
+    def apply(self, theta: Optional[float] = None, **kwargs) -> None:
+        theta = theta if theta is not None else self.theta
+        parent_qubit = self.parent.parent
+        frame_rotation_2pi(theta / 360.0, parent_qubit.xy.name)
 
 
 @quam_dataclass
 class MeasureMacro(QuamMacro):  # pylint: disable=too-few-public-methods
-    """Macro for measurement with integrated voltage point navigation and thresholding."""
+    """Measurement with integrated voltage point navigation and thresholding."""
 
     pulse_name: str = "readout"
     readout_duration: int = 2000
@@ -92,11 +115,12 @@ class MeasureMacro(QuamMacro):  # pylint: disable=too-few-public-methods
     def apply(self, *args, **kwargs) -> QuaVariableBool:
         """Execute measurement sequence and return qubit state (parity)."""
         pulse = kwargs.get("pulse_name", self.pulse_name)
+        duration = kwargs.get("duration", self.readout_duration)
 
         parent_qubit = self.parent.parent
         self._validate(parent_qubit)
 
-        parent_qubit.step_to_point("measure", duration=self.readout_duration)
+        parent_qubit.step_to_point("measure", duration=duration)
 
         qd_pair_id = parent_qubit.machine.find_quantum_dot_pair(
             parent_qubit.quantum_dot.id, parent_qubit.preferred_readout_quantum_dot
