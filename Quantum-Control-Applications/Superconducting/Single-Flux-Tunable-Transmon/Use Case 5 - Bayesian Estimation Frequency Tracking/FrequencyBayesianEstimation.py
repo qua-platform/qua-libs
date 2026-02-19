@@ -15,6 +15,7 @@ u = unit(coerce_to_integer=True)
 # Experiment parameters
 # =============================================================================
 
+
 class Params:
     # Experiment
     num_repetitions: int = 100
@@ -45,6 +46,7 @@ class Params:
 # =============================================================================
 # Build QUA program
 # =============================================================================
+
 
 def build_qua_program(params: Params):
     """
@@ -208,6 +210,7 @@ def build_qua_program(params: Params):
 # =============================================================================
 # Run + (optional) fetch
 # =============================================================================
+
 
 def run_experiment(program, *, host_ip: str, cluster_name: str):
     """Compile and execute the program."""

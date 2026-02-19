@@ -9,7 +9,7 @@ cluster_name = "CS_3"
 # =============================================================================
 freq_vs_flux_01_quad_term = 0.1
 threshold = 0.8
-confusion_matrix = [[1,0],[0,1]]
+confusion_matrix = [[1, 0], [0, 1]]
 
 # =============================================================================
 # Configuration
@@ -26,108 +26,72 @@ config = {
                             "sampling_rate": 1000000000.0,
                             "upsampling_mode": "pulse",
                             "output_mode": "direct",
-                            "offset": 0.0
+                            "offset": 0.0,
                         },
                         "2": {
                             "delay": 241,
                             "filter": {
                                 "exponential": [
-                                    [
-                                        -0.017749749083551754,
-                                        51.03276181114541
-                                    ],
-                                    [
-                                        -0.022756777028214548,
-                                        1055.2201642004272
-                                    ],
-                                    [
-                                        -0.005940920545415396,
-                                        5744.355835376397
-                                    ]
+                                    [-0.017749749083551754, 51.03276181114541],
+                                    [-0.022756777028214548, 1055.2201642004272],
+                                    [-0.005940920545415396, 5744.355835376397],
                                 ]
                             },
                             "sampling_rate": 1000000000.0,
                             "upsampling_mode": "pulse",
                             "output_mode": "amplified",
-                            "offset": 0.0
+                            "offset": 0.0,
                         },
                         "3": {
                             "delay": 240,
                             "filter": {
                                 "exponential": [
-                                    [
-                                        -0.01648775273660352,
-                                        49.43588902538462
-                                    ],
-                                    [
-                                        -0.009842087930616137,
-                                        705.6486219393202
-                                    ],
-                                    [
-                                        -0.0020773831826281786,
-                                        13769.13051714825
-                                    ]
+                                    [-0.01648775273660352, 49.43588902538462],
+                                    [-0.009842087930616137, 705.6486219393202],
+                                    [-0.0020773831826281786, 13769.13051714825],
                                 ]
                             },
                             "sampling_rate": 1000000000.0,
                             "upsampling_mode": "pulse",
                             "output_mode": "amplified",
-                            "offset": 0.0
+                            "offset": 0.0,
                         },
                         "4": {
                             "delay": 93,
                             "filter": {
                                 "exponential": [
-                                    [
-                                        -0.0239,
-                                        50.87272185053814
-                                    ],
-                                    [
-                                        -0.08037579444779294,
-                                        390.2908169214786
-                                    ],
-                                    [
-                                        -0.005315449373639713,
-                                        4656.564533985363
-                                    ]
+                                    [-0.0239, 50.87272185053814],
+                                    [-0.08037579444779294, 390.2908169214786],
+                                    [-0.005315449373639713, 4656.564533985363],
                                 ]
                             },
                             "sampling_rate": 1000000000.0,
                             "upsampling_mode": "pulse",
                             "output_mode": "amplified",
-                            "offset": 0.0
+                            "offset": 0.0,
                         },
                         "5": {
                             "delay": 240,
                             "filter": {
                                 "exponential": [
-                                    [
-                                        -0.01611176324957508,
-                                        49.92172006976806
-                                    ],
-                                    [
-                                        -0.00994403966488111,
-                                        668.6264756604577
-                                    ],
-                                    [
-                                        -0.0065185261292151075,
-                                        8072.969598980205
-                                    ]
+                                    [-0.01611176324957508, 49.92172006976806],
+                                    [-0.00994403966488111, 668.6264756604577],
+                                    [-0.0065185261292151075, 8072.969598980205],
                                 ]
                             },
                             "sampling_rate": 1000000000.0,
                             "upsampling_mode": "pulse",
                             "output_mode": "amplified",
-                            "offset": 0.0
+                            "offset": 0.0,
                         },
                         "6": {
                             "delay": 93,
                             "sampling_rate": 1000000000.0,
                             "upsampling_mode": "pulse",
                             "output_mode": "amplified",
-                            "offset": 0.0
-                        }
-                    }
+                            "offset": 0.0,
+                        },
+                    },
                 },
                 "1": {
                     "type": "MW",
@@ -137,50 +101,50 @@ config = {
                             "delay": 0,
                             "sampling_rate": 1000000000.0,
                             "full_scale_power_dbm": -10,
-                            "upconverter_frequency": 6150000000
+                            "upconverter_frequency": 6150000000,
                         },
                         "2": {
                             "band": 2,
                             "delay": 0,
                             "sampling_rate": 1000000000.0,
                             "full_scale_power_dbm": 10,
-                            "upconverter_frequency": 5200000000
+                            "upconverter_frequency": 5200000000,
                         },
                         "3": {
                             "band": 2,
                             "delay": 0,
                             "sampling_rate": 1000000000.0,
                             "full_scale_power_dbm": 10,
-                            "upconverter_frequency": 5200000000
+                            "upconverter_frequency": 5200000000,
                         },
                         "4": {
                             "band": 2,
                             "delay": 0,
                             "sampling_rate": 1000000000.0,
                             "full_scale_power_dbm": 10,
-                            "upconverter_frequency": 4666941732.297844
+                            "upconverter_frequency": 4666941732.297844,
                         },
                         "5": {
                             "band": 2,
                             "delay": 0,
                             "sampling_rate": 1000000000.0,
                             "full_scale_power_dbm": 10,
-                            "upconverter_frequency": 5200000000
+                            "upconverter_frequency": 5200000000,
                         },
                         "6": {
                             "band": 2,
                             "delay": 0,
                             "sampling_rate": 1000000000.0,
                             "full_scale_power_dbm": 10,
-                            "upconverter_frequency": 5200000000
+                            "upconverter_frequency": 5200000000,
                         },
                         "7": {
                             "band": 2,
                             "delay": 0,
                             "sampling_rate": 1000000000.0,
                             "full_scale_power_dbm": 10,
-                            "upconverter_frequency": 5200000000
-                        }
+                            "upconverter_frequency": 5200000000,
+                        },
                     },
                     "analog_inputs": {
                         "1": {
@@ -188,8 +152,8 @@ config = {
                             "downconverter_frequency": 6150000000,
                             "sampling_rate": 1000000000.0,
                         }
-                    }
-                }
+                    },
+                },
             }
         }
     },
@@ -214,278 +178,138 @@ config = {
                 "-x90_DragCosine": "Q1.xy.-x90_DragCosine.pulse",
                 "-y90_DragCosine": "Q1.xy.-y90_DragCosine.pulse",
                 "x180_DragCosine": "Q1.xy.x180_DragCosine.pulse",
-                "y180_DragCosine": "Q1.xy.y180_DragCosine.pulse"
+                "y180_DragCosine": "Q1.xy.y180_DragCosine.pulse",
             },
             "intermediate_frequency": 0,
             "core": "Q1",
-            "MWInput": {
-                "port": [
-                    "con1",
-                    1,
-                    2
-                ],
-                "upconverter": 1
-            }
+            "MWInput": {"port": ["con1", 1, 2], "upconverter": 1},
         },
         "Q1.resonator": {
-            "operations": {
-                "const": "Q1.resonator.const.pulse",
-                "readout": "Q1.resonator.readout.pulse"
-            },
+            "operations": {"const": "Q1.resonator.const.pulse", "readout": "Q1.resonator.readout.pulse"},
             "intermediate_frequency": -233200000,
             "core": "Q1",
-            "MWOutput": {
-                "port": [
-                    "con1",
-                    1,
-                    1
-                ]
-            },
+            "MWOutput": {"port": ["con1", 1, 1]},
             "smearing": 0,
             "time_of_flight": 408,
-            "MWInput": {
-                "port": [
-                    "con1",
-                    1,
-                    1
-                ],
-                "upconverter": 1
-            }
+            "MWInput": {"port": ["con1", 1, 1], "upconverter": 1},
         },
-        "Q1.z": {
-            "operations": {
-                "const": "Q1.z.const.pulse"
-            },
-            "singleInput": {
-                "port": [
-                    "con1",
-                    5,
-                    1
-                ]
-            }
-        },
+        "Q1.z": {"operations": {"const": "Q1.z.const.pulse"}, "singleInput": {"port": ["con1", 5, 1]}},
     },
     "pulses": {
-        "const_pulse": {
-            "operation": "control",
-            "length": 1000,
-            "waveforms": {
-                "I": "const_wf",
-                "Q": "zero_wf"
-            }
-        },
+        "const_pulse": {"operation": "control", "length": 1000, "waveforms": {"I": "const_wf", "Q": "zero_wf"}},
         "Q1.xy.saturation.pulse": {
             "operation": "control",
             "length": 20000,
-            "waveforms": {
-                "I": "Q1.xy.saturation.wf.I",
-                "Q": "Q1.xy.saturation.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.saturation.wf.I", "Q": "Q1.xy.saturation.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.xy.x90_Square.pulse": {
             "operation": "control",
             "length": 40,
-            "waveforms": {
-                "I": "Q1.xy.x90_Square.wf.I",
-                "Q": "Q1.xy.x90_Square.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.x90_Square.wf.I", "Q": "Q1.xy.x90_Square.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.xy.y90_Square.pulse": {
             "operation": "control",
             "length": 40,
-            "waveforms": {
-                "I": "Q1.xy.y90_Square.wf.I",
-                "Q": "Q1.xy.y90_Square.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.y90_Square.wf.I", "Q": "Q1.xy.y90_Square.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.xy.-x90_Square.pulse": {
             "operation": "control",
             "length": 40,
-            "waveforms": {
-                "I": "Q1.xy.-x90_Square.wf.I",
-                "Q": "Q1.xy.-x90_Square.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.-x90_Square.wf.I", "Q": "Q1.xy.-x90_Square.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.xy.-y90_Square.pulse": {
             "operation": "control",
             "length": 40,
-            "waveforms": {
-                "I": "Q1.xy.-y90_Square.wf.I",
-                "Q": "Q1.xy.-y90_Square.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.-y90_Square.wf.I", "Q": "Q1.xy.-y90_Square.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.xy.x180_Square.pulse": {
             "operation": "control",
             "length": 40,
-            "waveforms": {
-                "I": "Q1.xy.x180_Square.wf.I",
-                "Q": "Q1.xy.x180_Square.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.x180_Square.wf.I", "Q": "Q1.xy.x180_Square.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.xy.y180_Square.pulse": {
             "operation": "control",
             "length": 40,
-            "waveforms": {
-                "I": "Q1.xy.y180_Square.wf.I",
-                "Q": "Q1.xy.y180_Square.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.y180_Square.wf.I", "Q": "Q1.xy.y180_Square.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.xy.x90_DragCosine.pulse": {
             "operation": "control",
             "length": 48,
-            "waveforms": {
-                "I": "Q1.xy.x90_DragCosine.wf.I",
-                "Q": "Q1.xy.x90_DragCosine.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.x90_DragCosine.wf.I", "Q": "Q1.xy.x90_DragCosine.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.xy.y90_DragCosine.pulse": {
             "operation": "control",
             "length": 48,
-            "waveforms": {
-                "I": "Q1.xy.y90_DragCosine.wf.I",
-                "Q": "Q1.xy.y90_DragCosine.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.y90_DragCosine.wf.I", "Q": "Q1.xy.y90_DragCosine.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.xy.-x90_DragCosine.pulse": {
             "operation": "control",
             "length": 48,
-            "waveforms": {
-                "I": "Q1.xy.-x90_DragCosine.wf.I",
-                "Q": "Q1.xy.-x90_DragCosine.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.-x90_DragCosine.wf.I", "Q": "Q1.xy.-x90_DragCosine.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.xy.-y90_DragCosine.pulse": {
             "operation": "control",
             "length": 48,
-            "waveforms": {
-                "I": "Q1.xy.-y90_DragCosine.wf.I",
-                "Q": "Q1.xy.-y90_DragCosine.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.-y90_DragCosine.wf.I", "Q": "Q1.xy.-y90_DragCosine.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.xy.x180_DragCosine.pulse": {
             "operation": "control",
             "length": 48,
-            "waveforms": {
-                "I": "Q1.xy.x180_DragCosine.wf.I",
-                "Q": "Q1.xy.x180_DragCosine.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.x180_DragCosine.wf.I", "Q": "Q1.xy.x180_DragCosine.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.xy.y180_DragCosine.pulse": {
             "operation": "control",
             "length": 48,
-            "waveforms": {
-                "I": "Q1.xy.y180_DragCosine.wf.I",
-                "Q": "Q1.xy.y180_DragCosine.wf.Q"
-            },
-            "digital_marker": "ON"
+            "waveforms": {"I": "Q1.xy.y180_DragCosine.wf.I", "Q": "Q1.xy.y180_DragCosine.wf.Q"},
+            "digital_marker": "ON",
         },
         "Q1.resonator.const.pulse": {
             "operation": "control",
             "length": 100,
-            "waveforms": {
-                "I": "Q1.resonator.const.wf.I",
-                "Q": "Q1.resonator.const.wf.Q"
-            }
+            "waveforms": {"I": "Q1.resonator.const.wf.I", "Q": "Q1.resonator.const.wf.Q"},
         },
         "Q1.resonator.readout.pulse": {
             "operation": "measurement",
             "length": 1500,
-            "waveforms": {
-                "I": "Q1.resonator.readout.wf.I",
-                "Q": "Q1.resonator.readout.wf.Q"
-            },
+            "waveforms": {"I": "Q1.resonator.readout.wf.I", "Q": "Q1.resonator.readout.wf.Q"},
             "digital_marker": "ON",
             "integration_weights": {
                 "iw1": "Q1.resonator.readout.iw1",
                 "iw2": "Q1.resonator.readout.iw2",
-                "iw3": "Q1.resonator.readout.iw3"
-            }
+                "iw3": "Q1.resonator.readout.iw3",
+            },
         },
-        "Q1.z.const.pulse": {
-            "operation": "control",
-            "length": 100,
-            "waveforms": {
-                "single": "Q1.z.const.wf"
-            }
-        },
+        "Q1.z.const.pulse": {"operation": "control", "length": 100, "waveforms": {"single": "Q1.z.const.wf"}},
     },
     "waveforms": {
-        "zero_wf": {
-            "type": "constant",
-            "sample": 0.0
-        },
-        "const_wf": {
-            "type": "constant",
-            "sample": 0.1
-        },
-        "Q1.xy.saturation.wf.I": {
-            "type": "constant",
-            "sample": 0.021577948205837635
-        },
-        "Q1.xy.saturation.wf.Q": {
-            "type": "constant",
-            "sample": 0.0
-        },
-        "Q1.xy.x90_Square.wf.I": {
-            "type": "constant",
-            "sample": 0.05
-        },
-        "Q1.xy.x90_Square.wf.Q": {
-            "type": "constant",
-            "sample": 0.0
-        },
-        "Q1.xy.y90_Square.wf.I": {
-            "type": "constant",
-            "sample": -0.056009202016146266
-        },
-        "Q1.xy.y90_Square.wf.Q": {
-            "type": "constant",
-            "sample": 0.11174958295006973
-        },
-        "Q1.xy.-x90_Square.wf.I": {
-            "type": "constant",
-            "sample": -0.125
-        },
-        "Q1.xy.-x90_Square.wf.Q": {
-            "type": "constant",
-            "sample": 0.0
-        },
-        "Q1.xy.-y90_Square.wf.I": {
-            "type": "constant",
-            "sample": 0.056009202016146266
-        },
-        "Q1.xy.-y90_Square.wf.Q": {
-            "type": "constant",
-            "sample": -0.11174958295006973
-        },
-        "Q1.xy.x180_Square.wf.I": {
-            "type": "constant",
-            "sample": 0.1
-        },
-        "Q1.xy.x180_Square.wf.Q": {
-            "type": "constant",
-            "sample": 0.0
-        },
-        "Q1.xy.y180_Square.wf.I": {
-            "type": "constant",
-            "sample": -0.11201840403229253
-        },
-        "Q1.xy.y180_Square.wf.Q": {
-            "type": "constant",
-            "sample": 0.22349916590013946
-        },
+        "zero_wf": {"type": "constant", "sample": 0.0},
+        "const_wf": {"type": "constant", "sample": 0.1},
+        "Q1.xy.saturation.wf.I": {"type": "constant", "sample": 0.021577948205837635},
+        "Q1.xy.saturation.wf.Q": {"type": "constant", "sample": 0.0},
+        "Q1.xy.x90_Square.wf.I": {"type": "constant", "sample": 0.05},
+        "Q1.xy.x90_Square.wf.Q": {"type": "constant", "sample": 0.0},
+        "Q1.xy.y90_Square.wf.I": {"type": "constant", "sample": -0.056009202016146266},
+        "Q1.xy.y90_Square.wf.Q": {"type": "constant", "sample": 0.11174958295006973},
+        "Q1.xy.-x90_Square.wf.I": {"type": "constant", "sample": -0.125},
+        "Q1.xy.-x90_Square.wf.Q": {"type": "constant", "sample": 0.0},
+        "Q1.xy.-y90_Square.wf.I": {"type": "constant", "sample": 0.056009202016146266},
+        "Q1.xy.-y90_Square.wf.Q": {"type": "constant", "sample": -0.11174958295006973},
+        "Q1.xy.x180_Square.wf.I": {"type": "constant", "sample": 0.1},
+        "Q1.xy.x180_Square.wf.Q": {"type": "constant", "sample": 0.0},
+        "Q1.xy.y180_Square.wf.I": {"type": "constant", "sample": -0.11201840403229253},
+        "Q1.xy.y180_Square.wf.Q": {"type": "constant", "sample": 0.22349916590013946},
         "Q1.xy.x90_DragCosine.wf.I": {
             "type": "arbitrary",
             "samples": [
@@ -536,8 +360,8 @@ config = {
                 0.0016353230164499427,
                 0.0007322532179644887,
                 0.00018388365654294642,
-                0.0
-            ]
+                0.0,
+            ],
         },
         "Q1.xy.x90_DragCosine.wf.Q": {
             "type": "arbitrary",
@@ -589,8 +413,8 @@ config = {
                 0.00029390736404847994,
                 0.00019890140200495818,
                 0.00010034603973059635,
-                -4.842746654197157e-19
-            ]
+                -4.842746654197157e-19,
+            ],
         },
         "Q1.xy.y90_DragCosine.wf.I": {
             "type": "arbitrary",
@@ -642,8 +466,8 @@ config = {
                 -0.00029390736404847983,
                 -0.00019890140200495813,
                 -0.00010034603973059634,
-                4.842746654197157e-19
-            ]
+                4.842746654197157e-19,
+            ],
         },
         "Q1.xy.y90_DragCosine.wf.Q": {
             "type": "arbitrary",
@@ -695,8 +519,8 @@ config = {
                 0.0016353230164499427,
                 0.0007322532179644887,
                 0.00018388365654294642,
-                -2.9653270945720513e-35
-            ]
+                -2.9653270945720513e-35,
+            ],
         },
         "Q1.xy.-x90_DragCosine.wf.I": {
             "type": "arbitrary",
@@ -748,8 +572,8 @@ config = {
                 -0.0016353230164499427,
                 -0.0007322532179644887,
                 -0.00018388365654294642,
-                5.930654189144103e-35
-            ]
+                5.930654189144103e-35,
+            ],
         },
         "Q1.xy.-x90_DragCosine.wf.Q": {
             "type": "arbitrary",
@@ -801,8 +625,8 @@ config = {
                 -0.0002939073640484797,
                 -0.0001989014020049581,
                 -0.00010034603973059633,
-                4.842746654197157e-19
-            ]
+                4.842746654197157e-19,
+            ],
         },
         "Q1.xy.-y90_DragCosine.wf.I": {
             "type": "arbitrary",
@@ -854,8 +678,8 @@ config = {
                 0.00029390736404848005,
                 0.00019890140200495824,
                 0.00010034603973059637,
-                -4.842746654197157e-19
-            ]
+                -4.842746654197157e-19,
+            ],
         },
         "Q1.xy.-y90_DragCosine.wf.Q": {
             "type": "arbitrary",
@@ -907,8 +731,8 @@ config = {
                 -0.0016353230164499427,
                 -0.0007322532179644887,
                 -0.00018388365654294642,
-                -2.9653270945720513e-35
-            ]
+                -2.9653270945720513e-35,
+            ],
         },
         "Q1.xy.x180_DragCosine.wf.I": {
             "type": "arbitrary",
@@ -960,8 +784,8 @@ config = {
                 0.0032706460328998854,
                 0.0014645064359289773,
                 0.00036776731308589284,
-                0.0
-            ]
+                0.0,
+            ],
         },
         "Q1.xy.x180_DragCosine.wf.Q": {
             "type": "arbitrary",
@@ -1013,8 +837,8 @@ config = {
                 0.0005878147280969599,
                 0.00039780280400991637,
                 0.0002006920794611927,
-                -9.685493308394314e-19
-            ]
+                -9.685493308394314e-19,
+            ],
         },
         "Q1.xy.y180_DragCosine.wf.I": {
             "type": "arbitrary",
@@ -1066,8 +890,8 @@ config = {
                 -0.0005878147280969597,
                 -0.00039780280400991626,
                 -0.00020069207946119268,
-                9.685493308394314e-19
-            ]
+                9.685493308394314e-19,
+            ],
         },
         "Q1.xy.y180_DragCosine.wf.Q": {
             "type": "arbitrary",
@@ -1119,84 +943,21 @@ config = {
                 0.0032706460328998854,
                 0.0014645064359289773,
                 0.00036776731308589284,
-                -5.930654189144103e-35
-            ]
+                -5.930654189144103e-35,
+            ],
         },
-        "Q1.resonator.const.wf.I": {
-            "type": "constant",
-            "sample": 0.125
-        },
-        "Q1.resonator.const.wf.Q": {
-            "type": "constant",
-            "sample": 0.0
-        },
-        "Q1.resonator.readout.wf.I": {
-            "type": "constant",
-            "sample": 0.02122727272727273
-        },
-        "Q1.resonator.readout.wf.Q": {
-            "type": "constant",
-            "sample": 0.0
-        },
-        "Q1.z.const.wf": {
-            "type": "constant",
-            "sample": 0.1
-        },
+        "Q1.resonator.const.wf.I": {"type": "constant", "sample": 0.125},
+        "Q1.resonator.const.wf.Q": {"type": "constant", "sample": 0.0},
+        "Q1.resonator.readout.wf.I": {"type": "constant", "sample": 0.02122727272727273},
+        "Q1.resonator.readout.wf.Q": {"type": "constant", "sample": 0.0},
+        "Q1.z.const.wf": {"type": "constant", "sample": 0.1},
     },
-    "digital_waveforms": {
-        "ON": {
-            "samples": [
-                [
-                    1,
-                    0
-                ]
-            ]
-        }
-    },
+    "digital_waveforms": {"ON": {"samples": [[1, 0]]}},
     "integration_weights": {
-        "Q1.resonator.readout.iw1": {
-            "cosine": [
-                [
-                    -0.3167586948139346,
-                    1500
-                ]
-            ],
-            "sine": [
-                [
-                    0.9485061566799514,
-                    1500
-                ]
-            ]
-        },
-        "Q1.resonator.readout.iw2": {
-            "cosine": [
-                [
-                    -0.9485061566799514,
-                    1500
-                ]
-            ],
-            "sine": [
-                [
-                    -0.3167586948139346,
-                    1500
-                ]
-            ]
-        },
-        "Q1.resonator.readout.iw3": {
-            "cosine": [
-                [
-                    0.9485061566799514,
-                    1500
-                ]
-            ],
-            "sine": [
-                [
-                    0.3167586948139346,
-                    1500
-                ]
-            ]
-        },
+        "Q1.resonator.readout.iw1": {"cosine": [[-0.3167586948139346, 1500]], "sine": [[0.9485061566799514, 1500]]},
+        "Q1.resonator.readout.iw2": {"cosine": [[-0.9485061566799514, 1500]], "sine": [[-0.3167586948139346, 1500]]},
+        "Q1.resonator.readout.iw3": {"cosine": [[0.9485061566799514, 1500]], "sine": [[0.3167586948139346, 1500]]},
     },
     "mixers": {},
-    "oscillators": {}
+    "oscillators": {},
 }
