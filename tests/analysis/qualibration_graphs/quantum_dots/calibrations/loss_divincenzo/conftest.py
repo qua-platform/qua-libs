@@ -65,33 +65,42 @@ if _vqpu_platforms not in sys.path:
 
 
 # =============================================================================
-# virtual_qpu imports (lazy — only fail if tests actually run)
+# virtual_qpu imports (optional — skip gracefully if not installed)
 # =============================================================================
 
-import jax.numpy as jnp  # noqa: E402
+try:
+    import jax.numpy as jnp  # noqa: E402
 
-from virtual_qpu.dynamics import simulate as _simulate  # noqa: E402
-from virtual_qpu.operators import expval as _expval  # noqa: E402
-from virtual_qpu.sweep import sweep as _sweep  # noqa: E402
+    from virtual_qpu.dynamics import simulate as _simulate  # noqa: E402
+    from virtual_qpu.operators import expval as _expval  # noqa: E402
+    from virtual_qpu.sweep import sweep as _sweep  # noqa: E402
 
-from quantum_dots.device import LossDiVincenzoDevice  # noqa: E402
-from quantum_dots.params import ExchangeModel, LossDiVincenzoParams, MU_B_OVER_H  # noqa: E402
+    from quantum_dots.device import LossDiVincenzoDevice  # noqa: E402
+    from quantum_dots.params import ExchangeModel, LossDiVincenzoParams, MU_B_OVER_H  # noqa: E402
+
+    _VIRTUAL_QPU_AVAILABLE = True
+except ImportError:
+    _VIRTUAL_QPU_AVAILABLE = False
+    LossDiVincenzoDevice = None  # type: ignore[assignment,misc]
 
 # =============================================================================
 # Default device configuration
 # =============================================================================
 
-DEFAULT_LD_PARAMS = LossDiVincenzoParams(
-    n_qubits=2,
-    g_factors=[2.0, 2.04],  # slight g-factor variation → ~200 MHz detuning
-    magnetic_field=10.0 / (2.0 * MU_B_OVER_H),  # chosen so Q1 ≈ 10 GHz Zeeman
-    exchange_models=[ExchangeModel(J_0=0.001, V_ref=0.0, lever_arm=0.050)],
-    ref_freqs=None,
-    frame="rot",
-    use_rwa=True,
-    t1=[1000.0, 1000.0],  # 1000 ns T1
-    t2=[400.0, 400.0],  # 400 ns T2
-)
+if _VIRTUAL_QPU_AVAILABLE:
+    DEFAULT_LD_PARAMS = LossDiVincenzoParams(
+        n_qubits=2,
+        g_factors=[2.0, 2.04],  # slight g-factor variation → ~200 MHz detuning
+        magnetic_field=10.0 / (2.0 * MU_B_OVER_H),  # chosen so Q1 ≈ 10 GHz Zeeman
+        exchange_models=[ExchangeModel(J_0=0.001, V_ref=0.0, lever_arm=0.050)],
+        ref_freqs=None,
+        frame="rot",
+        use_rwa=True,
+        t1=[1000.0, 1000.0],  # 1000 ns T1
+        t2=[400.0, 400.0],  # 400 ns T2
+    )
+else:
+    DEFAULT_LD_PARAMS = None  # type: ignore[assignment]
 
 # Default simulation settings
 DEFAULT_SOLVER = "me"  # Lindblad master equation
@@ -254,7 +263,11 @@ def ld_device():
 
     Uses ``DEFAULT_LD_PARAMS`` (2 qubits, T1=500 ns, T2=200 ns, Lindblad).
     Tests that need different params can build their own device instead.
+
+    Skips automatically when virtual_qpu / dynamiqs are not installed.
     """
+    if not _VIRTUAL_QPU_AVAILABLE:
+        pytest.skip("virtual_qpu (dynamiqs) not installed — skipping physics simulation test")
     device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
     # Sanity-check: collapse operators should be present for Lindblad
     jump_ops = device.collapse_operators()
