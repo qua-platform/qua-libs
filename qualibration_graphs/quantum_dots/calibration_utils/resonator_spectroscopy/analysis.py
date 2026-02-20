@@ -19,6 +19,15 @@ class FitParameters:
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
+    """
+    Logs the node-specific fitted results for all sensors from the fit results
+    Parameters:
+    -----------
+    fit_results : dict
+        Dictionary containing the fitted results for all sensors.
+    logger : logging.Logger, optional
+        Logger for logging the fitted results. If None, a default logger is used.
+    """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
@@ -33,6 +42,7 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
+    """Process raw dataset to add amplitude and phase information."""
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     full_freq = np.array([ds.detuning + q.readout_resonator.intermediate_frequency for q in node.namespace["sensors"]])
     ds = ds.assign_coords(full_freq=(["sensors", "detuning"], full_freq))
