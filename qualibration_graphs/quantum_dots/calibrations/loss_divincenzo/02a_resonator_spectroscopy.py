@@ -167,50 +167,42 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
-
-
-#     load_data_id = node.parameters.load_data_id
-#     # Load the specified dataset
-#     node.load_from_id(node.parameters.load_data_id)
-#     node.parameters.load_data_id = load_data_id
-#     # Get the sensors from the loaded node parameters
-#     node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
+    load_data_id = node.parameters.load_data_id
+    node.load_from_id(node.parameters.load_data_id)
+    node.parameters.load_data_id = load_data_id
+    node.namespace["sensors"] = get_sensors(node)
 
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-
-#     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-#     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-#     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-
-#     # Log the relevant information extracted from the data analysis
-#     log_fitted_results(node.results["fit_results"], log_callable=node.log)
-#     node.outcomes = {
-#         sensor_name: ("successful" if fit_result["success"] else "failed")
-#         for sensor_name, fit_result in node.results["fit_results"].items()
-#     }
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    node.outcomes = {
+        sensor_name: ("successful" if fit_result["success"] else "failed")
+        for sensor_name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
-
-
-#     fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
-#     fig_fit_amplitude = plot_raw_amplitude_with_fit(
-#         node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
-#     )
-#     plt.show()
-#     # Store the generated figures
-#     node.results["figures"] = {
-#         "phase": fig_raw_phase,
-#         "amplitude": fig_fit_amplitude,
-#     }
+    fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
+    fig_fit_amplitude = plot_raw_amplitude_with_fit(
+        node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
+    )
+    plt.show()
+    # Store the generated figures
+    node.results["figures"] = {
+        "phase": fig_raw_phase,
+        "amplitude": fig_fit_amplitude,
+    }
 
 
 # %% {Update_state}
@@ -228,5 +220,4 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
-    #     node.save()
-    pass
+    node.save()
