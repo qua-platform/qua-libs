@@ -45,59 +45,53 @@ node.machine = Quam.load()
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
-    # u = unit(coerce_to_integer=True)
+    u = unit(coerce_to_integer=True)
 
-    # virtual_gate_set = node.machine.virtual_gate_sets[node.parameters.virtual_gate_set_id]
+    node.namespace["sensor_dots"] = sensors = get_sensors(node)
+    num_sensors = len(sensors)
 
-    # node.namespace["quantum_dots"] = quantum_dots = get_dots(node)
-    # node.namespace["sensors"] = sensors = get_sensors(node)
+    n_points = node.parameters.num_points
 
-    # # Select only the first QD in the list
-    # target_qd = list(quantum_dots.batch()[0].values())[0]
+    f_step = node.parameters.frequency_step_in_mhz * u.MHz
+    f_span = node.parameters.frequency_span_in_mhz * u.MHz
+    f_array = np.arange(-f_span / 2, f_span / 2, f_step)
 
-    # v_center = node.parameters.v_center
-    # v_span = node.parameters.v_span
-    # n_points = node.parameters.num_points
+    # Register the sweep axes to be added to the dataset when fetching data
+    node.namespace["sweep_axes"] = {
+        "sensors": xr.DataArray(sensors),
+        "frequency": xr.DataArray(f_array, attrs={"long_name": "frequency", "units": "Hz"}),
+    }
 
-    # voltages = np.linspace(v_center - v_span / 2, v_center + v_span / 2, n_points)
-    # # Register the sweep axes to be added to the dataset when fetching data
-    # node.namespace["sweep_axes"] = {
-    #     "quantum_dot": xr.DataArray(target_qd.id),
-    #     "voltage": xr.DataArray(voltages, attrs={"long_name": "voltage", "units": ""}),
-    # }
+    # node.namespace["sweep"]
+    # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
+    with program() as node.namespace["qua_program"]:
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
+        df = declare(int)  # QUA variable for the readout frequency
+        for multiplexed_sensors in sensors.batch():
+            align()
+            with for_(n, 0, n < n_points, n + 1):
+                save(n, n_st)
+                with for_(*from_array(df, f_array)):
+                    align()
+                    for i, sensor in multiplexed_sensors.items():
+                        # Select the resonator tied to the sensor
+                        rr = sensor.readout_resonator
+                        # Update the frequency
+                        rr.update_frequency(df + rr.intermediate_frequency)
+                        # Measure using said resonator
+                        rr.measure("readout", qua_vars=(I[i], Q[i]))
+                        # Post-measurement wait (Optional)
+                        rr.wait(500)
 
-    # # node.namespace["sweep"]
-    # # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
-    # with program() as node.namespace["qua_program"]:
-    #     seq = virtual_gate_set.new_sequence()
+                        # Save data
+                        save(I[i], I_st[i])
+                        save(Q[i], Q_st[i])
 
-    #     I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
-    #     v = declare(fixed)
-
-    #     for multiplexed_sensors in sensors.batch():
-    #         align()
-    #         with for_(n, 0, n < node.parameters.num_shots, n + 1):
-    #             save(n, n_st)
-    #             with for_(*from_array(v, voltages)):
-    #                 target_qd.go_to_voltages(v)
-    #                 align()
-    #                 for i, sensor in multiplexed_sensors.items():
-    #                     # Select the resonator tied to the sensor
-    #                     rr = sensor.readout_resonator
-    #                     # Measure using said resonator
-    #                     rr.measure("readout", qua_vars=(I[i], Q[i]))
-    #                     # Post-measurement wait (Optional)
-    #                     rr.wait(500)
-
-    #                     # Save data
-    #                     save(I[i], I_st[i])
-    #                     save(Q[i], Q_st[i])
-
-    #     with stream_processing():
-    #         n_st.save("n")
-    #         # This example doesn't save I/Q, adjust if needed
-    #         # I_st[0].buffer(len(voltages)).average().save("I1")
-    #         # Q_st[0].buffer(len(voltages)).average().save("Q1")
+        with stream_processing():
+            n_st.save("n")
+            # This example doesn't save I/Q, adjust if needed
+            # I_st[0].buffer(len(voltages)).average().save("I1")
+            # Q_st[0].buffer(len(voltages)).average().save("Q1")
 
 
 # %% {Simulate}
