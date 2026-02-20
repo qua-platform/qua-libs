@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generator, Sequence, Tuple, Dict
+from typing import Generator, Sequence, Tuple, Dict, Callable
 
 import numpy as np
 from qm.qua import declare, fixed, for_, for_each_
@@ -31,7 +31,7 @@ class ScanMode(ABC):
         pass
 
     @abstractmethod
-    def scan(self, x_vals: Sequence[float], y_vals: Sequence[float]) -> Generator[Tuple, None, None]:
+    def scan(self, x_vals: Sequence[float], y_vals: Sequence[float], compensation_function: Callable[[],None] | None = None) -> Generator[Tuple, None, None]:
         """Yield (x, y) QUA variables while generating the scan loop structure."""
         pass
 
@@ -56,12 +56,15 @@ class RasterScan(ScanMode):
         y_idxs = np.repeat(np.arange(y_points), x_points)
         return x_idxs, y_idxs
 
-    def scan(self, x_vals: Sequence[float], y_vals: Sequence[float]) -> Generator[Tuple, None, None]:
+    def scan(self, x_vals: Sequence[float], y_vals: Sequence[float], compensation_function = None) -> Generator[Tuple, None, None]:
         x = declare(fixed)
         y = declare(fixed)
         with for_(*from_array(y, y_vals)):
             with for_(*from_array(x, x_vals)):
                 yield x, y
+            # Apply compensation per-line 
+            if compensation_function: 
+                compensation_function()
 
     def get_outer_loop(self, outer_vals: Sequence[float]) -> np.ndarray:
         return np.asarray(outer_vals)
@@ -100,13 +103,16 @@ class SwitchRasterScan(ScanMode):
         y_idxs = np.repeat(y_idxs, x_points)
         return x_idxs, y_idxs
 
-    def scan(self, x_vals: Sequence[float], y_vals: Sequence[float]) -> Generator[Tuple, None, None]:
+    def scan(self, x_vals: Sequence[float], y_vals: Sequence[float], compensation_function=None) -> Generator[Tuple, None, None]:
         x = declare(fixed)
         y = declare(fixed)
         y_vals_interleaved = self.interleave_arr(np.asarray(y_vals), self.start_from_middle)
         with for_each_(y, y_vals_interleaved.tolist()):
             with for_(*from_array(x, x_vals)):
                 yield x, y
+            # Apply compensation per-line 
+            if compensation_function: 
+                compensation_function()
 
     def get_outer_loop(self, outer_vals: Sequence[float]) -> np.ndarray:
         return self.interleave_arr(np.asarray(outer_vals), self.start_from_middle)

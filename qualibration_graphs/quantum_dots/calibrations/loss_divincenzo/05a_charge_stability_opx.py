@@ -12,8 +12,8 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.charge_stability_opx import Parameters, get_voltage_arrays, ScanMode
-from calibration_utils.charge_stability_opx import plot_raw_amplitude, plot_raw_phase
+from calibration_utils.charge_stability import OPXParameters, get_voltage_arrays, ScanMode
+from calibration_utils.charge_stability import plot_raw_amplitude, plot_raw_phase
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
@@ -34,15 +34,15 @@ Prerequisites:
 """
 
 
-node = QualibrationNode[Parameters, Quam](
-    name="05a_charge_stability_opx", description=description, parameters=Parameters()
+node = QualibrationNode[OPXParameters, Quam](
+    name="05a_charge_stability_opx", description=description, parameters=OPXParameters()
 )
 
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[Parameters, Quam]):
+def custom_param(node: QualibrationNode[OPXParameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.multiplexed = True
@@ -56,7 +56,7 @@ node.machine = Quam.load()
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
-def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+def create_qua_program(node: QualibrationNode[OPXParameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
@@ -98,7 +98,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             align()
             with for_(n, 0, n < node.parameters.num_shots, n + 1):
                 save(n, n_st)
-                for x, y in scan_mode.scan(x_volts, y_volts):
+                for x, y in scan_mode.scan(x_volts, y_volts, compensation_function = seq.apply_compensation_pulse if node.parameters.per_line_compensation else None):
                     # Simultaneous stepping of the voltage of the virtualised gates.
                     # If ramps are preferred, specify ramp_duration as arg in simultaneous()
                     seq.ramp_to_voltages(
@@ -110,7 +110,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     #     x_obj.go_to_voltages(x, duration = node.parameters.hold_duration)
                     #     y_obj.go_to_voltages(y, duration = node.parameters.hold_duration)
                     if node.parameters.pre_measurement_delay:
-                        wait(node.parameters.pre_measurement_delay // 4)
+                        seq.step_to_voltages({}, duration = node.parameters.pre_measurement_delay)
                     align()
                     for i, sensor in multiplexed_sensors.items():
                         # Select the resonator tied to the sensor
@@ -123,6 +123,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Save data
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
+                seq.apply_compensation_pulse()
 
         with stream_processing():
             n_st.save("n")
@@ -133,7 +134,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
-def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+def simulate_qua_program(node: QualibrationNode[OPXParameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -149,7 +150,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
 )
-def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+def execute_qua_program(node: QualibrationNode[OPXParameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -175,7 +176,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
-def load_data(node: QualibrationNode[Parameters, Quam]):
+def load_data(node: QualibrationNode[OPXParameters, Quam]):
     """Load a previously acquired dataset."""
 
 
@@ -189,7 +190,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
-def plot_data(node: QualibrationNode[Parameters, Quam]):
+def plot_data(node: QualibrationNode[OPXParameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
 
 
@@ -208,7 +209,7 @@ from calibration_utils.run_video_mode import create_video_mode
 
 
 @node.run_action(skip_if=node.parameters.run_in_video_mode is False)
-def run_video_mode(node: QualibrationNode[Parameters, Quam]):
+def run_video_mode(node: QualibrationNode[OPXParameters, Quam]):
     x_axis_name = node.parameters.x_axis_name
     y_axis_name = node.parameters.y_axis_name
     x_span, x_points = node.parameters.x_span, node.parameters.x_points
@@ -236,7 +237,7 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Save_results}
 @node.run_action()
-def save_results(node: QualibrationNode[Parameters, Quam]):
+def save_results(node: QualibrationNode[OPXParameters, Quam]):
     """Save the node results and state."""
     #     node.save()
     pass
