@@ -15,6 +15,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Number of detuning points to sweep. Default is 21."""
     quantum_dot_pair_names: Optional[List[str]] = None
     """List of quantum dot pair names."""
+    ramp_duration: int = 40
+    """Ramp duration to ramp to the measurement point."""
 
 
 class Parameters(
