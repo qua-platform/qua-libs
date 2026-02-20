@@ -34,22 +34,21 @@ save_dir = Path(__file__).parent.resolve() / "Data"
 save_dir.mkdir(exist_ok=True)
 
 
-
 ###########################################
 #         OPX port configuration          #
 ###########################################
 con = "con1"
 
-fem1 = 5   # Should be the LF-FEM index, e.g., 1
-AOM_port = 7 # OPX analog output port
-Detector_port = 1 # OPX analog input port
+fem1 = 5  # Should be the LF-FEM index, e.g., 1
+AOM_port = 7  # OPX analog output port
+Detector_port = 1  # OPX analog input port
 
 
 #############################################
 #                Detector                   #
 #############################################
 IF_Detector = 10 * u.MHz
-readout_len = 10000 #ns
+readout_len = 10000  # ns
 time_of_flight = 28
 
 #############################################
@@ -120,10 +119,10 @@ config = {
                         "1": {},
                     },
                     "analog_inputs": {
-                        Detector_port : {"offset": 0, "gain_db": 0, "sampling_rate": sampling_rate}, # PD
+                        Detector_port: {"offset": 0, "gain_db": 0, "sampling_rate": sampling_rate},  # PD
                     },
                 },
-            }
+            },
         },
     },
     "elements": {
@@ -136,7 +135,7 @@ config = {
                 "cw": "const_pulse_AOM",
             },
         },
-        'Detector': { # lower sideband
+        "Detector": {  # lower sideband
             "singleInput": {"port": (con, fem1, 2)},  # not used
             "digitalInputs": {  # for visualization in simulation
                 "marker": {
@@ -180,7 +179,6 @@ config = {
     "waveforms": {
         "const_wf_AOM": {"type": "constant", "sample": const_amp_AOM},
         "zero_wf": {"type": "constant", "sample": 0.0},
-
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
@@ -199,5 +197,5 @@ config = {
             "cosine": [(0.0, readout_len)],
             "sine": [(-1.0, readout_len)],
         },
-    },   
+    },
 }

@@ -16,14 +16,15 @@ num_points = int(total_meas_time_ns / readout_len)
 # PID parameters
 
 K_p = 0.1 * 0.45
-K_i = 0.1*0.54/(36*1e-6)
+K_i = 0.1 * 0.54 / (36 * 1e-6)
 K_d = 0.00
 alpha = 0.5
+
 
 # ----------
 # Functions
 # ----------
-def get_time_spacing(qmm, config, num_points=10, K_p = 0.0, K_i = 0.0, K_d = 0.0, alpha = 0):
+def get_time_spacing(qmm, config, num_points=10, K_p=0.0, K_i=0.0, K_d=0.0, alpha=0):
     """
     Executes a short program to retrieve timestamps and verify constant spacing.
 
@@ -49,8 +50,8 @@ def get_time_spacing(qmm, config, num_points=10, K_p = 0.0, K_i = 0.0, K_d = 0.0
         previous_error = declare(fixed, value=0.0)
         update_frequency("AOM", IF_AOM + 10 * 1e3)
         play("cw", "AOM", duration=readout_len // 4)
-        measure('readout', 'Detector', demod.full("cos", I), demod.full("sin", Q))
-        assign(phi_2pi_target, Math.atan2_2pi(Q, I))   # = atan2(Q,I) / (2π)
+        measure("readout", "Detector", demod.full("cos", I), demod.full("sin", Q))
+        assign(phi_2pi_target, Math.atan2_2pi(Q, I))  # = atan2(Q,I) / (2π)
 
         #### pulse sequence ####
         with for_(n, 0, n < num_points, n + 1):
@@ -58,7 +59,7 @@ def get_time_spacing(qmm, config, num_points=10, K_p = 0.0, K_i = 0.0, K_d = 0.0
             # --- QUA PLL loop with Proportional and Integral terms ---
             play("cw", "AOM", duration=readout_len // 4)
             # Measure current phase
-            measure('readout', 'Detector', demod.full("cos", I), demod.full("sin", Q))
+            measure("readout", "Detector", demod.full("cos", I), demod.full("sin", Q))
             # Measure current phase
             assign(phi_2pi_curr, Math.atan2_2pi(Q, I))  # = atan2(Q, I) / (2π)
 
@@ -75,7 +76,6 @@ def get_time_spacing(qmm, config, num_points=10, K_p = 0.0, K_i = 0.0, K_d = 0.0
 
             # Apply correction via frame rotation
             frame_rotation_2pi(control, "AOM")
-
 
             # Save data
             save(phi_2pi_curr, phi_2pi_curr_st)
@@ -105,9 +105,10 @@ def get_time_spacing(qmm, config, num_points=10, K_p = 0.0, K_i = 0.0, K_d = 0.0
 
     if np.allclose(diffs, diffs[0]):
         print(f"Time between measurements = {diffs[0]}")
-        return diffs[0]    # in clock cycles
+        return diffs[0]  # in clock cycles
     else:
         raise ValueError(f"Timestamps are not equally spaced! diffs={diffs}")
+
 
 def phase_correction_with_PID(num_points, K_p, K_i, K_d, alpha):
     """Phase drift measurement program."""
@@ -120,8 +121,8 @@ def phase_correction_with_PID(num_points, K_p, K_i, K_d, alpha):
         n_st = declare_stream()
         I_st = declare_stream()
         Q_st = declare_stream()
-        eps = declare(fixed, value=0.0001) # error tolerance
-        phi_2pi_target = declare(fixed) # phase in cycles (phase / 2π)
+        eps = declare(fixed, value=0.0001)  # error tolerance
+        phi_2pi_target = declare(fixed)  # phase in cycles (phase / 2π)
         phi_2pi_curr = declare(fixed)
         phi_2pi_curr_st = declare_stream()
         error = declare(fixed)
@@ -130,14 +131,14 @@ def phase_correction_with_PID(num_points, K_p, K_i, K_d, alpha):
         error_integral_st = declare_stream()
         error_derivative = declare(fixed, value=0.0)
         error_derivative_st = declare_stream()
-        control = declare(fixed,value=0)
+        control = declare(fixed, value=0)
         previous_error = declare(fixed, value=0.0)
 
         update_frequency("AOM", IF_AOM + 10 * 1e3)
 
         play("cw", "AOM", duration=readout_len // 4)
-        measure('readout', 'Detector', demod.full("cos", I), demod.full("sin", Q))
-        assign(phi_2pi_target, Math.atan2_2pi(Q, I))   # = atan2(Q,I) / (2π)
+        measure("readout", "Detector", demod.full("cos", I), demod.full("sin", Q))
+        assign(phi_2pi_target, Math.atan2_2pi(Q, I))  # = atan2(Q,I) / (2π)
 
         #### pulse sequence ####
         with for_(n, 0, n < num_points, n + 1):
@@ -145,12 +146,12 @@ def phase_correction_with_PID(num_points, K_p, K_i, K_d, alpha):
             # frame_rotation_2pi(0.001, "AOM")
             play("cw", "AOM", duration=readout_len // 4)
             # Measure current phase
-            measure('readout', 'Detector', demod.full("cos", I), demod.full("sin", Q))
+            measure("readout", "Detector", demod.full("cos", I), demod.full("sin", Q))
             # Measure current phase
-            assign(phi_2pi_curr, Math.atan2_2pi(Q, I))   # = atan2(Q, I) / (2π)
+            assign(phi_2pi_curr, Math.atan2_2pi(Q, I))  # = atan2(Q, I) / (2π)
 
             # Find the proportional error
-            assign(error, phi_2pi_target - phi_2pi_curr)   # phase error (in cycles)
+            assign(error, phi_2pi_target - phi_2pi_curr)  # phase error (in cycles)
             assign(error, Util.cond(((error > -eps) & (error < eps)), 0.0, error))
             # find the integral error
             assign(error_integral, (1 - alpha) * error_integral + alpha * error)
@@ -162,7 +163,6 @@ def phase_correction_with_PID(num_points, K_p, K_i, K_d, alpha):
 
             # Apply correction via frame rotation
             frame_rotation_2pi(control, "AOM")
-
 
             # Save data
             save(phi_2pi_curr, phi_2pi_curr_st)
@@ -177,64 +177,65 @@ def phase_correction_with_PID(num_points, K_p, K_i, K_d, alpha):
         with stream_processing():
             phi_2pi_curr_st.save_all("phase")
             error_st.save_all("error")
-            error_integral_st.save_all ("error_integral")
+            error_integral_st.save_all("error_integral")
             error_derivative_st.save_all("error_derivative")
             I_st.save_all("I")
             Q_st.save_all("Q")
             n_st.save("iteration")
 
-
     return PLL_prog
+
 
 # ---------
 # Plotting
 # ---------
 def plot_phase_pid_results(time_s, phase, error, error_integral, error_derivative, out_path=None):
-        """
-        Plots phase vs time, error vs time, error integral vs time, and error derivative vs time
-        in four subplots (vertically stacked).
+    """
+    Plots phase vs time, error vs time, error integral vs time, and error derivative vs time
+    in four subplots (vertically stacked).
 
-        Parameters:
-            time_s (np.ndarray): Array of time points in seconds.
-            phase (np.ndarray): Measured phase values.
-            error (np.ndarray): Error values.
-            error_integral (np.ndarray): Integral of error (typically for PID control).
-            error_derivative (np.ndarray): Derivative of error (typically for PID control).
-            out_path (str or Path, optional): If provided, saves plot to this path.
-        """
+    Parameters:
+        time_s (np.ndarray): Array of time points in seconds.
+        phase (np.ndarray): Measured phase values.
+        error (np.ndarray): Error values.
+        error_integral (np.ndarray): Integral of error (typically for PID control).
+        error_derivative (np.ndarray): Derivative of error (typically for PID control).
+        out_path (str or Path, optional): If provided, saves plot to this path.
+    """
 
-        fig, axs = plt.subplots(4, 1, sharex=True, figsize=(10, 8))
+    fig, axs = plt.subplots(4, 1, sharex=True, figsize=(10, 8))
 
-        axs[0].plot(time_s, phase, label="Phase")
-        axs[0].set_ylabel("Phase [rad]")
-        axs[0].set_title("Phase vs Time")
-        axs[0].grid(True)
-        axs[0].legend()
+    axs[0].plot(time_s, phase, label="Phase")
+    axs[0].set_ylabel("Phase [rad]")
+    axs[0].set_title("Phase vs Time")
+    axs[0].grid(True)
+    axs[0].legend()
 
-        axs[1].plot(time_s, error, color="C1", label="Error")
-        axs[1].set_ylabel("Error [rad]")
-        axs[1].set_title("Error vs Time")
-        axs[1].grid(True)
-        axs[1].legend()
+    axs[1].plot(time_s, error, color="C1", label="Error")
+    axs[1].set_ylabel("Error [rad]")
+    axs[1].set_title("Error vs Time")
+    axs[1].grid(True)
+    axs[1].legend()
 
-        axs[2].plot(time_s, error_integral, color="C2", label="Error Integral")
-        axs[2].set_ylabel("Error Integral [rad]")
-        axs[2].set_title("Error Integral vs Time")
-        axs[2].grid(True)
-        axs[2].legend()
+    axs[2].plot(time_s, error_integral, color="C2", label="Error Integral")
+    axs[2].set_ylabel("Error Integral [rad]")
+    axs[2].set_title("Error Integral vs Time")
+    axs[2].grid(True)
+    axs[2].legend()
 
-        axs[3].plot(time_s, error_derivative, color="C3", label="Error Derivative")
-        axs[3].set_xlabel("Time [ms]")
-        axs[3].set_ylabel("Error Derivative [rad/iteration]")
-        axs[3].set_title("Error Derivative vs Time")
-        axs[3].grid(True)
-        axs[3].legend()
+    axs[3].plot(time_s, error_derivative, color="C3", label="Error Derivative")
+    axs[3].set_xlabel("Time [ms]")
+    axs[3].set_ylabel("Error Derivative [rad/iteration]")
+    axs[3].set_title("Error Derivative vs Time")
+    axs[3].grid(True)
+    axs[3].legend()
 
-        plt.tight_layout()
-        if out_path is not None:
-            plt.savefig(out_path)
-            print(f"Saved phase PID results plot: {out_path}")
-        plt.show()
+    plt.tight_layout()
+    if out_path is not None:
+        plt.savefig(out_path)
+        print(f"Saved phase PID results plot: {out_path}")
+    plt.show()
+
 
 # ---------
 # Saving
@@ -266,7 +267,7 @@ def save_data(out_path, t_s, phase, error, error_integral, error_derivative, tau
 # -----
 # Main
 # -----
-qmm = QuantumMachinesManager(host=qop_ip, port = qop_port, cluster_name=cluster_name)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 
 print("-" * 70)
@@ -280,12 +281,12 @@ print(f"Step 3: Measuring phase drift for {total_meas_time_ns / 1e9:.2f} s")
 print(f"Measurement duration = {readout_len}")
 print("-" * 70)
 
-PLL_prog  = phase_correction_with_PID(num_points, K_p=K_p, K_i=K_i, K_d=K_d, alpha=alpha)
+PLL_prog = phase_correction_with_PID(num_points, K_p=K_p, K_i=K_i, K_d=K_d, alpha=alpha)
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=2_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, PLL_prog , simulation_config)
+    job = qmm.simulate(config, PLL_prog, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -306,7 +307,11 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(PLL_prog)
     # Creates a result handle to fetch data from the OPX
-    results = fetching_tool(job, data_list=["phase", "error", "error_integral", "error_derivative", "I", "Q", "iteration"], mode="wait_for_all")
+    results = fetching_tool(
+        job,
+        data_list=["phase", "error", "error_integral", "error_derivative", "I", "Q", "iteration"],
+        mode="wait_for_all",
+    )
 
     time_ms = np.arange(num_points) * spacing * 1e-6
 
