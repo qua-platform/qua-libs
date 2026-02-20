@@ -37,13 +37,13 @@ def plot_raw_phase(ds: xr.Dataset, sensors: List) -> Figure:
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
-        sensor_data = ds.sel(sensors=sensor.id)
+        sensor_data = ds.sel(sensors=sensor.name)
 
         # Create a first x-axis for full_freq_GHz
         ax.plot(sensor_data.full_freq / u.GHz, sensor_data.phase, "o-", markersize=2)
         ax.set_xlabel("RF frequency [GHz]")
         ax.set_ylabel("Phase [rad]")
-        ax.set_title(f"Sensor: {sensor.id}")
+        ax.set_title(f"Sensor: {sensor.name}")
 
         # Create a second x-axis for detuning_MHz
         ax2 = ax.twiny()
@@ -78,10 +78,10 @@ def plot_raw_amplitude_with_fit(ds: xr.Dataset, sensors: List, fits: xr.Dataset 
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
-        sensor_data = ds.sel(sensors=sensor.id)
-        fit_data = fits.sel(sensors=sensor.id) if fits is not None else None
+        sensor_data = ds.sel(sensors=sensor.name)
+        fit_data = fits.sel(sensors=sensor.name) if fits is not None else None
 
-        plot_individual_amplitude_with_fit(ax, sensor_data, sensor.id, fit_data)
+        plot_individual_amplitude_with_fit(ax, sensor_data, sensor.name, fit_data)
 
     fig.suptitle("Resonator spectroscopy (amplitude + fit)")
     fig.tight_layout()

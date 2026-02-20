@@ -12,9 +12,7 @@ node = QualibrationNode[NodeParameters, Quam](
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load(
-    "/Users/sebastian/Documents/GitHub/quam-builder/quam_builder/architecture/quantum_dots/examples/quam_state"
-)
+node.machine = Quam.load()
 
 
 # %% {Close_all_quantum_machines}
