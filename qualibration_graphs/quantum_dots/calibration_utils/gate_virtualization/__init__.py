@@ -1,12 +1,14 @@
-from .parameters import (
+from .base_parameters import (
     GateVirtualizationBaseParameters,
-    SensorCompensationParameters,
-    VirtualPlungerParameters,
-    BarrierCompensationParameters,
     get_voltage_arrays,
 )
+from .sensor_dot_tuning_parameters import SensorDotTuningParameters
+from .sensor_compensation_parameters import SensorCompensationParameters
+from .virtual_plunger_parameters import VirtualPlungerParameters
+from .barrier_compensation_parameters import BarrierCompensationParameters
 from .scan_utils import create_2d_scan_program, setup_qdac_dc_lists
 from .analysis import process_raw_dataset, update_compensation_matrix
+from .sensor_dot_analysis import fit_lorentzian, lorentzian, optimal_operating_point
 from .sensor_compensation_analysis import (
     extract_sensor_compensation_coefficients,
     fit_shifted_lorentzian,
@@ -21,6 +23,7 @@ from .plotting import (
 
 __all__ = [
     "GateVirtualizationBaseParameters",
+    "SensorDotTuningParameters",
     "SensorCompensationParameters",
     "VirtualPlungerParameters",
     "BarrierCompensationParameters",
@@ -29,6 +32,9 @@ __all__ = [
     "setup_qdac_dc_lists",
     "process_raw_dataset",
     "update_compensation_matrix",
+    "fit_lorentzian",
+    "lorentzian",
+    "optimal_operating_point",
     "extract_sensor_compensation_coefficients",
     "fit_shifted_lorentzian",
     "shifted_lorentzian_2d",
