@@ -161,16 +161,15 @@ def load_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
 @node.run_action(skip_if=node.parameters.run_in_video_mode)
 def analyse_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
     """Analyse each 2D scan to extract sensor-device cross-talk coefficients."""
-    # TODO: implement analysis pipeline
-    # fit_results = {}
-    # for pair_key, ds_raw in node.results["ds_raw_all"].items():
-    #     ds = process_raw_dataset(ds_raw, node)
-    #     sensor_gate, device_gate = pair_key.split("_vs_")
-    #     fit_results[pair_key] = extract_sensor_compensation_coefficients(
-    #         ds, sensor_gate, device_gate
-    #     )
-    # node.results["fit_results"] = fit_results
-    pass
+    fit_results = {}
+    for pair_key, ds_raw in node.results["ds_raw_all"].items():
+        ds = process_raw_dataset(ds_raw, node)
+        fit_results[pair_key] = extract_sensor_compensation_coefficients(
+            ds,
+            sensor_gate_name="x_volts",
+            device_gate_name="y_volts",
+        )
+    node.results["fit_results"] = fit_results
 
 
 # %% {Plot_data}
@@ -201,15 +200,20 @@ def plot_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
 def update_virtual_gate_matrix(
     node: QualibrationNode[SensorCompensationParameters, Quam],
 ):
-    """Update the compensation matrix with sensor gate coefficients."""
-    # TODO: implement matrix update
-    # if "fit_results" in node.results:
-    #     for pair_key, fit_res in node.results["fit_results"].items():
-    #         sensor_gate, device_gate = pair_key.split("_vs_")
-    #         update_compensation_matrix(
-    #             node, sensor_gate, device_gate, fit_res["coefficient"]
-    #         )
-    pass
+    """Update the compensation matrix with sensor gate coefficients.
+
+    The matrix M is the forward (physical→virtual) transform; the
+    hardware applies M⁻¹ to convert virtual requests to physical
+    voltages.  Setting M[sensor, device] = α causes the physical
+    sensor voltage to shift by −α·Δv_device, which exactly cancels
+    the measured cross-talk slope α.
+    """
+    if "fit_results" not in node.results:
+        return
+    for pair_key, fit_res in node.results["fit_results"].items():
+        sensor_gate, device_gate = pair_key.split("_vs_")
+        alpha = fit_res["coefficient"]
+        update_compensation_matrix(node, sensor_gate, device_gate, alpha)
 
 
 # %% {Save_results}

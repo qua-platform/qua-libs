@@ -55,6 +55,7 @@ dev = [
     "pytest>=8.3.5",
     "numpyro>=0.15.0",
     "virtual-qpu; python_version >= '3.11'",
+    "qarray>=1.0.0",
 ]
 
 [tool.hatch.build.targets.wheel]

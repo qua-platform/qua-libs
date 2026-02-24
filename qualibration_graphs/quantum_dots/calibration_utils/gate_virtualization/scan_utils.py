@@ -27,6 +27,15 @@ from calibration_utils.gate_virtualization.parameters import (
 )
 
 
+def _read_qdac_voltage(node, gate_obj) -> float:
+    """Read the current DC voltage of a QDAC channel for *gate_obj*.
+
+    Returns the voltage in the same units used by the QDAC (volts).
+    """
+    port = gate_obj.physical_channel.qdac_spec.qdac_output_port
+    return float(node.machine.qdac.channel(port).read_dc())
+
+
 def setup_qdac_dc_lists(
     node,
     x_obj,
@@ -151,11 +160,20 @@ def create_2d_scan_program(node, sensors):
         )
     vgs_id = x_obj.voltage_sequence.gate_set.id
 
-    x_volts, y_volts = get_voltage_arrays(node)
-    num_sensors = len(sensors)
-
     x_external = params.x_from_qdac
     y_external = params.y_from_qdac
+
+    # For QDAC axes without an explicit centre, read the current DAC value
+    # so the sweep is centred on the gate's operating point.
+    x_center = params.x_center
+    y_center = params.y_center
+    if x_external and x_center is None:
+        x_center = _read_qdac_voltage(node, x_obj)
+    if y_external and y_center is None:
+        y_center = _read_qdac_voltage(node, y_obj)
+
+    x_volts, y_volts = get_voltage_arrays(node, x_center=x_center, y_center=y_center)
+    num_sensors = len(sensors)
     scan_mode = ScanMode.from_name(params.scan_pattern)
 
     # ---- QDAC setup ----

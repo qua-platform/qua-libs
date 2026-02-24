@@ -31,6 +31,14 @@ class GateVirtualizationNodeSpecificParameters(RunnableParameters):
     """The X axis span in volts."""
     y_span: float = 0.05
     """The Y axis span in volts."""
+    x_center: Optional[float] = None
+    """Centre of the X axis sweep in volts.  When ``None`` and the axis is
+    driven by the QDAC (``x_from_qdac=True``), the current DAC voltage is
+    read from the machine and used as the centre.  For OPX-only axes the
+    default is 0 (relative sweep)."""
+    y_center: Optional[float] = None
+    """Centre of the Y axis sweep in volts.  Same auto-detection logic as
+    ``x_center``."""
     ramp_duration: int = 100
     """The ramp duration to each pixel. Set to zero for a step."""
     hold_duration: int = 1000
@@ -87,10 +95,21 @@ class BarrierCompensationParameters(GateVirtualizationBaseParameters):
     If None, must be generated from the machine (not yet implemented)."""
 
 
-def get_voltage_arrays(node):
-    """Extract the X and Y voltage arrays from a given node's parameters."""
-    x_span, x_center, x_points = node.parameters.x_span, 0, node.parameters.x_points
-    y_span, y_center, y_points = node.parameters.y_span, 0, node.parameters.y_points
-    x_volts = np.linspace(x_center - x_span / 2, x_center + x_span / 2, x_points)
-    y_volts = np.linspace(y_center - y_span / 2, y_center + y_span / 2, y_points)
+def get_voltage_arrays(node, *, x_center: Optional[float] = None, y_center: Optional[float] = None):
+    """Build the X and Y voltage arrays from the node's parameters.
+
+    Parameters
+    ----------
+    node : QualibrationNode
+        Provides ``node.parameters`` with span / points / center fields.
+    x_center, y_center : float, optional
+        Explicit overrides for the sweep centres.  When *None* the value
+        from ``node.parameters`` is used; if that is also *None* the
+        default is ``0.0`` (relative sweep for OPX).
+    """
+    p = node.parameters
+    xc = x_center if x_center is not None else (p.x_center if p.x_center is not None else 0.0)
+    yc = y_center if y_center is not None else (p.y_center if p.y_center is not None else 0.0)
+    x_volts = np.linspace(xc - p.x_span / 2, xc + p.x_span / 2, p.x_points)
+    y_volts = np.linspace(yc - p.y_span / 2, yc + p.y_span / 2, p.y_points)
     return x_volts, y_volts
