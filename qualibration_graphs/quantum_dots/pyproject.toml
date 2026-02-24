@@ -26,6 +26,7 @@ dependencies = [
     "tqdm>=4.67.1",
     "qiskit<2.0",
     "scikit-image>=0.20.0",
+    "qua-dashboards",
 ]
 
 [project.optional-dependencies]
