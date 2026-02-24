@@ -166,16 +166,15 @@ def load_data(node: QualibrationNode[VirtualPlungerParameters, Quam]):
 @node.run_action(skip_if=node.parameters.run_in_video_mode)
 def analyse_data(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     """Analyse each 2D scan to extract virtual plunger gate coefficients."""
-    # TODO: implement analysis pipeline
-    # fit_results = {}
-    # for pair_key, ds_raw in node.results["ds_raw_all"].items():
-    #     ds = process_raw_dataset(ds_raw, node)
-    #     plunger_gate, device_gate = pair_key.split("_vs_")
-    #     fit_results[pair_key] = extract_virtual_plunger_coefficients(
-    #         ds, plunger_gate, device_gate
-    #     )
-    # node.results["fit_results"] = fit_results
-    pass
+    fit_results = {}
+    for pair_key, ds_raw in node.results["ds_raw_all"].items():
+        ds = process_raw_dataset(ds_raw, node)
+        fit_results[pair_key] = extract_virtual_plunger_coefficients(
+            ds,
+            plunger_x_name="x_volts",
+            plunger_y_name="y_volts",
+        )
+    node.results["fit_results"] = fit_results
 
 
 # %% {Plot_data}
@@ -204,13 +203,21 @@ def plot_data(node: QualibrationNode[VirtualPlungerParameters, Quam]):
 def update_virtual_gate_matrix(
     node: QualibrationNode[VirtualPlungerParameters, Quam],
 ):
-    """Update the compensation matrix with virtual plunger coefficients."""
-    # TODO: implement matrix update
-    # if "fit_results" in node.results:
-    #     for pair_key, fit_res in node.results["fit_results"].items():
-    #         for row_name, col_name, coeff in fit_res.get("matrix_elements", []):
-    #             update_compensation_matrix(node, row_name, col_name, coeff)
-    pass
+    """Update the compensation matrix with virtual plunger coefficients.
+
+    The matrix M is the forward (physical→virtual) transform; the
+    hardware applies M⁻¹.  Setting M[plunger_x, plunger_y] = α causes
+    the physical plunger_x voltage to shift by −α·Δv_plunger_y,
+    cancelling the measured cross-talk.
+    """
+    if "fit_results" not in node.results:
+        return
+    for pair_key, fit_res in node.results["fit_results"].items():
+        if fit_res is None:
+            continue
+        plunger_gate, device_gate = pair_key.split("_vs_")
+        alpha = fit_res["coefficient"]
+        update_compensation_matrix(node, plunger_gate, device_gate, alpha)
 
 
 # %% {Save_results}
