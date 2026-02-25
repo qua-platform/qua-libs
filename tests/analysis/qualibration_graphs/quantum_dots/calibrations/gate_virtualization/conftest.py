@@ -49,6 +49,14 @@ from .quam_factory import create_gate_virtualization_quam  # noqa: E402
 
 
 # =============================================================================
+# Calibrated sensor compensation coefficients
+# =============================================================================
+# Obtained by running sensor_compensation_analysis (node 01) against the
+# qarray simulator for each plunger gate.  Maps {plunger_gate_idx: alpha}.
+CALIBRATED_SENSOR_COMP = {0: -0.015310, 1: -0.024623}
+
+
+# =============================================================================
 # qarray model fixtures
 # =============================================================================
 

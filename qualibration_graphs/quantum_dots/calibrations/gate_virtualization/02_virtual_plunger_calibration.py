@@ -203,21 +203,42 @@ def plot_data(node: QualibrationNode[VirtualPlungerParameters, Quam]):
 def update_virtual_gate_matrix(
     node: QualibrationNode[VirtualPlungerParameters, Quam],
 ):
-    """Update the compensation matrix with virtual plunger coefficients.
+    """Write the plunger cross-talk correction into the compensation layer.
 
-    The matrix M is the forward (physical→virtual) transform; the
-    hardware applies M⁻¹.  Setting M[plunger_x, plunger_y] = α causes
-    the physical plunger_x voltage to shift by −α·Δv_plunger_y,
-    cancelling the measured cross-talk.
+    The analysis returns T (physical→virtual, close to identity).
+    The QUAM compensation layer stores a matrix C whose inverse the
+    hardware applies when resolving virtual→physical voltages:
+
+        v_physical = C⁻¹ @ v_virtual
+
+    Setting C = T gives C⁻¹ = M (virtual→physical), which decouples
+    the two dots.  The 2×2 plunger block is written as::
+
+        C[plunger_x, plunger_x] = T[0,0]   C[plunger_x, plunger_y] = T[0,1]
+        C[plunger_y, plunger_x] = T[1,0]   C[plunger_y, plunger_y] = T[1,1]
     """
     if "fit_results" not in node.results:
         return
     for pair_key, fit_res in node.results["fit_results"].items():
         if fit_res is None:
             continue
+        if not fit_res.get("fit_params", {}).get("success", False):
+            continue
         plunger_gate, device_gate = pair_key.split("_vs_")
-        alpha = fit_res["coefficient"]
-        update_compensation_matrix(node, plunger_gate, device_gate, alpha)
+        T = fit_res["T_matrix"]
+        if T is None:
+            continue
+
+        M = np.linalg.inv(T)
+        print(
+            f"[{pair_key}] Virtual-to-physical matrix M "
+            f"(applied by hardware):\n{M}"
+        )
+
+        update_compensation_matrix(node, plunger_gate, plunger_gate, float(T[0, 0]))
+        update_compensation_matrix(node, plunger_gate, device_gate, float(T[0, 1]))
+        update_compensation_matrix(node, device_gate, plunger_gate, float(T[1, 0]))
+        update_compensation_matrix(node, device_gate, device_gate, float(T[1, 1]))
 
 
 # %% {Save_results}
