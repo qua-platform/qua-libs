@@ -191,6 +191,7 @@ def load_data(node: QualibrationNode[ErrorAmplifiedParameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
 
+
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
 def analyse_data(node: QualibrationNode[ErrorAmplifiedParameters, Quam]):
