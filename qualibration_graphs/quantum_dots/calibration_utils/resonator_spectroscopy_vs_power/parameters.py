@@ -5,6 +5,7 @@ from calibration_utils.common_utils.experiment import BaseExperimentNodeParamete
 
 from typing import Optional, List
 
+
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
