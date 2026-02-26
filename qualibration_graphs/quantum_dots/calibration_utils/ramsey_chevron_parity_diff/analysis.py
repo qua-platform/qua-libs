@@ -1,4 +1,4 @@
-"""Ramsey chevron analysis: mean-parity resonance + per-slice T2*.
+"""Ramsey chevron analysis: mean-parity resonance + T2* extraction.
 
 Strategy
 --------
@@ -16,14 +16,11 @@ Strategy
    The amplitude can be positive (peak) or negative (dip), so no
    prior knowledge of the resonance sign is needed.
 
-2. **Per-slice damped-sinusoid fit** — Each detuning slice is fitted
-   with ``offset + A·exp(-γt)·cos(2πft + φ)`` seeded by the known
-   detuning (converted to cycles/ns).
-
-3. **T2* extraction** — The effective T2* is the 1/e time of the
+2. **T2* extraction** — The effective T2* is the 1/e time of the
    combined envelope ``exp(-γτ - (σ_g τ)²)``.  The primary estimate
-   comes from the mean-parity model; per-slice damped-sinusoid
-   gammas at moderate detuning provide a fallback.
+   comes from the mean-parity model; an exponential-decay fit to the
+   near-resonance time trace provides a fallback when the decay is
+   poorly constrained.
 """
 
 from __future__ import annotations
@@ -39,101 +36,6 @@ from scipy.optimize import curve_fit, differential_evolution
 from qualibrate import QualibrationNode
 
 _logger = logging.getLogger(__name__)
-
-
-# ── Damped sinusoid model ────────────────────────────────────────────────────
-
-
-def _damped_sinusoid(
-    t: np.ndarray,
-    offset: float,
-    amp: float,
-    freq: float,
-    gamma: float,
-    phi: float,
-) -> np.ndarray:
-    r"""Evaluate ``offset + amp * exp(-γt) * cos(2πft + φ)``.
-
-    Used as the per-slice time-domain model for extracting decay rate
-    and oscillation frequency at a given detuning.
-    """
-    return offset + amp * np.exp(-gamma * t) * np.cos(
-        2.0 * np.pi * freq * t + phi
-    )
-
-
-def _fit_damped_sinusoid_to_slice(
-    tau_ns: np.ndarray,
-    trace: np.ndarray,
-    freq_seed_cyc_ns: float,
-) -> Dict[str, Any] | None:
-    """Fit a damped sinusoid to a single detuning slice vs idle time.
-
-    Parameters
-    ----------
-    tau_ns : array
-        Idle-time values in nanoseconds.
-    trace : array
-        Parity-difference values at this detuning.
-    freq_seed_cyc_ns : float
-        Seed oscillation frequency in cycles/ns (= |detuning_Hz| * 1e-9).
-
-    Returns
-    -------
-    dict or None
-        Fit results (offset, amplitude, frequency, gamma, phase, fitted
-        curve) or ``None`` if the fit fails or the signal is too weak.
-    """
-    t = tau_ns - tau_ns[0]
-    y = np.asarray(trace, dtype=float)
-
-    offset0 = float(np.mean(y))
-    amp0 = float(np.ptp(y)) / 2.0
-    if amp0 < 0.01:
-        return None
-    freq0 = max(freq_seed_cyc_ns, 1e-6)
-    gamma0 = 1e-3
-
-    n = len(t)
-    dt = float(t[1] - t[0]) if n > 1 else 1.0
-    fft_complex = np.fft.rfft(y - offset0)
-    fft_freqs = np.fft.rfftfreq(n, dt)
-    peak_idx = int(np.argmin(np.abs(fft_freqs - freq0)))
-    phi0 = float(-np.angle(fft_complex[peak_idx]))
-
-    t_span = float(t[-1] - t[0]) if len(t) > 1 else 1.0
-    freq_lo = max(1e-7, freq0 * 0.3)
-    freq_hi = max(freq0 * 3.0, 0.03)
-
-    try:
-        popt, pcov = curve_fit(
-            _damped_sinusoid,
-            t,
-            y,
-            p0=[offset0, amp0, freq0, gamma0, phi0],
-            bounds=(
-                [-np.inf, 0, freq_lo, 0, -2 * np.pi],
-                [np.inf, np.inf, freq_hi, 10.0 / t_span, 2 * np.pi],
-            ),
-            maxfev=3000,
-            method="trf",
-        )
-    except Exception:
-        return None
-
-    perr = np.sqrt(np.diag(pcov))
-    if popt[2] > 1e-5 and perr[2] > popt[2]:
-        return None
-
-    return {
-        "offset": float(popt[0]),
-        "amplitude": float(popt[1]),
-        "frequency": float(popt[2]),
-        "gamma": float(popt[3]),
-        "phase": float(popt[4]),
-        "fitted_curve": _damped_sinusoid(t, *popt),
-        "t_shifted": t,
-    }
 
 
 # ── Mean-parity resonance model ──────────────────────────────────────────────
@@ -223,7 +125,7 @@ class FitParameters:
     success: bool
 
 
-# ── T2* extraction from time-domain fits ────────────────────────────────────
+# ── T2* validation and fallback ──────────────────────────────────────────────
 
 
 def _fit_exponential_decay(
@@ -282,30 +184,22 @@ def _fit_exponential_decay(
         return None
 
 
-def _extract_t2_star(
+def _validate_t2_star(
     pdiff: np.ndarray,
     tau_ns: np.ndarray,
-    detuning_hz: np.ndarray,
     freq_offset: float,
+    detuning_hz: np.ndarray,
     resonance_idx: int,
-    gamma_per_slice: np.ndarray,
-    near_res: np.ndarray,
     decay_rate_de: float,
     sigma_g_de: float,
     t2_star_de: float,
 ) -> tuple[float, float, float]:
-    """Extract T2* using a hierarchical strategy.
+    """Validate T2* from the DE fit and fall back if poorly constrained.
 
-    The primary estimate comes from the ``differential_evolution`` fit
-    of the tau-averaged resonance model (which yields both γ and σ_g).
-    When the fitted T2* is much larger than the measurement window —
-    meaning the data cannot distinguish any decay from zero — the
-    function falls back to:
-
-    1. **Per-slice sinusoid gammas** at moderate detuning (median of
-       well-fitted slices), treating them as an effective total rate.
-    2. **Exponential decay** of the near-resonance averaged time trace.
-    3. The original DE values (last resort).
+    If T2* from the mean-parity model is much larger than the
+    measurement window, the data cannot distinguish any decay from
+    zero.  In that case, try an exponential fit to the near-resonance
+    averaged time trace.
 
     Parameters
     ----------
@@ -313,16 +207,12 @@ def _extract_t2_star(
         Parity-difference matrix.
     tau_ns : 1-D array (n_tau,)
         Idle-time values in nanoseconds.
-    detuning_hz : 1-D array (n_det,)
-        Detuning values in Hz.
     freq_offset : float
         Resonance frequency offset from the DE fit (Hz).
+    detuning_hz : 1-D array (n_det,)
+        Detuning values in Hz.
     resonance_idx : int
         Index into *detuning_hz* closest to resonance.
-    gamma_per_slice : 1-D array (n_det,)
-        Decay rates from per-slice sinusoid fits.
-    near_res : boolean array (n_det,)
-        Mask selecting detuning slices near resonance.
     decay_rate_de, sigma_g_de, t2_star_de : float
         Values from the mean-parity DE fit.
 
@@ -334,22 +224,11 @@ def _extract_t2_star(
     n_det, n_tau = pdiff.shape
     t_span = float(tau_ns[-1] - tau_ns[0]) if n_tau > 1 else 1.0
 
-    # If the DE fit gave a T2* that is physically constrained by the
-    # measurement window, keep it.  T2* >> T_max means the data cannot
-    # distinguish any decay from zero, so we fall back.
+    # Accept the DE result if T2* is physically constrained by the data.
     if np.isfinite(t2_star_de) and 0 < t2_star_de < 5.0 * t_span:
         return decay_rate_de, sigma_g_de, t2_star_de
 
-    # --- Fallback 1: per-slice sinusoid gammas at moderate detuning ---
-    det_from_res = np.abs(detuning_hz - freq_offset)
-    det_span = float(np.ptp(detuning_hz))
-    moderate = (det_from_res > det_span * 0.05) & (det_from_res < det_span * 0.40)
-    valid = moderate & np.isfinite(gamma_per_slice) & (gamma_per_slice > 1e-6)
-    if np.sum(valid) >= 3:
-        gamma_med = float(np.median(gamma_per_slice[valid]))
-        return gamma_med, 0.0, 1.0 / gamma_med
-
-    # --- Fallback 2: exponential decay of near-resonance time trace ---
+    # Fallback: exponential decay of near-resonance averaged time trace
     half_w = max(1, n_det // 20)
     lo = max(0, resonance_idx - half_w)
     hi = min(n_det, resonance_idx + half_w + 1)
@@ -371,7 +250,7 @@ def _analyse_single_qubit(
 ) -> Dict[str, Any]:
     """Analyse one qubit's 2-D Ramsey chevron and extract key parameters.
 
-    The analysis proceeds in three stages:
+    The analysis proceeds in two stages:
 
     1. **Resonance finding** — Fit the tau-averaged parity profile to the
        exact finite-window sum-of-cosines model using
@@ -379,12 +258,9 @@ def _analyse_single_qubit(
        exponential + Gaussian decay envelope (5 parameters: amp, δ₀, γ,
        σ_g, bg).  This global optimizer avoids local minima in the
        multi-modal landscape.
-    2. **Per-slice damped-sinusoid fits** — At each detuning value, fit
-       ``offset + A·exp(-γt)·cos(2πft + φ)`` to the time trace.  These
-       provide per-slice decay rates and the best near-resonance fit for
-       diagnostic plotting.
-    3. **T2* refinement** — Use the hierarchical strategy in
-       ``_extract_t2_star`` to select the most reliable T2* estimate.
+    2. **T2* validation** — Accept the DE fit's T2* if it is well
+       constrained (< 5× the measurement window), otherwise fall back to
+       an exponential-decay fit of the near-resonance time trace.
 
     Parameters
     ----------
@@ -405,9 +281,6 @@ def _analyse_single_qubit(
     n_det, n_tau = pdiff.shape
 
     # ── Step 1: Fit mean parity vs detuning ──────────────────────────────
-    # Uses differential_evolution (global optimizer) because the
-    # sum-of-cosines landscape has many local minima and a degeneracy
-    # between amplitude and decay rate.
     mean_parity = np.mean(pdiff, axis=1)
     model = _make_mean_ramsey_model(tau_ns)
 
@@ -431,10 +304,10 @@ def _analyse_single_qubit(
 
         # Parameter bounds: (amp, x0, gamma, sigma_g, bg)
         de_bounds = [
-            (-ptp * 3, ptp * 3),        # amp
-            (det_min, det_max),          # x0 (Hz)
-            (0.0, 10.0 / t_span),       # gamma (1/ns)
-            (0.0, 10.0 / t_span),       # sigma_g (1/ns)
+            (-ptp * 3, ptp * 3),  # amp
+            (det_min, det_max),  # x0 (Hz)
+            (0.0, 10.0 / t_span),  # gamma (1/ns)
+            (0.0, 10.0 / t_span),  # sigma_g (1/ns)
             (y_min - ptp, y_max + ptp),  # bg
         ]
 
@@ -459,8 +332,7 @@ def _analyse_single_qubit(
         mean_parity_fit = model(detuning_hz, *popt)
         is_peak = popt[0] > 0
         _logger.debug(
-            "Ramsey mean-parity fit (DE, %s): f_offset=%.3f MHz, "
-            "gamma=%.5f 1/ns, sigma_g=%.5f 1/ns, T2*=%.1f ns",
+            "Ramsey mean-parity fit (DE, %s): f_offset=%.3f MHz, " "gamma=%.5f 1/ns, sigma_g=%.5f 1/ns, T2*=%.1f ns",
             "peak" if is_peak else "dip",
             freq_offset * 1e-6,
             decay_rate,
@@ -473,46 +345,13 @@ def _analyse_single_qubit(
             freq_offset * 1e-6,
         )
 
-    # ── Step 2: Per-slice damped sinusoid fits (for plotting) ────────────
-    fit_per_slice = [None] * n_det
-    gamma_per_slice = np.full(n_det, np.nan)
-    freq_per_slice = np.full(n_det, np.nan)
-
-    for i in range(n_det):
-        det_hz = detuning_hz[i] - freq_offset
-        freq_seed = abs(det_hz) * 1e-9
-
-        result = _fit_damped_sinusoid_to_slice(tau_ns, pdiff[i, :], freq_seed)
-        if result is not None:
-            fit_per_slice[i] = result
-            gamma_per_slice[i] = result["gamma"]
-            freq_per_slice[i] = result["frequency"]
-
-    det_range = np.ptp(detuning_hz) * 0.2
-    near_res = np.abs(detuning_hz - freq_offset) < det_range
-    best_fit = None
-    best_fit_idx = resonance_idx
-    for idx in range(n_det):
-        if not near_res[idx] or fit_per_slice[idx] is None:
-            continue
-        if (
-            best_fit is None
-            or fit_per_slice[idx]["amplitude"] > best_fit["amplitude"]
-        ):
-            best_fit = fit_per_slice[idx]
-            best_fit_idx = idx
-    if best_fit is not None:
-        best_fit["slice_idx"] = best_fit_idx
-
-    # ── Step 3: Refine T2* if mean-parity fit was poor ───────────────────
-    decay_rate, sigma_g, t2_star = _extract_t2_star(
+    # ── Step 2: Validate / refine T2* ────────────────────────────────────
+    decay_rate, sigma_g, t2_star = _validate_t2_star(
         pdiff,
         tau_ns,
-        detuning_hz,
         freq_offset,
+        detuning_hz,
         resonance_idx,
-        gamma_per_slice,
-        near_res,
         decay_rate,
         sigma_g,
         t2_star,
@@ -529,11 +368,7 @@ def _analyse_single_qubit(
         "_diag": {
             "mean_parity": mean_parity,
             "mean_parity_fit": mean_parity_fit,
-            "gamma_per_slice": gamma_per_slice,
-            "freq_per_slice": freq_per_slice,
-            "fit_per_slice": fit_per_slice,
             "resonance_idx": resonance_idx,
-            "sinusoid_fit": best_fit,
         },
     }
 
@@ -569,9 +404,7 @@ def fit_raw_data(
     pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
     qubit_names = [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
     if not qubit_names:
-        qubit_names = [
-            getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)
-        ]
+        qubit_names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
 
     detuning_hz = np.asarray(ds.detuning.values, dtype=float)
     tau_ns = np.asarray(ds.tau.values, dtype=float)
