@@ -136,7 +136,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ---------------------------------------------------------
                     align()
                     for i, qubit in batched_qubits.items():
-                        qubit.initialize(duration=node.parameters.gap_wait_time_in_ns)
+                        qubit.initialize()
 
                     # ---------------------------------------------------------
                     # Step 2: Measure state after initialization, no operation

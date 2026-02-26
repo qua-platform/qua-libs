@@ -10,8 +10,6 @@ import numpy as np
 from qiskit import QuantumCircuit
 from qiskit.converters import circuit_to_dag, dag_to_circuit
 
-from calibration_utils.two_qubit_interleaved_rb.rb_utils import EPS
-
 # Gate to integer mapping for single qubit gates
 SINGLE_QUBIT_GATE_MAP = {"sx": 0, "x": 1, "sy": 2, "y": 3, "rz(pi/2)": 4, "rz(pi)": 5, "rz(3pi/2)": 6, "idle": 7}
 

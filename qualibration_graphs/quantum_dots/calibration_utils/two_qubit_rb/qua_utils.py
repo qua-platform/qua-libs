@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """QUA program utilities for two-qubit randomized benchmarking.
 
 This module provides functions and classes for generating and executing

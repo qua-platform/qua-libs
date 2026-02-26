@@ -1,0 +1,1128 @@
+{
+    "physical_channels": {
+        "plunger_1": {
+            "operations": {
+                "half_max_square": {
+                    "length": 16,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.25,
+                    "axis_angle": null,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": "plunger_1",
+            "digital_outputs": {},
+            "sticky": {
+                "duration": 1000,
+                "enabled": true,
+                "analog": true,
+                "digital": false,
+                "__class__": "quam.components.channels.StickyChannelAddon"
+            },
+            "intermediate_frequency": null,
+            "thread": null,
+            "core": null,
+            "opx_output": {
+                "controller_id": "con1",
+                "fem_id": 5,
+                "port_id": 1,
+                "offset": null,
+                "delay": 0,
+                "crosstalk": null,
+                "feedforward_filter": null,
+                "feedback_filter": null,
+                "shareable": false,
+                "sampling_rate": 1000000000.0,
+                "upsampling_mode": "mw",
+                "exponential_filter": null,
+                "output_mode": "direct",
+                "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+            },
+            "filter_fir_taps": null,
+            "filter_iir_taps": null,
+            "opx_output_offset": null,
+            "attenuation": 10,
+            "current_external_voltage": -0.0048056,
+            "qdac_spec": {
+                "opx_trigger_out": null,
+                "qdac_output_port": 1,
+                "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
+            },
+            "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
+        },
+        "plunger_2": {
+            "operations": {
+                "half_max_square": {
+                    "length": 16,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.25,
+                    "axis_angle": null,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": "plunger_2",
+            "digital_outputs": {},
+            "sticky": {
+                "duration": 1000,
+                "enabled": true,
+                "analog": true,
+                "digital": false,
+                "__class__": "quam.components.channels.StickyChannelAddon"
+            },
+            "intermediate_frequency": null,
+            "thread": null,
+            "core": null,
+            "opx_output": {
+                "controller_id": "con1",
+                "fem_id": 5,
+                "port_id": 2,
+                "offset": null,
+                "delay": 0,
+                "crosstalk": null,
+                "feedforward_filter": null,
+                "feedback_filter": null,
+                "shareable": false,
+                "sampling_rate": 1000000000.0,
+                "upsampling_mode": "mw",
+                "exponential_filter": null,
+                "output_mode": "direct",
+                "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+            },
+            "filter_fir_taps": null,
+            "filter_iir_taps": null,
+            "opx_output_offset": null,
+            "attenuation": 10,
+            "current_external_voltage": -0.0047219,
+            "qdac_spec": {
+                "opx_trigger_out": null,
+                "qdac_output_port": 2,
+                "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
+            },
+            "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
+        },
+        "sensor_DC_1": {
+            "operations": {
+                "half_max_square": {
+                    "length": 16,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.25,
+                    "axis_angle": null,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": "sensor_DC_1",
+            "digital_outputs": {},
+            "sticky": {
+                "duration": 1000,
+                "enabled": true,
+                "analog": true,
+                "digital": false,
+                "__class__": "quam.components.channels.StickyChannelAddon"
+            },
+            "intermediate_frequency": null,
+            "thread": null,
+            "core": null,
+            "opx_output": {
+                "controller_id": "con1",
+                "fem_id": 5,
+                "port_id": 4,
+                "offset": null,
+                "delay": 0,
+                "crosstalk": null,
+                "feedforward_filter": null,
+                "feedback_filter": null,
+                "shareable": false,
+                "sampling_rate": 1000000000.0,
+                "upsampling_mode": "mw",
+                "exponential_filter": null,
+                "output_mode": "direct",
+                "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+            },
+            "filter_fir_taps": null,
+            "filter_iir_taps": null,
+            "opx_output_offset": null,
+            "attenuation": 10,
+            "current_external_voltage": -0.0047641,
+            "qdac_spec": {
+                "opx_trigger_out": null,
+                "qdac_output_port": 3,
+                "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
+            },
+            "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
+        },
+        "sensor_DC_2": {
+            "operations": {
+                "half_max_square": {
+                    "length": 16,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.25,
+                    "axis_angle": null,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": "sensor_DC_2",
+            "digital_outputs": {},
+            "sticky": {
+                "duration": 1000,
+                "enabled": true,
+                "analog": true,
+                "digital": false,
+                "__class__": "quam.components.channels.StickyChannelAddon"
+            },
+            "intermediate_frequency": null,
+            "thread": null,
+            "core": null,
+            "opx_output": {
+                "controller_id": "con1",
+                "fem_id": 5,
+                "port_id": 5,
+                "offset": null,
+                "delay": 0,
+                "crosstalk": null,
+                "feedforward_filter": null,
+                "feedback_filter": null,
+                "shareable": false,
+                "sampling_rate": 1000000000.0,
+                "upsampling_mode": "mw",
+                "exponential_filter": null,
+                "output_mode": "direct",
+                "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+            },
+            "filter_fir_taps": null,
+            "filter_iir_taps": null,
+            "opx_output_offset": null,
+            "attenuation": 10,
+            "current_external_voltage": -0.0047641,
+            "qdac_spec": {
+                "opx_trigger_out": null,
+                "qdac_output_port": 4,
+                "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
+            },
+            "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
+        }
+    },
+    "global_gates": {},
+    "virtual_gate_sets": {
+        "main_qpu": {
+            "id": "main_qpu",
+            "macros": {
+                "virtual_dot_1_empty": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 500,
+                    "voltages": {
+                        "virtual_dot_1": -0.1
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "virtual_dot_1_initialize": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 500,
+                    "voltages": {
+                        "virtual_dot_1": 0.05
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "virtual_dot_1_measure": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 16,
+                    "voltages": {
+                        "virtual_dot_1": -0.05
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "virtual_dot_2_empty": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 500,
+                    "voltages": {
+                        "virtual_dot_2": -0.1
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "virtual_dot_2_initialize": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 500,
+                    "voltages": {
+                        "virtual_dot_2": 0.05
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "virtual_dot_2_measure": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 16,
+                    "voltages": {
+                        "virtual_dot_2": -0.05
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "Q1_empty": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 500,
+                    "voltages": {
+                        "virtual_dot_1": -0.1
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "Q1_initialize": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 500,
+                    "voltages": {
+                        "virtual_dot_1": 0.05
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "Q1_measure": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 16,
+                    "voltages": {
+                        "virtual_dot_1": -0.05
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "Q2_empty": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 500,
+                    "voltages": {
+                        "virtual_dot_2": -0.1
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "Q2_initialize": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 500,
+                    "voltages": {
+                        "virtual_dot_2": 0.05
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "Q2_measure": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 16,
+                    "voltages": {
+                        "virtual_dot_2": -0.05
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                }
+            },
+            "channels": {
+                "plunger_1": "#/physical_channels/plunger_1",
+                "plunger_2": "#/physical_channels/plunger_2",
+                "sensor_DC_1": "#/physical_channels/sensor_DC_1",
+                "sensor_DC_2": "#/physical_channels/sensor_DC_2"
+            },
+            "adjust_for_attenuation": false,
+            "layers": [
+                {
+                    "id": "compensation_layer",
+                    "source_gates": [
+                        "virtual_dot_1",
+                        "virtual_dot_2",
+                        "virtual_sensor_1",
+                        "virtual_sensor_2"
+                    ],
+                    "target_gates": [
+                        "plunger_1",
+                        "plunger_2",
+                        "sensor_DC_1",
+                        "sensor_DC_2"
+                    ],
+                    "matrix": [
+                        [
+                            1.0,
+                            0.0,
+                            0.020406,
+                            0.020406
+                        ],
+                        [
+                            0.0,
+                            1.0,
+                            0.029189,
+                            0.029189
+                        ],
+                        [
+                            0.020406,
+                            0.029189,
+                            1.0,
+                            0.0
+                        ],
+                        [
+                            0.020406,
+                            0.029189,
+                            0.0,
+                            1.0
+                        ]
+                    ],
+                    "use_pseudoinverse": false,
+                    "__class__": "quam_builder.architecture.quantum_dots.components.virtual_gate_set.VirtualizationLayer"
+                }
+            ],
+            "allow_rectangular_matrices": true,
+            "__class__": "quam_builder.architecture.quantum_dots.components.virtual_gate_set.VirtualGateSet"
+        }
+    },
+    "virtual_dc_sets": {},
+    "quantum_dots": {
+        "virtual_dot_1": {
+            "id": "virtual_dot_1",
+            "macros": {
+                "align": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 16,
+                    "elements": null,
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                },
+                "empty": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_1_empty",
+                    "macro_type": "step",
+                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                },
+                "initialize": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_1_initialize",
+                    "macro_type": "step",
+                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                }
+            },
+            "physical_channel": "#/physical_channels/plunger_1",
+            "charge_number": 0,
+            "current_voltage": 0.0,
+            "__class__": "quam_builder.architecture.quantum_dots.components.quantum_dot.QuantumDot"
+        },
+        "virtual_dot_2": {
+            "id": "virtual_dot_2",
+            "macros": {
+                "align": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 16,
+                    "elements": null,
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                },
+                "empty": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_2_empty",
+                    "macro_type": "step",
+                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                },
+                "initialize": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_2_initialize",
+                    "macro_type": "step",
+                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                }
+            },
+            "physical_channel": "#/physical_channels/plunger_2",
+            "charge_number": 0,
+            "current_voltage": 0.0,
+            "__class__": "quam_builder.architecture.quantum_dots.components.quantum_dot.QuantumDot"
+        }
+    },
+    "quantum_dot_pairs": {
+        "qd_pair_1_2": {
+            "id": "qd_pair_1_2",
+            "macros": {
+                "align": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 16,
+                    "elements": null,
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                }
+            },
+            "quantum_dots": [
+                "#/quantum_dots/virtual_dot_1",
+                "#/quantum_dots/virtual_dot_2"
+            ],
+            "sensor_dots": [
+                "#/sensor_dots/virtual_sensor_1"
+            ],
+            "barrier_gate": null,
+            "dot_coupling": 0.0,
+            "detuning_axis_name": "qd_pair_1_2_epsilon",
+            "__class__": "quam_builder.architecture.quantum_dots.components.quantum_dot_pair.QuantumDotPair"
+        }
+    },
+    "sensor_dots": {
+        "virtual_sensor_1": {
+            "id": "virtual_sensor_1",
+            "macros": {
+                "align": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 16,
+                    "elements": null,
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                }
+            },
+            "physical_channel": "#/physical_channels/sensor_DC_1",
+            "charge_number": 0,
+            "current_voltage": 0.0,
+            "readout_resonator": {
+                "frequency_bare": null,
+                "operations": {
+                    "readout": {
+                        "length": 1000,
+                        "id": "readout",
+                        "digital_marker": "ON",
+                        "amplitude": 0.1,
+                        "axis_angle": null,
+                        "threshold": null,
+                        "rus_exit_threshold": null,
+                        "integration_weights": "#./default_integration_weights",
+                        "integration_weights_angle": 0,
+                        "__class__": "quam.components.pulses.SquareReadoutPulse"
+                    }
+                },
+                "id": "readout_resonator_1",
+                "digital_outputs": {},
+                "sticky": null,
+                "intermediate_frequency": 150000000,
+                "thread": null,
+                "core": null,
+                "opx_input": {
+                    "controller_id": "con1",
+                    "fem_id": 5,
+                    "port_id": 1,
+                    "offset": null,
+                    "gain_db": 0,
+                    "shareable": false,
+                    "sampling_rate": 1000000000.0,
+                    "__class__": "quam.components.ports.analog_inputs.LFFEMAnalogInputPort"
+                },
+                "opx_input_offset": null,
+                "time_of_flight": 140,
+                "smearing": 0,
+                "time_tagging": null,
+                "opx_output": {
+                    "controller_id": "con1",
+                    "fem_id": 5,
+                    "port_id": 6,
+                    "offset": null,
+                    "delay": 0,
+                    "crosstalk": null,
+                    "feedforward_filter": null,
+                    "feedback_filter": null,
+                    "shareable": false,
+                    "sampling_rate": 1000000000.0,
+                    "upsampling_mode": "mw",
+                    "exponential_filter": null,
+                    "output_mode": "direct",
+                    "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                },
+                "filter_fir_taps": null,
+                "filter_iir_taps": null,
+                "opx_output_offset": null,
+                "__class__": "quam_builder.architecture.quantum_dots.components.readout_resonator.ReadoutResonatorSingle"
+            },
+            "readout_thresholds": {
+                "qd_pair_1_2": 0.0
+            },
+            "readout_projectors": {
+                "qd_pair_1_2": {
+                    "wI": 1.0,
+                    "wQ": 0.0,
+                    "offset": 0.0
+                }
+            },
+            "__class__": "quam_builder.architecture.quantum_dots.components.sensor_dot.SensorDot"
+        },
+        "virtual_sensor_2": {
+            "id": "virtual_sensor_2",
+            "macros": {
+                "align": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 16,
+                    "elements": null,
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                }
+            },
+            "physical_channel": "#/physical_channels/sensor_DC_2",
+            "charge_number": 0,
+            "current_voltage": 0.0,
+            "readout_resonator": {
+                "frequency_bare": null,
+                "operations": {
+                    "readout": {
+                        "length": 1000,
+                        "id": "readout",
+                        "digital_marker": "ON",
+                        "amplitude": 0.1,
+                        "axis_angle": null,
+                        "threshold": null,
+                        "rus_exit_threshold": null,
+                        "integration_weights": "#./default_integration_weights",
+                        "integration_weights_angle": 0,
+                        "__class__": "quam.components.pulses.SquareReadoutPulse"
+                    }
+                },
+                "id": "readout_resonator_2",
+                "digital_outputs": {},
+                "sticky": null,
+                "intermediate_frequency": 250000000,
+                "thread": null,
+                "core": null,
+                "opx_input": {
+                    "controller_id": "con1",
+                    "fem_id": 5,
+                    "port_id": 2,
+                    "offset": null,
+                    "gain_db": 0,
+                    "shareable": false,
+                    "sampling_rate": 1000000000.0,
+                    "__class__": "quam.components.ports.analog_inputs.LFFEMAnalogInputPort"
+                },
+                "opx_input_offset": null,
+                "time_of_flight": 140,
+                "smearing": 0,
+                "time_tagging": null,
+                "opx_output": {
+                    "controller_id": "con1",
+                    "fem_id": 5,
+                    "port_id": 7,
+                    "offset": null,
+                    "delay": 0,
+                    "crosstalk": null,
+                    "feedforward_filter": null,
+                    "feedback_filter": null,
+                    "shareable": false,
+                    "sampling_rate": 1000000000.0,
+                    "upsampling_mode": "mw",
+                    "exponential_filter": null,
+                    "output_mode": "direct",
+                    "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                },
+                "filter_fir_taps": null,
+                "filter_iir_taps": null,
+                "opx_output_offset": null,
+                "__class__": "quam_builder.architecture.quantum_dots.components.readout_resonator.ReadoutResonatorSingle"
+            },
+            "readout_thresholds": {},
+            "readout_projectors": {},
+            "__class__": "quam_builder.architecture.quantum_dots.components.sensor_dot.SensorDot"
+        }
+    },
+    "barrier_gates": {},
+    "octaves": {},
+    "mixers": {},
+    "ports": null,
+    "b_field": 0,
+    "qubits": {
+        "Q1": {
+            "id": "Q1",
+            "macros": {
+                "align": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 16,
+                    "elements": null,
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                },
+                "empty": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q1_empty",
+                    "macro_type": "step",
+                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                },
+                "initialize": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q1_initialize",
+                    "macro_type": "step",
+                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                },
+                "x180": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 25,
+                    "pulse_name": "x180",
+                    "amplitude_scale": 1.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.XGateMacro"
+                },
+                "x90": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 25,
+                    "pulse_name": "x180",
+                    "amplitude_scale": 0.5,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.XGateMacro"
+                },
+                "xm90": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 25,
+                    "pulse_name": "x180",
+                    "amplitude_scale": -0.5,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.XGateMacro"
+                },
+                "y180": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 25,
+                    "pulse_name": "x180",
+                    "amplitude_scale": 1.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.YGateMacro"
+                },
+                "y90": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 25,
+                    "pulse_name": "x180",
+                    "amplitude_scale": 0.5,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.YGateMacro"
+                },
+                "ym90": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 25,
+                    "pulse_name": "x180",
+                    "amplitude_scale": -0.5,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.YGateMacro"
+                },
+                "z90": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "theta": 90.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
+                },
+                "z180": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "theta": 180.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
+                },
+                "zm90": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "theta": -90.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
+                },
+                "measure": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "pulse_name": "readout",
+                    "readout_duration": 2000,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.MeasureMacro"
+                }
+            },
+            "grid_location": null,
+            "quantum_dot": "#/quantum_dots/virtual_dot_1",
+            "xy": {
+                "operations": {
+                    "x180": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.2,
+                        "sigma": 16.666666666666668,
+                        "axis_angle": null,
+                        "subtracted": true,
+                        "__class__": "quam.components.pulses.GaussianPulse"
+                    },
+                    "x90": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.1,
+                        "sigma": 16.666666666666668,
+                        "axis_angle": null,
+                        "subtracted": true,
+                        "__class__": "quam.components.pulses.GaussianPulse"
+                    },
+                    "-x90": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": -0.1,
+                        "sigma": 16.666666666666668,
+                        "axis_angle": null,
+                        "subtracted": true,
+                        "__class__": "quam.components.pulses.GaussianPulse"
+                    },
+                    "y90": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.1,
+                        "sigma": 16.666666666666668,
+                        "axis_angle": null,
+                        "subtracted": true,
+                        "__class__": "quam.components.pulses.GaussianPulse"
+                    },
+                    "-y90": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": -0.1,
+                        "sigma": 16.666666666666668,
+                        "axis_angle": null,
+                        "subtracted": true,
+                        "__class__": "quam.components.pulses.GaussianPulse"
+                    }
+                },
+                "id": "Q1_xy",
+                "digital_outputs": {},
+                "sticky": null,
+                "intermediate_frequency": 100000000,
+                "thread": null,
+                "core": null,
+                "LO_frequency": "#./frequency_converter_up/LO_frequency",
+                "RF_frequency": "#./inferred_RF_frequency",
+                "opx_output_I": {
+                    "controller_id": "con1",
+                    "fem_id": 4,
+                    "port_id": 1,
+                    "offset": null,
+                    "delay": 0,
+                    "crosstalk": null,
+                    "feedforward_filter": null,
+                    "feedback_filter": null,
+                    "shareable": false,
+                    "sampling_rate": 1000000000.0,
+                    "upsampling_mode": "mw",
+                    "exponential_filter": null,
+                    "output_mode": "direct",
+                    "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                },
+                "opx_output_Q": {
+                    "controller_id": "con1",
+                    "fem_id": 4,
+                    "port_id": 2,
+                    "offset": null,
+                    "delay": 0,
+                    "crosstalk": null,
+                    "feedforward_filter": null,
+                    "feedback_filter": null,
+                    "shareable": false,
+                    "sampling_rate": 1000000000.0,
+                    "upsampling_mode": "mw",
+                    "exponential_filter": null,
+                    "output_mode": "direct",
+                    "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                },
+                "opx_output_offset_I": null,
+                "opx_output_offset_Q": null,
+                "frequency_converter_up": {
+                    "local_oscillator": {
+                        "frequency": 0,
+                        "power": null,
+                        "__class__": "quam.components.hardware.LocalOscillator"
+                    },
+                    "mixer": null,
+                    "gain": null,
+                    "__class__": "quam.components.hardware.FrequencyConverter"
+                },
+                "__class__": "quam_builder.architecture.quantum_dots.components.xy_drive.XYDriveIQ"
+            },
+            "larmor_frequency": null,
+            "T1": null,
+            "T2ramsey": null,
+            "T2echo": null,
+            "thermalization_time_factor": 5,
+            "points": {},
+            "__class__": "quam_builder.architecture.quantum_dots.qubit.ld_qubit.LDQubit"
+        },
+        "Q2": {
+            "id": "Q2",
+            "macros": {
+                "align": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 16,
+                    "elements": null,
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                },
+                "empty": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q2_empty",
+                    "macro_type": "step",
+                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                },
+                "initialize": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q2_initialize",
+                    "macro_type": "step",
+                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                },
+                "x180": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 25,
+                    "pulse_name": "x180",
+                    "amplitude_scale": 1.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.XGateMacro"
+                },
+                "x90": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 25,
+                    "pulse_name": "x180",
+                    "amplitude_scale": 0.5,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.XGateMacro"
+                },
+                "xm90": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 25,
+                    "pulse_name": "x180",
+                    "amplitude_scale": -0.5,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.XGateMacro"
+                },
+                "y180": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 25,
+                    "pulse_name": "x180",
+                    "amplitude_scale": 1.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.YGateMacro"
+                },
+                "y90": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 25,
+                    "pulse_name": "x180",
+                    "amplitude_scale": 0.5,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.YGateMacro"
+                },
+                "ym90": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": 25,
+                    "pulse_name": "x180",
+                    "amplitude_scale": -0.5,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.YGateMacro"
+                },
+                "z90": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "theta": 90.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
+                },
+                "z180": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "theta": 180.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
+                },
+                "zm90": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "theta": -90.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
+                },
+                "measure": {
+                    "id": "#./inferred_id",
+                    "fidelity": null,
+                    "duration": "#./inferred_duration",
+                    "pulse_name": "readout",
+                    "readout_duration": 2000,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.MeasureMacro"
+                }
+            },
+            "grid_location": null,
+            "quantum_dot": "#/quantum_dots/virtual_dot_2",
+            "xy": {
+                "operations": {
+                    "x180": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.2,
+                        "sigma": 16.666666666666668,
+                        "axis_angle": null,
+                        "subtracted": true,
+                        "__class__": "quam.components.pulses.GaussianPulse"
+                    },
+                    "x90": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.1,
+                        "sigma": 16.666666666666668,
+                        "axis_angle": null,
+                        "subtracted": true,
+                        "__class__": "quam.components.pulses.GaussianPulse"
+                    },
+                    "-x90": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": -0.1,
+                        "sigma": 16.666666666666668,
+                        "axis_angle": null,
+                        "subtracted": true,
+                        "__class__": "quam.components.pulses.GaussianPulse"
+                    },
+                    "y90": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.1,
+                        "sigma": 16.666666666666668,
+                        "axis_angle": null,
+                        "subtracted": true,
+                        "__class__": "quam.components.pulses.GaussianPulse"
+                    },
+                    "-y90": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": -0.1,
+                        "sigma": 16.666666666666668,
+                        "axis_angle": null,
+                        "subtracted": true,
+                        "__class__": "quam.components.pulses.GaussianPulse"
+                    }
+                },
+                "id": "Q2_xy",
+                "digital_outputs": {},
+                "sticky": null,
+                "intermediate_frequency": 100000000,
+                "thread": null,
+                "core": null,
+                "LO_frequency": "#./frequency_converter_up/LO_frequency",
+                "RF_frequency": "#./inferred_RF_frequency",
+                "opx_output_I": {
+                    "controller_id": "con1",
+                    "fem_id": 4,
+                    "port_id": 3,
+                    "offset": null,
+                    "delay": 0,
+                    "crosstalk": null,
+                    "feedforward_filter": null,
+                    "feedback_filter": null,
+                    "shareable": false,
+                    "sampling_rate": 1000000000.0,
+                    "upsampling_mode": "mw",
+                    "exponential_filter": null,
+                    "output_mode": "direct",
+                    "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                },
+                "opx_output_Q": {
+                    "controller_id": "con1",
+                    "fem_id": 4,
+                    "port_id": 4,
+                    "offset": null,
+                    "delay": 0,
+                    "crosstalk": null,
+                    "feedforward_filter": null,
+                    "feedback_filter": null,
+                    "shareable": false,
+                    "sampling_rate": 1000000000.0,
+                    "upsampling_mode": "mw",
+                    "exponential_filter": null,
+                    "output_mode": "direct",
+                    "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                },
+                "opx_output_offset_I": null,
+                "opx_output_offset_Q": null,
+                "frequency_converter_up": {
+                    "local_oscillator": {
+                        "frequency": 0,
+                        "power": null,
+                        "__class__": "quam.components.hardware.LocalOscillator"
+                    },
+                    "mixer": null,
+                    "gain": null,
+                    "__class__": "quam.components.hardware.FrequencyConverter"
+                },
+                "__class__": "quam_builder.architecture.quantum_dots.components.xy_drive.XYDriveIQ"
+            },
+            "larmor_frequency": null,
+            "T1": null,
+            "T2ramsey": null,
+            "T2echo": null,
+            "thermalization_time_factor": 5,
+            "points": {},
+            "__class__": "quam_builder.architecture.quantum_dots.qubit.ld_qubit.LDQubit"
+        }
+    },
+    "qubit_pairs": {},
+    "active_qubit_names": [
+        "Q1",
+        "Q2"
+    ],
+    "active_qubit_pair_names": [],
+    "__class__": "quam_builder.architecture.quantum_dots.qpu.loss_divincenzo_quam.LossDiVincenzoQuam"
+}

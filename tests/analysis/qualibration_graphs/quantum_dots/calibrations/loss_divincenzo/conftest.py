@@ -35,7 +35,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import xarray as xr  # noqa: E402
 
-from qualibrate.qualibration_library import QualibrationLibrary  # noqa: E402
+try:  # noqa: E402
+    from qualibrate.qualibration_library import QualibrationLibrary
+except ImportError:  # qualibrate>=1.0 API layout
+    from qualibrate.core.qualibration_library import QualibrationLibrary
 from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam  # noqa: E402
 from .....path_utils import find_repo_root  # noqa: E402
 from .quam_factory import create_minimal_quam  # noqa: E402
@@ -77,6 +80,31 @@ from virtual_qpu.sweep import sweep as _sweep  # noqa: E402
 from quantum_dots.device import LossDiVincenzoDevice  # noqa: E402
 from quantum_dots.params import ExchangeModel, LossDiVincenzoParams, MU_B_OVER_H  # noqa: E402
 
+# Exposed for tests that conditionally skip when virtual_qpu is unavailable.
+_VIRTUAL_QPU_AVAILABLE = True
+
+
+def _patch_qualibrate_logger_to_local_cache() -> None:
+    """Force qualibrate logger file output into the repo-local pytest cache."""
+    try:
+        import qualibrate.utils.logger_m as logger_m
+    except Exception:
+        try:
+            import qualibrate.core.utils.logger_m as logger_m
+        except Exception:
+            return
+
+    log_dir = _cache_base / "qualibrate" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    def _local_log_filepath() -> Path:
+        return log_dir / "qualibrate.log"
+
+    logger_m.LazyInitLogger.get_log_filepath = staticmethod(_local_log_filepath)
+
+
+_patch_qualibrate_logger_to_local_cache()
+
 # =============================================================================
 # Default device configuration
 # =============================================================================
@@ -96,6 +124,10 @@ DEFAULT_LD_PARAMS = LossDiVincenzoParams(
 # Default simulation settings
 DEFAULT_SOLVER = "me"  # Lindblad master equation
 DEFAULT_NOISE_STD = 0.1  # Gaussian shot-noise std on parity diff
+
+# Default drive parameters for calibration
+DEFAULT_DRIVE_AMP_GHZ = 0.008
+DEFAULT_PULSE_DURATION_NS = 100.0
 
 
 # =============================================================================
@@ -261,6 +293,120 @@ def ld_device():
     n_expected = 2 * DEFAULT_LD_PARAMS.n_qubits  # T1 + Tphi per qubit
     assert len(jump_ops) == n_expected, f"Expected {n_expected} collapse ops, got {len(jump_ops)}"
     return device
+
+
+@pytest.fixture(scope="session")
+def calibrated_pi_half_amp():
+    """Calibrate the π/2 pulse amplitude via a quick power-Rabi sweep.
+
+    Runs a 1D amplitude sweep at fixed duration, finds the first parity
+    maximum (π-pulse), and returns half that amplitude for π/2 pulses.
+    Cached at session scope so it is computed only once.
+    """
+    from virtual_qpu.pulse import GaussianIQPulse
+    from virtual_qpu.schedule import Schedule
+
+    device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
+    qubit_freq_ghz = device.params.qubit_freqs[0]
+
+    amp_prefactors = jnp.linspace(0.1, 3.0, 200, dtype=jnp.float32)
+
+    def make_schedule(amp):
+        sched = Schedule()
+        sched.play(
+            GaussianIQPulse(
+                duration=DEFAULT_PULSE_DURATION_NS,
+                amplitude=DEFAULT_DRIVE_AMP_GHZ * amp,
+                frequency=qubit_freq_ghz,
+                sigma=DEFAULT_PULSE_DURATION_NS / 5,
+            ),
+            channel="drive_q0",
+        )
+        return sched.resolve()
+
+    result = simulate_sweep(
+        device,
+        make_schedule,
+        tsave=jnp.array([0.0, DEFAULT_PULSE_DURATION_NS], dtype=jnp.float32),
+        noise_std=0.0,  # noiseless for calibration
+        amp=amp_prefactors,
+    )
+    parity = np.asarray(result[..., -1])
+
+    # Find first maximum (π-pulse)
+    pi_idx = int(np.argmax(parity))
+    pi_amp = float(DEFAULT_DRIVE_AMP_GHZ * amp_prefactors[pi_idx])
+    pi_half_amp = pi_amp / 2.0
+
+    return pi_half_amp
+
+
+@pytest.fixture(scope="session")
+def rabi_chevron_calibration():
+    """Run a rabi chevron simulation + FFT analysis to calibrate pulse parameters."""
+    if not _VIRTUAL_QPU_AVAILABLE:
+        pytest.skip("virtual_qpu (dynamiqs) not installed")
+
+    from virtual_qpu.pulse import GaussianIQPulse
+    from virtual_qpu.schedule import Schedule
+
+    from calibration_utils.time_rabi_chevron_parity_diff.analysis import (
+        _fft_analyse_single_qubit,
+    )
+
+    device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
+    qubit_freq_ghz = device.params.qubit_freqs[0]
+
+    max_dur_ns = 800
+    n_dur = 200
+    freq_span_mhz = 100.0
+    freq_step_mhz = 1.0
+
+    durations = jnp.linspace(4, max_dur_ns, n_dur, dtype=jnp.float32)
+    span_ghz = freq_span_mhz * 1e-3
+    step_ghz = freq_step_mhz * 1e-3
+    drive_freqs = jnp.arange(
+        qubit_freq_ghz - span_ghz / 2,
+        qubit_freq_ghz + span_ghz / 2,
+        step_ghz,
+        dtype=jnp.float32,
+    )
+
+    def make_schedule(freq, dur):
+        sched = Schedule()
+        sched.play(
+            GaussianIQPulse(
+                duration=dur,
+                amplitude=DEFAULT_DRIVE_AMP_GHZ,
+                frequency=freq,
+                sigma=dur / 5,
+            ),
+            channel="drive_q0",
+        )
+        return sched.resolve()
+
+    result = simulate_sweep(
+        device,
+        make_schedule,
+        tsave=lambda dur, **_: jnp.array([0.0, dur]),
+        noise_std=0.0,
+        freq=drive_freqs,
+        dur=durations,
+    )
+    pdiff = result[..., -1]
+
+    freqs_hz = np.asarray(drive_freqs) * 1e9
+    durations_ns = np.asarray(durations)
+    nominal_freq_hz = float(qubit_freq_ghz * 1e9)
+
+    fit_result, _ = _fft_analyse_single_qubit(
+        pdiff,
+        freqs_hz,
+        durations_ns,
+        nominal_freq_hz,
+    )
+    assert fit_result["success"], f"Rabi chevron calibration failed: {fit_result}"
+    return fit_result
 
 
 # =============================================================================
@@ -448,8 +594,12 @@ def _patch_action_manager_register_only():
     """
     from functools import wraps
 
-    from qualibrate.runnables.run_action.action import Action
-    from qualibrate.runnables.run_action.action_manager import ActionManager
+    try:
+        from qualibrate.runnables.run_action.action import Action
+        from qualibrate.runnables.run_action.action_manager import ActionManager
+    except ImportError:
+        from qualibrate.core.runnables.run_action.action import Action
+        from qualibrate.core.runnables.run_action.action_manager import ActionManager
 
     _original_register = ActionManager.register_action
 
@@ -562,7 +712,7 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         overrides["simulate"] = False  # Analysis tests inject ds_raw; skip QUA sim/execute.
         _apply_param_overrides(node, overrides)
 
-        # 5) Populate the namespace with qubits.
+        # 5) Populate the namespace with qubits/sensors expected by node actions.
         try:
             from calibration_utils.common_utils.experiment import get_qubits
 
@@ -574,6 +724,18 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
                     node.namespace["qubits"] = list(qubits.values())
                 else:
                     node.namespace["qubits"] = list(qubits)
+
+        try:
+            from calibration_utils.common_utils.experiment import get_sensors
+
+            node.namespace["sensors"] = get_sensors(node)
+        except Exception:
+            if hasattr(machine, "sensor_dots"):
+                sensors = machine.sensor_dots
+                if isinstance(sensors, dict):
+                    node.namespace["sensors"] = list(sensors.values())
+                else:
+                    node.namespace["sensors"] = list(sensors)
 
         # 6) Optionally restrict to a subset of qubits for analysis.
         if analyse_qubits:

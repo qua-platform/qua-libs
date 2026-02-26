@@ -1,4 +1,3 @@
-
 """Two-qubit standard randomized benchmarking calibration node.
 
 This module implements a calibration node for performing standard randomized
@@ -224,17 +223,27 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-with node.record_state_updates():
-#     for qp in node.namespace["qubit_pairs"]:
-#         if node.outcomes[qp.name] == "failed":
-#             continue
-#         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB"] = node.results[
-#             "fit_results"
-#         ][qp.name]["fidelity"]
-#         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB_alpha"] = node.results[
-#             "fit_results"
-#         ][qp.name]["alpha"]
-# # %% {Save_results}
-# node.save()
+@node.run_action(skip_if=node.parameters.simulate)
+def update_state(node: QualibrationNode[Parameters, Quam]):
+    """Update the relevant state entries when RB fitting succeeds."""
+    with node.record_state_updates():
+        pass
+        # for qp in node.namespace["qubit_pairs"]:
+        #     if node.outcomes[qp.name] == "failed":
+        #         continue
+        #     node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB"] = node.results[
+        #         "fit_results"
+        #     ][qp.name]["fidelity"]
+        #     node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB_alpha"] = node.results[
+        #         "fit_results"
+        #     ][qp.name]["alpha"]
+
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Save the node results and state snapshot."""
+    node.save()
+
 
 # %%

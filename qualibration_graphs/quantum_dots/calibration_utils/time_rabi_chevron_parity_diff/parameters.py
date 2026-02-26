@@ -1,3 +1,5 @@
+"""Node parameters for time Rabi chevron parity difference calibration."""
+
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
@@ -17,8 +19,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Span of frequencies to sweep in MHz. Default is 2 MHz."""
     frequency_step_in_mhz: float = 0.025
     """Step size for the frequency detuning sweep in MHz. Default is 0.025 MHz."""
-    gap_wait_time_in_ns: int = 128
-    """Wait time between initialization and X180 pulse in nanoseconds. Default is 128 ns."""
     operation: str = "x180"
     """Name of the qubit operation to perform. Default is 'x180'."""
 

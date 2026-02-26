@@ -2868,8 +2868,8 @@ wheels = [
 
 [[package]]
 name = "qualang-tools"
-version = "0.21.0"
-source = { git = "https://github.com/qua-platform/py-qua-tools.git?rev=feat%2Fquantum-dots#c9ddaffb6bc3393a8819b4bbf77b4eae58e87cd9" }
+version = "0.21.1"
+source = { git = "https://github.com/qua-platform/py-qua-tools.git?rev=main#db8e38e4d04d66b781a0f0a3a4267844aa059904" }
 dependencies = [
     { name = "grpclib" },
     { name = "matplotlib" },
@@ -3019,7 +3019,7 @@ wheels = [
 [[package]]
 name = "quam-builder"
 version = "0.2.0"
-source = { git = "https://github.com/qua-platform/quam-builder.git?rev=feature%2Fquantum_dots#62cf4b3de7798f655bc2d5c5771799a5fe7f9986" }
+source = { git = "https://github.com/qua-platform/quam-builder.git?rev=release%2Fnightly#e64298579b5e3d9ce26816303015b0d3c2bd01a7" }
 dependencies = [
     { name = "qcodes-contrib-drivers", version = "0.23.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "qcodes-contrib-drivers", version = "0.24.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -3085,7 +3085,7 @@ requires-dist = [
     { name = "qualibrate", specifier = ">=0.2.1" },
     { name = "qualibration-libs", git = "https://github.com/qua-platform/qualibration-libs.git" },
     { name = "quam", specifier = ">=0.4.0" },
-    { name = "quam-builder", git = "https://github.com/qua-platform/quam-builder.git?rev=feature%2Fquantum_dots" },
+    { name = "quam-builder", git = "https://github.com/qua-platform/quam-builder.git?rev=release%2Fnightly" },
     { name = "scikit-image", specifier = ">=0.20.0" },
     { name = "scipy", specifier = ">=1.13.1" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.1" },

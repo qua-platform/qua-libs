@@ -8,8 +8,6 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    gap_wait_time_in_ns: int = 128
-    """Wait time between initialization and qubit pulse in nanoseconds. Default is 128 ns."""
 
 
 class RamseyParameters(
@@ -38,7 +36,9 @@ class RamseyDetuningParameters(
     detuning_step_in_mhz: float = 0.1
     """Frequency detuning step. Default 0.1MHz"""
     idle_time_ns: int = 100
-    """Fixed idle time in ns."""
+    """Short idle time in ns (gives wide fringes for coarse localisation)."""
+    idle_time_long_ns: int = 400
+    """Long idle time in ns (gives narrow fringes for precision + T2* via amplitude ratio)."""
 
 
 class RamseyChevronParameters(

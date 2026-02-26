@@ -10,25 +10,39 @@ from qua_dashboards.virtual_gates import VirtualLayerEditor, ui_update
 from qcodes.parameters import DelegateParameter
 import threading
 import webbrowser
+import subprocess
 
 _DASHBOARD_THREAD: Optional[threading.Thread] = None
 _DASHBOARD_SERVER = None
 
 
-def stop_dashboard():
-    """Gracefully shutdown the dashboard server without killing the process."""
+def stop_dashboard(port: int = 8050):
+    """Nuclear option: kill anything on the given port."""
     global _DASHBOARD_THREAD, _DASHBOARD_SERVER
 
+    # 1. Try graceful werkzeug shutdown first
     if _DASHBOARD_SERVER is not None:
-        print("Shutting down existing dashboard...")
-        _DASHBOARD_SERVER.shutdown()
+        try:
+            _DASHBOARD_SERVER.shutdown()
+        except Exception:
+            pass
         _DASHBOARD_SERVER = None
 
-    if _DASHBOARD_THREAD is not None and _DASHBOARD_THREAD.is_alive():
-        _DASHBOARD_THREAD.join(timeout=3)
+    # 2. Kill any process using the port (works even if server ref is lost)
+    result = subprocess.run(["lsof", "-ti", f":{port}"], capture_output=True, text=True)
+    pids = result.stdout.strip().split()
+    for pid in pids:
+        try:
+            os.kill(int(pid), signal.SIGKILL)
+            print(f"Killed PID {pid} on port {port}")
+        except ProcessLookupError:
+            pass
+
+    # 3. Clean up thread ref
+    if _DASHBOARD_THREAD is not None:
         _DASHBOARD_THREAD = None
 
-    time.sleep(1)
+    print(f"Port {port} is free.")
 
 
 def launch_video_mode(
@@ -50,6 +64,8 @@ def launch_video_mode(
     scan_modes_dict: Dict = None,
     result_type: str = "I",
     port: int = 8050,
+    mid_scan_compensation: bool = True,
+    use_buffered_stream: bool = False,
 ) -> None:
     global _DASHBOARD_THREAD, _DASHBOARD_SERVER
 
@@ -98,6 +114,9 @@ def launch_video_mode(
         x_mode=x_mode,
         y_mode=y_mode,
         voltage_control_component=voltage_control_component,
+        mid_scan_compensation=mid_scan_compensation,
+        use_buffered_stream = use_buffered_stream,
+        acquisition_interval_s=0.05,
     )
 
     def find_default(mode):
@@ -123,7 +142,7 @@ def launch_video_mode(
 
     video_mode_component = VideoModeComponent(
         data_acquirer=data_acquirer,
-        data_polling_interval_s=0.2,
+        data_polling_interval_s=0.05,
         save_path=save_path,
         shutdown_callback=stop_dashboard,
         voltage_control_tab=voltage_control_tab,
@@ -141,7 +160,7 @@ def launch_video_mode(
     def run_server():
         global _DASHBOARD_SERVER
         log(f"Starting new dashboard on http://localhost:{port}")
-        _DASHBOARD_SERVER = make_server("0.0.0.0", port, app.server)
+        _DASHBOARD_SERVER = make_server("0.0.0.0", port, app.server, threaded=True)
         _DASHBOARD_SERVER.serve_forever()
 
     _DASHBOARD_THREAD = threading.Thread(target=run_server, daemon=True, name="VideoMode")

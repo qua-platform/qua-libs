@@ -13,8 +13,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum pulse duration in nanoseconds. Default is 10000 ns (10 us)."""
     time_step_in_ns: int = 52
     """Step size for the pulse duration sweep in nanoseconds. Default is 52 ns."""
-    gap_wait_time_in_ns: int = 128
-    """Wait time between initialization and X180 pulse in nanoseconds. Default is 128 ns."""
     operation: str = "x180"
     """Name of the qubit operation to perform. Default is 'x180'."""
 
