@@ -77,6 +77,9 @@ from virtual_qpu.sweep import sweep as _sweep  # noqa: E402
 from quantum_dots.device import LossDiVincenzoDevice  # noqa: E402
 from quantum_dots.params import ExchangeModel, LossDiVincenzoParams, MU_B_OVER_H  # noqa: E402
 
+# Exposed for tests that conditionally skip when virtual_qpu is unavailable.
+_VIRTUAL_QPU_AVAILABLE = True
+
 # =============================================================================
 # Default device configuration
 # =============================================================================
@@ -311,6 +314,74 @@ def calibrated_pi_half_amp():
     pi_half_amp = pi_amp / 2.0
 
     return pi_half_amp
+
+
+@pytest.fixture(scope="session")
+def rabi_chevron_calibration():
+    """Run a rabi chevron simulation + FFT analysis to calibrate pulse parameters."""
+    if not _VIRTUAL_QPU_AVAILABLE:
+        pytest.skip("virtual_qpu (dynamiqs) not installed")
+
+    from virtual_qpu.pulse import GaussianIQPulse
+    from virtual_qpu.schedule import Schedule
+
+    from calibration_utils.time_rabi_chevron_parity_diff.analysis import (
+        _fft_analyse_single_qubit,
+    )
+
+    device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
+    qubit_freq_ghz = device.params.qubit_freqs[0]
+
+    max_dur_ns = 800
+    n_dur = 200
+    freq_span_mhz = 100.0
+    freq_step_mhz = 1.0
+
+    durations = jnp.linspace(4, max_dur_ns, n_dur, dtype=jnp.float32)
+    span_ghz = freq_span_mhz * 1e-3
+    step_ghz = freq_step_mhz * 1e-3
+    drive_freqs = jnp.arange(
+        qubit_freq_ghz - span_ghz / 2,
+        qubit_freq_ghz + span_ghz / 2,
+        step_ghz,
+        dtype=jnp.float32,
+    )
+
+    def make_schedule(freq, dur):
+        sched = Schedule()
+        sched.play(
+            GaussianIQPulse(
+                duration=dur,
+                amplitude=DEFAULT_DRIVE_AMP_GHZ,
+                frequency=freq,
+                sigma=dur / 5,
+            ),
+            channel="drive_q0",
+        )
+        return sched.resolve()
+
+    result = simulate_sweep(
+        device,
+        make_schedule,
+        tsave=lambda dur, **_: jnp.array([0.0, dur]),
+        noise_std=0.0,
+        freq=drive_freqs,
+        dur=durations,
+    )
+    pdiff = result[..., -1]
+
+    freqs_hz = np.asarray(drive_freqs) * 1e9
+    durations_ns = np.asarray(durations)
+    nominal_freq_hz = float(qubit_freq_ghz * 1e9)
+
+    fit_result, _ = _fft_analyse_single_qubit(
+        pdiff,
+        freqs_hz,
+        durations_ns,
+        nominal_freq_hz,
+    )
+    assert fit_result["success"], f"Rabi chevron calibration failed: {fit_result}"
+    return fit_result
 
 
 # =============================================================================
