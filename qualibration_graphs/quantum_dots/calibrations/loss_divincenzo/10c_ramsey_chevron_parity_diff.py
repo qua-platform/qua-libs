@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.ramsey import RamseyChevronParameters
-from calibration_utils.common_utils.experiment import get_sensors, get_qubit_pairs
+from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -23,7 +23,7 @@ description = """
         RAMSEY CHEVRON PARITY DIFFERENCE
 This sequence performs a Ramsey measurement with parity difference to characterize the qubit detuning and idle time.
 The measurement involves sweeping the detuning frequency of the qubit, and performing a sequence of
-two π/2 rotations with a swept idle time in between to create a 2D measurement. PSB is used to measure the 
+two π/2 rotations with a swept idle time in between to create a 2D measurement. PSB is used to measure the
 parity of the resulting state.
 
 The sequence uses voltage sequences to navigate through a triangle in voltage space (empty -
@@ -31,7 +31,7 @@ initialization - measurement) using OPX channels on the fast lines of the bias-t
 the parity is measured before (P1) and after (P2) the qubit pulse, and the parity difference (P_diff) is
 calculated. When P1 == P2, P_diff = 0; otherwise P_diff = 1.
 
-The parity difference signal reveals Ramsey oscillations as a function of pulse duration and as a function of 
+The parity difference signal reveals Ramsey oscillations as a function of pulse duration and as a function of
 pulse detuning, which can be used to extract the qubit coupling strength, coherence time, and optimal pulse parameters.
 
 Prerequisites:
@@ -121,8 +121,7 @@ def load_data(node: QualibrationNode[RamseyChevronParameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active sensors and qubit pairs from the loaded node parameters
-    node.namespace["sensors"] = get_sensors(node)
+    # Get the active qubits from the loaded node parameters
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 

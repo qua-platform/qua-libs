@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.crot_spectroscopy_parity_diff import Parameters
-from calibration_utils.common_utils.experiment import get_sensors, get_qubit_pairs
+from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -90,6 +90,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     pass
 
+
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -138,9 +139,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active sensors and qubit pairs from the loaded node parameters
-    node.namespace["sensors"] = get_sensors(node)
-    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+    # Get the active qubits from the loaded node parameters
+    node.namespace["qubits"] = get_qubits(node)
 
 
 # %% {Analyse_data}
@@ -149,11 +149,13 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     pass
 
+
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
     pass
+
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
@@ -161,13 +163,14 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
 
     with node.record_state_updates():
-        for qubit_pair in node.namespace["qubit_pairs"]:
-            if not node.results["fit_results"][qubit_pair.name]["success"]:
+        for qubit in node.namespace["qubits"]:
+            if not node.results["fit_results"][qubit.name]["success"]:
                 continue
-            fit_result = node.results["fit_results"][qubit_pair.name]
-            qubit_pair.exchange_coupling_J = fit_result["exchange_coupling_J"]
-            qubit_pair.crot_frequency_down = fit_result["crot_frequency_down"]
-            qubit_pair.crot_frequency_up = fit_result["crot_frequency_up"]
+            fit_result = node.results["fit_results"][qubit.name]
+            qubit.exchange_coupling_J = fit_result["exchange_coupling_J"]
+            qubit.crot_frequency_down = fit_result["crot_frequency_down"]
+            qubit.crot_frequency_up = fit_result["crot_frequency_up"]
+
 
 # %% {Save_results}
 @node.run_action()

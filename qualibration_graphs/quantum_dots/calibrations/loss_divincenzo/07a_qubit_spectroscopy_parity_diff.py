@@ -15,7 +15,7 @@ from qualibrate import QualibrationNode
 from quam_config import QubitQuam
 
 Quam = QubitQuam
-from calibration_utils.common_utils.experiment import get_sensors, get_qubits
+from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.qubit_spectroscopy_parity_diff import (
     Parameters,
     # process_raw_dataset,

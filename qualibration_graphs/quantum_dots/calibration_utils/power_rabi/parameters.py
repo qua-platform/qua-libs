@@ -17,6 +17,8 @@ class BaseRabiSpecificParameters(RunnableParameters):
     """Maximum amplitude factor for the operation. Default is 1.99."""
     amp_factor_step: float = 0.005
     """Step size for the amplitude factor. Default is 0.005."""
+    gap_wait_time_in_ns: int = 128
+    """Wait time between initialization and qubit pulse in nanoseconds. Default is 128 ns."""
     operation: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x180"
     """Type of operation to perform. Default is "x180"."""
     update_x90: bool = True

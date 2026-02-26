@@ -8,11 +8,12 @@ from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
+from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.time_rabi_chevron_parity_diff import Parameters
+from calibration_utils.geometric_cz.parameters import Parameters
 from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -20,43 +21,71 @@ from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
 description = """
-        HAHN ECHO (SPIN ECHO) T2 MEASUREMENT - using standard QUA (pulse > 16ns and 4ns granularity)
-The goal of this script is to measure the spin-spin relaxation time T2 using the Hahn echo (spin echo) technique.
-Unlike the Ramsey experiment which measures T2* (sensitive to low-frequency noise and inhomogeneous broadening),
-the Hahn echo refocuses static dephasing, yielding the intrinsic T2 coherence time which is always >= T2*.
+        GEOMETRIC CZ GATE CALIBRATION - using standard QUA (pulse > 16ns and 4ns granularity)
+The goal of this script is to calibrate a geometric controlled-Z (CZ) gate by finding the exchange pulse
+amplitude and duration where the conditional phase equals pi and the SWAP oscillation completes a full 2pi
+rotation (returning to the initial state with no population exchange).
 
-The QUA program is divided into three sections:
-    1) step between the initialization point and the operation point using sticky elements.
-    2) apply the Hahn echo pulse sequence: pi/2 - tau - pi - tau - pi/2.
-    3) measure the state of the qubit using RF reflectometry via parity readout.
+A geometric CZ gate leverages the exchange interaction between two spin qubits. When the exchange coupling J
+is pulsed, two effects occur simultaneously:
+    1) SWAP oscillations: Population exchange between |up,down> and |down,up> states at frequency J.
+    2) Conditional phase accumulation: The |up,up> and |down,down> states acquire phase relative to the
+       antiparallel states.
 
-The Hahn echo sequence works by:
-    - First pi/2 pulse (x90): Creates superposition, placing qubit on Bloch sphere equator.
-    - First wait period (tau): Qubit dephases due to noise and field inhomogeneities.
-    - Pi pulse (y180): Flips the qubit state, reversing the accumulated phase.
-    - Second wait period (tau): Previously accumulated phase is undone (refocused).
-    - Final pi/2 pulse (x90): Projects the refocused state for measurement.
+For a perfect CZ gate (diag(1, 1, 1, -1)), we need:
+    - Conditional phase = pi: The target qubit accumulates a pi phase shift when the control qubit is |up>
+      relative to when it is |down>.
+    - SWAP angle = 2*pi*n (integer n): The SWAP oscillation completes a full cycle, returning the population
+      to its initial state with no net exchange.
 
-The echo amplitude decays as exp(-2*tau/T2), where T2 reflects irreversible dephasing from
-high-frequency noise that cannot be refocused. This is the simplest dynamical decoupling sequence
-and forms the basis for more advanced sequences (CPMG, XY-n) that extend coherence further.
+This measurement performs a 2D sweep of exchange pulse amplitude vs duration while measuring both:
+    1) Phase oscillations: Prepare target qubit in superposition (X90), apply exchange pulse, project phase
+       back to Z-axis (X90). Repeat for control qubit in |down> vs |up> to extract conditional phase.
+    2) SWAP oscillations: Prepare |up,down> state, apply exchange pulse, measure population oscillations.
+
+The QUA program sequence for phase measurement:
+    1) Initialize both qubits (load electrons).
+    2) Prepare control qubit in |down> or |up> state.
+    3) Apply X90 to target qubit (create superposition).
+    4) Step to exchange point and apply exchange pulse with swept amplitude/duration.
+    5) Step back to operation point.
+    6) Apply X90 (or -X90) to target qubit to project phase to Z-axis.
+    7) Measure both qubit states via parity readout.
+
+The QUA program sequence for SWAP measurement:
+    1) Initialize both qubits.
+    2) Prepare |up,down> state (flip one qubit with X180).
+    3) Step to exchange point and apply exchange pulse with swept amplitude/duration.
+    4) Step back to operation point.
+    5) Measure both qubit states via parity readout.
+
+Analysis:
+    - Phase oscillations: Extract conditional phase phi(V, t) from Ramsey-like fringes.
+    - SWAP oscillations: Extract SWAP angle theta(V, t) from population oscillations.
+    - CZ condition: Find contours where phi = pi and theta = 2*pi*n, their intersection gives CZ parameters.
+    - The "geometric" nature means the gate is more robust to pulse shape imperfections.
 
 Prerequisites:
-    - Having run the Ramsey node to calibrate the qubit frequency and T2*, and the corresponding prerequisites.
-    - Having calibrated pi and pi/2 pulse parameters from Rabi measurements.
+    - Having calibrated single-qubit gates (X90, X180) for both qubits.
+    - Having calibrated the readout for the qubit pair (parity readout).
+    - Having characterized the exchange coupling vs barrier voltage (from CROT spectroscopy).
+    - Having set appropriate voltage points for initialization, operation, and exchange.
 
 Before proceeding to the next node:
-    - Extract T2 from exponential fit of the echo decay curve.
-    - Compare T2 to T2* to assess the contribution of low-frequency noise.
-    - Consider dynamical decoupling sequences if longer coherence is needed.
+    - Identify the optimal (amplitude, duration) point where phi = pi and theta = 2*pi.
+    - Verify gate quality by checking that phi and theta contours intersect cleanly.
+    - Consider pulse shaping (e.g., cosine envelope) for adiabatic operation if needed.
 
 State update:
-    - T2echo
+    - cz_exchange_amplitude
+    - cz_exchange_duration
+    - cz_conditional_phase
+    - cz_swap_angle
 """
 
 
 node = QualibrationNode[Parameters, Quam](
-    name="12_hahn_echo_parity_diff", description=description, parameters=Parameters()
+    name="15a_geometric_cz_calibration", description=description, parameters=Parameters()
 )
 
 
@@ -64,8 +93,6 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    # node.parameters.qubits = ["q1"]
-
     pass
 
 
@@ -135,28 +162,30 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """Analyse the raw data to extract conditional phase and SWAP angle as functions of amplitude and duration."""
     pass
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data."""
+    """Plot the phase oscillations, SWAP oscillations, and overlay the CZ condition contours."""
     pass
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the qubit data analysis was successful."""
+    """Update the relevant parameters if the CZ calibration was successful."""
 
     with node.record_state_updates():
         for qubit in node.namespace["qubits"]:
             if not node.results["fit_results"][qubit.name]["success"]:
                 continue
             fit_result = node.results["fit_results"][qubit.name]
-            qubit.T2echo = fit_result["T2_echo"]
+            # Update CZ gate parameters in the qubit
+            qubit.macros["cz"].amplitude = fit_result["optimal_amplitude"]
+            qubit.macros["cz"].duration = fit_result["optimal_duration"]
 
 
 # %% {Save_results}
