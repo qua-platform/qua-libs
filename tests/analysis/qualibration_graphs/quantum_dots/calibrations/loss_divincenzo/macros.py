@@ -19,9 +19,9 @@ class X180Macro(QuamMacro):  # pylint: disable=too-few-public-methods
     amplitude_scale: Optional[float] = 1.0
     duration: Optional[int] = 100
 
-    def _validate(self, xy, duration, amplitude_scale) -> None:
-        if xy is None:
-            raise ValueError("Cannot apply X180 gate: xy is not configured on parent qubit.")
+    def _validate(self, xy_channel, duration, amplitude_scale) -> None:
+        if xy_channel is None:
+            raise ValueError("Cannot apply X180 gate: xy_channel is not configured on parent qubit.")
 
         missing = []
         if duration is None:
@@ -44,9 +44,9 @@ class X180Macro(QuamMacro):  # pylint: disable=too-few-public-methods
         if duration is None:
             duration = self.duration
 
-        self._validate(parent_qubit.xy, duration, amp_scale)
+        self._validate(parent_qubit.xy_channel, duration, amp_scale)
 
-        parent_qubit.xy.play(
+        parent_qubit.xy_channel.play(
             self.pulse_name,
             amplitude_scale=amp_scale,
             duration=duration,
@@ -64,39 +64,45 @@ class X90Macro(X180Macro):  # pylint: disable=too-few-public-methods
 
 @quam_dataclass
 class MeasureMacro(QuamMacro):  # pylint: disable=too-few-public-methods
-    """Macro for measurement via sensor dot accessed through the quantum dot pair.
-
-    Navigates: qubit → machine → find_quantum_dot_pair → sensor_dots[0] →
-    readout_resonator, following the quam-builder API.
-    """
+    """Macro for measurement with integrated voltage point navigation and thresholding."""
 
     pulse_name: str = "readout"
     readout_duration: int = 2000
 
-    def _get_sensor_dot(self, parent_qubit):
-        """Resolve the sensor dot via machine-level quantum dot pair lookup."""
-        machine = parent_qubit.machine
-        qd_pair_id = machine.find_quantum_dot_pair(
+    def _validate(self, parent_qubit) -> None:
+        if parent_qubit.quantum_dot is None:
+            raise ValueError("Cannot measure: quantum_dot is not configured on parent qubit.")
+
+        if parent_qubit.preferred_readout_quantum_dot is None:
+            raise ValueError("Cannot measure: preferred_readout_quantum_dot is not set on parent qubit.")
+
+        pair_id = parent_qubit.machine.find_quantum_dot_pair(
             parent_qubit.quantum_dot.id, parent_qubit.preferred_readout_quantum_dot
         )
-        if (
-            qd_pair_id is not None
-            and qd_pair_id in machine.quantum_dot_pairs
-            and machine.quantum_dot_pairs[qd_pair_id].sensor_dots
-        ):
-            return machine.quantum_dot_pairs[qd_pair_id].sensor_dots[0], qd_pair_id
-        if machine.sensor_dots:
-            return next(iter(machine.sensor_dots.values())), qd_pair_id
-        raise ValueError("Cannot measure: no sensor_dots found via quantum dot pair or machine.")
+        pair = parent_qubit.machine.quantum_dot_pairs[pair_id]
+
+        if not pair.sensor_dots:
+            raise ValueError("Cannot measure: no sensor_dots configured on quantum dot pair.")
+
+        sensor_dot = pair.sensor_dots[0]
+
+        if sensor_dot.readout_resonator is None:
+            raise ValueError("Cannot measure: readout_resonator is not configured on sensor_dot.")
 
     def apply(self, *args, **kwargs) -> QuaVariableBool:
         """Execute measurement sequence and return qubit state (parity)."""
         pulse = kwargs.get("pulse_name", self.pulse_name)
 
         parent_qubit = self.parent.parent
-        sensor_dot, qd_pair_id = self._get_sensor_dot(parent_qubit)
+        self._validate(parent_qubit)
 
         parent_qubit.step_to_point("measure", duration=self.readout_duration)
+
+        qd_pair_id = parent_qubit.machine.find_quantum_dot_pair(
+            parent_qubit.quantum_dot.id, parent_qubit.preferred_readout_quantum_dot
+        )
+        pair = parent_qubit.machine.quantum_dot_pairs[qd_pair_id]
+        sensor_dot = pair.sensor_dots[0]
 
         I = declare(fixed)
         Q = declare(fixed)
