@@ -2,7 +2,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
 
 from qm.qua import *
 
@@ -13,39 +12,38 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.ramsey import (
-    RamseyDetuningParameters,
+from calibration_utils.ramsey_detuning_parity_diff import (
+    Parameters as RamseyDetuningParameters,
     fit_raw_data,
     log_fitted_results,
-    plot_ramsey_detuning,
+    plot_raw_data_with_fit,
 )
 from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
 description = """
-        RAMSEY DETUNING PARITY DIFFERENCE
-This sequence performs a Ramsey measurement with parity difference to characterize the qubit detuning.
-The measurement involves sweeping the detuning frequency of the qubit and performing a sequence of
-two π/2 rotations with a fixed idle time in between. PSB is used to measure the parity of the resulting state.
+RAMSEY DETUNING PARITY DIFFERENCE (TWO-τ)
 
-The sequence uses voltage sequences to navigate through a triangle in voltage space (empty -
-initialization - measurement) using OPX channels on the fast lines of the bias-tees. At each pulse duration,
-the parity is measured before (P1) and after (P2) the qubit pulse, and the parity difference (P_diff) is
-calculated. When P1 == P2, P_diff = 0; otherwise P_diff = 1.
+Sweeps the drive-frequency detuning at two fixed idle times (τ_short
+and τ_long) and measures the parity difference after a π/2 – idle – π/2
+sequence at each.
 
-The parity difference signal reveals oscillations as a function of pulse detuning frequency, which can be used
-to extract the qubit frequency.
+The two traces act as a Vernier: wide fringes (short τ) localise the
+resonance coarsely, narrow fringes (long τ) sharpen the estimate.  Each
+trace is fitted independently with a profiled differential-evolution
+search over the oscillation frequency (linear parameters solved by
+least-squares).  The resonance detuning δ₀ is the amplitude-weighted
+mean of the per-trace estimates.  The amplitude ratio between traces
+gives the exponential decay rate γ and dephasing time T₂*.
 
 Prerequisites:
-    - Having calibrated the resonators coupled to the SensorDot components.
-    - Having calibrated the voltage points (empty - initialization - measurement).
-    - Qubit pulse calibration (X90 pulse amplitude and frequency).
+    - Calibrated resonators and voltage points (empty - init - measure).
+    - Calibrated X90 pulse amplitude and frequency.
 
 State update:
-    - The qubit Larmor frequency.
+    - qubit.xy.intermediate_frequency
 """
 
 
@@ -74,14 +72,33 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """Create the sweep axes and generate the QUA program.
+
+    Sweeps drive-frequency detuning at two fixed idle times (τ_short
+    and τ_long), performing a π/2 – idle – π/2 Ramsey sequence with
+    parity-difference readout at each.  Produces a 2-D dataset
+    (tau × detuning).
+    """
     u = unit(coerce_to_integer=True)
 
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
     n_avg = node.parameters.num_shots
-    idle_time = node.parameters.idle_time_ns // 4  # Convert to clock cycles
+    # Two idle times in clock cycles (4 ns each)
+    idle_times_cc = np.array(
+        [
+            node.parameters.idle_time_ns // 4,
+            node.parameters.idle_time_long_ns // 4,
+        ]
+    )
+    idle_times_ns = np.array(
+        [
+            node.parameters.idle_time_ns,
+            node.parameters.idle_time_long_ns,
+        ],
+        dtype=float,
+    )
     detuning_values = np.arange(
         -node.parameters.detuning_span_in_mhz / 2 * u.MHz,
         node.parameters.detuning_span_in_mhz / 2 * u.MHz,
@@ -90,12 +107,12 @@ def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "detuning": xr.DataArray(
-            detuning_values, attrs={"long_name": "frequency detuning", "units": "Hz"}
-        ),
+        "tau": xr.DataArray(idle_times_ns, attrs={"long_name": "idle time", "units": "ns"}),
+        "detuning": xr.DataArray(detuning_values, attrs={"long_name": "frequency detuning", "units": "Hz"}),
     }
 
     with program() as node.namespace["qua_program"]:
+        t = declare(int)
         df = declare(int)
         n = declare(int)
 
@@ -111,72 +128,61 @@ def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
-                with for_(*from_array(df, detuning_values)):
-                    for i, qubit in batched_qubits.items():
-                        qubit.xy.update_frequency(qubit.xy.intermediate_frequency + df)
+                with for_(*from_array(t, idle_times_cc)):
+                    with for_(*from_array(df, detuning_values)):
+                        for i, qubit in batched_qubits.items():
+                            qubit.xy.update_frequency(qubit.xy.intermediate_frequency + df)
 
-                    # ---------------------------------------------------------
-                    # Step 1: Empty - step to empty point (fixed duration)
-                    # ---------------------------------------------------------
-                    align()
-                    for i, qubit in batched_qubits.items():
-                        qubit.empty()
+                        # Step 1: Empty
+                        align()
+                        for i, qubit in batched_qubits.items():
+                            qubit.empty()
 
-                    align()
-                    for i, qubit in batched_qubits.items():
-                        assign(p1[i], Cast.to_int(qubit.measure()))
+                        align()
+                        for i, qubit in batched_qubits.items():
+                            assign(p1[i], Cast.to_int(qubit.measure()))
 
-                    # ---------------------------------------------------------
-                    # Step 2: Initialize - load electron into dot (fixed duration)
-                    # ---------------------------------------------------------
-                    align()
-                    for i, qubit in batched_qubits.items():
-                        op_length = qubit.macros["x90"].duration
-                        qubit.initialize(
-                            duration=node.parameters.gap_wait_time_in_ns + op_length * 2 + 4 * idle_time
-                        )
-                    # ---------------------------------------------------------
-                    # Step 3: X90 pulse, idle, X90 pulse
-                    # ---------------------------------------------------------
-                    for i, qubit in batched_qubits.items():
-                        qubit.x90()
-                        qubit.xy.wait(idle_time)
-                        qubit.x90()
-                    # ---------------------------------------------------------
-                    # Step 4: Measure - move to PSB and measure
-                    # ---------------------------------------------------------
-                    align()
+                        # Step 2: Initialize
+                        align()
+                        for i, qubit in batched_qubits.items():
+                            op_length = qubit.macros["x90"].duration
+                            qubit.initialize(duration=node.parameters.gap_wait_time_in_ns + op_length * 2 + 4 * t)
 
-                    for i, qubit in batched_qubits.items():
-                        assign(p2[i], Cast.to_int(qubit.measure()))
+                        # Step 3: X90 – idle – X90
+                        for i, qubit in batched_qubits.items():
+                            qubit.x90()
+                            qubit.xy.wait(t)
+                            qubit.x90()
 
-                    # ---------------------------------------------------------
-                    # Step 5: Apply compensation pulse to reset DC bias
-                    # ---------------------------------------------------------
-                    align()
-                    for i, qubit in batched_qubits.items():
-                        qubit.voltage_sequence.apply_compensation_pulse()
+                        # Step 4: Measure
+                        align()
+                        for i, qubit in batched_qubits.items():
+                            assign(p2[i], Cast.to_int(qubit.measure()))
 
-                    # ---------------------------------------------------------
-                    # Save results
-                    # ---------------------------------------------------------
-                    for i, qubit in batched_qubits.items():
-                        save(p1[i], p1_st[qubit.name])
-                        save(p2[i], p2_st[qubit.name])
+                        # Step 5: Compensation
+                        align()
+                        for i, qubit in batched_qubits.items():
+                            qubit.voltage_sequence.apply_compensation_pulse()
 
-                        with if_(p1[i] == p2[i]):
-                            save(0, pdiff_st[qubit.name])
-                        with else_():
-                            save(1, pdiff_st[qubit.name])
+                        # Save results
+                        for i, qubit in batched_qubits.items():
+                            save(p1[i], p1_st[qubit.name])
+                            save(p2[i], p2_st[qubit.name])
+
+                            with if_(p1[i] == p2[i]):
+                                save(0, pdiff_st[qubit.name])
+                            with else_():
+                                save(1, pdiff_st[qubit.name])
 
         with stream_processing():
             n_st.save("n")
 
+            n_tau = len(idle_times_cc)
             n_detuning = len(detuning_values)
             for qubit in qubits:
-                p1_st[qubit.name].buffer(n_detuning).average().save(f"p1_{qubit.name}")
-                p2_st[qubit.name].buffer(n_detuning).average().save(f"p2_{qubit.name}")
-                pdiff_st[qubit.name].buffer(n_detuning).average().save(f"pdiff_{qubit.name}")
+                p1_st[qubit.name].buffer(n_tau, n_detuning).average().save(f"p1_{qubit.name}")
+                p2_st[qubit.name].buffer(n_tau, n_detuning).average().save(f"p2_{qubit.name}")
+                pdiff_st[qubit.name].buffer(n_tau, n_detuning).average().save(f"pdiff_{qubit.name}")
 
 
 # %% {Simulate}
@@ -224,42 +230,42 @@ def execute_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
 def load_data(node: QualibrationNode[RamseyDetuningParameters, Quam]):
     """Load a previously acquired dataset."""
     load_data_id = node.parameters.load_data_id
-    # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active qubits from the loaded node parameters
-    node.namespace["sensors"] = get_sensors(node)
     node.namespace["qubits"] = get_qubits(node)
 
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[RamseyDetuningParameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """Fit resonance detuning via joint two-τ differential evolution."""
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+    node.results["fit_results"] = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results.items()}
+    # Keep diagnostics in namespace for plotting
+    node.namespace["_fit_results_full"] = fit_results
 
-    # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[RamseyDetuningParameters, Quam]):
-    """Plot the raw and fitted data."""
-    fig = plot_ramsey_detuning(
-        node.results["ds_fit"],
+    """Plot parity-difference vs detuning for both τ traces with joint fit."""
+    fit_with_diag = node.namespace.get("_fit_results_full", node.results.get("fit_results", {}))
+    fig = plot_raw_data_with_fit(
+        node.results["ds_raw"],
+        node.results.get("ds_fit"),
         node.namespace["qubits"],
-        node.results.get("fit_results"),
+        fit_with_diag,
     )
     plt.show()
-    node.results["figures"] = {"ramsey_detuning": fig}
+    node.results["figure"] = fig
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[RamseyDetuningParameters, Quam]):
-    """Update the relevant parameters if the qubit pair data analysis was successful."""
+    """Correct the qubit intermediate frequency by the fitted resonance offset."""
 
     with node.record_state_updates():
         for qubit in node.namespace["qubits"]:
@@ -267,8 +273,7 @@ def update_state(node: QualibrationNode[RamseyDetuningParameters, Quam]):
                 continue
 
             fit_result = node.results["fit_results"][qubit.name]
-            qubit.xy.RF_frequency -= fit_result["freq_offset"]
-            qubit.larmor_frequency -= fit_result["freq_offset"]
+            qubit.xy.intermediate_frequency -= fit_result["freq_offset"]
 
 
 # %% {Save_results}

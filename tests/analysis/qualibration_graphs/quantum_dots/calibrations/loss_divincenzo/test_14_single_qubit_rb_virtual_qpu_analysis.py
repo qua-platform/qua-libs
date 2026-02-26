@@ -46,9 +46,9 @@ except ImportError:
 # =============================================================================
 
 NODE_NAME = "14_single_qubit_randomized_benchmarking"
-MAX_CIRCUIT_DEPTH = 64  # log-scale → depths [2, 4, 8, 16, 32, 64]
-NUM_CIRCUITS = 5
-NUM_SHOTS = 100
+MAX_CIRCUIT_DEPTH = 16  # log-scale → depths [2, 4, 8, 16]
+NUM_CIRCUITS = 2
+NUM_SHOTS = 50
 RNG_SEED = 99
 
 # Coherence times (ns) for the two synthetic qubits

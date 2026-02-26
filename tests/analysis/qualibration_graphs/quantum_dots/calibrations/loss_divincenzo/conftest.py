@@ -65,42 +65,36 @@ if _vqpu_platforms not in sys.path:
 
 
 # =============================================================================
-# virtual_qpu imports (optional — skip gracefully if not installed)
+# virtual_qpu imports (lazy — only fail if tests actually run)
 # =============================================================================
 
-try:
-    import jax.numpy as jnp  # noqa: E402
+import jax.numpy as jnp  # noqa: E402
 
-    from virtual_qpu.dynamics import simulate as _simulate  # noqa: E402
-    from virtual_qpu.operators import expval as _expval  # noqa: E402
-    from virtual_qpu.sweep import sweep as _sweep  # noqa: E402
+from virtual_qpu.dynamics import simulate as _simulate  # noqa: E402
+from virtual_qpu.operators import expval as _expval  # noqa: E402
+from virtual_qpu.sweep import sweep as _sweep  # noqa: E402
 
-    from quantum_dots.device import LossDiVincenzoDevice  # noqa: E402
-    from quantum_dots.params import ExchangeModel, LossDiVincenzoParams, MU_B_OVER_H  # noqa: E402
+from quantum_dots.device import LossDiVincenzoDevice  # noqa: E402
+from quantum_dots.params import ExchangeModel, LossDiVincenzoParams, MU_B_OVER_H  # noqa: E402
 
-    _VIRTUAL_QPU_AVAILABLE = True
-except ImportError:
-    _VIRTUAL_QPU_AVAILABLE = False
-    LossDiVincenzoDevice = None  # type: ignore[assignment,misc]
+# Exposed for tests that conditionally skip when virtual_qpu is unavailable.
+_VIRTUAL_QPU_AVAILABLE = True
 
 # =============================================================================
 # Default device configuration
 # =============================================================================
 
-if _VIRTUAL_QPU_AVAILABLE:
-    DEFAULT_LD_PARAMS = LossDiVincenzoParams(
-        n_qubits=2,
-        g_factors=[2.0, 2.04],  # slight g-factor variation → ~200 MHz detuning
-        magnetic_field=10.0 / (2.0 * MU_B_OVER_H),  # chosen so Q1 ≈ 10 GHz Zeeman
-        exchange_models=[ExchangeModel(J_0=0.001, V_ref=0.0, lever_arm=0.050)],
-        ref_freqs=None,
-        frame="rot",
-        use_rwa=True,
-        t1=[1000.0, 1000.0],  # 1000 ns T1
-        t2=[400.0, 400.0],  # 400 ns T2
-    )
-else:
-    DEFAULT_LD_PARAMS = None  # type: ignore[assignment]
+DEFAULT_LD_PARAMS = LossDiVincenzoParams(
+    n_qubits=2,
+    g_factors=[2.0, 2.04],  # slight g-factor variation → ~200 MHz detuning
+    magnetic_field=10.0 / (2.0 * MU_B_OVER_H),  # chosen so Q1 ≈ 10 GHz Zeeman
+    exchange_models=[ExchangeModel(J_0=0.001, V_ref=0.0, lever_arm=0.050)],
+    ref_freqs=None,
+    frame="rot",
+    use_rwa=True,
+    t1=[1000.0, 1000.0],  # 1000 ns T1
+    t2=[400.0, 400.0],  # 400 ns T2
+)
 
 # Default simulation settings
 DEFAULT_SOLVER = "me"  # Lindblad master equation
@@ -108,6 +102,7 @@ DEFAULT_NOISE_STD = 0.1  # Gaussian shot-noise std on parity diff
 
 # Default drive parameters for calibration
 DEFAULT_DRIVE_AMP_GHZ = 0.008
+DEFAULT_PULSE_DURATION_NS = 100.0
 
 
 # =============================================================================
@@ -266,11 +261,7 @@ def ld_device():
 
     Uses ``DEFAULT_LD_PARAMS`` (2 qubits, T1=500 ns, T2=200 ns, Lindblad).
     Tests that need different params can build their own device instead.
-
-    Skips automatically when virtual_qpu / dynamiqs are not installed.
     """
-    if not _VIRTUAL_QPU_AVAILABLE:
-        pytest.skip("virtual_qpu (dynamiqs) not installed — skipping physics simulation test")
     device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
     # Sanity-check: collapse operators should be present for Lindblad
     jump_ops = device.collapse_operators()
@@ -280,17 +271,54 @@ def ld_device():
 
 
 @pytest.fixture(scope="session")
-def rabi_chevron_calibration():
-    """Run a rabi chevron simulation + FFT analysis to calibrate pulse parameters.
+def calibrated_pi_half_amp():
+    """Calibrate the π/2 pulse amplitude via a quick power-Rabi sweep.
 
-    Uses the same 2D frequency x duration sweep and FFT analysis as the
-    ``09b_time_rabi_chevron_parity_diff`` node.  At the fixed drive amplitude
-    ``DEFAULT_DRIVE_AMP_GHZ``, the fit yields the resonant frequency and
-    π-time.  Downstream fixtures derive amplitude, duration, and frequency
-    from these results.
-
-    Cached at session scope so the (expensive) simulation runs only once.
+    Runs a 1D amplitude sweep at fixed duration, finds the first parity
+    maximum (π-pulse), and returns half that amplitude for π/2 pulses.
+    Cached at session scope so it is computed only once.
     """
+    from virtual_qpu.pulse import GaussianIQPulse
+    from virtual_qpu.schedule import Schedule
+
+    device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
+    qubit_freq_ghz = device.params.qubit_freqs[0]
+
+    amp_prefactors = jnp.linspace(0.1, 3.0, 200, dtype=jnp.float32)
+
+    def make_schedule(amp):
+        sched = Schedule()
+        sched.play(
+            GaussianIQPulse(
+                duration=DEFAULT_PULSE_DURATION_NS,
+                amplitude=DEFAULT_DRIVE_AMP_GHZ * amp,
+                frequency=qubit_freq_ghz,
+                sigma=DEFAULT_PULSE_DURATION_NS / 5,
+            ),
+            channel="drive_q0",
+        )
+        return sched.resolve()
+
+    result = simulate_sweep(
+        device,
+        make_schedule,
+        tsave=jnp.array([0.0, DEFAULT_PULSE_DURATION_NS], dtype=jnp.float32),
+        noise_std=0.0,  # noiseless for calibration
+        amp=amp_prefactors,
+    )
+    parity = np.asarray(result[..., -1])
+
+    # Find first maximum (π-pulse)
+    pi_idx = int(np.argmax(parity))
+    pi_amp = float(DEFAULT_DRIVE_AMP_GHZ * amp_prefactors[pi_idx])
+    pi_half_amp = pi_amp / 2.0
+
+    return pi_half_amp
+
+
+@pytest.fixture(scope="session")
+def rabi_chevron_calibration():
+    """Run a rabi chevron simulation + FFT analysis to calibrate pulse parameters."""
     if not _VIRTUAL_QPU_AVAILABLE:
         pytest.skip("virtual_qpu (dynamiqs) not installed")
 
@@ -353,7 +381,6 @@ def rabi_chevron_calibration():
         nominal_freq_hz,
     )
     assert fit_result["success"], f"Rabi chevron calibration failed: {fit_result}"
-
     return fit_result
 
 
