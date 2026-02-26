@@ -16,10 +16,9 @@ from quam_config import Quam
 from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.power_rabi import (
     Parameters,
-    # process_raw_dataset,
-    # fit_raw_data,
-    # log_fitted_results,
-    # plot_raw_data_with_fit,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -235,51 +234,41 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    # TODO: Implement analysis - remove pass when complete
-    pass
-    # node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    # node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    # node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-    #
-    # # Log the relevant information extracted from the data analysis
-    # log_fitted_results(node.results["fit_results"], log_callable=node.log)
-    # node.outcomes = {
-    #     sensor_name: ("successful" if fit_result["success"] else "failed")
-    #     for sensor_name, fit_result in node.results["fit_results"].items()
-    # }
+    ds_fit, fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["ds_fit"] = ds_fit
+    node.results["fit_results"] = fit_results
+    log_fitted_results(fit_results, log_callable=node.log)
+    node.outcomes = {qname: ("successful" if r["success"] else "failed") for qname, r in fit_results.items()}
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
-    # TODO: Implement plotting - remove pass when complete
-    pass
-    # fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
-    # fig_fit_amplitude = plot_raw_amplitude_with_fit(
-    #     node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
-    # )
-    # plt.show()
-    # # Store the generated figures
-    # node.results["figures"] = {
-    #     "phase": fig_raw_phase,
-    #     "amplitude": fig_fit_amplitude,
-    # }
+    """Plot the raw and fitted data."""
+    fig = plot_raw_data_with_fit(
+        node.results["ds_raw"],
+        node.results.get("ds_fit"),
+        node.namespace["qubits"],
+        node.results.get("fit_results", {}),
+    )
+    node.results["figure"] = fig
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the sensor_name data analysis was successful."""
+    """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
 
-            opt_amplitude = node.results["fit_results"][q.name]["opt_amp"]
-            q.xy.operations[node.parameters.operation].amplitude = opt_amplitude
+            opt_prefactor = node.results["fit_results"][q.name]["opt_amp"]
+            current_amp = q.xy.operations[node.parameters.operation].amplitude
+            new_amplitude = current_amp * opt_prefactor
+            q.xy.operations[node.parameters.operation].amplitude = new_amplitude
             if node.parameters.operation == "x180" and node.parameters.update_x90:
-                q.xy.operations["x90"].amplitude = opt_amplitude / 2
+                q.xy.operations["x90"].amplitude = new_amplitude / 2
 
 
 # %% {Save_results}
