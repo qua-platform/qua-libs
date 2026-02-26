@@ -1,5 +1,5 @@
 from qualibrate.parameters import RunnableParameters
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 
 class VideoModeCommonParameters(RunnableParameters):
@@ -11,3 +11,4 @@ class VideoModeCommonParameters(RunnableParameters):
     """Localhost port to open VideoMode with"""
     dc_control: bool = False
     """If an associated external DC offset exists."""
+    result_type: Literal["I", "Q", "Amplitude", "Phase"] = "I"
