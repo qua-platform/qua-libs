@@ -20,7 +20,7 @@ from calibration_utils.time_rabi_chevron_parity_diff import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from calibration_utils.common_utils.experiment import get_sensors, get_qubits
+from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -250,8 +250,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active sensors and qubits from the loaded node parameters
-    node.namespace["sensors"] = get_sensors(node)
+    # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
 
 
