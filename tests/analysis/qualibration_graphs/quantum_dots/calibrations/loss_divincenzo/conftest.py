@@ -97,6 +97,10 @@ DEFAULT_LD_PARAMS = LossDiVincenzoParams(
 DEFAULT_SOLVER = "me"  # Lindblad master equation
 DEFAULT_NOISE_STD = 0.1  # Gaussian shot-noise std on parity diff
 
+# Default drive parameters for calibration
+DEFAULT_DRIVE_AMP_GHZ = 0.008
+DEFAULT_PULSE_DURATION_NS = 100.0
+
 
 # =============================================================================
 # Simulation helpers
@@ -261,6 +265,52 @@ def ld_device():
     n_expected = 2 * DEFAULT_LD_PARAMS.n_qubits  # T1 + Tphi per qubit
     assert len(jump_ops) == n_expected, f"Expected {n_expected} collapse ops, got {len(jump_ops)}"
     return device
+
+
+@pytest.fixture(scope="session")
+def calibrated_pi_half_amp():
+    """Calibrate the π/2 pulse amplitude via a quick power-Rabi sweep.
+
+    Runs a 1D amplitude sweep at fixed duration, finds the first parity
+    maximum (π-pulse), and returns half that amplitude for π/2 pulses.
+    Cached at session scope so it is computed only once.
+    """
+    from virtual_qpu.pulse import GaussianIQPulse
+    from virtual_qpu.schedule import Schedule
+
+    device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
+    qubit_freq_ghz = device.params.qubit_freqs[0]
+
+    amp_prefactors = jnp.linspace(0.1, 3.0, 200, dtype=jnp.float32)
+
+    def make_schedule(amp):
+        sched = Schedule()
+        sched.play(
+            GaussianIQPulse(
+                duration=DEFAULT_PULSE_DURATION_NS,
+                amplitude=DEFAULT_DRIVE_AMP_GHZ * amp,
+                frequency=qubit_freq_ghz,
+                sigma=DEFAULT_PULSE_DURATION_NS / 5,
+            ),
+            channel="drive_q0",
+        )
+        return sched.resolve()
+
+    result = simulate_sweep(
+        device,
+        make_schedule,
+        tsave=jnp.array([0.0, DEFAULT_PULSE_DURATION_NS], dtype=jnp.float32),
+        noise_std=0.0,  # noiseless for calibration
+        amp=amp_prefactors,
+    )
+    parity = np.asarray(result[..., -1])
+
+    # Find first maximum (π-pulse)
+    pi_idx = int(np.argmax(parity))
+    pi_amp = float(DEFAULT_DRIVE_AMP_GHZ * amp_prefactors[pi_idx])
+    pi_half_amp = pi_amp / 2.0
+
+    return pi_half_amp
 
 
 # =============================================================================
