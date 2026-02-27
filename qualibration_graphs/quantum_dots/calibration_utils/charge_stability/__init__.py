@@ -1,4 +1,4 @@
-from .parameters import OPXParameters, OPXQDACParameters, get_voltage_arrays
+from .parameters import Parameters, OPXQDACParameters, get_voltage_arrays
 from .plotting import (
     plot_raw_amplitude,
     plot_raw_phase,
@@ -28,7 +28,7 @@ except ImportError:  # pragma: no cover - optional dependency guard
     SegmentFit = None
 
 __all__ = [
-    "OPXParameters",
+    "Parameters",
     "OPXQDACParameters",
     "get_voltage_arrays",
     "plot_raw_amplitude",

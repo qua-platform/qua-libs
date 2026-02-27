@@ -29,6 +29,10 @@ class NodeSpecificParameters(RunnableParameters):
     """The X axis span in volts"""
     y_span: float = 0.05
     """The Y axis span in volts"""
+    per_line_compensation: bool = True
+    """Whether to send a compensation pulse at the end of each scan line."""
+    perform_edge_analysis: bool = True
+    """Whether to perform edge analysis on the data."""
     ramp_duration: int = 100
     """The ramp duration to each pixel. Set to zero for a step."""
     hold_duration: int = 1000
