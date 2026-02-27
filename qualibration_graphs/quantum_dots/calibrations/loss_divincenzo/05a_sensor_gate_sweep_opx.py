@@ -62,7 +62,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load("C:\git\qua-libs\qualibration_graphs\quantum_dots\quam_config\quam_state")
+node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
@@ -106,7 +106,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Sweep the sensor bias voltage
                         readout_len = sensor.readout_resonator.operations["readout"].length
                         # sensor.physical_channel.set_dc_offset(offset=offset)
-                        sensor.voltage_sequence.step_to_voltages(
+                        sensor.step_to_voltages(
                             {sensor.name: offset}, duration=readout_len + node.parameters.duration_after_step
                         )
                         # Measure the resonator after settling the sensor bias point
@@ -118,7 +118,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
 
                     for i, sensor in multiplexed_sensors.items():
-                        sensor.voltage_sequence.ramp_to_zero()
+                        sensor.apply_compensation_pulse(ramp_to_zero=True)
                     align()
 
         with stream_processing():

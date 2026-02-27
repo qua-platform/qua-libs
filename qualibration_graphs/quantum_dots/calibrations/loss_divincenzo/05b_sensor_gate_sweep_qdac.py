@@ -119,8 +119,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         sensor.readout_resonator.align(sensor.physical_channel.name)
                         # Measure the resonator after settling the sensor bias point
                         sensor.readout_resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                        # wait 1µs between each iteration
-                        sensor.readout_resonator.wait(250)
                         # save data
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
