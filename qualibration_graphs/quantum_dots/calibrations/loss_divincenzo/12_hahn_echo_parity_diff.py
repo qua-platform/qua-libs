@@ -134,11 +134,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ---------------------------------------------------------
                     align()
                     for i, qubit in batched_qubits.items():
-                        op_x90_len = qubit.macros["x90"].duration
-                        op_x180_len = qubit.macros["x180"].duration
-                        echo_duration = 2 * op_x90_len + op_x180_len + 2 * 4 * t
-                        qubit.initialize(duration=node.parameters.gap_wait_time_in_ns + echo_duration)
+                        qubit.initialize()
 
+                    align()
                     # ---------------------------------------------------------
                     # Step 3: Hahn echo — x90 · wait(τ) · x180 · wait(τ) · x90
                     # ---------------------------------------------------------

@@ -146,8 +146,9 @@ def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
                         align()
                         for i, qubit in batched_qubits.items():
                             op_length = qubit.macros["x90"].duration
-                            qubit.initialize(duration=node.parameters.gap_wait_time_in_ns + op_length * 2 + 4 * t)
+                            qubit.initialize()
 
+                        align()
                         # Step 3: X90 – idle – X90
                         for i, qubit in batched_qubits.items():
                             qubit.x90()
