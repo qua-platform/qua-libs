@@ -31,8 +31,6 @@ class NodeSpecificParameters(RunnableParameters):
     """If True, use log-scale depths: 2, 4, 8, 16, ... up to max_circuit_depth. Default is True."""
     seed: Optional[int] = None
     """Seed for the QUA pseudo-random number generator. Default is None (random)."""
-    gap_wait_time_in_ns: int = 400_000
-    """Initialization hold time in nanoseconds (e.g. 400 µs). Default is 400_000."""
     operation_x90: str = "x90"
     """Name of the π/2 X rotation operation on the xy channel. Default is 'x90'."""
     operation_x180: str = "x180"

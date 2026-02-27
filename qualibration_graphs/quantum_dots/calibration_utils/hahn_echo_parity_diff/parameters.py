@@ -15,8 +15,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum per-arm idle time in nanoseconds. Default is 10000 ns (10 µs)."""
     tau_step: int = 16
     """Step size for the per-arm idle time sweep in nanoseconds. Default is 16 ns."""
-    gap_wait_time_in_ns: int = 128
-    """Wait time between initialisation and the echo sequence in nanoseconds. Default is 128 ns."""
     operation: str = "x180"
     """Name of the qubit pi-pulse operation. Default is 'x180'."""
 

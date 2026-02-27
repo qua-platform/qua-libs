@@ -8,8 +8,6 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    gap_wait_time_in_ns: int = 128
-    """Wait time between initialization and qubit pulse in nanoseconds. Default is 128 ns."""
 
 
 class RamseyParameters(
