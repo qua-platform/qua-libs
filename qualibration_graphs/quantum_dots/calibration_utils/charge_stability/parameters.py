@@ -3,7 +3,7 @@ from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 from calibration_utils.run_video_mode.video_mode_specific_parameters import VideoModeCommonParameters
 
-from typing import List, Literal
+from typing import List, Literal, Dict, Union, Callable
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -82,3 +82,60 @@ def get_voltage_arrays(node):
         y_center - y_span / 2, y_center + y_span / 2, y_points
     )
     return x_volts, y_volts
+
+
+from .scan_modes import ScanMode
+
+
+def _find_physical_dc_lists(
+    scan_mode: ScanMode,
+    virtual_dc_set: "VirtualDCSet",
+    axis_name: str,
+    axis_values: List[float],
+) -> Dict[str, Union[List, np.ndarray]]:
+    """Use the VirtualDCSet to yield a dictionary of physical dc_lists to use for the Qdac"""
+
+    _, y_idxs = scan_mode.get_idxs(x_points=1, y_points=len(axis_values))
+    ordered_axis_values = axis_values[y_idxs]
+
+    full_physical_dicts = {name: [] for name in virtual_dc_set.channels.keys()}
+
+    for value in ordered_axis_values:
+        virtual_dict = {axis_name: float(value)}
+        physical_dict = virtual_dc_set.resolve_voltages(virtual_dict)
+
+        for physical_gate in virtual_dc_set.channels.keys():
+            full_physical_dicts[physical_gate].append(physical_dict[physical_gate])
+
+    # Check if the physical list is constant or not
+    physical_lists = {
+        name: arr for name, arr in physical_lists.items() if arr.size > 1 and not np.allclose(arr, arr[0], atol=1e-8)
+    }
+    return physical_lists
+
+
+def prepare_dc_lists(
+    node,
+    virtual_dc_set_id: str,
+    axis_name: str,
+    axis_values: List[float],
+    scan_mode: ScanMode,
+) -> None:
+    """
+    Prepares the DC list attributes for the QDAC channel. This function assumes the use of the
+    Qdac2 driver from qcodes_contrib_drivers. This also assumes that the VoltageGate objects have
+    their QdacSpec objects configured with the qdac_output_port and opx_trigger_out.
+    """
+    virtual_dc_set = node.machine.virtual_dc_sets[virtual_dc_set_id]
+    physical_dc_lists = _find_physical_dc_lists(scan_mode, virtual_dc_set, axis_name, axis_values)
+
+    for name, voltages in physical_dc_lists.items():
+        dc_list = node.machine.qdac.channel(virtual_dc_set.channels[name].qdac_spec.qdac_output_port).dc_list(
+            voltages=voltages,
+            dwell_s=node.parameters.qdac_dwell_time_us / 1e6,
+            stepped=True,
+        )
+        # We want all the dc_lists associated with the same axis to start on the same trigger
+        dc_list.start_on_external(
+            trigger=virtual_dc_set.channels[physical_dc_lists.keys()[0]].qdac_spec.qdac_trigger_in
+        )

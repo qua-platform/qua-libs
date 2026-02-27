@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.charge_stability import OPXQDACParameters, get_voltage_arrays
+from calibration_utils.charge_stability import OPXQDACParameters as Parameters, get_voltage_arrays, prepare_dc_lists
 from calibration_utils.charge_stability import ScanMode
 
 from qualibration_libs.runtime import simulate_and_plot
@@ -39,15 +39,15 @@ Prerequisites:
 """
 
 
-node = QualibrationNode[OPXQDACParameters, Quam](
-    name="05b_charge_stability_qdac", description=description, parameters=OPXQDACParameters()
+node = QualibrationNode[Parameters, Quam](
+    name="05b_charge_stability_qdac", description=description, parameters=Parameters()
 )
 
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
-def custom_param(node: QualibrationNode[OPXQDACParameters, Quam]):
+def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.multiplexed = True
@@ -67,7 +67,7 @@ node.parameters.y_axis_name = "virtual_dot_2"
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
-def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
+def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
@@ -96,28 +96,22 @@ def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
 
     # Set up the DC lists. They are mapped to the same trigger, so no need for two triggers for QDAC/QDAC 2dmap.
     if x_external:
-        dc_list_x = node.machine.qdac.channel(x_obj.physical_channel.qdac_spec.qdac_output_port).dc_list(
-            voltages=(
-                np.repeat(scan_mode.get_outer_loop(x_volts), len(y_volts))
-                if y_external
-                else scan_mode.get_outer_loop(x_volts)
-            ),
-            dwell_s=10e-6,
-            stepped=True,
+        prepare_dc_lists(
+            node=node,
+            virtual_dc_set_id=vgs_id,
+            axis_name=node.parameters.x_axis_name,
+            axis_values=np.repeat(x_volts, len(y_volts)) if y_external else scan_mode.get_outer_loop(x_volts),
+            scan_mode=scan_mode,
         )
-        dc_list_x.start_on_external(trigger=1)
 
     if y_external:
-        dc_list_y = node.machine.qdac.channel(y_obj.physical_channel.qdac_spec.qdac_output_port).dc_list(
-            voltages=(
-                np.tile(scan_mode.get_outer_loop(y_volts), len(x_volts))
-                if x_external
-                else scan_mode.get_outer_loop(y_volts)
-            ),
-            dwell_s=10e-6,
-            stepped=True,
+        prepare_dc_lists(
+            node=node,
+            virtual_dc_set_id=vgs_id,
+            axis_name=node.parameters.y_axis_name,
+            axis_values=np.tile(y_volts, len(x_volts)) if x_external else scan_mode.get_outer_loop(y_volts),
+            scan_mode=scan_mode,
         )
-        dc_list_y.start_on_external(trigger=1)
 
     num_sensors = len(sensors)
 
@@ -137,7 +131,8 @@ def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
             seq = node.machine.voltage_sequences[vgs_id]
 
             I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
-
+            x = declare(fixed)
+            y = declare(fixed)
             for multiplexed_sensors in sensors.batch():
                 align()
                 with for_(n, 0, n < node.parameters.num_shots, n + 1):
@@ -150,7 +145,7 @@ def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
                                 ramp_duration=node.parameters.ramp_duration,
                             )
                             if node.parameters.pre_measurement_delay > 0:
-                                seq.step_to_voltages({}, duration = node.parameters.pre_measurement_delay)
+                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
                             align()
                             for i, sensor in multiplexed_sensors.items():
                                 # Select the resonator tied to the sensor
@@ -163,7 +158,7 @@ def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
                                 # Save data
                                 save(I[i], I_st[i])
                                 save(Q[i], Q_st[i])
-                        if node.parameters.per_line_compensation: 
+                        if node.parameters.per_line_compensation:
                             seq.apply_compensation_pulse()
                     seq.apply_compensation_pulse()
             with stream_processing():
@@ -188,7 +183,7 @@ def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
                     with for_(*from_array(x, x_volts)):
                         x_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
                         # Empty step, so that any held voltages are tracked. Effectively a wait command. In-case per-line compensation is not being played
-                        seq.step_to_voltages({}, duration = node.parameters.post_trigger_wait_ns)
+                        seq.step_to_voltages({}, duration=node.parameters.post_trigger_wait_ns)
                         for y in scan_mode.inner_loop(y_volts):
                             seq.ramp_to_voltages(
                                 {y_obj.id: y},
@@ -197,7 +192,7 @@ def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
                             )
                             align()
                             if node.parameters.pre_measurement_delay > 0:
-                                seq.step_to_voltages({}, duration = node.parameters.pre_measurement_delay)
+                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
                             align()
                             for i, sensor in multiplexed_sensors.items():
                                 # Select the resonator tied to the sensor
@@ -210,14 +205,14 @@ def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
                                 # Save data
                                 save(I[i], I_st[i])
                                 save(Q[i], Q_st[i])
-                        if node.parameters.per_line_compensation: 
+                        if node.parameters.per_line_compensation:
                             seq.apply_compensation_pulse()
                     seq.apply_compensation_pulse()
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save(f"I{i}")
-                    Q_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save(f"Q{i}")
+                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
 
     # Case 3: X OPX and Y external
     elif not x_external and y_external:
@@ -241,7 +236,7 @@ def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
                     with for_(*from_array(y, y_volts)):
                         y_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
                         # Empty step, so that any held voltages are tracked. Effectively a wait command. In-case per-line compensation is not being played
-                        seq.step_to_voltages({}, duration = node.parameters.post_trigger_wait_ns)
+                        seq.step_to_voltages({}, duration=node.parameters.post_trigger_wait_ns)
                         for x in scan_mode.inner_loop(x_volts):
                             seq.ramp_to_voltages(
                                 {x_obj.id: x},
@@ -250,7 +245,7 @@ def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
                             )
                             align()
                             if node.parameters.pre_measurement_delay > 0:
-                                seq.step_to_voltages({}, duration = node.parameters.pre_measurement_delay)
+                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
                             align()
                             for i, sensor in multiplexed_sensors.items():
                                 # Select the resonator tied to the sensor
@@ -263,14 +258,14 @@ def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
                                 # Save data
                                 save(I[i], I_st[i])
                                 save(Q[i], Q_st[i])
-                        if node.parameters.per_line_compensation: 
+                        if node.parameters.per_line_compensation:
                             seq.apply_compensation_pulse()
                     seq.apply_compensation_pulse()
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"I{i}")
-                    Q_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"Q{i}")
+                    I_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(f"Q{i}")
 
     # Case 4: Both external
     elif x_external and y_external:
@@ -288,6 +283,7 @@ def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
 
                     with for_(trig_counter, 0, trig_counter < int(len(x_volts) * len(y_volts)), trig_counter + 1):
                         x_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
+                        y_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
 
                         wait(node.parameters.post_trigger_wait_ns // 4)
                         for i, sensor in multiplexed_sensors.items():
@@ -312,7 +308,7 @@ def create_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
 @node.run_action(
     skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate or node.parameters.use_validation
 )
-def simulate_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
+def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -328,7 +324,7 @@ def simulate_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
 @node.run_action(
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
 )
-def execute_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
+def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
     qmm = node.machine.connect()
@@ -354,14 +350,14 @@ def execute_qua_program(node: QualibrationNode[OPXQDACParameters, Quam]):
 
 # %% {Simulate validation data}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.use_validation)
-def simulate_data(node: QualibrationNode[OPXQDACParameters, Quam]):
+def simulate_data(node: QualibrationNode[Parameters, Quam]):
     """Simulate the data."""
     pass
 
 
 # %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
-def load_data(node: QualibrationNode[OPXQDACParameters, Quam]):
+def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
     # load_data_id = node.parameters.load_data_id
     # # Load the specified dataset
@@ -374,7 +370,7 @@ def load_data(node: QualibrationNode[OPXQDACParameters, Quam]):
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.run_in_video_mode)
-def analyse_data(node: QualibrationNode[OPXQDACParameters, Quam]):
+def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     # TODO: Implement analysis - remove pass when complete
     pass
@@ -394,7 +390,7 @@ def analyse_data(node: QualibrationNode[OPXQDACParameters, Quam]):
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.run_in_video_mode)
-def plot_data(node: QualibrationNode[OPXQDACParameters, Quam]):
+def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
     # TODO: Implement plotting - remove pass when complete
     pass
@@ -432,7 +428,7 @@ from calibration_utils.run_video_mode import create_video_mode
 
 
 @node.run_action(skip_if=node.parameters.run_in_video_mode is False)
-def run_video_mode(node: QualibrationNode[OPXQDACParameters, Quam]):
+def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     #     x_axis_name = node.parameters.x_axis_name
     #     y_axis_name = node.parameters.y_axis_name
     #     x_span, x_points = node.parameters.x_span, node.parameters.x_points
@@ -461,7 +457,7 @@ def run_video_mode(node: QualibrationNode[OPXQDACParameters, Quam]):
 
 # %% {Save_results}
 @node.run_action()
-def save_results(node: QualibrationNode[OPXQDACParameters, Quam]):
+def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save the node results and state."""
     # TODO: Uncomment when complete
     pass
