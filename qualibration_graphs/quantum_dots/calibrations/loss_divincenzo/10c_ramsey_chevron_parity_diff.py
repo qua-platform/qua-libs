@@ -119,7 +119,7 @@ def create_qua_program(node: QualibrationNode[RamseyChevronParameters, Quam]):
                     for i, qubit in batched_qubits.items():
                         qubit.xy.update_frequency(qubit.xy.intermediate_frequency + df)
 
-                    with for_(*from_array(t, tau_values//4)):
+                    with for_(*from_array(t, tau_values)):
                         # Step 1: Empty
                         align()
                         for i, qubit in batched_qubits.items():
