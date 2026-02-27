@@ -106,20 +106,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Sweep the sensor bias voltage
                         readout_len = sensor.readout_resonator.operations["readout"].length
                         # sensor.physical_channel.set_dc_offset(offset=offset)
-                        with if_(offset == bias_offsets[0]):
-                            sensor.play("half_max_square", amplitude_scale=bias_offsets[0] * 4)
-                        with else_():
-                            sensor.play("half_max_square", amplitude_scale=node.parameters.offset_step * 4)
+                        sensor.voltage_sequence.step_to_voltages(
+                            {sensor.name: offset}, duration=readout_len + node.parameters.duration_after_step
+                        )
                         # Measure the resonator after settling the sensor bias point
+                        sensor.readout_resonator.wait(node.parameters.duration_after_step // 4)
                         sensor.readout_resonator.measure("readout", qua_vars=(I[i], Q[i]))
                         # save data
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
                     align()
 
-                for i, sensor in multiplexed_sensors.items():
-                    # sensor.voltage_sequence.apply_compensation_pulse()
-                    sensor.voltage_sequence.ramp_to_zero()
+                    for i, sensor in multiplexed_sensors.items():
+                        sensor.voltage_sequence.ramp_to_zero()
+                    align()
 
         with stream_processing():
             n_st.save("n")
