@@ -222,7 +222,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                         # --- Initialize ---
                         for i_q, qubit in batched_qubits.items():
-                            qubit.initialize(duration=node.parameters.gap_wait_time_in_ns)
+                            qubit.initialize()
                         align()
 
                         # --- Gate sequence: d-1 random Cliffords ---
