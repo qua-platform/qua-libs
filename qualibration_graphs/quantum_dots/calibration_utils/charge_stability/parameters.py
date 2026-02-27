@@ -15,15 +15,11 @@ class NodeSpecificParameters(RunnableParameters):
     """List of sensor dot names to measure in your measurement."""
     x_axis_name: str = None
     """The name of the swept element in the X axis."""
-    x_from_qdac: bool = False
-    "Check to perform 2D map using the QDAC instead of the OPX"
     y_axis_name: str = None
     """The name of the swept element in the Y axis."""
-    y_from_qdac: bool = False
-    "Check to perform 2D map using the QDAC instead of the OPX"
-    x_points: int = 201
+    x_points: int = 101
     """Number of measurement points in the X axis."""
-    y_points: int = 201
+    y_points: int = 101
     """Number of measurement points in the Y axis."""
     x_span: float = 0.05
     """The X axis span in volts"""
@@ -31,7 +27,7 @@ class NodeSpecificParameters(RunnableParameters):
     """The Y axis span in volts"""
     per_line_compensation: bool = True
     """Whether to send a compensation pulse at the end of each scan line."""
-    perform_edge_analysis: bool = True
+    perform_edge_analysis: bool = False
     """Whether to perform edge analysis on the data."""
     ramp_duration: int = 100
     """The ramp duration to each pixel. Set to zero for a step."""
@@ -39,8 +35,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Dwell time on each point in nanoseconds. If using the QDAC, this must be slow enough."""
     pre_measurement_delay: int = 0
     """A deliberate delay time after the hold_duration and before the resonator measurement."""
-    post_trigger_wait_ns: int = 10000
-    """A pause in the QUA programme to allow the QDAC to get to the correct level."""
     use_validation: bool = True
     """Whether to use validation with simulated data."""
 

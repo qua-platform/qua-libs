@@ -219,8 +219,28 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
-    fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
-    fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
+    ds_plot = node.results["ds_raw"].copy()
+    if node.parameters.dc_control:
+        if node.parameters.virtual_gate_set_id == None:
+            x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(
+                node.parameters.y_axis_name
+            )
+            if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
+                raise ValueError(
+                    f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
+                )
+            vgs_id = x_obj.voltage_sequence.gate_set.id
+        else:
+            vgs_id = node.parameters.virtual_gate_set_id
+        ds_plot = node.results["ds_raw"].assign_coords(
+            x_volts=node.results["ds_raw"].x_volts
+            + node.machine.virtual_dc_sets[vgs_id].get_voltage(node.parameters.x_axis_name),
+            y_volts=node.results["ds_raw"].y_volts
+            + node.machine.virtual_dc_sets[vgs_id].get_voltage(node.parameters.y_axis_name),
+        )
+
+    fig_amplitude = plot_raw_amplitude(ds_plot, node.namespace["sensors"])
+    fig_phase = plot_raw_phase(ds_plot, node.namespace["sensors"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
@@ -229,7 +249,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     }
     if node.parameters.perform_edge_analysis and "fit_results" in node.results:
         for sensor in node.namespace["sensors"]:
-            sensor_data = node.results["ds_raw"].sel(sensors=sensor.id)
+            sensor_data = ds_plot.sel(sensors=sensor.id)
             fit_params = node.results["fit_results"].get(sensor.id, {})
             fig_cp = plot_change_point_overlays(sensor_data, fit_params, sensor.id)
             node.results["figures"][f"{sensor.id}_change_points"] = fig_cp
@@ -244,11 +264,10 @@ from calibration_utils.run_video_mode import create_video_mode
 
 @node.run_action(skip_if=node.parameters.run_in_video_mode is False)
 def run_video_mode(node: QualibrationNode[Parameters, Quam]):
-    if node.parameters.virtual_gate_set_id is None:
+    if node.parameters.virtual_gate_set_id == None:
         x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(
             node.parameters.y_axis_name
         )
-
         if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
             raise ValueError(
                 f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
@@ -259,6 +278,9 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     x_span, x_points = node.parameters.x_span, node.parameters.x_points
     y_span, y_points = node.parameters.y_span, node.parameters.y_points
 
+    from pathlib import Path
+
+    quam_state_path = Path(node.machine.serialiser._get_state_path()).resolve()
     create_video_mode(
         machine=node.machine,
         num_software_averages=node.parameters.num_shots,
@@ -275,7 +297,7 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
             node.machine.sensor_dots[name].readout_resonator.operations["readout"]
             for name in node.parameters.sensor_names
         ],
-        save_path="/Users/User/.qualibrate/user_storage",
+        save_path=str(quam_state_path),
     )
 
 
@@ -283,5 +305,4 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save the node results and state."""
-    #     node.save()
-    pass
+    node.save()

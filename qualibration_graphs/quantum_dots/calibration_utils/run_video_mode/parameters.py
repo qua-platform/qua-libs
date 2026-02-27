@@ -2,13 +2,13 @@ from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    virtual_gate_set_id: str = None
+    virtual_gate_set_id: Optional[str] = None
     """Name of the VirtualGateSet to measure using Video Mode."""
     x_axis_name: str = None
     """Name of the X axis in your VirtualGateSet. Can be a physical gate id or virtual gate id."""
