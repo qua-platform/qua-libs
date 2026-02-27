@@ -119,7 +119,7 @@ def create_qua_program(node: QualibrationNode[RamseyChevronParameters, Quam]):
                     for i, qubit in batched_qubits.items():
                         qubit.xy.update_frequency(qubit.xy.intermediate_frequency + df)
 
-                    with for_(*from_array(t, tau_values)):
+                    with for_(*from_array(t, tau_values//4)):
                         # Step 1: Empty
                         align()
                         for i, qubit in batched_qubits.items():
@@ -138,7 +138,8 @@ def create_qua_program(node: QualibrationNode[RamseyChevronParameters, Quam]):
                         # Step 3: X90 - idle - X90
                         for i, qubit in batched_qubits.items():
                             qubit.x90()
-                            qubit.xy.wait(t)
+                            wait(t)
+                            qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
                             qubit.x90()
 
                         # Step 4: Measure

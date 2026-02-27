@@ -142,9 +142,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ---------------------------------------------------------
                     for i, qubit in batched_qubits.items():
                         qubit.x90()
-                        qubit.xy.wait(t)
+                        wait(t)
+                        qubit.voltage_sequence.step_to_voltages({}, duration=t*4)
                         qubit.x180()
-                        qubit.xy.wait(t)
+                        wait(t)
+                        qubit.voltage_sequence.step_to_voltages({}, duration=t*4)
                         qubit.x90()
 
                     # ---------------------------------------------------------

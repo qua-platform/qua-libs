@@ -145,7 +145,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
                     for i, qubit in batched_qubits.items():
                         qubit.x180()
-                        qubit.xy.wait(t)
+                        # qubit.xy.wait(t)
+                        wait(t)
+                        qubit.voltage_sequence.step_to_voltages({}, duration=t*4)
 
                     # ---------------------------------------------------------
                     # Step 4: Measure - move to PSB and measure
