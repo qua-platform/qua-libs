@@ -15,10 +15,13 @@ from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.resonator_spectroscopy_vs_power import (
     Parameters,
+    process_raw_dataset,
+    plot_raw_data_with_fit,
+    log_fitted_results,
+    fit_raw_data,
 )
 from quam_builder.tools.power_tools import calculate_voltage_scaling_factor
 from quam_builder.architecture.quantum_dots.components import ReadoutResonatorSingle
-from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -166,9 +169,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -198,50 +199,39 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
 
-
-#     load_data_id = node.parameters.load_data_id
-#     # Load the specified dataset
-#     node.load_from_id(node.parameters.load_data_id)
-#     node.parameters.load_data_id = load_data_id
-#     # Get the active sensors from the loaded node parameters
-#     node.namespace["sensors"] = get_sensors(node)
+    load_data_id = node.parameters.load_data_id
+    # Load the specified dataset
+    node.load_from_id(node.parameters.load_data_id)
+    node.parameters.load_data_id = load_data_id
+    # Get the active sensors from the loaded node parameters
+    node.namespace["sensors"] = get_sensors(node)
 
 
 # %% {Analyse_data}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-
-
-#     # TODO: requires manual setting of the readout power since the analysis isn't robust enough...
-#     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-#     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-#     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-
-#     # Log the relevant information extracted from the data analysis
-#     log_fitted_results(node.results["fit_results"], log_callable=node.log)
-#     node.outcomes = {
-#         qubit_name: ("successful" if fit_result["success"] else "failed")
-#         for qubit_name, fit_result in node.results["fit_results"].items()
-#     }
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    node.outcomes = {
+        sensor_name: ("successful" if fit_result["success"] else "failed")
+        for sensor_name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plot_data}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
-
-
-#     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"])
-#     plt.show()
-#     # Store the generated figures
-#     node.results["figures"] = {
-#         "amplitude": fig_raw_fit,
-#     }
+    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"])
+    plt.show()
+    node.results["figures"] = {"amplitude": fig_raw_fit}
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor data analysis was successful."""
     # Revert the change done at the beginning of the node
@@ -266,5 +256,4 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
-    #     node.save()
-    pass
+    node.save()

@@ -37,10 +37,10 @@ def plot_raw_data_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Da
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
-        sensor_data = ds.sel(sensor=sensor.id)
-        fit_data = fits.sel(sensor=sensor.id) if fits is not None else None
+        sensor_data = ds.sel(sensor=sensor.name)
+        fit_data = fits.sel(sensor=sensor.name) if fits is not None else None
 
-        plot_individual_raw_data_with_fit(ax, sensor_data, fit_data)
+        plot_individual_raw_data_with_fit(ax, sensor_data, sensor.name, fit_data)
 
     fig.suptitle("Resonator spectroscopy vs power")
     fig.set_size_inches(15, 9)
@@ -74,6 +74,7 @@ def plot_individual_raw_data_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_
         ax=ax2, add_colorbar=False, x="detuning_MHz", y="power", robust=True
     )
     ax2.set_xlabel("Detuning [MHz]")
+    ax2.set_title(sensor_id)
 
     if fit is not None:
         ax2.plot((fit.rr_min_response) * 1e-6, fit.power, color="orange", linewidth=0.5)
