@@ -3,14 +3,16 @@ import time
 from werkzeug.serving import make_server
 
 from quam.core import QuamRoot
-from qua_dashboards.video_mode import VideoModeComponent, OPXDataAcquirer, scan_modes
+from qua_dashboards.video_mode import VideoModeComponent, OPXDataAcquirer, SimulationDataAcquirer, scan_modes
+from qua_dashboards.video_mode.data_acquirers.simulation_data_acquirer import SimulationDataAcquirerOPXOutput
 from qua_dashboards.voltage_control import VoltageControlComponent
 from qua_dashboards.core import build_dashboard
 from qua_dashboards.virtual_gates import VirtualLayerEditor, ui_update
-from qcodes.parameters import DelegateParameter
 import threading
 import webbrowser
 import subprocess
+from .build_qarray_simulator import setup_simulation
+
 
 _DASHBOARD_THREAD: Optional[threading.Thread] = None
 _DASHBOARD_SERVER = None
@@ -78,6 +80,7 @@ def launch_video_mode(
             "Spiral_Scan": scan_modes.SpiralScan(),
         }
 
+    virtual_gate_set = machine.virtual_gate_sets[virtual_gate_id]
     dc_set = None
     if dc_control:
         external_qdac = "qdac_ip" in machine.network
@@ -97,21 +100,36 @@ def launch_video_mode(
 
         voltage_control_tab = VoltageControlTabController(voltage_control_component=voltage_control_component)
 
+    sensor_plunger_bias_mv = [-5.0e-3, -5.0e-3]
+    base_point = {
+        "virtual_dot_1": -5.0e-3,
+        "virtual_dot_2": -5.0e-3,
+        "virtual_sensor_1": sensor_plunger_bias_mv[0],
+        "virtual_sensor_2": sensor_plunger_bias_mv[1],
+    }
+    simulator = setup_simulation(
+        base_point, virtual_gate_set, dc_set, sensor_gate_names=["virtual_sensor_1", "virtual_sensor_2"]
+    )
+    if dc_control:
+        machine.virtual_dc_sets["main_qpu"].set_voltages(base_point)
+
     qmm = machine.connect()
-    virtual_gate_set = machine.virtual_gate_sets[virtual_gate_id]
-    data_acquirer = OPXDataAcquirer(
+
+    data_acquirer = SimulationDataAcquirerOPXOutput(
         qmm=qmm,
         machine=machine,
-        gate_set=virtual_gate_set,
+        gate_set=virtual_gate_set,  # Replace with your GateSet instance
+        x_mode=x_mode,
+        y_mode=y_mode,
         x_axis_name=x_axis_name,
         y_axis_name=y_axis_name,
         scan_modes=scan_modes_dict,
-        result_type=result_type,
-        available_readout_pulses=readout_pulses,
-        num_software_averages=num_software_averages,
-        x_mode=x_mode,
-        y_mode=y_mode,
+        result_type=result_type,  # "I", "Q", "amplitude", or "phase"
+        available_readout_pulses=readout_pulses,  # Input a list of pulses. The default only reads out from the first pulse, unless the second one is chosen in the UI.
+        acquisition_interval_s=0.01,
         voltage_control_component=voltage_control_component,
+        num_software_averages=num_software_averages,
+        simulator=simulator,
     )
 
     def find_default(mode):
@@ -158,12 +176,14 @@ def launch_video_mode(
         _DASHBOARD_SERVER = make_server("0.0.0.0", port, app.server, threaded=True)
         _DASHBOARD_SERVER.serve_forever()
 
-    _DASHBOARD_THREAD = threading.Thread(target=run_server, daemon=True, name="VideoMode")
+    # Keep the dashboard backend alive when launched from a script.
+    # A daemon thread can be killed as soon as the main process exits.
+    _DASHBOARD_THREAD = threading.Thread(target=run_server, daemon=False, name="VideoMode")
     _DASHBOARD_THREAD.start()
     time.sleep(0.5)
     webbrowser.open(f"http://localhost:{port}")
 
-    log("Dashboard running at http://localhost:8050")
+    log(f"Dashboard running at http://localhost:{port}")
 
 
 def create_video_mode(

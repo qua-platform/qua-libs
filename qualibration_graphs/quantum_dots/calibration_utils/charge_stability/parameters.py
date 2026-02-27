@@ -50,6 +50,29 @@ class Parameters(
     pass
 
 
+class OPXQDACParameters(
+    NodeParameters,
+    VideoModeCommonParameters,
+    CommonNodeParameters,
+    NodeSpecificParameters,
+):
+    x_from_qdac: bool = False
+    "Check to perform 2D map using the QDAC instead of the OPX"
+    y_from_qdac: bool = False
+    "Check to perform 2D map using the QDAC instead of the OPX"
+    post_trigger_wait_ns: int = 10000
+    """A pause in the QUA programme to allow the QDAC to get to the correct level."""
+
+
+class SimulationParameters(
+    NodeParameters,
+    VideoModeCommonParameters,
+    CommonNodeParameters,
+    NodeSpecificParameters,
+):
+    pass
+
+
 import numpy as np
 
 
