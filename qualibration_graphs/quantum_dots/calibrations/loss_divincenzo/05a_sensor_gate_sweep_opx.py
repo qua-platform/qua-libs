@@ -206,7 +206,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             # TODO: replace "measure" by its enum
             sensor.add_point(
                 "measure",
-                voltages={sensor.name: optimal_offset},  # TODO: absolute or only OPX voltage?
+                voltages={sensor.name: optimal_offset},
                 duration=sensor.readout_resonator.operation["readout"].duration,
                 replace_existing_point=True,
             )
