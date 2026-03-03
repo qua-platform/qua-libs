@@ -35,7 +35,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import xarray as xr  # noqa: E402
 
-from qualibrate.qualibration_library import QualibrationLibrary  # noqa: E402
+try:  # noqa: E402
+    from qualibrate.qualibration_library import QualibrationLibrary
+except ImportError:  # qualibrate>=1.0 API layout
+    from qualibrate.core.qualibration_library import QualibrationLibrary
 from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam  # noqa: E402
 from .....path_utils import find_repo_root  # noqa: E402
 from .quam_factory import create_minimal_quam  # noqa: E402
@@ -79,6 +82,28 @@ from quantum_dots.params import ExchangeModel, LossDiVincenzoParams, MU_B_OVER_H
 
 # Exposed for tests that conditionally skip when virtual_qpu is unavailable.
 _VIRTUAL_QPU_AVAILABLE = True
+
+
+def _patch_qualibrate_logger_to_local_cache() -> None:
+    """Force qualibrate logger file output into the repo-local pytest cache."""
+    try:
+        import qualibrate.utils.logger_m as logger_m
+    except Exception:
+        try:
+            import qualibrate.core.utils.logger_m as logger_m
+        except Exception:
+            return
+
+    log_dir = _cache_base / "qualibrate" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    def _local_log_filepath() -> Path:
+        return log_dir / "qualibrate.log"
+
+    logger_m.LazyInitLogger.get_log_filepath = staticmethod(_local_log_filepath)
+
+
+_patch_qualibrate_logger_to_local_cache()
 
 # =============================================================================
 # Default device configuration
@@ -569,8 +594,12 @@ def _patch_action_manager_register_only():
     """
     from functools import wraps
 
-    from qualibrate.runnables.run_action.action import Action
-    from qualibrate.runnables.run_action.action_manager import ActionManager
+    try:
+        from qualibrate.runnables.run_action.action import Action
+        from qualibrate.runnables.run_action.action_manager import ActionManager
+    except ImportError:
+        from qualibrate.core.runnables.run_action.action import Action
+        from qualibrate.core.runnables.run_action.action_manager import ActionManager
 
     _original_register = ActionManager.register_action
 
@@ -683,7 +712,7 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         overrides["simulate"] = False  # Analysis tests inject ds_raw; skip QUA sim/execute.
         _apply_param_overrides(node, overrides)
 
-        # 5) Populate the namespace with qubits.
+        # 5) Populate the namespace with qubits/sensors expected by node actions.
         try:
             from calibration_utils.common_utils.experiment import get_qubits
 
@@ -695,6 +724,18 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
                     node.namespace["qubits"] = list(qubits.values())
                 else:
                     node.namespace["qubits"] = list(qubits)
+
+        try:
+            from calibration_utils.common_utils.experiment import get_sensors
+
+            node.namespace["sensors"] = get_sensors(node)
+        except Exception:
+            if hasattr(machine, "sensor_dots"):
+                sensors = machine.sensor_dots
+                if isinstance(sensors, dict):
+                    node.namespace["sensors"] = list(sensors.values())
+                else:
+                    node.namespace["sensors"] = list(sensors)
 
         # 6) Optionally restrict to a subset of qubits for analysis.
         if analyse_qubits:

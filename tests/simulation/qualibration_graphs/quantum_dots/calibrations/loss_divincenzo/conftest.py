@@ -34,10 +34,35 @@ matplotlib.use("Agg")  # Headless backend for CI/local runs
 # pylint: disable=wrong-import-position
 import matplotlib.pyplot as plt  # type: ignore[import-not-found]  # noqa: E402
 
-from qualibrate.qualibration_library import QualibrationLibrary  # type: ignore[import-not-found]  # noqa: E402
+try:  # type: ignore[import-not-found]  # noqa: E402
+    from qualibrate.qualibration_library import QualibrationLibrary
+except ImportError:  # qualibrate>=1.0 API layout
+    from qualibrate.core.qualibration_library import QualibrationLibrary
 from quam_builder.architecture.quantum_dots.qpu import (  # type: ignore[import-not-found]  # noqa: E402
     LossDiVincenzoQuam,
 )
+
+
+def _patch_qualibrate_logger_to_local_cache() -> None:
+    """Force qualibrate logger file output into the repo-local pytest cache."""
+    try:
+        import qualibrate.utils.logger_m as logger_m
+    except Exception:
+        try:
+            import qualibrate.core.utils.logger_m as logger_m
+        except Exception:
+            return
+
+    log_dir = _cache_base / "qualibrate" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    def _local_log_filepath() -> Path:
+        return log_dir / "qualibrate.log"
+
+    logger_m.LazyInitLogger.get_log_filepath = staticmethod(_local_log_filepath)
+
+
+_patch_qualibrate_logger_to_local_cache()
 
 try:
     from .....path_utils import find_repo_root  # noqa: E402
