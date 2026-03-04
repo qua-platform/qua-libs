@@ -61,8 +61,9 @@ class SensorCompensationParameters(GateVirtualizationBaseParameters):
 
     sensor_device_mapping: Optional[Dict[str, List[str]]] = None
     """Mapping of sensor gate -> list of device gates to scan against it.
+    Device gates can be plungers or barriers and are handled identically.
     Only local cross-talk pairs need to be specified.
-    Example: {"virtual_sensor_1": ["virtual_dot_1", "virtual_dot_2"]}.
+    Example: {"virtual_sensor_1": ["virtual_dot_1", "barrier_12"]}.
     If None, must be generated from the machine (not yet implemented)."""
 
 
@@ -77,14 +78,44 @@ class VirtualPlungerParameters(GateVirtualizationBaseParameters):
 
 
 class BarrierCompensationParameters(GateVirtualizationBaseParameters):
-    """Parameters for barrier compensation scans."""
+    """Parameters for barrier-barrier compensation scans."""
 
     barrier_compensation_mapping: Optional[Dict[str, List[str]]] = None
-    """Mapping of barrier gate -> list of gates (typically plungers) to scan
-    against it for compensation.  Only local cross-talk pairs need to be
+    """Mapping of target barrier -> list of drive barriers.
+    The target barrier defines the tunnel coupling ``t_ij`` being calibrated.
+    Drive barriers are swept to estimate local derivatives ``dt_i/dB_j``.
+    Only local cross-talk pairs need to be
     specified.
-    Example: {"barrier_12": ["virtual_dot_1", "virtual_dot_2"]}.
+    Example: {"barrier_23": ["barrier_12", "barrier_23", "barrier_34"]}.
     If None, must be generated from the machine (not yet implemented)."""
+    barrier_dot_pair_mapping: Optional[Dict[str, str]] = None
+    """Mapping of target barrier -> quantum-dot pair identifier used to
+    extract the corresponding tunnel coupling ``t_ij``."""
+    calibration_order: Optional[List[str]] = None
+    """Order in which target barriers are calibrated.
+    Defaults to the insertion order of ``barrier_compensation_mapping``."""
+    slope_sweep_span_mv: float = 20.0
+    """Total drive-barrier sweep span for local slope extraction (mV)."""
+    slope_sweep_points: int = 7
+    """Number of drive-barrier points per local slope fit."""
+    detuning_min: float = -0.1
+    """Minimum detuning value for per-point tunnel-coupling extraction (V)."""
+    detuning_max: float = 0.1
+    """Maximum detuning value for per-point tunnel-coupling extraction (V)."""
+    detuning_points: int = 121
+    """Number of detuning points used in tunnel-coupling extraction."""
+    residual_crosstalk_target: float = 0.10
+    """Target maximum residual off-diagonal crosstalk ratio."""
+    max_refinement_rounds: int = 2
+    """Maximum number of refinement rounds in the stepwise ``B* -> B†`` flow."""
+    matrix_layer_id: Optional[str] = None
+    """Optional VirtualizationLayer id to update.
+    If None, the last layer of the selected VirtualGateSet is updated."""
+    target_tunnel_couplings: Optional[Dict[str, float]] = None
+    """Optional target tunnel couplings keyed by target barrier name.
+    If provided, metadata is stored for future retuning hooks."""
+    min_abs_self_slope: float = 1e-12
+    """Minimum absolute value for ``dt_i/dB_i`` to accept a calibration row."""
 
 
 def get_voltage_arrays(node):
