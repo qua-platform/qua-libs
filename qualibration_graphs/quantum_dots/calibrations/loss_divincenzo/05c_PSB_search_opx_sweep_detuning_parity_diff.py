@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.psb_search_sweep_detuning_parity_diff import Parameters
-from calibration_utils.common_utils.experiment import get_sensors
+from qualang_tools.loops import from_array
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -67,6 +67,94 @@ node.machine = Quam.load()
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 
+    dot_pair_objects = [node.machine.quantum_dot_pairs[name] for name in node.parameters.quantum_dot_pair_names]
+
+    node.namespace["dot_pairs"] = dot_pair_objects
+
+    detuning_min = node.parameters.detuning_min
+    detuning_max = node.parameters.detuning_max
+    detuning_points = node.parameters.detuning_points
+    detuning_step = (detuning_max - detuning_min) / detuning_points
+
+    detuning_array = np.arange(detuning_min, detuning_max, detuning_step)
+
+    node.namespace["sweep_axes"] = {
+        "quantum_dot_pair": xr.DataArray([pair.name for pair in dot_pair_objects]),
+        "detuning": xr.DataArray(detuning_array, attrs={"long_name": "voltage", "units": "V"}),
+    }
+    with program() as prog:
+        n = declare(int)
+        n_st = declare_stream()
+
+        detuning = declare(fixed)
+
+        # Parity variables and streams keyed by dot pair name.
+        # dot_pair.measure() returns a bool; Cast.to_int converts it so we
+        # can average the result in stream processing.
+        p1 = {pair.name: declare(int) for pair in dot_pair_objects}
+        p2 = {pair.name: declare(int) for pair in dot_pair_objects}
+        p1_st = {pair.name: declare_stream() for pair in dot_pair_objects}
+        p2_st = {pair.name: declare_stream() for pair in dot_pair_objects}
+        pdiff_st = {pair.name: declare_stream() for pair in dot_pair_objects}
+
+        with for_(n, 0, n < node.parameters.num_shots, n + 1):
+            save(n, n_st)
+
+            for dot_pair in dot_pair_objects:
+                with from_array(detuning, detuning_array):
+                    # ---------------------------------------------------------
+                    # Step 1: Empty - step to empty point (fixed duration)
+                    # ---------------------------------------------------------
+                    dot_pair.empty()
+
+                    align()
+
+                    # ---------------------------------------------------------
+                    # Step 2: Measure initial parity (p1) — reference state
+                    # ---------------------------------------------------------
+                    assign(p1[dot_pair.name], Cast.to_int(dot_pair.measure()))
+
+                    # ---------------------------------------------------------
+                    # Step 3: Initialize - load electron into dots
+                    # ---------------------------------------------------------
+                    dot_pair.initialize()
+
+                    # dot_pair.ramp_to_detuning(detuning, ramp_duration=node.parameters.ramp_duration)
+                    # align()
+
+                    # ---------------------------------------------------------
+                    # Step 4: Measure final parity (p2)
+                    # ---------------------------------------------------------
+
+                    # After node 05b, the measure macro will contain the step to the PSB point and the measurement.
+                    # Therefore, no need to ramp to detuning or align.
+                    assign(p2[dot_pair.name], Cast.to_int(dot_pair.measure()))
+
+                    align()
+
+                    # ---------------------------------------------------------
+                    # Step 5: Apply compensation pulse to reset DC bias
+                    # ---------------------------------------------------------
+                    dot_pair.voltage_sequence.apply_compensation_pulse()
+
+                    # ---------------------------------------------------------
+                    # Save results
+                    # ---------------------------------------------------------
+                    save(p1[dot_pair.name], p1_st[dot_pair.name])
+                    save(p2[dot_pair.name], p2_st[dot_pair.name])
+
+                    with if_(p1[dot_pair.name] == p2[dot_pair.name]):
+                        save(0, pdiff_st[dot_pair.name])
+                    with else_():
+                        save(1, pdiff_st[dot_pair.name])
+
+        with stream_processing():
+            n_st.save("n")
+            for pair in dot_pair_objects:
+                p1_st[pair.name].buffer(len(detuning_array)).average().save(f"p1_{pair.name}")
+                p2_st[pair.name].buffer(len(detuning_array)).average().save(f"p2_{pair.name}")
+                pdiff_st[pair.name].buffer(len(detuning_array)).average().save(f"pdiff_{pair.name}")
+
 
 # %% {Simulate}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
@@ -116,8 +204,10 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active sensors from the loaded node parameters
-    node.namespace["sensors"] = get_sensors(node)
+    # Restore dot pair objects from the loaded parameters
+    node.namespace["dot_pairs"] = [
+        node.machine.quantum_dot_pairs[name] for name in node.parameters.quantum_dot_pair_names
+    ]
 
 
 # %% {Analyse_data}
