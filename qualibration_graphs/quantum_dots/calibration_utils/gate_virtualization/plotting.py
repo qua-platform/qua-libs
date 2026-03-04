@@ -85,6 +85,149 @@ def plot_tunnel_slope_fit(
     return fig
 
 
+def _sample_successful_point_fits(point_fits: Sequence[Dict[str, Any]], max_traces: int = 5) -> List[Dict[str, Any]]:
+    """Pick up to ``max_traces`` successful point fits uniformly across drive values."""
+    successful = [fit for fit in point_fits if bool(fit.get("success", False))]
+    if len(successful) <= max_traces:
+        return successful
+    indices = np.linspace(0, len(successful) - 1, num=max_traces, dtype=int)
+    return [successful[idx] for idx in indices]
+
+
+def plot_detuning_fit_family(
+    fit_results: Dict[str, Any],
+    title: Optional[str] = None,
+    max_traces: int = 5,
+) -> Figure:
+    """Plot measured detuning traces and model fits for selected drive points."""
+    fig, ax = plt.subplots(figsize=(6.2, 4.4))
+    sampled_fits = _sample_successful_point_fits(fit_results.get("point_fits", []), max_traces=max_traces)
+    if len(sampled_fits) == 0:
+        ax.set_title(title or "Detuning Traces (No Valid Fits)")
+        ax.text(0.5, 0.5, "No successful detuning fits", ha="center", va="center")
+        ax.axis("off")
+        fig.tight_layout()
+        return fig
+
+    for fit in sampled_fits:
+        detuning = np.asarray(fit.get("detuning", []), dtype=float)
+        signal = np.asarray(fit.get("signal", []), dtype=float)
+        signal_fit = np.asarray(fit.get("signal_fit", []), dtype=float)
+        drive_value = float(fit.get("drive_value", np.nan))
+        t_val = float(fit.get("tunnel_coupling", np.nan))
+        label = (
+            f"ΔB={1e3 * drive_value:.2f} mV, t={t_val:.3g}"
+            if np.isfinite(drive_value) and np.isfinite(t_val)
+            else "trace"
+        )
+        ax.plot(detuning, signal, "o", ms=2.6, alpha=0.70, label=label)
+        if detuning.size == signal_fit.size and detuning.size > 0:
+            ax.plot(detuning, signal_fit, "--", lw=1.5, alpha=0.95)
+
+    ax.set_title(title or "Detuning Trace Fits")
+    ax.set_xlabel("Detuning (scaled units)")
+    ax.set_ylabel("Sensor signal (arb.)")
+    ax.grid(alpha=0.25)
+    ax.legend(loc="best", fontsize=8)
+    fig.tight_layout()
+    return fig
+
+
+def plot_barrier_pair_diagnostics(
+    fit_results: Dict[str, Any],
+    drive_label: str,
+    target_label: str,
+    title: Optional[str] = None,
+) -> Figure:
+    """Plot pair diagnostics: detuning-trace fits and extracted t-vs-drive slope."""
+    fig = plt.figure(figsize=(10.8, 4.2))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.15, 1.0], wspace=0.26)
+
+    ax_left = fig.add_subplot(gs[0, 0])
+    sampled_fits = _sample_successful_point_fits(fit_results.get("point_fits", []), max_traces=5)
+    for fit in sampled_fits:
+        detuning = np.asarray(fit.get("detuning", []), dtype=float)
+        signal = np.asarray(fit.get("signal", []), dtype=float)
+        signal_fit = np.asarray(fit.get("signal_fit", []), dtype=float)
+        drive_value = float(fit.get("drive_value", np.nan))
+        t_val = float(fit.get("tunnel_coupling", np.nan))
+        label = f"{1e3 * drive_value:.2f} mV, t={t_val:.3g}" if np.isfinite(drive_value) and np.isfinite(t_val) else "trace"
+        ax_left.plot(detuning, signal, "o", ms=2.5, alpha=0.72, label=label)
+        if detuning.size == signal_fit.size and detuning.size > 0:
+            ax_left.plot(detuning, signal_fit, "--", lw=1.4, alpha=0.95)
+
+    ax_left.set_xlabel("Detuning (scaled units)")
+    ax_left.set_ylabel("Sensor signal (arb.)")
+    ax_left.set_title(f"{target_label}: detuning fits")
+    ax_left.grid(alpha=0.25)
+    if sampled_fits:
+        ax_left.legend(loc="best", fontsize=8)
+
+    ax_right = fig.add_subplot(gs[0, 1])
+    x_vals = np.asarray(fit_results.get("drive_values", []), dtype=float)
+    y_vals = np.asarray(fit_results.get("tunnel_couplings", []), dtype=float)
+    valid = np.isfinite(x_vals) & np.isfinite(y_vals)
+    ax_right.plot(1e3 * x_vals[valid], y_vals[valid], "o", ms=5, label="extracted")
+
+    slope = float(fit_results.get("coefficient", np.nan))
+    intercept = float(fit_results.get("slope_fit_intercept", np.nan))
+    if np.isfinite(slope) and np.isfinite(intercept) and np.any(valid):
+        x_line = np.linspace(np.nanmin(x_vals[valid]), np.nanmax(x_vals[valid]), 200)
+        y_line = slope * x_line + intercept
+        ax_right.plot(1e3 * x_line, y_line, "--", lw=1.8, label="linear fit")
+
+    r2 = float(fit_results.get("fit_quality", np.nan))
+    ax_right.set_xlabel(f"Δ{drive_label} (mV)")
+    ax_right.set_ylabel(f"t ({target_label}, arb.)")
+    ax_right.set_title(f"slope fit (R²={r2:.3f})" if np.isfinite(r2) else "slope fit")
+    ax_right.grid(alpha=0.25)
+    ax_right.legend(loc="best", fontsize=8)
+
+    fig.suptitle(title or f"Barrier Diagnostics: {target_label} vs {drive_label}")
+    fig.tight_layout()
+    return fig
+
+
+def plot_target_barrier_coupling_summary(
+    target_barrier: str,
+    fit_results_by_pair: Dict[str, Dict[str, Any]],
+    title: Optional[str] = None,
+) -> Figure:
+    """Overlay extracted tunnel-coupling-vs-drive curves for one target barrier."""
+    fig, ax = plt.subplots(figsize=(6.6, 4.6))
+    plotted_any = False
+    for _, fit in sorted(fit_results_by_pair.items(), key=lambda item: str(item[1].get("drive_barrier", ""))):
+        drive_name = str(fit.get("drive_barrier", "drive"))
+        x_vals = np.asarray(fit.get("drive_values", []), dtype=float)
+        y_vals = np.asarray(fit.get("tunnel_couplings", []), dtype=float)
+        valid = np.isfinite(x_vals) & np.isfinite(y_vals)
+        if not np.any(valid):
+            continue
+
+        plotted_any = True
+        label_points = f"{drive_name} (data)"
+        label_fit = f"{drive_name} (fit)"
+        ax.plot(1e3 * x_vals[valid], y_vals[valid], "o", ms=4, alpha=0.9, label=label_points)
+
+        slope = float(fit.get("coefficient", np.nan))
+        intercept = float(fit.get("slope_fit_intercept", np.nan))
+        if np.isfinite(slope) and np.isfinite(intercept):
+            x_line = np.linspace(np.nanmin(x_vals[valid]), np.nanmax(x_vals[valid]), 200)
+            y_line = slope * x_line + intercept
+            ax.plot(1e3 * x_line, y_line, "--", lw=1.5, alpha=0.95, label=label_fit)
+
+    ax.set_title(title or f"{target_barrier}: extracted tunnel coupling vs drive")
+    ax.set_xlabel("Drive barrier voltage (mV)")
+    ax.set_ylabel("Tunnel coupling (arb.)")
+    ax.grid(alpha=0.25)
+    if plotted_any:
+        ax.legend(loc="best", fontsize=8, ncol=1)
+    else:
+        ax.text(0.5, 0.5, "No valid fit data", ha="center", va="center", transform=ax.transAxes)
+    fig.tight_layout()
+    return fig
+
+
 def plot_compensation_fit(
     ds: xr.Dataset,
     fit_results: Dict[str, Any],

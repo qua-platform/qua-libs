@@ -53,6 +53,8 @@ extract_barrier_compensation_coefficients = _barrier_mod.extract_barrier_compens
 finite_temperature_excess_charge = _barrier_mod.finite_temperature_excess_charge
 fit_finite_temperature_two_level = _barrier_mod.fit_finite_temperature_two_level
 fit_barrier_cross_talk = _barrier_mod.fit_barrier_cross_talk
+evaluate_slope_fit_acceptance = _barrier_mod.evaluate_slope_fit_acceptance
+resolve_pair_calibration_topology = _barrier_mod.resolve_pair_calibration_topology
 
 
 class _DummyLayer:
@@ -80,6 +82,49 @@ class _DummyNode:
         gate_set = _DummyGateSet("main_qpu", layer)
         self.machine = _DummyMachine(gate_set)
         self.parameters = SimpleNamespace(virtual_gate_set_id="main_qpu", matrix_layer_id=None)
+
+
+class _DummyPairTopologyDot:
+    def __init__(self, dot_id: str):
+        self.id = dot_id
+
+
+class _DummyPairTopologyBarrier:
+    def __init__(self, barrier_id: str):
+        self.id = barrier_id
+
+
+class _DummyPairTopologyGateSet:
+    def __init__(self, gate_set_id: str):
+        self.id = gate_set_id
+
+
+class _DummyPairTopologySequence:
+    def __init__(self, gate_set_id: str):
+        self.gate_set = _DummyPairTopologyGateSet(gate_set_id)
+
+
+class _DummyPairTopologyPair:
+    def __init__(self, pair_id: str, dot_ids: tuple[str, str], barrier_id: str, gate_set_id: str = "main_qpu"):
+        self.id = pair_id
+        self.quantum_dots = [_DummyPairTopologyDot(dot_ids[0]), _DummyPairTopologyDot(dot_ids[1])]
+        self.barrier_gate = _DummyPairTopologyBarrier(barrier_id)
+        self.detuning_axis_name = f"{pair_id}_epsilon"
+        self.voltage_sequence = _DummyPairTopologySequence(gate_set_id)
+
+    def ramp_to_detuning(self, *_args, **_kwargs):
+        return None
+
+
+class _DummyQubitPairRef:
+    def __init__(self, pair):
+        self.quantum_dot_pair = pair
+
+
+class _DummyTopologyMachine:
+    def __init__(self, quantum_dot_pairs: dict[str, object], qubit_pairs: dict[str, object]):
+        self.quantum_dot_pairs = quantum_dot_pairs
+        self.qubit_pairs = qubit_pairs
 
 
 def _make_synthetic_pair_dataset(
@@ -134,6 +179,86 @@ def test_barrier_slope_fit_recovers_dt_dB() -> None:
     assert abs(fit["coefficient"] - true_slope) < 0.2
     assert fit["fit_quality"] > 0.7
     assert fit["n_points"] >= 8
+
+
+@pytest.mark.analysis
+def test_extract_coefficients_accepts_detuning_scale() -> None:
+    detuning = np.linspace(-1.0, 1.0, 321, dtype=float)
+    drive = np.linspace(-0.02, 0.02, 11, dtype=float)
+    ds = _make_synthetic_pair_dataset(slope=0.5, detuning=detuning, drive_values=drive)
+
+    fit = extract_barrier_compensation_coefficients(
+        ds,
+        barrier_gate_name="x_volts",
+        compensation_gate_name="y_volts",
+        detuning_scale=2.0,
+    )
+
+    assert fit["success"], fit
+    assert np.isclose(float(fit["detuning_scale"]), 2.0)
+    assert np.isfinite(fit["coefficient"])
+
+
+@pytest.mark.analysis
+def test_pair_topology_resolution_supports_qubit_and_qd_pairs() -> None:
+    pair_12 = _DummyPairTopologyPair("qd_pair_1_2", ("dot_1", "dot_2"), "barrier_12")
+    pair_23 = _DummyPairTopologyPair("qd_pair_2_3", ("dot_2", "dot_3"), "barrier_23")
+    pair_34 = _DummyPairTopologyPair("qd_pair_3_4", ("dot_3", "dot_4"), "barrier_34")
+    pair_45_other_set = _DummyPairTopologyPair(
+        "qd_pair_4_5",
+        ("dot_4", "dot_5"),
+        "barrier_45",
+        gate_set_id="aux_qpu",
+    )
+
+    machine = _DummyTopologyMachine(
+        quantum_dot_pairs={
+            pair_12.id: pair_12,
+            pair_23.id: pair_23,
+            pair_34.id: pair_34,
+            pair_45_other_set.id: pair_45_other_set,
+        },
+        qubit_pairs={"Q1_Q2": _DummyQubitPairRef(pair_12)},
+    )
+
+    topology = resolve_pair_calibration_topology(machine, ["Q1_Q2", "qd_pair_2_3"])
+    pair_resolution = topology["pair_resolution"]
+
+    assert [entry["pair_type"] for entry in pair_resolution] == ["qubit_pair", "quantum_dot_pair"]
+    assert topology["barrier_order"] == ["barrier_12", "barrier_23"]
+
+    first_drives = pair_resolution[0]["drive_barriers"]
+    second_drives = pair_resolution[1]["drive_barriers"]
+    assert first_drives == ["barrier_12", "barrier_23"]
+    assert second_drives == ["barrier_23", "barrier_12", "barrier_34"]
+
+
+@pytest.mark.analysis
+def test_sensitivity_gate_rejects_low_snr_or_low_span() -> None:
+    low_snr_fit = {
+        "success": True,
+        "coefficient": 0.02,
+        "slope_stderr": 0.01,
+        "fit_quality": 0.98,
+        "tunnel_couplings": np.array([0.1, 0.2, 0.3]),
+        "tunnel_sigmas": np.array([0.01, 0.01, 0.01]),
+    }
+    low_span_fit = {
+        "success": True,
+        "coefficient": 0.5,
+        "slope_stderr": 0.01,
+        "fit_quality": 0.98,
+        "tunnel_couplings": np.array([0.100, 0.101, 0.102]),
+        "tunnel_sigmas": np.array([0.01, 0.01, 0.01]),
+    }
+
+    low_snr_eval = evaluate_slope_fit_acceptance(low_snr_fit, min_slope_snr=5.0, min_tunnel_span_sigma=3.0)
+    low_span_eval = evaluate_slope_fit_acceptance(low_span_fit, min_slope_snr=5.0, min_tunnel_span_sigma=3.0)
+
+    assert not low_snr_eval["accepted"]
+    assert "low_slope_snr" in low_snr_eval["reasons"]
+    assert not low_span_eval["accepted"]
+    assert "low_tunnel_span" in low_span_eval["reasons"]
 
 
 @pytest.mark.analysis

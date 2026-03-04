@@ -33,7 +33,11 @@ g = QualibrationGraph(
         "virtual_plunger_calibration": library.nodes[
             "02_virtual_plunger_calibration"
         ].copy(name="virtual_plunger_calibration"),
-        # 4) Barrier compensation (kept as final stage)
+        # 4) PAT lever-arm calibration (optional; defaults used if absent)
+        "pat_lever_arm_calibration": library.nodes[
+            "02a_pat_lever_arm_calibration"
+        ].copy(name="pat_lever_arm_calibration"),
+        # 5) Barrier compensation (kept as final stage)
         "barrier_compensation": library.nodes[
             "03_barrier_compensation"
         ].copy(name="barrier_compensation"),
@@ -41,7 +45,8 @@ g = QualibrationGraph(
     connectivity=[
         ("sensor_coulomb_peak_alignment", "sensor_gate_compensation"),
         ("sensor_gate_compensation", "virtual_plunger_calibration"),
-        ("virtual_plunger_calibration", "barrier_compensation"),
+        ("virtual_plunger_calibration", "pat_lever_arm_calibration"),
+        ("pat_lever_arm_calibration", "barrier_compensation"),
     ],
     orchestrator=BasicOrchestrator(skip_failed=False),
 )
