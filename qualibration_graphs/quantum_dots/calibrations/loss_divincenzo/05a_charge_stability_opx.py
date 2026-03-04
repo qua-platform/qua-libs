@@ -273,6 +273,8 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
                 f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
             )
         vgs_id = x_obj.voltage_sequence.gate_set.id
+    else:
+        vgs_id = node.parameters.virtual_gate_set_id
     x_axis_name = node.parameters.x_axis_name
     y_axis_name = node.parameters.y_axis_name
     x_span, x_points = node.parameters.x_span, node.parameters.x_points
