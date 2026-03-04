@@ -97,7 +97,7 @@ node.parameters.result_type = "I"
 node.parameters.num_shots = 100
 node.parameters.simulate = True
 node.parameters.use_validation = True
-node.parameters.run_in_video_mode = True
+node.parameters.run_in_video_mode = False
 node.parameters.video_mode_port = 8040
 
 
