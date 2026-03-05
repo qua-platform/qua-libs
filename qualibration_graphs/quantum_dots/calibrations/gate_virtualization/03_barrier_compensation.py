@@ -83,8 +83,9 @@ node.machine = Quam.load()
 def create_qua_program(node: QualibrationNode[BarrierCompensationParameters, Quam]):
     """Create 2D scan QUA programs for each barrier-compensation pair."""
     node.namespace["sensors"] = sensors = get_sensors(node)
+    p = node.parameters
 
-    mapping = node.parameters.barrier_compensation_mapping
+    mapping = p.barrier_compensation_mapping
     if mapping is None:
         raise ValueError(
             "barrier_compensation_mapping must be provided. "
@@ -96,9 +97,18 @@ def create_qua_program(node: QualibrationNode[BarrierCompensationParameters, Qua
     for barrier_gate, comp_gates in mapping.items():
         for comp_gate in comp_gates:
             pair_key = f"{barrier_gate}_vs_{comp_gate}"
-            node.parameters.x_axis_name = barrier_gate
-            node.parameters.y_axis_name = comp_gate
-            qua_prog, sweep_axes = create_2d_scan_program(node, sensors)
+            qua_prog, sweep_axes = create_2d_scan_program(
+                node,
+                sensors,
+                x_axis_name=barrier_gate,
+                y_axis_name=comp_gate,
+                x_span=p.barrier_gate_span,
+                x_points=p.barrier_gate_points,
+                y_span=p.compensation_gate_span,
+                y_points=p.compensation_gate_points,
+                x_from_qdac=p.barrier_gate_from_qdac,
+                y_from_qdac=p.compensation_gate_from_qdac,
+            )
             programs[pair_key] = qua_prog
             sweep_axes_all[pair_key] = sweep_axes
 

@@ -43,12 +43,10 @@ SENSOR_COMP = CALIBRATED_SENSOR_COMP
 def _default_param_overrides(**extra):
     """Merge test-default node parameters with any caller overrides."""
     base = {
-        "x_center": PLUNGER_X_CENTER_V,
-        "x_span": PLUNGER_X_SPAN_V,
-        "x_points": PLUNGER_X_POINTS,
-        "y_center": PLUNGER_Y_CENTER_V,
-        "y_span": PLUNGER_Y_SPAN_V,
-        "y_points": PLUNGER_Y_POINTS,
+        "plunger_gate_span": PLUNGER_X_SPAN_V,
+        "plunger_gate_points": PLUNGER_X_POINTS,
+        "device_gate_span": PLUNGER_Y_SPAN_V,
+        "device_gate_points": PLUNGER_Y_POINTS,
         "plunger_device_mapping": {PLUNGER_X_GATE: [PLUNGER_Y_GATE]},
     }
     base.update(extra)
