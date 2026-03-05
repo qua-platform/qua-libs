@@ -18,6 +18,7 @@
                 "controller_id": "con1",
                 "fem_id": 5,
                 "port_id": 1,
+                "shareable": true,
                 "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
             },
             "current_external_voltage": 0.0,
@@ -68,6 +69,7 @@
                 "controller_id": "con1",
                 "fem_id": 5,
                 "port_id": 2,
+                "shareable": true,
                 "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
             },
             "current_external_voltage": 0.0,
@@ -118,9 +120,10 @@
                 "controller_id": "con1",
                 "fem_id": 5,
                 "port_id": 8,
+                "shareable": true,
                 "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
             },
-            "current_external_voltage": 0.0,
+            "current_external_voltage": 1.0,
             "qdac_spec": {
                 "opx_trigger_out": {
                     "operations": {
@@ -164,12 +167,14 @@
                     "controller_id": "con1",
                     "fem_id": 5,
                     "port_id": 2,
+                    "shareable": true,
                     "__class__": "quam.components.ports.analog_inputs.LFFEMAnalogInputPort"
                 },
                 "opx_output": {
                     "controller_id": "con1",
                     "fem_id": 5,
                     "port_id": 1,
+                    "shareable": true,
                     "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
                 },
                 "__class__": "quam_builder.architecture.quantum_dots.components.readout_resonator.ReadoutResonatorSingle"
@@ -194,6 +199,7 @@
                 "controller_id": "con1",
                 "fem_id": 5,
                 "port_id": 8,
+                "shareable": true,
                 "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
             },
             "current_external_voltage": 0.0,
@@ -240,12 +246,14 @@
                     "controller_id": "con1",
                     "fem_id": 5,
                     "port_id": 2,
+                    "shareable": true,
                     "__class__": "quam.components.ports.analog_inputs.LFFEMAnalogInputPort"
                 },
                 "opx_output": {
                     "controller_id": "con1",
                     "fem_id": 5,
                     "port_id": 1,
+                    "shareable": true,
                     "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
                 },
                 "__class__": "quam_builder.architecture.quantum_dots.components.readout_resonator.ReadoutResonatorSingle"
@@ -367,17 +375,17 @@
             "_current_physical_voltages": {
                 "plunger_1": 0.0,
                 "plunger_2": 0.0,
-                "sensor_1": 0.0,
+                "sensor_1": 1.0,
                 "sensor_2": 0.0
             },
             "_current_levels": {
                 "plunger_1": 0.0,
                 "plunger_2": 0.0,
-                "sensor_1": 0.0,
+                "sensor_1": 1.0,
                 "sensor_2": 0.0,
-                "virtual_dot_1": 0.0,
-                "virtual_dot_2": 0.0,
-                "virtual_sensor_1": 0.0,
+                "virtual_dot_1": 0.020406,
+                "virtual_dot_2": 0.029189,
+                "virtual_sensor_1": 1.0,
                 "virtual_sensor_2": 0.0
             },
             "__class__": "quam_builder.architecture.quantum_dots.components.virtual_dc_set.VirtualDCSet"
