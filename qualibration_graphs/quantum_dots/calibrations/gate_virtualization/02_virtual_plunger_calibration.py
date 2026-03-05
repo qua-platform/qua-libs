@@ -83,8 +83,9 @@ node.machine = Quam.load()
 def create_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     """Create 2D scan QUA programs for each plunger-device pair."""
     node.namespace["sensors"] = sensors = get_sensors(node)
+    p = node.parameters
 
-    mapping = node.parameters.plunger_device_mapping
+    mapping = p.plunger_device_mapping
     if mapping is None:
         raise ValueError(
             "plunger_device_mapping must be provided. "
@@ -96,9 +97,18 @@ def create_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     for plunger_gate, device_gates in mapping.items():
         for device_gate in device_gates:
             pair_key = f"{plunger_gate}_vs_{device_gate}"
-            node.parameters.x_axis_name = plunger_gate
-            node.parameters.y_axis_name = device_gate
-            qua_prog, sweep_axes = create_2d_scan_program(node, sensors)
+            qua_prog, sweep_axes = create_2d_scan_program(
+                node,
+                sensors,
+                x_axis_name=plunger_gate,
+                y_axis_name=device_gate,
+                x_span=p.plunger_gate_span,
+                x_points=p.plunger_gate_points,
+                y_span=p.device_gate_span,
+                y_points=p.device_gate_points,
+                x_from_qdac=p.plunger_gate_from_qdac,
+                y_from_qdac=p.device_gate_from_qdac,
+            )
             programs[pair_key] = qua_prog
             sweep_axes_all[pair_key] = sweep_axes
 

@@ -118,7 +118,21 @@ def _measurement_block(multiplexed_sensors, I, I_st, Q, Q_st, node):
         save(Q[i], Q_st[i])
 
 
-def create_2d_scan_program(node, sensors):
+def create_2d_scan_program(
+    node,
+    sensors,
+    *,
+    x_axis_name: str,
+    y_axis_name: str,
+    x_span: float,
+    x_points: int,
+    y_span: float,
+    y_points: int,
+    x_from_qdac: bool = False,
+    y_from_qdac: bool = False,
+    x_center: float | None = None,
+    y_center: float | None = None,
+):
     """Create a QUA program for a 2D voltage scan.
 
     Supports four scan modes depending on ``x_from_qdac`` and ``y_from_qdac``
@@ -131,10 +145,21 @@ def create_2d_scan_program(node, sensors):
     Parameters
     ----------
     node : QualibrationNode
-        The active node. Must have ``node.parameters`` with the
-        ``GateVirtualizationBaseParameters`` fields and ``node.machine``.
+        The active node. Must provide ``node.machine`` and common scan timing
+        fields on ``node.parameters``.
     sensors : BatchableList[SensorDot]
         Sensor dots to read out.
+    x_axis_name, y_axis_name : str
+        Virtual gate names used for the sweep axes.
+    x_span, y_span : float
+        Sweep span in volts for the X and Y axes.
+    x_points, y_points : int
+        Number of points in the X and Y sweeps.
+    x_from_qdac, y_from_qdac : bool
+        Whether each axis is driven by the external QDAC.
+    x_center, y_center : float, optional
+        Sweep centres in volts. When omitted for an axis driven by QDAC,
+        the current DAC value is used. Otherwise defaults to 0 V.
 
     Returns
     -------
@@ -145,8 +170,8 @@ def create_2d_scan_program(node, sensors):
     """
     params: GateVirtualizationBaseParameters = node.parameters
 
-    x_obj = node.machine.get_component(params.x_axis_name)
-    y_obj = node.machine.get_component(params.y_axis_name)
+    x_obj = node.machine.get_component(x_axis_name)
+    y_obj = node.machine.get_component(y_axis_name)
 
     if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
         raise ValueError(
@@ -156,19 +181,28 @@ def create_2d_scan_program(node, sensors):
         )
     vgs_id = x_obj.voltage_sequence.gate_set.id
 
-    x_external = params.x_from_qdac
-    y_external = params.y_from_qdac
+    x_external = x_from_qdac
+    y_external = y_from_qdac
 
     # For QDAC axes without an explicit centre, read the current DAC value
     # so the sweep is centred on the gate's operating point.
-    x_center = params.x_center
-    y_center = params.y_center
     if x_external and x_center is None:
         x_center = _read_qdac_voltage(node, x_obj)
     if y_external and y_center is None:
         y_center = _read_qdac_voltage(node, y_obj)
+    if x_center is None:
+        x_center = 0.0
+    if y_center is None:
+        y_center = 0.0
 
-    x_volts, y_volts = get_voltage_arrays(node, x_center=x_center, y_center=y_center)
+    x_volts, y_volts = get_voltage_arrays(
+        x_center=x_center,
+        y_center=y_center,
+        x_span=x_span,
+        y_span=y_span,
+        x_points=x_points,
+        y_points=y_points,
+    )
     num_sensors = len(sensors)
     scan_mode = ScanMode.from_name(params.scan_pattern)
 
@@ -178,7 +212,7 @@ def create_2d_scan_program(node, sensors):
         setup_qdac_dc_lists(node, x_obj, y_obj, x_volts, y_volts, scan_mode, x_external, y_external)
 
     # ---- Sweep axes ----
-    sweep_axes = _build_sweep_axes(sensors, x_volts, y_volts, params.x_axis_name, params.y_axis_name)
+    sweep_axes = _build_sweep_axes(sensors, x_volts, y_volts, x_axis_name, y_axis_name)
 
     qua_prog = None
 
@@ -245,16 +279,16 @@ def create_2d_scan_program(node, sensors):
 
     # ---- Case 3: X OPX / Y QDAC ----
     elif not x_external and y_external:
-        sweep_axes = _build_sweep_axes(sensors, y_volts, x_volts, params.y_axis_name, params.x_axis_name)
+        sweep_axes = _build_sweep_axes(sensors, y_volts, x_volts, y_axis_name, x_axis_name)
         sweep_axes = {
             "sensors": sweep_axes["sensors"],
             "y_volts": xr.DataArray(
                 y_volts,
-                attrs={"long_name": f"{params.y_axis_name} voltage", "units": "V"},
+                attrs={"long_name": f"{y_axis_name} voltage", "units": "V"},
             ),
             "x_volts": xr.DataArray(
                 x_volts,
-                attrs={"long_name": f"{params.x_axis_name} voltage", "units": "V"},
+                attrs={"long_name": f"{x_axis_name} voltage", "units": "V"},
             ),
         }
         with program() as qua_prog:
