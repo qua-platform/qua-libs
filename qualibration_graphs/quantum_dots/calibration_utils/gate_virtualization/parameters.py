@@ -19,30 +19,14 @@ class GateVirtualizationNodeSpecificParameters(RunnableParameters):
     """Whether to send a compensation pulse at the end of each scan line."""
     sensor_names: Optional[List[str]] = None
     """List of sensor dot names to measure."""
-    x_axis_name: Optional[str] = None
-    """The name of the swept element in the X axis."""
-    y_axis_name: Optional[str] = None
-    """The name of the swept element in the Y axis."""
-    x_points: int = 201
-    """Number of measurement points in the X axis."""
-    y_points: int = 201
-    """Number of measurement points in the Y axis."""
-    x_span: float = 0.05
-    """The X axis span in volts."""
-    y_span: float = 0.05
-    """The Y axis span in volts."""
     ramp_duration: int = 100
     """The ramp duration to each pixel. Set to zero for a step."""
     hold_duration: int = 1000
     """The dwell time on each pixel, after the ramp."""
-    pre_measurement_delay: int = 0
-    """A deliberate delay time after the hold_duration and before the resonator measurement."""
-    x_from_qdac: bool = False
-    """Whether to perform the X axis sweep using the QDAC instead of the OPX."""
-    y_from_qdac: bool = False
-    """Whether to perform the Y axis sweep using the QDAC instead of the OPX."""
     post_trigger_wait_ns: int = 10000
     """A pause in the QUA programme to allow the QDAC to reach the correct level."""
+    pre_measurement_delay: int = 0
+    """Extra delay (ns) inserted after the hold duration and before measurement."""
 
 
 class GateVirtualizationBaseParameters(
@@ -64,6 +48,18 @@ class SensorCompensationParameters(GateVirtualizationBaseParameters):
     Only local cross-talk pairs need to be specified.
     Example: {"virtual_sensor_1": ["virtual_dot_1", "virtual_dot_2"]}.
     If None, must be generated from the machine (not yet implemented)."""
+    sensor_gate_span: float = 0.05
+    """Total voltage span of the sensor gate (X axis) sweep in volts."""
+    sensor_gate_points: int = 201
+    """Number of points along the sensor gate (X axis) sweep."""
+    device_gate_span: float = 0.1
+    """Total voltage span of the device gate (Y axis) sweep in volts."""
+    device_gate_points: int = 201
+    """Number of points along the device gate (Y axis) sweep."""
+    sensor_gate_from_qdac: bool = False
+    """Whether to perform the X axis sweep using the QDAC instead of the OPX."""
+    device_gate_from_qdac: bool = False
+    """Whether to perform the Y axis sweep using the QDAC instead of the OPX."""
 
 
 class VirtualPlungerParameters(GateVirtualizationBaseParameters):
@@ -74,6 +70,18 @@ class VirtualPlungerParameters(GateVirtualizationBaseParameters):
     to scan against it.  Only neighbouring pairs need to be specified.
     Example: {"virtual_dot_1": ["virtual_dot_2", "barrier_12"]}.
     If None, must be generated from the machine (not yet implemented)."""
+    plunger_gate_span: float = 0.1
+    """Total voltage span of the plunger gate (X axis) sweep in volts."""
+    plunger_gate_points: int = 201
+    """Number of points along the plunger gate (X axis) sweep."""
+    device_gate_span: float = 0.1
+    """Total voltage span of the device gate (Y axis) sweep in volts."""
+    device_gate_points: int = 201
+    """Number of points along the device gate (Y axis) sweep."""
+    plunger_gate_from_qdac: bool = False
+    """Whether to perform the X axis sweep using the QDAC instead of the OPX."""
+    device_gate_from_qdac: bool = False
+    """Whether to perform the Y axis sweep using the QDAC instead of the OPX."""
 
 
 class BarrierCompensationParameters(GateVirtualizationBaseParameters):
@@ -85,12 +93,40 @@ class BarrierCompensationParameters(GateVirtualizationBaseParameters):
     specified.
     Example: {"barrier_12": ["virtual_dot_1", "virtual_dot_2"]}.
     If None, must be generated from the machine (not yet implemented)."""
+    barrier_gate_span: float = 0.1
+    """Total voltage span of the barrier gate (X axis) sweep in volts."""
+    barrier_gate_points: int = 201
+    """Number of points along the barrier gate (X axis) sweep."""
+    compensation_gate_span: float = 0.1
+    """Total voltage span of the compensation gate (Y axis) sweep in volts."""
+    compensation_gate_points: int = 201
+    """Number of points along the compensation gate (Y axis) sweep."""
+    barrier_gate_from_qdac: bool = False
+    """Whether to perform the X axis sweep using the QDAC instead of the OPX."""
+    compensation_gate_from_qdac: bool = False
+    """Whether to perform the Y axis sweep using the QDAC instead of the OPX."""
 
 
-def get_voltage_arrays(node):
-    """Extract the X and Y voltage arrays from a given node's parameters."""
-    x_span, x_center, x_points = node.parameters.x_span, 0, node.parameters.x_points
-    y_span, y_center, y_points = node.parameters.y_span, 0, node.parameters.y_points
+def get_voltage_arrays(
+    *,
+    x_center: float,
+    y_center: float,
+    x_span: float,
+    y_span: float,
+    x_points: int,
+    y_points: int,
+):
+    """Build X/Y voltage arrays from explicit sweep definitions.
+
+    Parameters
+    ----------
+    x_center, y_center : float
+        Sweep centres in volts.
+    x_span, y_span : float
+        Sweep spans in volts.
+    x_points, y_points : int
+        Number of points along each axis.
+    """
     x_volts = np.linspace(x_center - x_span / 2, x_center + x_span / 2, x_points)
     y_volts = np.linspace(y_center - y_span / 2, y_center + y_span / 2, y_points)
     return x_volts, y_volts
