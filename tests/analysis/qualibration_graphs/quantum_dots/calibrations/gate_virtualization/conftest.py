@@ -51,6 +51,7 @@ if str(_QUANTUM_DOTS_DIR) not in sys.path:
     sys.path.insert(0, str(_QUANTUM_DOTS_DIR))
 
 from validation_utils.charge_stability.default import init_dot_model  # noqa: E402
+from .quam_factory import create_gate_virtualization_quam  # noqa: E402
 
 
 # =============================================================================
@@ -68,119 +69,12 @@ def dot_model():
 # Simulation helpers
 # =============================================================================
 
-
-def sweep_voltages_mV(
-    center_V: float, span_V: float, n_points: int
-) -> np.ndarray:
-    """Build a sweep array in **mV** from node-parameter-style values (in V).
-
-    This is the bridge between node parameters (volts) and the qarray model
-    which expects millivolts.
-    """
-    half = span_V / 2
-    return np.linspace((center_V - half) * 1e3, (center_V + half) * 1e3, n_points)
-
-
-def simulate_sensor_device_scan(
-    model,
-    v_sensor: np.ndarray,
-    v_device: np.ndarray,
-    sensor_gate_idx: int = 6,
-    device_gate_idx: int = 0,
-    *,
-    sensor_operating_point: float = 0.0,
-    base_voltages: Optional[np.ndarray] = None,
-    compensation_alpha: float = 0.0,
-) -> xr.Dataset:
-    """Simulate a 2D scan of sensor gate vs device gate using a qarray model.
-
-    Parameters
-    ----------
-    model : ChargeSensedDotArray
-        A configured qarray model.
-    v_sensor : np.ndarray
-        1-D sensor gate voltages (in mV, length M).
-    v_device : np.ndarray
-        1-D device gate voltages (in mV, length N).
-    sensor_gate_idx : int
-        Gate index for the sensor (default 6).
-    device_gate_idx : int
-        Gate index for the device gate being swept (default 0).
-    sensor_operating_point : float
-        Constant offset added to the sensor gate voltage.
-    base_voltages : np.ndarray, optional
-        Base voltage vector (length = n_gates).  Defaults to zeros.
-    compensation_alpha : float
-        Cross-talk coefficient used to apply virtual gate compensation.
-        When non-zero the physical sensor voltage is adjusted by
-        ``-alpha * v_device`` at each point, emulating a compensated
-        (virtualized) sweep.
-
-    Returns
-    -------
-    xr.Dataset
-        Dataset with ``I`` and ``Q`` variables, dimensions
-        ``(sensors, y_volts, x_volts)`` — matching the node's raw format.
-        ``x_volts`` = sensor gate, ``y_volts`` = device gate.
-    """
-    n_gates = sensor_gate_idx + 1  # typically 7
-    if base_voltages is None:
-        base_voltages = np.zeros(n_gates)
-
-    rows = []
-    for vd in v_device:
-        for vs in v_sensor:
-            v = base_voltages.copy()
-            v[sensor_gate_idx] = sensor_operating_point + vs + compensation_alpha * vd
-            v[device_gate_idx] = vd
-            rows.append(v)
-
-    voltage_array = np.array(rows)
-    z, _ = model.charge_sensor_open(-voltage_array)
-    z = z.squeeze()
-    signal_2d = z.reshape(len(v_device), len(v_sensor))
-
-    v_sensor_V = v_sensor * 1e-3
-    v_device_V = v_device * 1e-3
-
-    I_data = signal_2d[np.newaxis, :, :]
-    Q_data = np.zeros_like(I_data)
-
-    ds = xr.Dataset(
-        {
-            "I": xr.DataArray(
-                I_data,
-                dims=["sensors", "y_volts", "x_volts"],
-                coords={
-                    "sensors": ["sensor_1"],
-                    "x_volts": v_sensor_V,
-                    "y_volts": v_device_V,
-                },
-            ),
-            "Q": xr.DataArray(
-                Q_data,
-                dims=["sensors", "y_volts", "x_volts"],
-                coords={
-                    "sensors": ["sensor_1"],
-                    "x_volts": v_sensor_V,
-                    "y_volts": v_device_V,
-                },
-            ),
-        }
-    )
-    return ds
+from .simulation_helpers import simulate_sensor_device_scan, sweep_voltages_mV  # noqa: E402
 
 
 # =============================================================================
 # Node loading helpers
 # =============================================================================
-
-
-def _load_module(name: str, filepath: Path):
-    spec = spec_from_file_location(name, filepath)
-    mod = module_from_spec(spec)  # type: ignore[arg-type]
-    spec.loader.exec_module(mod)  # type: ignore[union-attr]
-    return mod
 
 
 def _reimport_node_to_register_actions(node_name: str, library_root: Path) -> Any | None:
@@ -280,49 +174,16 @@ def _get_parameters_dict(node: Any) -> Dict[str, Any]:
 
 
 # =============================================================================
-# Mock machine with VirtualGateSet structure
+# QuAM factory fixture
 # =============================================================================
 
 
-def _build_mock_machine(param_overrides: Dict[str, Any]):
-    """Build a mock machine with a realistic VirtualGateSet structure.
-
-    Extracts virtual gate names from the node's gate mapping parameter
-    (``sensor_device_mapping``, ``plunger_device_mapping``, or
-    ``barrier_compensation_mapping``) and constructs an identity
-    compensation matrix.
-    """
-    gate_names: list[str] = []
-    for key in ("sensor_device_mapping", "plunger_device_mapping", "barrier_compensation_mapping"):
-        mapping = param_overrides.get(key)
-        if mapping is None:
-            continue
-        for src, targets in mapping.items():
-            if src not in gate_names:
-                gate_names.append(src)
-            for tgt in targets:
-                if tgt not in gate_names:
-                    gate_names.append(tgt)
-
-    n = max(len(gate_names), 1)
-    identity = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
-
-    class _MockLayer:
-        def __init__(self, src, tgt, matrix):
-            self.source_gates = list(src)
-            self.target_gates = list(tgt)
-            self.matrix = [row[:] for row in matrix]
-
-    class _MockVGS:
-        def __init__(self, src, tgt, matrix):
-            self.layers = [_MockLayer(src, tgt, matrix)]
-
-    class _MockMachine:
-        virtual_gate_sets = {
-            "main_qpu": _MockVGS(gate_names, gate_names, identity),
-        } if gate_names else {}
-
-    return _MockMachine()
+@pytest.fixture
+def minimal_quam_factory():
+    """Factory fixture that creates a minimal gate-virtualization QuAM."""
+    def _factory():
+        return create_gate_virtualization_quam()
+    return _factory
 
 
 # =============================================================================
@@ -345,12 +206,13 @@ def save_analysis_plot():
 
 
 @pytest.fixture
-def analysis_runner(save_analysis_plot):
+def analysis_runner(minimal_quam_factory, save_analysis_plot):
     """Run an analysis e2e test for a gate virtualization node.
 
     Loads the real node from the calibration library with all decorators
     registered (but not executed), injects simulated ``ds_raw_all``, then
-    runs ``analyse_data``, ``plot_data``, and ``update_virtual_gate_matrix``.
+    runs ``analyse_data``, ``plot_data``, ``update_state``, and
+    ``save_results``.
 
     Parameters
     ----------
@@ -378,17 +240,17 @@ def analysis_runner(save_analysis_plot):
     ) -> Any:
         from quam_config import Quam
 
-        mock_machine = _build_mock_machine(param_overrides or {})
+        machine = minimal_quam_factory()
 
         with (
-            patch.object(Quam, "load", return_value=mock_machine),
+            patch.object(Quam, "load", return_value=machine),
             _patch_action_manager_register_only(),
         ):
             node = _reimport_node_to_register_actions(node_name, CALIBRATION_LIBRARY_ROOT)
         if node is None:
             pytest.fail(f"Could not load node '{node_name}' from {CALIBRATION_LIBRARY_ROOT}")
 
-        node.machine = mock_machine
+        node.machine = machine
 
         overrides = dict(param_overrides) if param_overrides else {}
         overrides["simulate"] = False
@@ -398,12 +260,13 @@ def analysis_runner(save_analysis_plot):
 
         _call_node_action(node, "analyse_data")
         _call_node_action(node, "plot_data")
-        _call_node_action(node, "update_virtual_gate_matrix")
+        _call_node_action(node, "update_state")
+        _call_node_action(node, "save_results")
 
         artifacts_dir = ARTIFACTS_BASE / (artifacts_subdir or node_name)
-        fig_to_save = node.results.get("figure")
-        if fig_to_save is not None:
-            save_analysis_plot(fig_to_save, artifacts_dir, "simulation.png")
+        for fig in node.results.get("figures", {}).values():
+            save_analysis_plot(fig, artifacts_dir)
+            break  # save first figure as representative artifact
 
         return node
 

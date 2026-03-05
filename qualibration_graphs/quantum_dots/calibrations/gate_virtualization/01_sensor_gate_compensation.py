@@ -1,7 +1,6 @@
 # %% {Imports}
 import numpy as np
 import xarray as xr
-import matplotlib.pyplot as plt
 
 from qm.qua import *
 
@@ -15,12 +14,11 @@ from calibration_utils.gate_virtualization import (
     SensorCompensationParameters,
     get_voltage_arrays,
     create_2d_scan_program,
-    plot_2d_scan,
-    plot_compensation_fit,
+    read_qdac_voltage,
+    plot_sensor_compensation_diagnostic,
 )
 from calibration_utils.gate_virtualization.analysis import (
     process_raw_dataset,
-    update_compensation_matrix,
 )
 from calibration_utils.gate_virtualization.sensor_compensation_analysis import (
     extract_sensor_compensation_coefficients,
@@ -86,19 +84,45 @@ def create_qua_program(node: QualibrationNode[SensorCompensationParameters, Quam
         )
 
     # Build a program for each (sensor_gate, device_gate) pair
+    p = node.parameters
     programs = {}
     sweep_axes_all = {}
+    centers_all = {}
     for sensor_gate, device_gates in mapping.items():
         for device_gate in device_gates:
             pair_key = f"{sensor_gate}_vs_{device_gate}"
-            node.parameters.x_axis_name = sensor_gate
-            node.parameters.y_axis_name = device_gate
-            qua_prog, sweep_axes = create_2d_scan_program(node, sensors)
+
+            # Read pre-sweep QDAC voltages so we can return to them after the scan.
+            x_center = None
+            if p.sensor_gate_from_qdac:
+                x_obj = node.machine.get_component(sensor_gate)
+                x_center = read_qdac_voltage(node, x_obj)
+            y_center = None
+            if p.device_gate_from_qdac:
+                y_obj = node.machine.get_component(device_gate)
+                y_center = read_qdac_voltage(node, y_obj)
+
+            qua_prog, sweep_axes = create_2d_scan_program(
+                node,
+                sensors,
+                x_axis_name=sensor_gate,
+                y_axis_name=device_gate,
+                x_span=p.sensor_gate_span,
+                x_points=p.sensor_gate_points,
+                y_span=p.device_gate_span,
+                y_points=p.device_gate_points,
+                x_from_qdac=p.sensor_gate_from_qdac,
+                y_from_qdac=p.device_gate_from_qdac,
+                x_center=x_center,
+                y_center=y_center,
+            )
             programs[pair_key] = qua_prog
             sweep_axes_all[pair_key] = sweep_axes
+            centers_all[pair_key] = (sensor_gate, device_gate, x_center, y_center)
 
     node.namespace["programs"] = programs
     node.namespace["sweep_axes_all"] = sweep_axes_all
+    node.namespace["centers_all"] = centers_all
 
 
 # %% {Simulate}
@@ -120,7 +144,6 @@ def simulate_qua_program(node: QualibrationNode[SensorCompensationParameters, Qu
         "samples": samples,
     }
 
-
 # %% {Execute}
 @node.run_action(
     skip_if=node.parameters.load_data_id is not None
@@ -131,9 +154,10 @@ def execute_qua_program(node: QualibrationNode[SensorCompensationParameters, Qua
     """Execute all sensor-device pair scans sequentially and store raw data."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
+    p = node.parameters
     datasets = {}
     for pair_key, qua_prog in node.namespace["programs"].items():
-        with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        with qm_session(qmm, config, timeout=p.timeout) as qm:
             job = qm.execute(qua_prog)
             data_fetcher = XarrayDataFetcher(
                 job, node.namespace["sweep_axes_all"][pair_key]
@@ -141,11 +165,12 @@ def execute_qua_program(node: QualibrationNode[SensorCompensationParameters, Qua
             for dataset in data_fetcher:
                 progress_counter(
                     data_fetcher.get("n", 0),
-                    node.parameters.num_shots,
+                    p.num_shots,
                     start_time=data_fetcher.t_start,
                 )
             print(f"[{pair_key}] {job.execution_report()}")
         datasets[pair_key] = dataset
+
     node.results["ds_raw_all"] = datasets
 
 
@@ -158,7 +183,7 @@ def load_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
 
 
 # %% {Analyse_data}
-@node.run_action(skip_if=node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.run_in_video_mode or node.parameters.simulate)
 def analyse_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
     """Analyse each 2D scan to extract sensor-device cross-talk coefficients."""
     fit_results = {}
@@ -173,47 +198,77 @@ def analyse_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
 
 
 # %% {Plot_data}
-@node.run_action(skip_if=node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.run_in_video_mode or node.parameters.simulate)
 def plot_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
-    """Plot each 2D scan and compensation fit overlays."""
-    # TODO: implement plotting
-    # node.results["figures"] = {}
-    # for pair_key, ds_raw in node.results["ds_raw_all"].items():
-    #     sensor_gate, device_gate = pair_key.split("_vs_")
-    #     fig_scan = plot_2d_scan(
-    #         ds_raw, title=f"Sensor Compensation: {pair_key}",
-    #     )
-    #     node.results["figures"][f"scan_{pair_key}"] = fig_scan
-    #
-    #     if "fit_results" in node.results and pair_key in node.results["fit_results"]:
-    #         fig_fit = plot_compensation_fit(
-    #             ds_raw, node.results["fit_results"][pair_key],
-    #             sensor_gate, device_gate,
-    #             title=f"Compensation Fit: {pair_key}",
-    #         )
-    #         node.results["figures"][f"fit_{pair_key}"] = fig_fit
-    pass
+    """Plot each 2D scan with Lorentzian fit overlay and residual panel."""
+    fit_results = node.results.get("fit_results", {})
+    figures = {
+        pair_key: plot_sensor_compensation_diagnostic(
+            process_raw_dataset(ds_raw),
+            fit_results.get(pair_key),
+            pair_key,
+        )
+        for pair_key, ds_raw in node.results["ds_raw_all"].items()
+    }
+    node.results["figures"] = figures
 
 
-# %% {Update_virtual_gate_matrix}
-@node.run_action(skip_if=node.parameters.run_in_video_mode)
-def update_virtual_gate_matrix(
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.run_in_video_mode or node.parameters.simulate)
+def update_state(
     node: QualibrationNode[SensorCompensationParameters, Quam],
 ):
-    """Update the compensation matrix with sensor gate coefficients.
+    """Update the compensation matrix with the measured sensor-device cross-talk.
 
-    The matrix M is the forward (physical→virtual) transform; the
-    hardware applies M⁻¹ to convert virtual requests to physical
-    voltages.  Setting M[sensor, device] = α causes the physical
-    sensor voltage to shift by −α·Δv_device, which exactly cancels
-    the measured cross-talk slope α.
+    Because the scan is performed through the virtual gate voltage sequence,
+    the measured alpha is the *residual* cross-talk after any existing
+    compensation.  The update is therefore additive:
+
+        M[sensor_row][device_col] += alpha_measured
+
+    so that repeated calibration runs converge towards zero residual cross-talk.
+    The diagonal is never modified (sensor self-coupling stays 1).
     """
     if "fit_results" not in node.results:
         return
+
     for pair_key, fit_res in node.results["fit_results"].items():
         sensor_gate, device_gate = pair_key.split("_vs_")
-        alpha = fit_res["coefficient"]
-        update_compensation_matrix(node, sensor_gate, device_gate, alpha)
+        alpha_measured = fit_res["coefficient"]
+
+        # Find the VirtualGateSet that owns both gates.
+        vgs = None
+        for candidate in node.machine.virtual_gate_sets.values():
+            source_gates = candidate.layers[0].source_gates
+            if sensor_gate in source_gates and device_gate in source_gates:
+                vgs = candidate
+                break
+        if vgs is None:
+            raise ValueError(
+                f"Could not find a VirtualGateSet containing both "
+                f"'{sensor_gate}' and '{device_gate}'."
+            )
+
+        # Read current entry and compute the updated value (add-residual).
+        source_gates = vgs.layers[0].source_gates
+        sensor_row = source_gates.index(sensor_gate)
+        device_col = source_gates.index(device_gate)
+        current = vgs.layers[0].matrix[sensor_row][device_col]
+        new_alpha = current + alpha_measured
+
+        # Map virtual name → physical name → channel object.
+        # vgs.channels is keyed by physical names (target_gates), not virtual names (source_gates).
+        sensor_physical = vgs.layers[0].target_gates[sensor_row]
+        sensor_ch = vgs.channels[sensor_physical]
+
+        # Update OPX matrix; also update the DC set if one exists.
+        target = "both" if vgs.id in node.machine.virtual_dc_sets else "opx"
+        node.machine.update_cross_compensation_submatrix(
+            virtual_names=[device_gate],
+            channels=[sensor_ch],
+            matrix=[[new_alpha]],
+            target=target,
+        )
 
 
 # %% {Save_results}
