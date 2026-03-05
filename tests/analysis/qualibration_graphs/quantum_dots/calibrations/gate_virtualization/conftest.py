@@ -14,6 +14,7 @@ import warnings
 from functools import wraps
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Dict, Optional
 from unittest.mock import patch
 
@@ -46,6 +47,67 @@ if str(_QUANTUM_DOTS_DIR) not in sys.path:
 
 from validation_utils.charge_stability.default import init_dot_model  # noqa: E402
 from .quam_factory import create_gate_virtualization_quam  # noqa: E402
+
+
+def _ensure_qua_dashboards_stub() -> None:
+    """Inject a minimal qua_dashboards stub when optional UI deps are missing.
+
+    Node imports traverse ``calibration_utils.run_video_mode`` which imports
+    ``qua_dashboards`` at module load time. Analysis tests do not use video
+    mode, so a lightweight import stub is sufficient.
+    """
+    if "qua_dashboards" in sys.modules:
+        return
+
+    qua_dashboards = ModuleType("qua_dashboards")
+
+    video_mode = ModuleType("qua_dashboards.video_mode")
+    voltage_control = ModuleType("qua_dashboards.voltage_control")
+    core = ModuleType("qua_dashboards.core")
+    virtual_gates = ModuleType("qua_dashboards.virtual_gates")
+
+    class _Dummy:
+        def __init__(self, *args: Any, **kwargs: Any):
+            self.args = args
+            self.kwargs = kwargs
+
+    class _ScanModes:
+        class SwitchRasterScan:
+            pass
+
+        class RasterScan:
+            pass
+
+        class SpiralScan:
+            pass
+
+    def _build_dashboard(*args: Any, **kwargs: Any):
+        class _App:
+            server = None
+
+        return _App()
+
+    def _ui_update(*args: Any, **kwargs: Any) -> None:
+        return None
+
+    video_mode.VideoModeComponent = _Dummy
+    video_mode.OPXDataAcquirer = _Dummy
+    video_mode.scan_modes = _ScanModes
+    voltage_control.VoltageControlComponent = _Dummy
+    core.build_dashboard = _build_dashboard
+    virtual_gates.VirtualLayerEditor = _Dummy
+    virtual_gates.ui_update = _ui_update
+
+    qua_dashboards.video_mode = video_mode
+    qua_dashboards.voltage_control = voltage_control
+    qua_dashboards.core = core
+    qua_dashboards.virtual_gates = virtual_gates
+
+    sys.modules["qua_dashboards"] = qua_dashboards
+    sys.modules["qua_dashboards.video_mode"] = video_mode
+    sys.modules["qua_dashboards.voltage_control"] = voltage_control
+    sys.modules["qua_dashboards.core"] = core
+    sys.modules["qua_dashboards.virtual_gates"] = virtual_gates
 
 
 # =============================================================================
@@ -397,6 +459,7 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot):
     ) -> Any:
         from quam_config import Quam
 
+        _ensure_qua_dashboards_stub()
         machine = minimal_quam_factory()
 
         with (
@@ -417,7 +480,9 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot):
 
         _call_node_action(node, "analyse_data")
         _call_node_action(node, "plot_data")
-        _call_node_action(node, "update_state")
+        action_names = set(getattr(getattr(node, "_action_manager", None), "actions", {}).keys())
+        if "update_state" in action_names:
+            _call_node_action(node, "update_state")
         _call_node_action(node, "save_results")
 
         artifacts_dir = ARTIFACTS_BASE / (artifacts_subdir or node_name)
