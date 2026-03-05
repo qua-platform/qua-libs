@@ -35,9 +35,7 @@ def plot_sensor_compensation_diagnostic(
     axes[0].set_ylabel("Device gate (V)")
 
     if fp is not None:
-        model_signal = shifted_lorentzian_2d(
-            v_s, v_d, fp["A"], fp["v0"], fp["alpha"], fp["gamma"], fp["offset"]
-        )
+        model_signal = shifted_lorentzian_2d(v_s, v_d, fp["A"], fp["v0"], fp["alpha"], fp["gamma"], fp["offset"])
         axes[1].imshow(model_signal, extent=extent, origin="lower", aspect="auto", cmap="hot")
         axes[1].set_title(f"Lorentzian fit (α={fp['alpha']:.4f})")
         axes[1].set_xlabel("Sensor gate (V)")

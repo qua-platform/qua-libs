@@ -249,10 +249,12 @@ def _build_transformation_matrix(
     else:
         m_steep, m_shallow = m_b, m_a
 
-    M = np.array([
-        [1.0, 1.0 / m_steep],
-        [m_shallow, 1.0],
-    ])
+    M = np.array(
+        [
+            [1.0, 1.0 / m_steep],
+            [m_shallow, 1.0],
+        ]
+    )
     return np.linalg.inv(M)
 
 
@@ -300,6 +302,7 @@ def _extract_segments_fallback(
     iterations: int = 300,
 ) -> List[_FallbackSegment]:
     """Estimate up to two dominant line segments via deterministic RANSAC."""
+
     def _angular_distance(a: float, b: float) -> float:
         return float(abs(((a - b + np.pi / 2) % np.pi) - np.pi / 2))
 
@@ -426,7 +429,9 @@ def extract_virtual_plunger_coefficients(
     amplitude_2d = data.values
 
     mean_cp, edge_base = _edge_detect(
-        amplitude_2d, hazard=hazard, edge_threshold=edge_threshold,
+        amplitude_2d,
+        hazard=hazard,
+        edge_threshold=edge_threshold,
     )
 
     if analyze_edge_map is None:

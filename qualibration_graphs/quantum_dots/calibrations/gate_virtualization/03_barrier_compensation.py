@@ -76,10 +76,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.run_in_video_mode
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
 def create_qua_program(node: QualibrationNode[BarrierCompensationParameters, Quam]):
     """Create 2D scan QUA programs for each barrier-compensation pair."""
     node.namespace["sensors"] = sensors = get_sensors(node)
@@ -117,10 +114,7 @@ def create_qua_program(node: QualibrationNode[BarrierCompensationParameters, Qua
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(
     node: QualibrationNode[BarrierCompensationParameters, Quam],
 ):
@@ -128,9 +122,7 @@ def simulate_qua_program(
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     first_key = next(iter(node.namespace["programs"]))
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["programs"][first_key], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["programs"][first_key], node.parameters)
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
@@ -140,9 +132,7 @@ def simulate_qua_program(
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.run_in_video_mode
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
 )
 def execute_qua_program(
     node: QualibrationNode[BarrierCompensationParameters, Quam],
@@ -154,9 +144,7 @@ def execute_qua_program(
     for pair_key, qua_prog in node.namespace["programs"].items():
         with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
             job = qm.execute(qua_prog)
-            data_fetcher = XarrayDataFetcher(
-                job, node.namespace["sweep_axes_all"][pair_key]
-            )
+            data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes_all"][pair_key])
             for dataset in data_fetcher:
                 progress_counter(
                     data_fetcher.get("n", 0),

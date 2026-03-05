@@ -9,13 +9,18 @@ plotting utilities directly.
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
 from .conftest import (
+    CALIBRATION_LIBRARY_ROOT,
     CALIBRATED_SENSOR_COMP,
+    _call_node_action,
+    _patch_action_manager_register_only,
+    _reimport_node_to_register_actions,
     simulate_plunger_plunger_scan,
     simulate_sensor_sweep,
     sweep_voltages_mV,
@@ -63,6 +68,70 @@ def _qarray_available() -> bool:
         return True
     except Exception:
         return False
+
+
+def test_update_state_composes_all_rows(minimal_quam_factory):
+    """update_state composes selected columns for all rows, including sensor row."""
+    from quam_config import Quam
+
+    machine = minimal_quam_factory()
+    layer = machine.virtual_gate_sets["main_qpu"].layers[0]
+    source_gates = list(layer.source_gates)
+    sensor_gate = "virtual_sensor_1"
+
+    sensor_idx = source_gates.index(sensor_gate)
+    plunger_idx = source_gates.index(PLUNGER_X_GATE)
+    device_idx = source_gates.index(PLUNGER_Y_GATE)
+    cols = [plunger_idx, device_idx]
+
+    # Seed a non-trivial existing matrix to verify composition (not replacement).
+    old = np.asarray(layer.matrix, dtype=float)
+    old[sensor_idx, plunger_idx] = -0.020
+    old[sensor_idx, device_idx] = -0.035
+    old[plunger_idx, plunger_idx] = 1.12
+    old[plunger_idx, device_idx] = 0.08
+    old[device_idx, plunger_idx] = -0.06
+    old[device_idx, device_idx] = 0.93
+    layer.matrix = old.tolist()
+
+    delta = np.array(
+        [
+            [1.0, 0.14],
+            [-0.09, 1.0],
+        ],
+        dtype=float,
+    )
+    expected = old.copy()
+    expected[:, cols] = old[:, cols] @ delta
+
+    with (
+        patch.object(Quam, "load", return_value=machine),
+        _patch_action_manager_register_only(),
+    ):
+        node = _reimport_node_to_register_actions(
+            "02_virtual_plunger_calibration",
+            CALIBRATION_LIBRARY_ROOT,
+        )
+    assert node is not None
+    node.machine = machine
+    node.results["fit_results"] = {
+        f"{PLUNGER_X_GATE}_vs_{PLUNGER_Y_GATE}": {
+            "fit_params": {"success": True},
+            "T_matrix": delta,
+        }
+    }
+
+    _call_node_action(node, "update_state")
+
+    updated = np.asarray(
+        machine.virtual_gate_sets["main_qpu"].layers[0].matrix,
+        dtype=float,
+    )
+    np.testing.assert_allclose(updated[:, cols], expected[:, cols], atol=1e-12)
+
+    other_cols = [j for j in range(updated.shape[1]) if j not in cols]
+    if other_cols:
+        np.testing.assert_allclose(updated[:, other_cols], old[:, other_cols], atol=1e-12)
 
 
 @pytest.mark.analysis
@@ -215,7 +284,9 @@ class TestVirtualPlungerE2E:
         voltage_array = np.tile(base, (phys_flat.shape[1], 1))
         voltage_array[:, 0] = phys_flat[0]
         voltage_array[:, 1] = phys_flat[1]
-        voltage_array[:, 6] = sensor_opt_mV + alpha_x * (phys_flat[0] - phys_cx[0]) + alpha_y * (phys_flat[1] - phys_cx[1])
+        voltage_array[:, 6] = (
+            sensor_opt_mV + alpha_x * (phys_flat[0] - phys_cx[0]) + alpha_y * (phys_flat[1] - phys_cx[1])
+        )
 
         z, _ = dot_model.charge_sensor_open(-voltage_array)
         virt_signal = z.squeeze().reshape(len(v_virt_y), len(v_virt_x))
@@ -231,10 +302,7 @@ class TestVirtualPlungerE2E:
         axes[0].set_ylabel("Plunger 2 (V)")
 
         axes[1].imshow(virt_signal, extent=extent, origin="lower", aspect="auto", cmap="hot")
-        axes[1].set_title(
-            "Virtual gates\n"
-            f"T=[[{T[0,0]:.3f}, {T[0,1]:.3f}], [{T[1,0]:.3f}, {T[1,1]:.3f}]]"
-        )
+        axes[1].set_title("Virtual gates\n" f"T=[[{T[0,0]:.3f}, {T[0,1]:.3f}], [{T[1,0]:.3f}, {T[1,1]:.3f}]]")
         axes[1].set_xlabel("Virtual gate 1 (V)")
         axes[1].set_ylabel("Virtual gate 2 (V)")
 
