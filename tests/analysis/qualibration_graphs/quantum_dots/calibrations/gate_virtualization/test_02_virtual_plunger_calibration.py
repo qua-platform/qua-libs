@@ -120,6 +120,8 @@ class TestVirtualPlungerE2E:
         assert pair_key in node.results["fit_results"]
 
         fit = node.results["fit_results"][pair_key]
+        assert fit["plunger_gate_name"] == PLUNGER_X_GATE
+        assert fit["device_gate_name"] == PLUNGER_Y_GATE
         assert fit["fit_params"]["success"], f"Virtual plunger fit failed: {fit}"
 
         T = fit["T_matrix"]

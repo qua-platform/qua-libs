@@ -175,10 +175,11 @@ def analyse_data(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     fit_results = {}
     for pair_key, ds_raw in node.results["ds_raw_all"].items():
         ds = process_raw_dataset(ds_raw, node)
+        plunger_gate_name, device_gate_name = pair_key.split("_vs_", maxsplit=1)
         fit_results[pair_key] = extract_virtual_plunger_coefficients(
             ds,
-            plunger_x_name="x_volts",
-            plunger_y_name="y_volts",
+            plunger_gate_name=plunger_gate_name,
+            device_gate_name=device_gate_name,
         )
     node.results["fit_results"] = fit_results
 
@@ -226,7 +227,7 @@ def update_state(
             continue
         if not fit_res.get("fit_params", {}).get("success", False):
             continue
-        plunger_gate, device_gate = pair_key.split("_vs_")
+        plunger_gate, device_gate = pair_key.split("_vs_", maxsplit=1)
         T = fit_res["T_matrix"]
         if T is None:
             continue

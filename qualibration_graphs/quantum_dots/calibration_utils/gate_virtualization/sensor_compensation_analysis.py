@@ -158,6 +158,8 @@ def extract_sensor_compensation_coefficients(
     *,
     signal_var: str = "amplitude",
     sensor_idx: int = 0,
+    sensor_axis_name: str = "x_volts",
+    device_axis_name: str = "y_volts",
     fit_kwargs: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Extract the cross-talk coefficient from a processed 2D scan dataset.
@@ -169,13 +171,19 @@ def extract_sensor_compensation_coefficients(
         ``(sensors, <device_gate_dim>, <sensor_gate_dim>)`` or
         ``(<device_gate_dim>, <sensor_gate_dim>)``.
     sensor_gate_name : str
-        Coordinate name for the sensor gate axis.
+        Name of the sensor gate on the X scan axis.
     device_gate_name : str
-        Coordinate name for the device gate axis.
+        Name of the device gate on the Y scan axis.
     signal_var : str
         Name of the data variable to fit (default ``"amplitude"``).
     sensor_idx : int
         Index along the ``sensors`` dimension if present.
+    sensor_axis_name : str
+        Coordinate/dimension name of the sensor axis in *ds*
+        (default ``"x_volts"``).
+    device_axis_name : str
+        Coordinate/dimension name of the device axis in *ds*
+        (default ``"y_volts"``).
     fit_kwargs : dict, optional
         Extra keyword arguments forwarded to :func:`fit_shifted_lorentzian`.
 
@@ -190,13 +198,29 @@ def extract_sensor_compensation_coefficients(
     if "sensors" in data.dims:
         data = data.isel(sensors=sensor_idx)
 
-    v_sensor = data.coords[sensor_gate_name].values
-    v_device = data.coords[device_gate_name].values
+    # Most scans store physical axes as x_volts/y_volts, while gate names are metadata.
+    # If the dataset already uses gate names as coordinate names, prefer those directly.
+    if sensor_gate_name in data.coords and device_gate_name in data.coords:
+        sensor_coord_name = sensor_gate_name
+        device_coord_name = device_gate_name
+    else:
+        sensor_coord_name = sensor_axis_name
+        device_coord_name = device_axis_name
+
+    missing = [coord for coord in (sensor_coord_name, device_coord_name) if coord not in data.coords]
+    if missing:
+        raise KeyError(
+            f"Missing coordinate(s) {missing} in dataset. "
+            f"Available coords: {list(data.coords)}"
+        )
+
+    v_sensor = data.coords[sensor_coord_name].values
+    v_device = data.coords[device_coord_name].values
 
     # Ensure shape is (device, sensor)
     dim_order = list(data.dims)
-    dev_idx = dim_order.index(device_gate_name)
-    sen_idx = dim_order.index(sensor_gate_name)
+    dev_idx = dim_order.index(device_coord_name)
+    sen_idx = dim_order.index(sensor_coord_name)
     if dev_idx > sen_idx:
         signal = data.values.T
     else:
@@ -208,5 +232,9 @@ def extract_sensor_compensation_coefficients(
     return {
         "coefficient": fit_result["alpha"],
         "fit_quality": fit_result["residual"],
+        "sensor_gate_name": sensor_gate_name,
+        "device_gate_name": device_gate_name,
+        "sensor_axis_name": sensor_coord_name,
+        "device_axis_name": device_coord_name,
         "fit_params": fit_result,
     }
