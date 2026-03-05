@@ -68,10 +68,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.run_in_video_mode
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
 def create_qua_program(node: QualibrationNode[SensorCompensationParameters, Quam]):
     """Create 2D scan QUA programs for each sensor-device pair."""
     node.namespace["sensors"] = sensors = get_sensors(node)
@@ -79,8 +76,7 @@ def create_qua_program(node: QualibrationNode[SensorCompensationParameters, Quam
     mapping = node.parameters.sensor_device_mapping
     if mapping is None:
         raise ValueError(
-            "sensor_device_mapping must be provided. "
-            "Automatic generation from the machine is not yet implemented."
+            "sensor_device_mapping must be provided. " "Automatic generation from the machine is not yet implemented."
         )
 
     # Build a program for each (sensor_gate, device_gate) pair
@@ -126,29 +122,23 @@ def create_qua_program(node: QualibrationNode[SensorCompensationParameters, Quam
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[SensorCompensationParameters, Quam]):
     """Simulate the first QUA program for sanity-checking."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     first_key = next(iter(node.namespace["programs"]))
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["programs"][first_key], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["programs"][first_key], node.parameters)
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
         "samples": samples,
     }
 
+
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.run_in_video_mode
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
 )
 def execute_qua_program(node: QualibrationNode[SensorCompensationParameters, Quam]):
     """Execute all sensor-device pair scans sequentially and store raw data."""
@@ -159,9 +149,7 @@ def execute_qua_program(node: QualibrationNode[SensorCompensationParameters, Qua
     for pair_key, qua_prog in node.namespace["programs"].items():
         with qm_session(qmm, config, timeout=p.timeout) as qm:
             job = qm.execute(qua_prog)
-            data_fetcher = XarrayDataFetcher(
-                job, node.namespace["sweep_axes_all"][pair_key]
-            )
+            data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes_all"][pair_key])
             for dataset in data_fetcher:
                 progress_counter(
                     data_fetcher.get("n", 0),
@@ -245,8 +233,7 @@ def update_state(
                 break
         if vgs is None:
             raise ValueError(
-                f"Could not find a VirtualGateSet containing both "
-                f"'{sensor_gate}' and '{device_gate}'."
+                f"Could not find a VirtualGateSet containing both " f"'{sensor_gate}' and '{device_gate}'."
             )
 
         # Read current entry and compute the updated value (add-residual).

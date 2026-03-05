@@ -13,9 +13,7 @@ import numpy as np
 import xarray as xr
 
 
-def sweep_voltages_mV(
-    center_V: float, span_V: float, n_points: int
-) -> np.ndarray:
+def sweep_voltages_mV(center_V: float, span_V: float, n_points: int) -> np.ndarray:
     """Build a sweep array in **mV** from node-parameter-style values (in V).
 
     This is the bridge between node parameters (volts) and the qarray model

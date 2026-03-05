@@ -37,13 +37,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 from .....path_utils import find_repo_root  # noqa: E402
 
 REPO_ROOT = find_repo_root(CURRENT_DIR)
-CALIBRATION_LIBRARY_ROOT = (
-    REPO_ROOT
-    / "qualibration_graphs"
-    / "quantum_dots"
-    / "calibrations"
-    / "gate_virtualization"
-)
+CALIBRATION_LIBRARY_ROOT = REPO_ROOT / "qualibration_graphs" / "quantum_dots" / "calibrations" / "gate_virtualization"
 ARTIFACTS_BASE = ANALYSIS_ROOT / "artifacts"
 
 _QUANTUM_DOTS_DIR = REPO_ROOT / "qualibration_graphs" / "quantum_dots"
@@ -181,8 +175,10 @@ def _get_parameters_dict(node: Any) -> Dict[str, Any]:
 @pytest.fixture
 def minimal_quam_factory():
     """Factory fixture that creates a minimal gate-virtualization QuAM."""
+
     def _factory():
         return create_gate_virtualization_quam()
+
     return _factory
 
 

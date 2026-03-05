@@ -30,39 +30,25 @@ def create_gate_virtualization_quam() -> LossDiVincenzoQuam:
 
     plunger_1 = VoltageGate(
         id="plunger_1",
-        opx_output=LFFEMAnalogOutputPort(
-            controller_id=controller, fem_id=fem_slot, port_id=1, output_mode="direct"
-        ),
+        opx_output=LFFEMAnalogOutputPort(controller_id=controller, fem_id=fem_slot, port_id=1, output_mode="direct"),
         sticky=StickyChannelAddon(duration=16, digital=False),
     )
     plunger_2 = VoltageGate(
         id="plunger_2",
-        opx_output=LFFEMAnalogOutputPort(
-            controller_id=controller, fem_id=fem_slot, port_id=2, output_mode="direct"
-        ),
+        opx_output=LFFEMAnalogOutputPort(controller_id=controller, fem_id=fem_slot, port_id=2, output_mode="direct"),
         sticky=StickyChannelAddon(duration=16, digital=False),
     )
     sensor_dc = VoltageGate(
         id="sensor_DC_1",
-        opx_output=LFFEMAnalogOutputPort(
-            controller_id=controller, fem_id=fem_slot, port_id=3, output_mode="direct"
-        ),
+        opx_output=LFFEMAnalogOutputPort(controller_id=controller, fem_id=fem_slot, port_id=3, output_mode="direct"),
         sticky=StickyChannelAddon(duration=16, digital=False),
     )
     readout_resonator = ReadoutResonatorSingle(
         id="sensor_resonator_1",
-        opx_output=LFFEMAnalogOutputPort(
-            controller_id=controller, fem_id=fem_slot, port_id=4, output_mode="direct"
-        ),
-        opx_input=LFFEMAnalogInputPort(
-            controller_id=controller, fem_id=fem_slot, port_id=1
-        ),
+        opx_output=LFFEMAnalogOutputPort(controller_id=controller, fem_id=fem_slot, port_id=4, output_mode="direct"),
+        opx_input=LFFEMAnalogInputPort(controller_id=controller, fem_id=fem_slot, port_id=1),
         intermediate_frequency=50e6,
-        operations={
-            "readout": pulses.SquareReadoutPulse(
-                length=1000, amplitude=0.1, integration_weights_angle=0.0
-            )
-        },
+        operations={"readout": pulses.SquareReadoutPulse(length=1000, amplitude=0.1, integration_weights_angle=0.0)},
     )
 
     machine.create_virtual_gate_set(
