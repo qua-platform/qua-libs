@@ -11,7 +11,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
-from quam_config import Quam
+from calibration_utils.run_video_mode.simulated_video_mode.demo_files.demo_quam_qd import DemoQuam as Quam
 from calibration_utils.charge_stability import (
     Parameters,
     get_voltage_arrays,

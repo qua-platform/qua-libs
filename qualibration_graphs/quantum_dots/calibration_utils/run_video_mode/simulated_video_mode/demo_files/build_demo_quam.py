@@ -69,22 +69,22 @@ machine.network = {"host": "172.16.33.115", "cluster_name": "CS_4"}
 
 p1 = VoltageGate(
     id=f"plunger_1",
-    opx_output=LFFEMAnalogOutputPort("con1", lf_fem, port_id=1),
+    opx_output=LFFEMAnalogOutputPort("con1", lf_fem, port_id=1, shareable = True),
     sticky=StickyChannelAddon(duration=16, digital=False),
 )
 p2 = VoltageGate(
     id=f"plunger_2",
-    opx_output=LFFEMAnalogOutputPort("con1", lf_fem, port_id=2),
+    opx_output=LFFEMAnalogOutputPort("con1", lf_fem, port_id=2, shareable = True),
     sticky=StickyChannelAddon(duration=16, digital=False),
 )
 s1 = VoltageGate(
     id=f"sensor_1",
-    opx_output=LFFEMAnalogOutputPort("con1", lf_fem, port_id=8),
+    opx_output=LFFEMAnalogOutputPort("con1", lf_fem, port_id=8, shareable = True),
     sticky=StickyChannelAddon(duration=16, digital=False),
 )
 s2 = VoltageGate(
     id=f"sensor_2",
-    opx_output=LFFEMAnalogOutputPort("con1", lf_fem, port_id=8),
+    opx_output=LFFEMAnalogOutputPort("con1", lf_fem, port_id=8, shareable = True),
     sticky=StickyChannelAddon(duration=16, digital=False),
 )
 
@@ -94,8 +94,8 @@ resonator1 = ReadoutResonatorSingle(
     frequency_bare=0,
     intermediate_frequency=500e6,
     operations={"readout": readout_pulse},
-    opx_output=LFFEMAnalogOutputPort("con1", 5, port_id=1, upsampling_mode="mw"),
-    opx_input=LFFEMAnalogInputPort("con1", 5, port_id=2),
+    opx_output=LFFEMAnalogOutputPort("con1", 5, port_id=1, upsampling_mode="mw", shareable = True),
+    opx_input=LFFEMAnalogInputPort("con1", 5, port_id=2, shareable = True),
 )
 
 readout_pulse = pulses.SquareReadoutPulse(length=200, id="readout", amplitude=0.01)
@@ -104,8 +104,8 @@ resonator2= ReadoutResonatorSingle(
     frequency_bare=0,
     intermediate_frequency=500e6,
     operations={"readout": readout_pulse},
-    opx_output=LFFEMAnalogOutputPort("con1", 5, port_id=1, upsampling_mode="mw"),
-    opx_input=LFFEMAnalogInputPort("con1", 5, port_id=2),
+    opx_output=LFFEMAnalogOutputPort("con1", 5, port_id=1, upsampling_mode="mw", shareable = True),
+    opx_input=LFFEMAnalogInputPort("con1", 5, port_id=2, shareable = True),
 )
 
 #####################################
