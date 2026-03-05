@@ -177,10 +177,11 @@ def analyse_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
     fit_results = {}
     for pair_key, ds_raw in node.results["ds_raw_all"].items():
         ds = process_raw_dataset(ds_raw, node)
+        sensor_gate_name, device_gate_name = pair_key.split("_vs_", maxsplit=1)
         fit_results[pair_key] = extract_sensor_compensation_coefficients(
             ds,
-            sensor_gate_name="x_volts",
-            device_gate_name="y_volts",
+            sensor_gate_name=sensor_gate_name,
+            device_gate_name=device_gate_name,
         )
     node.results["fit_results"] = fit_results
 
@@ -221,7 +222,7 @@ def update_state(
         return
 
     for pair_key, fit_res in node.results["fit_results"].items():
-        sensor_gate, device_gate = pair_key.split("_vs_")
+        sensor_gate, device_gate = pair_key.split("_vs_", maxsplit=1)
         alpha_measured = fit_res["coefficient"]
 
         # Find the VirtualGateSet that owns both gates.

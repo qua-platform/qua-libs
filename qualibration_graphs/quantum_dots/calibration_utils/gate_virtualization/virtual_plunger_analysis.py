@@ -381,8 +381,8 @@ def _extract_segments_fallback(
 
 def extract_virtual_plunger_coefficients(
     ds: xr.Dataset,
-    plunger_x_name: str,
-    plunger_y_name: str,
+    plunger_gate_name: str,
+    device_gate_name: str,
     *,
     signal_var: str = "amplitude",
     sensor_idx: int = 0,
@@ -399,10 +399,10 @@ def extract_virtual_plunger_coefficients(
     ----------
     ds : xr.Dataset
         Processed dataset from the 2D scan (should contain *signal_var*).
-    plunger_x_name : str
-        Coordinate name for the X plunger gate axis.
-    plunger_y_name : str
-        Coordinate name for the Y plunger gate axis.
+    plunger_gate_name : str
+        Name of the plunger gate on the X scan axis.
+    device_gate_name : str
+        Name of the device gate on the Y scan axis.
     signal_var : str
         Name of the data variable to analyse (default ``"amplitude"``).
     sensor_idx : int
@@ -446,6 +446,8 @@ def extract_virtual_plunger_coefficients(
             "theta2": None,
             "segments": [],
             "mean_cp": mean_cp,
+            "plunger_gate_name": plunger_gate_name,
+            "device_gate_name": device_gate_name,
             "fit_params": {"success": False, "reason": "no segments detected"},
         }
 
@@ -458,6 +460,8 @@ def extract_virtual_plunger_coefficients(
             "theta2": None,
             "segments": segments,
             "mean_cp": mean_cp,
+            "plunger_gate_name": plunger_gate_name,
+            "device_gate_name": device_gate_name,
             "fit_params": {
                 "success": False,
                 "reason": f"only {len(primary_angles)} primary angle(s) found",
@@ -473,5 +477,7 @@ def extract_virtual_plunger_coefficients(
         "theta2": theta2,
         "segments": segments,
         "mean_cp": mean_cp,
+        "plunger_gate_name": plunger_gate_name,
+        "device_gate_name": device_gate_name,
         "fit_params": {"success": True},
     }
