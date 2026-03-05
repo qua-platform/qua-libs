@@ -50,9 +50,7 @@ def _qarray_available() -> bool:
     try:
         from qarray import DotArray
 
-        m = DotArray(
-            Cdd=[[0.1]], Cgd=[[0.1]], algorithm="default", implementation="jax"
-        )
+        m = DotArray(Cdd=[[0.1]], Cgd=[[0.1]], algorithm="default", implementation="jax")
         m.ground_state_open(np.array([[0.0], [0.1]]))
         return True
     except Exception:
@@ -143,10 +141,13 @@ class TestSensorDotTuning:
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(v_V * 1e3, signal, "k.", markersize=3, label="Simulated data")
         ax.plot(v_fit * 1e3, y_fit, "r-", linewidth=1.5, label="Lorentzian fit")
-        ax.axvline(result.x0 * 1e3, color="blue", linestyle="--", alpha=0.6,
-                    label=f"x0 = {result.x0 * 1e3:.2f} mV")
-        ax.axvline(result.optimal_voltage * 1e3, color="green", linewidth=2,
-                    label=f"Op. pt = {result.optimal_voltage * 1e3:.2f} mV")
+        ax.axvline(result.x0 * 1e3, color="blue", linestyle="--", alpha=0.6, label=f"x0 = {result.x0 * 1e3:.2f} mV")
+        ax.axvline(
+            result.optimal_voltage * 1e3,
+            color="green",
+            linewidth=2,
+            label=f"Op. pt = {result.optimal_voltage * 1e3:.2f} mV",
+        )
         ax.set_xlabel("Sensor gate voltage (mV)")
         ax.set_ylabel("Amplitude (a.u.)")
         ax.set_title("Sensor dot tuning — Lorentzian fit")

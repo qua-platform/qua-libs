@@ -209,10 +209,7 @@ def extract_sensor_compensation_coefficients(
 
     missing = [coord for coord in (sensor_coord_name, device_coord_name) if coord not in data.coords]
     if missing:
-        raise KeyError(
-            f"Missing coordinate(s) {missing} in dataset. "
-            f"Available coords: {list(data.coords)}"
-        )
+        raise KeyError(f"Missing coordinate(s) {missing} in dataset. " f"Available coords: {list(data.coords)}")
 
     v_sensor = data.coords[sensor_coord_name].values
     v_device = data.coords[device_coord_name].values

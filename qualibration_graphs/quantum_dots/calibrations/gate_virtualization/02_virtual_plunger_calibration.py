@@ -1,4 +1,5 @@
 # %% {Imports}
+import numpy as np
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
@@ -70,10 +71,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.run_in_video_mode
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
 def create_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     """Create 2D scan QUA programs for each plunger-device pair."""
     from calibration_utils.gate_virtualization.scan_utils import create_2d_scan_program
@@ -84,8 +82,7 @@ def create_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     mapping = p.plunger_device_mapping
     if mapping is None:
         raise ValueError(
-            "plunger_device_mapping must be provided. "
-            "Automatic generation from the machine is not yet implemented."
+            "plunger_device_mapping must be provided. " "Automatic generation from the machine is not yet implemented."
         )
 
     programs = {}
@@ -113,18 +110,13 @@ def create_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     """Simulate the first QUA program for sanity-checking."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     first_key = next(iter(node.namespace["programs"]))
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["programs"][first_key], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["programs"][first_key], node.parameters)
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
@@ -134,9 +126,7 @@ def simulate_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam])
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.run_in_video_mode
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
 )
 def execute_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     """Execute all plunger pair scans sequentially and store raw data."""
@@ -146,9 +136,7 @@ def execute_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     for pair_key, qua_prog in node.namespace["programs"].items():
         with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
             job = qm.execute(qua_prog)
-            data_fetcher = XarrayDataFetcher(
-                job, node.namespace["sweep_axes_all"][pair_key]
-            )
+            data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes_all"][pair_key])
             for dataset in data_fetcher:
                 progress_counter(
                     data_fetcher.get("n", 0),
@@ -205,19 +193,17 @@ def plot_data(node: QualibrationNode[VirtualPlungerParameters, Quam]):
 def update_state(
     node: QualibrationNode[VirtualPlungerParameters, Quam],
 ):
-    """Write the plunger cross-talk correction into the compensation layer.
+    """Compose the fitted plunger transform into the existing compensation matrix.
 
-    The analysis returns T (physical→virtual, close to identity).
-    The QUAM compensation layer stores a matrix C whose inverse the
-    hardware applies when resolving virtual→physical voltages:
+    The hardware resolves virtual->physical voltages with ``C^{-1}``, where ``C``
+    is the stored compensation layer. For a pair-wise fitted incremental transform
+    ``Delta`` in the current virtual basis, the update is a right-composition on
+    the corresponding two columns:
 
-        v_physical = C⁻¹ @ v_virtual
+        C_new[:, [x, y]] = C_old[:, [x, y]] @ Delta
 
-    Setting C = T gives C⁻¹ = M (virtual→physical), which decouples
-    the two dots.  The 2×2 plunger block is written as::
-
-        C[plunger_x, plunger_x] = T[0,0]   C[plunger_x, plunger_y] = T[0,1]
-        C[plunger_y, plunger_x] = T[1,0]   C[plunger_y, plunger_y] = T[1,1]
+    Updating full columns (not only the 2x2 block) preserves existing couplings
+    from all other rows, including the pre-calibrated sensor compensation row.
     """
     if "fit_results" not in node.results:
         return
@@ -241,29 +227,34 @@ def update_state(
                 break
         if vgs is None:
             raise ValueError(
-                f"Could not find a VirtualGateSet containing both "
-                f"'{plunger_gate}' and '{device_gate}'."
+                f"Could not find a VirtualGateSet containing both " f"'{plunger_gate}' and '{device_gate}'."
             )
 
         source_gates = vgs.layers[0].source_gates
         plunger_row = source_gates.index(plunger_gate)
         device_row = source_gates.index(device_gate)
 
-        # Map virtual row names -> physical channels used by the machine API.
-        plunger_physical = vgs.layers[0].target_gates[plunger_row]
-        device_physical = vgs.layers[0].target_gates[device_row]
-        plunger_ch = vgs.channels[plunger_physical]
-        device_ch = vgs.channels[device_physical]
+        delta = np.asarray(T, dtype=float)
+        if delta.shape != (2, 2):
+            raise ValueError(f"Expected a 2x2 T_matrix for '{pair_key}', got shape {delta.shape}.")
+
+        layer = vgs.layers[0]
+        full_old = np.asarray(layer.matrix, dtype=float)
+        cols = [plunger_row, device_row]
+
+        # Compose into the existing virtual basis: C_new[:, cols] = C_old[:, cols] @ Delta.
+        full_new = full_old.copy()
+        full_new[:, cols] = full_old[:, cols] @ delta
+
+        # Map source-row order -> physical channels for submatrix writeback.
+        row_channels = [vgs.channels[layer.target_gates[row_idx]] for row_idx in range(len(source_gates))]
 
         # Keep OPX and external DC compensation layers aligned when available.
         target = "both" if vgs.id in node.machine.virtual_dc_sets else "opx"
         node.machine.update_cross_compensation_submatrix(
             virtual_names=[plunger_gate, device_gate],
-            channels=[plunger_ch, device_ch],
-            matrix=[
-                [float(T[0, 0]), float(T[0, 1])],
-                [float(T[1, 0]), float(T[1, 1])],
-            ],
+            channels=row_channels,
+            matrix=full_new[:, cols].tolist(),
             target=target,
         )
 
