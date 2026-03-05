@@ -62,9 +62,7 @@ def setup_qdac_dc_lists(
         Whether each axis is driven by the QDAC.
     """
     if x_external:
-        dc_list_x = node.machine.qdac.channel(
-            x_obj.physical_channel.qdac_spec.qdac_output_port
-        ).dc_list(
+        dc_list_x = node.machine.qdac.channel(x_obj.physical_channel.qdac_spec.qdac_output_port).dc_list(
             voltages=(
                 np.repeat(scan_mode.get_outer_loop(x_volts), len(y_volts))
                 if y_external
@@ -76,9 +74,7 @@ def setup_qdac_dc_lists(
         dc_list_x.start_on_external(trigger=1)
 
     if y_external:
-        dc_list_y = node.machine.qdac.channel(
-            y_obj.physical_channel.qdac_spec.qdac_output_port
-        ).dc_list(
+        dc_list_y = node.machine.qdac.channel(y_obj.physical_channel.qdac_spec.qdac_output_port).dc_list(
             voltages=(
                 np.tile(scan_mode.get_outer_loop(y_volts), len(x_volts))
                 if x_external
@@ -179,14 +175,10 @@ def create_2d_scan_program(node, sensors):
     # ---- QDAC setup ----
     if x_external or y_external:
         node.machine.connect_to_external_source(external_qdac=True)
-        setup_qdac_dc_lists(
-            node, x_obj, y_obj, x_volts, y_volts, scan_mode, x_external, y_external
-        )
+        setup_qdac_dc_lists(node, x_obj, y_obj, x_volts, y_volts, scan_mode, x_external, y_external)
 
     # ---- Sweep axes ----
-    sweep_axes = _build_sweep_axes(
-        sensors, x_volts, y_volts, params.x_axis_name, params.y_axis_name
-    )
+    sweep_axes = _build_sweep_axes(sensors, x_volts, y_volts, params.x_axis_name, params.y_axis_name)
 
     qua_prog = None
 
@@ -194,9 +186,7 @@ def create_2d_scan_program(node, sensors):
     if not x_external and not y_external:
         with program() as qua_prog:
             seq = node.machine.voltage_sequences[vgs_id]
-            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-                num_IQ_pairs=num_sensors
-            )
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
             x = declare(fixed)
             y = declare(fixed)
             for multiplexed_sensors in sensors.batch():
@@ -211,44 +201,30 @@ def create_2d_scan_program(node, sensors):
                                 ramp_duration=params.ramp_duration,
                             )
                             if params.pre_measurement_delay > 0:
-                                seq.step_to_voltages(
-                                    {}, duration=params.pre_measurement_delay
-                                )
-                            _measurement_block(
-                                multiplexed_sensors, I, I_st, Q, Q_st, node
-                            )
+                                seq.step_to_voltages({}, duration=params.pre_measurement_delay)
+                            _measurement_block(multiplexed_sensors, I, I_st, Q, Q_st, node)
                         if params.per_line_compensation:
                             seq.apply_compensation_pulse()
                     seq.apply_compensation_pulse()
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(
-                        f"I{i}"
-                    )
-                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(
-                        f"Q{i}"
-                    )
+                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
 
     # ---- Case 2: X QDAC / Y OPX ----
     elif x_external and not y_external:
         with program() as qua_prog:
             seq = node.machine.voltage_sequences[vgs_id]
-            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-                num_IQ_pairs=num_sensors
-            )
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
             x = declare(fixed)
             for multiplexed_sensors in sensors.batch():
                 align()
                 with for_(n, 0, n < params.num_shots, n + 1):
                     save(n, n_st)
                     with for_(*from_array(x, x_volts)):
-                        x_obj.physical_channel.qdac_spec.opx_trigger_out.play(
-                            "trigger"
-                        )
-                        seq.step_to_voltages(
-                            {}, duration=params.post_trigger_wait_ns
-                        )
+                        x_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
+                        seq.step_to_voltages({}, duration=params.post_trigger_wait_ns)
                         for y in scan_mode.inner_loop(y_volts):
                             seq.ramp_to_voltages(
                                 {y_obj.id: y},
@@ -256,30 +232,20 @@ def create_2d_scan_program(node, sensors):
                                 ramp_duration=params.ramp_duration,
                             )
                             if params.pre_measurement_delay > 0:
-                                seq.step_to_voltages(
-                                    {}, duration=params.pre_measurement_delay
-                                )
-                            _measurement_block(
-                                multiplexed_sensors, I, I_st, Q, Q_st, node
-                            )
+                                seq.step_to_voltages({}, duration=params.pre_measurement_delay)
+                            _measurement_block(multiplexed_sensors, I, I_st, Q, Q_st, node)
                         if params.per_line_compensation:
                             seq.apply_compensation_pulse()
                     seq.apply_compensation_pulse()
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(y_volts)).average().buffer(
-                        len(x_volts)
-                    ).save(f"I{i}")
-                    Q_st[i].buffer(len(y_volts)).average().buffer(
-                        len(x_volts)
-                    ).save(f"Q{i}")
+                    I_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save(f"I{i}")
+                    Q_st[i].buffer(len(y_volts)).average().buffer(len(x_volts)).save(f"Q{i}")
 
     # ---- Case 3: X OPX / Y QDAC ----
     elif not x_external and y_external:
-        sweep_axes = _build_sweep_axes(
-            sensors, y_volts, x_volts, params.y_axis_name, params.x_axis_name
-        )
+        sweep_axes = _build_sweep_axes(sensors, y_volts, x_volts, params.y_axis_name, params.x_axis_name)
         sweep_axes = {
             "sensors": sweep_axes["sensors"],
             "y_volts": xr.DataArray(
@@ -293,21 +259,15 @@ def create_2d_scan_program(node, sensors):
         }
         with program() as qua_prog:
             seq = node.machine.voltage_sequences[vgs_id]
-            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-                num_IQ_pairs=num_sensors
-            )
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
             y = declare(fixed)
             for multiplexed_sensors in sensors.batch():
                 align()
                 with for_(n, 0, n < params.num_shots, n + 1):
                     save(n, n_st)
                     with for_(*from_array(y, y_volts)):
-                        y_obj.physical_channel.qdac_spec.opx_trigger_out.play(
-                            "trigger"
-                        )
-                        seq.step_to_voltages(
-                            {}, duration=params.post_trigger_wait_ns
-                        )
+                        y_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
+                        seq.step_to_voltages({}, duration=params.post_trigger_wait_ns)
                         for x in scan_mode.inner_loop(x_volts):
                             seq.ramp_to_voltages(
                                 {x_obj.id: x},
@@ -315,32 +275,22 @@ def create_2d_scan_program(node, sensors):
                                 ramp_duration=params.ramp_duration,
                             )
                             if params.pre_measurement_delay > 0:
-                                seq.step_to_voltages(
-                                    {}, duration=params.pre_measurement_delay
-                                )
-                            _measurement_block(
-                                multiplexed_sensors, I, I_st, Q, Q_st, node
-                            )
+                                seq.step_to_voltages({}, duration=params.pre_measurement_delay)
+                            _measurement_block(multiplexed_sensors, I, I_st, Q, Q_st, node)
                         if params.per_line_compensation:
                             seq.apply_compensation_pulse()
                     seq.apply_compensation_pulse()
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(x_volts)).average().buffer(
-                        len(y_volts)
-                    ).save(f"I{i}")
-                    Q_st[i].buffer(len(x_volts)).average().buffer(
-                        len(y_volts)
-                    ).save(f"Q{i}")
+                    I_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"I{i}")
+                    Q_st[i].buffer(len(x_volts)).average().buffer(len(y_volts)).save(f"Q{i}")
 
     # ---- Case 4: Both QDAC ----
     elif x_external and y_external:
         with program() as qua_prog:
             seq = node.machine.voltage_sequences[vgs_id]
-            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-                num_IQ_pairs=num_sensors
-            )
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
             trig_counter = declare(int)
             for multiplexed_sensors in sensors.batch():
                 align()
@@ -352,21 +302,13 @@ def create_2d_scan_program(node, sensors):
                         trig_counter < int(len(x_volts) * len(y_volts)),
                         trig_counter + 1,
                     ):
-                        x_obj.physical_channel.qdac_spec.opx_trigger_out.play(
-                            "trigger"
-                        )
+                        x_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
                         wait(params.post_trigger_wait_ns // 4)
-                        _measurement_block(
-                            multiplexed_sensors, I, I_st, Q, Q_st, node
-                        )
+                        _measurement_block(multiplexed_sensors, I, I_st, Q, Q_st, node)
             with stream_processing():
                 n_st.save("n")
                 for i in range(num_sensors):
-                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(
-                        f"I{i}"
-                    )
-                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(
-                        f"Q{i}"
-                    )
+                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
 
     return qua_prog, sweep_axes

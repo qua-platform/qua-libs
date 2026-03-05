@@ -101,6 +101,5 @@ def update_compensation_matrix(
             return
 
     raise ValueError(
-        f"No virtual gate set found containing both '{row_name}' and '{col_name}' "
-        f"in layers[0].source_gates."
+        f"No virtual gate set found containing both '{row_name}' and '{col_name}' " f"in layers[0].source_gates."
     )

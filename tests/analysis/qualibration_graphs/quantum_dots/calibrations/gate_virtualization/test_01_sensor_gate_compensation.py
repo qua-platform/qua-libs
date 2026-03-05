@@ -28,6 +28,7 @@ except ImportError:
     # Direct execution path (e.g. PyCharm pydevd / `python test_01_...py`)
     import sys as _sys
     from pathlib import Path as _Path
+
     _sys.path.insert(0, str(_Path(__file__).parent))
     from simulation_helpers import simulate_sensor_device_scan, sweep_voltages_mV  # type: ignore[no-redef]
 
@@ -154,9 +155,7 @@ def _qarray_available() -> bool:
     try:
         from qarray import DotArray
 
-        m = DotArray(
-            Cdd=[[0.1]], Cgd=[[0.1]], algorithm="default", implementation="jax"
-        )
+        m = DotArray(Cdd=[[0.1]], Cgd=[[0.1]], algorithm="default", implementation="jax")
         m.ground_state_open(np.array([[0.0], [0.1]]))
         return True
     except Exception:
@@ -210,8 +209,7 @@ class TestSensorCompensationE2E:
         sensor_row = layer.source_gates.index(SENSOR_GATE)
         device_col = layer.source_gates.index(DEVICE_GATE_1)
         assert layer.matrix[sensor_row][device_col] == pytest.approx(alpha), (
-            f"Expected matrix[{sensor_row}][{device_col}] = {alpha}, "
-            f"got {layer.matrix[sensor_row][device_col]}"
+            f"Expected matrix[{sensor_row}][{device_col}] = {alpha}, " f"got {layer.matrix[sensor_row][device_col]}"
         )
 
     def test_node_analysis_two_pairs(self, dot_model, analysis_runner):
@@ -220,12 +218,18 @@ class TestSensorCompensationE2E:
         v_device = sweep_voltages_mV(DEVICE_CENTER_V, DEVICE_SPAN_V, 50)
 
         ds_dot1 = simulate_sensor_device_scan(
-            dot_model, v_sensor, v_device,
-            sensor_gate_idx=6, device_gate_idx=0,
+            dot_model,
+            v_sensor,
+            v_device,
+            sensor_gate_idx=6,
+            device_gate_idx=0,
         )
         ds_dot2 = simulate_sensor_device_scan(
-            dot_model, v_sensor, v_device,
-            sensor_gate_idx=6, device_gate_idx=1,
+            dot_model,
+            v_sensor,
+            v_device,
+            sensor_gate_idx=6,
+            device_gate_idx=1,
         )
 
         pair_key_1 = f"{SENSOR_GATE}_vs_{DEVICE_GATE_1}"
@@ -260,8 +264,11 @@ class TestSensorCompensationE2E:
         v_device = sweep_voltages_mV(DEVICE_CENTER_V, DEVICE_SPAN_V, DEVICE_POINTS)
 
         ds_raw = simulate_sensor_device_scan(
-            dot_model, v_sensor, v_device,
-            sensor_gate_idx=6, device_gate_idx=0,
+            dot_model,
+            v_sensor,
+            v_device,
+            sensor_gate_idx=6,
+            device_gate_idx=0,
         )
         pair_key = f"{SENSOR_GATE}_vs_{DEVICE_GATE_1}"
         node = analysis_runner(
@@ -288,8 +295,11 @@ class TestSensorCompensationE2E:
         v_device = sweep_voltages_mV(DEVICE_CENTER_V, DEVICE_SPAN_V, DEVICE_POINTS)
 
         ds_raw = simulate_sensor_device_scan(
-            dot_model, v_sensor, v_device,
-            sensor_gate_idx=6, device_gate_idx=0,
+            dot_model,
+            v_sensor,
+            v_device,
+            sensor_gate_idx=6,
+            device_gate_idx=0,
         )
         pair_key = f"{SENSOR_GATE}_vs_{DEVICE_GATE_1}"
         node = analysis_runner(
@@ -305,8 +315,11 @@ class TestSensorCompensationE2E:
 
         # Re-simulate with compensation applied and build a side-by-side comparison plot.
         ds_raw_comp = simulate_sensor_device_scan(
-            dot_model, v_sensor, v_device,
-            sensor_gate_idx=6, device_gate_idx=0,
+            dot_model,
+            v_sensor,
+            v_device,
+            sensor_gate_idx=6,
+            device_gate_idx=0,
             compensation_alpha=alpha,
         )
         ds = process_raw_dataset(ds_raw)
