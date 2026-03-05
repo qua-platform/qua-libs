@@ -26,6 +26,7 @@ dependencies = [
     "tqdm>=4.67.1",
     "qiskit<2.0",
     "scikit-image>=0.20.0",
+    "qua-dashboards @ git+https://github.com/qua-platform/qua-dashboards.git@main",
 ]
 
 [project.optional-dependencies]
@@ -37,6 +38,9 @@ analysis = [
 # Requires jax (e.g. from virtual-qpu or analysis extra).
 bayesian = [
     "numpyro>=0.15.0",
+]
+visa = [
+    "pyvisa-py>=0.7.0",
 ]
 
 [tool.black]
