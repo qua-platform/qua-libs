@@ -20,6 +20,9 @@ g = QualibrationGraph(
     name="GateVirtualization",
     parameters=Parameters(),
     nodes={
+        "sensor_dot_tuning": library.nodes[
+            "00_sensor_dot_tuning"
+        ].copy(name="sensor_dot_tuning"),
         "sensor_gate_compensation": library.nodes[
             "01_sensor_gate_compensation"
         ].copy(name="sensor_gate_compensation"),
@@ -31,6 +34,7 @@ g = QualibrationGraph(
         ].copy(name="barrier_compensation"),
     },
     connectivity=[
+        ("sensor_dot_tuning", "sensor_gate_compensation"),
         ("sensor_gate_compensation", "virtual_plunger_calibration"),
         ("virtual_plunger_calibration", "barrier_compensation"),
     ],

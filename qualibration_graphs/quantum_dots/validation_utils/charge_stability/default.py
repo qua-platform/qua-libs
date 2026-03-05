@@ -114,7 +114,7 @@ class InitDotModel:
             algorithm=algorithm,
             implementation=implementation,
             noise_model=noise_model if noise_model is not None else self.noise_model(),
-            latching_model=latching_model if latching_model is not None else self.latching_model(),
+            # latching_model=latching_model if latching_model is not None else self.latching_model(),
         )
 
 

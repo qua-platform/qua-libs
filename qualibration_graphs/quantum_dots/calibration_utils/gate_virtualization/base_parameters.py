@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Optional
+from typing import List, Literal, Optional
 
 import numpy as np
 from qualibrate import NodeParameters
@@ -62,37 +62,6 @@ class GateVirtualizationBaseParameters(
     """Base parameter class for all gate virtualization nodes."""
 
     pass
-
-
-class SensorCompensationParameters(GateVirtualizationBaseParameters):
-    """Parameters for sensor gate vs device gate compensation scans."""
-
-    sensor_device_mapping: Optional[Dict[str, List[str]]] = None
-    """Mapping of sensor gate -> list of device gates to scan against it.
-    Only local cross-talk pairs need to be specified.
-    Example: {"virtual_sensor_1": ["virtual_dot_1", "virtual_dot_2"]}.
-    If None, must be generated from the machine (not yet implemented)."""
-
-
-class VirtualPlungerParameters(GateVirtualizationBaseParameters):
-    """Parameters for virtual plunger gate calibration."""
-
-    plunger_device_mapping: Optional[Dict[str, List[str]]] = None
-    """Mapping of plunger gate -> list of device gates (plungers or barriers)
-    to scan against it.  Only neighbouring pairs need to be specified.
-    Example: {"virtual_dot_1": ["virtual_dot_2", "barrier_12"]}.
-    If None, must be generated from the machine (not yet implemented)."""
-
-
-class BarrierCompensationParameters(GateVirtualizationBaseParameters):
-    """Parameters for barrier compensation scans."""
-
-    barrier_compensation_mapping: Optional[Dict[str, List[str]]] = None
-    """Mapping of barrier gate -> list of gates (typically plungers) to scan
-    against it for compensation.  Only local cross-talk pairs need to be
-    specified.
-    Example: {"barrier_12": ["virtual_dot_1", "virtual_dot_2"]}.
-    If None, must be generated from the machine (not yet implemented)."""
 
 
 def get_voltage_arrays(node, *, x_center: Optional[float] = None, y_center: Optional[float] = None):

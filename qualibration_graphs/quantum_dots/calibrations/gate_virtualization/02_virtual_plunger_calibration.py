@@ -1,8 +1,4 @@
 # %% {Imports}
-import numpy as np
-import xarray as xr
-import matplotlib.pyplot as plt
-
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
@@ -11,16 +7,14 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.gate_virtualization import (
+from calibration_utils.gate_virtualization.virtual_plunger_parameters import (
     VirtualPlungerParameters,
-    get_voltage_arrays,
-    create_2d_scan_program,
-    plot_2d_scan,
-    plot_compensation_fit,
+)
+from calibration_utils.gate_virtualization.plotting import (
+    plot_virtual_plunger_diagnostic,
 )
 from calibration_utils.gate_virtualization.analysis import (
     process_raw_dataset,
-    update_compensation_matrix,
 )
 from calibration_utils.gate_virtualization.virtual_plunger_analysis import (
     extract_virtual_plunger_coefficients,
@@ -82,6 +76,8 @@ node.machine = Quam.load()
 )
 def create_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     """Create 2D scan QUA programs for each plunger-device pair."""
+    from calibration_utils.gate_virtualization.scan_utils import create_2d_scan_program
+
     node.namespace["sensors"] = sensors = get_sensors(node)
 
     mapping = node.parameters.plunger_device_mapping
@@ -163,54 +159,102 @@ def load_data(node: QualibrationNode[VirtualPlungerParameters, Quam]):
 
 
 # %% {Analyse_data}
-@node.run_action(skip_if=node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.run_in_video_mode or node.parameters.simulate)
 def analyse_data(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     """Analyse each 2D scan to extract virtual plunger gate coefficients."""
-    # TODO: implement analysis pipeline
-    # fit_results = {}
-    # for pair_key, ds_raw in node.results["ds_raw_all"].items():
-    #     ds = process_raw_dataset(ds_raw, node)
-    #     plunger_gate, device_gate = pair_key.split("_vs_")
-    #     fit_results[pair_key] = extract_virtual_plunger_coefficients(
-    #         ds, plunger_gate, device_gate
-    #     )
-    # node.results["fit_results"] = fit_results
-    pass
+    fit_results = {}
+    for pair_key, ds_raw in node.results["ds_raw_all"].items():
+        ds = process_raw_dataset(ds_raw, node)
+        fit_results[pair_key] = extract_virtual_plunger_coefficients(
+            ds,
+            plunger_x_name="x_volts",
+            plunger_y_name="y_volts",
+        )
+    node.results["fit_results"] = fit_results
 
 
 # %% {Plot_data}
-@node.run_action(skip_if=node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.run_in_video_mode or node.parameters.simulate)
 def plot_data(node: QualibrationNode[VirtualPlungerParameters, Quam]):
-    """Plot each 2D scan and virtual plunger fit overlays."""
-    # TODO: implement plotting
-    # node.results["figures"] = {}
-    # for pair_key, ds_raw in node.results["ds_raw_all"].items():
-    #     plunger_gate, device_gate = pair_key.split("_vs_")
-    #     fig_scan = plot_2d_scan(ds_raw, title=f"Plunger Scan: {pair_key}")
-    #     node.results["figures"][f"scan_{pair_key}"] = fig_scan
-    #
-    #     if "fit_results" in node.results and pair_key in node.results["fit_results"]:
-    #         fig_fit = plot_compensation_fit(
-    #             ds_raw, node.results["fit_results"][pair_key],
-    #             plunger_gate, device_gate,
-    #             title=f"Virtual Plunger Fit: {pair_key}",
-    #         )
-    #         node.results["figures"][f"fit_{pair_key}"] = fig_fit
-    pass
+    """Plot each 2D scan with edge map, segments, and fitted T matrix."""
+    fit_results = node.results.get("fit_results", {})
+    figures = {
+        pair_key: plot_virtual_plunger_diagnostic(
+            process_raw_dataset(ds_raw, node),
+            fit_results.get(pair_key),
+            pair_key,
+        )
+        for pair_key, ds_raw in node.results["ds_raw_all"].items()
+    }
+    node.results["figures"] = figures
 
 
-# %% {Update_virtual_gate_matrix}
-@node.run_action(skip_if=node.parameters.run_in_video_mode)
-def update_virtual_gate_matrix(
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.run_in_video_mode or node.parameters.simulate)
+def update_state(
     node: QualibrationNode[VirtualPlungerParameters, Quam],
 ):
-    """Update the compensation matrix with virtual plunger coefficients."""
-    # TODO: implement matrix update
-    # if "fit_results" in node.results:
-    #     for pair_key, fit_res in node.results["fit_results"].items():
-    #         for row_name, col_name, coeff in fit_res.get("matrix_elements", []):
-    #             update_compensation_matrix(node, row_name, col_name, coeff)
-    pass
+    """Write the plunger cross-talk correction into the compensation layer.
+
+    The analysis returns T (physical→virtual, close to identity).
+    The QUAM compensation layer stores a matrix C whose inverse the
+    hardware applies when resolving virtual→physical voltages:
+
+        v_physical = C⁻¹ @ v_virtual
+
+    Setting C = T gives C⁻¹ = M (virtual→physical), which decouples
+    the two dots.  The 2×2 plunger block is written as::
+
+        C[plunger_x, plunger_x] = T[0,0]   C[plunger_x, plunger_y] = T[0,1]
+        C[plunger_y, plunger_x] = T[1,0]   C[plunger_y, plunger_y] = T[1,1]
+    """
+    if "fit_results" not in node.results:
+        return
+
+    for pair_key, fit_res in node.results["fit_results"].items():
+        if fit_res is None:
+            continue
+        if not fit_res.get("fit_params", {}).get("success", False):
+            continue
+        plunger_gate, device_gate = pair_key.split("_vs_")
+        T = fit_res["T_matrix"]
+        if T is None:
+            continue
+
+        # Find the VirtualGateSet that owns both virtual gates.
+        vgs = None
+        for candidate in node.machine.virtual_gate_sets.values():
+            source_gates = candidate.layers[0].source_gates
+            if plunger_gate in source_gates and device_gate in source_gates:
+                vgs = candidate
+                break
+        if vgs is None:
+            raise ValueError(
+                f"Could not find a VirtualGateSet containing both "
+                f"'{plunger_gate}' and '{device_gate}'."
+            )
+
+        source_gates = vgs.layers[0].source_gates
+        plunger_row = source_gates.index(plunger_gate)
+        device_row = source_gates.index(device_gate)
+
+        # Map virtual row names -> physical channels used by the machine API.
+        plunger_physical = vgs.layers[0].target_gates[plunger_row]
+        device_physical = vgs.layers[0].target_gates[device_row]
+        plunger_ch = vgs.channels[plunger_physical]
+        device_ch = vgs.channels[device_physical]
+
+        # Keep OPX and external DC compensation layers aligned when available.
+        target = "both" if vgs.id in node.machine.virtual_dc_sets else "opx"
+        node.machine.update_cross_compensation_submatrix(
+            virtual_names=[plunger_gate, device_gate],
+            channels=[plunger_ch, device_ch],
+            matrix=[
+                [float(T[0, 0]), float(T[0, 1])],
+                [float(T[1, 0]), float(T[1, 1])],
+            ],
+            target=target,
+        )
 
 
 # %% {Save_results}
