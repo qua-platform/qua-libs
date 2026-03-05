@@ -66,6 +66,8 @@ def launch_video_mode(
     port: int = 8050,
     settle_time: int = 200_000,
     qdac_ext_trigger_input_port=1,
+    mid_scan_compensation: bool = True,
+    use_buffered_stream: bool = False,
 ) -> None:
     global _DASHBOARD_THREAD, _DASHBOARD_SERVER
 
@@ -115,10 +117,12 @@ def launch_video_mode(
         voltage_control_component=voltage_control_component,
         dc_set=dc_set,
         qdac=machine.qdac,
-        mid_scan_compensation=True,
+        mid_scan_compensation=mid_scan_compensation,
         qdac_settle_delay_ns=settle_time,
         num_software_averages=num_software_averages,
         qdac_ext_trigger_input_port=qdac_ext_trigger_input_port,
+        use_buffered_stream=use_buffered_stream,
+        acquisition_interval_s=0.05,
     )
 
     def find_default(mode):
@@ -140,7 +144,7 @@ def launch_video_mode(
 
     video_mode_component = VideoModeComponent(
         data_acquirer=data_acquirer,
-        data_polling_interval_s=0.01,
+        data_polling_interval_s=0.05,
         save_path=save_path,
         shutdown_callback=stop_dashboard,
         voltage_control_tab=voltage_control_tab,

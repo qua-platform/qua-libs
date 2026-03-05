@@ -64,6 +64,8 @@ def launch_video_mode(
     scan_modes_dict: Dict = None,
     result_type: str = "I",
     port: int = 8050,
+    mid_scan_compensation: bool = True,
+    use_buffered_stream: bool = False,
 ) -> None:
     global _DASHBOARD_THREAD, _DASHBOARD_SERVER
 
@@ -112,6 +114,9 @@ def launch_video_mode(
         x_mode=x_mode,
         y_mode=y_mode,
         voltage_control_component=voltage_control_component,
+        mid_scan_compensation=mid_scan_compensation,
+        use_buffered_stream = use_buffered_stream,
+        acquisition_interval_s=0.05,
     )
 
     def find_default(mode):
@@ -137,7 +142,7 @@ def launch_video_mode(
 
     video_mode_component = VideoModeComponent(
         data_acquirer=data_acquirer,
-        data_polling_interval_s=0.2,
+        data_polling_interval_s=0.05,
         save_path=save_path,
         shutdown_callback=stop_dashboard,
         voltage_control_tab=voltage_control_tab,
