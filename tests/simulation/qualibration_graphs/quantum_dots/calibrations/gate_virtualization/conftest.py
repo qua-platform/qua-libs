@@ -20,10 +20,26 @@ if str(CURRENT_DIR) not in sys.path:
 if str(SIMULATION_ROOT) not in sys.path:
     sys.path.insert(0, str(SIMULATION_ROOT))
 
-_cache_base = SIMULATION_ROOT / ".pytest_cache"
+# Use a writable temp cache by default (sandbox-safe), with optional override.
+_cache_base = Path(os.environ.get("SIM_TEST_CACHE_DIR", "/tmp/qua_simulation_pytest_cache"))
 _cache_base.mkdir(parents=True, exist_ok=True)
 os.environ.setdefault("MPLCONFIGDIR", str(_cache_base / "matplotlib"))
 os.environ.setdefault("QUALIBRATE_LOG_DIR", str(_cache_base / "qualibrate"))
+
+# Force qualibrate file logging into the simulation cache dir to avoid writes
+# under ~/.qualibrate in sandboxed environments.
+_qualibrate_logs_dir = _cache_base / "qualibrate" / "logs"
+_qualibrate_logs_dir.mkdir(parents=True, exist_ok=True)
+try:
+    from qualibrate.utils.logger_m import LazyInitLogger
+
+    def _sim_log_filepath() -> Path:
+        _qualibrate_logs_dir.mkdir(parents=True, exist_ok=True)
+        return _qualibrate_logs_dir / "qualibrate.log"
+
+    LazyInitLogger.get_log_filepath = staticmethod(_sim_log_filepath)
+except Exception:
+    pass
 
 import matplotlib  # type: ignore[import-not-found]  # noqa: E402
 
@@ -221,6 +237,20 @@ def _configure_machine_network(machine: LossDiVincenzoQuam) -> bool:
     return True
 
 
+def _is_qm_connectivity_error(exc: Exception) -> bool:
+    """Return True when simulation failed due unreachable QM cluster/network."""
+    msg = str(exc)
+    connectivity_markers = (
+        "QmServerDetectionError",
+        "Failed to detect to QuantumMachines server",
+        "All connection attempts failed",
+        "Connection refused",
+        "timed out",
+        "Name or service not known",
+    )
+    return any(marker in msg for marker in connectivity_markers)
+
+
 def _load_library_node(node_name: str, library_root: Path) -> Any:
     if not library_root.exists():
         warnings.warn(f"Simulation skip: calibration library not found at {library_root}")
@@ -283,7 +313,12 @@ def simulation_runner(minimal_quam_factory, save_simulation_plot, markdown_gener
         run_params["simulate"] = True
 
         with patch.object(Quam, "load", return_value=machine):
-            result = node.run(**run_params)
+            try:
+                result = node.run(**run_params)
+            except Exception as exc:
+                if _is_qm_connectivity_error(exc):
+                    pytest.fail(f"QM cluster connectivity failure: {exc}")
+                raise
 
         sim_result = getattr(node, "results", {}).get("simulation") if hasattr(node, "results") else None
         job = sim_result or result
