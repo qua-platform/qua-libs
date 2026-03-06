@@ -53,6 +53,12 @@ class Parameters(
 import numpy as np
 
 
+# Backward-compatible aliases kept for existing nodes/tests that still use the
+# legacy OPX/OPXQDAC parameter class names.
+OPXParameters = Parameters
+OPXQDACParameters = Parameters
+
+
 def get_voltage_arrays(node):
     """Extract the X and Y voltage arrays from a given node."""
     x_span, x_center, x_points = node.parameters.x_span, 0, node.parameters.x_points
