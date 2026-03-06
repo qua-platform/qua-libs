@@ -1,7 +1,7 @@
 {
     "network": {
         "host": "172.16.33.115",
-        "cluster_name": "CS_3",
+        "cluster_name": "CS_4",
         "qdac_ip": "172.16.33.101"
     }
 }

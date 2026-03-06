@@ -10,7 +10,7 @@
             },
             "id": "plunger_1",
             "sticky": {
-                "duration": 1000,
+                "duration": 16,
                 "digital": false,
                 "__class__": "quam.components.channels.StickyChannelAddon"
             },
@@ -18,12 +18,34 @@
                 "controller_id": "con1",
                 "fem_id": 5,
                 "port_id": 1,
-                "upsampling_mode": "pulse",
+                "shareable": true,
                 "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
             },
-            "attenuation": 10,
-            "current_external_voltage": -0.0048056,
+            "current_external_voltage": 0.0,
             "qdac_spec": {
+                "opx_trigger_out": {
+                    "operations": {
+                        "trigger": {
+                            "length": 100,
+                            "digital_marker": "ON",
+                            "__class__": "quam.components.pulses.Pulse"
+                        }
+                    },
+                    "id": "plunger_1_qdac_trigger",
+                    "digital_outputs": {
+                        "trigger": {
+                            "opx_output": [
+                                "con1",
+                                5,
+                                1
+                            ],
+                            "delay": 0,
+                            "buffer": 0,
+                            "__class__": "quam.components.channels.DigitalOutputChannel"
+                        }
+                    },
+                    "__class__": "quam.components.channels.Channel"
+                },
                 "qdac_output_port": 1,
                 "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
             },
@@ -39,7 +61,7 @@
             },
             "id": "plunger_2",
             "sticky": {
-                "duration": 1000,
+                "duration": 16,
                 "digital": false,
                 "__class__": "quam.components.channels.StickyChannelAddon"
             },
@@ -47,12 +69,34 @@
                 "controller_id": "con1",
                 "fem_id": 5,
                 "port_id": 2,
-                "upsampling_mode": "pulse",
+                "shareable": true,
                 "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
             },
-            "attenuation": 10,
-            "current_external_voltage": -0.0047219,
+            "current_external_voltage": 0.0,
             "qdac_spec": {
+                "opx_trigger_out": {
+                    "operations": {
+                        "trigger": {
+                            "length": 100,
+                            "digital_marker": "ON",
+                            "__class__": "quam.components.pulses.Pulse"
+                        }
+                    },
+                    "id": "plunger_2_qdac_trigger",
+                    "digital_outputs": {
+                        "trigger": {
+                            "opx_output": [
+                                "con1",
+                                5,
+                                2
+                            ],
+                            "delay": 0,
+                            "buffer": 0,
+                            "__class__": "quam.components.channels.DigitalOutputChannel"
+                        }
+                    },
+                    "__class__": "quam.components.channels.Channel"
+                },
                 "qdac_output_port": 2,
                 "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
             },
@@ -68,45 +112,69 @@
             },
             "id": "sensor_1",
             "sticky": {
-                "duration": 1000,
+                "duration": 16,
                 "digital": false,
                 "__class__": "quam.components.channels.StickyChannelAddon"
             },
             "opx_output": {
                 "controller_id": "con1",
                 "fem_id": 5,
-                "port_id": 4,
-                "upsampling_mode": "pulse",
+                "port_id": 8,
+                "shareable": true,
                 "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
             },
-            "attenuation": 10,
-            "current_external_voltage": -0.0047641,
+            "current_external_voltage": 1.0,
             "qdac_spec": {
-                "qdac_output_port": 4,
+                "opx_trigger_out": {
+                    "operations": {
+                        "trigger": {
+                            "length": 100,
+                            "digital_marker": "ON",
+                            "__class__": "quam.components.pulses.Pulse"
+                        }
+                    },
+                    "id": "sensor_1_qdac_trigger",
+                    "digital_outputs": {
+                        "trigger": {
+                            "opx_output": [
+                                "con1",
+                                5,
+                                3
+                            ],
+                            "delay": 0,
+                            "buffer": 0,
+                            "__class__": "quam.components.channels.DigitalOutputChannel"
+                        }
+                    },
+                    "__class__": "quam.components.channels.Channel"
+                },
+                "qdac_output_port": 3,
                 "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
             },
             "readout": {
+                "frequency_bare": 0,
                 "operations": {
                     "readout": {
-                        "length": 100,
+                        "length": 200,
                         "id": "readout",
-                        "amplitude": 0.1,
+                        "amplitude": 0.01,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     }
                 },
                 "id": "readout_resonator_1",
-                "intermediate_frequency": 150000000.0,
+                "intermediate_frequency": 500000000.0,
                 "opx_input": {
                     "controller_id": "con1",
                     "fem_id": 5,
-                    "port_id": 1,
+                    "port_id": 2,
+                    "shareable": true,
                     "__class__": "quam.components.ports.analog_inputs.LFFEMAnalogInputPort"
                 },
-                "time_of_flight": 28,
                 "opx_output": {
                     "controller_id": "con1",
                     "fem_id": 5,
-                    "port_id": 6,
+                    "port_id": 1,
+                    "shareable": true,
                     "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
                 },
                 "__class__": "quam_builder.architecture.quantum_dots.components.readout_resonator.ReadoutResonatorSingle"
@@ -123,45 +191,69 @@
             },
             "id": "sensor_2",
             "sticky": {
-                "duration": 1000,
+                "duration": 16,
                 "digital": false,
                 "__class__": "quam.components.channels.StickyChannelAddon"
             },
             "opx_output": {
                 "controller_id": "con1",
                 "fem_id": 5,
-                "port_id": 5,
-                "upsampling_mode": "pulse",
+                "port_id": 8,
+                "shareable": true,
                 "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
             },
-            "attenuation": 10,
-            "current_external_voltage": -0.0047641,
+            "current_external_voltage": 0.0,
             "qdac_spec": {
-                "qdac_output_port": 5,
+                "opx_trigger_out": {
+                    "operations": {
+                        "trigger": {
+                            "length": 100,
+                            "digital_marker": "ON",
+                            "__class__": "quam.components.pulses.Pulse"
+                        }
+                    },
+                    "id": "sensor_2_qdac_trigger",
+                    "digital_outputs": {
+                        "trigger": {
+                            "opx_output": [
+                                "con1",
+                                5,
+                                4
+                            ],
+                            "delay": 0,
+                            "buffer": 0,
+                            "__class__": "quam.components.channels.DigitalOutputChannel"
+                        }
+                    },
+                    "__class__": "quam.components.channels.Channel"
+                },
+                "qdac_output_port": 4,
                 "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
             },
             "readout": {
+                "frequency_bare": 0,
                 "operations": {
                     "readout": {
-                        "length": 100,
+                        "length": 200,
                         "id": "readout",
-                        "amplitude": 0.1,
+                        "amplitude": 0.01,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     }
                 },
                 "id": "readout_resonator_2",
-                "intermediate_frequency": 250000000.0,
+                "intermediate_frequency": 500000000.0,
                 "opx_input": {
                     "controller_id": "con1",
                     "fem_id": 5,
-                    "port_id": 1,
+                    "port_id": 2,
+                    "shareable": true,
                     "__class__": "quam.components.ports.analog_inputs.LFFEMAnalogInputPort"
                 },
-                "time_of_flight": 28,
                 "opx_output": {
                     "controller_id": "con1",
                     "fem_id": 5,
-                    "port_id": 6,
+                    "port_id": 1,
+                    "shareable": true,
                     "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
                 },
                 "__class__": "quam_builder.architecture.quantum_dots.components.readout_resonator.ReadoutResonatorSingle"
@@ -281,20 +373,20 @@
             ],
             "allow_rectangular_matrices": true,
             "_current_physical_voltages": {
-                "plunger_1": -0.0048056,
-                "plunger_2": -0.0047219,
-                "sensor_1": -0.0047641,
-                "sensor_2": -0.0047641
+                "plunger_1": 0.0,
+                "plunger_2": 0.0,
+                "sensor_1": 1.0,
+                "sensor_2": 0.0
             },
             "_current_levels": {
-                "plunger_1": -0.0048056,
-                "plunger_2": -0.0047219,
-                "sensor_1": -0.0047641,
-                "sensor_2": -0.0047641,
-                "virtual_dot_1": -0.0050000324492,
-                "virtual_dot_2": -0.0050000186298,
-                "virtual_sensor_1": -0.0049999906127,
-                "virtual_sensor_2": -0.0049999906127
+                "plunger_1": 0.0,
+                "plunger_2": 0.0,
+                "sensor_1": 1.0,
+                "sensor_2": 0.0,
+                "virtual_dot_1": 0.020406,
+                "virtual_dot_2": 0.029189,
+                "virtual_sensor_1": 1.0,
+                "virtual_sensor_2": 0.0
             },
             "__class__": "quam_builder.architecture.quantum_dots.components.virtual_dc_set.VirtualDCSet"
         }
@@ -355,5 +447,5 @@
             "__class__": "quam_builder.architecture.quantum_dots.components.sensor_dot.SensorDot"
         }
     },
-    "__class__": "quam_builder.architecture.quantum_dots.qpu.base_quam_qd.BaseQuamQD"
+    "__class__": "demo_quam_qd.DemoQuam"
 }
