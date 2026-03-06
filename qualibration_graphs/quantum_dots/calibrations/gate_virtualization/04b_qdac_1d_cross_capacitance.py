@@ -161,35 +161,33 @@ def _build_1d_opx_program(node, sensors, num_sensors, target_obj, perturb_obj, v
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
         x = declare(fixed)
 
-        for multiplexed_sensors in sensors.batch():
-            align()
-            if perturb_offset != 0.0:
+        if perturb_offset != 0.0:
+            seq.ramp_to_voltages(
+                {perturb_obj.name: perturb_offset},
+                duration=p.hold_duration,
+                ramp_duration=p.ramp_duration,
+            )
+        with for_(n, 0, n < p.num_shots, n + 1):
+            save(n, n_st)
+            with for_(*from_array(x, v_sweep)):
+                ramp_voltages = {target_obj.name: x}
+                if perturb_offset != 0.0:
+                    ramp_voltages[perturb_obj.name] = perturb_offset
                 seq.ramp_to_voltages(
-                    {perturb_obj.name: perturb_offset},
+                    ramp_voltages,
                     duration=p.hold_duration,
                     ramp_duration=p.ramp_duration,
                 )
-            with for_(n, 0, n < p.num_shots, n + 1):
-                save(n, n_st)
-                with for_(*from_array(x, v_sweep)):
-                    ramp_voltages = {target_obj.name: x}
-                    if perturb_offset != 0.0:
-                        ramp_voltages[perturb_obj.name] = perturb_offset
-                    seq.ramp_to_voltages(
-                        ramp_voltages,
-                        duration=p.hold_duration,
-                        ramp_duration=p.ramp_duration,
-                    )
-                    if p.pre_measurement_delay > 0:
-                        seq.step_to_voltages({}, duration=p.pre_measurement_delay)
-                    align()
-                    for i, sensor in multiplexed_sensors.items():
-                        rr = sensor.readout_resonator
-                        rr.measure("readout", qua_vars=(I[i], Q[i]))
-                        rr.wait(500)
-                        save(I[i], I_st[i])
-                        save(Q[i], Q_st[i])
-                seq.apply_compensation_pulse()
+                if p.pre_measurement_delay > 0:
+                    seq.step_to_voltages({}, duration=p.pre_measurement_delay)
+                align()
+                for i, sensor in sensors.items():
+                    rr = sensor.readout_resonator
+                    rr.measure("readout", qua_vars=(I[i], Q[i]))
+                    rr.wait(500)
+                    save(I[i], I_st[i])
+                    save(Q[i], Q_st[i])
+            seq.apply_compensation_pulse()
 
         with stream_processing():
             n_st.save("n")
@@ -224,25 +222,23 @@ def _build_1d_qdac_program(node, sensors, num_sensors, target_obj, perturb_obj, 
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
         trig_counter = declare(int)
 
-        for multiplexed_sensors in sensors.batch():
-            align()
-            with for_(n, 0, n < p.num_shots, n + 1):
-                save(n, n_st)
-                with for_(
-                    trig_counter,
-                    0,
-                    trig_counter < int(len(v_sweep)),
-                    trig_counter + 1,
-                ):
-                    target_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
-                    wait(p.post_trigger_wait_ns // 4)
-                    align()
-                    for i, sensor in multiplexed_sensors.items():
-                        rr = sensor.readout_resonator
-                        rr.measure("readout", qua_vars=(I[i], Q[i]))
-                        rr.wait(500)
-                        save(I[i], I_st[i])
-                        save(Q[i], Q_st[i])
+        with for_(n, 0, n < p.num_shots, n + 1):
+            save(n, n_st)
+            with for_(
+                trig_counter,
+                0,
+                trig_counter < int(len(v_sweep)),
+                trig_counter + 1,
+            ):
+                target_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
+                wait(p.post_trigger_wait_ns // 4)
+                align()
+                for i, sensor in sensors.items():
+                    rr = sensor.readout_resonator
+                    rr.measure("readout", qua_vars=(I[i], Q[i]))
+                    rr.wait(500)
+                    save(I[i], I_st[i])
+                    save(Q[i], Q_st[i])
 
         with stream_processing():
             n_st.save("n")
