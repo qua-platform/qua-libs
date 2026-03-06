@@ -13,7 +13,12 @@ from qualang_tools.loops import from_array
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.psb_search_sweep_detuning import Parameters
+from calibration_utils.psb_search_sweep_detuning import (
+    Parameters,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+)
 from calibration_utils.common_utils.experiment import get_sensors, _make_batchable_list_from_multiplexed
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -56,7 +61,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.quantum_dot_pair_names = ["virtual_dot_1_virtual_dot_2_pair"]
-    pass
+    node.parameters.quantum_dot_pair_names = ["dot1_dot2_pair"]
 
 
 # Instantiate the QUAM class from the state file
@@ -73,7 +78,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["dot_pairs"] = dot_pair_objects
 
     multiplexed_sensors_by_dot_pair = {
-        pair.name: _make_batchable_list_from_multiplexed(pair.sensor_dots, multiplexed=node.parameters.multiplexed)
+        pair.name: _make_batchable_list_from_multiplexed(
+            pair.sensor_dots, multiplexed=False
+        )  # Place keeping hard code False
         for pair in dot_pair_objects
     }
 
@@ -89,7 +96,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "quantum_dot_pair": xr.DataArray([pair.name for pair in dot_pair_objects]),
         "detuning": xr.DataArray(detuning_array, attrs={"long_name": "voltage", "units": "V"}),
     }
-    with program() as prog:
+    with program() as node.namespace["qua_program"]:
         n = declare(int)
         n_st = declare_stream()
 
@@ -117,7 +124,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             # Perform them all sequentially for now. Can add footprint batching later
             for dot_pair in dot_pair_objects:
-                with from_array(detuning, detuning_array):
+                with for_(*from_array(detuning, detuning_array)):
                     # ---------------------------------------------------------
                     # Step 1a: Empty - step to empty point (fixed duration)
                     # ---------------------------------------------------------
@@ -225,13 +232,26 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """Fit sigmoid to sensor signal vs detuning to locate the PSB transition."""
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["fit_results"] = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results.items()}
+    node.namespace["_fit_results_full"] = fit_results
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data."""
+    """Plot sensor signal vs detuning with sigmoid fit overlay."""
+    fit_with_diag = node.namespace.get("_fit_results_full", node.results.get("fit_results", {}))
+    fig = plot_raw_data_with_fit(
+        node.results["ds_raw"],
+        node.results.get("ds_fit"),
+        node.namespace["dot_pairs"],
+        fit_with_diag,
+    )
+    plt.show()
+    node.results["figure"] = fig
 
 
 # %% {Update_state}
@@ -240,15 +260,17 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor data analysis was successful."""
 
     with node.record_state_updates():
-        # This is a characterization measurement and typically does not update state parameters.
-        # If needed in the future, the identified PSB region coordinates and optimal detuning could be stored.
-        # Example of potential state update (commented out):
-        # for qubit_pair in node.namespace["qubit_pairs"]:
-        #     if not node.results["fit_results"][qubit_pair.name]["success"]:
-        #         continue
-        #     # Update PSB region coordinates and optimal detuning if needed
-        # TODO: how to update the PSB region coordinates and optimal detuning for a given qd pair?
-        pass
+        for pair in node.namespace["dot_pairs"]:
+            # Take name from enum in future
+            if not node.results["fit_results"][pair.name]["success"]:
+                continue
+            optimal_detuning = node.results["fit_results"][pair.name]["optimal_readout_detuning"]
+            pair.add_point(
+                "measure",
+                voltages={pair.name: optimal_detuning},
+                duration=100,
+                ramp_duration=node.parameters.ramp_duration,
+            )  # Default duration for now
 
 
 # %% {Save_results}
