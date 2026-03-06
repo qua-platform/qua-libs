@@ -6,6 +6,8 @@ from .sensor_dot_tuning_parameters import SensorDotTuningParameters
 from .sensor_compensation_parameters import SensorCompensationParameters
 from .virtual_plunger_parameters import VirtualPlungerParameters
 from .barrier_compensation_parameters import BarrierCompensationParameters
+from .cross_capacitance_1d_parameters import CrossCapacitance1DParameters
+from .cross_capacitance_1d_qdac_parameters import CrossCapacitance1DQdacParameters
 from .analysis import process_raw_dataset, update_compensation_matrix
 from .sensor_dot_analysis import fit_lorentzian, lorentzian, optimal_operating_point
 from .sensor_compensation_analysis import (
@@ -15,11 +17,16 @@ from .sensor_compensation_analysis import (
 )
 from .virtual_plunger_analysis import extract_virtual_plunger_coefficients
 from .barrier_compensation_analysis import extract_barrier_compensation_coefficients
+from .cross_capacitance_1d_analysis import (
+    detect_transition_position,
+    extract_cross_capacitance_coefficient,
+)
 from .plotting import (
     plot_sensor_compensation_diagnostic,
     plot_2d_scan,
     plot_compensation_fit,
     plot_virtual_plunger_diagnostic,
+    plot_cross_capacitance_1d_diagnostic,
     plot_virtual_gate_matrix,
 )
 
@@ -48,6 +55,8 @@ __all__ = [
     "SensorCompensationParameters",
     "VirtualPlungerParameters",
     "BarrierCompensationParameters",
+    "CrossCapacitance1DParameters",
+    "CrossCapacitance1DQdacParameters",
     "get_voltage_arrays",
     "create_2d_scan_program",
     "setup_qdac_dc_lists",
@@ -62,9 +71,12 @@ __all__ = [
     "shifted_lorentzian_2d",
     "extract_virtual_plunger_coefficients",
     "extract_barrier_compensation_coefficients",
+    "detect_transition_position",
+    "extract_cross_capacitance_coefficient",
     "plot_sensor_compensation_diagnostic",
     "plot_2d_scan",
     "plot_compensation_fit",
     "plot_virtual_plunger_diagnostic",
+    "plot_cross_capacitance_1d_diagnostic",
     "plot_virtual_gate_matrix",
 ]

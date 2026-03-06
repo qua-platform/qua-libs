@@ -289,6 +289,94 @@ def simulate_sensor_sweep(
     )
 
 
+def simulate_1d_plunger_sweep(
+    model,
+    v_plunger_mV: np.ndarray,
+    plunger_gate_idx: int = 0,
+    *,
+    sensor_gate_idx: int = 6,
+    sensor_operating_point: float = 15.0,
+    base_voltages: Optional[np.ndarray] = None,
+    perturb_gate_idx: Optional[int] = None,
+    perturb_offset_mV: float = 0.0,
+    sensor_compensation: Optional[Dict[int, float]] = None,
+) -> xr.Dataset:
+    """Simulate a 1D plunger sweep using qarray with optional perturbing gate offset.
+
+    Parameters
+    ----------
+    model : ChargeSensedDotArray
+        A configured qarray model.
+    v_plunger_mV : np.ndarray
+        1-D voltages for the plunger gate (in mV).
+    plunger_gate_idx : int
+        Gate index for the swept plunger (default 0).
+    sensor_gate_idx : int
+        Gate index for the sensor (default 6).
+    sensor_operating_point : float
+        Constant voltage on the sensor gate (mV).
+    base_voltages : np.ndarray, optional
+        Base voltage vector (length = n_gates).  Defaults to zeros.
+    perturb_gate_idx : int, optional
+        Gate index for the perturbing gate.
+    perturb_offset_mV : float
+        Offset voltage (mV) applied to the perturbing gate.
+    sensor_compensation : dict, optional
+        Map of ``{gate_idx: alpha}`` coefficients.  When provided the sensor
+        voltage is adjusted as ``sensor_op + sum(alpha_i * (v_i - center_i))``
+        to keep the sensor on its Coulomb peak.
+
+    Returns
+    -------
+    xr.Dataset
+        Dataset with ``I`` and ``Q`` variables, dimensions
+        ``(sensors, x_volts)`` — matching the node's raw 1-D format.
+    """
+    n_gates = max(plunger_gate_idx, sensor_gate_idx) + 1
+    if perturb_gate_idx is not None:
+        n_gates = max(n_gates, perturb_gate_idx + 1)
+    if base_voltages is None:
+        base_voltages = np.zeros(n_gates)
+
+    cx = (v_plunger_mV[0] + v_plunger_mV[-1]) / 2
+
+    voltage_array = np.tile(base_voltages.copy(), (len(v_plunger_mV), 1))
+    voltage_array[:, plunger_gate_idx] = v_plunger_mV
+    voltage_array[:, sensor_gate_idx] = sensor_operating_point
+
+    if perturb_gate_idx is not None and perturb_offset_mV != 0.0:
+        voltage_array[:, perturb_gate_idx] += perturb_offset_mV
+
+    if sensor_compensation:
+        for gate_idx, alpha in sensor_compensation.items():
+            if gate_idx == plunger_gate_idx:
+                voltage_array[:, sensor_gate_idx] += alpha * (v_plunger_mV - cx)
+            elif gate_idx == perturb_gate_idx and perturb_offset_mV != 0.0:
+                voltage_array[:, sensor_gate_idx] += alpha * perturb_offset_mV
+
+    z, _ = model.charge_sensor_open(-voltage_array)
+    z = z.squeeze()
+
+    v_V = v_plunger_mV * 1e-3
+    I_data = z[np.newaxis, :]
+    Q_data = np.zeros_like(I_data)
+
+    return xr.Dataset(
+        {
+            "I": xr.DataArray(
+                I_data,
+                dims=["sensors", "x_volts"],
+                coords={"sensors": ["sensor_1"], "x_volts": v_V},
+            ),
+            "Q": xr.DataArray(
+                Q_data,
+                dims=["sensors", "x_volts"],
+                coords={"sensors": ["sensor_1"], "x_volts": v_V},
+            ),
+        }
+    )
+
+
 # =============================================================================
 # Node loading helpers
 # =============================================================================

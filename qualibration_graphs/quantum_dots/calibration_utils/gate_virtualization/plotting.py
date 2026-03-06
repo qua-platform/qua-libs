@@ -223,6 +223,121 @@ def plot_virtual_plunger_diagnostic(
     return fig
 
 
+def plot_cross_capacitance_1d_diagnostic(
+    ds_ref: xr.Dataset,
+    ds_shifted: xr.Dataset,
+    fit_result: Optional[Dict[str, Any]],
+    pair_key: str,
+    *,
+    step_voltage: float = 0.010,
+    signal_var: str = "amplitude",
+    sensor_idx: int = 0,
+) -> Figure:
+    """2-panel diagnostic for 1D cross-capacitance measurement.
+
+    Top panel: overlaid reference and shifted 1D traces with vertical
+    lines at detected transition positions and annotated shift/alpha.
+    Bottom panel: derivative of each trace showing transition peaks.
+
+    Parameters
+    ----------
+    ds_ref, ds_shifted : xr.Dataset
+        Processed datasets from the reference and shifted sweeps.
+    fit_result : dict or None
+        Output of ``extract_cross_capacitance_coefficient``.
+    pair_key : str
+        Label for the gate pair (e.g. ``"virtual_dot_1_vs_virtual_dot_2"``).
+    step_voltage : float
+        Perturbation voltage in volts.
+    signal_var : str
+        Data variable to plot.
+    sensor_idx : int
+        Sensor index if multiple sensors are present.
+    """
+    sig_ref = ds_ref[signal_var]
+    sig_shifted = ds_shifted[signal_var]
+    if "sensors" in sig_ref.dims:
+        sig_ref = sig_ref.isel(sensors=sensor_idx)
+    if "sensors" in sig_shifted.dims:
+        sig_shifted = sig_shifted.isel(sensors=sensor_idx)
+
+    voltage = sig_ref.coords["x_volts"].values * 1e3  # mV
+    ref_signal = sig_ref.values
+    shifted_signal = sig_shifted.values
+
+    fig, axes = plt.subplots(2, 1, figsize=(9, 7), sharex=True)
+
+    axes[0].plot(voltage, ref_signal, "b-", linewidth=1.2, label="Reference")
+    axes[0].plot(
+        voltage,
+        shifted_signal,
+        color="orange",
+        linewidth=1.2,
+        label=f"Shifted (+{step_voltage * 1e3:.1f} mV)",
+    )
+
+    if fit_result is not None:
+        pos_ref = fit_result.get("pos_ref")
+        pos_shifted = fit_result.get("pos_shifted")
+        alpha = fit_result.get("coefficient")
+
+        if pos_ref is not None:
+            axes[0].axvline(
+                pos_ref * 1e3,
+                color="blue",
+                linestyle="--",
+                alpha=0.7,
+                label=f"Ref pos = {pos_ref * 1e3:.2f} mV",
+            )
+        if pos_shifted is not None:
+            axes[0].axvline(
+                pos_shifted * 1e3,
+                color="orange",
+                linestyle="--",
+                alpha=0.7,
+                label=f"Shifted pos = {pos_shifted * 1e3:.2f} mV",
+            )
+        if pos_ref is not None and pos_shifted is not None:
+            shift_mV = (pos_shifted - pos_ref) * 1e3
+            axes[0].annotate(
+                "",
+                xy=(pos_shifted * 1e3, np.mean(ref_signal)),
+                xytext=(pos_ref * 1e3, np.mean(ref_signal)),
+                arrowprops=dict(arrowstyle="<->", color="red", lw=1.5),
+            )
+            axes[0].text(
+                (pos_ref + pos_shifted) / 2 * 1e3,
+                np.mean(ref_signal) * 1.02,
+                f"Δ={shift_mV:.2f} mV",
+                ha="center",
+                va="bottom",
+                color="red",
+                fontsize=9,
+            )
+
+        title = f"1D Cross-Capacitance: {pair_key}"
+        if alpha is not None:
+            title += f"\nα = {alpha:.4f}"
+        axes[0].set_title(title)
+    else:
+        axes[0].set_title(f"1D Cross-Capacitance: {pair_key}")
+
+    axes[0].set_ylabel("Amplitude (a.u.)")
+    axes[0].legend(fontsize=8, loc="best")
+
+    grad_ref = np.gradient(ref_signal, voltage)
+    grad_shifted = np.gradient(shifted_signal, voltage)
+    axes[1].plot(voltage, grad_ref, "b-", linewidth=1, label="d(Ref)/dV")
+    axes[1].plot(voltage, grad_shifted, color="orange", linewidth=1, label="d(Shifted)/dV")
+    axes[1].set_xlabel("Plunger gate voltage (mV)")
+    axes[1].set_ylabel("d(Signal)/dV")
+    axes[1].legend(fontsize=8, loc="best")
+    axes[1].set_title("Derivative (transition peaks)")
+
+    fig.tight_layout()
+    return fig
+
+
 def plot_virtual_gate_matrix(
     matrix: np.ndarray,
     gate_names: List[str],

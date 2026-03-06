@@ -26,11 +26,16 @@ g = QualibrationGraph(
             name="virtual_plunger_calibration"
         ),
         "barrier_compensation": library.nodes["03_barrier_compensation"].copy(name="barrier_compensation"),
+        "cross_capacitance_1d": library.nodes["04_1d_cross_capacitance"].copy(name="cross_capacitance_1d"),
+        "cross_capacitance_1d_qdac": library.nodes["04b_qdac_1d_cross_capacitance"].copy(
+            name="cross_capacitance_1d_qdac"
+        ),
     },
     connectivity=[
         ("sensor_dot_tuning", "sensor_gate_compensation"),
         ("sensor_gate_compensation", "virtual_plunger_calibration"),
         ("virtual_plunger_calibration", "barrier_compensation"),
+        ("barrier_compensation", "cross_capacitance_1d"),
     ],
     orchestrator=BasicOrchestrator(skip_failed=False),
 )
