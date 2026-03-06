@@ -36,9 +36,9 @@ class CrossCapacitance1DQdacParameters(GateVirtualizationBaseParameters):
     """Whether the target plunger sweep is driven by the QDAC."""
     perturb_from_qdac: bool = False
     """Whether the perturbing gate step is applied via the QDAC."""
-    update_mode: Literal["additive", "overwrite"] = "additive"
+    update_mode: Literal["compose", "overwrite"] = "compose"
     """How to update the compensation matrix.
-    ``"additive"`` adds the measured residual to the existing entry (suitable
-    for iterative refinement).
-    ``"overwrite"`` replaces the entry with the measured value (suitable for
-    initial matrix population)."""
+    ``"compose"`` right-composes the measured correction into the existing
+    matrix, updating the full perturbing-gate column (consistent with node 02).
+    ``"overwrite"`` replaces the single entry with the measured value
+    (suitable for initial matrix population from identity)."""

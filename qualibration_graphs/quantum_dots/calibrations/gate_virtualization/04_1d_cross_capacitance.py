@@ -29,13 +29,13 @@ from qualibration_libs.data import XarrayDataFetcher
 
 description = """
         1D CROSS-CAPACITANCE MEASUREMENT (OPX)
-Measures cross-capacitance matrix entries via paired 1D plunger sweeps
+Measures cross-capacitance matrix entries via paired 1D gate sweeps
 using a single QUA program that covers all (target, perturbing) pairs
 in the mapping.
 
 For each target plunger, one reference sweep (no perturbation) and one
 shifted sweep per perturbing gate (+step_voltage) are performed
-sequentially.  The shift in charge transition position divided by the
+sequentially. The shift in charge transition position divided by the
 step voltage gives the cross-capacitance coefficient alpha_ij.
 
 This is the fast 1D method described in Volk et al., npj Quantum
@@ -152,42 +152,37 @@ def _build_opx_program(node, sensors, num_sensors, vgs_id, v_sweep, sweep_schedu
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
         x = declare(fixed)
 
-        for multiplexed_sensors in sensors.batch():
-            align()
-            with for_(n, 0, n < p.num_shots, n + 1):
-                save(n, n_st)
+        with for_(n, 0, n < p.num_shots, n + 1):
+            save(n, n_st)
 
-                for target_gate, perturb_gate in sweep_schedule:
-                    target_obj = node.machine.get_component(target_gate)
+            for target_gate, perturb_gate in sweep_schedule:
+                target_obj = node.machine.get_component(target_gate)
 
-                    if perturb_gate is not None:
-                        perturb_obj = node.machine.get_component(perturb_gate)
-                        seq.ramp_to_voltages(
-                            {perturb_obj.name: p.step_voltage},
-                            duration=p.hold_duration,
-                            ramp_duration=p.ramp_duration,
-                        )
+                if perturb_gate is not None:
+                    perturb_obj = node.machine.get_component(perturb_gate)
+                    seq.ramp_to_voltages(
+                        {perturb_obj.name: p.step_voltage},
+                        duration=p.hold_duration,
+                        ramp_duration=p.ramp_duration,
+                    )
 
-                    with for_(*from_array(x, v_sweep)):
-                        ramp_dict = {target_obj.name: x}
-                        if perturb_gate is not None:
-                            ramp_dict[perturb_obj.name] = p.step_voltage
-                        seq.ramp_to_voltages(
-                            ramp_dict,
-                            duration=p.hold_duration,
-                            ramp_duration=p.ramp_duration,
-                        )
-                        if p.pre_measurement_delay > 0:
-                            seq.step_to_voltages({}, duration=p.pre_measurement_delay)
-                        align()
-                        for i, sensor in multiplexed_sensors.items():
-                            rr = sensor.readout_resonator
-                            rr.measure("readout", qua_vars=(I[i], Q[i]))
-                            rr.wait(500)
-                            save(I[i], I_st[i])
-                            save(Q[i], Q_st[i])
+                with for_(*from_array(x, v_sweep)):
+                    seq.ramp_to_voltages(
+                        {target_obj.name: x},
+                        duration=p.hold_duration,
+                        ramp_duration=p.ramp_duration,
+                    )
+                    if p.pre_measurement_delay > 0:
+                        seq.step_to_voltages({}, duration=p.pre_measurement_delay)
+                    align()
+                    for i, sensor in sensors.items():
+                        rr = sensor.readout_resonator
+                        rr.measure("readout", qua_vars=(I[i], Q[i]))
+                        rr.wait(500)
+                        save(I[i], I_st[i])
+                        save(Q[i], Q_st[i])
 
-                    seq.apply_compensation_pulse()
+                seq.apply_compensation_pulse()
 
         num_sweeps = len(sweep_schedule)
         with stream_processing():
@@ -354,13 +349,24 @@ def plot_data(node: QualibrationNode[CrossCapacitance1DParameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.run_in_video_mode or node.parameters.simulate)
 def update_state(node: QualibrationNode[CrossCapacitance1DParameters, Quam]):
-    """Update the compensation matrix with measured cross-capacitance coefficients.
+    """Compose measured cross-capacitance corrections into the compensation matrix.
 
     Supports two modes:
-    - ``"additive"``: adds the measured residual to the existing matrix entry
-      (for iterative refinement / screening correction).
-    - ``"overwrite"``: replaces the entry with the measured value
-      (for initial matrix population).
+
+    - ``"compose"`` (default): right-composes a correction matrix into the
+      existing compensation matrix, updating the full column for the
+      perturbing gate.  For a measured coefficient ``alpha`` between
+      (target, perturb), the 2x2 correction is::
+
+          Delta = [[1, alpha],    # indexed by (target, perturb)
+                   [0, 1    ]]
+
+      Applied as ``M_new[:, cols] = M_old[:, cols] @ Delta``.
+      This is consistent with node 02 and correctly preserves sensor
+      compensation and other pre-calibrated rows.
+
+    - ``"overwrite"``: replaces the single matrix entry ``M[target][perturb]``
+      with the measured value (suitable for initial population from identity).
     """
     if "fit_results" not in node.results:
         return
@@ -385,24 +391,28 @@ def update_state(node: QualibrationNode[CrossCapacitance1DParameters, Quam]):
             )
 
         source_gates = vgs.layers[0].source_gates
-        target_row = source_gates.index(target_gate)
-        perturb_col = source_gates.index(perturb_gate)
+        target_idx = source_gates.index(target_gate)
+        perturb_idx = source_gates.index(perturb_gate)
         layer = vgs.layers[0]
+        full_old = np.asarray(layer.matrix, dtype=float)
 
-        if node.parameters.update_mode == "additive":
-            current = layer.matrix[target_row][perturb_col]
-            new_value = current + alpha
+        if node.parameters.update_mode == "compose":
+            delta = np.eye(2)
+            delta[0, 1] = alpha
+            cols = [target_idx, perturb_idx]
+            full_new = full_old.copy()
+            full_new[:, cols] = full_old[:, cols] @ delta
         else:
-            new_value = alpha
+            full_new = full_old.copy()
+            full_new[target_idx, perturb_idx] = alpha
+            cols = [target_idx, perturb_idx]
 
-        target_physical = layer.target_gates[target_row]
-        target_ch = vgs.channels[target_physical]
-
+        row_channels = [vgs.channels[layer.target_gates[i]] for i in range(len(source_gates))]
         target_dc = "both" if vgs.id in node.machine.virtual_dc_sets else "opx"
         node.machine.update_cross_compensation_submatrix(
-            virtual_names=[perturb_gate],
-            channels=[target_ch],
-            matrix=[[new_value]],
+            virtual_names=[target_gate, perturb_gate],
+            channels=row_channels,
+            matrix=full_new[:, cols].tolist(),
             target=target_dc,
         )
 

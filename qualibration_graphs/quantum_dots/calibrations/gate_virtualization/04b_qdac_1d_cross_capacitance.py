@@ -369,7 +369,10 @@ def plot_data(node: QualibrationNode[CrossCapacitance1DQdacParameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.run_in_video_mode or node.parameters.simulate)
 def update_state(node: QualibrationNode[CrossCapacitance1DQdacParameters, Quam]):
-    """Update the compensation matrix with measured cross-capacitance coefficients."""
+    """Compose measured cross-capacitance corrections into the compensation matrix.
+
+    See node 04 ``update_state`` for the full mathematical description.
+    """
     if "fit_results" not in node.results:
         return
 
@@ -393,24 +396,28 @@ def update_state(node: QualibrationNode[CrossCapacitance1DQdacParameters, Quam])
             )
 
         source_gates = vgs.layers[0].source_gates
-        target_row = source_gates.index(target_gate)
-        perturb_col = source_gates.index(perturb_gate)
+        target_idx = source_gates.index(target_gate)
+        perturb_idx = source_gates.index(perturb_gate)
         layer = vgs.layers[0]
+        full_old = np.asarray(layer.matrix, dtype=float)
 
-        if node.parameters.update_mode == "additive":
-            current = layer.matrix[target_row][perturb_col]
-            new_value = current + alpha
+        if node.parameters.update_mode == "compose":
+            delta = np.eye(2)
+            delta[0, 1] = alpha
+            cols = [target_idx, perturb_idx]
+            full_new = full_old.copy()
+            full_new[:, cols] = full_old[:, cols] @ delta
         else:
-            new_value = alpha
+            full_new = full_old.copy()
+            full_new[target_idx, perturb_idx] = alpha
+            cols = [target_idx, perturb_idx]
 
-        target_physical = layer.target_gates[target_row]
-        target_ch = vgs.channels[target_physical]
-
+        row_channels = [vgs.channels[layer.target_gates[i]] for i in range(len(source_gates))]
         target_dc = "both" if vgs.id in node.machine.virtual_dc_sets else "opx"
         node.machine.update_cross_compensation_submatrix(
-            virtual_names=[perturb_gate],
-            channels=[target_ch],
-            matrix=[[new_value]],
+            virtual_names=[target_gate, perturb_gate],
+            channels=row_channels,
+            matrix=full_new[:, cols].tolist(),
             target=target_dc,
         )
 

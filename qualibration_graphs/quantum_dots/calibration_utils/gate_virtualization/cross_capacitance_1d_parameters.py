@@ -33,9 +33,9 @@ class CrossCapacitance1DParameters(GateVirtualizationBaseParameters):
     """Total voltage span of the 1D plunger sweep (V)."""
     sweep_points: int = 201
     """Number of points in each 1D plunger sweep."""
-    update_mode: Literal["additive", "overwrite"] = "additive"
+    update_mode: Literal["compose", "overwrite"] = "compose"
     """How to update the compensation matrix.
-    ``"additive"`` adds the measured residual to the existing entry (suitable
-    for iterative refinement).
-    ``"overwrite"`` replaces the entry with the measured value (suitable for
-    initial matrix population)."""
+    ``"compose"`` right-composes the measured correction into the existing
+    matrix, updating the full perturbing-gate column (consistent with node 02).
+    ``"overwrite"`` replaces the single entry with the measured value
+    (suitable for initial matrix population from identity)."""

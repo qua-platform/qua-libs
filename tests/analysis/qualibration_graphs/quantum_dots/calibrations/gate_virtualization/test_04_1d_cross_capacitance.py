@@ -236,19 +236,28 @@ SENSOR_SWEEP_POINTS = 300
 SENSOR_COMP = CALIBRATED_SENSOR_COMP
 
 
-def test_update_state_additive(minimal_quam_factory):
-    """update_state in additive mode adds the coefficient to the existing entry."""
+def test_update_state_compose(minimal_quam_factory):
+    """update_state in compose mode right-composes the correction into the full column."""
     from quam_config import Quam
 
     machine = minimal_quam_factory()
     layer = machine.virtual_gate_sets["main_qpu"].layers[0]
     source_gates = list(layer.source_gates)
 
-    target_row = source_gates.index(TARGET_GATE)
-    perturb_col = source_gates.index(PERTURB_GATE)
+    target_idx = source_gates.index(TARGET_GATE)
+    perturb_idx = source_gates.index(PERTURB_GATE)
 
-    old_value = 0.05
-    layer.matrix[target_row][perturb_col] = old_value
+    full_old = np.asarray(layer.matrix, dtype=float).copy()
+
+    # Seed some non-trivial off-diagonal values so we can verify
+    # that the full-column update propagates correctly.
+    layer.matrix[target_idx][perturb_idx] = 0.05
+    full_old[target_idx, perturb_idx] = 0.05
+    # Also seed a value in another row of the target column so we
+    # can verify it propagates into the perturb column.
+    other_row = (target_idx + 2) % len(source_gates)
+    layer.matrix[other_row][target_idx] = 0.03
+    full_old[other_row, target_idx] = 0.03
 
     measured_alpha = 0.12
 
@@ -262,7 +271,7 @@ def test_update_state_additive(minimal_quam_factory):
         )
     assert node is not None
     node.machine = machine
-    node.parameters.update_mode = "additive"
+    node.parameters.update_mode = "compose"
 
     pair_key = f"{TARGET_GATE}_vs_{PERTURB_GATE}"
     node.results["fit_results"] = {
@@ -276,24 +285,39 @@ def test_update_state_additive(minimal_quam_factory):
 
     _call_node_action(node, "update_state")
 
-    updated = machine.virtual_gate_sets["main_qpu"].layers[0].matrix
-    assert updated[target_row][perturb_col] == pytest.approx(
-        old_value + measured_alpha
-    ), f"Expected {old_value + measured_alpha}, got {updated[target_row][perturb_col]}"
+    updated = np.asarray(machine.virtual_gate_sets["main_qpu"].layers[0].matrix, dtype=float)
+    cols = [target_idx, perturb_idx]
+    delta = np.eye(2)
+    delta[0, 1] = measured_alpha
+    expected = full_old.copy()
+    expected[:, cols] = full_old[:, cols] @ delta
+
+    np.testing.assert_allclose(
+        updated[:, cols],
+        expected[:, cols],
+        atol=1e-12,
+        err_msg="compose mode should right-compose Delta into both columns",
+    )
+    # Verify the target column is unchanged.
+    np.testing.assert_allclose(updated[:, target_idx], full_old[:, target_idx], atol=1e-12)
+    # Verify the perturb column picked up contributions from the target column.
+    assert updated[other_row][perturb_idx] == pytest.approx(
+        full_old[other_row, perturb_idx] + measured_alpha * full_old[other_row, target_idx]
+    )
 
 
 def test_update_state_overwrite(minimal_quam_factory):
-    """update_state in overwrite mode replaces the entry with the measured value."""
+    """update_state in overwrite mode replaces the single entry with the measured value."""
     from quam_config import Quam
 
     machine = minimal_quam_factory()
     layer = machine.virtual_gate_sets["main_qpu"].layers[0]
     source_gates = list(layer.source_gates)
 
-    target_row = source_gates.index(TARGET_GATE)
-    perturb_col = source_gates.index(PERTURB_GATE)
+    target_idx = source_gates.index(TARGET_GATE)
+    perturb_idx = source_gates.index(PERTURB_GATE)
 
-    layer.matrix[target_row][perturb_col] = 0.99
+    layer.matrix[target_idx][perturb_idx] = 0.99
 
     measured_alpha = 0.25
 
@@ -321,10 +345,8 @@ def test_update_state_overwrite(minimal_quam_factory):
 
     _call_node_action(node, "update_state")
 
-    updated = machine.virtual_gate_sets["main_qpu"].layers[0].matrix
-    assert updated[target_row][perturb_col] == pytest.approx(
-        measured_alpha
-    ), f"Expected {measured_alpha}, got {updated[target_row][perturb_col]}"
+    updated = np.asarray(machine.virtual_gate_sets["main_qpu"].layers[0].matrix, dtype=float)
+    assert updated[target_idx][perturb_idx] == pytest.approx(measured_alpha)
 
 
 def test_update_state_skips_failed_fit(minimal_quam_factory):
@@ -484,8 +506,8 @@ class TestCrossCapacitance1DE2E:
         target_row = source_gates.index(TARGET_GATE)
         perturb_col = source_gates.index(PERTURB_GATE)
 
-        # Default update_mode is "additive"; matrix starts as identity (off-diag = 0),
-        # so the entry should equal alpha.
+        # Default update_mode is "compose"; matrix starts as identity so
+        # M_new[r][c] = M_old[r][c] + alpha * M_old[r][r] = 0 + alpha * 1 = alpha.
         assert layer.matrix[target_row][perturb_col] == pytest.approx(alpha), (
             f"Expected matrix[{target_row}][{perturb_col}] = {alpha}, " f"got {layer.matrix[target_row][perturb_col]}"
         )
