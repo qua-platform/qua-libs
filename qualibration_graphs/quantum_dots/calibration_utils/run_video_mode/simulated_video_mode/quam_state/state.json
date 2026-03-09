@@ -10,22 +10,15 @@
             },
             "id": "plunger_1",
             "sticky": {
-                "duration": 1000,
+                "duration": 16,
                 "digital": false,
                 "__class__": "quam.components.channels.StickyChannelAddon"
             },
             "opx_output": {
                 "controller_id": "con1",
-                "fem_id": 5,
+                "fem_id": 6,
                 "port_id": 1,
-                "upsampling_mode": "pulse",
                 "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
-            },
-            "attenuation": 10,
-            "current_external_voltage": -0.0048056,
-            "qdac_spec": {
-                "qdac_output_port": 1,
-                "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
             },
             "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
         },
@@ -39,26 +32,19 @@
             },
             "id": "plunger_2",
             "sticky": {
-                "duration": 1000,
+                "duration": 16,
                 "digital": false,
                 "__class__": "quam.components.channels.StickyChannelAddon"
             },
             "opx_output": {
                 "controller_id": "con1",
-                "fem_id": 5,
+                "fem_id": 6,
                 "port_id": 2,
-                "upsampling_mode": "pulse",
                 "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
-            },
-            "attenuation": 10,
-            "current_external_voltage": -0.0047219,
-            "qdac_spec": {
-                "qdac_output_port": 2,
-                "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
             },
             "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
         },
-        "sensor_1": {
+        "plunger_3": {
             "operations": {
                 "half_max_square": {
                     "length": 16,
@@ -66,54 +52,43 @@
                     "__class__": "quam.components.pulses.SquarePulse"
                 }
             },
-            "id": "sensor_1",
+            "id": "plunger_3",
             "sticky": {
-                "duration": 1000,
+                "duration": 16,
                 "digital": false,
                 "__class__": "quam.components.channels.StickyChannelAddon"
             },
             "opx_output": {
                 "controller_id": "con1",
-                "fem_id": 5,
+                "fem_id": 6,
+                "port_id": 3,
+                "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+            },
+            "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
+        },
+        "plunger_4": {
+            "operations": {
+                "half_max_square": {
+                    "length": 16,
+                    "amplitude": 0.25,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": "plunger_4",
+            "sticky": {
+                "duration": 16,
+                "digital": false,
+                "__class__": "quam.components.channels.StickyChannelAddon"
+            },
+            "opx_output": {
+                "controller_id": "con1",
+                "fem_id": 6,
                 "port_id": 4,
-                "upsampling_mode": "pulse",
                 "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
-            },
-            "attenuation": 10,
-            "current_external_voltage": -0.0047641,
-            "qdac_spec": {
-                "qdac_output_port": 4,
-                "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
-            },
-            "readout": {
-                "operations": {
-                    "readout": {
-                        "length": 100,
-                        "id": "readout",
-                        "amplitude": 0.1,
-                        "__class__": "quam.components.pulses.SquareReadoutPulse"
-                    }
-                },
-                "id": "readout_resonator_1",
-                "intermediate_frequency": 150000000.0,
-                "opx_input": {
-                    "controller_id": "con1",
-                    "fem_id": 5,
-                    "port_id": 1,
-                    "__class__": "quam.components.ports.analog_inputs.LFFEMAnalogInputPort"
-                },
-                "time_of_flight": 28,
-                "opx_output": {
-                    "controller_id": "con1",
-                    "fem_id": 5,
-                    "port_id": 6,
-                    "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
-                },
-                "__class__": "quam_builder.architecture.quantum_dots.components.readout_resonator.ReadoutResonatorSingle"
             },
             "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
         },
-        "sensor_2": {
+        "barrier_1": {
             "operations": {
                 "half_max_square": {
                     "length": 16,
@@ -121,47 +96,106 @@
                     "__class__": "quam.components.pulses.SquarePulse"
                 }
             },
-            "id": "sensor_2",
+            "id": "barrier_1",
             "sticky": {
-                "duration": 1000,
+                "duration": 16,
                 "digital": false,
                 "__class__": "quam.components.channels.StickyChannelAddon"
             },
             "opx_output": {
                 "controller_id": "con1",
-                "fem_id": 5,
+                "fem_id": 6,
                 "port_id": 5,
-                "upsampling_mode": "pulse",
                 "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
             },
-            "attenuation": 10,
-            "current_external_voltage": -0.0047641,
-            "qdac_spec": {
-                "qdac_output_port": 5,
-                "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
+            "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
+        },
+        "barrier_2": {
+            "operations": {
+                "half_max_square": {
+                    "length": 16,
+                    "amplitude": 0.25,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": "barrier_2",
+            "sticky": {
+                "duration": 16,
+                "digital": false,
+                "__class__": "quam.components.channels.StickyChannelAddon"
+            },
+            "opx_output": {
+                "controller_id": "con1",
+                "fem_id": 6,
+                "port_id": 6,
+                "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+            },
+            "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
+        },
+        "barrier_3": {
+            "operations": {
+                "half_max_square": {
+                    "length": 16,
+                    "amplitude": 0.25,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": "barrier_3",
+            "sticky": {
+                "duration": 16,
+                "digital": false,
+                "__class__": "quam.components.channels.StickyChannelAddon"
+            },
+            "opx_output": {
+                "controller_id": "con1",
+                "fem_id": 6,
+                "port_id": 7,
+                "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+            },
+            "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
+        },
+        "sensor_DC": {
+            "operations": {
+                "half_max_square": {
+                    "length": 16,
+                    "amplitude": 0.25,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": "sensor_DC",
+            "sticky": {
+                "duration": 16,
+                "digital": false,
+                "__class__": "quam.components.channels.StickyChannelAddon"
+            },
+            "opx_output": {
+                "controller_id": "con1",
+                "fem_id": 6,
+                "port_id": 8,
+                "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
             },
             "readout": {
+                "frequency_bare": 0,
                 "operations": {
                     "readout": {
-                        "length": 100,
+                        "length": 200,
                         "id": "readout",
-                        "amplitude": 0.1,
+                        "amplitude": 0.01,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     }
                 },
-                "id": "readout_resonator_2",
-                "intermediate_frequency": 250000000.0,
+                "id": "readout_resonator",
+                "intermediate_frequency": 500000000.0,
                 "opx_input": {
                     "controller_id": "con1",
                     "fem_id": 5,
-                    "port_id": 1,
+                    "port_id": 2,
                     "__class__": "quam.components.ports.analog_inputs.LFFEMAnalogInputPort"
                 },
-                "time_of_flight": 28,
                 "opx_output": {
                     "controller_id": "con1",
                     "fem_id": 5,
-                    "port_id": 6,
+                    "port_id": 1,
                     "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
                 },
                 "__class__": "quam_builder.architecture.quantum_dots.components.readout_resonator.ReadoutResonatorSingle"
@@ -172,11 +206,51 @@
     "virtual_gate_sets": {
         "main_qpu": {
             "id": "main_qpu",
+            "macros": {
+                "virtual_dot_1_loading": {
+                    "duration": 16,
+                    "voltages": {
+                        "virtual_dot_1": 0.1,
+                        "virtual_barrier_1": 0.4,
+                        "virtual_barrier_2": 0.45,
+                        "virtual_barrier_3": 0.42,
+                        "virtual_sensor_1": 0.15
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "virtual_dot_2_loading": {
+                    "duration": 16,
+                    "voltages": {
+                        "virtual_dot_2": 0.15,
+                        "virtual_barrier_1": 0.4,
+                        "virtual_barrier_2": 0.45,
+                        "virtual_barrier_3": 0.42,
+                        "virtual_sensor_1": 0.15
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                },
+                "dot3_dot4_pair_some_detuning_points": {
+                    "duration": 16,
+                    "voltages": {
+                        "virtual_dot_3": 0.2,
+                        "virtual_dot_4": 0.25,
+                        "virtual_barrier_1": 0.4,
+                        "virtual_barrier_2": 0.45,
+                        "virtual_barrier_3": 0.42,
+                        "virtual_sensor_1": 0.15
+                    },
+                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
+                }
+            },
             "channels": {
                 "plunger_1": "#/physical_channels/plunger_1",
                 "plunger_2": "#/physical_channels/plunger_2",
-                "sensor_1": "#/physical_channels/sensor_1",
-                "sensor_2": "#/physical_channels/sensor_2"
+                "plunger_3": "#/physical_channels/plunger_3",
+                "plunger_4": "#/physical_channels/plunger_4",
+                "barrier_1": "#/physical_channels/barrier_1",
+                "barrier_2": "#/physical_channels/barrier_2",
+                "barrier_3": "#/physical_channels/barrier_3",
+                "sensor_DC": "#/physical_channels/sensor_DC"
             },
             "layers": [
                 {
@@ -184,119 +258,139 @@
                     "source_gates": [
                         "virtual_dot_1",
                         "virtual_dot_2",
-                        "virtual_sensor_1",
-                        "virtual_sensor_2"
+                        "virtual_dot_3",
+                        "virtual_dot_4",
+                        "virtual_barrier_1",
+                        "virtual_barrier_2",
+                        "virtual_barrier_3",
+                        "virtual_sensor_1"
                     ],
                     "target_gates": [
                         "plunger_1",
                         "plunger_2",
-                        "sensor_1",
-                        "sensor_2"
+                        "plunger_3",
+                        "plunger_4",
+                        "barrier_1",
+                        "barrier_2",
+                        "barrier_3",
+                        "sensor_DC"
                     ],
                     "matrix": [
                         [
-                            1.0,
+                            1,
+                            0.1,
+                            0.1,
+                            0.3,
                             0.0,
-                            0.020406,
-                            0.020406
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.2,
+                            1,
+                            0.6,
+                            0.8,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.1,
+                            0.3,
+                            1,
+                            0.3,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.2,
+                            0.5,
+                            0.1,
+                            1,
+                            0.1,
+                            0.5,
+                            0.0,
+                            0.0
                         ],
                         [
                             0.0,
+                            0.0,
+                            0.0,
+                            0.0,
                             1.0,
-                            0.029189,
-                            0.029189
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0.020406,
-                            0.029189,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0,
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
                             1.0,
                             0.0
                         ],
                         [
-                            0.020406,
-                            0.029189,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
                             0.0,
                             1.0
                         ]
                     ],
+                    "__class__": "quam_builder.architecture.quantum_dots.components.virtual_gate_set.VirtualizationLayer"
+                },
+                {
+                    "id": "quantum_dot_pair_detuning_matrix",
+                    "source_gates": [
+                        "dot1_dot2_pair_epsilon",
+                        "dot3_dot4_pair_epsilon"
+                    ],
+                    "target_gates": [
+                        "virtual_dot_1",
+                        "virtual_dot_2",
+                        "virtual_dot_3",
+                        "virtual_dot_4"
+                    ],
+                    "matrix": [
+                        [
+                            1.0,
+                            -1.0,
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            0.0,
+                            1.0,
+                            -1.0
+                        ]
+                    ],
+                    "use_pseudoinverse": true,
                     "__class__": "quam_builder.architecture.quantum_dots.components.virtual_gate_set.VirtualizationLayer"
                 }
             ],
             "allow_rectangular_matrices": true,
             "__class__": "quam_builder.architecture.quantum_dots.components.virtual_gate_set.VirtualGateSet"
-        }
-    },
-    "virtual_dc_sets": {
-        "main_qpu": {
-            "id": "main_qpu",
-            "channels": {
-                "plunger_1": "#/physical_channels/plunger_1",
-                "plunger_2": "#/physical_channels/plunger_2",
-                "sensor_1": "#/physical_channels/sensor_1",
-                "sensor_2": "#/physical_channels/sensor_2"
-            },
-            "layers": [
-                {
-                    "id": "compensation_layer",
-                    "source_gates": [
-                        "virtual_dot_1",
-                        "virtual_dot_2",
-                        "virtual_sensor_1",
-                        "virtual_sensor_2"
-                    ],
-                    "target_gates": [
-                        "plunger_1",
-                        "plunger_2",
-                        "sensor_1",
-                        "sensor_2"
-                    ],
-                    "matrix": [
-                        [
-                            1.0,
-                            0.0,
-                            0.020406,
-                            0.020406
-                        ],
-                        [
-                            0.0,
-                            1.0,
-                            0.029189,
-                            0.029189
-                        ],
-                        [
-                            0.020406,
-                            0.029189,
-                            1.0,
-                            0.0
-                        ],
-                        [
-                            0.020406,
-                            0.029189,
-                            0.0,
-                            1.0
-                        ]
-                    ],
-                    "__class__": "quam_builder.architecture.quantum_dots.components.virtual_gate_set.VirtualizationLayer"
-                }
-            ],
-            "allow_rectangular_matrices": true,
-            "_current_physical_voltages": {
-                "plunger_1": -0.0048056,
-                "plunger_2": -0.0047219,
-                "sensor_1": -0.0047641,
-                "sensor_2": -0.0047641
-            },
-            "_current_levels": {
-                "plunger_1": -0.0048056,
-                "plunger_2": -0.0047219,
-                "sensor_1": -0.0047641,
-                "sensor_2": -0.0047641,
-                "virtual_dot_1": -0.0050000324492,
-                "virtual_dot_2": -0.0050000186298,
-                "virtual_sensor_1": -0.0049999906127,
-                "virtual_sensor_2": -0.0049999906127
-            },
-            "__class__": "quam_builder.architecture.quantum_dots.components.virtual_dc_set.VirtualDCSet"
         }
     },
     "quantum_dots": {
@@ -325,6 +419,76 @@
             },
             "physical_channel": "#/physical_channels/plunger_2",
             "__class__": "quam_builder.architecture.quantum_dots.components.quantum_dot.QuantumDot"
+        },
+        "virtual_dot_3": {
+            "id": "virtual_dot_3",
+            "macros": {
+                "align": {
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                }
+            },
+            "physical_channel": "#/physical_channels/plunger_3",
+            "__class__": "quam_builder.architecture.quantum_dots.components.quantum_dot.QuantumDot"
+        },
+        "virtual_dot_4": {
+            "id": "virtual_dot_4",
+            "macros": {
+                "align": {
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                }
+            },
+            "physical_channel": "#/physical_channels/plunger_4",
+            "__class__": "quam_builder.architecture.quantum_dots.components.quantum_dot.QuantumDot"
+        }
+    },
+    "quantum_dot_pairs": {
+        "dot1_dot2_pair": {
+            "id": "dot1_dot2_pair",
+            "macros": {
+                "align": {
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                }
+            },
+            "quantum_dots": [
+                "#/quantum_dots/virtual_dot_1",
+                "#/quantum_dots/virtual_dot_2"
+            ],
+            "sensor_dots": [
+                "#/sensor_dots/virtual_sensor_1"
+            ],
+            "barrier_gate": "#/barrier_gates/virtual_barrier_2",
+            "detuning_axis_name": "dot1_dot2_pair_epsilon",
+            "__class__": "quam_builder.architecture.quantum_dots.components.quantum_dot_pair.QuantumDotPair"
+        },
+        "dot3_dot4_pair": {
+            "id": "dot3_dot4_pair",
+            "macros": {
+                "align": {
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                }
+            },
+            "quantum_dots": [
+                "#/quantum_dots/virtual_dot_3",
+                "#/quantum_dots/virtual_dot_4"
+            ],
+            "sensor_dots": [
+                "#/sensor_dots/virtual_sensor_1"
+            ],
+            "barrier_gate": "#/barrier_gates/virtual_barrier_3",
+            "detuning_axis_name": "dot3_dot4_pair_epsilon",
+            "__class__": "quam_builder.architecture.quantum_dots.components.quantum_dot_pair.QuantumDotPair"
         }
     },
     "sensor_dots": {
@@ -338,11 +502,13 @@
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
                 }
             },
-            "physical_channel": "#/physical_channels/sensor_1",
+            "physical_channel": "#/physical_channels/sensor_DC",
             "__class__": "quam_builder.architecture.quantum_dots.components.sensor_dot.SensorDot"
-        },
-        "virtual_sensor_2": {
-            "id": "virtual_sensor_2",
+        }
+    },
+    "barrier_gates": {
+        "virtual_barrier_1": {
+            "id": "virtual_barrier_1",
             "macros": {
                 "align": {
                     "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
@@ -351,8 +517,34 @@
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
                 }
             },
-            "physical_channel": "#/physical_channels/sensor_2",
-            "__class__": "quam_builder.architecture.quantum_dots.components.sensor_dot.SensorDot"
+            "physical_channel": "#/physical_channels/barrier_1",
+            "__class__": "quam_builder.architecture.quantum_dots.components.barrier_gate.BarrierGate"
+        },
+        "virtual_barrier_2": {
+            "id": "virtual_barrier_2",
+            "macros": {
+                "align": {
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                }
+            },
+            "physical_channel": "#/physical_channels/barrier_2",
+            "__class__": "quam_builder.architecture.quantum_dots.components.barrier_gate.BarrierGate"
+        },
+        "virtual_barrier_3": {
+            "id": "virtual_barrier_3",
+            "macros": {
+                "align": {
+                    "__class__": "quam_builder.tools.macros.default_macros.AlignMacro"
+                },
+                "wait": {
+                    "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                }
+            },
+            "physical_channel": "#/physical_channels/barrier_3",
+            "__class__": "quam_builder.architecture.quantum_dots.components.barrier_gate.BarrierGate"
         }
     },
     "__class__": "quam_builder.architecture.quantum_dots.qpu.base_quam_qd.BaseQuamQD"
