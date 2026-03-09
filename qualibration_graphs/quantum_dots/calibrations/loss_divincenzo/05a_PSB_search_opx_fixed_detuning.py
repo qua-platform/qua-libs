@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.psb_search_fixed_detuning import Parameters
-from calibration_utils.common_utils.experiment import get_sensors
+from calibration_utils.common_utils.experiment import get_sensors, _make_batchable_list_from_multiplexed
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -67,6 +67,89 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    dot_pair_objects = [node.machine.quantum_dot_pairs[name] for name in node.parameters.quantum_dot_pair_names]
+
+    node.namespace["dot_pairs"] = dot_pair_objects
+
+    multiplexed_sensors_by_dot_pair = {
+        pair.name: _make_batchable_list_from_multiplexed(pair.sensor_dots, multiplexed = node.parameters.multiplexed) for pair in dot_pair_objects
+    }
+
+    # The swept 'axes'. Do we do a full 2D scan here? 
+    node.namespace["sweep_axes"] = {
+        "quantum_dot_pair": xr.DataArray([pair.name for pair in dot_pair_objects]),
+    }
+    with program() as prog: 
+        n = declare(int)
+        n_st = declare_stream()
+
+        I_st = {pair.name: [declare_stream() for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))] for pair in dot_pair_objects}
+        Q_st = {pair.name: [declare_stream() for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))] for pair in dot_pair_objects}
+        I = {pair.name: [declare(fixed) for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))] for pair in dot_pair_objects}
+        Q = {pair.name: [declare(fixed) for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))] for pair in dot_pair_objects}
+
+        with for_(n, 0, n<node.parameters.num_shots, n+1): 
+            save(n, n_st)
+
+            # Perform them all sequentially for now. Can add footprint batching later
+            for dot_pair in dot_pair_objects: 
+                
+                # ---------------------------------------------------------
+                # Step 1a: Empty - step to empty point (fixed duration)
+                # ---------------------------------------------------------
+                dot_pair.empty()
+                # Requires the dot pair object to have the empty macro, in addition to the qubits
+                # Equivalet step to the lvl_init
+
+                # ---------------------------------------------------------
+                # Step 2: Initialize - load electron into dots (fixed duration)
+                # ---------------------------------------------------------
+                dot_pair.initialize()
+                # Requires the dot pair object to have the initialize macro, in addition to the qubits
+
+                # ---------------------------------------------------------
+                # Step 3: Measure
+                # ---------------------------------------------------------
+                # No macro used here, since the user likely has no measure macros defined (the point of this node)
+                
+                # First ramp to the fixed detuning point
+                dot_pair.ramp_to_detuning(
+                    node.parameters.detuning, 
+                    ramp_duration = node.parameters.ramp_duration
+                )
+
+                align()
+                
+                # And then explicitly measure. 
+                # The measuring will be in batches of multiplexed sensors. Each dot_pair will have a list of SensorDot objects. 
+                # For each multiplexable batch, we have a single measurement saved to a single stream. 
+
+                for i, batch in enumerate(multiplexed_sensors_by_dot_pair[dot_pair.name].batch()):
+                    for sensor in batch.values():
+                        # Select the resonator tied to the sensor
+                        rr = sensor.readout_resonator
+                        # Measure using said resonator
+                        rr.measure("readout", qua_vars=(I[dot_pair.name][i], Q[dot_pair.name][i]))
+                        # Post-measurement wait (Optional)
+                        rr.wait(500)
+
+                    # Save data
+                    save(I[dot_pair.name][i], I_st[dot_pair.name][i])
+                    save(Q[dot_pair.name][i], Q_st[dot_pair.name][i])
+                
+                align()
+                # Apply the compensation pulse via the voltage sequence
+                dot_pair.voltage_sequence.apply_compensation_pulse()
+
+        with stream_processing():
+            n_st.save("n")
+
+            for pair in dot_pair_objects:
+                for i in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch())):
+                    I_st[pair.name][i].average().save(f"I_{pair.name}_sensor_{i}")
+                    Q_st[pair.name][i].average().save(f"Q_{pair.name}_sensor_{i}")
+
+
 
 
 # %% {Simulate}
