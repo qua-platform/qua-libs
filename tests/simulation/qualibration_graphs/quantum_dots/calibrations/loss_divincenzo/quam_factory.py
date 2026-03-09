@@ -15,6 +15,9 @@ from quam.components.ports import (  # type: ignore[import-not-found]
 from quam_builder.architecture.quantum_dots.components import (  # type: ignore[import-not-found]
     VoltageGate,
 )
+from quam_builder.architecture.quantum_dots.components.voltage_gate import (  # type: ignore[import-not-found]
+    QdacSpec,
+)
 from quam_builder.architecture.quantum_dots.components.xy_drive import (  # type: ignore[import-not-found]
     XYDriveIQ,
 )
@@ -45,6 +48,17 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
     lf_fem_slot_1 = 4  # For qubit pair 1 (Q1, Q2)
     lf_fem_slot_2 = 5  # For qubit pair 2 (Q3, Q4)
 
+    # Keep QDAC ports unique across the six physical DC gates while preserving
+    # the natural 3-gate grouping for each dot pair.
+    qdac_port_map = {
+        "plunger_1": 1,
+        "plunger_2": 2,
+        "sensor_DC_1": 3,
+        "plunger_3": 4,
+        "plunger_4": 5,
+        "sensor_DC_2": 6,
+    }
+
     plungers = {}
     for i in range(1, 3):
         plungers[i] = VoltageGate(
@@ -56,6 +70,7 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
                 output_mode="direct",
             ),
             sticky=StickyChannelAddon(duration=16, digital=False),
+            qdac_spec=QdacSpec(qdac_output_port=qdac_port_map[f"plunger_{i}"]),
         )
     for i in range(3, 5):
         plungers[i] = VoltageGate(
@@ -67,6 +82,7 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
                 output_mode="direct",
             ),
             sticky=StickyChannelAddon(duration=16, digital=False),
+            qdac_spec=QdacSpec(qdac_output_port=qdac_port_map[f"plunger_{i}"]),
         )
 
     sensor_dcs = {
@@ -79,6 +95,7 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
                 output_mode="direct",
             ),
             sticky=StickyChannelAddon(duration=16, digital=False),
+            qdac_spec=QdacSpec(qdac_output_port=qdac_port_map["sensor_DC_1"]),
         ),
         2: VoltageGate(
             id="sensor_DC_2",
@@ -89,83 +106,9 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
                 output_mode="direct",
             ),
             sticky=StickyChannelAddon(duration=16, digital=False),
+            qdac_spec=QdacSpec(qdac_output_port=qdac_port_map["sensor_DC_2"]),
         ),
     }
-
-    # readout_resonators = {
-    #     1: ReadoutResonatorIQ(
-    #         id="sensor_resonator_1",
-    #         opx_output_I=LFFEMAnalogOutputPort(
-    #             controller_id=controller,
-    #             fem_id=lf_fem_slot_1,
-    #             port_id=4,
-    #             output_mode="direct",
-    #         ),
-    #         opx_output_Q=LFFEMAnalogOutputPort(
-    #             controller_id=controller,
-    #             fem_id=lf_fem_slot_1,
-    #             port_id=5,
-    #             output_mode="direct",
-    #         ),
-    #         opx_input_I=LFFEMAnalogInputPort(
-    #             controller_id=controller,
-    #             fem_id=lf_fem_slot_1,
-    #             port_id=1,
-    #         ),
-    #         opx_input_Q=LFFEMAnalogInputPort(
-    #             controller_id=controller,
-    #             fem_id=lf_fem_slot_1,
-    #             port_id=2,
-    #         ),
-    #         frequency_converter_up=FrequencyConverter(
-    #             local_oscillator=LocalOscillator(frequency=5e9),
-    #         ),
-    #         intermediate_frequency=50e6,
-    #         operations={
-    #             "readout": pulses.SquareReadoutPulse(
-    #                 length=1000,
-    #                 amplitude=0.1,
-    #                 integration_weights_angle=0.0,
-    #             )
-    #         },
-    #     ),
-    #     2: ReadoutResonatorIQ(
-    #         id="sensor_resonator_2",
-    #         opx_output_I=LFFEMAnalogOutputPort(
-    #             controller_id=controller,
-    #             fem_id=lf_fem_slot_2,
-    #             port_id=4,
-    #             output_mode="direct",
-    #         ),
-    #         opx_output_Q=LFFEMAnalogOutputPort(
-    #             controller_id=controller,
-    #             fem_id=lf_fem_slot_2,
-    #             port_id=5,
-    #             output_mode="direct",
-    #         ),
-    #         opx_input_I=LFFEMAnalogInputPort(
-    #             controller_id=controller,
-    #             fem_id=lf_fem_slot_2,
-    #             port_id=1,
-    #         ),
-    #         opx_input_Q=LFFEMAnalogInputPort(
-    #             controller_id=controller,
-    #             fem_id=lf_fem_slot_2,
-    #             port_id=2,
-    #         ),
-    #         frequency_converter_up=FrequencyConverter(
-    #             local_oscillator=LocalOscillator(frequency=5e9),
-    #         ),
-    #         intermediate_frequency=50e6,
-    #         operations={
-    #             "readout": pulses.SquareReadoutPulse(
-    #                 length=1000,
-    #                 amplitude=0.1,
-    #                 integration_weights_angle=0.0,
-    #             )
-    #         },
-    #     ),
-    # }
 
     readout_resonators = {
         1: ReadoutResonatorSingle(
