@@ -11,11 +11,42 @@ from qua_dashboards.virtual_gates import VirtualLayerEditor, ui_update
 import threading
 import webbrowser
 import subprocess
-from .build_qarray_simulator import setup_simulation
+from .build_qarray_simulator import get_simulated_video_mode_base_point, setup_simulation
 
 
 _DASHBOARD_THREAD: Optional[threading.Thread] = None
 _DASHBOARD_SERVER = None
+
+
+def get_simulated_video_mode_dc_set(
+    machine: QuamRoot,
+    virtual_gate_id: str,
+    log,
+    dc_control: bool,
+):
+    """Return a usable DC set for simulated video mode, or disable DC control."""
+    if not dc_control:
+        return None
+
+    virtual_dc_sets = getattr(machine, "virtual_dc_sets", None) or {}
+    dc_set = virtual_dc_sets.get(virtual_gate_id)
+    if dc_set is None:
+        log(
+            "Simulated video mode requested DC control, but this QuAM has no "
+            f"virtual_dc_set for {virtual_gate_id}. Continuing without DC control."
+        )
+        return None
+
+    network = getattr(machine, "network", None) or {}
+    if "qdac_ip" not in network:
+        log(
+            "Simulated video mode requested DC control, but this QuAM has no "
+            "qdac_ip configured. Continuing without DC control."
+        )
+        return None
+
+    machine.connect_to_external_source(external_qdac=True)
+    return dc_set
 
 
 def stop_dashboard(port: int = 8050):
@@ -81,11 +112,7 @@ def launch_video_mode(
         }
 
     virtual_gate_set = machine.virtual_gate_sets[virtual_gate_id]
-    dc_set = None
-    if dc_control:
-        external_qdac = "qdac_ip" in machine.network
-        machine.connect_to_external_source(external_qdac=external_qdac)
-        dc_set = machine.virtual_dc_sets.get(virtual_gate_id, None)
+    dc_set = get_simulated_video_mode_dc_set(machine, virtual_gate_id, log, dc_control)
 
     voltage_control_tab, voltage_control_component = None, None
     if dc_set is not None:
@@ -100,18 +127,12 @@ def launch_video_mode(
 
         voltage_control_tab = VoltageControlTabController(voltage_control_component=voltage_control_component)
 
-    sensor_plunger_bias_mv = [-5.0e-3, -5.0e-3]
-    base_point = {
-        "virtual_dot_1": -5.0e-3,
-        "virtual_dot_2": -5.0e-3,
-        "virtual_sensor_1": sensor_plunger_bias_mv[0],
-        "virtual_sensor_2": sensor_plunger_bias_mv[1],
-    }
+    base_point = get_simulated_video_mode_base_point()
     simulator = setup_simulation(
         base_point, virtual_gate_set, dc_set, sensor_gate_names=["virtual_sensor_1", "virtual_sensor_2"]
     )
-    if dc_control:
-        machine.virtual_dc_sets["main_qpu"].set_voltages(base_point)
+    if dc_set is not None:
+        dc_set.set_voltages(base_point)
 
     qmm = machine.connect()
 

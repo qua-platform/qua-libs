@@ -36,7 +36,13 @@ from calibration_utils.charge_stability import (
     plot_change_point_overlays,
     plot_line_fit_overlays,
 )
-from calibration_utils.run_video_mode.simulated_video_mode import setup_simulation, create_video_mode
+from calibration_utils.run_video_mode.simulated_video_mode import (
+    get_simulated_video_mode_base_point,
+    SIMULATED_VIDEO_MODE_QUAM_PATH,
+    create_video_mode,
+    get_simulated_video_mode_dc_set,
+    setup_simulation,
+)
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from calibration_utils.common_utils.experiment import get_dots, get_sensors
@@ -56,7 +62,9 @@ Prerequisites:
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="03b_charge_stability", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](
+    name="05d_charge_stability_demo", description=description, parameters=Parameters()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -70,14 +78,21 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load(
-    "/Users/kalidu_laptop/march_meeting/qua-libs/qualibration_graphs/quantum_dots/calibration_utils/run_video_mode/simulated_video_mode/quam_state"
-)
+_SIMULATED_QUAM_STATE_PATH = Path(SIMULATED_VIDEO_MODE_QUAM_PATH).resolve()
+if not _SIMULATED_QUAM_STATE_PATH.exists():
+    _generator_path = _SIMULATED_QUAM_STATE_PATH.parent / "generate_quam_state.py"
+    raise FileNotFoundError(
+        "Simulated video mode QuAM state not found at "
+        f"{_SIMULATED_QUAM_STATE_PATH}. Generate it explicitly by running "
+        f"{_generator_path}."
+    )
+
+node.machine = Quam.load(str(_SIMULATED_QUAM_STATE_PATH))
 node.parameters.virtual_gate_set_id = "main_qpu"
 node.parameters.x_axis_name = "virtual_dot_1"
 node.parameters.y_axis_name = "virtual_dot_2"
 node.parameters.sensor_names = ["virtual_sensor_1", "virtual_sensor_2"]
-node.parameters.dc_control = True
+node.parameters.dc_control = False
 node.parameters.result_type = "I"
 node.parameters.num_shots = 100
 node.parameters.simulate = True
@@ -220,18 +235,14 @@ def simulate_data(node: QualibrationNode[Parameters, Quam]):
     num_sensors = len(sensor_names)
 
     # Keep simulator defaults aligned with video mode simulation.
-    base_point = {
-        "virtual_dot_1": -5.0e-3,
-        "virtual_dot_2": -5.0e-3,
-        "virtual_sensor_1": -5.0e-3,
-        "virtual_sensor_2": -5.0e-3,
-    }
+    base_point = get_simulated_video_mode_base_point()
 
-    if node.parameters.dc_control:
-        node.machine.connect_to_external_source(external_qdac=True)
-        dc_set = node.machine.virtual_dc_sets[node.parameters.virtual_gate_set_id]
-    else:
-        dc_set = None
+    dc_set = get_simulated_video_mode_dc_set(
+        node.machine,
+        node.parameters.virtual_gate_set_id,
+        node.log,
+        node.parameters.dc_control,
+    )
 
     simulator = setup_simulation(
         base_point=base_point,
@@ -365,6 +376,8 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     x_span, x_points = node.parameters.x_span, node.parameters.x_points
     y_span, y_points = node.parameters.y_span, node.parameters.y_points
 
+    quam_state_path = Path(node.machine.serialiser._get_state_path()).resolve()
+
     create_video_mode(
         machine=node.machine,
         num_software_averages=node.parameters.num_shots,
@@ -381,7 +394,7 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
             node.machine.sensor_dots[name].readout_resonator.operations["readout"]
             for name in node.parameters.sensor_names
         ],
-        save_path="/Users/User/.qualibrate/user_storage",
+        save_path=str(quam_state_path),
         port=node.parameters.video_mode_port,
     )
 
