@@ -10,13 +10,39 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
-from qualibrate import QualibrationNode
+from qualibrate import NodeParameters, QualibrationNode
+from qualibrate.parameters import RunnableParameters
+from qualibration_libs.parameters import CommonNodeParameters
 from quam_config import Quam
-from calibration_utils.crot_spectroscopy_parity_diff import Parameters
-from calibration_utils.common_utils.experiment import get_qubits
+from calibration_utils.common_utils.experiment import QubitPairExperimentNodeParameters, get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
+
+try:
+    from calibration_utils.crot_spectroscopy_parity_diff import Parameters
+except ModuleNotFoundError:
+    class NodeSpecificParameters(RunnableParameters):
+        """Fallback parameter set until the CROT parameter module is restored."""
+
+        num_shots: int = 100
+        frequency_span_in_mhz: float = 100.0
+        frequency_step_in_mhz: float = 0.25
+        min_exchange_amplitude: float = 0.0
+        max_exchange_amplitude: float = 0.5
+        amplitude_step: float = 0.01
+        operation: str = "x90"
+        target_qubit: str = "q1"
+        control_qubit: str = "q2"
+
+
+    class Parameters(
+        NodeParameters,
+        CommonNodeParameters,
+        NodeSpecificParameters,
+        QubitPairExperimentNodeParameters,
+    ):
+        """Fallback Parameters used only to keep the node importable."""
 
 # %% {Node initialisation}
 description = """

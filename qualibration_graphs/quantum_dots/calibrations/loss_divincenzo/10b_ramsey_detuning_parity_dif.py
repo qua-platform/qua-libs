@@ -152,8 +152,10 @@ def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
                         # Step 3: X90 – idle – X90
                         for i, qubit in batched_qubits.items():
                             qubit.x90()
+                            align()
                             wait(t)
                             qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
+                            align()
                             qubit.x90()
 
                         # Step 4: Measure

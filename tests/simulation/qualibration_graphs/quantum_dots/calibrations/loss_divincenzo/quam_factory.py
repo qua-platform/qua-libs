@@ -45,7 +45,7 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
     machine = LossDiVincenzoQuam()
 
     controller = "con1"
-    lf_fem_slot_1 = 4  # For qubit pair 1 (Q1, Q2)
+    lf_fem_slot_1 = 3  # For qubit pair 1 (Q1, Q2)
     lf_fem_slot_2 = 5  # For qubit pair 2 (Q3, Q4)
 
     # Keep QDAC ports unique across the six physical DC gates while preserving
@@ -127,6 +127,7 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
             intermediate_frequency=50e6,
             operations={
                 "readout": pulses.SquareReadoutPulse(
+                    id="readout",
                     length=1000,
                     amplitude=0.1,
                     integration_weights_angle=0.0,
@@ -149,6 +150,7 @@ def _create_minimal_machine() -> Tuple[LossDiVincenzoQuam, dict]:
             intermediate_frequency=50e6,
             operations={
                 "readout": pulses.SquareReadoutPulse(
+                    id="readout",
                     length=1000,
                     amplitude=0.1,
                     integration_weights_angle=0.0,

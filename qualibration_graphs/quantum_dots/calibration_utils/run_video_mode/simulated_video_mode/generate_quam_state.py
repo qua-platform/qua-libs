@@ -2,28 +2,28 @@
 
 from __future__ import annotations
 
-import importlib.util
 from pathlib import Path
+import sys
 
 SIMULATED_VIDEO_MODE_DIR = Path(__file__).resolve().parent
 SIMULATED_VIDEO_MODE_QUAM_PATH = SIMULATED_VIDEO_MODE_DIR / "quam_state"
+QUANTUM_DOTS_DIR = SIMULATED_VIDEO_MODE_DIR.parents[3]
 
 
-def _load_local_quam_factory():
-    module_path = SIMULATED_VIDEO_MODE_DIR / "quam_factory.py"
-    spec = importlib.util.spec_from_file_location(
-        "simulated_video_mode_quam_factory",
-        module_path,
+def _load_create_minimal_quam():
+    if str(QUANTUM_DOTS_DIR) not in sys.path:
+        sys.path.insert(0, str(QUANTUM_DOTS_DIR))
+
+    from calibration_utils.run_video_mode.simulated_video_mode.quam_factory import (
+        create_minimal_quam,
     )
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+
+    return create_minimal_quam
 
 
 def generate_simulated_video_mode_quam():
     """Create the QuAM object used by simulated video mode."""
-    return _load_local_quam_factory().create_minimal_quam()
+    return _load_create_minimal_quam()()
 
 
 def save_simulated_video_mode_quam(
