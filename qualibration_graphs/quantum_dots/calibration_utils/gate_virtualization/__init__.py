@@ -1,12 +1,9 @@
-from .base_parameters import (
-    GateVirtualizationBaseParameters,
-    get_voltage_arrays,
-)
+from .base_parameters import GateVirtualizationBaseParameters, get_voltage_arrays
 from .sensor_dot_tuning_parameters import SensorDotTuningParameters
 from .sensor_compensation_parameters import SensorCompensationParameters
 from .virtual_plunger_parameters import VirtualPlungerParameters
-from .barrier_compensation_parameters import BarrierCompensationParameters
-from .analysis import process_raw_dataset, update_compensation_matrix
+from .barrier_pat_parameters import PATLeverArmParameters, BarrierCompensationParameters
+from .analysis import process_raw_dataset, update_compensation_matrix, update_compensation_submatrix
 from .sensor_dot_analysis import fit_lorentzian, lorentzian, optimal_operating_point
 from .sensor_compensation_analysis import (
     extract_sensor_compensation_coefficients,
@@ -14,13 +11,22 @@ from .sensor_compensation_analysis import (
     shifted_lorentzian_2d,
 )
 from .virtual_plunger_analysis import extract_virtual_plunger_coefficients
-from .barrier_compensation_analysis import extract_barrier_compensation_coefficients
+from .barrier_compensation_analysis import (
+    extract_barrier_compensation_coefficients,
+    evaluate_slope_fit_acceptance,
+    resolve_pair_calibration_topology,
+)
 from .plotting import (
-    plot_sensor_compensation_diagnostic,
     plot_2d_scan,
+    plot_barrier_pair_diagnostics,
+    plot_barrier_transform_history,
     plot_compensation_fit,
-    plot_virtual_plunger_diagnostic,
+    plot_detuning_fit_family,
+    plot_sensor_compensation_diagnostic,
+    plot_target_barrier_coupling_summary,
+    plot_tunnel_slope_fit,
     plot_virtual_gate_matrix,
+    plot_virtual_plunger_diagnostic,
 )
 
 
@@ -47,6 +53,7 @@ __all__ = [
     "SensorDotTuningParameters",
     "SensorCompensationParameters",
     "VirtualPlungerParameters",
+    "PATLeverArmParameters",
     "BarrierCompensationParameters",
     "get_voltage_arrays",
     "create_2d_scan_program",
@@ -54,6 +61,7 @@ __all__ = [
     "read_qdac_voltage",
     "process_raw_dataset",
     "update_compensation_matrix",
+    "update_compensation_submatrix",
     "fit_lorentzian",
     "lorentzian",
     "optimal_operating_point",
@@ -62,9 +70,16 @@ __all__ = [
     "shifted_lorentzian_2d",
     "extract_virtual_plunger_coefficients",
     "extract_barrier_compensation_coefficients",
+    "evaluate_slope_fit_acceptance",
+    "resolve_pair_calibration_topology",
     "plot_sensor_compensation_diagnostic",
     "plot_2d_scan",
     "plot_compensation_fit",
     "plot_virtual_plunger_diagnostic",
+    "plot_detuning_fit_family",
+    "plot_barrier_pair_diagnostics",
+    "plot_target_barrier_coupling_summary",
+    "plot_tunnel_slope_fit",
+    "plot_barrier_transform_history",
     "plot_virtual_gate_matrix",
 ]
