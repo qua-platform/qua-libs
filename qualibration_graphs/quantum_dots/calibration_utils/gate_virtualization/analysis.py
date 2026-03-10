@@ -33,14 +33,14 @@ def _discover_iq_pairs(ds: xr.Dataset) -> List[Tuple[str, str]]:
     return sorted(pairs)
 
 
-def process_raw_dataset(ds_raw: xr.Dataset, node) -> xr.Dataset:
+def process_raw_dataset(ds_raw: xr.Dataset, node=None) -> xr.Dataset:
     """Convert raw I/Q data to amplitude and phase.
 
     Parameters
     ----------
     ds_raw : xr.Dataset
         Raw dataset with ``I``/``Q``-like variables.
-    node : QualibrationNode
+    node : QualibrationNode, optional
         The active calibration node (unused but kept for API compatibility).
 
     Returns
