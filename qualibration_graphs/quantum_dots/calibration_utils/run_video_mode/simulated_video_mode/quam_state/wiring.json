@@ -1,7 +1,79 @@
 {
-    "wiring": {},
+    "wiring": {
+        "readout": {
+            "s1": {
+                "s": {
+                    "opx_output": "#/ports/analog_outputs/con1/3/7"
+                },
+                "rf": {
+                    "opx_input": "#/ports/analog_inputs/con1/5/1",
+                    "opx_output": "#/ports/analog_outputs/con1/5/1"
+                }
+            },
+            "s2": {
+                "s": {
+                    "opx_output": "#/ports/analog_outputs/con1/3/8"
+                },
+                "rf": {
+                    "opx_input": "#/ports/analog_inputs/con1/5/2",
+                    "opx_output": "#/ports/analog_outputs/con1/5/2"
+                }
+            }
+        },
+        "qubits": {
+            "q1": {
+                "xy": {
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
+                },
+                "p": {
+                    "opx_output": "#/ports/analog_outputs/con1/3/1"
+                }
+            },
+            "q2": {
+                "xy": {
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
+                },
+                "p": {
+                    "opx_output": "#/ports/analog_outputs/con1/3/2"
+                }
+            },
+            "q3": {
+                "xy": {
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
+                },
+                "p": {
+                    "opx_output": "#/ports/analog_outputs/con1/3/3"
+                }
+            },
+            "q4": {
+                "xy": {
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
+                },
+                "p": {
+                    "opx_output": "#/ports/analog_outputs/con1/3/4"
+                }
+            }
+        },
+        "qubit_pairs": {
+            "q1-2": {
+                "b": {
+                    "control_qubit": "#/qubits/q1",
+                    "target_qubit": "#/qubits/q2",
+                    "opx_output": "#/ports/analog_outputs/con1/3/5"
+                }
+            },
+            "q3-4": {
+                "b": {
+                    "control_qubit": "#/qubits/q3",
+                    "target_qubit": "#/qubits/q4",
+                    "opx_output": "#/ports/analog_outputs/con1/3/6"
+                }
+            }
+        }
+    },
     "network": {
         "host": "172.16.33.115",
+        "port": null,
         "cluster_name": "CS_3"
     }
 }

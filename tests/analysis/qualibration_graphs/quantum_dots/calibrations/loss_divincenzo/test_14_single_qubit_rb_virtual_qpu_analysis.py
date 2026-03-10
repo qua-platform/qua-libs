@@ -29,7 +29,7 @@ from .conftest import (
     _VIRTUAL_QPU_AVAILABLE,
     LossDiVincenzoDevice,
 )
-from .quam_factory import create_minimal_quam
+from .conftest import create_ld_quam as create_minimal_quam
 
 # ── conditional virtual_qpu imports ───────────────────────────────────────────
 try:
@@ -248,10 +248,10 @@ def test_14_single_qubit_rb_virtual_qpu_analysis(rabi_chevron_calibration, analy
     gate_sigma = gate_duration / 5
     qubit_freq_ghz = rabi_chevron_calibration["optimal_frequency"] * 1e-9
 
-    # 2. Resolve QuAM qubit names (Q1 → virtual_dot_1, Q2 → virtual_dot_2)
+    # 2. Resolve QuAM qubit names (q1 → virtual_dot_1, q2 → virtual_dot_2)
     machine = create_minimal_quam()
-    qubit_name_1 = machine.qubits["Q1"].name  # "virtual_dot_1"
-    qubit_name_2 = machine.qubits["Q2"].name  # "virtual_dot_2"
+    qubit_name_1 = machine.qubits["q1"].name  # "virtual_dot_1"
+    qubit_name_2 = machine.qubits["q2"].name  # "virtual_dot_2"
 
     # 3. Depth schedule
     params = Parameters(
@@ -309,7 +309,7 @@ def test_14_single_qubit_rb_virtual_qpu_analysis(rabi_chevron_calibration, analy
     node = analysis_runner(
         node_name=NODE_NAME,
         ds_raw=ds_raw,
-        analyse_qubits=["Q1", "Q2"],
+        analyse_qubits=["q1", "q2"],
         param_overrides={
             "max_circuit_depth": MAX_CIRCUIT_DEPTH,
             "log_scale": True,

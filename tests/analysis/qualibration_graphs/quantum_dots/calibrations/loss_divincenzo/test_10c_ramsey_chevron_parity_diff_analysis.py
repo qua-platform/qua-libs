@@ -126,7 +126,7 @@ def test_10c_ramsey_chevron_analysis(ld_device, calibrated_pi_half_amp, analysis
 
     # ── Assertions ───────────────────────────────────────────────────────
     assert "fit_results" in node.results
-    fit_q1 = node.results["fit_results"]["Q1"]
+    fit_q1 = node.results["fit_results"]["q1"]
     assert fit_q1["success"], f"Analysis should succeed: {fit_q1}"
 
     # Frequency offset should be near 0 (we drove on resonance)
