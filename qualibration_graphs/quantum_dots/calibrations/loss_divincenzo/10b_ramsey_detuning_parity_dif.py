@@ -128,7 +128,7 @@ def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
-                with for_(*from_array(t, idle_times_cc//4)):
+                with for_(*from_array(t, idle_times_cc // 4)):
                     with for_(*from_array(df, detuning_values)):
                         for i, qubit in batched_qubits.items():
                             qubit.xy.update_frequency(qubit.xy.intermediate_frequency + df)

@@ -1,4 +1,3 @@
-
 """Two-qubit standard randomized benchmarking calibration node.
 
 This module implements a calibration node for performing standard randomized
@@ -245,5 +244,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save the node results and state snapshot."""
     node.save()
+
 
 # %%

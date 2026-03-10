@@ -22,6 +22,7 @@ from qualibration_libs.core import tracked_updates
 try:
     from calibration_utils.crot_spectroscopy_parity_diff import Parameters
 except ModuleNotFoundError:
+
     class NodeSpecificParameters(RunnableParameters):
         """Fallback parameter set until the CROT parameter module is restored."""
 
@@ -35,7 +36,6 @@ except ModuleNotFoundError:
         target_qubit: str = "q1"
         control_qubit: str = "q2"
 
-
     class Parameters(
         NodeParameters,
         CommonNodeParameters,
@@ -43,6 +43,7 @@ except ModuleNotFoundError:
         QubitPairExperimentNodeParameters,
     ):
         """Fallback Parameters used only to keep the node importable."""
+
 
 # %% {Node initialisation}
 description = """

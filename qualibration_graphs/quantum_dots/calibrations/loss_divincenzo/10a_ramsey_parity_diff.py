@@ -92,9 +92,7 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
             detuning_values,
             attrs={"long_name": "frequency detuning", "units": "Hz"},
         ),
-        "tau": xr.DataArray(
-            tau_values * 4, attrs={"long_name": "idle time", "units": "ns"}
-        ),
+        "tau": xr.DataArray(tau_values * 4, attrs={"long_name": "idle time", "units": "ns"}),
     }
 
     with program() as node.namespace["qua_program"]:
