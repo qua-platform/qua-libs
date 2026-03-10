@@ -31,7 +31,7 @@ echo -e "\n${GREEN}All branches pushed!${NC}\n"
 # Check if gh CLI is available
 if command -v gh &> /dev/null; then
     echo -e "${BLUE}=== Creating PRs using GitHub CLI ===${NC}\n"
-    
+
     # PR 1
     echo "Creating PR 1: Bayesian Change Point Detection..."
     gh pr create \
@@ -62,7 +62,7 @@ This PR adds a comprehensive Bayesian change point detection module for quantum 
 
 ## Target Branch
 This PR targets \`feat/quantum_dots\` as part of the quantum dots calibration utilities enhancement."
-    
+
     # PR 2
     echo "Creating PR 2: Enhanced Charge Stability Analysis..."
     gh pr create \
@@ -104,7 +104,7 @@ This PR enhances the quantum dot charge stability analysis utilities with advanc
 
 ## Target Branch
 This PR targets \`feat/quantum_dots\` as part of the quantum dots calibration utilities enhancement."
-    
+
     # PR 3
     echo "Creating PR 3: Validation Utilities..."
     gh pr create \
@@ -126,7 +126,7 @@ This PR adds comprehensive validation utilities for quantum dot simulations, inc
   - \`src/circuit.py\`: Circuit class combining device + gates for time evolution
   - \`src/pulse.py\`: Pulse definitions for quantum gates
   - \`src/utils.py\`: Utility functions (embedding, sweeps, etc.)
-- **Dependencies**: 
+- **Dependencies**:
   - Added \`dynamiqs\` to dev dependencies in \`pyproject.toml\`
   - Updated \`poetry.lock\`
 
@@ -147,7 +147,7 @@ This PR adds comprehensive validation utilities for quantum dot simulations, inc
 
 ## Target Branch
 This PR targets \`feat/quantum_dots\` as part of the quantum dots calibration utilities enhancement."
-    
+
     # PR 4
     echo "Creating PR 4: Demo Script..."
     gh pr create \
@@ -190,7 +190,7 @@ This PR demonstrates the integration of features from:
 
 ## Target Branch
 This PR targets \`feat/quantum_dots\` as part of the quantum dots calibration utilities enhancement."
-    
+
     echo -e "\n${GREEN}All PRs created!${NC}"
 else
     echo -e "${BLUE}GitHub CLI (gh) not found.${NC}"

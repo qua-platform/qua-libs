@@ -41,7 +41,7 @@ class XGateMacro(QuamMacro):  # pylint: disable=too-few-public-methods
             amplitude_scale=amplitude_scale,
             duration=duration,
         )
-        parent_qubit.voltage_sequence.step_to_voltages({}, duration=duration*4)
+        parent_qubit.voltage_sequence.step_to_voltages({}, duration=duration * 4)
 
 
 @quam_dataclass

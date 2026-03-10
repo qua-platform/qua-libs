@@ -45,8 +45,8 @@ def test_10a_ramsey_parity_diff_analysis(ld_device, calibrated_pi_half_amp, anal
     # ── Two symmetric drive frequencies: qubit_freq ± δ ──────────────────
     detuning_ghz = DETUNING_MHZ * 1e-3
     drive_freqs = [
-        qubit_freq_ghz + detuning_ghz,   # +δ
-        qubit_freq_ghz - detuning_ghz,   # -δ
+        qubit_freq_ghz + detuning_ghz,  # +δ
+        qubit_freq_ghz - detuning_ghz,  # -δ
     ]
 
     # ── Sweep axis ────────────────────────────────────────────────────────
@@ -134,9 +134,9 @@ def test_10a_ramsey_parity_diff_analysis(ld_device, calibrated_pi_half_amp, anal
     # Triangulated freq_offset should be small — the qubit is near the
     # nominal frequency (virtual QPU may have a small systematic offset)
     freq_offset_mhz = fit_q1["freq_offset"] * 1e-6
-    assert abs(freq_offset_mhz) < DETUNING_MHZ, (
-        f"Triangulated offset should be smaller than δ, got {freq_offset_mhz:.3f} MHz"
-    )
+    assert (
+        abs(freq_offset_mhz) < DETUNING_MHZ
+    ), f"Triangulated offset should be smaller than δ, got {freq_offset_mhz:.3f} MHz"
 
     # T2* should be finite and positive
     t2_star = fit_q1["t2_star"]
