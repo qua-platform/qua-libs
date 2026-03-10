@@ -344,7 +344,9 @@ def plot_barrier_pair_diagnostics(
         signal_fit = np.asarray(fit.get("signal_fit", []), dtype=float)
         drive_value = float(fit.get("drive_value", np.nan))
         t_val = float(fit.get("tunnel_coupling", np.nan))
-        label = f"{1e3 * drive_value:.2f} mV, t={t_val:.3g}" if np.isfinite(drive_value) and np.isfinite(t_val) else "trace"
+        label = (
+            f"{1e3 * drive_value:.2f} mV, t={t_val:.3g}" if np.isfinite(drive_value) and np.isfinite(t_val) else "trace"
+        )
         ax_left.plot(detuning, signal, "o", ms=2.5, alpha=0.72, label=label)
         if detuning.size == signal_fit.size and detuning.size > 0:
             ax_left.plot(detuning, signal_fit, "--", lw=1.4, alpha=0.95)

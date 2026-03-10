@@ -75,9 +75,7 @@ def _damped_cosine(
     phi : float
         Phase offset in radians.
     """
-    return offset + amp * np.exp(-gamma * t) * np.cos(
-        2.0 * np.pi * freq * t + phi
-    )
+    return offset + amp * np.exp(-gamma * t) * np.cos(2.0 * np.pi * freq * t + phi)
 
 
 # ── Single-trace fit ─────────────────────────────────────────────────────────
@@ -152,6 +150,7 @@ def _fit_single_trace(
     }
 
     try:
+
         def _objective(params):
             return np.sum((_damped_cosine(t, *params) - y) ** 2)
 
@@ -266,8 +265,7 @@ def _analyse_single_qubit(
     success = fit_plus["success"] and fit_minus["success"]
 
     _logger.debug(
-        "Ramsey ±δ triangulation: f₊=%.3f MHz, f₋=%.3f MHz, "
-        "Δ=%.3f MHz, T2*=%.1f ns",
+        "Ramsey ±δ triangulation: f₊=%.3f MHz, f₋=%.3f MHz, " "Δ=%.3f MHz, T2*=%.1f ns",
         f_plus * 1e-6,
         f_minus * 1e-6,
         freq_offset * 1e-6,
@@ -322,9 +320,7 @@ def fit_raw_data(
     pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
     qubit_names = [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
     if not qubit_names:
-        qubit_names = [
-            getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)
-        ]
+        qubit_names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
 
     tau_ns = np.asarray(ds.tau.values, dtype=float)
 

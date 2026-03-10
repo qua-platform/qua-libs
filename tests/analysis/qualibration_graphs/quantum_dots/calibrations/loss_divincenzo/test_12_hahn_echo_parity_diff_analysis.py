@@ -172,12 +172,10 @@ def test_12_hahn_echo_analysis(ld_device, calibrated_pi_half_amp, analysis_runne
     # Q2: synthetic data (T₂_echo = 600 ns)
     fit_q2 = node.results["fit_results"]["Q2"]
     assert fit_q2["success"], f"Q2 analysis should succeed: {fit_q2}"
-    assert abs(fit_q2["T2_echo"] - Q2_T2_ECHO_NS) < 0.3 * Q2_T2_ECHO_NS, (
-        f"Q2 T2_echo should be near {Q2_T2_ECHO_NS} ns, got {fit_q2['T2_echo']:.1f} ns"
-    )
-    assert abs(fit_q2["amplitude"] - Q2_AMPLITUDE) < 0.3 * Q2_AMPLITUDE, (
-        f"Q2 amplitude should be near {Q2_AMPLITUDE}, got {fit_q2['amplitude']:.4f}"
-    )
-    assert abs(fit_q2["offset"] - Q2_OFFSET) < 0.1, (
-        f"Q2 offset should be near {Q2_OFFSET}, got {fit_q2['offset']:.4f}"
-    )
+    assert (
+        abs(fit_q2["T2_echo"] - Q2_T2_ECHO_NS) < 0.3 * Q2_T2_ECHO_NS
+    ), f"Q2 T2_echo should be near {Q2_T2_ECHO_NS} ns, got {fit_q2['T2_echo']:.1f} ns"
+    assert (
+        abs(fit_q2["amplitude"] - Q2_AMPLITUDE) < 0.3 * Q2_AMPLITUDE
+    ), f"Q2 amplitude should be near {Q2_AMPLITUDE}, got {fit_q2['amplitude']:.4f}"
+    assert abs(fit_q2["offset"] - Q2_OFFSET) < 0.1, f"Q2 offset should be near {Q2_OFFSET}, got {fit_q2['offset']:.4f}"

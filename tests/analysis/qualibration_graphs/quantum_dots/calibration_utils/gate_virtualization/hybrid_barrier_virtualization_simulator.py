@@ -294,9 +294,7 @@ class HybridBarrierVirtualizationSimulator:
                 delta_v = float(self.config.paper_signal_delta_v)
                 s0 = float(self.config.paper_signal_s0)
                 s1 = float(self.config.paper_signal_s1)
-                primary_signal[row, :] = v0 + delta_v * transition + (
-                    s0 + (s1 - s0) * transition
-                ) * detuning_centered
+                primary_signal[row, :] = v0 + delta_v * transition + (s0 + (s1 - s0) * transition) * detuning_centered
             else:
                 primary_signal[row, :] = self.config.signal_offset + self.config.signal_scale * transition
 
@@ -363,7 +361,9 @@ class HybridBarrierVirtualizationSimulator:
         vg[:, :, barrier_offset + target_idx] += 0.20 * detuning_values[None, :]
 
         for barrier in range(n_barriers):
-            vg[:, :, barrier_offset + barrier] += 0.03 * drive_values[:, None] * (1.0 / (1.0 + abs(barrier - drive_idx)))
+            vg[:, :, barrier_offset + barrier] += (
+                0.03 * drive_values[:, None] * (1.0 / (1.0 + abs(barrier - drive_idx)))
+            )
 
         try:
             sensor_output = self._qarray_model.charge_sensor_open(vg)

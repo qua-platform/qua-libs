@@ -115,7 +115,7 @@ def launch_video_mode(
         y_mode=y_mode,
         voltage_control_component=voltage_control_component,
         mid_scan_compensation=mid_scan_compensation,
-        use_buffered_stream = use_buffered_stream,
+        use_buffered_stream=use_buffered_stream,
         acquisition_interval_s=0.05,
     )
 

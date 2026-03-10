@@ -60,9 +60,7 @@ def plot_raw_data_with_fit(
         n_circuits = state_data.shape[0]
 
         # Binomial standard error
-        std_err = np.sqrt(
-            survival_prob * (1 - survival_prob) / max(n_circuits, 1)
-        )
+        std_err = np.sqrt(survival_prob * (1 - survival_prob) / max(n_circuits, 1))
 
         r = fit_results.get(qname, {})
 
@@ -85,7 +83,7 @@ def plot_raw_data_with_fit(
             alpha = r.get("alpha", 0)
             A = r.get("A", 0)
             B = r.get("B", 0)
-            y_smooth = A * alpha ** x_smooth + B
+            y_smooth = A * alpha**x_smooth + B
             ax.plot(x_smooth, y_smooth, "-", lw=2, color="C1", label="fit")
 
         # Annotation
@@ -116,8 +114,6 @@ def plot_raw_data_with_fit(
         ax.legend(loc="lower left", fontsize=8)
         ax.grid(True, alpha=0.3)
 
-    fig.suptitle(
-        "Single-Qubit Randomized Benchmarking", fontsize=13, fontweight="bold"
-    )
+    fig.suptitle("Single-Qubit Randomized Benchmarking", fontsize=13, fontweight="bold")
     fig.tight_layout()
     return fig

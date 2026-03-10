@@ -96,9 +96,7 @@ def resolve_pair_calibration_topology(machine: Any, pair_names: Sequence[str]) -
             if target_pair is None:
                 raise ValueError(f"qubit_pair '{input_name}' has no quantum_dot_pair reference.")
         else:
-            raise KeyError(
-                f"Pair '{input_name}' not found in machine.quantum_dot_pairs or machine.qubit_pairs."
-            )
+            raise KeyError(f"Pair '{input_name}' not found in machine.quantum_dot_pairs or machine.qubit_pairs.")
 
         target_pair_id = str(getattr(target_pair, "id", input_name))
         target_barrier = _pair_barrier_id(target_pair)
@@ -118,8 +116,7 @@ def resolve_pair_calibration_topology(machine: Any, pair_names: Sequence[str]) -
         if target_barrier in target_barrier_to_pair_id:
             existing_pair = target_barrier_to_pair_id[target_barrier]
             raise ValueError(
-                f"Duplicate target barrier '{target_barrier}' for pairs "
-                f"'{existing_pair}' and '{target_pair_id}'."
+                f"Duplicate target barrier '{target_barrier}' for pairs " f"'{existing_pair}' and '{target_pair_id}'."
             )
         target_barrier_to_pair_id[target_barrier] = target_pair_id
 
@@ -496,8 +493,7 @@ def extract_tunnel_coupling_vs_drive(
     signal = _select_signal_dataarray(ds)
     if drive_axis not in signal.dims or detuning_axis not in signal.dims:
         raise ValueError(
-            f"Signal dims {signal.dims} do not include required axes "
-            f"'{drive_axis}' and '{detuning_axis}'."
+            f"Signal dims {signal.dims} do not include required axes " f"'{drive_axis}' and '{detuning_axis}'."
         )
 
     drive_values = np.asarray(ds.coords[drive_axis].values, dtype=float)

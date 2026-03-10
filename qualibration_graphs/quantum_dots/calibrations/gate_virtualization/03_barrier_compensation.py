@@ -466,8 +466,7 @@ def analyse_data(node: QualibrationNode[BarrierCompensationParameters, Quam]):
     slope_matrix_raw = assemble_slope_matrix(fit_results, barrier_order)
     if np.any(np.isnan(np.diag(slope_matrix_raw))):
         raise ValueError(
-            "Missing self-slope rows in slope_matrix_raw. "
-            "Ensure each target barrier has an accepted self fit."
+            "Missing self-slope rows in slope_matrix_raw. " "Ensure each target barrier has an accepted self fit."
         )
 
     calibration_order = node.parameters.calibration_order or barrier_order

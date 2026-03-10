@@ -18,10 +18,7 @@ import xarray as xr
 
 def _get_qubit_names_from_ds(ds: xr.Dataset) -> List[str]:
     """Extract qubit names from ``pdiff_<name>`` data-variable keys."""
-    pdiff_vars = [
-        v for v in ds.data_vars
-        if v.startswith("pdiff_") and not v.endswith("_fit")
-    ]
+    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_") and not v.endswith("_fit")]
     return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
 
 
@@ -97,14 +94,22 @@ def plot_raw_data_with_fit(
         det_minus_mhz = detuning_hz[1] * 1e-6 if len(detuning_hz) > 1 else 0
 
         _plot_trace_ax(
-            axes[i, 0], tau_ns, qname, fit_plus,
+            axes[i, 0],
+            tau_ns,
+            qname,
+            fit_plus,
             label=f"+δ ({det_plus_mhz:+.1f} MHz)",
-            color="b", fit_color="r",
+            color="b",
+            fit_color="r",
         )
         _plot_trace_ax(
-            axes[i, 1], tau_ns, qname, fit_minus,
+            axes[i, 1],
+            tau_ns,
+            qname,
+            fit_minus,
             label=f"−δ ({det_minus_mhz:+.1f} MHz)",
-            color="C2", fit_color="C3",
+            color="C2",
+            fit_color="C3",
         )
 
     fig.suptitle("Ramsey ±δ triangulation (parity diff)")

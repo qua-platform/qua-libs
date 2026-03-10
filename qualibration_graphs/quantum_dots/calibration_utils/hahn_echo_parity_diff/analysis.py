@@ -117,11 +117,7 @@ def _fit_single_qubit(
 
     # Sanity: T2 should be positive and finite, amplitude should be non-zero
     success = bool(
-        result.success
-        and np.isfinite(t2_best)
-        and t2_best > 0
-        and np.isfinite(amp_best)
-        and abs(amp_best) > 1e-6
+        result.success and np.isfinite(t2_best) and t2_best > 0 and np.isfinite(amp_best) and abs(amp_best) > 1e-6
     )
 
     decay_rate = 2.0 / t2_best if t2_best > 0 else 0.0

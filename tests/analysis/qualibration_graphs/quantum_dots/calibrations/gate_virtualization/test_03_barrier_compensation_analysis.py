@@ -49,10 +49,7 @@ _plotting_mod = _load_module(
     "gate_virtualization_plotting_e2e_test",
 )
 _simulator_mod = _load_module(
-    TEST_QD_ROOT
-    / "calibration_utils"
-    / "gate_virtualization"
-    / "hybrid_barrier_virtualization_simulator.py",
+    TEST_QD_ROOT / "calibration_utils" / "gate_virtualization" / "hybrid_barrier_virtualization_simulator.py",
     "gate_virtualization_hybrid_simulator_e2e_test",
 )
 
@@ -213,10 +210,7 @@ def test_03_barrier_compensation_hybrid_analysis_and_plotting_artifacts():
     assert np.all(np.isfinite(slope_matrix_raw))
 
     slope_matrix_truth = np.array(
-        [
-            [truth[f"{target}_vs_{drive}"]["dt_dB_at_zero"] for drive in barrier_names]
-            for target in barrier_names
-        ],
+        [[truth[f"{target}_vs_{drive}"]["dt_dB_at_zero"] for drive in barrier_names] for target in barrier_names],
         dtype=float,
     )
     assert np.all(np.isfinite(np.diag(slope_matrix_raw)))
@@ -253,9 +247,7 @@ def test_03_barrier_compensation_hybrid_analysis_and_plotting_artifacts():
         target_label="barrier_23",
         title="Representative Slope Extraction",
     )
-    target_fit_map = {
-        k: v for k, v in fit_results.items() if str(v.get("target_barrier", "")) == "barrier_23"
-    }
+    target_fit_map = {k: v for k, v in fit_results.items() if str(v.get("target_barrier", "")) == "barrier_23"}
     fig_target = plot_target_barrier_coupling_summary(
         target_barrier="barrier_23",
         fit_results_by_pair=target_fit_map,
