@@ -199,6 +199,8 @@ class TestSensorCompensationE2E:
         assert pair_key in node.results["fit_results"]
 
         fit = node.results["fit_results"][pair_key]
+        assert fit["sensor_gate_name"] == SENSOR_GATE
+        assert fit["device_gate_name"] == DEVICE_GATE_1
         alpha = fit["coefficient"]
         assert np.isfinite(alpha), f"alpha is not finite: {alpha}"
         assert fit["fit_params"]["success"], f"Fit did not converge: {fit}"
@@ -254,7 +256,9 @@ class TestSensorCompensationE2E:
         for pair_key, fit in node.results["fit_results"].items():
             assert fit["fit_params"]["success"], f"Fit failed for {pair_key}: {fit}"
             assert np.isfinite(fit["coefficient"])
+            assert fit["sensor_gate_name"] == SENSOR_GATE
             _, device_gate = pair_key.split("_vs_")
+            assert fit["device_gate_name"] == device_gate
             device_col = layer.source_gates.index(device_gate)
             assert layer.matrix[sensor_row][device_col] == pytest.approx(fit["coefficient"])
 

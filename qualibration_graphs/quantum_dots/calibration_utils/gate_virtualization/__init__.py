@@ -1,11 +1,13 @@
-from .parameters import (
+from .base_parameters import (
     GateVirtualizationBaseParameters,
-    SensorCompensationParameters,
-    VirtualPlungerParameters,
-    BarrierCompensationParameters,
     get_voltage_arrays,
 )
+from .sensor_dot_tuning_parameters import SensorDotTuningParameters
+from .sensor_compensation_parameters import SensorCompensationParameters
+from .virtual_plunger_parameters import VirtualPlungerParameters
+from .barrier_compensation_parameters import BarrierCompensationParameters
 from .analysis import process_raw_dataset, update_compensation_matrix
+from .sensor_dot_analysis import fit_lorentzian, lorentzian, optimal_operating_point
 from .sensor_compensation_analysis import (
     extract_sensor_compensation_coefficients,
     fit_shifted_lorentzian,
@@ -17,13 +19,9 @@ from .plotting import (
     plot_sensor_compensation_diagnostic,
     plot_2d_scan,
     plot_compensation_fit,
+    plot_virtual_plunger_diagnostic,
+    plot_virtual_gate_matrix,
 )
-
-
-def read_qdac_voltage(*args, **kwargs):
-    from .scan_utils import _read_qdac_voltage as _read_qdac_voltage_impl
-
-    return _read_qdac_voltage_impl(*args, **kwargs)
 
 
 def create_2d_scan_program(*args, **kwargs):
@@ -38,8 +36,15 @@ def setup_qdac_dc_lists(*args, **kwargs):
     return _setup_qdac_dc_lists(*args, **kwargs)
 
 
+def read_qdac_voltage(*args, **kwargs):
+    from .scan_utils import _read_qdac_voltage as _read_qdac_voltage_impl
+
+    return _read_qdac_voltage_impl(*args, **kwargs)
+
+
 __all__ = [
     "GateVirtualizationBaseParameters",
+    "SensorDotTuningParameters",
     "SensorCompensationParameters",
     "VirtualPlungerParameters",
     "BarrierCompensationParameters",
@@ -49,6 +54,9 @@ __all__ = [
     "read_qdac_voltage",
     "process_raw_dataset",
     "update_compensation_matrix",
+    "fit_lorentzian",
+    "lorentzian",
+    "optimal_operating_point",
     "extract_sensor_compensation_coefficients",
     "fit_shifted_lorentzian",
     "shifted_lorentzian_2d",
@@ -57,4 +65,6 @@ __all__ = [
     "plot_sensor_compensation_diagnostic",
     "plot_2d_scan",
     "plot_compensation_fit",
+    "plot_virtual_plunger_diagnostic",
+    "plot_virtual_gate_matrix",
 ]

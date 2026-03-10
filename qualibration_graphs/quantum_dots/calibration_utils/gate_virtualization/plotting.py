@@ -1,5 +1,7 @@
 """Plotting functions for gate virtualization calibration nodes."""
 
+from __future__ import annotations
+
 from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
@@ -7,7 +9,9 @@ import numpy as np
 import xarray as xr
 from matplotlib.figure import Figure
 
-from calibration_utils.gate_virtualization.sensor_compensation_analysis import shifted_lorentzian_2d
+from calibration_utils.gate_virtualization.sensor_compensation_analysis import (
+    shifted_lorentzian_2d,
+)
 
 
 def plot_sensor_compensation_diagnostic(
@@ -31,11 +35,9 @@ def plot_sensor_compensation_diagnostic(
     axes[0].set_ylabel("Device gate (V)")
 
     if fp is not None:
-        model_signal = shifted_lorentzian_2d(
-            v_s, v_d, fp["A"], fp["v0"], fp["alpha"], fp["gamma"], fp["offset"]
-        )
+        model_signal = shifted_lorentzian_2d(v_s, v_d, fp["A"], fp["v0"], fp["alpha"], fp["gamma"], fp["offset"])
         axes[1].imshow(model_signal, extent=extent, origin="lower", aspect="auto", cmap="hot")
-        axes[1].set_title(f"Lorentzian fit (alpha={fp['alpha']:.4f})")
+        axes[1].set_title(f"Lorentzian fit (α={fp['alpha']:.4f})")
         axes[1].set_xlabel("Sensor gate (V)")
 
         residual = amplitude - model_signal
@@ -47,6 +49,47 @@ def plot_sensor_compensation_diagnostic(
     return fig
 
 
+def _get_signal_2d(
+    ds: xr.Dataset,
+    *,
+    signal_var: str = "amplitude",
+    sensor_name: Optional[str] = None,
+) -> xr.DataArray:
+    """Return a 2D signal map from a dataset with optional sensor selection."""
+    if signal_var in ds:
+        signal = ds[signal_var]
+    elif "I" in ds and "Q" in ds:
+        signal = np.hypot(ds["I"], ds["Q"])
+    else:
+        raise ValueError(f"Dataset must contain '{signal_var}' or both 'I' and 'Q'.")
+
+    if "sensors" in signal.dims:
+        if sensor_name is not None and sensor_name in signal.coords["sensors"].values:
+            signal = signal.sel(sensors=sensor_name)
+        else:
+            signal = signal.isel(sensors=0)
+
+    return signal
+
+
+def _segment_to_voltage_coords(
+    seg: Any,
+    x_values: np.ndarray,
+    y_values: np.ndarray,
+    ny: int,
+    nx: int,
+) -> tuple[float, float, float, float]:
+    """Convert a segment's pixel start/end points to voltage-space coordinates."""
+    r_start, c_start = seg.start
+    r_end, c_end = seg.end
+
+    x_s = x_values[0] + (c_start / max(nx, 1)) * (x_values[-1] - x_values[0])
+    x_e = x_values[0] + (c_end / max(nx, 1)) * (x_values[-1] - x_values[0])
+    y_s = y_values[0] + (r_start / max(ny, 1)) * (y_values[-1] - y_values[0])
+    y_e = y_values[0] + (r_end / max(ny, 1)) * (y_values[-1] - y_values[0])
+    return x_s, x_e, y_s, y_e
+
+
 def plot_2d_scan(
     ds: xr.Dataset,
     x_axis: str = "x_volts",
@@ -54,28 +97,25 @@ def plot_2d_scan(
     sensor_name: Optional[str] = None,
     title: Optional[str] = None,
 ) -> Figure:
-    """Plot a 2D voltage scan as a colour map.
+    """Plot a 2D signal scan as a colour map."""
+    signal = _get_signal_2d(ds, sensor_name=sensor_name)
+    x_values = signal.coords[x_axis].values
+    y_values = signal.coords[y_axis].values
+    extent = [x_values[0], x_values[-1], y_values[0], y_values[-1]]
 
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset containing amplitude (or I/Q) data.
-    x_axis, y_axis : str
-        Coordinate names for the axes.
-    sensor_name : str, optional
-        If provided, select this sensor from the dataset.
-    title : str, optional
-        Plot title.
-
-    Returns
-    -------
-    matplotlib.figure.Figure
-    """
-    # TODO: implement 2D colour-map plot
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(6, 5))
+    im = ax.imshow(
+        signal.values,
+        extent=extent,
+        origin="lower",
+        aspect="auto",
+        cmap="hot",
+    )
     ax.set_title(title or "2D Scan")
     ax.set_xlabel(x_axis)
     ax.set_ylabel(y_axis)
+    fig.colorbar(im, ax=ax, label="Signal")
+    fig.tight_layout()
     return fig
 
 
@@ -86,28 +126,100 @@ def plot_compensation_fit(
     gate_y_name: str,
     title: Optional[str] = None,
 ) -> Figure:
-    """Overlay a linear/polynomial fit on a 2D scan.
+    """Overlay fitted line segments from virtual-plunger analysis on a 2D scan."""
+    signal = _get_signal_2d(ds)
+    x_values = signal.coords["x_volts"].values
+    y_values = signal.coords["y_volts"].values
+    ny, nx = signal.values.shape
+    extent = [x_values[0], x_values[-1], y_values[0], y_values[-1]]
 
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Dataset from the 2D scan.
-    fit_results : dict
-        Fit results from the analysis functions.
-    gate_x_name, gate_y_name : str
-        Gate names for axis labels.
-    title : str, optional
-        Plot title.
+    fig, ax = plt.subplots(figsize=(6, 5))
+    im = ax.imshow(
+        signal.values,
+        extent=extent,
+        origin="lower",
+        aspect="auto",
+        cmap="hot",
+    )
 
-    Returns
-    -------
-    matplotlib.figure.Figure
-    """
-    # TODO: implement fit overlay plot
-    fig, ax = plt.subplots()
-    ax.set_title(title or "Compensation Fit")
+    for seg in fit_results.get("segments", []):
+        x_s, x_e, y_s, y_e = _segment_to_voltage_coords(seg, x_values, y_values, ny, nx)
+        ax.plot([x_s, x_e], [y_s, y_e], "c-", linewidth=1.5, alpha=0.8)
+
+    theta1 = fit_results.get("theta1")
+    theta2 = fit_results.get("theta2")
+    T = fit_results.get("T_matrix")
+    subtitle = ""
+    if theta1 is not None and theta2 is not None:
+        subtitle += f"θ1={np.degrees(theta1):.1f}°, θ2={np.degrees(theta2):.1f}°"
+    if T is not None:
+        if subtitle:
+            subtitle += "\n"
+        subtitle += f"T=[[{T[0,0]:.3f}, {T[0,1]:.3f}], [{T[1,0]:.3f}, {T[1,1]:.3f}]]"
+
+    ax.set_title((title or "Compensation Fit") + (f"\n{subtitle}" if subtitle else ""))
     ax.set_xlabel(gate_x_name)
     ax.set_ylabel(gate_y_name)
+    fig.colorbar(im, ax=ax, label="Signal")
+    fig.tight_layout()
+    return fig
+
+
+def plot_virtual_plunger_diagnostic(
+    ds: xr.Dataset,
+    fit_results: Optional[Dict[str, Any]],
+    pair_key: str,
+) -> Figure:
+    """Create a 3-panel diagnostic figure for virtual-plunger calibration."""
+    signal = _get_signal_2d(ds)
+    amplitude = signal.values
+    x_values = signal.coords["x_volts"].values
+    y_values = signal.coords["y_volts"].values
+    ny, nx = amplitude.shape
+    extent = [x_values[0], x_values[-1], y_values[0], y_values[-1]]
+
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+
+    im0 = axes[0].imshow(amplitude, extent=extent, origin="lower", aspect="auto", cmap="hot")
+    axes[0].set_title(f"Amplitude\n{pair_key}")
+    axes[0].set_xlabel("x_volts (V)")
+    axes[0].set_ylabel("y_volts (V)")
+    fig.colorbar(im0, ax=axes[0], shrink=0.85)
+
+    mean_cp = None if fit_results is None else fit_results.get("mean_cp")
+    if mean_cp is not None:
+        im1 = axes[1].imshow(mean_cp, origin="lower", aspect="auto", cmap="magma")
+        fig.colorbar(im1, ax=axes[1], shrink=0.85)
+        axes[1].set_title("Edge Map (BayesianCP)")
+    else:
+        axes[1].text(0.5, 0.5, "No edge map", ha="center", va="center", transform=axes[1].transAxes)
+        axes[1].set_title("Edge Map")
+    axes[1].set_xlabel("x index")
+    axes[1].set_ylabel("y index")
+
+    im2 = axes[2].imshow(amplitude, extent=extent, origin="lower", aspect="auto", cmap="hot")
+    fig.colorbar(im2, ax=axes[2], shrink=0.85)
+    axes[2].set_xlabel("x_volts (V)")
+    axes[2].set_ylabel("y_volts (V)")
+
+    if fit_results is not None:
+        for seg in fit_results.get("segments", []):
+            x_s, x_e, y_s, y_e = _segment_to_voltage_coords(seg, x_values, y_values, ny, nx)
+            axes[2].plot([x_s, x_e], [y_s, y_e], "c-", linewidth=1.5, alpha=0.8)
+
+        theta1 = fit_results.get("theta1")
+        theta2 = fit_results.get("theta2")
+        T = fit_results.get("T_matrix")
+        title_lines = ["Segments + transform"]
+        if theta1 is not None and theta2 is not None:
+            title_lines.append(f"θ1={np.degrees(theta1):.1f}°, θ2={np.degrees(theta2):.1f}°")
+        if T is not None:
+            title_lines.append(f"T=[[{T[0,0]:.3f}, {T[0,1]:.3f}], [{T[1,0]:.3f}, {T[1,1]:.3f}]]")
+        axes[2].set_title("\n".join(title_lines))
+    else:
+        axes[2].set_title("Segments + transform")
+
+    fig.tight_layout()
     return fig
 
 
@@ -116,22 +228,19 @@ def plot_virtual_gate_matrix(
     gate_names: List[str],
     title: Optional[str] = None,
 ) -> Figure:
-    """Visualise the current virtual gate compensation matrix as a heatmap.
-
-    Parameters
-    ----------
-    matrix : np.ndarray
-        The compensation matrix.
-    gate_names : list of str
-        Gate labels for rows/columns.
-    title : str, optional
-        Plot title.
-
-    Returns
-    -------
-    matplotlib.figure.Figure
-    """
-    # TODO: implement matrix heatmap
-    fig, ax = plt.subplots()
+    """Visualise the current virtual gate compensation matrix as a heatmap."""
+    fig, ax = plt.subplots(figsize=(6, 5))
+    im = ax.imshow(matrix, cmap="RdBu_r", aspect="equal")
     ax.set_title(title or "Virtual Gate Matrix")
+    ax.set_xticks(np.arange(len(gate_names)))
+    ax.set_yticks(np.arange(len(gate_names)))
+    ax.set_xticklabels(gate_names, rotation=45, ha="right")
+    ax.set_yticklabels(gate_names)
+
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            ax.text(j, i, f"{matrix[i, j]:.3f}", ha="center", va="center", fontsize=8)
+
+    fig.colorbar(im, ax=ax, label="Coefficient")
+    fig.tight_layout()
     return fig

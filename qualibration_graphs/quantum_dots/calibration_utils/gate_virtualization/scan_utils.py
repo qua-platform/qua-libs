@@ -21,7 +21,7 @@ from qm.qua import (
 from qualang_tools.loops import from_array
 
 from calibration_utils.charge_stability.scan_modes import ScanMode
-from calibration_utils.gate_virtualization.parameters import (
+from calibration_utils.gate_virtualization.base_parameters import (
     GateVirtualizationBaseParameters,
     get_voltage_arrays,
 )
