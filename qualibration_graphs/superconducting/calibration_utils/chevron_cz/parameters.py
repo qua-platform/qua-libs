@@ -3,7 +3,7 @@ from typing import ClassVar, List, Literal, Optional
 import numpy as np
 from qualang_tools.bakery import baking
 from qualibrate import NodeParameters
-from qualibrate.parameters import RunnableParameters
+from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
 
 
