@@ -151,7 +151,7 @@ else:
 
     while results.is_processing():
         # Fetch results
-        counts1, counts1_ref, counts2, counts2_ref, counts_dark, iteration = results.fetch_all()
+        counts1, counts1_ref, counts2, counts2_ref, iteration = results.fetch_all()
         # Compute normalized signals
         norm1 = counts1 / counts1_ref
         norm2 = counts2 / counts2_ref

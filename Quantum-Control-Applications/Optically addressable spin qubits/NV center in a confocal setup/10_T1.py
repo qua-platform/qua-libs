@@ -156,7 +156,7 @@ else:
 
     while results.is_processing():
         # Fetch results
-        counts1, counts1_ref, counts2, counts2_ref, counts_dark, iteration = results.fetch_all()
+        counts1, counts1_ref, counts2, counts2_ref, iteration = results.fetch_all()
         # Compute normalized signals
         norm1 = counts1 / counts1_ref
         norm2 = counts2 / counts2_ref
@@ -169,7 +169,7 @@ else:
         ax1.plot(4 * t_vec, norm1, label="counts in |0>")
         ax1.plot(4 * t_vec, norm2, label="counts in |1>")
         ax1.set_ylabel("Norm. Signal")
-        ax1.set_title("Ramsey")
+        ax1.set_title("T1")
         ax1.legend()
 
         ax2.cla()

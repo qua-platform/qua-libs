@@ -113,7 +113,7 @@ with program() as hahn_echo:
         counts_1_ref_st.buffer(len(t_vec)).average().save("counts1_ref")
         counts_2_st.buffer(len(t_vec)).average().save("counts2")
         counts_2_ref_st.buffer(len(t_vec)).average().save("counts2_ref")
-n_st.save("iteration")
+        n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -156,7 +156,7 @@ else:
 
     while results.is_processing():
         # Fetch results
-        counts1, counts1_ref, counts2, counts2_ref, counts_dark, iteration = results.fetch_all()
+        counts1, counts1_ref, counts2, counts2_ref, iteration = results.fetch_all()
         # Compute normalized signals
         norm1 = counts1 / counts1_ref
         norm2 = counts2 / counts2_ref
