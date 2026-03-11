@@ -24,6 +24,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
+
 # from quam_config import Quam
 from calibration_utils.run_video_mode.simulated_video_mode.demo_files.demo_quam_ld import DemoQuamLD as Quam
 from calibration_utils.charge_stability.parameters import SimulationParameters as Parameters
@@ -80,7 +81,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load(
-    "/Users/kalidu_laptop/march_meeting/qua-libs/qualibration_graphs/quantum_dots/calibration_utils/run_video_mode/simulated_video_mode/quam_state"
+    "/Users/kalidu_laptop/Hit_Quam/qua-libs/qualibration_graphs/quantum_dots/calibration_utils/run_video_mode/simulated_video_mode/quam_state"
 )
 # node.parameters.virtual_gate_set_id = "main_qpu"
 # node.parameters.x_axis_name = "virtual_dot_1"
@@ -91,7 +92,7 @@ node.machine = Quam.load(
 # node.parameters.num_shots = 100
 # node.parameters.simulate = True
 # node.parameters.use_validation = True
-# node.parameters.run_in_video_mode = False
+# node.parameters.run_in_video_mode = True
 # node.parameters.video_mode_port = 8050
 
 

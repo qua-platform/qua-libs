@@ -306,6 +306,79 @@
             "__class__": "quam_builder.architecture.quantum_dots.components.virtual_gate_set.VirtualGateSet"
         }
     },
+    "virtual_dc_sets": {
+        "main_qpu": {
+            "id": "main_qpu",
+            "channels": {
+                "plunger_1": "#/physical_channels/plunger_1",
+                "plunger_2": "#/physical_channels/plunger_2",
+                "sensor_DC_1": "#/physical_channels/sensor_DC_1",
+                "sensor_DC_2": "#/physical_channels/sensor_DC_2"
+            },
+            "layers": [
+                {
+                    "id": "compensation_layer",
+                    "source_gates": [
+                        "virtual_dot_1",
+                        "virtual_dot_2",
+                        "virtual_sensor_1",
+                        "virtual_sensor_2"
+                    ],
+                    "target_gates": [
+                        "plunger_1",
+                        "plunger_2",
+                        "sensor_DC_1",
+                        "sensor_DC_2"
+                    ],
+                    "matrix": [
+                        [
+                            1.0,
+                            0.0,
+                            0.020406,
+                            0.020406
+                        ],
+                        [
+                            0.0,
+                            1.0,
+                            0.029189,
+                            0.029189
+                        ],
+                        [
+                            0.020406,
+                            0.029189,
+                            1.0,
+                            0.0
+                        ],
+                        [
+                            0.020406,
+                            0.029189,
+                            0.0,
+                            1.0
+                        ]
+                    ],
+                    "__class__": "quam_builder.architecture.quantum_dots.components.virtual_gate_set.VirtualizationLayer"
+                }
+            ],
+            "allow_rectangular_matrices": true,
+            "_current_physical_voltages": {
+                "plunger_1": -0.0048056,
+                "plunger_2": -0.0047219,
+                "sensor_DC_1": -0.0047641,
+                "sensor_DC_2": -0.0047641
+            },
+            "_current_levels": {
+                "plunger_1": -0.0048056,
+                "plunger_2": -0.0047219,
+                "sensor_DC_1": -0.0047641,
+                "sensor_DC_2": -0.0047641,
+                "virtual_dot_1": -0.0050000324492,
+                "virtual_dot_2": -0.0050000186298,
+                "virtual_sensor_1": -0.0049999906127,
+                "virtual_sensor_2": -0.0049999906127
+            },
+            "__class__": "quam_builder.architecture.quantum_dots.components.virtual_dc_set.VirtualDCSet"
+        }
+    },
     "quantum_dots": {
         "virtual_dot_1": {
             "id": "virtual_dot_1",
@@ -515,13 +588,13 @@
                 "intermediate_frequency": 100000000.0,
                 "opx_output_I": {
                     "controller_id": "con1",
-                    "fem_id": 4,
+                    "fem_id": 3,
                     "port_id": 1,
                     "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
                 },
                 "opx_output_Q": {
                     "controller_id": "con1",
-                    "fem_id": 4,
+                    "fem_id": 3,
                     "port_id": 2,
                     "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
                 },
@@ -641,13 +714,13 @@
                 "intermediate_frequency": 100000000.0,
                 "opx_output_I": {
                     "controller_id": "con1",
-                    "fem_id": 4,
+                    "fem_id": 3,
                     "port_id": 3,
                     "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
                 },
                 "opx_output_Q": {
                     "controller_id": "con1",
-                    "fem_id": 4,
+                    "fem_id": 3,
                     "port_id": 4,
                     "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
                 },

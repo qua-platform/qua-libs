@@ -204,13 +204,20 @@ def _register_qubits(machine: LossDiVincenzoQuam, xy_drives: dict[int, XYDriveIQ
     return qubits
 
 
-def create_minimal_quam() -> LossDiVincenzoQuam:
+def create_minimal_quam(
+    host_ip: str = "172.16.33.115",
+    cluster_name: str = "CS_3",
+    create_dc_set: bool = True,
+    qdac_ip: str = "172.16.33.101",
+) -> LossDiVincenzoQuam:
     """Create the 2-dot/2-sensor QuAM used by simulated video mode."""
     machine = LossDiVincenzoQuam()
+    machine.network["host"] = host_ip
+    machine.network["cluster_name"] = cluster_name
 
     controller = "con1"
     lf_fem_slot = 5
-    xy_fem_slot = 4
+    xy_fem_slot = 3
 
     plunger_1 = VoltageGate(
         id="plunger_1",
@@ -329,6 +336,10 @@ def create_minimal_quam() -> LossDiVincenzoQuam:
             [0.020406, 0.029189, 0.0, 1.0],
         ],
     )
+    if create_dc_set:
+        machine.network["qdac_ip"] = qdac_ip
+        machine.connect_to_external_source(external_qdac=True)
+        machine.create_virtual_dc_set("main_qpu")
 
     machine.register_channel_elements(
         plunger_channels=[plunger_1, plunger_2],
