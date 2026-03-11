@@ -1,8 +1,7 @@
 """Unified wiring-based QuAM factory for quantum dot calibration tests.
 
 Builds machines using the ``quam_builder`` wiring tools and the
-``feature/qd_default_operations`` default macro engine.  Two entry points
-are provided:
+``release/nightly`` default macro engine.  Two entry points are provided:
 
 * :func:`create_qd_quam` -- Stage 1 dot-layer ``BaseQuamQD``
   (quantum dots, sensor dots, virtual gate set, dot pairs).
@@ -138,13 +137,12 @@ def create_ld_quam():
     connectivity.add_quantum_dots(
         quantum_dots=QUANTUM_DOTS,
         add_drive_lines=True,
-        use_mw_fem=True,
+        use_mw_fem=False,
         shared_drive_line=True,
     )
     connectivity.add_quantum_dot_pairs(quantum_dot_pairs=QUANTUM_DOT_PAIRS)
 
     instruments = Instruments()
-    instruments.add_mw_fem(controller=CONTROLLER_ID, slots=[MW_FEM_SLOT])
     instruments.add_lf_fem(
         controller=CONTROLLER_ID,
         slots=[LF_FEM_SLOT_1, LF_FEM_SLOT_2],
@@ -165,82 +163,8 @@ def create_ld_quam():
     for key, qubit in machine.qubits.items():
         qubit.id = key
 
-    _wire_sensor_dots_to_pairs(machine)
-    _set_preferred_readout_quantum_dots(machine)
-    _create_ports_from_wiring(machine)
     _add_default_voltage_points(machine)
     return machine
-
-
-def _create_ports_from_wiring(machine) -> None:
-    """Materialise FEM port objects from wiring reference strings.
-
-    ``build_quam_wiring`` stores port references (e.g.
-    ``#/ports/analog_inputs/con1/3/1``) in the wiring dict but does not
-    create the actual port objects inside ``machine.ports``.  We walk
-    the raw wiring dict values, collect every unique port reference, and
-    call ``ports.reference_to_port(ref, create=True)`` so the ports
-    exist before QUA config generation.
-    """
-    refs: set[str] = set()
-
-    def _collect(obj):
-        if isinstance(obj, str) and obj.startswith("#/ports/"):
-            refs.add(obj)
-        elif hasattr(obj, "items"):
-            for v in obj.values():
-                _collect(v)
-        elif isinstance(obj, (list, tuple)):
-            for v in obj:
-                _collect(v)
-
-    wiring_raw = machine.__dict__.get("wiring", {})
-    _collect(wiring_raw)
-
-    for ref in sorted(refs):
-        try:
-            machine.ports.reference_to_port(ref, create=True)
-        except Exception:
-            pass
-
-
-def _wire_sensor_dots_to_pairs(machine) -> None:
-    """Link sensor dots to their quantum dot pairs via QUBIT_PAIR_SENSOR_MAP.
-
-    The wiring builder doesn't automatically populate
-    ``quantum_dot_pair.sensor_dots``.  This post-build step resolves
-    the sensor names from the map and appends references so that macros
-    can navigate qubit → pair → sensor → readout_resonator.
-    """
-    for pair_key, sensor_names in QUBIT_PAIR_SENSOR_MAP.items():
-        qp = machine.qubit_pairs.get(pair_key)
-        if qp is None:
-            continue
-        qdp = getattr(qp, "quantum_dot_pair", None)
-        if qdp is None:
-            continue
-        for sname in sensor_names:
-            for sid in machine.sensor_dots:
-                if sid == sname or sid.endswith(f"_{sname.split('_')[-1]}"):
-                    ref = f"#/sensor_dots/{sid}"
-                    if ref not in qdp.sensor_dots:
-                        qdp.sensor_dots.append(ref)
-
-
-def _set_preferred_readout_quantum_dots(machine) -> None:
-    """Set ``preferred_readout_quantum_dot`` on each qubit.
-
-    For each qubit pair ``(control, target)`` the readout dot for the
-    control qubit is the target's quantum dot and vice-versa.  This
-    enables the ``Measure1QMacro`` delegation chain:
-    qubit.preferred_readout_quantum_dot → find_quantum_dot_pair →
-    pair.measure → sensor.measure.
-    """
-    for qp in machine.qubit_pairs.values():
-        qc = qp.qubit_control
-        qt = qp.qubit_target
-        qc.preferred_readout_quantum_dot = qt.quantum_dot.id
-        qt.preferred_readout_quantum_dot = qc.quantum_dot.id
 
 
 def _add_default_voltage_points(machine) -> None:

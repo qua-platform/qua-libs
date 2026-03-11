@@ -51,3 +51,73 @@ def test_create_ld_quam_has_default_macros():
         macro_names = set(qubit.macros.keys())
         missing = required_macros - macro_names
         assert not missing, f"{qname} missing macros: {missing}"
+
+
+# ── Wiring behaviour integration tests ────────────────────────────────
+
+
+def test_ports_materialized_after_stage2():
+    """All port references in machine.wiring should have corresponding port objects."""
+    machine = create_ld_quam()
+
+    def _collect_port_refs(obj, refs=None):
+        if refs is None:
+            refs = set()
+        if isinstance(obj, dict):
+            for v in obj.values():
+                _collect_port_refs(v, refs)
+        elif isinstance(obj, str) and obj.startswith("#/ports/"):
+            refs.add(obj)
+        return refs
+
+    wiring_refs = _collect_port_refs(machine.wiring)
+    for ref in wiring_refs:
+        parts = ref.lstrip("#/").split("/")
+        node = machine
+        for part in parts:
+            if isinstance(node, dict):
+                assert part in node, f"Port reference {ref} not materialized"
+                node = node[part]
+            else:
+                assert hasattr(node, part), f"Port reference {ref} not materialized"
+                node = getattr(node, part)
+
+
+def test_readout_resonators_not_sticky():
+    """Readout resonators should not have sticky enabled."""
+    machine = create_ld_quam()
+    for sensor in machine.sensor_dots.values():
+        rr = getattr(sensor, "readout_resonator", None)
+        if rr is None:
+            continue
+        assert rr.sticky is None or not getattr(
+            rr.sticky, "enabled", True
+        ), f"Readout resonator {rr.id} should not have sticky enabled"
+
+
+def test_sensor_dots_wired_to_quantum_dot_pairs():
+    """Each qubit pair should have non-empty sensor_dots on its quantum_dot_pair."""
+    machine = create_ld_quam()
+
+    pair_q1_q2 = machine.qubit_pairs["q1_q2"]
+    assert len(pair_q1_q2.quantum_dot_pair.sensor_dots) > 0
+    assert "#/sensor_dots/virtual_sensor_1" in pair_q1_q2.quantum_dot_pair.sensor_dots
+
+    pair_q3_q4 = machine.qubit_pairs["q3_q4"]
+    assert len(pair_q3_q4.quantum_dot_pair.sensor_dots) > 0
+    assert "#/sensor_dots/virtual_sensor_2" in pair_q3_q4.quantum_dot_pair.sensor_dots
+
+
+def test_preferred_readout_quantum_dot_set():
+    """Each qubit in a pair should have preferred_readout_quantum_dot set."""
+    machine = create_ld_quam()
+
+    for qp in machine.qubit_pairs.values():
+        qc = qp.qubit_control
+        qt = qp.qubit_target
+        assert (
+            qc.preferred_readout_quantum_dot == qt.quantum_dot.id
+        ), f"Control qubit {qc.id} preferred_readout_quantum_dot should be {qt.quantum_dot.id}"
+        assert (
+            qt.preferred_readout_quantum_dot == qc.quantum_dot.id
+        ), f"Target qubit {qt.id} preferred_readout_quantum_dot should be {qc.quantum_dot.id}"
