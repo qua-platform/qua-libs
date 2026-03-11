@@ -25,7 +25,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 # from quam_config import Quam
-from calibration_utils.run_video_mode.simulated_video_mode.demo_files.demo_quam_qd import DemoQuam as Quam
+from calibration_utils.run_video_mode.simulated_video_mode.demo_files.demo_quam_ld import DemoQuamLD as Quam
 from calibration_utils.charge_stability.parameters import SimulationParameters as Parameters
 from calibration_utils.charge_stability import (
     get_voltage_arrays,
