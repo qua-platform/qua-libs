@@ -9,11 +9,27 @@ from __future__ import annotations
 import os
 import sys
 import types
+import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional
 from unittest.mock import patch
 
 import pytest
+
+
+def pytest_configure(config):
+    """Suppress known QuAM port-reference warnings (int-key vs string-key mismatch)."""
+    warnings.filterwarnings(
+        "ignore",
+        message=r"Could not get reference.*#/ports/analog_outputs.*",
+        category=UserWarning,
+    )
+    warnings.filterwarnings(
+        "ignore",
+        message=r"Skipping sticky-voltage tracking for macro.*",
+        category=UserWarning,
+    )
+
 
 CURRENT_DIR = Path(__file__).resolve().parent
 SIMULATION_ROOT = CURRENT_DIR.parents[3]
@@ -61,7 +77,8 @@ DEFAULT_SMALL_SWEEP_PARAMS: Dict[str, Any] = {
     "frequency_span_in_mhz": 4,
     "frequency_step_in_mhz": 2,
     "gap_wait_time_in_ns": 1056,
-    "simulation_duration_ns": 20_000,
+    "simulation_duration_ns": 40_000,
+    "timeout": 120,
 }
 
 
@@ -103,6 +120,9 @@ def simulation_runner(minimal_quam_factory, save_simulation_plot, markdown_gener
         if not configure_machine_network(machine):
             pytest.skip("Missing QM host configuration for local simulation.")
 
+        ensure_quam_config_stub(machine)
+        from quam_config import Quam
+
         library_root = library_root or CALIBRATION_LIBRARY_ROOT
         node = load_library_node(node_name, library_root)
         node.machine = machine
@@ -112,9 +132,6 @@ def simulation_runner(minimal_quam_factory, save_simulation_plot, markdown_gener
         apply_param_overrides(node, param_overrides)
 
         artifacts_dir = ARTIFACTS_BASE / (artifacts_subdir or node_name)
-
-        ensure_quam_config_stub(machine)
-        from quam_config import Quam
 
         with patch.object(Quam, "load", return_value=machine):
             result = node.run(simulate=True)

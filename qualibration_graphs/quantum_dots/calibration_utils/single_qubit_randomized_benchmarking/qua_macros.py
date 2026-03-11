@@ -12,9 +12,9 @@ The macros themselves enforce the single-calibration-source principle:
 
 Native gate integer encoding (must match :data:`clifford_tables.NATIVE_GATE_MAP`):
 
-    0: x90     1: x180    2: xm90
-    3: y90     4: y180    5: ym90
-    6: z90     7: z180    8: zm90
+    0: x90      1: x180    2: x_neg90
+    3: y90      4: y180    5: y_neg90
+    6: z90      7: z180    8: z_neg90
 """
 
 from __future__ import annotations
@@ -25,8 +25,9 @@ from qm.qua import switch_, case_
 def play_rb_gate(qubit, gate_int) -> None:
     """Play a single native gate on *qubit* selected by *gate_int*.
 
-    Dispatches to the qubit's registered macros (``x90``, ``x180``,
-    ``xm90``, ``y90``, ``y180``, ``ym90``, ``z90``, ``z180``, ``zm90``).
+    Dispatches to the qubit's registered macros using canonical names
+    (``x90``, ``x180``, ``x_neg90``, ``y90``, ``y180``, ``y_neg90``,
+    ``z90``, ``z180``, ``z_neg90``).
 
     Parameters
     ----------
@@ -41,16 +42,16 @@ def play_rb_gate(qubit, gate_int) -> None:
         with case_(1):
             qubit.x180()
         with case_(2):
-            qubit.xm90()
+            qubit.x_neg90()
         with case_(3):
             qubit.y90()
         with case_(4):
             qubit.y180()
         with case_(5):
-            qubit.ym90()
+            qubit.y_neg90()
         with case_(6):
             qubit.z90()
         with case_(7):
             qubit.z180()
         with case_(8):
-            qubit.zm90()
+            qubit.z_neg90()

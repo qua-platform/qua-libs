@@ -1,4 +1,4 @@
-from qualibrate.parameters import RunnableParameters
+from qualibrate.core.parameters import RunnableParameters
 from typing import List, Optional, Literal
 
 

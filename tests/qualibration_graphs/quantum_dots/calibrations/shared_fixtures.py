@@ -102,23 +102,44 @@ def configure_qualibrate(library_root: Path) -> None:
 
 
 def load_library_node(node_name: str, library_root: Path) -> Any:
-    """Load a calibration node from ``QualibrationLibrary``, or skip."""
+    """Load a calibration node by directly importing its module file.
+
+    Uses register-only patching so that ``@node.run_action`` decorators
+    only *register* the action without eagerly executing it (qualibrate
+    >= 1.1 executes actions at decoration time by default).
+
+    Raises on any error so that test failures are visible rather than
+    silently skipped.
+    """
     if not library_root.exists():
-        warnings.warn(f"Skip: calibration library not found at {library_root}")
-        pytest.skip("Calibration library not found.")
+        pytest.fail(f"Calibration library not found at {library_root}")
 
-    configure_qualibrate(library_root)
+    node_file = library_root / f"{node_name}.py"
+    if not node_file.exists():
+        pytest.fail(f"Node file '{node_name}.py' does not exist in {library_root}")
 
-    try:
-        from qualibrate.qualibration_library import QualibrationLibrary
-    except ImportError:
-        from qualibrate.core.qualibration_library import QualibrationLibrary
+    parent_dir = str(library_root.parent)
+    if parent_dir not in sys.path:
+        sys.path.insert(0, parent_dir)
+    cal_utils_dir = str(library_root.parents[1])
+    if cal_utils_dir not in sys.path:
+        sys.path.insert(0, cal_utils_dir)
 
-    library = QualibrationLibrary(library_folder=library_root)
-    if node_name not in library.nodes:
-        warnings.warn(f"Skip: node '{node_name}' not found under {library_root}")
-        pytest.skip("Node not found in calibration library.")
-    return library.nodes[node_name]
+    mod_name = f"_test_node_{node_name}"
+    spec = spec_from_file_location(mod_name, node_file)
+    if spec is None or spec.loader is None:
+        pytest.fail(f"Could not create import spec for {node_file}")
+    mod = module_from_spec(spec)
+
+    with patch_action_manager_register_only():
+        spec.loader.exec_module(mod)
+
+    node = getattr(mod, "node", None)
+    if node is None:
+        pytest.fail(f"Module {node_file} loaded but has no 'node' attribute")
+    if getattr(node, "filepath", None) is None:
+        node.filepath = node_file
+    return node
 
 
 def reimport_node_to_register_actions(node_name: str, library_root: Path) -> Any | None:
@@ -145,14 +166,33 @@ def reimport_node_to_register_actions(node_name: str, library_root: Path) -> Any
 def patch_action_manager_register_only():
     """Patch ``ActionManager.register_action`` to only register, not execute.
 
-    Returns a context manager (``unittest.mock.patch`` object).
+    Returns a context manager that patches all discoverable ActionManager
+    classes (qualibrate exposes the class under both a legacy path and a
+    ``core`` path; they can be distinct classes, so we patch both).
     """
+    am_classes = []
+    Action = None
     try:
-        from qualibrate.runnables.run_action.action import Action
-        from qualibrate.runnables.run_action.action_manager import ActionManager
+        from qualibrate.core.runnables.run_action.action import Action as _A
+        from qualibrate.core.runnables.run_action.action_manager import ActionManager as _AM
+
+        Action = _A
+        am_classes.append(_AM)
     except ImportError:
-        from qualibrate.core.runnables.run_action.action import Action
-        from qualibrate.core.runnables.run_action.action_manager import ActionManager
+        pass
+    try:
+        from qualibrate.runnables.run_action.action import Action as _A2
+        from qualibrate.runnables.run_action.action_manager import ActionManager as _AM2
+
+        if Action is None:
+            Action = _A2
+        if _AM2 not in am_classes:
+            am_classes.append(_AM2)
+    except ImportError:
+        pass
+
+    if not am_classes or Action is None:
+        raise ImportError("Cannot import ActionManager from qualibrate")
 
     def _register_only(self, node, func=None, *, skip_if=False):
         def decorator(f):
@@ -167,7 +207,21 @@ def patch_action_manager_register_only():
 
         return decorator if func is None else decorator(func)
 
-    return patch.object(ActionManager, "register_action", _register_only)
+    from contextlib import ExitStack
+
+    class _MultiPatch:
+        def __init__(self):
+            self._stack = ExitStack()
+
+        def __enter__(self):
+            for cls in am_classes:
+                self._stack.enter_context(patch.object(cls, "register_action", _register_only))
+            return self
+
+        def __exit__(self, *exc):
+            return self._stack.__exit__(*exc)
+
+    return _MultiPatch()
 
 
 def call_node_action(node: Any, action_name: str) -> None:
@@ -257,19 +311,25 @@ def configure_machine_network(machine) -> bool:
 def ensure_quam_config_stub(machine) -> None:
     """Ensure ``quam_config.Quam.load()`` returns *machine*.
 
-    Injects a stub ``quam_config`` module into ``sys.modules`` if the real
-    one is not available.
+    Injects (or updates) a stub ``quam_config`` module in ``sys.modules``.
+    Can be called multiple times; the most recent *machine* wins.
     """
-    if "quam_config" in sys.modules:
-        return
-    stub = types.ModuleType("quam_config")
 
     class QuamStub:
         @staticmethod
-        def load():
+        def load(*args, **kwargs):
             return machine
 
+    existing = sys.modules.get("quam_config")
+    if existing is not None:
+        existing.Quam = QuamStub
+        if not hasattr(existing, "QubitQuam"):
+            existing.QubitQuam = QuamStub
+        return
+
+    stub = types.ModuleType("quam_config")
     stub.Quam = QuamStub
+    stub.QubitQuam = QuamStub
     sys.modules["quam_config"] = stub
 
 

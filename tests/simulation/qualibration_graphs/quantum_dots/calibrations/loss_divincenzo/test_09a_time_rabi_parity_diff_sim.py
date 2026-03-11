@@ -13,9 +13,6 @@ def test_time_rabi_parity_diff_simulation(simulation_runner):
     simulation_runner(
         node_name=NODE_NAME,
         param_overrides={
-            "num_shots": 10,
-            "simulation_duration_ns": 30_000,
-            "timeout": 100,
             "time_step_in_ns": 500,
         },
     )

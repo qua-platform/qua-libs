@@ -13,13 +13,16 @@ Builds machines using the ``quam_builder`` wiring tools and the
 
 Hardware configuration
 ----------------------
-All FEM slot numbers, controller identifiers, and topology constants live
-as module-level variables at the top of this file.  Change them here to
-reconfigure for a different instrument rack -- nothing is hard-coded deeper
-in the factory functions.
+Cluster connection (host IP, cluster name) is loaded from
+``tests/.qm_cluster_config.json`` -- copy the ``.example`` file and
+fill in your values.  FEM slot numbers and topology constants live
+as module-level variables at the top of this file.
 """
 
 from __future__ import annotations
+
+import json
+from pathlib import Path
 
 from qualang_tools.wirer import Connectivity, Instruments, allocate_wiring
 
@@ -35,15 +38,32 @@ from quam_builder.builder.quantum_dots import (
 )
 
 # ── Hardware Configuration ──────────────────────────────────────────────
-# Change these constants to match your instrument rack.
-# All FEM slot and controller IDs are defined here; nothing is hardcoded
-# deeper in the factory functions.
+# Cluster connection details are loaded at import time from
+# ``tests/.qm_cluster_config.json`` (not tracked by git).
+# Copy ``.qm_cluster_config.json.example`` and fill in your values.
 
-HOST_IP: str = "172.16.33.115"
-"""QOP IP address used for ``machine.network``."""
 
-CLUSTER_NAME: str = "CS_3"
-"""OPX cluster name."""
+def _find_repo_root(start: Path) -> Path:
+    current = start
+    while current != current.parent:
+        if (current / "tests").is_dir() and (current / "qualibration_graphs").is_dir():
+            return current
+        current = current.parent
+    raise FileNotFoundError("Could not locate repo root")
+
+
+def _load_cluster_config() -> tuple[str, str]:
+    config_path = _find_repo_root(Path(__file__).resolve().parent) / "tests" / ".qm_cluster_config.json"
+    if not config_path.exists():
+        raise FileNotFoundError(
+            f"Cluster config not found at {config_path}. "
+            "Copy tests/.qm_cluster_config.json.example and fill in your values."
+        )
+    data = json.loads(config_path.read_text(encoding="utf-8"))
+    return data["host"], data["cluster_name"]
+
+
+HOST_IP, CLUSTER_NAME = _load_cluster_config()
 
 CONTROLLER_ID: int = 1
 """Controller number passed to ``Instruments.add_*_fem(controller=...)``."""
@@ -134,6 +154,11 @@ def create_ld_quam():
         shared_resonator_line=False,
         use_mw_fem=False,
     )
+    # TODO: To enable IQ driving on LF-FEM (XYDriveIQ), add an Octave to
+    # instruments and set use_mw_fem=True.  The RF allocation path falls
+    # through from MW-FEM to LF-FEM + Octave when no MW-FEM is configured.
+    # With use_mw_fem=False the wirer allocates a single LF-FEM output per
+    # drive line, producing XYDriveSingle (baseband EDSR).
     connectivity.add_quantum_dots(
         quantum_dots=QUANTUM_DOTS,
         add_drive_lines=True,
@@ -163,8 +188,27 @@ def create_ld_quam():
     for key, qubit in machine.qubits.items():
         qubit.id = key
 
+    _override_default_pulse_lengths(machine)
     _add_default_voltage_points(machine)
     return machine
+
+
+def _override_default_pulse_lengths(machine) -> None:
+    """Override quam-builder default pulse lengths for this test configuration."""
+    for qubit in machine.qubits.values():
+        if hasattr(qubit, "xy") and qubit.xy is not None:
+            for op in qubit.xy.operations.values():
+                op.length = 524
+                if hasattr(op, "sigma"):
+                    op.sigma = 524 / 6
+
+    for sd in machine.sensor_dots.values():
+        rr = getattr(sd, "readout_resonator", None)
+        if rr is not None:
+            rr.intermediate_frequency = 50e6
+            if "readout" in getattr(rr, "operations", {}):
+                rr.operations["readout"].length = 1000
+                rr.operations["readout"].amplitude = 0.025
 
 
 def _add_default_voltage_points(machine) -> None:
@@ -180,16 +224,22 @@ def _add_default_voltage_points(machine) -> None:
     """
     for qubit in machine.qubits.values():
         dot_id = qubit.quantum_dot.id
-        qubit.with_step_point(VoltagePointName.INITIALIZE.value, {dot_id: 0.10}, duration=200)
-        qubit.with_step_point(VoltagePointName.EMPTY.value, {dot_id: 0.00}, duration=180)
+        qubit.with_step_point(VoltagePointName.INITIALIZE.value, {dot_id: 0.075}, duration=248)
+        qubit.with_step_point(VoltagePointName.EMPTY.value, {dot_id: -0.05}, duration=524)
         # For "measure", register the voltage point but install Measure1QMacro
         # (delegates to quantum_dot_pair) instead of the generic StepPointMacro.
-        qubit.add_point(VoltagePointName.MEASURE.value, {dot_id: 0.15}, duration=220)
+        qubit.add_point(VoltagePointName.MEASURE.value, {dot_id: 0.05}, duration=248)
         qubit.macros[VoltagePointName.MEASURE.value] = Measure1QMacro()
 
-    # Register voltage points on quantum_dot_pairs so the MeasureStateMacro
+    # Register voltage points on quantum_dot_pairs so the MeasurePSBPairMacro
     # can call step_to_point("measure") during the delegation chain.
     for qdp in machine.quantum_dot_pairs.values():
         dot_ids = [d.id for d in qdp.quantum_dots]
-        voltages = {did: 0.15 for did in dot_ids}
-        qdp.add_point(VoltagePointName.MEASURE.value, voltages, duration=220)
+        voltages = {did: 0.05 for did in dot_ids}
+        qdp.add_point(VoltagePointName.MEASURE.value, voltages, duration=248)
+
+    # Populate default readout thresholds / projectors on sensor dots so
+    # the SensorDotMeasureMacro can perform state discrimination.
+    for qdp_name, qdp in machine.quantum_dot_pairs.items():
+        for sd in qdp.sensor_dots:
+            sd._add_readout_params(qdp_name, threshold=0.0)
