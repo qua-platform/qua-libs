@@ -10,8 +10,8 @@ except:
 
 
 DEFAULT_SIMULATED_VIDEO_MODE_BASE_POINT = {
-    "virtual_dot_1": -20.0e-3,
-    "virtual_dot_2": -20.0e-3,
+    "virtual_dot_1": -5.0e-3,
+    "virtual_dot_2": -5.0e-3,
     "virtual_sensor_1": -5.0e-3,
     "virtual_sensor_2": -5.0e-3,
 }
@@ -100,7 +100,8 @@ def setup_simulation(base_point: Dict[str, float], gate_set, dc_set=None, sensor
         implementation="jax",
     )
 
-    simulator = SimulatedVideoModeQarraySimulator(
+    simulator = QarraySimulator(  # Changed back for now. Aren't base point centres already handled by the resolving?
+        # simulator = SimulatedVideoModeQarraySimulator(
         gate_set=gate_set,
         dc_set=dc_set,
         model=model,

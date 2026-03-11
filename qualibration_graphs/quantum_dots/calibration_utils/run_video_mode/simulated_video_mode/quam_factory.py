@@ -10,7 +10,11 @@ from quam_builder.architecture.quantum_dots.components import VoltageGate
 from quam_builder.architecture.quantum_dots.components.readout_resonator import ReadoutResonatorSingle
 from quam_builder.architecture.quantum_dots.components.voltage_gate import QdacSpec
 from quam_builder.architecture.quantum_dots.components.xy_drive import XYDriveIQ
-from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam
+
+# from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam
+from calibration_utils.run_video_mode.simulated_video_mode.demo_files.demo_quam_ld import (
+    DemoQuamLD as LossDiVincenzoQuam,
+)
 from quam_builder.architecture.quantum_dots.qubit import LDQubit
 
 from calibration_utils.run_video_mode.simulated_video_mode.quam_macros import (
