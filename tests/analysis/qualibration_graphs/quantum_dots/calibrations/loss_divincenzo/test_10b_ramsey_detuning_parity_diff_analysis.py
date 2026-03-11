@@ -131,7 +131,7 @@ def test_10b_ramsey_detuning_parity_diff_analysis(ld_device, calibrated_pi_half_
 
     # ── Assertions ───────────────────────────────────────────────────────
     assert "fit_results" in node.results
-    fit_q1 = node.results["fit_results"]["Q1"]
+    fit_q1 = node.results["fit_results"]["q1"]
     assert fit_q1["success"], f"Analysis should succeed: {fit_q1}"
 
     # freq_offset should be within the detuning span

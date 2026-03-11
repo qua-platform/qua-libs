@@ -122,7 +122,7 @@ def test_10a_ramsey_parity_diff_analysis(ld_device, calibrated_pi_half_amp, anal
 
     # ── Assertions ───────────────────────────────────────────────────────
     assert "fit_results" in node.results
-    fit_q1 = node.results["fit_results"]["Q1"]
+    fit_q1 = node.results["fit_results"]["q1"]
     assert fit_q1["success"], f"Analysis should succeed: {fit_q1}"
 
     # Both fitted Ramsey frequencies should be positive and reasonable

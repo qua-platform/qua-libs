@@ -143,7 +143,7 @@ def test_12_hahn_echo_analysis(ld_device, calibrated_pi_half_amp, analysis_runne
     # ── Build ds_raw ──────────────────────────────────────────────────────
     ds_raw = build_parity_ds_raw(
         coords={"tau": (tau_np, "per-arm idle time", "ns")},
-        pdiff_per_qubit={"Q1": pdiff_q1, "Q2": pdiff_q2},
+        pdiff_per_qubit={"q1": pdiff_q1, "q2": pdiff_q2},
     )
 
     # ── Run analysis ──────────────────────────────────────────────────────
@@ -156,26 +156,26 @@ def test_12_hahn_echo_analysis(ld_device, calibrated_pi_half_amp, analysis_runne
             "tau_max": int(MAX_TAU_NS),
             "tau_step": 16,
         },
-        analyse_qubits=["Q1", "Q2"],
+        analyse_qubits=["q1", "q2"],
     )
 
     # ── Assertions ────────────────────────────────────────────────────────
     assert "fit_results" in node.results
 
     # Q1: physics simulation (T₂ = 400 ns from device config)
-    fit_q1 = node.results["fit_results"]["Q1"]
-    assert fit_q1["success"], f"Q1 analysis should succeed: {fit_q1}"
-    assert fit_q1["T2_echo"] > 0, f"Q1 T2_echo should be positive, got {fit_q1['T2_echo']}"
-    assert np.isfinite(fit_q1["T2_echo"]), f"Q1 T2_echo should be finite, got {fit_q1['T2_echo']}"
-    assert fit_q1["decay_rate"] > 0, f"Q1 decay_rate should be positive, got {fit_q1['decay_rate']}"
+    fit_q1 = node.results["fit_results"]["q1"]
+    assert fit_q1["success"], f"q1 analysis should succeed: {fit_q1}"
+    assert fit_q1["T2_echo"] > 0, f"q1 T2_echo should be positive, got {fit_q1['T2_echo']}"
+    assert np.isfinite(fit_q1["T2_echo"]), f"q1 T2_echo should be finite, got {fit_q1['T2_echo']}"
+    assert fit_q1["decay_rate"] > 0, f"q1 decay_rate should be positive, got {fit_q1['decay_rate']}"
 
     # Q2: synthetic data (T₂_echo = 600 ns)
-    fit_q2 = node.results["fit_results"]["Q2"]
-    assert fit_q2["success"], f"Q2 analysis should succeed: {fit_q2}"
+    fit_q2 = node.results["fit_results"]["q2"]
+    assert fit_q2["success"], f"q2 analysis should succeed: {fit_q2}"
     assert (
         abs(fit_q2["T2_echo"] - Q2_T2_ECHO_NS) < 0.3 * Q2_T2_ECHO_NS
-    ), f"Q2 T2_echo should be near {Q2_T2_ECHO_NS} ns, got {fit_q2['T2_echo']:.1f} ns"
+    ), f"q2 T2_echo should be near {Q2_T2_ECHO_NS} ns, got {fit_q2['T2_echo']:.1f} ns"
     assert (
         abs(fit_q2["amplitude"] - Q2_AMPLITUDE) < 0.3 * Q2_AMPLITUDE
-    ), f"Q2 amplitude should be near {Q2_AMPLITUDE}, got {fit_q2['amplitude']:.4f}"
-    assert abs(fit_q2["offset"] - Q2_OFFSET) < 0.1, f"Q2 offset should be near {Q2_OFFSET}, got {fit_q2['offset']:.4f}"
+    ), f"q2 amplitude should be near {Q2_AMPLITUDE}, got {fit_q2['amplitude']:.4f}"
+    assert abs(fit_q2["offset"] - Q2_OFFSET) < 0.1, f"q2 offset should be near {Q2_OFFSET}, got {fit_q2['offset']:.4f}"

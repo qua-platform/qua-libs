@@ -19,7 +19,7 @@ from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import fetching_tool, progress_counter
 from qualibrate import QualibrationNode
-from qualibrate.parameters import NodeParameters
+from qualibrate.core.parameters import NodeParameters
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs
 from quam_config import Quam

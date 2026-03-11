@@ -13,9 +13,6 @@ def test_ramsey_chevron_parity_diff_simulation(simulation_runner):
     simulation_runner(
         node_name=NODE_NAME,
         param_overrides={
-            "num_shots": 1,
-            "simulation_duration_ns": 20_000,
-            "timeout": 120,
             "detuning_span_in_mhz": 2.0,
             "detuning_step_in_mhz": 1.0,
             "min_wait_time_in_ns": 16,

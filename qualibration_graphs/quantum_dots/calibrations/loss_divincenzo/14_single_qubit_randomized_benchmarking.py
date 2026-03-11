@@ -292,7 +292,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # the voltage pulse compensation.
                         align()
                         for i_q, qubit in batched_qubits.items():
-                            qubit.voltage_sequence.apply_compensation_pulse()
+                            qubit.voltage_sequence.ramp_to_zero()
+                        #     qubit.voltage_sequence.apply_compensation_pulse()
 
         # ── Stream processing ─────────────────────────────────────────
         # Buffer order matches loop nesting: circuit → depth → shot
