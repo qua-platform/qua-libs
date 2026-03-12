@@ -259,7 +259,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         fit_with_diag,
     )
     plt.show()
-    node.results["figure"] = fig
+    node.results["figures"] = {"figure": fig}
 
 
 # %% {Update_state}

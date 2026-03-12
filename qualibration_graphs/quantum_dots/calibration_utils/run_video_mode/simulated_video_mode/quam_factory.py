@@ -206,7 +206,7 @@ def _register_qubits(machine: LossDiVincenzoQuam, xy_drives: dict[int, XYDriveIQ
 
 def create_minimal_quam(
     host_ip: str = "172.16.33.115",
-    cluster_name: str = "CS_3",
+    cluster_name: str = "CS_4",
     create_dc_set: bool = True,
     qdac_ip: str = "172.16.33.101",
 ) -> LossDiVincenzoQuam:
@@ -217,7 +217,7 @@ def create_minimal_quam(
 
     controller = "con1"
     lf_fem_slot = 5
-    xy_fem_slot = 3
+    xy_fem_slot = 6
 
     plunger_1 = VoltageGate(
         id="plunger_1",

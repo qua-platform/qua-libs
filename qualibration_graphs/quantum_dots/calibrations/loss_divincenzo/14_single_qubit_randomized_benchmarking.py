@@ -1,4 +1,5 @@
 # %% {Imports}
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
@@ -360,11 +361,16 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     qubits = node.namespace["qubits"]
 
     fit_results = fit_raw_data(ds_raw, qubits)
-    node.results["fit_results"] = fit_results
+    node.namespace["_fit_results_full"] = fit_results
+    node.results["fit_results"] = {
+        k: {kk: vv for kk, vv in v.items() if kk != "fitted_curve"} for k, v in fit_results.items()
+    }
 
-    log_fitted_results(fit_results, node.log)
+    log_fitted_results(node.results["fit_results"], node.log)
 
-    node.outcomes = {qname: ("successful" if r["success"] else "failed") for qname, r in fit_results.items()}
+    node.outcomes = {
+        qname: ("successful" if r["success"] else "failed") for qname, r in node.results["fit_results"].items()
+    }
 
 
 # %% {Plot_data}
@@ -372,11 +378,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted RB data."""
     ds_raw = node.results["ds_raw"]
-    fit_results = node.results["fit_results"]
+    fit_results = node.namespace.get("_fit_results_full", node.results["fit_results"])
     qubits = node.namespace["qubits"]
 
     fig = plot_raw_data_with_fit(ds_raw, fit_results, qubits)
-    node.results["figure"] = fig
+    plt.show()
+    node.results["figures"] = {"figure": fig}
 
 
 # %% {Update_state}

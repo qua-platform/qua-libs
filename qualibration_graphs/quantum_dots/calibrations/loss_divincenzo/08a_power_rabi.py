@@ -238,9 +238,14 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     ds_fit, fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["ds_fit"] = ds_fit
-    node.results["fit_results"] = fit_results
-    log_fitted_results(fit_results, log_callable=node.log)
-    node.outcomes = {qname: ("successful" if r["success"] else "failed") for qname, r in fit_results.items()}
+    node.namespace["_fit_results_full"] = fit_results
+    node.results["fit_results"] = {
+        k: {kk: vv for kk, vv in v.items() if not kk.startswith("_")} for k, v in fit_results.items()
+    }
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    node.outcomes = {
+        qname: ("successful" if r["success"] else "failed") for qname, r in node.results["fit_results"].items()
+    }
 
 
 # %% {Plot_data}
@@ -251,9 +256,10 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results["ds_raw"],
         node.results.get("ds_fit"),
         node.namespace["qubits"],
-        node.results.get("fit_results", {}),
+        node.namespace.get("_fit_results_full", node.results.get("fit_results", {})),
     )
-    node.results["figure"] = fig
+    plt.show()
+    node.results["figures"] = {"figure": fig}
 
 
 # %% {Update_state}

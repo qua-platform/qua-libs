@@ -276,7 +276,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.namespace["qubits"],
         node.results.get("fit_results", {}),
     )
-    node.results["figure"] = fig
+    plt.show()
+    node.results["figures"] = {"figure": fig}
 
 
 # %% {Update_state}
