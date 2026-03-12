@@ -95,7 +95,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.y_span = 0.1
     # node.parameters.x_points = 151
     # node.parameters.y_points = 151
-    pass
 
 
 # Instantiate the QUAM class from the state file
@@ -113,13 +112,16 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
 
-    virtual_gate_set = node.machine.virtual_gate_sets[node.parameters.virtual_gate_set_id]
-
     node.namespace["sensors"] = sensors = get_sensors(node)
 
     x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(
         node.parameters.y_axis_name
     )
+    if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
+        raise ValueError(
+            f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
+        )
+    virtual_gate_set = node.machine.virtual_gate_sets[x_obj.voltage_sequence.gate_set.id]
     x_volts, y_volts = get_voltage_arrays(node)
     num_sensors = len(sensors)
 
@@ -227,7 +229,19 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 )
 def simulate_data(node: QualibrationNode[Parameters, Quam]):
     """Simulate the data."""
-    virtual_gate_set = node.machine.virtual_gate_sets[node.parameters.virtual_gate_set_id]
+
+    if node.parameters.virtual_gate_set_id == None:
+        x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(
+            node.parameters.y_axis_name
+        )
+        if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
+            raise ValueError(
+                f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
+            )
+        vgs_id = x_obj.voltage_sequence.gate_set.id
+    else:
+        vgs_id = node.parameters.virtual_gate_set_id
+    virtual_gate_set = node.machine.virtual_gate_sets[vgs_id]
     sweep_axes = node.namespace["sweep_axes"]
 
     x_vals = np.asarray(sweep_axes["x_volts"].values, dtype=float)
@@ -240,7 +254,7 @@ def simulate_data(node: QualibrationNode[Parameters, Quam]):
 
     dc_set = get_simulated_video_mode_dc_set(
         node.machine,
-        node.parameters.virtual_gate_set_id,
+        vgs_id,
         node.log,
         node.parameters.dc_control,
     )
@@ -372,6 +386,17 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # from calibration_utils.run_video_mode import create_video_mode
 @node.run_action(skip_if=node.parameters.run_in_video_mode is False)
 def run_video_mode(node: QualibrationNode[Parameters, Quam]):
+    if node.parameters.virtual_gate_set_id == None:
+        x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(
+            node.parameters.y_axis_name
+        )
+        if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
+            raise ValueError(
+                f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
+            )
+        vgs_id = x_obj.voltage_sequence.gate_set.id
+    else:
+        vgs_id = node.parameters.virtual_gate_set_id
     x_axis_name = node.parameters.x_axis_name
     y_axis_name = node.parameters.y_axis_name
     x_span, x_points = node.parameters.x_span, node.parameters.x_points
@@ -389,7 +414,7 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
         x_points=x_points,
         y_span=y_span,
         y_points=y_points,
-        virtual_gate_id=node.parameters.virtual_gate_set_id,
+        virtual_gate_id=vgs_id,
         dc_control=node.parameters.dc_control,
         readout_pulses=[
             node.machine.sensor_dots[name].readout_resonator.operations["readout"]

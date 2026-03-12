@@ -186,7 +186,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit = ds_fit.assign_coords(success=("sensors", success_list))
 
     # Set node outcomes
-    node.outcomes = {sensor.id: "successful" if fit_results[sensor.id].success else "fail" for sensor in sensors}
+    node.outcomes = {sensor.id: "successful" if fit_results[sensor.id].success else "failed" for sensor in sensors}
 
     return ds_fit, fit_results
 

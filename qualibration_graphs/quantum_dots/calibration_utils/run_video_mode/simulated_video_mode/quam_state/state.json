@@ -92,7 +92,7 @@
                     }
                 },
                 "id": "readout_resonator_1",
-                "intermediate_frequency": 150000000.0,
+                "intermediate_frequency": 150000000,
                 "opx_input": {
                     "controller_id": "con1",
                     "fem_id": 5,
@@ -145,7 +145,7 @@
                     }
                 },
                 "id": "readout_resonator_2",
-                "intermediate_frequency": 250000000.0,
+                "intermediate_frequency": 250000000,
                 "opx_input": {
                     "controller_id": "con1",
                     "fem_id": 5,
@@ -633,7 +633,7 @@
                     }
                 },
                 "id": "Q1_xy",
-                "intermediate_frequency": 100000000.0,
+                "intermediate_frequency": 100000000,
                 "opx_output_I": {
                     "controller_id": "con1",
                     "fem_id": 3,
@@ -786,7 +786,7 @@
                     }
                 },
                 "id": "Q2_xy",
-                "intermediate_frequency": 100000000.0,
+                "intermediate_frequency": 100000000,
                 "opx_output_I": {
                     "controller_id": "con1",
                     "fem_id": 3,
