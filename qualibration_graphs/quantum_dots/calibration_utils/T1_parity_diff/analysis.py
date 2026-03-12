@@ -151,7 +151,7 @@ def _fit_single_qubit(
         result["offset"] = offset
         result["decay_rate"] = decay_rate
         result["fitted_curve"] = fitted_curve
-        result["success"] = np.isfinite(t1_best) and t1_best > 0 and abs(amplitude) > 1e-6
+        result["success"] = bool(np.isfinite(t1_best) and t1_best > 0 and abs(amplitude) > 1e-6)
 
         _logger.debug(
             "T1 fit: T1=%.1f ns, A=%.4f, offset=%.4f, γ=%.6f 1/ns",

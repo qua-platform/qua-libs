@@ -268,7 +268,7 @@ def _fft_analyse_single_qubit(
             gamma,
         )
 
-    success = np.isfinite(t_pi) and t_pi > 0
+    success = bool(np.isfinite(t_pi) and t_pi > 0)
 
     return {
         "optimal_duration": float(t_pi),

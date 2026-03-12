@@ -256,7 +256,7 @@ def _analyse_single_qubit(
             gamma,
         )
 
-    success = np.isfinite(a_pi) and a_pi > 0
+    success = bool(np.isfinite(a_pi) and a_pi > 0)
 
     return {
         "opt_amp": float(a_pi),

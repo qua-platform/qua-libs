@@ -81,7 +81,7 @@ def _fft_analyse_single_qubit(
         }, np.full_like(pdiff, np.nan)
 
     t_pi = np.pi / omega if omega > 1e-12 else np.nan
-    success = f_min <= f_res <= f_max and np.isfinite(t_pi) and np.isfinite(f_res)
+    success = bool(f_min <= f_res <= f_max and np.isfinite(t_pi) and np.isfinite(f_res))
 
     return {
         "optimal_frequency": float(f_res),

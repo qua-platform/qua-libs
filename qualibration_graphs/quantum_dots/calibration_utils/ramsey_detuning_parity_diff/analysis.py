@@ -202,7 +202,7 @@ def _fit_single_trace(
         result["C"] = float(C)
         result["S"] = float(S)
         result["fitted_curve"] = A_mat @ coeffs
-        result["success"] = np.isfinite(delta0) and amplitude > 1e-6
+        result["success"] = bool(np.isfinite(delta0) and amplitude > 1e-6)
 
         _logger.debug(
             "Per-trace fit: f=%.4e Hz⁻¹, A=%.4f, δ₀=%.3f MHz",
@@ -308,7 +308,7 @@ def _analyse_single_qubit(
     result["decay_rate"] = float(gamma) if np.isfinite(gamma) else np.nan
     result["t2_star"] = float(t2) if np.isfinite(t2) else np.nan
     result["fitted_curves"] = np.array([tf["fitted_curve"] for tf in trace_fits])
-    result["success"] = np.isfinite(freq_offset) and contrast > 1e-6
+        result["success"] = bool(np.isfinite(freq_offset) and contrast > 1e-6)
 
     _logger.debug(
         "Joint extraction: δ₀=%.3f MHz (short=%.3f, long=%.3f), " "A_short=%.4f, A_long=%.4f, γ=%.5f 1/ns, T2*=%.1f ns",

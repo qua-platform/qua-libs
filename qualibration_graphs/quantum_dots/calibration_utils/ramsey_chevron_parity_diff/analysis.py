@@ -361,7 +361,7 @@ def _analyse_single_qubit(
         t2_star,
     )
 
-    success = np.isfinite(t2_star) and t2_star > 0
+    success = bool(np.isfinite(t2_star) and t2_star > 0)
 
     return {
         "freq_offset": freq_offset,

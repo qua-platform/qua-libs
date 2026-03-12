@@ -176,7 +176,7 @@ def _fit_single_trace(
         result["decay_rate"] = gamma_fit
         result["t2_star"] = t2
         result["fitted_curve"] = _damped_cosine(t, *popt)
-        result["success"] = np.isfinite(t2) and t2 > 0
+        result["success"] = bool(np.isfinite(t2) and t2 > 0)
     except Exception:
         _logger.debug("Single-trace fit failed for detuning %.3f MHz", detuning_hz * 1e-6)
 
