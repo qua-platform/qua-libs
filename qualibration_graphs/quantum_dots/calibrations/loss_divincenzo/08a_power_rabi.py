@@ -13,8 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 
-# from quam_config import Quam
-from calibration_utils.run_video_mode.simulated_video_mode.demo_files.demo_quam_ld import DemoQuamLD as Quam
+from quam_config import Quam
 
 from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.power_rabi import (
