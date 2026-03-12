@@ -245,6 +245,10 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["fit_results"] = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results.items()}
     node.namespace["_fit_results_full"] = fit_results
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    node.outcomes = {
+        qname: ("successful" if r["success"] else "failed")
+        for qname, r in node.results["fit_results"].items()
+    }
 
 
 # %% {Plot_data}

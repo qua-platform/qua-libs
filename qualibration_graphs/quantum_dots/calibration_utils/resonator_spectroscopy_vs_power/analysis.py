@@ -100,8 +100,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit["below_threshold"] = ds_fit.rr_min_response_avg < node.parameters.derivative_crossing_threshold_in_hz_per_dbm
     # Get the first occurrence below the derivative threshold
     optimal_power = ds_fit.below_threshold.idxmax(dim="power")
-    optimal_power -= node.parameters.buffer_from_crossing_threshold_in_dbm
-    ds_fit = ds_fit.assign_coords({"optimal_power": (["sensor"], optimal_power.data)})
+    optimal_power_values = np.asarray(optimal_power.data, dtype=float).copy()
+    optimal_power_values = optimal_power_values - float(node.parameters.buffer_from_crossing_threshold_in_dbm)
+    ds_fit = ds_fit.assign_coords({"optimal_power": (["sensor"], optimal_power_values)})
 
     # Define a function to fit the resonator line at the optimal power for each qubit
     def _select_optimal_power(ds, sensor):

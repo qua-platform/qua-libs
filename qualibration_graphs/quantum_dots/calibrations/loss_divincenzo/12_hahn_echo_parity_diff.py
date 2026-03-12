@@ -259,6 +259,10 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     }
 
     log_fitted_results(node.results["fit_results"], node.log)
+    node.outcomes = {
+        qname: ("successful" if r["success"] else "failed")
+        for qname, r in node.results["fit_results"].items()
+    }
 
 
 # %% {Plot_data}

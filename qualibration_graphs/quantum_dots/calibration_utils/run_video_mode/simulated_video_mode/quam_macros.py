@@ -1,6 +1,5 @@
 import numpy as np
 
-from quam_builder.architecture.quantum_dots.operations.default_macros import SINGLE_QUBIT_MACROS
 from quam.core import quam_dataclass
 from quam.components.macro import QubitMacro
 
