@@ -17,11 +17,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.parity_dataset import (
+    get_pdiff_trace,
+    get_qubit_names_from_pdiff,
+)
+
 
 def _get_qubit_names_from_ds(ds: xr.Dataset) -> List[str]:
-    """Extract qubit names from ``pdiff_<name>`` data-variable keys."""
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_") and not v.endswith("_fit")]
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
+    return get_qubit_names_from_pdiff(ds)
 
 
 def plot_raw_data_with_fit(
@@ -82,10 +85,8 @@ def plot_raw_data_with_fit(
         gamma = fr.get("decay_rate", np.nan)
         success = fr.get("success", False)
 
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var in ds.data_vars:
-            pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
-        else:
+        pdiff = get_pdiff_trace(ds, qname)
+        if pdiff is None:
             pdiff = np.full((n_tau, len(detuning_hz)), np.nan)
 
         for ti in range(n_tau):

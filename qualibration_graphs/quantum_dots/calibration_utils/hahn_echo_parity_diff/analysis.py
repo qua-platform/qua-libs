@@ -29,6 +29,7 @@ import numpy as np
 from scipy.optimize import differential_evolution
 
 import xarray as xr
+from calibration_utils.common_utils.parity_dataset import get_pdiff_trace
 
 logger = logging.getLogger(__name__)
 
@@ -117,11 +118,7 @@ def _fit_single_qubit(
 
     # Sanity: T2 should be positive and finite, amplitude should be non-zero
     success = bool(
-        result.success
-        and np.isfinite(t2_best)
-        and t2_best > 0
-        and np.isfinite(amp_best)
-        and abs(amp_best) > 1e-6
+        result.success and np.isfinite(t2_best) and t2_best > 0 and np.isfinite(amp_best) and abs(amp_best) > 1e-6
     )
 
     decay_rate = 2.0 / t2_best if t2_best > 0 else 0.0
@@ -166,14 +163,13 @@ def fit_raw_data(
 
     for qubit in qubits:
         qname = qubit.name
-        var_name = f"pdiff_{qname}"
-        if var_name not in ds_raw.data_vars:
+        pdiff = get_pdiff_trace(ds_raw, qname)
+        if pdiff is None:
             logger.warning("No pdiff variable for qubit %s — skipping.", qname)
             results[qname] = dict(FitParameters().__dict__, fitted_curve=np.array([]))
             continue
 
-        pdiff = ds_raw[var_name].values.astype(np.float64)
-        results[qname] = _fit_single_qubit(tau_ns, pdiff)
+        results[qname] = _fit_single_qubit(tau_ns, pdiff.astype(np.float64))
 
     return results
 

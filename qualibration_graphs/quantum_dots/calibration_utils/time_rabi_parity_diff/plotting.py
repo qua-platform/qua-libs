@@ -9,12 +9,14 @@ import numpy as np
 import xarray as xr
 
 from calibration_utils.time_rabi_parity_diff.analysis import FFT_FREQ_MIN, FFT_FREQ_MAX
+from calibration_utils.common_utils.parity_dataset import (
+    get_pdiff_trace,
+    get_qubit_names_from_pdiff,
+)
 
 
 def _get_qubit_names_from_ds(ds: xr.Dataset) -> List[str]:
-    """Resolve qubit names from dataset pdiff_ vars (pdiff_Q1 -> Q1)."""
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_") and not v.endswith("_fit")]
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
+    return get_qubit_names_from_pdiff(ds)
 
 
 def _plot_rabi_trace_ax(
@@ -105,17 +107,15 @@ def plot_raw_data_with_fit(
 
     for i, qname in enumerate(qubit_names):
         ax_trace, ax_fft = axes[i, 0], axes[i, 1]
-        pdiff_var = f"pdiff_{qname}"
         fr = fit_results.get(qname, {})
 
         durations_ns = np.asarray(ds.pulse_duration.values, dtype=float)
 
-        if pdiff_var not in ds.data_vars:
+        pdiff = get_pdiff_trace(ds, qname)
+        if pdiff is None:
             ax_trace.text(0.5, 0.5, f"No data for {qname}", transform=ax_trace.transAxes, ha="center")
             ax_fft.text(0.5, 0.5, f"No data for {qname}", transform=ax_fft.transAxes, ha="center")
             continue
-
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
 
         _plot_rabi_trace_ax(ax_trace, pdiff, durations_ns, qname, fit_result=fr)
         _plot_fft_ax(ax_fft, qname, fit_result=fr)

@@ -169,10 +169,10 @@ def create_qua_program(node: QualibrationNode[RamseyChevronParameters, Quam]):
 
             n_detuning = len(detuning_values)
             n_tau = len(tau_values)
-            for qubit in qubits:
-                p1_st[qubit.name].buffer(n_detuning, n_tau).average().save(f"p1_{qubit.name}")
-                p2_st[qubit.name].buffer(n_detuning, n_tau).average().save(f"p2_{qubit.name}")
-                pdiff_st[qubit.name].buffer(n_detuning, n_tau).average().save(f"pdiff_{qubit.name}")
+            for i, qubit in enumerate(qubits):
+                p1_st[qubit.name].buffer(n_detuning, n_tau).average().save(f"pre{i + 1}")
+                p2_st[qubit.name].buffer(n_detuning, n_tau).average().save(f"post{i + 1}")
+                pdiff_st[qubit.name].buffer(n_detuning, n_tau).average().save(f"pdiff{i + 1}")
 
 
 # %% {Simulate}

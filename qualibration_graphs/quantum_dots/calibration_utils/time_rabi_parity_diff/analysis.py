@@ -17,6 +17,10 @@ import xarray as xr
 from scipy.optimize import curve_fit
 
 from qualibrate import QualibrationNode
+from calibration_utils.common_utils.parity_dataset import (
+    get_pdiff_trace,
+    get_qubit_names_from_pdiff,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -287,11 +291,7 @@ def fit_raw_data(
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit t_π per qubit from 1D time-Rabi data.  Returns ``(ds_fit, fit_results)``."""
     qubits = node.namespace["qubits"]
-    # Resolve qubit names from dataset
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
-    qubit_names = [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
-    if not qubit_names:
-        qubit_names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
+    qubit_names = get_qubit_names_from_pdiff(ds, fallback_qubits=qubits)
 
     durations_ns = np.asarray(ds.pulse_duration.values, dtype=float)
 
@@ -299,8 +299,8 @@ def fit_raw_data(
     fit_arrays: Dict[str, Any] = {}
 
     for qname in qubit_names:
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var not in ds.data_vars:
+        pdiff = get_pdiff_trace(ds, qname)
+        if pdiff is None:
             fp = FitParameters(
                 optimal_duration=np.nan,
                 rabi_frequency=np.nan,
@@ -310,7 +310,6 @@ def fit_raw_data(
             fit_results[qname] = asdict(fp)
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
         result = _fft_analyse_single_qubit(pdiff, durations_ns)
 
         fp = FitParameters(

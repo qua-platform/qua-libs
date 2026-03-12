@@ -15,6 +15,10 @@ import numpy as np
 import xarray as xr
 
 from qualibrate import QualibrationNode
+from calibration_utils.common_utils.parity_dataset import (
+    get_pdiff_trace,
+    get_qubit_names_from_pdiff,
+)
 
 from calibration_utils.time_rabi_chevron_parity_diff.init_utils import (
     _estimate_f_res_and_omega_from_chevron,
@@ -99,12 +103,8 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
 
 
 def _get_qubit_names_for_fit(ds: xr.Dataset, qubits: list) -> list[str]:
-    """Resolve qubit names that match ds data vars (pdiff_{name})."""
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
-    if not pdiff_vars:
-        return []
-    # Use names from ds (pdiff_Q1 -> Q1) so fit_results keys match the dataset
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
+    """Resolve qubit names from grouped or per-variable parity-diff datasets."""
+    return get_qubit_names_from_pdiff(ds, fallback_qubits=qubits)
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
@@ -123,8 +123,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
 
     for qname in qubit_names:
         qubit = qubits_by_name.get(qname)
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var not in ds.data_vars:
+        pdiff = get_pdiff_trace(ds, qname)
+        if pdiff is None:
             nominal = (
                 float(np.asarray(ds.detuning).mean())
                 if qubit is None
@@ -140,7 +140,6 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             fit_results[qname] = asdict(fp)
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
         freqs_hz = _get_drive_frequencies_hz(ds, qubit) if qubit else np.asarray(ds.detuning.values, dtype=float)
         nominal_freq = (
             getattr(qubit.xy, "intermediate_frequency", float(freqs_hz.mean())) if qubit else float(freqs_hz.mean())

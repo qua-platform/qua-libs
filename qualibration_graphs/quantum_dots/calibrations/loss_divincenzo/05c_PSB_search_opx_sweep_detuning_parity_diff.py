@@ -150,10 +150,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         with stream_processing():
             n_st.save("n")
-            for pair in dot_pair_objects:
-                p1_st[pair.name].buffer(len(detuning_array)).average().save(f"p1_{pair.name}")
-                p2_st[pair.name].buffer(len(detuning_array)).average().save(f"p2_{pair.name}")
-                pdiff_st[pair.name].buffer(len(detuning_array)).average().save(f"pdiff_{pair.name}")
+            for i, pair in enumerate(dot_pair_objects):
+                p1_st[pair.name].buffer(len(detuning_array)).average().save(f"pre{i + 1}")
+                p2_st[pair.name].buffer(len(detuning_array)).average().save(f"post{i + 1}")
+                pdiff_st[pair.name].buffer(len(detuning_array)).average().save(f"pdiff{i + 1}")
 
 
 # %% {Simulate}

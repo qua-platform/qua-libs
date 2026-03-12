@@ -60,6 +60,10 @@ import xarray as xr
 from scipy.optimize import differential_evolution
 
 from qualibrate import QualibrationNode
+from calibration_utils.common_utils.parity_dataset import (
+    get_pdiff_trace,
+    get_qubit_names_from_pdiff,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -351,16 +355,13 @@ def fit_raw_data(
     detuning_hz = np.asarray(ds.detuning.values, dtype=float)
     tau_ns = np.asarray(ds.tau.values, dtype=float)
 
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
-    qubit_names = [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
-    if not qubit_names:
-        qubit_names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
+    qubit_names = get_qubit_names_from_pdiff(ds, fallback_qubits=qubits)
 
     fit_results: Dict[str, Dict[str, Any]] = {}
 
     for qname in qubit_names:
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var not in ds.data_vars:
+        pdiff = get_pdiff_trace(ds, qname)
+        if pdiff is None:
             fp = FitParameters(
                 freq_offset=0.0,
                 contrast=0.0,
@@ -371,7 +372,6 @@ def fit_raw_data(
             fit_results[qname] = asdict(fp)
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
         raw = _analyse_single_qubit(pdiff, detuning_hz, tau_ns)
 
         fp = FitParameters(

@@ -43,6 +43,10 @@ import xarray as xr
 from scipy.optimize import differential_evolution
 
 from qualibrate import QualibrationNode
+from calibration_utils.common_utils.parity_dataset import (
+    get_pdiff_trace,
+    get_qubit_names_from_pdiff,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -75,9 +79,7 @@ def _damped_cosine(
     phi : float
         Phase offset in radians.
     """
-    return offset + amp * np.exp(-gamma * t) * np.cos(
-        2.0 * np.pi * freq * t + phi
-    )
+    return offset + amp * np.exp(-gamma * t) * np.cos(2.0 * np.pi * freq * t + phi)
 
 
 # ── Single-trace fit ─────────────────────────────────────────────────────────
@@ -152,6 +154,7 @@ def _fit_single_trace(
     }
 
     try:
+
         def _objective(params):
             return np.sum((_damped_cosine(t, *params) - y) ** 2)
 
@@ -266,8 +269,7 @@ def _analyse_single_qubit(
     success = fit_plus["success"] and fit_minus["success"]
 
     _logger.debug(
-        "Ramsey ±δ triangulation: f₊=%.3f MHz, f₋=%.3f MHz, "
-        "Δ=%.3f MHz, T2*=%.1f ns",
+        "Ramsey ±δ triangulation: f₊=%.3f MHz, f₋=%.3f MHz, " "Δ=%.3f MHz, T2*=%.1f ns",
         f_plus * 1e-6,
         f_minus * 1e-6,
         freq_offset * 1e-6,
@@ -319,20 +321,15 @@ def fit_raw_data(
     qubits = node.namespace["qubits"]
     detuning_hz = np.asarray(ds.detuning.values, dtype=float)
 
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
-    qubit_names = [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
-    if not qubit_names:
-        qubit_names = [
-            getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)
-        ]
+    qubit_names = get_qubit_names_from_pdiff(ds, fallback_qubits=qubits)
 
     tau_ns = np.asarray(ds.tau.values, dtype=float)
 
     fit_results: Dict[str, Dict[str, Any]] = {}
 
     for qname in qubit_names:
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var not in ds.data_vars:
+        pdiff = get_pdiff_trace(ds, qname)
+        if pdiff is None:
             fp = FitParameters(
                 freq_offset=0.0,
                 t2_star=np.nan,
@@ -344,7 +341,6 @@ def fit_raw_data(
             fit_results[qname] = asdict(fp)
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
         result = _analyse_single_qubit(pdiff, tau_ns, detuning_hz)
 
         fp = FitParameters(

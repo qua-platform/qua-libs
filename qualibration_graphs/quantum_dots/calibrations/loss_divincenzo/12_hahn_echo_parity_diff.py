@@ -144,12 +144,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.x90()
                         align()
                         wait(t)
-                        qubit.voltage_sequence.step_to_voltages({}, duration=t*4)
+                        qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
                         align()
                         qubit.x180()
                         align()
                         wait(t)
-                        qubit.voltage_sequence.step_to_voltages({}, duration=t*4)
+                        qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
                         align()
                         qubit.x90()
 
@@ -183,10 +183,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n")
 
             n_tau = len(tau_values)
-            for qubit in qubits:
-                p1_st[qubit.name].buffer(n_tau).average().save(f"p1_{qubit.name}")
-                p2_st[qubit.name].buffer(n_tau).average().save(f"p2_{qubit.name}")
-                pdiff_st[qubit.name].buffer(n_tau).average().save(f"pdiff_{qubit.name}")
+            for i, qubit in enumerate(qubits):
+                p1_st[qubit.name].buffer(n_tau).average().save(f"pre{i + 1}")
+                p2_st[qubit.name].buffer(n_tau).average().save(f"post{i + 1}")
+                pdiff_st[qubit.name].buffer(n_tau).average().save(f"pdiff{i + 1}")
 
 
 # %% {Simulate}

@@ -16,11 +16,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.parity_dataset import (
+    get_pdiff_trace,
+    get_qubit_names_from_pdiff,
+)
+
 
 def _get_qubit_names_from_ds(ds: xr.Dataset) -> List[str]:
-    """Extract qubit names from ``pdiff_<name>`` data-variable keys."""
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_") and not v.endswith("_fit")]
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
+    return get_qubit_names_from_pdiff(ds)
 
 
 def _plot_chevron_ax(
@@ -127,13 +130,13 @@ def plot_raw_data_with_fit(
     fig, axes = plt.subplots(n, ncol, figsize=(6 * ncol, 4 * n), squeeze=False)
 
     for i, qname in enumerate(qubit_names):
-        pdiff_var = f"pdiff_{qname}"
         fr = fit_results.get(qname, {})
 
         tau_ns = np.asarray(ds.tau.values, dtype=float)
         detuning_mhz = np.asarray(ds.detuning.values, dtype=float) * 1e-6
+        pdiff = get_pdiff_trace(ds, qname)
 
-        if pdiff_var not in ds.data_vars:
+        if pdiff is None:
             for j in range(ncol):
                 axes[i, j].text(
                     0.5,
@@ -143,8 +146,6 @@ def plot_raw_data_with_fit(
                     ha="center",
                 )
             continue
-
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
 
         _plot_chevron_ax(axes[i, 0], pdiff, tau_ns, detuning_mhz, qname, fr)
         _plot_resonance_ax(axes[i, 1], detuning_mhz, qname, fr)

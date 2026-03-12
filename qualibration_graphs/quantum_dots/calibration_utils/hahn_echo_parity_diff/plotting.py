@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.parity_dataset import get_pdiff_trace
+
 
 def plot_raw_data_with_fit(
     ds_raw: xr.Dataset,
@@ -53,13 +55,12 @@ def plot_raw_data_with_fit(
     for idx, qubit in enumerate(qubits):
         ax = axes[idx, 0]
         qname = qubit.name
-        var_name = f"pdiff_{qname}"
-
-        if var_name not in ds_raw.data_vars:
+        pdiff = get_pdiff_trace(ds_raw, qname)
+        if pdiff is None:
             ax.set_title(f"{qname} — no data")
             continue
 
-        pdiff = ds_raw[var_name].values.astype(np.float64)
+        pdiff = pdiff.astype(np.float64)
         r = fit_results.get(qname, {})
 
         # Raw data

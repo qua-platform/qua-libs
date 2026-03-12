@@ -128,7 +128,7 @@ def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
-                with for_(*from_array(t, idle_times_cc//4)):
+                with for_(*from_array(t, idle_times_cc // 4)):
                     with for_(*from_array(df, detuning_values)):
                         for i, qubit in batched_qubits.items():
                             qubit.xy.update_frequency(qubit.xy.intermediate_frequency + df)
@@ -183,10 +183,10 @@ def create_qua_program(node: QualibrationNode[RamseyDetuningParameters, Quam]):
 
             n_tau = len(idle_times_cc)
             n_detuning = len(detuning_values)
-            for qubit in qubits:
-                p1_st[qubit.name].buffer(n_tau, n_detuning).average().save(f"p1_{qubit.name}")
-                p2_st[qubit.name].buffer(n_tau, n_detuning).average().save(f"p2_{qubit.name}")
-                pdiff_st[qubit.name].buffer(n_tau, n_detuning).average().save(f"pdiff_{qubit.name}")
+            for i, qubit in enumerate(qubits):
+                p1_st[qubit.name].buffer(n_tau, n_detuning).average().save(f"pre{i + 1}")
+                p2_st[qubit.name].buffer(n_tau, n_detuning).average().save(f"post{i + 1}")
+                pdiff_st[qubit.name].buffer(n_tau, n_detuning).average().save(f"pdiff{i + 1}")
 
 
 # %% {Simulate}

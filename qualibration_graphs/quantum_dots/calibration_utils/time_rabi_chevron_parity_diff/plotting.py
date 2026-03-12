@@ -8,6 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.parity_dataset import (
+    get_pdiff_trace,
+    get_qubit_names_from_pdiff,
+)
+
 from calibration_utils.time_rabi_chevron_parity_diff.init_utils import (
     FFT_FREQ_MIN,
     FFT_FREQ_MAX,
@@ -201,9 +206,7 @@ def _plot_fft_diagnostics_ax(
 
 
 def _get_qubit_names_from_ds(ds: xr.Dataset) -> List[str]:
-    """Resolve qubit names from dataset pdiff_ vars (pdiff_Q1 -> Q1)."""
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_") and not v.endswith("_fit")]
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
+    return get_qubit_names_from_pdiff(ds)
 
 
 def plot_raw_data_with_fit(
@@ -236,25 +239,21 @@ def plot_raw_data_with_fit(
 
     for i, qname in enumerate(qubit_names):
         ax_data, ax_fft2d, ax_diag_col = axes[i, 0], axes[i, 1], axes[i, 2]
-        pdiff_var = f"pdiff_{qname}"
-
         qubit = qubits_by_name.get(qname) or qubit_by_index.get(qname) or (qubits[0] if qubits else None)
         freq_hz = _get_freq_axis_hz(ds, qubit) if qubit else np.asarray(ds.detuning.values, dtype=float)
         durations_ns = np.asarray(ds.pulse_duration.values, dtype=float)
         fr = fit_results.get(qname, {})
         f_res = fr.get("optimal_frequency") if fr.get("success") else None
+        pdiff = get_pdiff_trace(ds, qname)
 
         # Column 1: raw data chevron
-        if pdiff_var not in ds.data_vars:
+        if pdiff is None:
             ax_data.text(0.5, 0.5, f"No data for {qname}", transform=ax_data.transAxes, ha="center")
             ax_data.set_title(f"{qname} — data")
         else:
-            pdiff = np.asarray(ds[pdiff_var].values)
             _plot_chevron_ax(ax_data, pdiff, freq_hz, durations_ns, qname, "data", fit_result=fr, show_fit=True)
 
-        if pdiff_var in ds.data_vars:
-            pdiff = np.asarray(ds[pdiff_var].values)
-
+        if pdiff is not None:
             # Column 2: 2D FFT heatmap (returns diag dict for reuse)
             diag = _plot_fft_2d_ax(ax_fft2d, pdiff, freq_hz, durations_ns, qname, f_res)
 
