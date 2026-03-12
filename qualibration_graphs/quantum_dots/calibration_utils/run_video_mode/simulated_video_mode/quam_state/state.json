@@ -85,7 +85,7 @@
             "readout": {
                 "operations": {
                     "readout": {
-                        "length": 1000,
+                        "length": 2000,
                         "id": "readout",
                         "amplitude": 0.1,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
