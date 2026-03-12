@@ -69,7 +69,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load()
+node.machine = Quam.load(
+    "/Users/kalidu_laptop/quam_builder_test/quam_builder_test/qua-libs/qualibration_graphs/quantum_dots/calibration_utils/run_video_mode/simulated_video_mode/quam_state"
+)
+node.parameters.qubits = ["Q1", "Q2"]
 
 
 # %% {Create_QUA_program}
@@ -89,7 +92,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
-        "qubit": xr.DataArray(qubits.get_names()),
+        # "qubit": xr.DataArray(qubits.get_names()),
         "pulse_duration": xr.DataArray(pulse_durations, attrs={"long_name": "qubit pulse duration", "units": "ns"}),
     }
 

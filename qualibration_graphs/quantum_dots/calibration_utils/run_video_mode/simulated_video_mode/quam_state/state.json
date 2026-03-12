@@ -389,12 +389,15 @@
                 "wait": {
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
                 },
-                "empty": {
-                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_1_empty",
-                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
-                },
                 "initialize": {
                     "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_1_initialize",
+                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                },
+                "measure": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.MeasureStateMacro"
+                },
+                "empty": {
+                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_1_empty",
                     "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
                 }
             },
@@ -410,12 +413,15 @@
                 "wait": {
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
                 },
-                "empty": {
-                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_2_empty",
-                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
-                },
                 "initialize": {
                     "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_2_initialize",
+                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                },
+                "measure": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.MeasureStateMacro"
+                },
+                "empty": {
+                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_2_empty",
                     "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
                 }
             },
@@ -432,6 +438,15 @@
                 },
                 "wait": {
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                },
+                "initialize": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.InitializeStateMacro"
+                },
+                "measure": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.MeasureStateMacro"
+                },
+                "empty": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.EmptyStateMacro"
                 }
             },
             "quantum_dots": [
@@ -454,6 +469,9 @@
                 },
                 "wait": {
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                },
+                "measure": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.SensorDotMeasureMacro"
                 }
             },
             "physical_channel": "#/physical_channels/sensor_DC_1",
@@ -477,6 +495,9 @@
                 },
                 "wait": {
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
+                },
+                "measure": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.SensorDotMeasureMacro"
                 }
             },
             "physical_channel": "#/physical_channels/sensor_DC_2",
@@ -493,13 +514,28 @@
                 "wait": {
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
                 },
+                "initialize": {
+                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q1_initialize",
+                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                },
+                "measure": {
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.MeasureMacro"
+                },
                 "empty": {
                     "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q1_empty",
                     "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
                 },
-                "initialize": {
-                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q1_initialize",
-                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                "xy_drive": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.XYDriveMacro"
+                },
+                "x": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.XMacro"
+                },
+                "y": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.YMacro"
+                },
+                "z": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.ZMacro"
                 },
                 "x180": {
                     "duration": 25,
@@ -511,10 +547,11 @@
                     "amplitude_scale": 0.5,
                     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.XGateMacro"
                 },
-                "xm90": {
-                    "duration": 25,
-                    "amplitude_scale": -0.5,
-                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.XGateMacro"
+                "x_neg90": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.XNeg90Macro"
+                },
+                "-x90": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.XNeg90Macro"
                 },
                 "y180": {
                     "duration": 25,
@@ -528,26 +565,37 @@
                     "pulse_name": "x180",
                     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.YGateMacro"
                 },
+                "y_neg90": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.YNeg90Macro"
+                },
+                "-y90": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.YNeg90Macro"
+                },
+                "z180": {
+                    "theta": 180.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
+                },
+                "z90": {
+                    "theta": 90.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
+                },
+                "I": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.IdentityMacro"
+                },
+                "xm90": {
+                    "duration": 25,
+                    "amplitude_scale": -0.5,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.XGateMacro"
+                },
                 "ym90": {
                     "duration": 25,
                     "amplitude_scale": -0.5,
                     "pulse_name": "x180",
                     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.YGateMacro"
                 },
-                "z90": {
-                    "theta": 90.0,
-                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
-                },
-                "z180": {
-                    "theta": 180.0,
-                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
-                },
                 "zm90": {
                     "theta": -90.0,
                     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
-                },
-                "measure": {
-                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.MeasureMacro"
                 }
             },
             "quantum_dot": "#/quantum_dots/virtual_dot_1",
@@ -619,13 +667,28 @@
                 "wait": {
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
                 },
+                "initialize": {
+                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q2_initialize",
+                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                },
+                "measure": {
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.MeasureMacro"
+                },
                 "empty": {
                     "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q2_empty",
                     "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
                 },
-                "initialize": {
-                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q2_initialize",
-                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                "xy_drive": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.XYDriveMacro"
+                },
+                "x": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.XMacro"
+                },
+                "y": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.YMacro"
+                },
+                "z": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.ZMacro"
                 },
                 "x180": {
                     "duration": 25,
@@ -637,10 +700,11 @@
                     "amplitude_scale": 0.5,
                     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.XGateMacro"
                 },
-                "xm90": {
-                    "duration": 25,
-                    "amplitude_scale": -0.5,
-                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.XGateMacro"
+                "x_neg90": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.XNeg90Macro"
+                },
+                "-x90": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.XNeg90Macro"
                 },
                 "y180": {
                     "duration": 25,
@@ -654,26 +718,37 @@
                     "pulse_name": "x180",
                     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.YGateMacro"
                 },
+                "y_neg90": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.YNeg90Macro"
+                },
+                "-y90": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.YNeg90Macro"
+                },
+                "z180": {
+                    "theta": 180.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
+                },
+                "z90": {
+                    "theta": 90.0,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
+                },
+                "I": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.IdentityMacro"
+                },
+                "xm90": {
+                    "duration": 25,
+                    "amplitude_scale": -0.5,
+                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.XGateMacro"
+                },
                 "ym90": {
                     "duration": 25,
                     "amplitude_scale": -0.5,
                     "pulse_name": "x180",
                     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.YGateMacro"
                 },
-                "z90": {
-                    "theta": 90.0,
-                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
-                },
-                "z180": {
-                    "theta": 180.0,
-                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
-                },
                 "zm90": {
                     "theta": -90.0,
                     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
-                },
-                "measure": {
-                    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.MeasureMacro"
                 }
             },
             "quantum_dot": "#/quantum_dots/virtual_dot_2",

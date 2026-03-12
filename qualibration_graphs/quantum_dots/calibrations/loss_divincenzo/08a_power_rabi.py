@@ -12,7 +12,10 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
-from quam_config import Quam
+
+# from quam_config import Quam
+from calibration_utils.run_video_mode.simulated_video_mode.demo_files.demo_quam_ld import DemoQuamLD as Quam
+
 from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.power_rabi import (
     Parameters,
@@ -53,7 +56,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1", "q2"]
+    # node.parameters.qubits = ["Q1", "Q2"]
     pass
 
 

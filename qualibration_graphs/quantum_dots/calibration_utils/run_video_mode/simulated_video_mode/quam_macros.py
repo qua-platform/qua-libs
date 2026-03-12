@@ -12,22 +12,35 @@ class MeasureMacro(QubitMacro):
     pulse_name: str = "readout"
     readout_duration: int = 2000
 
+    def _setup(self):
+        machine = self.qubit.machine
+
+        # One preferred readout dot per qubit
+        preferred_readout_dot = self.qubit.preferred_readout_quantum_dot
+
+        # Preferred readout dot + qubit quantum dot form a qd pair
+        qd_pair = machine.find_quantum_dot_pair(self.qubit.quantum_dot.id, preferred_readout_dot)
+
+        self.sensors = [k.get_reference() for k in machine.quantum_dot_pairs[qd_pair].sensor_dots]
+
+        for s in self.sensors:
+            readout_pulse = s.readout_resonator.operations[self.pulse_name]
+            readout_pulse.length = self.readout_duration
+
     def apply(self, **kwargs):
         machine = self.qubit.machine
-        preferred_readout_dot = self.qubit.preferred_readout_quantum_dot
-        qd_pair = machine.find_quantum_dot_pair(self.qubit.id, preferred_readout_dot)
-        sensors = qd_pair.sensor_dots
-
+        if not hasattr(self, "sensors"):
+            self._setup()
         from qm.qua import save
 
-        I, I_st, Q, Q_st, n, n_st = machine.declare_qua_variables(num_IQ_pairs=len(sensors))
+        I, I_st, Q, Q_st, n, n_st = machine.declare_qua_variables(num_IQ_pairs=len(self.sensors))
 
-        for i, s in enumerate(sensors):
-            I[i], Q[i] = s.readout_resonator.measure(self.pulse_name, duration=self.readout_duration)
+        for i, s in enumerate(self.sensors):
+            I[i], Q[i] = s.readout_resonator.measure(self.pulse_name)
             save(I[i], I_st[i])
             save(Q[i], Q_st[i])
 
-        return I, Q  # Just a placeholder measure function. Probably not correct
+        return I[0]  # Just a placeholder measure function. Probably not correct
 
 
 @quam_dataclass
