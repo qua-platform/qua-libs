@@ -76,12 +76,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "sensors": xr.DataArray(sensors.get_names()),
+        "quantum_dots": xr.DataArray(quantum_dots.get_names()),
         "voltage": xr.DataArray(voltages, attrs={"long_name": "voltage", "units": ""}),
     }
     # node.namespace["sweep"]
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
-        seq = node.machine.virtual_gate_sets[vgs_id].new_sequence()
 
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
         v = declare(fixed)
@@ -89,12 +89,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Average on outermost
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
             save(n, n_st)
-            # Step each QD first
-            with for_(*from_array(v, voltages)):
-                for multiplexed_dots in quantum_dots.batch():
-                    with seq.simultaneous():
-                        for j, qd in multiplexed_dots.items():
-                            qd.go_to_voltages({qd.name: v}, duration=node.parameters.dwell_time)
+            # Perform loop for each QD
+            for j, dot in enumerate(quantum_dots):
+                with for_(*from_array(v, voltages)):
+                    dot.go_to_voltages({dot.name: v}, duration=node.parameters.dwell_time)
                     align()
                     # Measure each batch, multiplexed by sensors
                     for multiplexed_sensors in sensors.batch():
@@ -109,12 +107,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Save data
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
+                dot.voltage_sequence.apply_compensation_pulse()
 
         with stream_processing():
             n_st.save("n")
             for i in range(num_sensors):
-                I_st[i].buffer(len(voltages)).average().save(f"I{i}")
-                Q_st[i].buffer(len(voltages)).average().save(f"Q{i}")
+                I_st[i].buffer(len(voltages)).buffer(len(quantum_dots)).average().save(f"I{i}")
+                Q_st[i].buffer(len(voltages)).buffer(len(quantum_dots)).average().save(f"Q{i}")
 
 
 # %% {Simulate}
@@ -193,10 +192,10 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         fig, axes = plt.subplots(1, len(sensors), figsize=(5 * len(sensors), 4), squeeze=False)
         fig.suptitle(qd.name)
         for i, sensor in enumerate(sensors):
-            sensor_data = ds_raw.sel(sensors=sensor.name)
+            dot_sensor_data = ds_raw.sel(sensors=sensor.name, quantum_dots=qd.name)
             ax = axes[0, i]
-            ax.plot(voltages, sensor_data["I"].values, label="I")
-            ax.plot(voltages, sensor_data["Q"].values, label="Q")
+            ax.plot(voltages, dot_sensor_data["I"].values, label="I")
+            ax.plot(voltages, dot_sensor_data["Q"].values, label="Q")
             ax.set_title(sensor.name)
             ax.set_xlabel("Voltage (V)")
             ax.set_ylabel("Signal (a.u.)")
