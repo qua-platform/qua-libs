@@ -83,14 +83,46 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         )
     vgs_id = x_obj.voltage_sequence.gate_set.id
 
-    x_volts, y_volts = get_voltage_arrays(node)
+    x_volts, y_volts = get_voltage_arrays(node)  # This sets the centres of x_volts and y_volts automatically to zero.
+    x_offset, y_offset = node.parameters.x_center, node.parameters.y_center
+
+    if node.parameters.dc_control:
+        external_qdac = "qdac_ip" in node.machine.network
+        node.machine.connect_to_external_source(external_qdac=external_qdac)
+        virtual_dc_set = node.machine.virtual_dc_sets[vgs_id]
+        # If no offsets are provided, then default to 0 if dc_control is False, default to current value if dc_control is True
+        if x_offset is None:
+            x_offset = virtual_dc_set.get_voltage(node.parameters.x_axis_name, requery=True)
+        if y_offset is None:
+            y_offset = virtual_dc_set.get_voltage(node.parameters.y_axis_name, requery=True)
+
+        node.log(
+            f"Setting DC Voltages via VirtualDCSet. {node.parameters.x_axis_name} : {x_offset}V, {node.parameters.y_axis_name} : {y_offset}V"
+        )
+        virtual_dc_set.set_voltages({node.parameters.x_axis_name: x_offset, node.parameters.y_axis_name: y_offset})
+    else:
+        # dc_control off. If offsets are None, default to zero
+        if x_offset is None:
+            x_offset = 0
+        if y_offset is None:
+            y_offset = 0
+        if x_offset > 2.5 or y_offset > 2.5:
+            raise ValueError("X or Y offset exceeds maximum amplified offset of 2.5V.")
+        x_volts = x_volts + x_offset
+        y_volts = y_volts + y_offset
     num_sensors = len(sensors)
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "sensors": xr.DataArray(sensors.get_names()),
-        "x_volts": xr.DataArray(x_volts, attrs={"long_name": "voltage", "units": "V"}),
-        "y_volts": xr.DataArray(y_volts, attrs={"long_name": "voltage", "units": "V"}),
+        "x_volts": xr.DataArray(
+            x_volts if not node.parameters.dc_control else x_volts + x_offset,
+            attrs={"long_name": "voltage", "units": "V"},
+        ),
+        "y_volts": xr.DataArray(
+            y_volts if not node.parameters.dc_control else y_volts + y_offset,
+            attrs={"long_name": "voltage", "units": "V"},
+        ),
     }
 
     scan_mode = ScanMode.from_name(node.parameters.scan_pattern)
@@ -202,9 +234,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
 
 
-# %%
-
-
+# %% {Analyse Data}
 @node.run_action(
     skip_if=node.parameters.simulate or node.parameters.run_in_video_mode or not node.parameters.perform_edge_analysis
 )
@@ -220,25 +250,6 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
     ds_plot = node.results["ds_raw"].copy()
-    if node.parameters.dc_control:
-        if node.parameters.virtual_gate_set_id == None:
-            x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(
-                node.parameters.y_axis_name
-            )
-            if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
-                raise ValueError(
-                    f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
-                )
-            vgs_id = x_obj.voltage_sequence.gate_set.id
-        else:
-            vgs_id = node.parameters.virtual_gate_set_id
-        ds_plot = node.results["ds_raw"].assign_coords(
-            x_volts=node.results["ds_raw"].x_volts
-            + node.machine.virtual_dc_sets[vgs_id].get_voltage(node.parameters.x_axis_name),
-            y_volts=node.results["ds_raw"].y_volts
-            + node.machine.virtual_dc_sets[vgs_id].get_voltage(node.parameters.y_axis_name),
-        )
-
     fig_amplitude = plot_raw_amplitude(ds_plot, node.namespace["sensors"])
     fig_phase = plot_raw_phase(ds_plot, node.namespace["sensors"])
     plt.show()

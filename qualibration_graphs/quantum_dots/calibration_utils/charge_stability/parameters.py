@@ -4,7 +4,7 @@ from qualibrate.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 from calibration_utils.run_video_mode.video_mode_specific_parameters import VideoModeCommonParameters
 
-from typing import List, Literal, Dict, Union, Callable
+from typing import List, Literal, Dict, Union, Callable, Optional
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -18,6 +18,10 @@ class NodeSpecificParameters(RunnableParameters):
     """The name of the swept element in the X axis."""
     y_axis_name: str = None
     """The name of the swept element in the Y axis."""
+    x_center: Optional[float] = None
+    """The center of the X axis sweep. If dc_control = True, then this will be applied to the external source. Else, it will be applied by the OPX."""
+    y_center: Optional[float] = None
+    """The center of the Y axis sweep. If dc_control = True, then this will be applied to the external source. Else, it will be applied by the OPX."""
     x_points: int = 101
     """Number of measurement points in the X axis."""
     y_points: int = 101
@@ -80,7 +84,7 @@ import numpy as np
 # Backward-compatible aliases kept for existing nodes/tests that still use the
 # legacy OPX/OPXQDAC parameter class names.
 OPXParameters = Parameters
-OPXQDACParameters = Parameters
+# OPXQDACParameters = Parameters
 
 
 def get_voltage_arrays(node):

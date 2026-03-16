@@ -100,21 +100,51 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Which one is external/not?
     x_external, y_external = node.parameters.x_from_qdac, node.parameters.y_from_qdac
 
+    if node.parameters.dc_control:
+        dc_set = node.machine.virtual_dc_sets[vgs_id]
+        # If None, then default to current virtual values.
+        if node.parameters.x_center is None:
+            node.parameters.x_center = dc_set.get_voltage(node.parameters.x_axis_name)
+        if node.parameters.y_center is None:
+            node.parameters.y_center = dc_set.get_voltage(node.parameters.y_axis_name)
+
+        if (
+            not x_external
+        ):  # This means that the sweep itself for the x axis will be from the OPX, but the user wants dc_control, meaning that the offset centre comes from the QDAC
+            dc_set.set_voltages({node.parameters.x_axis_name: node.parameters.x_center})
+        if not y_external:  # Same logic. Y axis should be OPX in this case, and dc_control is True.
+            dc_set.set_voltages({node.parameters.y_axis_name: node.parameters.y_center})
+
+    else:
+        # No DC control, meaning that the offsets have to come from the OPX.
+        # If None, then default to zero.
+        if node.parameters.x_center is None:
+            node.parameters.x_center = 0
+        if node.parameters.y_center is None:
+            node.parameters.y_center = 0
+        # Mutate the x/y_volts array if sweep comes from the OPX
+        if not x_external:
+            x_volts = x_volts + node.parameters.x_center
+        if not y_external:
+            y_volts = y_volts + node.parameters.y_center
+
     # Set up the DC lists. They are mapped to the same trigger, so no need for two triggers for QDAC/QDAC 2dmap.
     if x_external:
+        x_array = x_volts + node.parameters.x_center  # The QDAC dc list requires the offset
         prepare_dc_lists(
             node=node,
             virtual_dc_set_id=vgs_id,
             axis_name=node.parameters.x_axis_name,
-            axis_values=np.repeat(x_volts, len(y_volts)) if y_external else scan_mode.get_outer_loop(x_volts),
+            axis_values=np.repeat(x_array, len(y_volts)) if y_external else scan_mode.get_outer_loop(x_array),
         )
 
     if y_external:
+        y_array = y_volts + node.parameters.y_center  # The QDAC dc list requires the offset
         prepare_dc_lists(
             node=node,
             virtual_dc_set_id=vgs_id,
             axis_name=node.parameters.y_axis_name,
-            axis_values=np.tile(y_volts, len(x_volts)) if x_external else scan_mode.get_outer_loop(y_volts),
+            axis_values=np.tile(y_array, len(x_volts)) if x_external else scan_mode.get_outer_loop(y_array),
         )
 
     num_sensors = len(sensors)
@@ -122,8 +152,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "sensors": xr.DataArray(sensors.get_names()),
-        "x_volts": xr.DataArray(x_volts, attrs={"long_name": "voltage", "units": "V"}),
-        "y_volts": xr.DataArray(y_volts, attrs={"long_name": "voltage", "units": "V"}),
+        "x_volts": xr.DataArray(
+            x_volts if (not node.parameters.dc_control and not x_external) else x_volts + node.parameters.x_center,
+            attrs={"long_name": "voltage", "units": "V"},
+        ),
+        "y_volts": xr.DataArray(
+            y_volts if (not node.parameters.dc_control and not y_external) else y_volts + node.parameters.y_center,
+            attrs={"long_name": "voltage", "units": "V"},
+        ),
     }
 
     # node.namespace["sweep"]
@@ -223,8 +259,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Transpose so that the slow (Y) is on the outer loop
         node.namespace["sweep_axes"] = {
             "sensors": xr.DataArray(sensors.get_names()),
-            "y_volts": xr.DataArray(y_volts, attrs={"long_name": "voltage", "units": "V"}),
-            "x_volts": xr.DataArray(x_volts, attrs={"long_name": "voltage", "units": "V"}),
+            "y_volts": xr.DataArray(
+                y_volts if (not node.parameters.dc_control and not y_external) else y_volts + node.parameters.y_center,
+                attrs={"long_name": "voltage", "units": "V"},
+            ),
+            "x_volts": xr.DataArray(
+                x_volts if (not node.parameters.dc_control and not x_external) else x_volts + node.parameters.x_center,
+                attrs={"long_name": "voltage", "units": "V"},
+            ),
         }
         with program() as node.namespace["qua_program"]:
             seq = node.machine.voltage_sequences[vgs_id]
