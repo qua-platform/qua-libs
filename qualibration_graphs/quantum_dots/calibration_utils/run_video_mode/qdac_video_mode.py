@@ -113,7 +113,6 @@ def launch_video_mode(
         scan_modes=scan_modes_dict,
         result_type=result_type,  # "I", "Q", "amplitude", or "phase"
         available_readout_pulses=readout_pulses,  # Input a list of pulses. The default only reads out from the first pulse, unless the second one is chosen in the UI.
-        acquisition_interval_s=0.01,
         voltage_control_component=voltage_control_component,
         dc_set=dc_set,
         qdac=machine.qdac,

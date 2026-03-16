@@ -34,7 +34,6 @@ except ImportError:  # pragma: no cover - optional dependency guard
     SegmentFit = None
 
 OPXParameters = Parameters
-OPXQDACParameters = Parameters
 
 __all__ = [
     "Parameters",
