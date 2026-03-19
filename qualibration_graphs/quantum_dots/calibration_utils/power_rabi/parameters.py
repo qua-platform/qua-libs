@@ -24,7 +24,7 @@ class BaseRabiSpecificParameters(RunnableParameters):
 
 
 class ErrorAmplifiedSpecificParameters(BaseRabiSpecificParameters):
-    n_pulses: int = 1
+    max_n_pulses: int = 400
     """Number of pulses in the error-amplified power Rabi pulse sequence."""
 
 
