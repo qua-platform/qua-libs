@@ -12,22 +12,20 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
-from quam_config import QubitQuam
-
-Quam = QubitQuam
+from quam_config import QubitQuam as Quam
 from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.qubit_spectroscopy_parity_diff import (
     Parameters,
-    # process_raw_dataset,
-    # fit_raw_data,
-    # log_fitted_results,
-    # plot_raw_data_with_fit,
+    process_raw_dataset,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
 
-# %% {Description}
+# %% {Node initialisation}
 description = """
         QUBIT SPECTROSCOPY PARITY DIFFERENCE
 This sequence involves parking the qubit at the manipulation bias point, and playing pulses of varying frequency
@@ -238,44 +236,40 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the sensors from the loaded node parameters
-    node.namespace["qubits"] = [node.machine.qubits[q] for q in node.parameters.qubits]
+    # Get the active qubits from the loaded node parameters
+    node.namespace["qubits"] = get_qubits(node)
 
 
 # %% {Analyse_data}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    # node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    # node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    # node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-    #
-    # # Log the relevant information extracted from the data analysis
-    # log_fitted_results(node.results["fit_results"], log_callable=node.log)
-    # node.outcomes = {
-    #     sensor_name: ("successful" if fit_result["success"] else "failed")
-    #     for sensor_name, fit_result in node.results["fit_results"].items()
-    # }
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    node.outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plot_data}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
-    # fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
-    # fig_fit_amplitude = plot_raw_amplitude_with_fit(
-    #     node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
-    # )
-    # plt.show()
-    # # Store the generated figures
-    # node.results["figures"] = {
-    #     "phase": fig_raw_phase,
-    #     "amplitude": fig_fit_amplitude,
-    # }
+    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
+    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    plt.show()
+    # Store the generated figures
+    node.results["figures"] = {
+        "parity_diff": fig_raw_fit,
+    }
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit spectroscopy parity-diff analysis was successful."""
     with node.record_state_updates():
@@ -285,4 +279,11 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             opt_frequency = node.results["fit_results"][q.name]["frequency"]
             q.larmor_frequency = opt_frequency
+            q.xy.RF_frequency = None
             q.xy.RF_frequency = opt_frequency
+
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
+    node.save()
