@@ -40,7 +40,7 @@ Prerequisites:
     - Having calibrated the "empty" and "initialization" voltage points, and having defined the detuning axis.
 
 State update:
-    TODO: how to update the PSB region coordinates and optimal detuning for a given qubit/dot?
+    - The optimal detuning value for PSB readout, as the voltage point associated with the .measure macro. 
 """
 
 
