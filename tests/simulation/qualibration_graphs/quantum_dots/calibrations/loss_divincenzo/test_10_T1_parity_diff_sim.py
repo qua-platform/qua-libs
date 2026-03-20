@@ -13,9 +13,6 @@ def test_T1_parity_diff_simulation(simulation_runner):
     simulation_runner(
         node_name=NODE_NAME,
         param_overrides={
-            "num_shots": 1,
-            "simulation_duration_ns": 30_000,
-            "timeout": 100,
             "tau_min": 50,
             "tau_step": 3000,
         },

@@ -46,19 +46,19 @@ State update:
 | `model_config` | `{'extra': 'forbid', 'use_attribute_docstrings': True}` |  |
 | `model_extra` | `None` |  |
 | `model_fields` | `{'multiplexed': FieldInfo(annotation=bool, required=False, default=False, description='Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)\nor to play the experiment sequentially for each qubit (False). Default is False.'), 'use_state_discrimination': FieldInfo(annotation=bool, required=False, default=False, description="Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated\nquadratures 'I' and 'Q'. Default is False."), 'reset_wait_time': FieldInfo(annotation=int, required=False, default=5000, description='The wait time for qubit reset.'), 'qubits': FieldInfo(annotation=Union[List[str], NoneType], required=False, default=None, description='A list of qubit names which should participate in the execution of the node. Default is None.'), 'num_circuits_per_length': FieldInfo(annotation=int, required=False, default=50, description='Number of random circuits per depth. Default is 50.'), 'num_shots': FieldInfo(annotation=int, required=False, default=400, description='Number of repetitions (shots) per circuit. Default is 400.'), 'max_circuit_depth': FieldInfo(annotation=int, required=False, default=256, description='Maximum circuit depth (total Clifford count). Default is 256.'), 'delta_clifford': FieldInfo(annotation=int, required=False, default=20, description='Step between depths in linear scale mode. Default is 20.'), 'log_scale': FieldInfo(annotation=bool, required=False, default=True, description='If True, use log-scale depths: 2, 4, 8, 16, ... up to max_circuit_depth. Default is True.'), 'seed': FieldInfo(annotation=Union[int, NoneType], required=False, default=None, description='Seed for the QUA pseudo-random number generator. Default is None (random).'), 'operation_x90': FieldInfo(annotation=str, required=False, default='x90', description="Name of the π/2 X rotation operation on the xy channel. Default is 'x90'."), 'operation_x180': FieldInfo(annotation=str, required=False, default='x180', description="Name of the π X rotation operation on the xy channel. Default is 'x180'."), 'simulate': FieldInfo(annotation=bool, required=False, default=False, description='Simulate the waveforms on the OPX instead of executing the program. Default is False.'), 'simulation_duration_ns': FieldInfo(annotation=int, required=False, default=50000, description='Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns.'), 'use_waveform_report': FieldInfo(annotation=bool, required=False, default=True, description='Whether to use the interactive waveform report in simulation. Default is True.'), 'timeout': FieldInfo(annotation=int, required=False, default=120, description='Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s.'), 'load_data_id': FieldInfo(annotation=Union[int, NoneType], required=False, default=None, description='Optional QUAlibrate node run index for loading historical data. Default is None.')}` |  |
-| `model_fields_set` | `{'max_circuit_depth', 'num_circuits_per_length', 'qubits', 'num_shots', 'log_scale', 'simulate'}` |  |
+| `model_fields_set` | `{'log_scale', 'qubits', 'max_circuit_depth', 'num_circuits_per_length', 'simulate', 'num_shots'}` |  |
 | `multiplexed` | `False` | Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)
 or to play the experiment sequentially for each qubit (False). Default is False. |
 | `num_circuits_per_length` | `2` | Number of random circuits per depth. Default is 50. |
 | `num_shots` | `50` | Number of repetitions (shots) per circuit. Default is 400. |
 | `operation_x180` | `x180` | Name of the π X rotation operation on the xy channel. Default is 'x180'. |
 | `operation_x90` | `x90` | Name of the π/2 X rotation operation on the xy channel. Default is 'x90'. |
-| `qubits` | `['Q1', 'Q2']` | A list of qubit names which should participate in the execution of the node. Default is None. |
+| `qubits` | `['q1', 'q2']` | A list of qubit names which should participate in the execution of the node. Default is None. |
 | `reset_wait_time` | `5000` | The wait time for qubit reset. |
 | `seed` | `None` | Seed for the QUA pseudo-random number generator. Default is None (random). |
 | `simulate` | `False` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
 | `simulation_duration_ns` | `50000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
-| `targets` | `['Q1', 'Q2']` |  |
+| `targets` | `['q1', 'q2']` |  |
 | `targets_name` | `qubits` |  |
 | `timeout` | `120` | Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s. |
 | `use_state_discrimination` | `False` | Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated
@@ -67,17 +67,17 @@ quadratures 'I' and 'Q'. Default is False. |
 
 ## Fit Results
 
-| Qubit | f_res (GHz) | t_π (ns) | Ω_R (rad/ns) | γ (1/ns) | T₂* (ns) | success |
+| Qubit | f_res (GHz) | t_pi (ns) | Omega_R (rad/ns) | gamma (1/ns) | T2* (ns) | success |
 |-------|-------------|----------|--------------|----------|----------|--------|
-| Q1 | 0.0000 | nan | nan | nan | inf | True |
-| Q2 | 0.0000 | nan | nan | nan | inf | True |
+| q1 | 0.0000 | nan | nan | nan | inf | True |
+| q2 | 0.0000 | nan | nan | nan | inf | True |
 
 ## Updated State
 
 | Qubit | intermediate_frequency (Hz) | xy.operations.x180.length (ns) |
 |-------|-----------------------------|-----------------------------------------|
-| Q1 | 0 | nan |
-| Q2 | 0 | nan |
+| q1 | 0 | nan |
+| q2 | 0 | nan |
 
 ## Analysis Output
 

@@ -82,7 +82,7 @@ def test_08a_power_rabi_analysis(ld_device, analysis_runner):
 
     # ── Assertions ───────────────────────────────────────────────────────────
     assert "fit_results" in node.results
-    fit_q1 = node.results["fit_results"]["Q1"]
+    fit_q1 = node.results["fit_results"]["q1"]
     assert fit_q1["success"], f"Analysis should succeed: {fit_q1}"
 
     # Optimal amplitude prefactor in reasonable range

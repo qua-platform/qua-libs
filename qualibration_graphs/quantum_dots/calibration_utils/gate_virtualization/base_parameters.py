@@ -2,7 +2,7 @@ from typing import List, Literal, Optional
 
 import numpy as np
 from qualibrate import NodeParameters
-from qualibrate.parameters import RunnableParameters
+from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 
 from calibration_utils.run_video_mode.video_mode_specific_parameters import (

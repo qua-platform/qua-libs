@@ -100,7 +100,7 @@ def test_09b_time_rabi_chevron_analysis(ld_device, analysis_runner):
 
     # ── Assertions ───────────────────────────────────────────────────────────
     assert "fit_results" in node.results
-    fit_q1 = node.results["fit_results"]["Q1"]
+    fit_q1 = node.results["fit_results"]["q1"]
     assert fit_q1["success"], f"FFT analysis should succeed: {fit_q1}"
 
     # Resonant frequency ≈ 10 GHz (wider tolerance for FFT estimates)

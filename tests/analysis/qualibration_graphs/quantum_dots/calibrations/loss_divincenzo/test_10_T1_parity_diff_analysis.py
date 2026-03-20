@@ -35,7 +35,7 @@ TAU_MAX_NS = 4000  # well beyond T1 = 1000 ns for clear decay
 TAU_STEP_NS = 40
 
 # Qubits to analyse: Q1 from virtual_qpu, Q2 from synthetic exponential
-MULTI_QUBITS = ["Q1", "Q2"]
+MULTI_QUBITS = ["q1", "q2"]
 
 # Synthetic Q2 parameters (different T1 for visual diversity)
 Q2_T1_NS = 500.0
@@ -98,14 +98,14 @@ def test_10_T1_parity_diff_analysis(ld_device, calibrated_pi_half_amp, analysis_
     pdiff_q2 = _synthetic_q2_decay(tau_values_ns)
 
     assert pdiff_q1.shape == (len(tau_values_ns),)
-    assert np.max(pdiff_q1) > 0.01, "Q1 simulation should show some signal"
+    assert np.max(pdiff_q1) > 0.01, "q1 simulation should show some signal"
 
     # ── Build ds_raw (1D: tau, 2 qubits) ─────────────────────────────
     ds_raw = build_parity_ds_raw(
         coords={
             "tau": (tau_values_ns.astype(float), "idle time", "ns"),
         },
-        pdiff_per_qubit={"Q1": pdiff_q1, "Q2": pdiff_q2},
+        pdiff_per_qubit={"q1": pdiff_q1, "q2": pdiff_q2},
     )
 
     # ── Run analysis ──────────────────────────────────────────────────
@@ -123,21 +123,21 @@ def test_10_T1_parity_diff_analysis(ld_device, calibrated_pi_half_amp, analysis_
 
     # ── Assertions: Q1 (virtual_qpu, T1 ≈ 1000 ns) ──────────────────
     assert "fit_results" in node.results
-    fit_q1 = node.results["fit_results"]["Q1"]
-    assert fit_q1["success"], f"Q1 analysis should succeed: {fit_q1}"
+    fit_q1 = node.results["fit_results"]["q1"]
+    assert fit_q1["success"], f"q1 analysis should succeed: {fit_q1}"
 
     t1_q1 = fit_q1["T1"]
-    assert 200 < t1_q1 < 5000, f"Q1 T1 should be near 1000 ns, got {t1_q1:.1f} ns"
-    assert fit_q1["amplitude"] > 0.01, f"Q1 expected positive amplitude, got {fit_q1['amplitude']}"
+    assert 200 < t1_q1 < 5000, f"q1 T1 should be near 1000 ns, got {t1_q1:.1f} ns"
+    assert fit_q1["amplitude"] > 0.01, f"q1 expected positive amplitude, got {fit_q1['amplitude']}"
 
     gamma_q1 = fit_q1["decay_rate"]
     assert np.isfinite(gamma_q1) and gamma_q1 > 0
     assert abs(1.0 / gamma_q1 - t1_q1) < 1e-6, "decay_rate should be 1/T1"
 
     # ── Assertions: Q2 (synthetic, T1 ≈ 500 ns) ──────────────────────
-    fit_q2 = node.results["fit_results"]["Q2"]
-    assert fit_q2["success"], f"Q2 analysis should succeed: {fit_q2}"
+    fit_q2 = node.results["fit_results"]["q2"]
+    assert fit_q2["success"], f"q2 analysis should succeed: {fit_q2}"
 
     t1_q2 = fit_q2["T1"]
-    assert 100 < t1_q2 < 2000, f"Q2 T1 should be near 500 ns, got {t1_q2:.1f} ns"
-    assert fit_q2["amplitude"] > 0.01, f"Q2 expected positive amplitude, got {fit_q2['amplitude']}"
+    assert 100 < t1_q2 < 2000, f"q2 T1 should be near 500 ns, got {t1_q2:.1f} ns"
+    assert fit_q2["amplitude"] > 0.01, f"q2 expected positive amplitude, got {fit_q2['amplitude']}"

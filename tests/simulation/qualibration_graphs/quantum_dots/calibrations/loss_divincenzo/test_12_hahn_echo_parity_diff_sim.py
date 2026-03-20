@@ -17,9 +17,6 @@ def test_hahn_echo_parity_diff_simulation(simulation_runner):
     simulation_runner(
         node_name=NODE_NAME,
         param_overrides={
-            "num_shots": 1,
-            "simulation_duration_ns": 30_000,
-            "timeout": 30,
             "tau_min": 500,
             "tau_step": 500,
         },

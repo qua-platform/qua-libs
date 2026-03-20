@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-NODE_NAME = "10b_ramsey_detuning_parity_diff"
+NODE_NAME = "10b_ramsey_detuning_parity_dif"
 
 
 @pytest.mark.simulation
@@ -13,7 +13,6 @@ def test_ramsey_detuning_parity_diff_simulation(simulation_runner):
     simulation_runner(
         node_name=NODE_NAME,
         param_overrides={
-            "timeout": 30,
             "detuning_span_in_mhz": 2.0,
             "detuning_step_in_mhz": 0.5,
             "idle_time_ns": 100,
