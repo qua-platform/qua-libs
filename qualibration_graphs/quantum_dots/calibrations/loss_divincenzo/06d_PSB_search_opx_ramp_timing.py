@@ -13,8 +13,8 @@ from qualang_tools.loops import from_array
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.psb_search_sweep_detuning import Parameters
-from calibration_utils.common_utils.experiment import get_sensors, _make_batchable_list_from_multiplexed
+from calibration_utils.psb_search_ramp_timing import Parameters
+from calibration_utils.common_utils.experiment import get_sensors
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -22,14 +22,13 @@ from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
 description = """
-        PAULI SPIN BLOCKADE SEARCH - Sweep Detuning
-The goal of this sequence is to find the Pauli Spin Blockade (PSB) region.
-To do so, the following triangle in voltage space (empty - random initialization - measurement) is applied using OPX
-channels on the fast lines of the bias-tees while sweeping the "measure" voltage point along the detuning axis.
+        PAULI SPIN BLOCKADE SEARCH - Fixed Detuning vs Ramp Duration
+The goal of this sequence is to characterise the ramp duration of the PSB readout macro.
+To do so, the following triangle in voltage space (empty - random initialization - ramp to measurement point - measurement) is applied using OPX
+channels on the fast lines of the bias-tees. The ramp duration is then varied.
 
 The OPX measures the response via RF reflectometry or DC current sensing during the readout window
-(last segment of the triangle). A single-point averaging is performed and the data is extracted while
-the program is running to display the results.
+(last segment of the triangle). The sequence is repeated several time in order to find the optimal average ramp_duration.
 
 Depending on the cut-off frequency of the bias-tee, it may be necessary to adjust the barycenter (voltage offset) of each
 triangle so that the fast line of the bias-tees sees zero voltage on average. Otherwise, the high-pass filtering effect
@@ -39,14 +38,15 @@ Prerequisites:
     - Having initialized the Quam (quam_config/populate_quam_state_*.py).
     - Having calibrated the resonators coupled to the SensorDot components.
     - Having calibrated the "empty" and "initialization" voltage points, and having defined the detuning axis.
+    - Having identified the suitable PSB measurement point through nodes 06a, 06b, and 06c.
 
 State update:
-    - The optimal detuning value for PSB readout, as the voltage point associated with the .measure macro.
+    - The optimal ramp duration to perform PSB readout.
 """
 
 
 node = QualibrationNode[Parameters, Quam](
-    name="06a_PSB_search_opx_sweep_detuning", description=description, parameters=Parameters()
+    name="06d_psb_search_opx_ramp_timing", description=description, parameters=Parameters()
 )
 
 
@@ -56,6 +56,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.quantum_dot_pair_names = ["virtual_dot_1_virtual_dot_2_pair"]
+    # node.parameters.num_shots = 10
     pass
 
 
@@ -67,66 +68,65 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-
     dot_pair_objects = [node.machine.quantum_dot_pairs[name] for name in node.parameters.quantum_dot_pair_names]
 
     node.namespace["dot_pairs"] = dot_pair_objects
 
-    multiplexed_sensors_by_dot_pair = {
-        pair.name: _make_batchable_list_from_multiplexed(pair.sensor_dots, multiplexed=node.parameters.multiplexed)
-        for pair in dot_pair_objects
-    }
-
-    pair_sensors = {}
-    # We can assume that all the sensors connected to each QD pair are multiplexed. You cannot really sequentially measure
-    # Each dot pair object will have a multiplexed batch
-    for dpo in dot_pair_objects:
-        pair_sensors[dpo.name] = _make_batchable_list_from_multiplexed(
-            dpo.sensor_dots, multiplexed=node.parameters.multiplexed or True
+    ramp_min = int(node.parameters.ramp_duration_min)
+    ramp_max = int(node.parameters.ramp_duration_max)
+    ramp_step = int(node.parameters.ramp_duration_step)
+    if ramp_min % 4 != 0 or ramp_max % 4 != 0 or ramp_step % 4 != 0:
+        raise ValueError(
+            f"Ramp settings must be divisible by 4. Received ramp_duration_min: {ramp_min}, ramp_duration_max: {ramp_max}, ramp_duration_step: {ramp_step}"
         )
 
-    detuning_min = node.parameters.detuning_min
-    detuning_max = node.parameters.detuning_max
-    detuning_points = node.parameters.detuning_points
-    detuning_step = (detuning_max - detuning_min) / detuning_points
+    ramp_duration_array = np.arange(ramp_min, ramp_max, ramp_step, dtype=int)
 
-    detuning_array = np.arange(detuning_min, detuning_max, detuning_step)
+    # We can change the detuning value as a tracked change, which the user can accept to change at the end.
+    # normal tracked_updates don't seem to be able to track through it, so create a light manual tracker
+    node.namespace["tracked_original_detunings"] = {}
+    for dot_pair in dot_pair_objects:
+        if node.parameters.detuning is not None:
+
+            # Identify gateset. Should be the same for all dot_pairs
+            dot_pair_gate_set = dot_pair.voltage_sequence.gate_set
+
+            # Get point
+            point_name = dot_pair._create_point_name("measure")
+            point = dot_pair_gate_set.get_macros()[point_name]
+
+            # Save the original detuning
+            node.namespace["tracked_original_detunings"][dot_pair.name] = point.voltages.get(
+                dot_pair.detuning_axis_name
+            )
+
+            # Apply the change for the node
+            point.voltages[dot_pair.detuning_axis_name] = node.parameters.detuning
 
     # The swept 'axes'. Do we do a full 2D scan here?
     node.namespace["sweep_axes"] = {
+        "ramp_durations": xr.DataArray(ramp_duration_array, attrs={"long_name": "ramp duration", "units": "ns"}),
         "quantum_dot_pair": xr.DataArray([pair.name for pair in dot_pair_objects]),
-        "detuning": xr.DataArray(detuning_array, attrs={"long_name": "voltage", "units": "V"}),
     }
     with program() as prog:
         n = declare(int)
         n_st = declare_stream()
+        ramp_duration = declare(int)
 
-        detuning = declare(fixed)
-
-        # For each dot pair, we likely have a single stream, for the multiplexed batch (range(len(...)) == 1)
-        I_st = {
-            pair.name: [declare_stream() for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
-        Q_st = {
-            pair.name: [declare_stream() for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
-        I = {
-            pair.name: [declare(fixed) for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
-        Q = {
-            pair.name: [declare(fixed) for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
+        I = {pair.name: declare(fixed) for pair in dot_pair_objects}
+        Q = {pair.name: declare(fixed) for pair in dot_pair_objects}
+        I_st = {pair.name: declare_stream() for pair in dot_pair_objects}
+        Q_st = {pair.name: declare_stream() for pair in dot_pair_objects}
 
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
             save(n, n_st)
 
             # Perform them all sequentially for now. Can add footprint batching later
             for dot_pair in dot_pair_objects:
-                with for_(*from_array(detuning, detuning_array)):
+                with for_(*from_array(ramp_duration, ramp_duration_array)):
+
+                    # Potentially a gap here in the programme? Add artificial wait?
+                    # wait(100)
                     # ---------------------------------------------------------
                     # Step 1a: Empty - step to empty point (fixed duration)
                     # ---------------------------------------------------------
@@ -143,31 +143,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ---------------------------------------------------------
                     # Step 3: Measure
                     # ---------------------------------------------------------
-                    # No macro used here, since this node will characterise the macro
-
-                    # First ramp to the fixed detuning point
-                    dot_pair.ramp_to_detuning(detuning, ramp_duration=node.parameters.ramp_duration)
 
                     align()
 
-                    # And then explicitly measure.
-                    # The measuring will be in batches of multiplexed sensors. Each dot_pair will have a list of SensorDot objects.
-                    # For each multiplexable batch, we have a single measurement saved to a single stream.
-
-                    for i, batch in enumerate(
-                        multiplexed_sensors_by_dot_pair[dot_pair.name].batch()
-                    ):  # Probably one batch, seeing as one dot pair should have sensors multiplexed
-                        for sensor in batch.values():
-                            # Select the resonator tied to the sensor
-                            rr = sensor.readout_resonator
-                            # Measure using said resonator
-                            rr.measure("readout", qua_vars=(I[dot_pair.name][i], Q[dot_pair.name][i]))
-                            # Post-measurement wait (Optional)
-                            rr.wait(500)
-
-                        # Save data
-                        save(I[dot_pair.name][i], I_st[dot_pair.name][i])
-                        save(Q[dot_pair.name][i], Q_st[dot_pair.name][i])
+                    # Measure point is a tracked change, so this should respect the user's detuning parameter input
+                    # Ramp duration is overridden temporarily for each measure macro.
+                    I[dot_pair.name], Q[dot_pair.name] = dot_pair.measure(ramp_duration=ramp_duration)
+                    save(I[dot_pair.name], I_st[dot_pair.name])
+                    save(Q[dot_pair.name], Q_st[dot_pair.name])
 
                     align()
                     # Apply the compensation pulse via the voltage sequence
@@ -175,10 +158,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         with stream_processing():
             n_st.save("n")
+
             for pair in dot_pair_objects:
-                for i in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch())):
-                    I_st[pair.name][i].buffer(len(detuning_array)).average().save(f"I_{pair.name}_sensor_{i}")
-                    Q_st[pair.name][i].buffer(len(detuning_array)).average().save(f"Q_{pair.name}_sensor_{i}")
+                I_st[pair.name].buffer(len(ramp_duration_array)).average().save(f"I_{pair.name}")
+                Q_st[pair.name].buffer(len(ramp_duration_array)).average().save(f"Q_{pair.name}")
 
 
 # %% {Simulate}
@@ -249,16 +232,27 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor data analysis was successful."""
+    for dot_pair in node.namespace["dot_pairs"]:
+        if dot_pair.name in node.namespace.get("tracked_original_detunings", {}):
+            # Gate set
+            dot_pair_gate_set = dot_pair.voltage_sequence.gate_set
+
+            # Get point
+            point_name = dot_pair._create_point_name("measure")
+            point = dot_pair_gate_set.get_macros()[point_name]
+
+            # Revert change
+            point.voltages[dot_pair.detuning_axis_name] = node.namespace["tracked_original_detunings"][dot_pair.name]
 
     with node.record_state_updates():
         # This is a characterization measurement and typically does not update state parameters.
-        # If needed in the future, the identified PSB region coordinates and optimal detuning could be stored.
+        # If needed in the future, the identified PSB region coordinates could be stored.
         # Example of potential state update (commented out):
         # for qubit_pair in node.namespace["qubit_pairs"]:
         #     if not node.results["fit_results"][qubit_pair.name]["success"]:
         #         continue
-        #     # Update PSB region coordinates and optimal detuning if needed
-        # TODO: how to update the PSB region coordinates and optimal detuning for a given qd pair?
+        #     # Update PSB region coordinates if needed
+        # TODO: update threshold and rotation angle here?
         pass
 
 

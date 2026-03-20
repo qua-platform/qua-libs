@@ -37,6 +37,7 @@ Prerequisites:
     - Having initialized the Quam (quam_config/populate_quam_state_*.py).
     - Having calibrated the resonators coupled to the SensorDot components.
     - Having calibrated the "empty" and "initialization" voltage points, and having defined the detuning axis.
+    - Having run node 06a or 06b in order to characterise the measure macros.
 
 State update:
     TODO: It seems to me that this node is just to quickly check the readout region and nothing should be updated,
@@ -70,11 +71,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     dot_pair_objects = [node.machine.quantum_dot_pairs[name] for name in node.parameters.quantum_dot_pair_names]
 
     node.namespace["dot_pairs"] = dot_pair_objects
-
-    multiplexed_sensors_by_dot_pair = {
-        pair.name: _make_batchable_list_from_multiplexed(pair.sensor_dots, multiplexed=node.parameters.multiplexed)
-        for pair in dot_pair_objects
-    }
 
     # We can change the detuning value as a tracked change, which the user can accept to change at the end.
     # normal tracked_updates don't seem to be able to track through it, so create a light manual tracker
