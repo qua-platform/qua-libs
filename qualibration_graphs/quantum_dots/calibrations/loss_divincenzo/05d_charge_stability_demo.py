@@ -88,17 +88,6 @@ if not _SIMULATED_QUAM_STATE_PATH.exists():
     )
 
 node.machine = Quam.load(str(_SIMULATED_QUAM_STATE_PATH))
-node.parameters.virtual_gate_set_id = "main_qpu"
-node.parameters.x_axis_name = "virtual_dot_1"
-node.parameters.y_axis_name = "virtual_dot_2"
-node.parameters.sensor_names = ["virtual_sensor_1", "virtual_sensor_2"]
-node.parameters.dc_control = False
-node.parameters.result_type = "I"
-node.parameters.num_shots = 100
-node.parameters.simulate = True
-node.parameters.use_validation = True
-node.parameters.run_in_video_mode = True
-node.parameters.video_mode_port = 8040
 
 
 # %% {Create_QUA_program}

@@ -45,7 +45,7 @@ State update:
 
 
 node = QualibrationNode[Parameters, Quam](
-    name="05a_PSB_search_opx_fixed_detuning", description=description, parameters=Parameters()
+    name="06c_PSB_search_opx_fixed_detuning", description=description, parameters=Parameters()
 )
 
 
@@ -76,6 +76,27 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for pair in dot_pair_objects
     }
 
+    # We can change the detuning value as a tracked change, which the user can accept to change at the end.
+    # normal tracked_updates don't seem to be able to track through it, so create a light manual tracker
+    node.namespace["tracked_original_detunings"] = {}
+    for dot_pair in dot_pair_objects:
+        if node.parameters.detuning is not None:
+
+            # Identify gateset. Should be the same for all dot_pairs
+            dot_pair_gate_set = dot_pair.voltage_sequence.gate_set
+
+            # Get point
+            point_name = dot_pair._create_point_name("measure")
+            point = dot_pair_gate_set.get_macros()[point_name]
+
+            # Save the original detuning
+            node.namespace["tracked_original_detunings"][dot_pair.name] = point.voltages.get(
+                dot_pair.detuning_axis_name
+            )
+
+            # Apply the change for the node
+            point.voltages[dot_pair.detuning_axis_name] = node.parameters.detuning
+
     # The swept 'axes'. Do we do a full 2D scan here?
     node.namespace["sweep_axes"] = {
         "quantum_dot_pair": xr.DataArray([pair.name for pair in dot_pair_objects]),
@@ -84,22 +105,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n = declare(int)
         n_st = declare_stream()
 
-        I_st = {
-            pair.name: [declare_stream() for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
-        Q_st = {
-            pair.name: [declare_stream() for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
-        I = {
-            pair.name: [declare(fixed) for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
-        Q = {
-            pair.name: [declare(fixed) for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
+        I = {pair.name: declare(fixed) for pair in dot_pair_objects}
+        Q = {pair.name: declare(fixed) for pair in dot_pair_objects}
+        I_st = {pair.name: declare_stream() for pair in dot_pair_objects}
+        Q_st = {pair.name: declare_stream() for pair in dot_pair_objects}
 
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
             save(n, n_st)
@@ -123,29 +132,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # ---------------------------------------------------------
                 # Step 3: Measure
                 # ---------------------------------------------------------
-                # No macro used here, since the user likely has no measure macros defined (the point of this node)
-
-                # First ramp to the fixed detuning point
-                dot_pair.ramp_to_detuning(node.parameters.detuning, ramp_duration=node.parameters.ramp_duration)
 
                 align()
 
-                # And then explicitly measure.
-                # The measuring will be in batches of multiplexed sensors. Each dot_pair will have a list of SensorDot objects.
-                # For each multiplexable batch, we have a single measurement saved to a single stream.
-
-                for i, batch in enumerate(multiplexed_sensors_by_dot_pair[dot_pair.name].batch()):
-                    for sensor in batch.values():
-                        # Select the resonator tied to the sensor
-                        rr = sensor.readout_resonator
-                        # Measure using said resonator
-                        rr.measure("readout", qua_vars=(I[dot_pair.name][i], Q[dot_pair.name][i]))
-                        # Post-measurement wait (Optional)
-                        rr.wait(500)
-
-                    # Save data
-                    save(I[dot_pair.name][i], I_st[dot_pair.name][i])
-                    save(Q[dot_pair.name][i], Q_st[dot_pair.name][i])
+                # Measure point is a tracked change, so this should respect the user's detuning parameter input
+                I[dot_pair.name], Q[dot_pair.name] = dot_pair.measure()
+                save(I[dot_pair.name], I_st[dot_pair.name])
+                save(Q[dot_pair.name], Q_st[dot_pair.name])
 
                 align()
                 # Apply the compensation pulse via the voltage sequence
@@ -155,9 +148,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n")
 
             for pair in dot_pair_objects:
-                for i in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch())):
-                    I_st[pair.name][i].average().save(f"I_{pair.name}_sensor_{i}")
-                    Q_st[pair.name][i].average().save(f"Q_{pair.name}_sensor_{i}")
+                I_st[pair.name].average().save(f"I_{pair.name}")
+                Q_st[pair.name].average().save(f"Q_{pair.name}")
 
 
 # %% {Simulate}
@@ -228,6 +220,17 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor data analysis was successful."""
+    for dot_pair in node.namespace["dot_pairs"]:
+        if dot_pair.name in node.namespace.get("tracked_original_detunings", {}):
+            # Gate set
+            dot_pair_gate_set = dot_pair.voltage_sequence.gate_set
+
+            # Get point
+            point_name = dot_pair._create_point_name("measure")
+            point = dot_pair_gate_set.get_macros()[point_name]
+
+            # Revert change
+            point.voltages[dot_pair.detuning_axis_name] = node.namespace["tracked_original_detunings"][dot_pair.name]
 
     with node.record_state_updates():
         # This is a characterization measurement and typically does not update state parameters.
