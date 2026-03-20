@@ -130,6 +130,7 @@ def prepare_dc_lists(
     virtual_dc_set_id: str,
     axis_name: str,
     axis_values: List[float],
+    trigger: int = None,
 ) -> None:
     """
     Prepares the DC list attributes for the QDAC channel. This function assumes the use of the
@@ -139,16 +140,16 @@ def prepare_dc_lists(
     virtual_dc_set = node.machine.virtual_dc_sets[virtual_dc_set_id]
     physical_dc_lists = _find_physical_dc_lists(virtual_dc_set, axis_name, axis_values)
 
-    trigger = None
-    for ch_name in physical_dc_lists.keys():
-        spec = getattr(virtual_dc_set.channels[ch_name], "qdac_spec", None)
-        if spec is not None:
-            trig = getattr(spec, "qdac_trigger_in", None)
-            if trig is not None:
-                trigger = trig
-                break
     if trigger is None:
-        raise ValueError(f"No trigger found for the physical outputs associated with the axis {axis_name}")
+        for ch_name in physical_dc_lists.keys():
+            spec = getattr(virtual_dc_set.channels[ch_name], "qdac_spec", None)
+            if spec is not None:
+                trig = getattr(spec, "qdac_trigger_in", None)
+                if trig is not None:
+                    trigger = trig
+                    break
+        if trigger is None:
+            raise ValueError(f"No trigger found for the physical outputs associated with the axis {axis_name}")
 
     for name, voltages in physical_dc_lists.items():
         dc_list = node.machine.qdac.channel(virtual_dc_set.channels[name].qdac_spec.qdac_output_port).dc_list(
