@@ -41,7 +41,9 @@ State update:
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="05_sensor_gate_sweep", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](
+    name="03a_sensor_gate_sweep", description=description, parameters=Parameters()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here

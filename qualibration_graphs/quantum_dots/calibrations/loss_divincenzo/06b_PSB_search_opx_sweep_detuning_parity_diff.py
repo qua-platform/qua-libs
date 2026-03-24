@@ -9,12 +9,11 @@ from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-from qualang_tools.loops import from_array
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.psb_search_sweep_detuning import Parameters
-from calibration_utils.common_utils.experiment import get_sensors, _make_batchable_list_from_multiplexed
+from calibration_utils.psb_search_sweep_detuning_parity_diff import Parameters
+from qualang_tools.loops import from_array
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -22,7 +21,7 @@ from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
 description = """
-        PAULI SPIN BLOCKADE SEARCH - Sweep Detuning
+        PAULI SPIN BLOCKADE SEARCH - Sweep Detuning with Parity Difference
 The goal of this sequence is to find the Pauli Spin Blockade (PSB) region.
 To do so, the following triangle in voltage space (empty - random initialization - measurement) is applied using OPX
 channels on the fast lines of the bias-tees while sweeping the "measure" voltage point along the detuning axis.
@@ -41,12 +40,12 @@ Prerequisites:
     - Having calibrated the "empty" and "initialization" voltage points, and having defined the detuning axis.
 
 State update:
-    TODO: how to update the PSB region coordinates and optimal detuning for a given qubit/dot?
+    - The optimal detuning value for PSB readout, as the voltage point associated with the .measure macro. 
 """
 
 
 node = QualibrationNode[Parameters, Quam](
-    name="05b_PSB_search_opx_sweep_detuning", description=description, parameters=Parameters()
+    name="06b_PSB_search_opx_sweep_detuning_parity_diff", description=description, parameters=Parameters()
 )
 
 
@@ -72,11 +71,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     node.namespace["dot_pairs"] = dot_pair_objects
 
-    multiplexed_sensors_by_dot_pair = {
-        pair.name: _make_batchable_list_from_multiplexed(pair.sensor_dots, multiplexed=node.parameters.multiplexed)
-        for pair in dot_pair_objects
-    }
-
     detuning_min = node.parameters.detuning_min
     detuning_max = node.parameters.detuning_max
     detuning_points = node.parameters.detuning_points
@@ -84,7 +78,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     detuning_array = np.arange(detuning_min, detuning_max, detuning_step)
 
-    # The swept 'axes'. Do we do a full 2D scan here?
     node.namespace["sweep_axes"] = {
         "quantum_dot_pair": xr.DataArray([pair.name for pair in dot_pair_objects]),
         "detuning": xr.DataArray(detuning_array, attrs={"long_name": "voltage", "units": "V"}),
@@ -94,80 +87,94 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n_st = declare_stream()
 
         detuning = declare(fixed)
+        I, Q = {pair.name: declare(fixed) for pair in dot_pair_objects}, {
+            pair.name: declare(fixed) for pair in dot_pair_objects
+        }
 
-        I_st = {
-            pair.name: [declare_stream() for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
-        Q_st = {
-            pair.name: [declare_stream() for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
-        I = {
-            pair.name: [declare(fixed) for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
-        Q = {
-            pair.name: [declare(fixed) for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
+        # Parity variables and streams keyed by dot pair name.
+        # dot_pair.measure() returns a bool; Cast.to_int converts it so we
+        # can average the result in stream processing.
+        p1 = {pair.name: declare(int) for pair in dot_pair_objects}
+        p2 = {pair.name: declare(int) for pair in dot_pair_objects}
+        p1_st = {pair.name: declare_stream() for pair in dot_pair_objects}
+        p2_st = {pair.name: declare_stream() for pair in dot_pair_objects}
+        pdiff_st = {pair.name: declare_stream() for pair in dot_pair_objects}
 
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
             save(n, n_st)
 
-            # Perform them all sequentially for now. Can add footprint batching later
             for dot_pair in dot_pair_objects:
                 with from_array(detuning, detuning_array):
+
+                    # Pick the first threshold from each dot pair
+                    threshold = dot_pair.sensor_dots[0].readout_thresholds[dot_pair.name]
+
                     # ---------------------------------------------------------
-                    # Step 1a: Empty - step to empty point (fixed duration)
+                    # Step 1: Empty - step to empty point (fixed duration)
                     # ---------------------------------------------------------
                     dot_pair.empty()
-                    # Requires the dot pair object to have the empty macro, in addition to the qubits
-                    # Equivalet step to the lvl_init
+
+                    align()
 
                     # ---------------------------------------------------------
-                    # Step 2: Initialize - load electron into dots (fixed duration)
+                    # Step 2: Measure initial parity (p1) — reference state
                     # ---------------------------------------------------------
-                    dot_pair.initialize()
-                    # Requires the dot pair object to have the initialize macro, in addition to the qubits
+                    # We will not be using macros here, since the macro voltage cannot be overriden live with QUA variables.
+                    # We have to step to the point, and measure, and cast manually.
 
-                    # ---------------------------------------------------------
-                    # Step 3: Measure
-                    # ---------------------------------------------------------
-                    # No macro used here, since the user likely has no measure macros defined (the point of this node)
-
-                    # First ramp to the fixed detuning point
+                    # Ramp to the detuning for initial measurement
                     dot_pair.ramp_to_detuning(detuning, ramp_duration=node.parameters.ramp_duration)
 
+                    # Perform measurement - don't bother measuring all sensor dots associated with a dot pair, since we are just measuring parity.
+                    # Subject to change
+                    I[dot_pair.name], Q[dot_pair.name] = dot_pair.sensor_dots[0].measure("readout")
+
+                    # Cast the state to int and save in p1
+                    assign(p1[dot_pair.name], Cast.to_int(I[dot_pair.name] > threshold))
+
+                    # ---------------------------------------------------------
+                    # Step 3: Initialize - load electron into dots
+                    # ---------------------------------------------------------
+                    dot_pair.initialize()
+
+                    # align()
+
+                    # ---------------------------------------------------------
+                    # Step 4: Measure final parity (p2)
+                    # ---------------------------------------------------------
+                    # Ramp to the detuning for initial measurement
+                    dot_pair.ramp_to_detuning(detuning, ramp_duration=node.parameters.ramp_duration)
+
+                    # Reuse the same vars, since we are not saving them anyway. They are only used to assign the int
+                    I[dot_pair.name], Q[dot_pair.name] = dot_pair.sensor_dots[0].measure("readout")
+
+                    # Cast the state to int and save in p2
+                    assign(p2[dot_pair.name], Cast.to_int(I[dot_pair.name] > threshold))
+
                     align()
 
-                    # And then explicitly measure.
-                    # The measuring will be in batches of multiplexed sensors. Each dot_pair will have a list of SensorDot objects.
-                    # For each multiplexable batch, we have a single measurement saved to a single stream.
-
-                    for i, batch in enumerate(multiplexed_sensors_by_dot_pair[dot_pair.name].batch()):
-                        for sensor in batch.values():
-                            # Select the resonator tied to the sensor
-                            rr = sensor.readout_resonator
-                            # Measure using said resonator
-                            rr.measure("readout", qua_vars=(I[dot_pair.name][i], Q[dot_pair.name][i]))
-                            # Post-measurement wait (Optional)
-                            rr.wait(500)
-
-                        # Save data
-                        save(I[dot_pair.name][i], I_st[dot_pair.name][i])
-                        save(Q[dot_pair.name][i], Q_st[dot_pair.name][i])
-
-                    align()
-                    # Apply the compensation pulse via the voltage sequence
+                    # ---------------------------------------------------------
+                    # Step 5: Apply compensation pulse to reset DC bias
+                    # ---------------------------------------------------------
                     dot_pair.voltage_sequence.apply_compensation_pulse()
+
+                    # ---------------------------------------------------------
+                    # Save results
+                    # ---------------------------------------------------------
+                    save(p1[dot_pair.name], p1_st[dot_pair.name])
+                    save(p2[dot_pair.name], p2_st[dot_pair.name])
+
+                    with if_(p1[dot_pair.name] == p2[dot_pair.name]):
+                        save(0, pdiff_st[dot_pair.name])
+                    with else_():
+                        save(1, pdiff_st[dot_pair.name])
 
         with stream_processing():
             n_st.save("n")
             for pair in dot_pair_objects:
-                for i in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch())):
-                    I_st[pair.name][i].buffer(len(detuning_array)).average().save(f"I_{pair.name}_sensor_{i}")
-                    Q_st[pair.name][i].buffer(len(detuning_array)).average().save(f"Q_{pair.name}_sensor_{i}")
+                p1_st[pair.name].buffer(len(detuning_array)).average().save(f"p1_{pair.name}")
+                p2_st[pair.name].buffer(len(detuning_array)).average().save(f"p2_{pair.name}")
+                pdiff_st[pair.name].buffer(len(detuning_array)).average().save(f"pdiff_{pair.name}")
 
 
 # %% {Simulate}
@@ -218,8 +225,10 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active sensors from the loaded node parameters
-    node.namespace["sensors"] = get_sensors(node)
+    # Restore dot pair objects from the loaded parameters
+    node.namespace["dot_pairs"] = [
+        node.machine.quantum_dot_pairs[name] for name in node.parameters.quantum_dot_pair_names
+    ]
 
 
 # %% {Analyse_data}
