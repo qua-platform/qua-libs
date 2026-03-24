@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+from quam_builder.architecture.quantum_dots.components.xy_drive import XYDriveSingle
 from quam_builder.architecture.quantum_dots.operations.names import (
     DrivePulseName,
     SingleQubitMacroName,
@@ -38,12 +39,13 @@ def test_create_ld_quam_serializes_physical_channels(tmp_path):
 
 
 def test_create_ld_quam_has_qubits_with_xy_drives(tmp_path):
-    """Each qubit should have an XY drive with the default reference pulse."""
+    """Each qubit should have an LF-FEM-backed XY drive with the default reference pulse."""
     machine = create_ld_quam()
 
     for qname in ("q1", "q2", "q3", "q4"):
         qubit = machine.qubits[qname]
         assert qubit.xy is not None, f"{qname} should have an XY drive"
+        assert isinstance(qubit.xy, XYDriveSingle), f"{qname} should use the LF-FEM XY drive fallback"
         assert DrivePulseName.GAUSSIAN in qubit.xy.operations, f"{qname} should have the gaussian reference pulse"
 
 

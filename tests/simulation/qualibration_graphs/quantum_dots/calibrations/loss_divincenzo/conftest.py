@@ -26,7 +26,7 @@ def _configure_warning_filters() -> None:
     )
     warnings.filterwarnings(
         "ignore",
-        message=r"Could not get reference.*#/ports/analog_outputs.*",
+        message=r"Could not get reference.*#/ports/(analog_outputs|mw_outputs).*",
         category=UserWarning,
     )
     warnings.filterwarnings(

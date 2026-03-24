@@ -112,7 +112,7 @@ def _suppress_known_quam_builder_warnings():
         )
         warnings.filterwarnings(
             "ignore",
-            message=r"Could not get reference.*#/ports/analog_outputs.*",
+            message=r"Could not get reference.*#/ports/(analog_outputs|mw_outputs).*",
             category=UserWarning,
         )
         yield
@@ -174,11 +174,9 @@ def create_ld_quam():
         shared_resonator_line=False,
         use_mw_fem=False,
     )
-    # TODO: To enable IQ driving on LF-FEM (XYDriveIQ), add an Octave to
-    # instruments and set use_mw_fem=True.  The RF allocation path falls
-    # through from MW-FEM to LF-FEM + Octave when no MW-FEM is configured.
-    # With use_mw_fem=False the wirer allocates a single LF-FEM output per
-    # drive line, producing XYDriveSingle (baseband EDSR).
+    # TODO: Re-enable MW-FEM XY drive wiring once the timing failures on the
+    # single-qubit calibration/simulation path are resolved. For now the test
+    # machine stays on the LF-FEM fallback path.
     connectivity.add_quantum_dots(
         quantum_dots=QUANTUM_DOTS,
         add_drive_lines=True,
