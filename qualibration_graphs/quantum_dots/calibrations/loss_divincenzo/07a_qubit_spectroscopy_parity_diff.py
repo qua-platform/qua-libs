@@ -135,9 +135,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Step 2: Measure state after initialization, no operation
                     # ---------------------------------------------------------
                     align()
-                    assign(
-                        p1, Cast.to_int(qubit.measure())
-                    )  # qubit.measure() handles the step to point + measurement
+                    assign(p1, Cast.to_int(qubit.measure()))  # qubit.measure() handles the step to point + measurement
 
                     # ---------------------------------------------------------
                     # Step 3: Apply operation macro
