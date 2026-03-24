@@ -4,6 +4,13 @@ from __future__ import annotations
 
 import json
 
+from quam_builder.architecture.quantum_dots.operations.names import (
+    DrivePulseName,
+    SingleQubitMacroName,
+    TwoQubitMacroName,
+    VoltagePointName,
+)
+
 from .conftest import create_ld_quam
 
 
@@ -31,24 +38,64 @@ def test_create_ld_quam_serializes_physical_channels(tmp_path):
 
 
 def test_create_ld_quam_has_qubits_with_xy_drives(tmp_path):
-    """Each qubit should have an XY drive with default pulses."""
+    """Each qubit should have an XY drive with the default reference pulse."""
     machine = create_ld_quam()
 
     for qname in ("q1", "q2", "q3", "q4"):
         qubit = machine.qubits[qname]
         assert qubit.xy is not None, f"{qname} should have an XY drive"
-        assert "x180" in qubit.xy.operations, f"{qname} should have x180 pulse"
-        assert "x90" in qubit.xy.operations, f"{qname} should have x90 pulse"
+        assert DrivePulseName.GAUSSIAN in qubit.xy.operations, f"{qname} should have the gaussian reference pulse"
 
 
 def test_create_ld_quam_has_default_macros():
     """Each qubit should have the full set of default macros wired."""
     machine = create_ld_quam()
 
-    required_macros = {"initialize", "measure", "x180", "x90", "y180", "y90", "xy_drive"}
+    required_macros = {
+        VoltagePointName.INITIALIZE,
+        VoltagePointName.MEASURE,
+        VoltagePointName.EMPTY,
+        SingleQubitMacroName.XY_DRIVE,
+        SingleQubitMacroName.X_180,
+        SingleQubitMacroName.X_90,
+        SingleQubitMacroName.Y_180,
+        SingleQubitMacroName.Y_90,
+    }
     for qname in ("q1", "q2", "q3", "q4"):
         qubit = machine.qubits[qname]
         macro_names = set(qubit.macros.keys())
+        missing = required_macros - macro_names
+        assert not missing, f"{qname} missing macros: {missing}"
+
+
+def test_create_ld_quam_registers_canonical_voltage_points():
+    """Canonical voltage points should be materialized for qubits and dot pairs."""
+    machine = create_ld_quam()
+
+    for qubit in machine.qubits.values():
+        gate_set_macros = qubit.voltage_sequence.gate_set.get_macros()
+        for point_name in VoltagePointName:
+            assert qubit._create_point_name(point_name) in gate_set_macros
+
+    for quantum_dot_pair in machine.quantum_dot_pairs.values():
+        gate_set_macros = quantum_dot_pair.voltage_sequence.gate_set.get_macros()
+        for point_name in VoltagePointName:
+            assert quantum_dot_pair._create_point_name(point_name) in gate_set_macros
+
+
+def test_create_ld_quam_has_default_qubit_pair_macros():
+    """Each qubit pair should expose the latest enum-backed default macros."""
+    machine = create_ld_quam()
+
+    required_macros = {
+        VoltagePointName.INITIALIZE,
+        VoltagePointName.MEASURE,
+        VoltagePointName.EMPTY,
+        TwoQubitMacroName.EXCHANGE,
+    }
+    for qname in ("q1_q2", "q3_q4"):
+        qubit_pair = machine.qubit_pairs[qname]
+        macro_names = set(qubit_pair.macros.keys())
         missing = required_macros - macro_names
         assert not missing, f"{qname} missing macros: {missing}"
 

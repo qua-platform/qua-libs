@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import QubitQuam as Quam
-from calibration_utils.common_utils.experiment import get_qubits
+from calibration_utils.common_utils.experiment import get_qubits, get_xy_reference_pulse_name
 from calibration_utils.qubit_spectroscopy_parity_diff import (
     Parameters,
     process_raw_dataset,
@@ -80,10 +80,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Change the pulse amplitude and duration as a tracked change
     node.namespace["tracked_resonators"] = []
-    for i, qubit in enumerate(qubits):
+    for qubit in qubits:
+        reference_pulse_name = get_xy_reference_pulse_name(qubit)
         with tracked_updates(qubit.xy, auto_revert=False, dont_assign_to_none=True) as xy:
-            xy.operations[operation].amplitude = xy.operations[operation].amplitude * operation_amp_factor
-            xy.operations[operation].length = operation_len
+            reference_pulse = xy.operations[reference_pulse_name]
+            reference_pulse.amplitude = reference_pulse.amplitude * operation_amp_factor
+            if operation_len is not None:
+                reference_pulse.length = operation_len
+                if hasattr(reference_pulse, "sigma"):
+                    reference_pulse.sigma = operation_len / 6
             node.namespace["tracked_resonators"].append(xy)
 
     u = unit(coerce_to_integer=True)
@@ -112,7 +117,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         pdiff_st = {qubit.name: declare_stream() for qubit in qubits}
         n_st = declare_stream()
 
-        for qubit in qubits.batch():
+        for qubit in qubits:
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(df, dfs)):

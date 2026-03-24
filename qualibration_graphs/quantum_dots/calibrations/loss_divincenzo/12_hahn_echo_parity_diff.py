@@ -113,7 +113,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         pdiff_st = {qubit.name: declare_stream() for qubit in qubits}
         n_st = declare_stream()
 
-        for qubit in qubits.batch():
+        for qubit in qubits:
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 

@@ -23,7 +23,7 @@ def test_single_qubit_rb_simulation(simulation_runner):
             "num_shots": 1,
             "max_circuit_depth": 64,
             "delta_clifford": 16,
-            "log_scale": True,
+            "log_scale": False,
             "simulation_duration_ns": 60_000,
             "timeout": 180,
         },

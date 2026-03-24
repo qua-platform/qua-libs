@@ -23,15 +23,18 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from contextlib import contextmanager
+import warnings
 
 from qualang_tools.wirer import Connectivity, Instruments, allocate_wiring
 
 from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD
 from quam_builder.builder.qop_connectivity import build_quam_wiring
-from quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros import (
-    Measure1QMacro,
+from quam_builder.architecture.quantum_dots.operations.names import (
+    DrivePulseName,
+    SingleQubitMacroName,
+    VoltagePointName,
 )
-from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from quam_builder.builder.quantum_dots import (
     build_base_quam,
     build_loss_divincenzo_quam,
@@ -71,10 +74,10 @@ CONTROLLER_ID: int = 1
 MW_FEM_SLOT: int = 1
 """MW-FEM slot for qubit XY drive lines (Stage 2 only)."""
 
-LF_FEM_SLOT_1: int = 3
+LF_FEM_SLOT_1: int = 5
 """LF-FEM slot for dot pair 1 (plungers 1-2, sensor 1, resonator 1)."""
 
-LF_FEM_SLOT_2: int = 5
+LF_FEM_SLOT_2: int = 6
 """LF-FEM slot for dot pair 2 (plungers 3-4, sensor 2, resonator 2)."""
 
 # ── Quantum-dot topology ───────────────────────────────────────────────
@@ -96,6 +99,23 @@ QUBIT_PAIR_SENSOR_MAP: dict[str, list[str]] = {
 
 
 # ── Factory functions ──────────────────────────────────────────────────
+
+
+@contextmanager
+def _suppress_known_quam_builder_warnings():
+    """Hide known non-fatal QuAM builder warnings from the test factory."""
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=r"This component is not part of any QuamRoot.*",
+            category=UserWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message=r"Could not get reference.*#/ports/analog_outputs.*",
+            category=UserWarning,
+        )
+        yield
 
 
 def create_qd_quam() -> BaseQuamQD:
@@ -129,8 +149,9 @@ def create_qd_quam() -> BaseQuamQD:
     allocate_wiring(connectivity, instruments)
 
     machine = BaseQuamQD()
-    machine = build_quam_wiring(connectivity, HOST_IP, CLUSTER_NAME, machine)
-    machine = build_base_quam(machine, connect_qdac=False, save=False)
+    with _suppress_known_quam_builder_warnings():
+        machine = build_quam_wiring(connectivity, HOST_IP, CLUSTER_NAME, machine)
+        machine = build_base_quam(machine, connect_qdac=False, save=False)
     return machine
 
 
@@ -138,9 +159,8 @@ def create_ld_quam():
     """Build a Stage-2 ``LossDiVincenzoQuam`` with qubits and default macros.
 
     Internally calls :func:`create_qd_quam` for the dot layer, then adds
-    qubit XY drive lines, registers qubits (q1-q4), wires default pulses
-    (x180, x90, y180, y90, ...) and default macros (initialize, measure,
-    empty, xy_drive, x, y, z, x180, x90, ...) via
+    qubit XY drive lines, registers qubits (q1-q4), wires the default
+    single-reference XY pulse and the default macros via
     ``wire_machine_macros()``.
 
     Returns a fully configured ``LossDiVincenzoQuam`` ready for
@@ -175,21 +195,22 @@ def create_ld_quam():
 
     allocate_wiring(connectivity, instruments)
 
-    machine = build_quam_wiring(connectivity, HOST_IP, CLUSTER_NAME, base_machine)
-    machine = build_loss_divincenzo_quam(
-        machine,
-        qubit_pair_sensor_map=QUBIT_PAIR_SENSOR_MAP,
-        implicit_mapping=True,
-        save=False,
-    )
+    with _suppress_known_quam_builder_warnings():
+        machine = build_quam_wiring(connectivity, HOST_IP, CLUSTER_NAME, base_machine)
+        machine = build_loss_divincenzo_quam(
+            machine,
+            qubit_pair_sensor_map=QUBIT_PAIR_SENSOR_MAP,
+            implicit_mapping=True,
+            save=False,
+        )
 
-    # The builder sets qubit.id to the quantum-dot name (e.g. "virtual_dot_1")
-    # but downstream code expects qubit.name to equal the dict key ("q1").
-    for key, qubit in machine.qubits.items():
-        qubit.id = key
+        # The builder sets qubit.id to the quantum-dot name (e.g. "virtual_dot_1")
+        # but downstream code expects qubit.name to equal the dict key ("q1").
+        for key, qubit in machine.qubits.items():
+            qubit.id = key
 
-    _override_default_pulse_lengths(machine)
-    _add_default_voltage_points(machine)
+        _override_default_pulse_lengths(machine)
+        _add_default_voltage_points(machine)
     return machine
 
 
@@ -197,10 +218,12 @@ def _override_default_pulse_lengths(machine) -> None:
     """Override quam-builder default pulse lengths for this test configuration."""
     for qubit in machine.qubits.values():
         if hasattr(qubit, "xy") and qubit.xy is not None:
-            for op in qubit.xy.operations.values():
-                op.length = 524
-                if hasattr(op, "sigma"):
-                    op.sigma = 524 / 6
+            gaussian_pulse = qubit.xy.operations.get(DrivePulseName.GAUSSIAN)
+            if gaussian_pulse is not None:
+                gaussian_pulse.length = 524
+                gaussian_pulse.amplitude = 0.2
+                if hasattr(gaussian_pulse, "sigma"):
+                    gaussian_pulse.sigma = 524 / 6
 
     for sd in machine.sensor_dots.values():
         rr = getattr(sd, "readout_resonator", None)
@@ -214,32 +237,36 @@ def _override_default_pulse_lengths(machine) -> None:
 def _add_default_voltage_points(machine) -> None:
     """Register canonical voltage tuning points consumed by state macros.
 
-    The default ``Initialize1QMacro``, ``Measure1QMacro``, and
-    ``Empty1QMacro`` from quam-builder invoke ``step_to_point`` /
-    ``ramp_to_point`` on the owning qubit.  Those calls require named
-    voltage points to be registered beforehand.
+    ``build_loss_divincenzo_quam()`` already wires the latest default macro
+    instances. The test factory only needs to define the canonical points those
+    macros consume and tune a few runtime defaults on the instantiated macros.
 
-    The actual voltage values here are nominal placeholders; calibration
-    nodes override them at run time.
+    The voltage values here are nominal placeholders; calibration nodes override
+    them at run time.
     """
     for qubit in machine.qubits.values():
         dot_id = qubit.quantum_dot.id
-        qubit.with_step_point(VoltagePointName.INITIALIZE.value, {dot_id: 0.075}, duration=248)
-        qubit.with_step_point(VoltagePointName.EMPTY.value, {dot_id: -0.05}, duration=524)
-        # For "measure", register the voltage point but install Measure1QMacro
-        # (delegates to quantum_dot_pair) instead of the generic StepPointMacro.
-        qubit.add_point(VoltagePointName.MEASURE.value, {dot_id: 0.05}, duration=248)
-        qubit.macros[VoltagePointName.MEASURE.value] = Measure1QMacro()
+        qubit.add_point(VoltagePointName.INITIALIZE, {dot_id: 0.075}, duration=248)
+        qubit.add_point(VoltagePointName.MEASURE, {dot_id: 0.05}, duration=248)
+        qubit.add_point(VoltagePointName.EMPTY, {dot_id: -0.05}, duration=524)
+        qubit.add_point(VoltagePointName.EXCHANGE, {dot_id: 0.025}, duration=248)
+        qubit.macros[VoltagePointName.INITIALIZE].ramp_duration = 16
 
-    # Register voltage points on quantum_dot_pairs so the MeasurePSBPairMacro
-    # can call step_to_point("measure") during the delegation chain.
+    # Register canonical points on quantum-dot pairs so the latest pair macros
+    # can dispatch by enum-backed names as well.
     for qdp in machine.quantum_dot_pairs.values():
         dot_ids = [d.id for d in qdp.quantum_dots]
-        voltages = {did: 0.05 for did in dot_ids}
-        qdp.add_point(VoltagePointName.MEASURE.value, voltages, duration=248)
+        qdp.add_point(VoltagePointName.INITIALIZE, {did: 0.075 for did in dot_ids}, duration=248)
+        qdp.add_point(VoltagePointName.MEASURE, {did: 0.05 for did in dot_ids}, duration=248)
+        qdp.add_point(VoltagePointName.EMPTY, {did: -0.05 for did in dot_ids}, duration=524)
+        qdp.add_point(VoltagePointName.EXCHANGE, {did: 0.025 for did in dot_ids}, duration=248)
 
     # Populate default readout thresholds / projectors on sensor dots so
     # the SensorDotMeasureMacro can perform state discrimination.
     for qdp_name, qdp in machine.quantum_dot_pairs.items():
         for sd in qdp.sensor_dots:
             sd._add_readout_params(qdp_name, threshold=0.0)
+
+    for qubit in machine.qubits.values():
+        qubit.macros[VoltagePointName.MEASURE].hold_duration = 248
+        qubit.macros[SingleQubitMacroName.XY_DRIVE].reference_pulse_name = DrivePulseName.GAUSSIAN

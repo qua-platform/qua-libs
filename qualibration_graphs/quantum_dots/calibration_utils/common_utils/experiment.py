@@ -5,6 +5,7 @@ from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.core import BatchableList
 
 from quam_builder.architecture.quantum_dots.components import SensorDot, QuantumDot
+from quam_builder.architecture.quantum_dots.operations.names import SingleQubitMacroName
 from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD
 from quam_builder.architecture.quantum_dots.qubit import AnySpinQubit
 from quam_builder.architecture.quantum_dots.qubit_pair import AnySpinQubitPair
@@ -100,6 +101,29 @@ def _get_qubits(machine: BaseQuamQD, node_parameters: QubitsExperimentNodeParame
         qubits = [machine.qubits[q] for q in node_parameters.qubits]
 
     return qubits
+
+
+def get_xy_reference_pulse_name(qubit: AnySpinQubit) -> str:
+    """Resolve the pulse name backing the qubit's default XY macros."""
+    if qubit.xy is None:
+        raise ValueError(f"Qubit '{qubit.id}' has no XY drive configured.")
+
+    xy_drive_macro = qubit.macros.get(SingleQubitMacroName.XY_DRIVE)
+    if xy_drive_macro is None:
+        raise KeyError(f"Qubit '{qubit.id}' is missing the '{SingleQubitMacroName.XY_DRIVE}' macro.")
+
+    pulse_name = getattr(xy_drive_macro, "reference_pulse_name", None)
+    if pulse_name is None:
+        raise ValueError(f"Qubit '{qubit.id}' XY-drive macro has no reference_pulse_name configured.")
+    if pulse_name not in qubit.xy.operations:
+        raise KeyError(f"Reference pulse '{pulse_name}' is not defined on qubit '{qubit.id}' XY drive.")
+
+    return pulse_name
+
+
+def get_xy_reference_pulse(qubit: AnySpinQubit):
+    """Return the pulse object backing the qubit's default XY macros."""
+    return qubit.xy.operations[get_xy_reference_pulse_name(qubit)]
 
 
 def get_qubit_pairs(node: QualibrationNode) -> BatchableList[AnySpinQubitPair]:

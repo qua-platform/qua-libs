@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import get_qubits
+from calibration_utils.common_utils.experiment import get_qubits, get_xy_reference_pulse
 from calibration_utils.power_rabi import (
     Parameters,
     fit_raw_data,
@@ -99,7 +99,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n_st = declare_stream()
 
         # Main experiment loop
-        for qubit in qubits.batch():
+        for qubit in qubits:
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
@@ -257,11 +257,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             opt_prefactor = node.results["fit_results"][q.name]["opt_amp"]
-            current_amp = q.xy.operations[node.parameters.operation].amplitude
+            reference_pulse = get_xy_reference_pulse(q)
+            current_amp = reference_pulse.amplitude
             new_amplitude = current_amp * opt_prefactor
-            q.xy.operations[node.parameters.operation].amplitude = new_amplitude
-            if node.parameters.operation == "x180" and node.parameters.update_x90:
-                q.xy.operations["x90"].amplitude = new_amplitude / 2
+            reference_pulse.amplitude = new_amplitude
 
 
 # %% {Save_results}

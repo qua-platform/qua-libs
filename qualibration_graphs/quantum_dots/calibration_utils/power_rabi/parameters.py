@@ -1,6 +1,4 @@
-from typing import Literal, Protocol, runtime_checkable
-
-import numpy as np
+from typing import Literal
 from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
@@ -19,8 +17,6 @@ class BaseRabiSpecificParameters(RunnableParameters):
     """Step size for the amplitude factor. Default is 0.005."""
     operation: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x180"
     """Type of operation to perform. Default is "x180"."""
-    update_x90: bool = True
-    """Flag to update the x90 pulse amplitude after calibrating x180. Default is True."""
 
 
 class ErrorAmplifiedSpecificParameters(BaseRabiSpecificParameters):

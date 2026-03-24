@@ -164,7 +164,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # RNG for on-PPU Clifford generation
         rng = Random(seed=node.parameters.seed)
 
-        for qubit in qubits.batch():
+        for qubit in qubits:
             # ═════════════════════════════════════════════════════════════
             # Outermost loop: circuits
             # ═════════════════════════════════════════════════════════════
@@ -281,12 +281,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         save(state, state_st[qubit.name])
 
                         # --- Compensation ---
-                        # TODO: Compensation pulse won't work until we set up
-                        # the mixin to track durations of macro operations for
-                        # the voltage pulse compensation.
+                        # TODO: Compensation pulse not working correctly
                         align()
-                        qubit.voltage_sequence.ramp_to_zero()
-                        #     qubit.voltage_sequence.apply_compensation_pulse()
+                        # qubit.voltage_sequence.ramp_to_zero()
+                        qubit.voltage_sequence.apply_compensation_pulse()
 
         # ── Stream processing ─────────────────────────────────────────
         # Buffer order matches loop nesting: circuit → depth → shot

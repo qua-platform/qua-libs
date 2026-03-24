@@ -20,7 +20,11 @@ from calibration_utils.time_rabi_chevron_parity_diff import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from calibration_utils.common_utils.experiment import get_sensors, get_qubits
+from calibration_utils.common_utils.experiment import (
+    get_sensors,
+    get_qubits,
+    get_xy_reference_pulse,
+)
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
@@ -115,7 +119,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n_st = declare_stream()
 
         # Main experiment loop
-        for qubit in qubits.batch():
+        for qubit in qubits:
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
@@ -136,7 +140,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
                         # Measure initial state (includes step_to('readout'))
                         # Cast bool to int for stream averaging
-                        assign(p1[i], Cast.to_int(qubit.measure()))
+                        assign(p1, Cast.to_int(qubit.measure()))
 
                         # ---------------------------------------------------------
                         # Step 2: Initialize - load electron into dot (variable duration)
@@ -282,7 +286,11 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             fit_result = node.results["fit_results"][qubit.name]
-            qubit.xy.operations[node.parameters.operation].length = fit_result["optimal_duration"]
+            optimal_duration = int(fit_result["optimal_duration"])
+            reference_pulse = get_xy_reference_pulse(qubit)
+            reference_pulse.length = optimal_duration
+            if hasattr(reference_pulse, "sigma"):
+                reference_pulse.sigma = optimal_duration / 6
             qubit.xy.intermediate_frequency = fit_result["optimal_frequency"]
 
 

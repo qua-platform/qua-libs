@@ -17,6 +17,9 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 
+[options]
+prerelease-mode = "allow"
+
 [[package]]
 name = "a2wsgi"
 version = "1.10.10"
@@ -4463,7 +4466,7 @@ wheels = [
 [[package]]
 name = "quam-builder"
 version = "0.2.0"
-source = { git = "https://github.com/qua-platform/quam-builder.git?rev=release%2Fnightly#125383c9b0842762952c90252abb40ed53388d91" }
+source = { git = "https://github.com/qua-platform/quam-builder.git?rev=release%2Fnightly#36f1ddb11d1cd5a93b867bb98d8eb7930efaa499" }
 dependencies = [
     { name = "qcodes-contrib-drivers", version = "0.23.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "qcodes-contrib-drivers", version = "0.24.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
