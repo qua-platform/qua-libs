@@ -105,15 +105,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         t = declare(int)
         n = declare(int)
 
-        p1 = declare(int, size=num_qubits)
-        p2 = declare(int, size=num_qubits)
+        p1 = declare(int)
+        p2 = declare(int)
 
         p1_st = {qubit.name: declare_stream() for qubit in qubits}
         p2_st = {qubit.name: declare_stream() for qubit in qubits}
         pdiff_st = {qubit.name: declare_stream() for qubit in qubits}
         n_st = declare_stream()
 
-        for batched_qubits in qubits.batch():
+        for qubit in qubits.batch():
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
@@ -122,62 +122,55 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Step 1: Empty - step to empty point (fixed duration)
                     # ---------------------------------------------------------
                     align()
-                    for i, qubit in batched_qubits.items():
-                        qubit.empty()
+                    qubit.empty()
 
                     align()
-                    for i, qubit in batched_qubits.items():
-                        assign(p1[i], Cast.to_int(qubit.measure()))
+                    assign(p1, Cast.to_int(qubit.measure()))
 
                     # ---------------------------------------------------------
                     # Step 2: Initialise - load electron into dot
                     # ---------------------------------------------------------
                     align()
-                    for i, qubit in batched_qubits.items():
-                        qubit.initialize()
+                    qubit.initialize()
 
                     align()
                     # ---------------------------------------------------------
                     # Step 3: Hahn echo — x90 · wait(τ) · x180 · wait(τ) · x90
                     # ---------------------------------------------------------
-                    for i, qubit in batched_qubits.items():
-                        qubit.x90()
-                        align()
-                        wait(t)
-                        qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
-                        align()
-                        qubit.x180()
-                        align()
-                        wait(t)
-                        qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
-                        align()
-                        qubit.x90()
+                    qubit.x90()
+                    align()
+                    wait(t)
+                    qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
+                    align()
+                    qubit.x180()
+                    align()
+                    wait(t)
+                    qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
+                    align()
+                    qubit.x90()
 
                     # ---------------------------------------------------------
                     # Step 4: Measure — move to PSB and measure
                     # ---------------------------------------------------------
                     align()
-                    for i, qubit in batched_qubits.items():
-                        assign(p2[i], Cast.to_int(qubit.measure()))
+                    assign(p2, Cast.to_int(qubit.measure()))
 
                     # ---------------------------------------------------------
                     # Step 5: Apply compensation pulse to reset DC bias
                     # ---------------------------------------------------------
                     align()
-                    for i, qubit in batched_qubits.items():
-                        qubit.voltage_sequence.apply_compensation_pulse()
+                    qubit.voltage_sequence.apply_compensation_pulse()
 
                     # ---------------------------------------------------------
                     # Save results
                     # ---------------------------------------------------------
-                    for i, qubit in batched_qubits.items():
-                        save(p1[i], p1_st[qubit.name])
-                        save(p2[i], p2_st[qubit.name])
+                    save(p1, p1_st[qubit.name])
+                    save(p2, p2_st[qubit.name])
 
-                        with if_(p1[i] == p2[i]):
-                            save(0, pdiff_st[qubit.name])
-                        with else_():
-                            save(1, pdiff_st[qubit.name])
+                    with if_(p1 == p2):
+                        save(0, pdiff_st[qubit.name])
+                    with else_():
+                        save(1, pdiff_st[qubit.name])
 
         with stream_processing():
             n_st.save("n")

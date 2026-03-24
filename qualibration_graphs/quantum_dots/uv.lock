@@ -3627,6 +3627,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyserial"
+version = "3.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1e/7d/ae3f0a63f41e4d2f6cb66a5b57197850f919f59e558159a4dd3a818f5082/pyserial-3.5.tar.gz", hash = "sha256:3c77e014170dfffbd816e6ffc205e9842efb10be9f58ec16d3e8675b4925cddb", size = 159125, upload-time = "2020-11-23T03:59:15.045Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/bc/587a445451b253b285629263eb51c2d8e9bcea4fc97826266d186f96f558/pyserial-3.5-py2.py3-none-any.whl", hash = "sha256:c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0", size = 90585, upload-time = "2020-11-23T03:59:13.41Z" },
+]
+
+[[package]]
 name = "pyspnego"
 version = "0.12.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4506,6 +4515,7 @@ dev = [
     { name = "ipykernel", version = "7.2.0a1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipykernel", version = "7.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "numpyro" },
+    { name = "pyserial" },
     { name = "pytest" },
     { name = "qarray" },
     { name = "virtual-qpu", marker = "python_full_version >= '3.11'" },
@@ -4539,6 +4549,7 @@ provides-extras = ["analysis", "bayesian", "visa"]
 dev = [
     { name = "ipykernel", specifier = ">=7.0.0a1" },
     { name = "numpyro", specifier = ">=0.15.0" },
+    { name = "pyserial", specifier = ">=3.5" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "qarray", specifier = ">=1.0.0" },
     { name = "virtual-qpu", marker = "python_full_version >= '3.11'", git = "https://github.com/qua-platform/virtual_qpu.git" },

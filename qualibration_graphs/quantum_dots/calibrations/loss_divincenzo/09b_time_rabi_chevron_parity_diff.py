@@ -106,8 +106,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # Additional variables for pre/post measurement comparison
         # Use int instead of bool so we can average in stream processing
-        p1 = declare(int, size=num_qubits)
-        p2 = declare(int, size=num_qubits)
+        p1 = declare(int)
+        p2 = declare(int)
         # Streams keyed by qubit name; each qubit appears in exactly one batch.
         p1_st = {qubit.name: declare_stream() for qubit in qubits}
         p2_st = {qubit.name: declare_stream() for qubit in qubits}
@@ -115,7 +115,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n_st = declare_stream()
 
         # Main experiment loop
-        for batched_qubits in qubits.batch():
+        for qubit in qubits.batch():
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
@@ -124,38 +124,33 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # ---------------------------------------------------------
                         # Pre-measurement: Check initial state
                         # ---------------------------------------------------------
-                        for i, qubit in batched_qubits.items():
-                            # Set drive frequency for this iteration
-                            qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
+                        # Set drive frequency for this iteration
+                        qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
 
                         # ---------------------------------------------------------
                         # Step 1: Empty - step to empty point (fixed duration)
                         # ---------------------------------------------------------
                         align()
-                        for i, qubit in batched_qubits.items():
-                            qubit.empty()
+                        qubit.empty()
 
                         align()
-                        for i, qubit in batched_qubits.items():
-                            # Measure initial state (includes step_to('readout'))
-                            # Cast bool to int for stream averaging
-                            assign(p1[i], Cast.to_int(qubit.measure()))
+                        # Measure initial state (includes step_to('readout'))
+                        # Cast bool to int for stream averaging
+                        assign(p1[i], Cast.to_int(qubit.measure()))
 
                         # ---------------------------------------------------------
                         # Step 2: Initialize - load electron into dot (variable duration)
                         # ---------------------------------------------------------
                         align()
 
-                        for i, qubit in batched_qubits.items():
-                            qubit.initialize()
+                        qubit.initialize()
 
                         align()
                         # ---------------------------------------------------------
                         # Step 3: X180 - apply pi pulse
                         # ---------------------------------------------------------
-                        for i, qubit in batched_qubits.items():
-                            # X180 macro handles X180 pulse
-                            qubit.x180(duration=t)
+                        # X180 macro handles X180 pulse
+                        qubit.x180(duration=t)
 
                         # Synchronize before measurement
                         align()
@@ -163,10 +158,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # ---------------------------------------------------------
                         # Step 4: Measure - move to PSB and measure
                         # ---------------------------------------------------------
-                        for i, qubit in batched_qubits.items():
-                            # Measure macro handles step_to('readout') + measurement
-                            # Cast bool to int for stream averaging
-                            assign(p2[i], Cast.to_int(qubit.measure()))
+                        # Measure macro handles step_to('readout') + measurement
+                        # Cast bool to int for stream averaging
+                        assign(p2, Cast.to_int(qubit.measure()))
 
                         # Synchronize before compensation
                         align()
@@ -174,21 +168,19 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # ---------------------------------------------------------
                         # Step 5: Apply compensation pulse to reset DC bias
                         # ---------------------------------------------------------
-                        for i, qubit in batched_qubits.items():
-                            qubit.voltage_sequence.apply_compensation_pulse()
+                        qubit.voltage_sequence.apply_compensation_pulse()
 
                         # ---------------------------------------------------------
                         # Save results
                         # ---------------------------------------------------------
-                        for i, qubit in batched_qubits.items():
-                            save(p1[i], p1_st[qubit.name])
-                            save(p2[i], p2_st[qubit.name])
+                        save(p1, p1_st[qubit.name])
+                        save(p2, p2_st[qubit.name])
 
-                            # Calculate state difference
-                            with if_(p1[i] == p2[i]):
-                                save(0, pdiff_st[qubit.name])
-                            with else_():
-                                save(1, pdiff_st[qubit.name])
+                        # Calculate state difference
+                        with if_(p1 == p2):
+                            save(0, pdiff_st[qubit.name])
+                        with else_():
+                            save(1, pdiff_st[qubit.name])
 
         # Stream processing
         with stream_processing():
