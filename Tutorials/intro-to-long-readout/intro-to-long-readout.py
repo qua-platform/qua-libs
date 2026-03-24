@@ -9,9 +9,12 @@ from configuration import *
 
 u = unit(coerce_to_integer=True)
 
+
 def update_readout_length(config, element, operation, new_readout_length):
     assert element in config["elements"], "The element must be in the config."
-    assert operation in config["elements"][element]["operations"], "The operation must be one of {}".format(config["elements"]["operations"])
+    assert operation in config["elements"][element]["operations"], "The operation must be one of {}".format(
+        config["elements"]["operations"]
+    )
     assert new_readout_length % 4 == 0, "The new readout length must be a multiple of 4ns."
 
     pulse = config["elements"][element]["operations"][operation]
@@ -19,20 +22,21 @@ def update_readout_length(config, element, operation, new_readout_length):
     weights = config["pulses"][pulse]["integration_weights"]
     for weight, value in weights.items():
         for quadrature in ["cosine", "sine"]:
-            assert len(config["integration_weights"][value][
-                           quadrature]) == 1, "This function only works for constant integration weights."
-            iw = config["integration_weights"]["cosine_weights"][quadrature][0][0]
+            assert (
+                len(config["integration_weights"][value][quadrature]) == 1
+            ), "This function only works for constant integration weights."
+            iw = config["integration_weights"][value][quadrature][0][0]
             config["integration_weights"][value][quadrature] = [(iw, new_readout_length)]
+
 
 ###################
 # The QUA program #
 ###################
-n_avg = 100
-total_integration_time = 50 * u.ms
-sampling_rate = 1e6
-new_readout_length = int(1 / (sampling_rate * 1e-9) * 4) // 4
-n_readout = int(total_integration_time / new_readout_length / 2)
-
+n_avg = 100  # Number of averaging shots
+total_integration_time = 50 * u.ms  # Total readout time
+new_readout_length = 2000  # Individual readout length
+n_readout = int(total_integration_time / new_readout_length / 2)  # Number of readout loops
+# update the readout length in the config
 update_readout_length(config, "resonator", "readout", new_readout_length)
 update_readout_length(config, "resonator_twin", "readout", new_readout_length)
 
@@ -41,33 +45,29 @@ with program() as prog:
     Q = [declare(fixed) for _ in range(2)]
     I_st = declare_stream()
     Q_st = declare_stream()
-
     n = declare(int)
     ind1 = declare(int)
     ind2 = declare(int)
+
     with for_(n, 0, n < n_avg, n + 1):
         # 1st readout
         with for_(ind1, 0, ind1 < n_readout, ind1 + 1):
-            measure(
-                "readout", "resonator",
-                demod.full("cos", I[0], "out1"), demod.full("sin", Q[0], "out1"))
-            wait(readout_len * u.ns, "resonator")
+            measure("readout", "resonator", demod.full("cos", I[0], "out1"), demod.full("sin", Q[0], "out1"))
+            wait(new_readout_length * u.ns, "resonator")
             save(I[0], I_st)
             save(Q[0], Q_st)
 
         # 2nd readout
-        wait(readout_len * u.ns,  "resonator_twin")
+        wait(new_readout_length * u.ns, "resonator_twin")
         with for_(ind2, 0, ind2 < n_readout, ind2 + 1):
-            measure(
-                "readout", "resonator_twin",
-                demod.full("cos", I[1], "out1"), demod.full("sin", Q[1], "out1"))
-            wait(readout_len * u.ns, "resonator_twin")
+            measure("readout", "resonator_twin", demod.full("cos", I[1], "out1"), demod.full("sin", Q[1], "out1"))
+            wait(new_readout_length * u.ns, "resonator_twin")
             save(I[1], I_st)
             save(Q[1], Q_st)
 
     with stream_processing():
-        I_st.buffer(n_readout*2).average().save("I")
-        Q_st.buffer(n_readout*2).average().save("Q")
+        I_st.buffer(n_readout * 2).average().save("I")
+        Q_st.buffer(n_readout * 2).average().save("Q")
 
 
 #####################################
@@ -108,7 +108,7 @@ else:
     I = u.demod2volts(results.get("I"), readout_len, single_demod=True)
     Q = u.demod2volts(results.get("Q"), readout_len, single_demod=True)
     # Plots results
-    time = np.linspace(0, total_integration_time*1e-9, 2*n_readout)
+    time = np.linspace(0, total_integration_time * 1e-9, 2 * n_readout)
     plt.figure()
     plt.plot(time, np.sqrt(I**2 + Q**2))
     plt.xlabel("time (s)")

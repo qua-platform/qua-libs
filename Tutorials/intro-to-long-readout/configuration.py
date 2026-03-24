@@ -17,8 +17,7 @@ config = {
                             "upsampling_mode": "mw",
                         },
                     },
-                    "digital_outputs": {
-                    },
+                    "digital_outputs": {},
                     "analog_inputs": {
                         1: {"offset": 0.0, "gain_db": 0, "sampling_rate": 1e9},
                     },
@@ -77,10 +76,6 @@ config = {
         "ON": {"samples": [(1, 0)]},
     },
     "integration_weights": {
-        "constant_weights": {
-            "cosine": [(1, readout_len)],
-            "sine": [(0.0, readout_len)],
-        },
         "cosine_weights": {
             "cosine": [(1.0, readout_len)],
             "sine": [(0.0, readout_len)],
@@ -90,6 +85,5 @@ config = {
             "sine": [(1.0, readout_len)],
         },
     },
-    "mixers": {
-    },
+    "mixers": {},
 }
