@@ -126,6 +126,17 @@ def get_xy_reference_pulse(qubit: AnySpinQubit):
     return qubit.xy.operations[get_xy_reference_pulse_name(qubit)]
 
 
+def quantize_pulse_length_ns(pulse_length_ns: int | float) -> int:
+    """Round a pulse length to the nearest hardware-valid 4 ns multiple."""
+    requested_length_ns = float(pulse_length_ns)
+    rounded_length_ns = int(round(requested_length_ns / 4.0)) * 4
+
+    if rounded_length_ns < 4:
+        raise ValueError(f"Pulse length must be at least 4 ns, got {pulse_length_ns}.")
+
+    return rounded_length_ns
+
+
 def get_qubit_pairs(node: QualibrationNode) -> BatchableList[AnySpinQubitPair]:
     qubit_pairs = _get_qubit_pairs(node.machine, node.parameters)
 
