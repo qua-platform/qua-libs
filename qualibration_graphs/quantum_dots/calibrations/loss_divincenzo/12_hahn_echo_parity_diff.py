@@ -139,12 +139,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ---------------------------------------------------------
                     qubit.x90()
                     align()
-                    wait(t)
                     qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
                     align()
                     qubit.x180()
                     align()
-                    wait(t)
                     qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
                     align()
                     qubit.x90()
@@ -160,7 +158,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ---------------------------------------------------------
                     align()
                     qubit.voltage_sequence.apply_compensation_pulse()
-
+                    align()
                     # ---------------------------------------------------------
                     # Save results
                     # ---------------------------------------------------------

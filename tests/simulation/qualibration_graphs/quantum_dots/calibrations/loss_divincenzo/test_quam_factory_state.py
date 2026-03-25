@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from quam_builder.architecture.quantum_dots.components.xy_drive import XYDriveSingle
+from quam_builder.architecture.quantum_dots.components.xy_drive import XYDriveMW
 from quam_builder.architecture.quantum_dots.operations.names import (
     DrivePulseName,
     SingleQubitMacroName,
@@ -27,25 +27,21 @@ def test_create_ld_quam_serializes_physical_channels(tmp_path):
     expected_channels = {
         "plunger_1",
         "plunger_2",
-        "plunger_3",
-        "plunger_4",
         "sensor_1",
-        "sensor_2",
         "barrier_1",
-        "barrier_2",
     }
 
     assert set(physical_channels) == expected_channels
 
 
 def test_create_ld_quam_has_qubits_with_xy_drives(tmp_path):
-    """Each qubit should have an LF-FEM-backed XY drive with the default reference pulse."""
+    """Each qubit should have a MW-FEM-backed XY drive with the default reference pulse."""
     machine = create_ld_quam()
 
-    for qname in ("q1", "q2", "q3", "q4"):
+    for qname in ("q1", "q2"):
         qubit = machine.qubits[qname]
         assert qubit.xy is not None, f"{qname} should have an XY drive"
-        assert isinstance(qubit.xy, XYDriveSingle), f"{qname} should use the LF-FEM XY drive fallback"
+        assert isinstance(qubit.xy, XYDriveMW), f"{qname} should use the MW-FEM XY drive"
         assert DrivePulseName.GAUSSIAN in qubit.xy.operations, f"{qname} should have the gaussian reference pulse"
 
 
@@ -63,7 +59,7 @@ def test_create_ld_quam_has_default_macros():
         SingleQubitMacroName.Y_180,
         SingleQubitMacroName.Y_90,
     }
-    for qname in ("q1", "q2", "q3", "q4"):
+    for qname in ("q1", "q2"):
         qubit = machine.qubits[qname]
         macro_names = set(qubit.macros.keys())
         missing = required_macros - macro_names
@@ -95,7 +91,7 @@ def test_create_ld_quam_has_default_qubit_pair_macros():
         VoltagePointName.EMPTY,
         TwoQubitMacroName.EXCHANGE,
     }
-    for qname in ("q1_q2", "q3_q4"):
+    for qname in ("q1_q2",):
         qubit_pair = machine.qubit_pairs[qname]
         macro_names = set(qubit_pair.macros.keys())
         missing = required_macros - macro_names
@@ -151,10 +147,6 @@ def test_sensor_dots_wired_to_quantum_dot_pairs():
     pair_q1_q2 = machine.qubit_pairs["q1_q2"]
     assert len(pair_q1_q2.quantum_dot_pair.sensor_dots) > 0
     assert "#/sensor_dots/virtual_sensor_1" in pair_q1_q2.quantum_dot_pair.sensor_dots
-
-    pair_q3_q4 = machine.qubit_pairs["q3_q4"]
-    assert len(pair_q3_q4.quantum_dot_pair.sensor_dots) > 0
-    assert "#/sensor_dots/virtual_sensor_2" in pair_q3_q4.quantum_dot_pair.sensor_dots
 
 
 def test_preferred_readout_quantum_dot_set():

@@ -141,7 +141,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ---------------------------------------------------------
                     align()
                     qubit.x180()
-                    wait(t)
+                    align()
                     qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
 
                     # ---------------------------------------------------------

@@ -3,66 +3,36 @@
         "readout": {
             "s1": {
                 "s": {
-                    "opx_output": "#/ports/analog_outputs/con1/5/8"
+                    "opx_output": "#/ports/analog_outputs/con1/5/4"
                 },
                 "rf": {
-                    "opx_input": "#/ports/analog_inputs/con1/6/1",
-                    "opx_output": "#/ports/analog_outputs/con1/6/2"
-                }
-            },
-            "s2": {
-                "s": {
-                    "opx_output": "#/ports/analog_outputs/con1/6/1"
-                },
-                "rf": {
-                    "opx_input": "#/ports/analog_inputs/con1/6/2",
-                    "opx_output": "#/ports/analog_outputs/con1/6/3"
+                    "opx_input": "#/ports/analog_inputs/con1/5/1",
+                    "opx_output": "#/ports/analog_outputs/con1/5/5"
                 }
             }
         },
         "qubits": {
             "q1": {
                 "xy": {
-                    "opx_output": "#/ports/analog_outputs/con1/5/1"
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
                 },
                 "p": {
-                    "opx_output": "#/ports/analog_outputs/con1/5/2"
+                    "opx_output": "#/ports/analog_outputs/con1/5/1"
                 }
             },
             "q2": {
                 "xy": {
-                    "opx_output": "#/ports/analog_outputs/con1/5/1"
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
                 },
                 "p": {
-                    "opx_output": "#/ports/analog_outputs/con1/5/3"
-                }
-            },
-            "q3": {
-                "xy": {
-                    "opx_output": "#/ports/analog_outputs/con1/5/1"
-                },
-                "p": {
-                    "opx_output": "#/ports/analog_outputs/con1/5/4"
-                }
-            },
-            "q4": {
-                "xy": {
-                    "opx_output": "#/ports/analog_outputs/con1/5/1"
-                },
-                "p": {
-                    "opx_output": "#/ports/analog_outputs/con1/5/5"
+                    "opx_output": "#/ports/analog_outputs/con1/5/2"
                 }
             }
         },
         "qubit_pairs": {
             "q1-2": {
                 "b": {
-                    "opx_output": "#/ports/analog_outputs/con1/5/6"
-                }
-            },
-            "q3-4": {
-                "b": {
-                    "opx_output": "#/ports/analog_outputs/con1/5/7"
+                    "opx_output": "#/ports/analog_outputs/con1/5/3"
                 }
             }
         }

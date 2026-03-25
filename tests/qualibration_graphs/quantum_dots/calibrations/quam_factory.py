@@ -4,11 +4,11 @@ Builds machines using the ``quam_builder`` wiring tools and the
 ``release/nightly`` default macro engine.  Two entry points are provided:
 
 * :func:`create_qd_quam` -- Stage 1 dot-layer ``BaseQuamQD``
-  (quantum dots, sensor dots, virtual gate set, dot pairs).
+  (quantum dots 1-2, sensor dot 1, virtual gate set, dot pair 1-2).
   Used by gate-virtualization / virtual-gate-subgraph tests.
 
 * :func:`create_ld_quam` -- Stage 2 full ``LossDiVincenzoQuam``
-  (adds qubits, XY drives, default pulses, and default macros).
+  (adds qubits 1-2, MW-FEM XY drives, default pulses, and default macros).
   Used by loss-DiVincenzo calibration tests.
 
 Hardware configuration
@@ -28,6 +28,7 @@ import warnings
 
 from qualang_tools.wirer import Connectivity, Instruments, allocate_wiring
 
+from qualang_tools.wirer.wirer.wirer import ChannelSpec
 from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD
 from quam_builder.builder.qop_connectivity import build_quam_wiring
 from quam_builder.architecture.quantum_dots.operations.names import (
@@ -74,26 +75,28 @@ CONTROLLER_ID: int = 1
 MW_FEM_SLOT: int = 1
 """MW-FEM slot for qubit XY drive lines (Stage 2 only)."""
 
-LF_FEM_SLOT_1: int = 5
-"""LF-FEM slot for dot pair 1 (plungers 1-2, sensor 1, resonator 1)."""
+LF_FEM_SLOT: int = 5
+"""LF-FEM slot for plungers 1-2, sensor 1, and resonator 1."""
 
-LF_FEM_SLOT_2: int = 6
-"""LF-FEM slot for dot pair 2 (plungers 3-4, sensor 2, resonator 2)."""
+LF_FEM_DELAY_NS: int = 155
+"""Delay (ns) applied to all LF-FEM analog output ports to compensate for MW-FEM path skew."""
+
+MW_FEM_DELAY_NS: int = 0
+"""Delay (ns) applied to all MW-FEM output ports."""
 
 # ── Quantum-dot topology ───────────────────────────────────────────────
 
-SENSOR_DOTS: list[int] = [1, 2]
+SENSOR_DOTS: list[int] = [1]
 """Sensor dot indices passed to ``Connectivity.add_sensor_dots``."""
 
-QUANTUM_DOTS: list[int] = [1, 2, 3, 4]
+QUANTUM_DOTS: list[int] = [1, 2]
 """Quantum dot (plunger) indices passed to ``Connectivity.add_quantum_dots``."""
 
-QUANTUM_DOT_PAIRS: list[tuple[int, int]] = [(1, 2), (3, 4)]
+QUANTUM_DOT_PAIRS: list[tuple[int, int]] = [(1, 2)]
 """Quantum dot pair tuples passed to ``Connectivity.add_quantum_dot_pairs``."""
 
 QUBIT_PAIR_SENSOR_MAP: dict[str, list[str]] = {
     "q1_q2": ["sensor_1"],
-    "q3_q4": ["sensor_2"],
 }
 """Maps qubit-pair IDs to their readout sensor(s) for Stage 2."""
 
@@ -121,8 +124,8 @@ def _suppress_known_quam_builder_warnings():
 def create_qd_quam() -> BaseQuamQD:
     """Build a Stage-1 ``BaseQuamQD`` with the dot layer only.
 
-    Creates quantum dots, sensor dots with readout resonators, a virtual
-    gate set with an identity compensation matrix, and quantum-dot pairs.
+    Creates quantum dots 1-2, sensor dot 1 with readout resonator, a virtual
+    gate set with an identity compensation matrix, and dot pair (1, 2).
     No qubits, XY drives, or macros are added.
 
     The returned machine is suitable for gate-virtualization and
@@ -143,7 +146,7 @@ def create_qd_quam() -> BaseQuamQD:
     instruments = Instruments()
     instruments.add_lf_fem(
         controller=CONTROLLER_ID,
-        slots=[LF_FEM_SLOT_1, LF_FEM_SLOT_2],
+        slots=[LF_FEM_SLOT],
     )
 
     allocate_wiring(connectivity, instruments)
@@ -159,7 +162,7 @@ def create_ld_quam():
     """Build a Stage-2 ``LossDiVincenzoQuam`` with qubits and default macros.
 
     Internally calls :func:`create_qd_quam` for the dot layer, then adds
-    qubit XY drive lines, registers qubits (q1-q4), wires the default
+    MW-FEM XY drive lines, registers qubits (q1-q2), wires the default
     single-reference XY pulse and the default macros via
     ``wire_machine_macros()``.
 
@@ -174,21 +177,19 @@ def create_ld_quam():
         shared_resonator_line=False,
         use_mw_fem=False,
     )
-    # TODO: Re-enable MW-FEM XY drive wiring once the timing failures on the
-    # single-qubit calibration/simulation path are resolved. For now the test
-    # machine stays on the LF-FEM fallback path.
     connectivity.add_quantum_dots(
         quantum_dots=QUANTUM_DOTS,
         add_drive_lines=True,
-        use_mw_fem=False,
+        use_mw_fem=True,
         shared_drive_line=True,
     )
     connectivity.add_quantum_dot_pairs(quantum_dot_pairs=QUANTUM_DOT_PAIRS)
 
     instruments = Instruments()
+    instruments.add_mw_fem(controller=CONTROLLER_ID, slots=[MW_FEM_SLOT])
     instruments.add_lf_fem(
         controller=CONTROLLER_ID,
-        slots=[LF_FEM_SLOT_1, LF_FEM_SLOT_2],
+        slots=[LF_FEM_SLOT],
     )
 
     allocate_wiring(connectivity, instruments)
@@ -209,7 +210,21 @@ def create_ld_quam():
 
         _override_default_pulse_lengths(machine)
         _add_default_voltage_points(machine)
+        _apply_port_delays(machine)
     return machine
+
+
+def _apply_port_delays(machine) -> None:
+    """Set per-FEM output port delays to align LF-FEM and MW-FEM paths."""
+    for controller_ports in machine.ports.analog_outputs.values():
+        for fem_ports in controller_ports.values():
+            for port in fem_ports.values():
+                port.delay = LF_FEM_DELAY_NS
+
+    for controller_ports in machine.ports.mw_outputs.values():
+        for fem_ports in controller_ports.values():
+            for port in fem_ports.values():
+                port.delay = MW_FEM_DELAY_NS
 
 
 def _override_default_pulse_lengths(machine) -> None:

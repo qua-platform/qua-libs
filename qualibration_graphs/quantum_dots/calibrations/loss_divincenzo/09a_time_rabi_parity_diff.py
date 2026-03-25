@@ -163,6 +163,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Step 5: Apply compensation pulse to reset DC bias
                     # ---------------------------------------------------------
                     qubit.voltage_sequence.apply_compensation_pulse()
+                    align()
 
                     # ---------------------------------------------------------
                     # Save results
@@ -175,6 +176,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         save(0, pdiff_st[qubit.name])
                     with else_():
                         save(1, pdiff_st[qubit.name])
+                    align()
+            align()
 
         # Stream processing
         with stream_processing():
