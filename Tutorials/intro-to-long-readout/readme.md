@@ -1,7 +1,7 @@
 # Intro to arbitrarily long and gapless readout
 
 This script demonstrates the usage of two elements to perform an arbitrarily long and gapless measurement.
-A single `measure` command is limited to a few milliseconds and measuring in a loop will results in a gap due to the data processing part of the `measure` command.
+A single `measure` command is limited to a few milliseconds and measuring in a loop will result in a gap due to the data processing part of the `measure` command.
 
 The solution for being able to measure for an arbitrarily long time and without gaps, is to interleave `measure` commands, handled with two different elements, in parallel QUA `for_` loops.
 
