@@ -19,15 +19,9 @@ from calibration_utils.time_rabi_parity_diff import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from calibration_utils.common_utils.experiment import (
-    get_qubits,
-    get_xy_reference_pulse,
-    get_xy_reference_pulse_name,
-    quantize_pulse_length_ns,
-)
+from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
 description = """
@@ -115,7 +109,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # Main experiment loop
         for qubit in qubits:
-            reference_pulse_name = get_xy_reference_pulse_name(qubit)
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(t, pulse_durations // 4)):
@@ -141,10 +134,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ---------------------------------------------------------
                     # Step 3: X180 - apply pi pulse
                     # ---------------------------------------------------------
-                    # Keep the operating-point hold synchronized with the
-                    # stretched Gaussian pulse duration.
-                    qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
-                    qubit.xy.play(reference_pulse_name, duration=t)
+                    qubit.x(duration=t)
 
                     # Synchronize before measurement
                     align()
@@ -277,14 +267,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             fit_result = node.results["fit_results"][qubit.name]
-            optimal_duration_ns = quantize_pulse_length_ns(fit_result["optimal_duration"])
-            reference_pulse = get_xy_reference_pulse(qubit)
-            reference_length_ns = int(reference_pulse.length)
-            reference_sigma = getattr(reference_pulse, "sigma", None)
-
-            reference_pulse.length = optimal_duration_ns
-            if reference_sigma is not None and reference_length_ns > 0 and hasattr(reference_pulse, "sigma"):
-                reference_pulse.sigma = reference_sigma * optimal_duration_ns / reference_length_ns
+            qubit.x.update(duration=fit_result["optimal_duration"])
 
 
 # %% {Save_results}

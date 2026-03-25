@@ -116,8 +116,6 @@ def create_qua_program(node: QualibrationNode[RamseyChevronParameters, Quam]):
                 save(n, n_st)
 
                 with for_(*from_array(df, detuning_values)):
-                    qubit.xy.update_frequency(qubit.xy.intermediate_frequency + df)
-
                     with for_(*from_array(t, tau_values)):
                         # Step 1: Empty
                         align()
@@ -132,11 +130,11 @@ def create_qua_program(node: QualibrationNode[RamseyChevronParameters, Quam]):
 
                         align()
                         # Step 3: X90 - idle - X90
-                        qubit.x90()
+                        qubit.x90(frequency_offset=df)
                         align()
                         qubit.voltage_sequence.step_to_voltages({}, duration=t * 4)
                         align()
-                        qubit.x90()
+                        qubit.x90(frequency_offset=df)
 
                         # Step 4: Measure
                         align()
@@ -243,7 +241,7 @@ def update_state(node: QualibrationNode[RamseyChevronParameters, Quam]):
                 continue
 
             fit_result = node.results["fit_results"][qubit.name]
-            qubit.xy.intermediate_frequency -= fit_result["freq_offset"]
+            qubit.x.update(frequency_offset=-fit_result["freq_offset"])
 
 
 # %% {Save_results}

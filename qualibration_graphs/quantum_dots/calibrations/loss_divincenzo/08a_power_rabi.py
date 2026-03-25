@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import get_qubits, get_xy_reference_pulse
+from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.power_rabi import (
     Parameters,
     fit_raw_data,
@@ -257,10 +257,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             opt_prefactor = node.results["fit_results"][q.name]["opt_amp"]
-            reference_pulse = get_xy_reference_pulse(q)
-            current_amp = reference_pulse.amplitude
-            new_amplitude = current_amp * opt_prefactor
-            reference_pulse.amplitude = new_amplitude
+            q.x.update(amplitude_scale=opt_prefactor)
 
 
 # %% {Save_results}
