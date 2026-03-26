@@ -4,8 +4,8 @@ from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonN
 
 
 class NodeSpecificParameters(RunnableParameters):
-    twpas: list[str] = ["twpaA"]
-    """List of twpas to calibrate"""
+    twpa: str = None
+    """TWPA to calibrate. Must be a string. Default is None"""
     num_shots: int = 1000
     """Number of averages to perform. Default is 30."""
     max_power_dbm_p: int = 2

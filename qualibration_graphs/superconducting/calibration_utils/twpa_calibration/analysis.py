@@ -78,9 +78,10 @@ def process_raw_dataset(node: QualibrationNode):
     ds = ds.assign({"gain": 20 * np.log(mean_on / mean_off)})
     ds = ds.assign({"snr": 20 * np.log(ds["snr_on"] / ds["snr_off"])})
     # Add the RF frequency to the dataset
+    qubit_to_twpa = {q.name: twpa for twpa in node.machine.twpas for q in node.namespace["qubits"]}
     full_freq_p = np.array(
         [
-            (ds.detuning_p + node.machine.twpas[node.namespace["qubit_to_twpa"][q.name]].pump.RF_frequency) * 1e-9
+            (ds.detuning_p + node.machine.twpas[qubit_to_twpa[q.name]].pump.RF_frequency) * 1e-9
             for q in node.namespace["qubits"]
         ]
     )
@@ -152,7 +153,6 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
 
-    qubit_to_twpa = node.namespace["qubit_to_twpa"]
     # Assess whether the fit was successful or not
     gain_success = ~np.isnan(fit.gain_at_best.data)
     snr_success = ~np.isnan(fit.snr_at_best.data)
@@ -170,6 +170,6 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             * 1e9,
             success=fit.sel(qubit=q).success.values.__bool__(),
         )
-        for q in qubit_to_twpa.keys()
+        for q in fit.qubit.values
     }
     return fit, fit_results

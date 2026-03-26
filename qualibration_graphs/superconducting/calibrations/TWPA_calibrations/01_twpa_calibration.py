@@ -80,11 +80,8 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q2"]
-    # node.parameters.simulate = True
-    node.parameters.twpas = ["twpaA"]
-    # node.parameters.num_shots = 30
-    # node.parameters.frequency_span_in_mhz_p = 1
+    # node.parameters.twpa = ["twpaA"]
+    # node.parameters.qubits = ["q1", "q2"]
     pass
 
 
@@ -148,20 +145,22 @@ def create_qua_program_on(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
     # Get the TWPAs
-    twpas = [node.machine.twpas[t] for t in node.parameters.twpas]
-    # Get the mapping between qubits and TWPAs
-    node.namespace["qubit_to_twpa"] = {q.name: twpa for twpa in node.machine.twpas for q in node.namespace["qubits"]}
+    if node.parameters.twpa is not None:
+        node.namespace["twpa"] = twpa = node.machine.twpas[node.parameters.twpa]
+    else:
+        qubit_to_twpa = {q.name: twpa for twpa in node.machine.twpas for q in node.namespace["qubits"]}
+        node.namespace["twpa"] = twpa = node.machine.twpas[qubit_to_twpa[node.namespace["qubits"].get_names()[0]]]
+
     # Update the twpa pump/isolation powers to match the desired range, this change will be reverted at the end of the node.
-    node.namespace["tracked_twpas"] = []
-    for i, twpa in enumerate(twpas):
-        with tracked_updates(twpa, auto_revert=False, dont_assign_to_none=True) as twpa:
-            twpa.pump.set_output_power(
-                power_in_dbm=node.parameters.max_power_dbm_p, max_amplitude=node.parameters.max_amp_p, operation="pump"
-            )
-            twpa.pump_.set_output_power(
-                power_in_dbm=node.parameters.max_power_dbm_p, max_amplitude=node.parameters.max_amp_p, operation="pump"
-            )
-            node.namespace["tracked_twpas"].append(twpa)
+    node.namespace["tracked_twpa"] = []
+    with tracked_updates(twpa, auto_revert=False, dont_assign_to_none=True) as tracked_twpa:
+        tracked_twpa.pump.set_output_power(
+            power_in_dbm=node.parameters.max_power_dbm_p, max_amplitude=node.parameters.max_amp_p, operation="pump"
+        )
+        tracked_twpa.pump_.set_output_power(
+            power_in_dbm=node.parameters.max_power_dbm_p, max_amplitude=node.parameters.max_amp_p, operation="pump"
+        )
+        node.namespace["tracked_twpa"].append(tracked_twpa)
     # Extract the sweep parameters and axes from the node parameters
     n_shots = node.parameters.num_shots
     # The twpa pump frequency sweep around the optimal frequency
@@ -178,7 +177,7 @@ def create_qua_program_on(node: QualibrationNode[Parameters, Quam]):
         node.parameters.max_power_dbm_p,
         node.parameters.num_power_points_p,
     )
-    data_size = len(power_dbm_p) * len(dfs_p) * num_qubits * 2 * 4
+    data_size = len(power_dbm_p) * len(dfs_p) * n_shots * num_qubits * 2 * 4
     assert data_size < 100e6, f"The maximum data size is 100e6, you ask for {data_size:.2e} data points."
 
     # Register the sweep axes to be added to the dataset when fetching data
@@ -197,7 +196,6 @@ def create_qua_program_on(node: QualibrationNode[Parameters, Quam]):
         df_p = declare(int)  # QUA variable for the twpa pump frequency
 
         for multiplexed_qubits in qubits.batch():
-            twpa = twpas[0]
             with for_(*from_array(df_p, dfs_p)):  # QUA for_ loop for sweeping the frequency
                 twpa.pump.update_frequency(df_p + twpa.pump.intermediate_frequency)
                 with for_each_(a_p, amps_p):  # QUA for_ loop for sweeping the twpa pump amplitude
@@ -339,17 +337,14 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     # Revert the change done at the beginning of the node
-    for tracked_twpas in node.namespace.get("tracked_twpas", []):
-        tracked_twpas.revert_changes()
+    for tracked_twpa in node.namespace.get("tracked_twpa", []):
+        tracked_twpa.revert_changes()
 
     # Update the state
     with node.record_state_updates():
-        for twpa_n in node.parameters.twpas:
-            twpa = node.machine.twpas[twpa_n]
-            q = twpa.qubits[0]
-            if node.outcomes[twpa.qubits[0]] == "failed":
-                continue
-
+        twpa = node.namespace["twpa"]
+        q = twpa.qubits[0]
+        if node.outcomes[twpa.qubits[0]] != "failed":
             twpa.pump.set_output_power(
                 power_in_dbm=node.results["fit_results"][q]["twpa_power_p"],
                 max_amplitude=node.parameters.max_amp_p,
