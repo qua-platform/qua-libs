@@ -19,7 +19,9 @@ from calibration_utils.twpa_calibration import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
-    plot_raw_data_with_fit,
+    plot_gain,
+    plot_snr,
+    plot_iqblobs,
 )
 from quam_builder.tools.power_tools import calculate_voltage_scaling_factor
 from qualibration_libs.parameters import get_qubits
@@ -142,13 +144,13 @@ def create_qua_program_on(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
-    # Get the TWPAs
-    twpas = [node.machine.twpas[t] for t in node.parameters.twpas]
-    # Get the mapping between qubits and TWPAs
-    node.namespace["qubit_to_twpa"] = {q: twpa for twpa in node.machine.twpas for q in node.machine.twpas[twpa].qubits}
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
+    # Get the TWPAs
+    twpas = [node.machine.twpas[t] for t in node.parameters.twpas]
+    # Get the mapping between qubits and TWPAs
+    node.namespace["qubit_to_twpa"] = {q.name: twpa for twpa in node.machine.twpas for q in node.namespace["qubits"]}
     # Update the twpa pump/isolation powers to match the desired range, this change will be reverted at the end of the node.
     node.namespace["tracked_twpas"] = []
     for i, twpa in enumerate(twpas):
@@ -213,7 +215,7 @@ def create_qua_program_on(node: QualibrationNode[Parameters, Quam]):
                             # wait for the resonator to deplete
                             rr.wait(rr.depletion_time // 4)
                         align()
-                        ramp_to_zero(twpa.pump.name)
+                    ramp_to_zero(twpa.pump.name)
 
         with stream_processing():
             for i in range(num_qubits):
@@ -322,13 +324,14 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    node.results["ds_fit"].sel(qubit="q1").sel(detuning=0.0, detuning_p=-3e7, method="nearest").gain.plot()
-    # fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_gain = plot_gain(node.results["ds_raw"], node.results["ds_fit"].qubit.values, node.results["ds_fit"], node)
+    fig_snr = plot_snr(node.results["ds_raw"], node.results["ds_fit"].qubit.values, node.results["ds_fit"], node)
+    fig_iqblobs = plot_iqblobs(
+        node.results["ds_raw"], node.results["ds_fit"].qubit.values, node.results["ds_fit"], node
+    )
     plt.show()
     # Store the generated figures
-    # node.results["figures"] = {
-    #     "amplitude": fig_raw_fit,
-    # }
+    node.results["figures"] = {"gain": fig_gain, "snr": fig_snr, "iq_blobs": fig_iqblobs}
 
 
 # %% {Update_state}
@@ -352,14 +355,15 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 max_amplitude=node.parameters.max_amp_p,
                 operation="pump",
             )
-            twpa.isolation.set_output_power(
-                power_in_dbm=node.results["fit_results"][q]["twpa_power_i"],
-                max_amplitude=node.parameters.max_amp_i,
+            twpa.pump_.set_output_power(
+                power_in_dbm=node.results["fit_results"][q]["twpa_power_p"],
+                max_amplitude=node.parameters.max_amp_p,
                 operation="pump",
             )
             # Update the readout frequency for the given flux point
+            twpa.pump_frequency = node.results["fit_results"][q]["twpa_frequency_p"]
             twpa.pump.RF_frequency = node.results["fit_results"][q]["twpa_frequency_p"]
-            twpa.isolation.RF_frequency = node.results["fit_results"][q]["twpa_frequency_i"]
+            twpa.pump_.RF_frequency = node.results["fit_results"][q]["twpa_frequency_p"]
 
 
 # %% {Save_results}

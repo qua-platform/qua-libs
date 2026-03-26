@@ -5,8 +5,7 @@ import numpy as np
 import xarray as xr
 
 from qualibrate.core import QualibrationNode
-from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
-from qualibration_libs.analysis import peaks_dips
+from qualibration_libs.data import convert_IQ_to_V
 
 
 @dataclass
@@ -18,8 +17,6 @@ class FitParameters:
     method: str
     twpa_power_p: float
     twpa_frequency_p: float
-    twpa_power_i: float
-    twpa_frequency_i: float
     success: bool
 
 
@@ -47,12 +44,13 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         else:
             s_qubit += " FAIL!\n"
         log_callable(s_qubit + s_gain + s_snr)
-    s_opt_params = (f"Optimal TWPA parameters:\n"
-                    f"\t TWPA pump power: {fit_results[q]['twpa_power_p']:.2f} dBm\n"
-                    f"\t TWPA isolation power: {fit_results[q]['twpa_power_i']:.2f} dBm\n"
-                    f"\t TWPA pump frequency: {fit_results[q]['twpa_frequency_p'] / 1e9:.3f} Ghz\n"
-                    f"\t TWPA isolation frequency: {fit_results[q]['twpa_frequency_i'] / 1e9:.3f} Ghz")
+    s_opt_params = (
+        f"Optimal TWPA parameters:\n"
+        f"\t TWPA pump power: {fit_results[q]['twpa_power_p']:.2f} dBm\n"
+        f"\t TWPA pump frequency: {fit_results[q]['twpa_frequency_p'] / 1e9:.3f} Ghz\n"
+    )
     log_callable(s_opt_params)
+
 
 def process_raw_dataset(node: QualibrationNode):
     # Extract the raw datasets
@@ -62,13 +60,12 @@ def process_raw_dataset(node: QualibrationNode):
     ds_off = convert_IQ_to_V(ds_off, node.namespace["qubits"], IQ_list=["Ioff", "Qoff"])
     ds_on = convert_IQ_to_V(ds_on, node.namespace["qubits"], IQ_list=["Ion", "Qon"])
     # Get the power from I and Q for pump on and off
-    ds_off = ds_off.assign({"IQ_abs_off": np.sqrt(ds_off.Ioff ** 2 + ds_off.Qoff ** 2)})
-    ds_on = ds_on.assign({"IQ_abs_on": np.sqrt(ds_on.Ion ** 2 + ds_on.Qon ** 2)})
+    ds_off = ds_off.assign({"IQ_abs_off": np.sqrt(ds_off.Ioff**2 + ds_off.Qoff**2)})
+    ds_on = ds_on.assign({"IQ_abs_on": np.sqrt(ds_on.Ion**2 + ds_on.Qon**2)})
 
     # Merge the on and off datasets
     ds_off_broadcast = ds_off.broadcast_like(ds_on)
     ds = xr.merge([ds_on, ds_off_broadcast])
-    # node.results["ds_raw"] = ds
 
     # Get the SNR for pump on and off
     std_off = ds.IQ_abs_off.std(dim="shots")
@@ -81,7 +78,12 @@ def process_raw_dataset(node: QualibrationNode):
     ds = ds.assign({"gain": 20 * np.log(mean_on / mean_off)})
     ds = ds.assign({"snr": 20 * np.log(ds["snr_on"] / ds["snr_off"])})
     # Add the RF frequency to the dataset
-    full_freq_p = np.array([(ds.detuning_p + node.machine.twpas[node.namespace["qubit_to_twpa"][q.name]].pump.RF_frequency) * 1e-9 for q in node.namespace["qubits"]])
+    full_freq_p = np.array(
+        [
+            (ds.detuning_p + node.machine.twpas[node.namespace["qubit_to_twpa"][q.name]].pump.RF_frequency) * 1e-9
+            for q in node.namespace["qubits"]
+        ]
+    )
     ds = ds.assign_coords(full_freq_p=(["qubit", "detuning_p"], full_freq_p))
     ds.full_freq_p.attrs = {"long_name": "RF pump frequency", "units": "GHz"}
     return ds
@@ -104,46 +106,28 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         Dataset containing the fit results.
     """
 
-    # max_gain = node.results["ds_fit"].gain.max()
-    # at_max = node.results["ds_fit"].gain.where(ds.gain == max_gain, drop=True).squeeze()
-    # coords_at_max = {dim: at_max.coords[dim].item() for dim in at_max.coords}
-    # print(coords_at_max)
-    # print(max_gain.values)
-    #
-    # max_snr = node.results["ds_fit"].snr.max()
-    # at_max = node.results["ds_fit"].snr.where(ds.snr == max_snr, drop=True).squeeze()
-    # coords_at_max = {dim: at_max.coords[dim].item() for dim in at_max.coords}
-    # print(coords_at_max)
-    # print(max_snr.values)
-
-    # Optimizer
     ds_fit = ds
-    mingain = 1
-    minsnr = 0.1
-    # can be mean for average SNR across qubits or "min" for worst-qubit SNR (good for multiplexed readout)
-    method = "mean"
     # Only keep points where all qubits have gain >= min_gain
     gain_min_over_qubits = ds_fit.gain.min(dim="qubit")
-    gain_all_ok = gain_min_over_qubits >= mingain
+    gain_all_ok = gain_min_over_qubits >= node.parameters.min_gain
 
     # Aggregate SNR per point (choose one):
     snr_min_over_qubits = ds_fit.snr.min(dim="qubit")
-    snr_all_ok = snr_min_over_qubits >= minsnr
-    if method == "mean":
+    if node.parameters.optimizer_method == "average":
         snr_agg = ds_fit.snr.mean(dim="qubit")  # average SNR across qubits
-    elif method == "min":
+    elif node.parameters.optimizer_method == "worst-qubit":
         snr_agg = ds_fit.snr.min(dim="qubit")  # or worst-qubit SNR (good for multiplexed readout)
     else:
         raise NotImplementedError("Method not implemented")
     # Find the point for which the SNR and the gain are above the thresholds
-    snr_constrained = snr_agg.where(gain_all_ok & snr_all_ok)
+    snr_constrained = snr_agg.where(gain_all_ok)
     # Get the highest SNR among all the possibilities
     max_snr = snr_constrained.max()
     if np.isnan(max_snr):
-        raise ValueError(f"There is no pumping point which satisfies gain >= {mingain} and snr >= {minsnr}")
+        raise ValueError(f"There is no pumping point which satisfies gain >= {node.parameters.min_gain}")
     # Extract the corresponding TWPAI parameters
     at_best = snr_agg.where(
-        (snr_agg == max_snr) & gain_all_ok & snr_all_ok,
+        (snr_agg == max_snr) & gain_all_ok,
         drop=True,
     )
     coords_best = {dim: at_best.coords[dim].values.flat[0] for dim in at_best.dims}
@@ -153,10 +137,10 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     snr_at_best = ds_fit.snr.sel(**coords_best)  # DataArray with qubit dim
 
     ds_fit.attrs["coords_best"] = coords_best
-    ds_fit.attrs["method"] = method
+    ds_fit.attrs["method"] = node.parameters.optimizer_method
     ds_fit = ds_fit.assign(gain_at_best=gain_at_best, snr_at_best=snr_at_best)
     print(
-        f"Best SNR ({method}) satisfying (gain > {mingain} & snr > {minsnr}):"
+        f"Best SNR ({node.parameters.optimizer_method}) satisfying (gain > {node.parameters.min_gain} dB):"
         f"\n\tgain{gain_at_best.qubit.values}: {gain_at_best.values})"
         f"\n\tsnr{snr_at_best.qubit.values}: {snr_at_best.values} "
         f"\nobtained for {coords_best}:"
@@ -171,8 +155,8 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
     qubit_to_twpa = node.namespace["qubit_to_twpa"]
     # Assess whether the fit was successful or not
-    gain_success =  ~np.isnan(fit.gain_at_best.data)
-    snr_success =  ~np.isnan(fit.snr_at_best.data)
+    gain_success = ~np.isnan(fit.gain_at_best.data)
+    snr_success = ~np.isnan(fit.snr_at_best.data)
     success_criteria = gain_success & snr_success
     fit = fit.assign_coords(success=("qubit", success_criteria))
     fit_results = {
@@ -180,10 +164,11 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             gain=fit.sel(qubit=q).gain_at_best.values.__float__(),
             snr=fit.sel(qubit=q).snr_at_best.values.__float__(),
             method=fit.method,
-            twpa_power_p=fit.coords_best['twpa_power_p'],
-            twpa_frequency_p=fit.sel(qubit=q).full_freq_p.sel(detuning_p=fit.coords_best['detuning_p']).values.__float__() * 1e9,
-            twpa_power_i=fit.coords_best['twpa_power_i'],
-            twpa_frequency_i=fit.sel(qubit=q).full_freq_i.sel(detuning_i=fit.coords_best['detuning_i']).values.__float__() * 1e9,
+            twpa_power_p=fit.coords_best["twpa_power_p"],
+            twpa_frequency_p=fit.sel(qubit=q)
+            .full_freq_p.sel(detuning_p=fit.coords_best["detuning_p"])
+            .values.__float__()
+            * 1e9,
             success=fit.sel(qubit=q).success.values.__bool__(),
         )
         for q in qubit_to_twpa.keys()

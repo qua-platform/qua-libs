@@ -6,7 +6,7 @@ from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonN
 class NodeSpecificParameters(RunnableParameters):
     twpas: list[str] = ["twpaA"]
     """List of twpas to calibrate"""
-    num_shots: int = 30
+    num_shots: int = 1000
     """Number of averages to perform. Default is 30."""
     max_power_dbm_p: int = 2
     """Maximum twpa pump power level in dBm. Default is -25 dBm."""
@@ -20,6 +20,11 @@ class NodeSpecificParameters(RunnableParameters):
     """Span of twpa pump frequencies to sweep in MHz. Default is 60 MHz."""
     frequency_step_in_mhz_p: float = 1
     """Step size for twpa pump frequency sweep in MHz. Default is 0.5 MHz."""
+    optimizer_method: str = "average"
+    """Method to get the best pump parameters. Can be either "average" (get the best SNR averaged across all qubits), or "worst-qubit" (get the best SNR for the worst qubit). Default is "average"."""
+    min_gain: float = 0.0
+    """Minimum gain allowed for optimizing the pump parameters based on the SNR. Default is 0."""
+
 
 class Parameters(
     NodeParameters,
