@@ -22,7 +22,6 @@ from qualibration_libs.parameters import get_qubits, get_idle_times_in_clock_cyc
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-
 # %% {Description}
 description = """
         T2 echo MEASUREMENT
@@ -74,7 +73,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         # Multiply idle time by 4 for converting from clock cycles, and by 2 for the definition ot the echo sequence: X90 -> t -> X180 -> t -> -X90
-        "idle_time": xr.DataArray(2 * 4 * idle_times, attrs={"long_name": "idle time", "units": "ns"}), 
+        "idle_time": xr.DataArray(2 * 4 * idle_times, attrs={"long_name": "idle time", "units": "ns"}),
     }
 
     with program() as node.namespace["qua_program"]:
