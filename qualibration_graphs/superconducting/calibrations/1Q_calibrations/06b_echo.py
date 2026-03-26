@@ -72,7 +72,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        # Multiply idle time by 4 for converting from clock cycles, and by 2 for the definition ot the echo sequence: X90 -> t -> X180 -> t -> -X90
+        # Multiply the idle times by 4 for converting from clock cycles to ns, and by 2 for the definition of the echo sequence: X90 -> t -> X180 -> t -> -X90
         "idle_time": xr.DataArray(2 * 4 * idle_times, attrs={"long_name": "idle time", "units": "ns"}),
     }
 
