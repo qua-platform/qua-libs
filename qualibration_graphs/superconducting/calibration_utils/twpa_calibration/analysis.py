@@ -10,7 +10,7 @@ from qualibration_libs.data import convert_IQ_to_V
 
 @dataclass
 class FitParameters:
-    """Stores the relevant resonator spectroscopy experiment fit parameters for a single qubit"""
+    """Stores the relevant result parameters for a single qubit"""
 
     gain: float
     snr: float
@@ -91,7 +91,7 @@ def process_raw_dataset(node: QualibrationNode):
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
-    Fit the T1 relaxation time for each qubit according to ``a * np.exp(t * decay) + offset``.
+    Get the optimal pump parameters based on the chosen optimizer method.
 
     Parameters:
     -----------
@@ -112,7 +112,6 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     gain_all_ok = gain_min_over_qubits >= node.parameters.min_gain
 
     # Aggregate SNR per point (choose one):
-    snr_min_over_qubits = ds_fit.snr.min(dim="qubit")
     if node.parameters.optimizer_method == "average":
         snr_agg = ds_fit.snr.mean(dim="qubit")  # average SNR across qubits
     elif node.parameters.optimizer_method == "worst-qubit":
