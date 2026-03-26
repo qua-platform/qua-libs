@@ -1,63 +1,93 @@
 import logging
+from dataclasses import dataclass
+from typing import Tuple, Dict
 import numpy as np
 import xarray as xr
-from dataclasses import dataclass
-from typing import Tuple
-from qualibrate import QualibrationNode
-from qualibration_libs.data import convert_IQ_to_V
-from qualibration_libs.analysis import fit_decay_exp
+
+from qualibrate.core import QualibrationNode
+from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
+from qualibration_libs.analysis import peaks_dips
 
 
 @dataclass
-class T1Fit:
-    """Stores the relevant T1 experiment fit parameters for a single qubit"""
+class FitParameters:
+    """Stores the relevant resonator spectroscopy experiment fit parameters for a single qubit"""
 
-    t1: float
-    t1_error: float
+    gain: float
+    snr: float
+    method: str
+    twpa_power_p: float
+    twpa_frequency_p: float
+    twpa_power_i: float
+    twpa_frequency_i: float
     success: bool
 
 
-def log_fitted_results(ds: xr.Dataset, log_callable=None):
+def log_fitted_results(fit_results: Dict, log_callable=None):
     """
-    Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
+    Logs the node-specific fitted results for all qubits from the fit results
 
     Parameters:
     -----------
-    ds : xr.Dataset
-        Dataset containing the fitted results for all qubits.
-        Expected variables: 'tau', 'tau_error', 'success'.
-        Expected coordinate: 'qubit'.
+    fit_results : dict
+        Dictionary containing the fitted results for all qubits.
     logger : logging.Logger, optional
         Logger for logging the fitted results. If None, a default logger is used.
 
-    Returns:
-    --------
-    None
-
-    Example:
-    --------
-        >>> log_fitted_results(ds)
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
-    for q in ds.qubit.values:
-        if ds.sel(qubit=q).success.values:
-            log_callable(
-                f"T1 for qubit {q} : {1e-3 * ds.sel(qubit=q).tau.values:.2f} +/- {1e-3 * ds.sel(qubit=q).tau_error.values:.2f} us --> SUCCESS!"
-            )
+
+    for q in fit_results.keys():
+        s_qubit = f"Results for qubit {q}: "
+        s_gain = f"\tGain: {fit_results[q]['gain']:.2f} dB | "
+        s_snr = f"\tSNR: {fit_results[q]['snr']:.2f} dB"
+        if fit_results[q]["success"]:
+            s_qubit += " SUCCESS!\n"
         else:
-            log_callable(
-                f"T1 for qubit {q} : {1e-3 * ds.sel(qubit=q).tau.values:.2f} +/- {1e-3 * ds.sel(qubit=q).tau_error.values:.2f} us --> FAIL!"
-            )
+            s_qubit += " FAIL!\n"
+        log_callable(s_qubit + s_gain + s_snr)
+    s_opt_params = (f"Optimal TWPA parameters:\n"
+                    f"\t TWPA pump power: {fit_results[q]['twpa_power_p']:.2f} dBm\n"
+                    f"\t TWPA isolation power: {fit_results[q]['twpa_power_i']:.2f} dBm\n"
+                    f"\t TWPA pump frequency: {fit_results[q]['twpa_frequency_p'] / 1e9:.3f} Ghz\n"
+                    f"\t TWPA isolation frequency: {fit_results[q]['twpa_frequency_i'] / 1e9:.3f} Ghz")
+    log_callable(s_opt_params)
 
+def process_raw_dataset(node: QualibrationNode):
+    # Extract the raw datasets
+    ds_on = node.results["ds_raw_on"]
+    ds_off = node.results["ds_raw_off"]
+    # Convert data into V
+    ds_off = convert_IQ_to_V(ds_off, node.namespace["qubits"], IQ_list=["Ioff", "Qoff"])
+    ds_on = convert_IQ_to_V(ds_on, node.namespace["qubits"], IQ_list=["Ion", "Qon"])
+    # Get the power from I and Q for pump on and off
+    ds_off = ds_off.assign({"IQ_abs_off": np.sqrt(ds_off.Ioff ** 2 + ds_off.Qoff ** 2)})
+    ds_on = ds_on.assign({"IQ_abs_on": np.sqrt(ds_on.Ion ** 2 + ds_on.Qon ** 2)})
 
-def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    if not node.parameters.use_state_discrimination:
-        ds = convert_IQ_to_V(ds, node.namespace["qubits"])
+    # Merge the on and off datasets
+    ds_off_broadcast = ds_off.broadcast_like(ds_on)
+    ds = xr.merge([ds_on, ds_off_broadcast])
+    # node.results["ds_raw"] = ds
+
+    # Get the SNR for pump on and off
+    std_off = ds.IQ_abs_off.std(dim="shots")
+    mean_off = ds.IQ_abs_off.mean(dim="shots")
+    ds = ds.assign({"snr_off": mean_off / std_off})
+    std_on = ds.IQ_abs_on.std(dim="shots")
+    mean_on = ds.IQ_abs_on.mean(dim="shots")
+    ds = ds.assign({"snr_on": mean_on / std_on})
+    # Extract the gain and SNR
+    ds = ds.assign({"gain": 20 * np.log(mean_on / mean_off)})
+    ds = ds.assign({"snr": 20 * np.log(ds["snr_on"] / ds["snr_off"])})
+    # Add the RF frequency to the dataset
+    full_freq_p = np.array([(ds.detuning_p + node.machine.twpas[node.namespace["qubit_to_twpa"][q.name]].pump.RF_frequency) * 1e-9 for q in node.namespace["qubits"]])
+    ds = ds.assign_coords(full_freq_p=(["qubit", "detuning_p"], full_freq_p))
+    ds.full_freq_p.attrs = {"long_name": "RF pump frequency", "units": "GHz"}
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, T1Fit]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the T1 relaxation time for each qubit according to ``a * np.exp(t * decay) + offset``.
 
@@ -65,8 +95,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     -----------
     ds : xr.Dataset
         Dataset containing the raw data.
-    node_parameters : Parameters
-        Parameters related to the node, including whether state discrimination is used.
+    node : QualibrationNode
+        The QUAlibrate node.
 
     Returns:
     --------
@@ -74,50 +104,88 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         Dataset containing the fit results.
     """
 
-    # Fit the exponential decay
-    if node.parameters.use_state_discrimination:
-        fit_data = fit_decay_exp(ds.state, "idle_time")
+    # max_gain = node.results["ds_fit"].gain.max()
+    # at_max = node.results["ds_fit"].gain.where(ds.gain == max_gain, drop=True).squeeze()
+    # coords_at_max = {dim: at_max.coords[dim].item() for dim in at_max.coords}
+    # print(coords_at_max)
+    # print(max_gain.values)
+    #
+    # max_snr = node.results["ds_fit"].snr.max()
+    # at_max = node.results["ds_fit"].snr.where(ds.snr == max_snr, drop=True).squeeze()
+    # coords_at_max = {dim: at_max.coords[dim].item() for dim in at_max.coords}
+    # print(coords_at_max)
+    # print(max_snr.values)
+
+    # Optimizer
+    ds_fit = ds
+    mingain = 1
+    minsnr = 0.1
+    # can be mean for average SNR across qubits or "min" for worst-qubit SNR (good for multiplexed readout)
+    method = "mean"
+    # Only keep points where all qubits have gain >= min_gain
+    gain_min_over_qubits = ds_fit.gain.min(dim="qubit")
+    gain_all_ok = gain_min_over_qubits >= mingain
+
+    # Aggregate SNR per point (choose one):
+    snr_min_over_qubits = ds_fit.snr.min(dim="qubit")
+    snr_all_ok = snr_min_over_qubits >= minsnr
+    if method == "mean":
+        snr_agg = ds_fit.snr.mean(dim="qubit")  # average SNR across qubits
+    elif method == "min":
+        snr_agg = ds_fit.snr.min(dim="qubit")  # or worst-qubit SNR (good for multiplexed readout)
     else:
-        fit_data = fit_decay_exp(ds.I, "idle_time")
+        raise NotImplementedError("Method not implemented")
+    # Find the point for which the SNR and the gain are above the thresholds
+    snr_constrained = snr_agg.where(gain_all_ok & snr_all_ok)
+    # Get the highest SNR among all the possibilities
+    max_snr = snr_constrained.max()
+    if np.isnan(max_snr):
+        raise ValueError(f"There is no pumping point which satisfies gain >= {mingain} and snr >= {minsnr}")
+    # Extract the corresponding TWPAI parameters
+    at_best = snr_agg.where(
+        (snr_agg == max_snr) & gain_all_ok & snr_all_ok,
+        drop=True,
+    )
+    coords_best = {dim: at_best.coords[dim].values.flat[0] for dim in at_best.dims}
 
-    ds_fit = xr.merge([ds, fit_data.rename("fit_data")])
+    # Gain and SNR per qubit at this point (coords_best has no "qubit", so this keeps qubit dim)
+    gain_at_best = ds_fit.gain.sel(**coords_best)  # DataArray with qubit dim
+    snr_at_best = ds_fit.snr.sel(**coords_best)  # DataArray with qubit dim
+
+    ds_fit.attrs["coords_best"] = coords_best
+    ds_fit.attrs["method"] = method
+    ds_fit = ds_fit.assign(gain_at_best=gain_at_best, snr_at_best=snr_at_best)
+    print(
+        f"Best SNR ({method}) satisfying (gain > {mingain} & snr > {minsnr}):"
+        f"\n\tgain{gain_at_best.qubit.values}: {gain_at_best.values})"
+        f"\n\tsnr{snr_at_best.qubit.values}: {snr_at_best.values} "
+        f"\nobtained for {coords_best}:"
+    )
     # Extract the relevant fitted parameters
-    fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit)
-
+    fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
     return fit_data, fit_results
 
 
-def _fit_t1_with_exponential_decay(ds, use_state_discrimination):
-    """Perform the fitting process based on the state discrimination flag."""
-    if use_state_discrimination:
-        fit = fit_decay_exp(ds.state, "idle_time")
-    else:
-        fit = fit_decay_exp(ds.I, "idle_time")
-    return fit
-
-
-def _extract_relevant_fit_parameters(fit: xr.Dataset):
+def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
-    # Add metadata to fit results
-    fit.attrs = {"long_name": "time", "units": "ns"}
-    # Get the fitted T1
-    tau = -1 / fit.fit_data.sel(fit_vals="decay")
-    fit = fit.assign_coords(tau=("qubit", tau.data))
-    fit.tau.attrs = {"long_name": "T1", "units": "ns"}
-    # Get the error on T1
-    tau_error = -tau * (np.sqrt(fit.fit_data.sel(fit_vals="decay_decay")) / fit.fit_data.sel(fit_vals="decay"))
-    fit = fit.assign_coords(tau_error=("qubit", tau_error.data))
-    fit.tau_error.attrs = {"long_name": "T1 error", "units": "ns"}
-    # Assess whether the fit was successful or not
-    success_criteria = (tau.data > 16) & (tau_error.data / tau.data < 1)
-    fit = fit.assign_coords(success=("qubit", success_criteria))
 
+    qubit_to_twpa = node.namespace["qubit_to_twpa"]
+    # Assess whether the fit was successful or not
+    gain_success =  ~np.isnan(fit.gain_at_best.data)
+    snr_success =  ~np.isnan(fit.snr_at_best.data)
+    success_criteria = gain_success & snr_success
+    fit = fit.assign_coords(success=("qubit", success_criteria))
     fit_results = {
-        q: T1Fit(
-            t1=fit.sel(qubit=q).tau.values.__float__(),
-            t1_error=fit.sel(qubit=q).tau_error.values.__float__(),
+        q: FitParameters(
+            gain=fit.sel(qubit=q).gain_at_best.values.__float__(),
+            snr=fit.sel(qubit=q).snr_at_best.values.__float__(),
+            method=fit.method,
+            twpa_power_p=fit.coords_best['twpa_power_p'],
+            twpa_frequency_p=fit.sel(qubit=q).full_freq_p.sel(detuning_p=fit.coords_best['detuning_p']).values.__float__() * 1e9,
+            twpa_power_i=fit.coords_best['twpa_power_i'],
+            twpa_frequency_i=fit.sel(qubit=q).full_freq_i.sel(detuning_i=fit.coords_best['detuning_i']).values.__float__() * 1e9,
             success=fit.sel(qubit=q).success.values.__bool__(),
         )
-        for q in fit.qubit.values
+        for q in qubit_to_twpa.keys()
     }
     return fit, fit_results

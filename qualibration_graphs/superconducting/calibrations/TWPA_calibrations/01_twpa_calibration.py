@@ -83,7 +83,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.twpas = ["twpaA"]
     # node.parameters.num_shots = 30
     # node.parameters.frequency_span_in_mhz_p = 1
-    node.parameters.frequency_span_in_mhz_i = 1
     pass
 
 
@@ -101,63 +100,40 @@ def create_qua_program_off(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
     # Extract the sweep parameters and axes from the node parameters
-    n_avg = node.parameters.num_shots
-    # The frequency sweep around the resonator resonance frequency
-    span = node.parameters.frequency_span_in_mhz * u.MHz
-    step = node.parameters.frequency_step_in_mhz * u.MHz
-    dfs = np.arange(-span / 2, +span / 2, step)
-
+    n_shots = node.parameters.num_shots
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes_off"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
+        "shots": xr.DataArray(np.linspace(1, n_shots, n_shots), attrs={"long_name": "shot number"}),
     }
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program_off"]:
         # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
-        Inoise_st = [declare_stream() for _ in range(num_qubits)]
-        Qnoise_st = [declare_stream() for _ in range(num_qubits)]
         df = declare(int)  # QUA variable for the readout frequency
-        noise = declare(bool)
 
         for multiplexed_qubits in qubits.batch():
-            # # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
-            # for qubit in multiplexed_qubits.values():
-            #     node.machine.initialize_qpu(target=qubit)
-            # align()
-            with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
+            with for_(n, 0, n < n_shots, n + 1):  # QUA for_ loop for averaging
                 save(n, n_st)
-                with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
-                    with for_each_(noise, [False, True]):
-                        for i, qubit in multiplexed_qubits.items():
-                            rr = qubit.resonator
-                            # Update the resonator frequencies for all resonators
-                            rr.update_frequency(df + rr.intermediate_frequency)
-                            with if_(noise):
-                                # readout the resonator
-                                rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=0.0)
-                                # save data
-                                save(I[i], Inoise_st[i])
-                                save(Q[i], Qnoise_st[i])
-                            with else_():
-                                # readout the resonator
-                                rr.measure("readout", qua_vars=(I[i], Q[i]))
-                                # save data
-                                save(I[i], I_st[i])
-                                save(Q[i], Q_st[i])
-                            # wait for the resonator to deplete
-                            rr.wait(rr.depletion_time // 4)
-                        align()
+                for i, qubit in multiplexed_qubits.items():
+                    rr = qubit.resonator
+                    # Update the resonator frequencies for all resonators
+                    rr.update_frequency(df + rr.intermediate_frequency)
+                    # readout the resonator
+                    rr.measure("readout", qua_vars=(I[i], Q[i]))
+                    # save data
+                    save(I[i], I_st[i])
+                    save(Q[i], Q_st[i])
+                    # wait for the resonator to deplete
+                    rr.wait(rr.depletion_time // 4)
+                align()
 
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubits):
-                I_st[i].buffer(len(dfs)).average().save(f"Ioff{i + 1}")
-                Q_st[i].buffer(len(dfs)).average().save(f"Qoff{i + 1}")
-                Inoise_st[i].buffer(len(dfs)).average().save(f"Ioff_noise{i + 1}")
-                Qnoise_st[i].buffer(len(dfs)).average().save(f"Qoff_noise{i + 1}")
+                I_st[i].buffer(n_shots).average().save(f"Ioff{i + 1}")
+                Q_st[i].buffer(n_shots).average().save(f"Qoff{i + 1}")
 
 
 # %% {Create_QUA_program}
@@ -183,31 +159,15 @@ def create_qua_program_on(node: QualibrationNode[Parameters, Quam]):
             twpa.pump_.set_output_power(
                 power_in_dbm=node.parameters.max_power_dbm_p, max_amplitude=node.parameters.max_amp_p, operation="pump"
             )
-            twpa.isolation.set_output_power(
-                power_in_dbm=node.parameters.max_power_dbm_i, max_amplitude=node.parameters.max_amp_i, operation="pump"
-            )
-            twpa.isolation_.set_output_power(
-                power_in_dbm=node.parameters.max_power_dbm_i, max_amplitude=node.parameters.max_amp_i, operation="pump"
-            )
             node.namespace["tracked_twpas"].append(twpa)
     # Extract the sweep parameters and axes from the node parameters
-    n_avg = node.parameters.num_shots
-    # The frequency sweep around the resonator resonance frequency
-    span = node.parameters.frequency_span_in_mhz * u.MHz
-    step = node.parameters.frequency_step_in_mhz * u.MHz
-    dfs = np.arange(-span / 2, +span / 2, step)
+    n_shots = node.parameters.num_shots
     # The twpa pump frequency sweep around the optimal frequency
     span_p = node.parameters.frequency_span_in_mhz_p * u.MHz
     step_p = node.parameters.frequency_step_in_mhz_p * u.MHz
     dfs_p = np.arange(-span_p / 2, +span_p / 2, step_p)
     if len(dfs_p) == 0:
         dfs_p = [0]
-    # The twpa isolation frequency sweep around the optimal frequency
-    span_i = node.parameters.frequency_span_in_mhz_i * u.MHz
-    step_i = node.parameters.frequency_step_in_mhz_i * u.MHz
-    dfs_i = np.arange(-span_i / 2, +span_i / 2, step_i)
-    if len(dfs_i) == 0:
-        dfs_i = [0]
     # The twpa pump amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
     amp_min_p = calculate_voltage_scaling_factor(node.parameters.max_power_dbm_p, node.parameters.min_power_dbm_p)
     amps_p = np.geomspace(amp_min_p, 1, node.parameters.num_power_points_p)
@@ -216,102 +176,49 @@ def create_qua_program_on(node: QualibrationNode[Parameters, Quam]):
         node.parameters.max_power_dbm_p,
         node.parameters.num_power_points_p,
     )
-    # The twpa isolation amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
-    amp_min_i = calculate_voltage_scaling_factor(node.parameters.max_power_dbm_i, node.parameters.min_power_dbm_i)
-    amps_i = np.geomspace(amp_min_i, 1, node.parameters.num_power_points_i)
-    power_dbm_i = np.linspace(
-        node.parameters.min_power_dbm_i,
-        node.parameters.max_power_dbm_i,
-        node.parameters.num_power_points_i,
-    )
-    data_size = len(power_dbm_i) * len(power_dbm_p) * len(dfs_i) * len(dfs_p) * len(dfs) * num_qubits * 2 * 4
+    data_size = len(power_dbm_p) * len(dfs_p) * num_qubits * 2 * 4
     assert data_size < 100e6, f"The maximum data size is 100e6, you ask for {data_size:.2e} data points."
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes_on"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "detuning_p": xr.DataArray(dfs_p, attrs={"long_name": "twpa pump frequency", "units": "Hz"}),
-        "detuning_i": xr.DataArray(dfs_i, attrs={"long_name": "twpa isolation frequency", "units": "Hz"}),
         "twpa_power_p": xr.DataArray(power_dbm_p, attrs={"long_name": "TWPA pump power", "units": "dBm"}),
-        "twpa_power_i": xr.DataArray(power_dbm_i, attrs={"long_name": "TWPA isolation power", "units": "dBm"}),
-        "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
+        "shots": xr.DataArray(np.linspace(1, n_shots, n_shots), attrs={"long_name": "shot number"}),
     }
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program_on"]:
         # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
-        Inoise_st = [declare_stream() for _ in range(num_qubits)]
-        Qnoise_st = [declare_stream() for _ in range(num_qubits)]
         a_p = declare(fixed)  # QUA variable for the twpa pump amplitude pre-factor
-        a_i = declare(fixed)  # QUA variable for the twpa isolation amplitude pre-factor
-        df = declare(int)  # QUA variable for the readout frequency
         df_p = declare(int)  # QUA variable for the twpa pump frequency
-        df_i = declare(int)  # QUA variable for the twpa isolation frequency
-        noise = declare(bool)  # QUA variable for toggling the twpa on & off
 
         for multiplexed_qubits in qubits.batch():
-            # # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
-            # for qubit in multiplexed_qubits.values():
-            #     node.machine.initialize_qpu(target=qubit)
-            # align()
             twpa = twpas[0]
-
-            with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-                save(n, n_st)
-
-                with for_(*from_array(df_p, dfs_p)):  # QUA for_ loop for sweeping the frequency
-                    twpa.pump.update_frequency(df_p + twpa.pump.intermediate_frequency)
-
-                    with for_(*from_array(df_i, dfs_i)):  # QUA for_ loop for sweeping the frequency
-                        twpa.isolation.update_frequency(df_i + twpa.isolation.intermediate_frequency)
-
-                        with for_each_(a_p, amps_p):  # QUA for_ loop for sweeping the twpa pump amplitude
-                            with for_each_(a_i, amps_i):  # QUA for_ loop for sweeping the twpa isolation amplitude
-                                twpa.pump.play("pump", amplitude_scale=a_p)
-                                twpa.pump.wait(twpa.settling_time // 4)
-                                twpa.isolation.play("pump", amplitude_scale=a_i)
-                                twpa.isolation.wait(twpa.settling_time // 4)
-                                align()
-                                with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
-                                    with for_each_(noise, [False, True]):
-                                        for i, qubit in multiplexed_qubits.items():
-                                            rr = qubit.resonator
-                                            # Update the resonator frequencies for all resonators
-                                            rr.update_frequency(df + rr.intermediate_frequency)
-                                            with if_(noise):
-                                                # readout the resonator
-                                                rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=0.0)
-                                                # save data
-                                                save(I[i], Inoise_st[i])
-                                                save(Q[i], Qnoise_st[i])
-                                            with else_():
-                                                # readout the resonator
-                                                rr.measure("readout", qua_vars=(I[i], Q[i]))
-                                                # save data
-                                                save(I[i], I_st[i])
-                                                save(Q[i], Q_st[i])
-                                            # wait for the resonator to deplete
-                                            rr.wait(rr.depletion_time // 4)
-                                    align()
-                                    ramp_to_zero(twpa.pump.name)
-                                    ramp_to_zero(twpa.isolation.name)
+            with for_(*from_array(df_p, dfs_p)):  # QUA for_ loop for sweeping the frequency
+                twpa.pump.update_frequency(df_p + twpa.pump.intermediate_frequency)
+                with for_each_(a_p, amps_p):  # QUA for_ loop for sweeping the twpa pump amplitude
+                    twpa.pump.play("pump", amplitude_scale=a_p)
+                    twpa.pump.wait(twpa.settling_time // 4)
+                    align()
+                    with for_(n, 0, n < n_shots, n + 1):  # QUA for_ loop for averaging
+                        for i, qubit in multiplexed_qubits.items():
+                            rr = qubit.resonator
+                            # readout the resonator
+                            rr.measure("readout", qua_vars=(I[i], Q[i]))
+                            # save data
+                            save(I[i], I_st[i])
+                            save(Q[i], Q_st[i])
+                            # wait for the resonator to deplete
+                            rr.wait(rr.depletion_time // 4)
+                        align()
+                        ramp_to_zero(twpa.pump.name)
 
         with stream_processing():
-            n_st.save("n")
             for i in range(num_qubits):
-                I_st[i].buffer(len(dfs)).buffer(len(amps_i)).buffer(len(amps_p)).buffer(len(dfs_i)).buffer(
-                    len(dfs_p)
-                ).average().save(f"Ion{i + 1}")
-                Q_st[i].buffer(len(dfs)).buffer(len(amps_i)).buffer(len(amps_p)).buffer(len(dfs_i)).buffer(
-                    len(dfs_p)
-                ).average().save(f"Qon{i + 1}")
-                Inoise_st[i].buffer(len(dfs)).buffer(len(amps_i)).buffer(len(amps_p)).buffer(len(dfs_i)).buffer(
-                    len(dfs_p)
-                ).average().save(f"Ion_noise{i + 1}")
-                Qnoise_st[i].buffer(len(dfs)).buffer(len(amps_i)).buffer(len(amps_p)).buffer(len(dfs_i)).buffer(
-                    len(dfs_p)
-                ).average().save(f"Qon_noise{i + 1}")
+                I_st[i].buffer(n_shots).buffer(len(amps_p)).buffer(len(dfs_p)).save(f"Ion{i + 1}")
+                Q_st[i].buffer(n_shots).buffer(len(amps_p)).buffer(len(dfs_p)).save(f"Qon{i + 1}")
 
 
 # %% {Simulate}

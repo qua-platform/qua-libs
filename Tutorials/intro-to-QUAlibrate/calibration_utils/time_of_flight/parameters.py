@@ -6,7 +6,7 @@ This module defines the configurable parameters used in the node.
 
 from typing import List
 from qualibrate import NodeParameters
-from qualibrate.parameters import RunnableParameters
+from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 
 

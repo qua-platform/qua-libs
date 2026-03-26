@@ -130,6 +130,27 @@ for k, qubit in enumerate(machine.qubits.values()):
     qubit.resonator.opx_input.band = get_band(rr_LO)  # Readout band for the up-conversion
     qubit.resonator.opx_output.band = get_band(rr_LO)  # Readout band for the down-conversion
 
+########################################################################################################################
+# %%                                         Add TWPA components
+########################################################################################################################
+twpa_to_qubits_mapping = {"twpaA": ["q1", "q2", "q3", "q4"]}
+pump_frequency = 6.45e9
+pump_lo = 6.4e9
+pump_power = 1
+for k, twpa in enumerate(machine.twpas.values()):
+    twpa.qubits = twpa_to_qubits_mapping[twpa.name]
+    twpa.pump_frequency = pump_frequency
+    twpa.pump_amplitude = 1
+    # TWPA pump
+    twpa.pump.RF_frequency = twpa.pump_frequency
+    twpa.pump.opx_output.full_scale_power_dbm = pump_power + 3
+    twpa.pump.opx_output.upconverter_frequency = pump_lo
+    twpa.pump.opx_output.band = get_band(pump_lo)
+    # TWPA pump_
+    twpa.pump_.RF_frequency = twpa.pump_frequency
+    twpa.pump_.opx_output.full_scale_power_dbm = pump_power + 3
+    twpa.pump_.opx_output.upconverter_frequency = pump_lo
+    twpa.pump_.opx_output.band = get_band(pump_lo)
 
 ########################################################################################################################
 # %%                                    Qubit parameters
@@ -234,7 +255,7 @@ for k, q in enumerate(machine.qubits):
 # This is the case when tunable couplers have been defined in generate_quam.py.
 
 # If pairs are not defined:
-qubit_pairs = [("1", "2"), ("2", "3"), ("3", "4"), ("4", "5"), ("5", "6"), ("6", "7"), ("7", "8")]
+qubit_pairs = [("1", "2"), ("2", "3"), ("3", "4")]
 
 # If pairs are already defined, comment the previous line and uncomment the following one:
 # qubit_pairs = machine.qubit_pairs
