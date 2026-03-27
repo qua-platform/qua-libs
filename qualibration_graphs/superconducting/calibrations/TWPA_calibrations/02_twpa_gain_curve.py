@@ -133,8 +133,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     with if_(twpa_on):
                         twpa.pump.play("pump")
                         twpa.pump.wait(twpa.settling_time // 4)
-                        twpa.isolation.play("pump")
-                        twpa.isolation.wait(twpa.settling_time // 4)
                         align()
 
                     with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
@@ -152,6 +150,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # wait for the resonator to deplete
                         rr.wait(rr.depletion_time // 4)
                     align()
+                    ramp_to_zero(twpa.pump.name)
 
         with stream_processing():
             n_st.save("n")

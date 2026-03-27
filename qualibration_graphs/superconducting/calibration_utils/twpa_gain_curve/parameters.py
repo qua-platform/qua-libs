@@ -10,8 +10,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Number of averages to perform. Default is 30."""
     frequency_center_in_mhz: float = 6750
     """Center of the readout frequency sweep in MHz. Default is 6750 MHz."""
-    frequency_span_in_mhz: float = 400
-    """Span of readout frequencies to sweep in MHz. Default is 4 MHz."""
+    frequency_span_in_mhz: float = 800
+    """Span of readout frequencies to sweep in MHz. Default is 800 MHz."""
     frequency_step_in_mhz: float = 1
     """Step size for readout frequency sweep in MHz. Default is 0.1 MHz."""
 
