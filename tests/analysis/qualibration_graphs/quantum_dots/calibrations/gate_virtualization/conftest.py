@@ -18,6 +18,17 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from unittest.mock import patch
 
+# qualibrate 1.1.x moved parameters into core.parameters; qualibration-libs
+# still imports from qualibrate.parameters.
+if "qualibrate.parameters" not in sys.modules:
+    try:
+        import qualibrate.core.parameters as _cp
+        sys.modules["qualibrate.parameters"] = _cp
+    except ImportError:
+        pass
+
+os.environ.setdefault("QUAM_STATE_PATH", "/tmp/quam_test_state")
+
 import numpy as np
 import pytest
 import xarray as xr

@@ -50,7 +50,13 @@ def _pair_gate_set_id(pair_obj: Any) -> str | None:
     return str(gate_set_id) if gate_set_id is not None else None
 
 
-def resolve_pair_calibration_topology(machine: Any, pair_names: Sequence[str]) -> Dict[str, Any]:
+def resolve_pair_calibration_topology(
+    machine: Any,
+    pair_names: Sequence[str],
+    *,
+    include_non_barrier_drives: bool = False,
+    non_barrier_drive_gates: Sequence[str] | None = None,
+) -> Dict[str, Any]:
     """Resolve pair-driven calibration topology from machine objects.
 
     Parameters
@@ -61,6 +67,14 @@ def resolve_pair_calibration_topology(machine: Any, pair_names: Sequence[str]) -
     pair_names : sequence of str
         Ordered calibration targets. Each name can reference a
         ``quantum_dot_pair`` directly or a ``qubit_pair``.
+    include_non_barrier_drives : bool
+        When True, additionally discover plunger and sensor gates whose
+        effect on tunnel coupling should be measured (Lambda terms).
+    non_barrier_drive_gates : sequence of str, optional
+        Explicit list of non-barrier gate names to sweep.  When None and
+        ``include_non_barrier_drives`` is True, auto-discover from each
+        pair's quantum dots (plunger gates) and sensor dots (sensor
+        plunger gates).
 
     Returns
     -------
@@ -151,6 +165,22 @@ def resolve_pair_calibration_topology(machine: Any, pair_names: Sequence[str]) -
         drive_barriers = [target_barrier]
         drive_barriers.extend(sorted({b for b in neighbor_barriers if b != target_barrier}))
 
+        drive_non_barriers: List[str] = []
+        if include_non_barrier_drives:
+            if non_barrier_drive_gates is not None:
+                drive_non_barriers = [str(g) for g in non_barrier_drive_gates]
+            else:
+                for dot_id in dot_ids:
+                    vname = f"virtual_{dot_id}" if not dot_id.startswith("virtual_") else dot_id
+                    if vname not in drive_non_barriers:
+                        drive_non_barriers.append(vname)
+                sensor_dots = list(getattr(target_pair, "sensor_dots", []) or [])
+                for sd in sensor_dots:
+                    sd_id = str(getattr(sd, "id", sd))
+                    vname = f"virtual_{sd_id}" if not sd_id.startswith("virtual_") else sd_id
+                    if vname not in drive_non_barriers:
+                        drive_non_barriers.append(vname)
+
         pair_resolution.append(
             {
                 "input_name": input_name,
@@ -161,6 +191,7 @@ def resolve_pair_calibration_topology(machine: Any, pair_names: Sequence[str]) -
                 "detuning_axis_name": detuning_axis_name,
                 "neighbor_pair_ids": sorted(set(neighbor_pair_ids)),
                 "drive_barriers": drive_barriers,
+                "drive_non_barriers": drive_non_barriers,
             }
         )
 
