@@ -112,6 +112,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     # Measure the state of the resonators
                     for i, qubit in multiplexed_qubits.items():
+                        qubit.align()
                         if node.parameters.use_state_discrimination:
                             qubit.readout_state(state[i])
                             save(state[i], state_st[i])
