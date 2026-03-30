@@ -1,12 +1,10 @@
 # %% {Imports}
-import numpy as np
 import xarray as xr
 
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
@@ -216,7 +214,10 @@ def update_state(
     The diagonal is never modified (sensor self-coupling stays 1).
     """
     if "fit_results" not in node.results:
-        return
+        raise RuntimeError(
+            "update_state called but 'fit_results' not found in node.results. "
+            "Run analyse_data before update_state."
+        )
 
     for pair_key, fit_res in node.results["fit_results"].items():
         sensor_gate, device_gate = pair_key.split("_vs_", maxsplit=1)

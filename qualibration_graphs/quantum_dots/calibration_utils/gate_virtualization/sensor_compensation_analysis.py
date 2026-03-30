@@ -211,7 +211,11 @@ def fit_shifted_lorentzian_bayesian_cp(
         cp_threshold=cp_threshold,
     )
 
-    v0_effective = result.segment_intercepts[0] if result.segment_intercepts else 0.0
+    if not result.segment_intercepts:
+        raise RuntimeError(
+            "BCP fit produced no segment intercepts — unable to determine v0."
+        )
+    v0_effective = result.segment_intercepts[0]
 
     return {
         "A": result.A,
@@ -219,7 +223,7 @@ def fit_shifted_lorentzian_bayesian_cp(
         "alpha": result.alpha,
         "gamma": result.gamma,
         "offset": result.offset,
-        "residual": 0.0,
+        "residual": result.alpha_std,
         "success": True,
         "alpha_std": result.alpha_std,
         "n_changepoints": result.n_changepoints,

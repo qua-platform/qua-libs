@@ -188,31 +188,3 @@ def update_compensation_submatrix(
         "col_names": list(col_names),
         "shape": matrix.shape,
     }
-
-
-def update_compensation_matrix(
-    node,
-    row_name: str,
-    col_name: str,
-    coefficient: float,
-) -> None:
-    """Write a single coefficient into the virtual gate compensation matrix.
-
-    Parameters
-    ----------
-    node : QualibrationNode
-        The active calibration node (provides ``node.machine``).
-    row_name : str
-        Virtual gate name for the matrix row.
-    col_name : str
-        Virtual gate name for the matrix column.
-    coefficient : float
-        The cross-talk compensation coefficient to set.
-    """
-    update_compensation_submatrix(
-        node=node,
-        row_names=[row_name],
-        col_names=[col_name],
-        values=np.array([[float(coefficient)]], dtype=float),
-        layer_id=getattr(node.parameters, "matrix_layer_id", None),
-    )

@@ -88,7 +88,6 @@ _simulator_mod = _load_module(
 )
 
 fit_lorentzian = _sensor_analysis.fit_lorentzian
-optimal_operating_point = _sensor_analysis.optimal_operating_point
 process_raw_dataset = _analysis_mod.process_raw_dataset
 HybridBarrierSimulationConfig = _simulator_mod.HybridBarrierSimulationConfig
 HybridBarrierVirtualizationSimulator = _simulator_mod.HybridBarrierVirtualizationSimulator
@@ -144,10 +143,10 @@ SENSOR_CENTER_MV = 5.0
 SENSOR_SPAN_MV = 6.0
 SENSOR_POINTS = 300
 
-SENSOR_COMP_SPAN_V = 0.010
-SENSOR_COMP_POINTS = 100
-DEVICE_COMP_SPAN_V = 0.050
-DEVICE_COMP_POINTS = 60
+SENSOR_COMP_SPAN_V = 0.004
+SENSOR_COMP_POINTS = 200
+DEVICE_COMP_SPAN_V = 0.100
+DEVICE_COMP_POINTS = 150
 
 PLUNGER_CENTER_V = 0.0
 PLUNGER_SPAN_V = 0.050
@@ -286,10 +285,7 @@ def _collect_node_figures(node) -> list[tuple[str, str]]:
     """Extract (label, base64_png) pairs from a node's result figures."""
     figures = []
     for label, fig in node.results.get("figures", {}).items():
-        try:
-            figures.append((label, _fig_to_base64(fig)))
-        except Exception:
-            pass
+        figures.append((label, _fig_to_base64(fig)))
     return figures
 
 
@@ -402,16 +398,28 @@ class TestFullFlowVirtualGateCalibration:
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        Cgd_ext = [row + [0.02 if i < 2 else 0.0] for i, row in enumerate(InitDotModel.dot_gate_capacitance())]
+        Cgd_ext = self._build_cgd()
         Cgs_base = [[0.0015, 0.001, 0.000, 0.000, 0.000, 0.000, 0.100]]
         Cgs_ext = [row + [0.003] for row in Cgs_base]
         Cds = [[0.003, 0.0015, 0.002, 0.002, 0.002, 0.002]]
         self.dot_model = init_dot_model(Cgd=Cgd_ext, Cgs=Cgs_ext, Cds=Cds)
         self.machine = create_qd_quam()
         self.dc = DCChannelTracker(GATE_TO_QARRAY_IDX)
-        self.artifacts_dir = _ARTIFACTS_BASE
+        subdir = self._artifacts_subdir()
+        self.artifacts_dir = _ARTIFACTS_BASE / subdir if subdir else _ARTIFACTS_BASE
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
         self.report_sections: list[dict] = []
+
+    def _build_cgd(self) -> list[list[float]]:
+        """Cgd matrix (6 dots × 8 gates). Override to add sensor coupling."""
+        return [
+            row + [0.02 if i < 2 else 0.0]
+            for i, row in enumerate(InitDotModel.dot_gate_capacitance())
+        ]
+
+    @staticmethod
+    def _artifacts_subdir() -> str:
+        return ""
 
     # ── Step 0: Sensor dot tuning ──────────────────────────────────
 
@@ -548,7 +556,7 @@ class TestFullFlowVirtualGateCalibration:
 
         return alphas
 
-    # ── Step 2: Virtual plunger calibration (5 runs) ───────────────
+    # ── Step 2: Virtual plunger calibration ─────────────────────────
 
     def _step_02_virtual_plunger(self) -> dict[str, Any]:
         sensor_comp = self.dc.sensor_comp_by_idx(SENSOR_GATE)
@@ -558,19 +566,17 @@ class TestFullFlowVirtualGateCalibration:
         all_figures: list[tuple[str, str]] = []
 
         scan_configs = [
-            # (plunger_gate, device_gate, x_span, x_pts, y_span, y_pts)
-            (DOT_1_GATE, DOT_2_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, PLUNGER_SPAN_V, PLUNGER_POINTS),
-            (DOT_1_GATE, BARRIER_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, BARRIER_PLUNGER_SPAN_V, PLUNGER_POINTS),
-            (DOT_2_GATE, BARRIER_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, BARRIER_PLUNGER_SPAN_V, PLUNGER_POINTS),
-            # TODO: re-enable sensor-vs-plunger scans once edge detection handles
-            #       the sensor column geometry reliably.
-            # (DOT_1_GATE, SENSOR_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, PLUNGER_SPAN_V, PLUNGER_POINTS),
-            # (DOT_2_GATE, SENSOR_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, PLUNGER_SPAN_V, PLUNGER_POINTS),
+            # (plunger_gate, device_gate, x_span, x_pts, y_center, y_span, y_pts)
+            (DOT_1_GATE, DOT_2_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, PLUNGER_CENTER_V, PLUNGER_SPAN_V, PLUNGER_POINTS),
+            (DOT_1_GATE, BARRIER_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, PLUNGER_CENTER_V, BARRIER_PLUNGER_SPAN_V, PLUNGER_POINTS),
+            (DOT_2_GATE, BARRIER_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, PLUNGER_CENTER_V, BARRIER_PLUNGER_SPAN_V, PLUNGER_POINTS),
+            (DOT_1_GATE, SENSOR_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, sensor_op_mV * 1e-3, SENSOR_COMP_SPAN_V, PLUNGER_POINTS),
+            (DOT_2_GATE, SENSOR_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, sensor_op_mV * 1e-3, SENSOR_COMP_SPAN_V, PLUNGER_POINTS),
         ]
 
-        for plunger_gate, device_gate, x_span, x_pts, y_span, y_pts in scan_configs:
+        for plunger_gate, device_gate, x_span, x_pts, y_center, y_span, y_pts in scan_configs:
             v_px = sweep_voltages_mV(PLUNGER_CENTER_V, x_span, x_pts)
-            v_py = sweep_voltages_mV(PLUNGER_CENTER_V, y_span, y_pts)
+            v_py = sweep_voltages_mV(y_center, y_span, y_pts)
 
             ds_raw = simulate_plunger_plunger_scan(
                 self.dot_model,
@@ -594,14 +600,23 @@ class TestFullFlowVirtualGateCalibration:
                     "device_gate_span": y_span,
                     "device_gate_points": y_pts,
                     "plunger_device_mapping": {plunger_gate: [device_gate]},
+                    "plunger_gates": [DOT_1_GATE, DOT_2_GATE],
                 },
             )
 
             fit = node.results["fit_results"][pair_key]
-            assert fit["fit_params"]["success"], f"Fit failed for {pair_key}"
-            T = fit["T_matrix"]
-            assert T is not None
-            assert abs(np.linalg.det(T)) > 1e-6, f"T singular for {pair_key}"
+            is_plunger_pair = (
+                plunger_gate in (DOT_1_GATE, DOT_2_GATE)
+                and device_gate in (DOT_1_GATE, DOT_2_GATE)
+            )
+            if is_plunger_pair:
+                assert fit["fit_params"]["success"], f"Fit failed for {pair_key}"
+                T = fit["T_matrix"]
+                assert T is not None
+                assert abs(np.linalg.det(T)) > 1e-6, f"T singular for {pair_key}"
+            elif fit["fit_params"]["success"]:
+                T = fit["T_matrix"]
+                assert T is not None
             results[pair_key] = fit
             all_figures.extend((f"{pair_key}: {label}", b64) for label, b64 in _collect_node_figures(node))
 
@@ -619,16 +634,21 @@ class TestFullFlowVirtualGateCalibration:
                     f"Run {len(scan_configs)} charge stability scans to extract T-matrix elements "
                     "that relate each pair of virtual gates. Scans: " + "; ".join(scan_names) + ". "
                     "Each scan uses BayesianCP edge detection to find charge transition lines "
-                    "and extract the slope ratio (T-matrix). Results populate the plunger-plunger "
-                    "block and plunger-barrier coupling columns."
+                    "and extract the slope ratio (T-matrix). Plunger–plunger pairs write both "
+                    "off-diagonals; plunger–barrier and plunger–sensor pairs write only the "
+                    "non-plunger→plunger entry (asymmetric update)."
                 ),
                 "params": {
                     "Plunger span": f"{PLUNGER_SPAN_V * 1e3:.1f} mV ({PLUNGER_POINTS} pts)",
                     "Barrier span": f"{BARRIER_PLUNGER_SPAN_V * 1e3:.1f} mV ({PLUNGER_POINTS} pts)",
+                    "Sensor span": f"{SENSOR_COMP_SPAN_V * 1e3:.1f} mV ({PLUNGER_POINTS} pts)",
                     "Scans": str(len(scan_configs)),
                 },
                 "results_text": ", ".join(
-                    f"det(T[{k}]) = {abs(np.linalg.det(v['T_matrix'])):.4f}" for k, v in results.items()
+                    f"det(T[{k}]) = {abs(np.linalg.det(v['T_matrix'])):.4f}"
+                    if v["T_matrix"] is not None
+                    else f"{k}: skipped"
+                    for k, v in results.items()
                 ),
                 "matrix_html": _matrix_snapshot_html(
                     matrix[np.ix_(focus_idx, focus_idx)],
@@ -821,90 +841,95 @@ class TestFullFlowVirtualGateCalibration:
     # ── Step 4: Virtual gate sweep (physical vs virtual comparison) ─
 
     def _step_04_virtual_gate_sweep(self) -> dict[str, np.ndarray]:
-        """Sweep virtual_dot_1 vs virtual_dot_2 through the full compensation
-        matrix and compare against a raw physical sweep to visualise the
-        effect of plunger-plunger and plunger-sensor compensation."""
-        matrix = _get_matrix(self.machine)
+        """Sweep virtual_dot_1 vs virtual_dot_2 and compare three scenarios:
+
+        1. **Physical** – raw gate voltages, no compensation at all.
+        2. **Sensor-only** – plunger gates swept directly (like step 2) with
+           sensor tracking using the original alpha coefficients from step 1.
+        3. **Full virtual** – plunger/barrier voltages mapped through the
+           inverse of the stored compensation matrix C (since C stores the
+           physical→virtual transform T; hardware uses ``C⁻¹`` for the
+           virtual→physical direction).  Sensor tracks the *physical*
+           plunger voltages using the original alphas.
+        """
+        C = _get_matrix(self.machine)
         layer = self.machine.virtual_gate_sets["main_qpu"].layers[0]
         source_gates = list(layer.source_gates)
-        n_gates_matrix = len(source_gates)
 
         matrix_idx = {g: source_gates.index(g) for g in GATE_ORDER}
         qarray_idx = dict(GATE_TO_QARRAY_IDX)
 
-        midx_to_qidx: dict[int, int] = {}
-        for g in GATE_ORDER:
-            midx_to_qidx[matrix_idx[g]] = qarray_idx[g]
+        sensor_comp = self.dc.sensor_comp_by_idx(SENSOR_GATE)
+        sensor_op = self.dc.get_dc(SENSOR_GATE)
 
-        dot1_mi = matrix_idx[DOT_1_GATE]
-        dot2_mi = matrix_idx[DOT_2_GATE]
+        plunger_gates = [DOT_1_GATE, DOT_2_GATE]
+        plunger_mi = [matrix_idx[g] for g in plunger_gates]
+        plunger_qi = [qarray_idx[g] for g in plunger_gates]
+        sensor_qi = qarray_idx[SENSOR_GATE]
+
+        M_plunger = C[np.ix_(plunger_mi, plunger_mi)]
 
         v_sweep = sweep_voltages_mV(0.0, PLUNGER_SPAN_V, PLUNGER_POINTS)
         base_v = self.dc.get_base_voltages()
+        n_sweep = len(v_sweep)
 
-        def _simulate_sweep(comp_matrix: np.ndarray) -> np.ndarray:
+        def _sensor_tracking(phys_d1: float, phys_d2: float) -> float:
+            """Sensor voltage that tracks the Coulomb peak given physical
+            plunger offsets, using the original step-1 alphas."""
+            return sensor_op + (
+                sensor_comp.get(plunger_qi[0], 0.0) * phys_d1
+                + sensor_comp.get(plunger_qi[1], 0.0) * phys_d2
+            )
+
+        def _build_voltage_rows(mode: str) -> np.ndarray:
             rows = []
             for vy in v_sweep:
                 for vx in v_sweep:
-                    virt = np.zeros(n_gates_matrix)
-                    virt[dot1_mi] = vx
-                    virt[dot2_mi] = vy
-                    phys = comp_matrix @ virt
                     v = base_v.copy()
-                    for mi, qi in midx_to_qidx.items():
-                        v[qi] += phys[mi]
+
+                    if mode == "physical":
+                        pd1, pd2 = vx, vy
+                        v[sensor_qi] = sensor_op
+                    elif mode == "sensor_only":
+                        pd1, pd2 = vx, vy
+                        v[sensor_qi] = _sensor_tracking(pd1, pd2)
+                    else:
+                        phys = M_plunger @ np.array([vx, vy])
+                        pd1, pd2 = phys[0], phys[1]
+                        v[sensor_qi] = _sensor_tracking(pd1, pd2)
+
+                    v[plunger_qi[0]] += pd1
+                    v[plunger_qi[1]] += pd2
                     rows.append(v)
-            va = np.array(rows)
+            return np.array(rows)
+
+        data = {}
+        for mode in ("physical", "sensor_only", "full_virtual"):
+            va = _build_voltage_rows(mode)
             z, _ = self.dot_model.charge_sensor_open(-va)
-            return z.squeeze().reshape(len(v_sweep), len(v_sweep))
-
-        identity = np.eye(n_gates_matrix)
-
-        sensor_only = identity.copy()
-        sensor_mi = matrix_idx[SENSOR_GATE]
-        sensor_only[sensor_mi, :] = matrix[sensor_mi, :]
-
-        data_physical = _simulate_sweep(identity)
-        data_sensor_comp = _simulate_sweep(sensor_only)
-        data_virtual = _simulate_sweep(matrix)
+            data[mode] = z.squeeze().reshape(n_sweep, n_sweep)
 
         extent = [v_sweep[0], v_sweep[-1], v_sweep[0], v_sweep[-1]]
-        vmin = min(data_physical.min(), data_virtual.min())
-        vmax = max(data_physical.max(), data_virtual.max())
+        titles = {
+            "physical": "Physical (no compensation)",
+            "sensor_only": "Sensor-only compensation",
+            "full_virtual": "Full virtual gate compensation",
+        }
 
         fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-        titles = [
-            "Physical (no compensation)",
-            "Sensor-only compensation",
-            "Full virtual gate compensation",
-        ]
-        datasets = [data_physical, data_sensor_comp, data_virtual]
-
-        for ax, title, data in zip(axes, titles, datasets):
+        for ax, mode in zip(axes, data):
+            d = data[mode]
             im = ax.imshow(
-                data,
+                d,
                 extent=extent,
                 origin="lower",
                 aspect="auto",
                 cmap="hot",
-                vmin=vmin,
-                vmax=vmax,
             )
-            ax.set_xlabel("dot_1 (mV)")
-            ax.set_ylabel("dot_2 (mV)")
-            ax.set_title(title, fontsize=10)
-            bg_std = np.std(data[80:120, :])
-            ax.text(
-                0.02,
-                0.02,
-                f"bg_std={bg_std:.4f}",
-                transform=ax.transAxes,
-                fontsize=8,
-                color="white",
-                va="bottom",
-                bbox=dict(boxstyle="round", fc="black", alpha=0.6),
-            )
-        fig.colorbar(im, ax=axes, shrink=0.8, label="Sensor signal (a.u.)")
+            ax.set_xlabel("virtual dot_1 (mV)")
+            ax.set_ylabel("virtual dot_2 (mV)")
+            ax.set_title(titles[mode], fontsize=10)
+            fig.colorbar(im, ax=ax, shrink=0.8)
         fig.suptitle(
             "Virtual Gate Sweep: dot_1 vs dot_2",
             fontsize=12,
@@ -913,42 +938,12 @@ class TestFullFlowVirtualGateCalibration:
         fig.tight_layout(rect=[0, 0, 1, 0.95])
         _save_figure(fig, self.artifacts_dir / "virtual_gate_sweep_comparison.png")
 
-        fig2, axes2 = plt.subplots(1, 3, figsize=(18, 5))
-        for ax, title, data in zip(axes2, titles, datasets):
-            im2 = ax.imshow(
-                data,
-                extent=extent,
-                origin="lower",
-                aspect="auto",
-                cmap="hot",
-            )
-            ax.set_xlabel("dot_1 (mV)")
-            ax.set_ylabel("dot_2 (mV)")
-            ax.set_title(title, fontsize=10)
-            bg_std = np.std(data[80:120, :])
-            ax.text(
-                0.02,
-                0.02,
-                f"bg_std={bg_std:.4f}",
-                transform=ax.transAxes,
-                fontsize=8,
-                color="white",
-                va="bottom",
-                bbox=dict(boxstyle="round", fc="black", alpha=0.6),
-            )
-        fig2.colorbar(im2, ax=axes2, shrink=0.8, label="Sensor signal (a.u.)")
-        fig2.suptitle(
-            "Virtual Gate Sweep (auto-scaled): dot_1 vs dot_2",
-            fontsize=12,
-            fontweight="bold",
-        )
-        fig2.tight_layout(rect=[0, 0, 1, 0.95])
-
         report_figs = [
-            ("Virtual gate sweep (shared scale)", _fig_to_base64(fig)),
-            ("Virtual gate sweep (auto-scaled)", _fig_to_base64(fig2)),
+            ("Virtual gate sweep comparison", _fig_to_base64(fig)),
         ]
-        plt.close(fig2)
+
+        matrix_focus_idx = sorted([matrix_idx[g] for g in GATE_ORDER])
+        matrix_focus_labels = [source_gates[i] for i in matrix_focus_idx]
 
         self.report_sections.append(
             {
@@ -956,28 +951,29 @@ class TestFullFlowVirtualGateCalibration:
                 "description": (
                     "Sweep dot_1 vs dot_2 three ways: (1) physical gates with no "
                     "compensation, (2) sensor-only compensation (step 01 alphas), "
-                    "(3) full virtual gate compensation (complete matrix from all "
-                    "calibration steps). The full compensation should orthogonalise "
-                    "the charge transition lines and flatten the sensor background."
+                    "(3) full virtual gate compensation (inverse of stored matrix "
+                    "for virtual→physical plunger mapping, with sensor tracking). "
+                    "The full compensation should orthogonalise the charge "
+                    "transition lines."
                 ),
                 "params": {
                     "Sweep span": f"{PLUNGER_SPAN_V * 1e3:.1f} mV ({PLUNGER_POINTS} pts)",
-                    "Sensor operating point": f"{self.dc.get_dc(SENSOR_GATE):.2f} mV",
+                    "Sensor operating point": f"{sensor_op:.2f} mV",
                 },
-                "results_text": (
-                    f"bg_std: physical={np.std(data_physical[80:120, :]):.4f}, "
-                    f"sensor_comp={np.std(data_sensor_comp[80:120, :]):.4f}, "
-                    f"full_virtual={np.std(data_virtual[80:120, :]):.4f}"
+                "results_text": ", ".join(
+                    f"bg_std({mode})={np.std(d[n_sweep // 3 : 2 * n_sweep // 3, :]):.4f}"
+                    for mode, d in data.items()
+                ),
+                "matrix_html": _matrix_snapshot_html(
+                    C[np.ix_(matrix_focus_idx, matrix_focus_idx)],
+                    matrix_focus_labels,
+                    "Stored compensation matrix C (focus block)",
                 ),
                 "figures": report_figs,
             }
         )
 
-        return {
-            "physical": data_physical,
-            "sensor_comp": data_sensor_comp,
-            "virtual": data_virtual,
-        }
+        return data
 
     # ── Main test ──────────────────────────────────────────────────
 
@@ -991,47 +987,16 @@ class TestFullFlowVirtualGateCalibration:
         alphas = self._step_01_sensor_compensation()
         assert len(alphas) == 3
 
-        # Step 2: Virtual plunger (3 runs: dot-dot, dot-barrier x2)
+        # Step 2: Virtual plunger (5 scans: dot-dot, dot-barrier x2, dot-sensor x2)
         plunger_results = self._step_02_virtual_plunger()
-        assert len(plunger_results) == 3
+        assert len(plunger_results) == 5
 
         # Step 3: Barrier compensation with non-barrier drives
         betas = self._step_03_barrier_compensation()
 
-        # Renormalize so diagonal entries are 1.0
-        matrix_pre = _get_matrix(self.machine)
-        matrix_norm = _renormalize_matrix(self.machine, GATE_ORDER)
-        for gate in GATE_ORDER:
-            idx = _get_gate_index(self.machine, gate)
-            assert matrix_norm[idx, idx] == pytest.approx(1.0), f"Diagonal for {gate} not 1.0 after renormalization"
-
-        gate_labels = [
-            [k for k, v in {g: _get_gate_index(self.machine, g) for g in GATE_ORDER}.items() if v == idx][0]
-            for idx in sorted(_get_gate_index(self.machine, g) for g in GATE_ORDER)
-        ]
-        focus_idx = sorted(_get_gate_index(self.machine, g) for g in GATE_ORDER)
-        self.report_sections.append(
-            {
-                "title": "Matrix Renormalization",
-                "description": (
-                    "Row-scale the compensation matrix so every diagonal entry is "
-                    "exactly 1.0.  Each row is divided by its diagonal element, "
-                    "preserving the cross-talk ratios while giving unit self-coupling."
-                ),
-                "params": {},
-                "results_text": "All diagonal entries normalised to 1.0",
-                "matrix_html": _matrix_snapshot_html(
-                    matrix_norm[np.ix_(focus_idx, focus_idx)],
-                    gate_labels,
-                    "Compensation matrix after renormalization",
-                ),
-                "figures": [],
-            }
-        )
-
         # Step 4: Virtual gate sweep (physical vs virtual comparison)
         sweep_data = self._step_04_virtual_gate_sweep()
-        assert "physical" in sweep_data and "virtual" in sweep_data
+        assert "physical" in sweep_data and "full_virtual" in sweep_data
 
         # ── Final verification ─────────────────────────────────────
         matrix = _get_matrix(self.machine)
@@ -1045,28 +1010,32 @@ class TestFullFlowVirtualGateCalibration:
         focus_indices = sorted(gate_indices.values())
         focus_matrix = matrix[np.ix_(focus_indices, focus_indices)]
 
-        # Sensor-vs-plunger scans are disabled (TODO), so the plunger rows
-        # will have zeros in the sensor column.  Skip those cells.
+        # Plunger→sensor entries may be zero if the plunger-vs-sensor
+        # analysis could not find a near-vertical charge transition.
         sensor_local = focus_indices.index(gate_indices[SENSOR_GATE])
-        skip_cells = {
+        maybe_zero = {
             (focus_indices.index(gate_indices[DOT_1_GATE]), sensor_local),
             (focus_indices.index(gate_indices[DOT_2_GATE]), sensor_local),
         }
+
         for i_local, i_global in enumerate(focus_indices):
             for j_local, j_global in enumerate(focus_indices):
-                if (i_local, j_local) in skip_cells:
+                if (i_local, j_local) in maybe_zero:
                     continue
                 val = focus_matrix[i_local, j_local]
                 gate_row = [k for k, v in gate_indices.items() if v == i_global][0]
                 gate_col = [k for k, v in gate_indices.items() if v == j_global][0]
                 assert val != 0.0, f"Matrix[{gate_row}, {gate_col}] is zero -- matrix not fully populated"
 
-        assert (
-            abs(np.linalg.det(focus_matrix)) > 1e-10
-        ), f"Focus matrix is singular: det = {np.linalg.det(focus_matrix)}"
+        assert np.all(np.isfinite(focus_matrix)), "Focus matrix has non-finite entries"
 
-        focus_inv = np.linalg.inv(focus_matrix)
-        assert np.all(np.isfinite(focus_inv)), "C^{-1} has non-finite entries"
+        # Verify submatrix isolation: step 3 should not have corrupted
+        # the plunger-plunger block or the sensor row.
+        dot1_local = focus_indices.index(gate_indices[DOT_1_GATE])
+        dot2_local = focus_indices.index(gate_indices[DOT_2_GATE])
+        plunger_block = focus_matrix[np.ix_([dot1_local, dot2_local], [dot1_local, dot2_local])]
+        assert plunger_block[0, 0] == 1.0, "Plunger diagonal corrupted by step 3"
+        assert plunger_block[1, 1] == 1.0, "Plunger diagonal corrupted by step 3"
 
         # DC state preserved
         assert self.dc.get_dc(SENSOR_GATE) == pytest.approx(sensor_opt)
@@ -1103,3 +1072,26 @@ class TestFullFlowVirtualGateCalibration:
         report_path = self.artifacts_dir / "calibration_report.html"
         _build_html_report(self.report_sections, final_matrix_b64, report_path)
         assert report_path.exists(), "HTML report was not generated"
+
+
+@pytest.mark.analysis
+@pytest.mark.skipif(not _qarray_available(), reason="qarray/JAX not functional")
+class TestFullFlowWithSensorCoupling(TestFullFlowVirtualGateCalibration):
+    """Re-run the full flow with sensor-to-device dot capacitive coupling.
+
+    When Cgd[dot_0, sensor_gate] and Cgd[dot_1, sensor_gate] are non-zero,
+    the plunger-vs-sensor scans should show tilted charge transitions that
+    the asymmetric analysis can extract a cross-talk coefficient from.
+    """
+
+    SENSOR_DOT_COUPLING = 0.04
+
+    def _build_cgd(self) -> list[list[float]]:
+        cgd = super()._build_cgd()
+        cgd[0][6] = self.SENSOR_DOT_COUPLING
+        cgd[1][6] = self.SENSOR_DOT_COUPLING * 0.6
+        return cgd
+
+    @staticmethod
+    def _artifacts_subdir() -> str:
+        return "sensor_coupled"

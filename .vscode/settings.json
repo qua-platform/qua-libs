@@ -1,8 +1,0 @@
-{
-    "python.defaultInterpreterPath": "/Users/sebastian/Documents/GitHub/qua-libs/qualibration_graphs/quantum_dots/.venv/bin/python",
-    "python.testing.pytestArgs": [
-        "tests"
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
-}

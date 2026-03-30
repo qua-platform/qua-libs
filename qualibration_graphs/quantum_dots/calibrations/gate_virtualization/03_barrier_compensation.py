@@ -643,10 +643,30 @@ def plot_data(node: QualibrationNode[BarrierCompensationParameters, Quam]):
 def update_virtual_gate_matrix(
     node: QualibrationNode[BarrierCompensationParameters, Quam],
 ):
-    """Update the active virtual-gate layer with the barrier transform and non-barrier betas."""
+    """Update the active virtual-gate layer with the barrier transform and non-barrier betas.
+
+    Two types of updates are made, both restricted to barrier rows only:
+
+    1. **Barrier-barrier block** (direct write):
+       The complete ``barrier_transform_final`` matrix (N_barrier × N_barrier
+       with unit diagonal) is written into the barrier rows × barrier columns.
+       This is a direct overwrite because ``calibrate_stepwise_barrier_virtualization``
+       produces the absolute calibrated block.
+
+    2. **Non-barrier betas** (additive off-diagonal):
+       For each ``(target_barrier, drive_gate)`` pair the measured
+       ``beta = (dt/dV_gate) / (dt/dV_barrier)`` is *added* to the existing
+       ``A[barrier_row, drive_gate_col]``.  Additive updates allow iterative
+       refinement and are consistent with nodes 01 and 02.
+
+    Safety: only barrier rows are modified; plunger-plunger and sensor entries
+    are never touched.
+    """
     if "barrier_transform_final" not in node.results:
-        node.log("No barrier_transform_final found; skipping matrix update.")
-        return
+        raise RuntimeError(
+            "update_virtual_gate_matrix called but 'barrier_transform_final' not found "
+            "in node.results. Run analyse_data before update_virtual_gate_matrix."
+        )
 
     barrier_order = node.results.get("barrier_order")
     if not barrier_order:
@@ -678,13 +698,18 @@ def update_virtual_gate_matrix(
         for target_barrier, gate_betas in non_barrier_betas.items():
             for drive_gate, beta in gate_betas.items():
                 if not np.isfinite(beta):
-                    continue
+                    raise RuntimeError(
+                        f"Non-finite beta for {target_barrier} vs {drive_gate}: {beta}"
+                    )
+                barrier_row_idx = list(layer.source_gates).index(target_barrier)
                 physical_col = v2p.get(drive_gate, drive_gate)
+                col_idx = list(layer.target_gates).index(physical_col)
+                current_val = float(np.asarray(layer.matrix, dtype=float)[barrier_row_idx, col_idx])
                 update_compensation_submatrix(
                     node=node,
                     row_names=[target_barrier],
                     col_names=[physical_col],
-                    values=np.array([[beta]], dtype=float),
+                    values=np.array([[current_val + beta]], dtype=float),
                     layer_id=node.parameters.matrix_layer_id,
                 )
                 nb_update_meta[f"{target_barrier}_vs_{drive_gate}"] = float(beta)

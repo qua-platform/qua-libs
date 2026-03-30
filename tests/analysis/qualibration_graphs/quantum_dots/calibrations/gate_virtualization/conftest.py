@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import os
 import sys
-import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional
 from unittest.mock import patch
@@ -47,7 +46,6 @@ from shared_fixtures import (  # noqa: E402
     apply_param_overrides,
     call_node_action,
     ensure_qua_dashboards_stub,
-    get_parameters_dict,
     make_save_analysis_plot,
     patch_action_manager_register_only,
     patch_qualibrate_logger,
@@ -127,18 +125,35 @@ def simulate_plunger_plunger_scan(
     cx = (v_plunger_x[0] + v_plunger_x[-1]) / 2
     cy = (v_plunger_y[0] + v_plunger_y[-1]) / 2
 
+    sensor_is_x = sensor_gate_idx == plunger_x_gate_idx
+    sensor_is_y = sensor_gate_idx == plunger_y_gate_idx
+
     rows = []
     for vy in v_plunger_y:
         for vx in v_plunger_x:
             v = base_voltages.copy()
             v[plunger_x_gate_idx] = vx
             v[plunger_y_gate_idx] = vy
-            s_v = sensor_operating_point
-            if sensor_compensation:
-                alpha_x = sensor_compensation.get(plunger_x_gate_idx, 0.0)
-                alpha_y = sensor_compensation.get(plunger_y_gate_idx, 0.0)
-                s_v += alpha_x * (vx - cx) + alpha_y * (vy - cy)
-            v[sensor_gate_idx] = s_v
+
+            if sensor_is_x or sensor_is_y:
+                # Sensor IS one of the sweep axes.  The sweep value is already
+                # set above; add sensor compensation for the *other* (non-sensor)
+                # axis so the Coulomb peak tracks plunger movement.
+                if sensor_compensation:
+                    if sensor_is_y:
+                        alpha_x = sensor_compensation.get(plunger_x_gate_idx, 0.0)
+                        v[sensor_gate_idx] += alpha_x * (vx - cx)
+                    else:
+                        alpha_y = sensor_compensation.get(plunger_y_gate_idx, 0.0)
+                        v[sensor_gate_idx] += alpha_y * (vy - cy)
+            else:
+                s_v = sensor_operating_point
+                if sensor_compensation:
+                    alpha_x = sensor_compensation.get(plunger_x_gate_idx, 0.0)
+                    alpha_y = sensor_compensation.get(plunger_y_gate_idx, 0.0)
+                    s_v += alpha_x * (vx - cx) + alpha_y * (vy - cy)
+                v[sensor_gate_idx] = s_v
+
             rows.append(v)
 
     voltage_array = np.array(rows)

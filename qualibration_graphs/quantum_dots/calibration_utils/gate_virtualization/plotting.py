@@ -9,11 +9,6 @@ import numpy as np
 import xarray as xr
 from matplotlib.figure import Figure
 
-from calibration_utils.gate_virtualization.sensor_compensation_analysis import (
-    shifted_lorentzian_2d,
-)
-
-
 def _build_piecewise_model(
     v_s: np.ndarray,
     v_d: np.ndarray,
@@ -57,6 +52,10 @@ def _plot_sensor_row(
     axes[0].set_ylabel("Device gate (V)")
 
     if fp is None:
+        for ax in axes[1:]:
+            ax.text(0.5, 0.5, "NO FIT DATA", ha="center", va="center",
+                    fontsize=14, color="red", transform=ax.transAxes)
+            ax.set_axis_off()
         return
 
     cp_indices = fp.get("changepoint_indices", [])
@@ -192,7 +191,12 @@ def _get_signal_2d(
         raise ValueError(f"Dataset must contain '{signal_var}' or both 'I' and 'Q'.")
 
     if "sensors" in signal.dims:
-        if sensor_name is not None and sensor_name in signal.coords["sensors"].values:
+        if sensor_name is not None:
+            if sensor_name not in signal.coords["sensors"].values:
+                raise ValueError(
+                    f"Sensor '{sensor_name}' not found in dataset. "
+                    f"Available: {list(signal.coords['sensors'].values)}"
+                )
             signal = signal.sel(sensors=sensor_name)
         else:
             signal = signal.isel(sensors=0)
@@ -289,14 +293,14 @@ def plot_compensation_fit(
 
     theta1 = fit_results.get("theta1")
     theta2 = fit_results.get("theta2")
-    T = fit_results.get("T_matrix")
+    M = fit_results.get("T_matrix")
     subtitle = ""
     if theta1 is not None and theta2 is not None:
         subtitle += f"θ1={np.degrees(theta1):.1f}°, θ2={np.degrees(theta2):.1f}°"
-    if T is not None:
+    if M is not None:
         if subtitle:
             subtitle += "\n"
-        subtitle += f"T=[[{T[0,0]:.3f}, {T[0,1]:.3f}], [{T[1,0]:.3f}, {T[1,1]:.3f}]]"
+        subtitle += f"M=[[{M[0,0]:.3f}, {M[0,1]:.3f}], [{M[1,0]:.3f}, {M[1,1]:.3f}]]"
 
     ax.set_title((title or "Compensation Fit") + (f"\n{subtitle}" if subtitle else ""))
     ax.set_xlabel(gate_x_name)
@@ -363,12 +367,12 @@ def plot_virtual_plunger_diagnostic(
 
         theta1 = fit_results.get("theta1")
         theta2 = fit_results.get("theta2")
-        T = fit_results.get("T_matrix")
+        M = fit_results.get("T_matrix")
         title_lines = ["Segments + triple points"]
         if theta1 is not None and theta2 is not None:
             title_lines.append(f"θ1={np.degrees(theta1):.1f}°, θ2={np.degrees(theta2):.1f}°")
-        if T is not None:
-            title_lines.append(f"T=[[{T[0,0]:.3f}, {T[0,1]:.3f}], [{T[1,0]:.3f}, {T[1,1]:.3f}]]")
+        if M is not None:
+            title_lines.append(f"M=[[{M[0,0]:.3f}, {M[0,1]:.3f}], [{M[1,0]:.3f}, {M[1,1]:.3f}]]")
         axes[2].set_title("\n".join(title_lines))
     else:
         axes[2].set_title("Segments + triple points")

@@ -442,3 +442,170 @@ class TestSensorCompensationE2E:
         fig.savefig(artifacts_dir / "plunger_sweep_comparison.png", dpi=150)
         plt.close(fig)
         assert (artifacts_dir / "plunger_sweep_comparison.png").exists()
+
+
+@pytest.mark.analysis
+@pytest.mark.skipif(not _qarray_available(), reason="qarray/JAX not functional in this environment")
+class TestSensorDotCouplingEffect:
+    """Demonstrate how sensor-gate → device-dot capacitive coupling tilts
+    charge transitions and degrades the sensor compensation fit.
+
+    When the sensor plunger has non-zero Cgd to device dots, sweeping the
+    sensor gate also shifts the dot chemical potentials.  Charge transitions
+    in the (sensor, device) 2D scan are no longer horizontal — they acquire
+    a slope proportional to the coupling ratio Cgd_sensor→dot / Cgd_dot→dot.
+    The BCP analysis assumes piecewise-constant peak positions (horizontal
+    transitions) and will mis-estimate alpha when they are tilted.
+    """
+
+    COUPLING_STRENGTHS = [0.0, 0.01, 0.03, 0.06]
+
+    @staticmethod
+    def _make_model(sensor_dot_coupling: float):
+        """Build a qarray model with controllable sensor→dot coupling.
+
+        Cgd[dot_0, gate_sensor] = sensor_dot_coupling
+        Cgd[dot_1, gate_sensor] = sensor_dot_coupling * 0.5
+
+        For reference, the main plunger self-capacitances are 0.13 (dot_0)
+        and 0.11 (dot_1), so coupling = 0.06 is ~46% of the self-coupling
+        — a significant parasitic effect.
+        """
+        from validation_utils.charge_stability.default import init_dot_model as _idm
+
+        Cgd = [
+            [0.13, 0.00, 0.00, 0.00, 0.00, 0.00, sensor_dot_coupling],
+            [0.00, 0.11, 0.00, 0.00, 0.00, 0.00, sensor_dot_coupling * 0.5],
+            [0.00, 0.00, 0.09, 0.00, 0.00, 0.00, 0.00],
+            [0.00, 0.00, 0.00, 0.13, 0.00, 0.00, 0.00],
+            [0.00, 0.00, 0.00, 0.00, 0.13, 0.00, 0.00],
+            [0.00, 0.00, 0.00, 0.00, 0.00, 0.10, 0.00],
+        ]
+        return _idm(
+            Cgd=Cgd,
+            Cds=[[0.003, 0.0015, 0.002, 0.002, 0.002, 0.002]],
+            Cgs=[[0.0015, 0.001, 0.000, 0.000, 0.000, 0.000, 0.100]],
+        )
+
+    def test_coupling_effect_on_sensor_compensation(self, analysis_runner):
+        """Sweep sensor-dot coupling and show how it degrades alpha estimation.
+
+        For each coupling strength:
+        1. Simulate a sensor-vs-dot_1 scan.
+        2. Run the full node 01 analysis pipeline.
+        3. Record the fitted alpha, whether the fit succeeded, and the
+           scan image (showing tilted vs horizontal transitions).
+
+        Generates a multi-panel figure comparing the raw scans and a
+        summary table of fitted alphas vs coupling strength.
+        """
+        v_sensor = sweep_voltages_mV(SENSOR_CENTER_V, SENSOR_SPAN_V, SENSOR_POINTS)
+        v_device = sweep_voltages_mV(DEVICE_CENTER_V, DEVICE_SPAN_V, DEVICE_POINTS)
+        pair_key = f"{SENSOR_GATE}_vs_{DEVICE_GATE_1}"
+
+        results_by_coupling = {}
+
+        for coupling in self.COUPLING_STRENGTHS:
+            model = self._make_model(coupling)
+
+            ds_raw = simulate_sensor_device_scan(
+                model,
+                v_sensor,
+                v_device,
+                sensor_gate_idx=6,
+                device_gate_idx=0,
+            )
+
+            node = analysis_runner(
+                "01_sensor_gate_compensation",
+                ds_raw_all={pair_key: ds_raw},
+                param_overrides=_default_param_overrides(
+                    sensor_device_mapping={SENSOR_GATE: [DEVICE_GATE_1]},
+                ),
+                artifacts_subdir=f"01_sensor_coupling/coupling_{coupling:.3f}",
+            )
+
+            fit = node.results.get("fit_results", {}).get(pair_key, {})
+            fp = fit.get("fit_params", {})
+            ds_proc = process_raw_dataset(ds_raw)
+            amp = ds_proc["amplitude"].isel(sensors=0).values
+
+            results_by_coupling[coupling] = {
+                "alpha": fit.get("coefficient", float("nan")),
+                "success": fp.get("success", False),
+                "n_changepoints": fp.get("n_changepoints", 0),
+                "alpha_std": fp.get("alpha_std", float("nan")),
+                "amplitude_2d": amp,
+                "v_sensor": ds_proc["amplitude"].coords["x_volts"].values,
+                "v_device": ds_proc["amplitude"].coords["y_volts"].values,
+            }
+
+        # Build comparison figure
+        n_cols = len(self.COUPLING_STRENGTHS)
+        fig, axes = plt.subplots(2, n_cols, figsize=(5 * n_cols, 9))
+
+        for col, coupling in enumerate(self.COUPLING_STRENGTHS):
+            r = results_by_coupling[coupling]
+            extent = [r["v_sensor"][0], r["v_sensor"][-1],
+                      r["v_device"][0], r["v_device"][-1]]
+
+            ax_scan = axes[0, col]
+            ax_scan.imshow(r["amplitude_2d"], extent=extent,
+                           origin="lower", aspect="auto", cmap="hot")
+            ax_scan.set_title(
+                f"Cgd(sensor→dot) = {coupling:.3f}\n"
+                f"α = {r['alpha']:.6f}  (CPs: {r['n_changepoints']})",
+                fontsize=9,
+            )
+            ax_scan.set_xlabel("Sensor gate (V)")
+            ax_scan.set_ylabel("Device gate (V)")
+
+            # Also run with compensation to show residual
+            model = self._make_model(coupling)
+            ds_comp = simulate_sensor_device_scan(
+                model, v_sensor, v_device,
+                sensor_gate_idx=6, device_gate_idx=0,
+                compensation_alpha=r["alpha"],
+            )
+            ds_comp_proc = process_raw_dataset(ds_comp)
+            amp_comp = ds_comp_proc["amplitude"].isel(sensors=0).values
+
+            ax_comp = axes[1, col]
+            ax_comp.imshow(amp_comp, extent=extent,
+                           origin="lower", aspect="auto", cmap="hot")
+            ax_comp.set_title(
+                f"After compensation (α = {r['alpha']:.6f})",
+                fontsize=9,
+            )
+            ax_comp.set_xlabel("Sensor gate (V)")
+            ax_comp.set_ylabel("Virtual device gate (V)")
+
+        fig.suptitle(
+            "Effect of Sensor-Dot Capacitive Coupling on Sensor Compensation\n"
+            "Top: raw scan  |  Bottom: after applying fitted α",
+            fontsize=12, fontweight="bold",
+        )
+        fig.tight_layout(rect=[0, 0, 1, 0.93])
+
+        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "01_sensor_coupling"
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        fig.savefig(artifacts_dir / "coupling_effect_comparison.png", dpi=150)
+        plt.close(fig)
+        assert (artifacts_dir / "coupling_effect_comparison.png").exists()
+
+        # Print summary table
+        print("\n=== Sensor-Dot Coupling Effect Summary ===")
+        print(f"{'Cgd':>8s} {'alpha':>12s} {'alpha_std':>12s} {'CPs':>5s} {'success':>8s}")
+        for coupling in self.COUPLING_STRENGTHS:
+            r = results_by_coupling[coupling]
+            print(
+                f"{coupling:8.3f} {r['alpha']:12.6f} {r['alpha_std']:12.6f} "
+                f"{r['n_changepoints']:5d} {str(r['success']):>8s}"
+            )
+
+        # The zero-coupling case should succeed; we don't assert failure
+        # for coupled cases — this test is diagnostic, showing the
+        # degradation trend.
+        r0 = results_by_coupling[0.0]
+        assert r0["success"], "Zero-coupling baseline should succeed"
+        assert np.isfinite(r0["alpha"]), "Zero-coupling alpha should be finite"

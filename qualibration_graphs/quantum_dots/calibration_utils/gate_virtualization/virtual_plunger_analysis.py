@@ -11,15 +11,12 @@ Pipeline
 3. Angle clustering: segment directions are binned into a weighted angular
    histogram; the two most prominent peaks give the primary charge-transition
    angles theta1 and theta2.
-4. Transformation matrix construction (paper Eqs. 23-25):
-       R = rotation(theta1)
-       S = shear(theta2 - theta1)
-       T = S @ R
+4. Transformation matrix construction (Volk et al., Eq. 1):
+   M = virtual-to-physical cross-talk matrix for the gate pair.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -42,24 +39,20 @@ except (ImportError, SystemError):
             analyze_edge_map,
         )
     except ImportError:
-        analyze_edge_map = None  # type: ignore[assignment]
-        SegmentFit = None  # type: ignore[assignment,misc]
+        import sys as _sys
+        from importlib.util import spec_from_file_location, module_from_spec
+        from pathlib import Path as _Path
 
-
-@dataclass
-class _FallbackSegment:
-    """Minimal segment representation compatible with plotting/extraction code."""
-
-    points: np.ndarray
-    start: np.ndarray
-    end: np.ndarray
-    centroid: np.ndarray
-    direction: np.ndarray
-    normal: np.ndarray
-    slope: float
-    intercept: float
-    proj_min: float
-    proj_max: float
+        _ela_name = "_edge_line_analysis_direct"
+        _ela_path = _Path(__file__).resolve().parent.parent / "charge_stability" / "edge_line_analysis.py"
+        if not _ela_path.exists():
+            raise ImportError(f"edge_line_analysis.py not found at {_ela_path}")
+        _spec = spec_from_file_location(_ela_name, _ela_path)
+        _mod = module_from_spec(_spec)
+        _sys.modules[_ela_name] = _mod
+        _spec.loader.exec_module(_mod)  # type: ignore[union-attr]
+        analyze_edge_map = _mod.analyze_edge_map  # type: ignore[no-redef]
+        SegmentFit = _mod.SegmentFit  # type: ignore[no-redef,misc]
 
 
 # ---------------------------------------------------------------------------
@@ -71,12 +64,8 @@ def _edge_detect(
     amplitude_2d: np.ndarray,
     *,
     hazard: float = 1 / 200.0,
-    edge_threshold: float = 0.25,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Run BayesianCP edge detection on a 2D amplitude grid.
-
-    Replicates the logic from ``charge_stability.analysis.fit_individual_raw_data``
-    but decoupled from the node / sensor objects.
 
     Parameters
     ----------
@@ -84,8 +73,6 @@ def _edge_detect(
         2D array of shape ``(ny, nx)``.
     hazard : float
         Hazard rate for BayesianCP.
-    edge_threshold : float
-        Threshold for binarising the edge probability map.
 
     Returns
     -------
@@ -208,13 +195,13 @@ def _build_transformation_matrix(
     theta1: float,
     theta2: float,
 ) -> np.ndarray:
-    """Construct the virtual gate cross-talk correction matrix.
+    """Construct the virtual-to-physical cross-talk matrix for a gate pair.
 
-    Given two charge-transition angles, build a matrix *M* that maps
-    virtual gate voltages to physical plunger voltages such that each
-    virtual gate controls only one dot.  Returns ``T = M^{-1}``
-    (physical-to-virtual), which is close to the identity when
-    cross-talk is moderate.
+    Given two charge-transition angles from a plunger–plunger scan,
+    build the 2×2 matrix *M* whose columns are the physical-space
+    directions of each virtual gate.  This is the incremental
+    cross-capacitance matrix in the Volk et al. convention (Eq. 1,
+    npj Quantum Information 5, 29, 2019): ``v_physical = M @ v_virtual``.
 
     Parameters
     ----------
@@ -225,21 +212,22 @@ def _build_transformation_matrix(
     Returns
     -------
     np.ndarray
-        2×2 matrix *T* mapping physical plunger voltages to virtual
-        gate voltages: ``v_virtual = T @ v_physical``.
+        2×2 matrix *M* (virtual → physical).
 
     Notes
     -----
     Each transition has slope ``m = cot(θ) = dv_y / dv_x``.  The
     steeper transition (|m| > 1, more vertical) is associated with
     the plunger-x gate, and the shallower one (|m| < 1) with
-    plunger-y.  The virtual-to-physical matrix is::
+    plunger-y.  The matrix is::
 
         M = [[   1,   1/m_steep ],
              [ m_shallow,    1   ]]
 
-    whose columns are the physical-space directions of each virtual
-    gate, normalised so the diagonal is [1, 1].
+    Column 0 = physical direction of virtual-gate-x (parallel to the
+    *shallow* charge transition, so it doesn't cross dot-y's line).
+    Column 1 = physical direction of virtual-gate-y (parallel to the
+    *steep* charge transition).
     """
     m_a = np.cos(theta1) / np.sin(theta1)
     m_b = np.cos(theta2) / np.sin(theta2)
@@ -255,131 +243,41 @@ def _build_transformation_matrix(
             [m_shallow, 1.0],
         ]
     )
-    return np.linalg.inv(M)
-
-
-def _orthogonal_fit_fallback(points: np.ndarray) -> _FallbackSegment:
-    """Total-least-squares line fit used when scikit-image is unavailable."""
-    pts = np.asarray(points, dtype=float)
-    centroid = pts.mean(axis=0)
-    centered = pts - centroid
-
-    cov = centered.T @ centered / max(len(pts), 1)
-    eigvals, eigvecs = np.linalg.eigh(cov)
-    direction = eigvecs[:, int(np.argmax(eigvals))]
-    direction = direction / (np.linalg.norm(direction) + 1e-12)
-    normal = np.array([-direction[1], direction[0]])
-
-    projections = centered @ direction
-    proj_min = float(projections.min())
-    proj_max = float(projections.max())
-
-    start = centroid + proj_min * direction
-    end = centroid + proj_max * direction
-
-    slope = np.inf if abs(direction[0]) < 1e-9 else direction[1] / direction[0]
-    intercept = np.nan if not np.isfinite(slope) else float(centroid[1] - slope * centroid[0])
-
-    return _FallbackSegment(
-        points=pts,
-        start=start,
-        end=end,
-        centroid=centroid,
-        direction=direction,
-        normal=normal,
-        slope=float(slope),
-        intercept=intercept,
-        proj_min=proj_min,
-        proj_max=proj_max,
-    )
-
-
-def _extract_segments_fallback(
-    mean_cp: np.ndarray,
-    *,
-    threshold: float,
-    n_lines: int = 2,
-    iterations: int = 300,
-) -> List[_FallbackSegment]:
-    """Estimate up to two dominant line segments via deterministic RANSAC."""
-
-    def _angular_distance(a: float, b: float) -> float:
-        return float(abs(((a - b + np.pi / 2) % np.pi) - np.pi / 2))
-
-    binary = np.asarray(mean_cp >= threshold, dtype=bool)
-    pts = np.argwhere(binary).astype(float)
-
-    if len(pts) < 10:
-        return []
-
-    # Keep runtime stable on dense maps while preserving the dominant geometry.
-    rng = np.random.default_rng(0)
-    if len(pts) > 6000:
-        pts = pts[rng.choice(len(pts), size=6000, replace=False)]
-
-    remaining = np.ones(len(pts), dtype=bool)
-    segments: List[_FallbackSegment] = []
-    min_inliers = max(20, int(0.01 * len(pts)))
-    dist_threshold = 1.8
-    selected_angles: List[float] = []
-    min_angle_sep = np.deg2rad(15.0)
-
-    for line_idx in range(n_lines):
-        candidates = pts[remaining]
-        line_min_inliers = min_inliers if line_idx == 0 else max(10, int(0.003 * len(pts)))
-        if len(candidates) < line_min_inliers:
-            break
-
-        best_inliers = None
-        best_count = 0
-        n = len(candidates)
-        if n < 2:
-            break
-
-        for _ in range(iterations):
-            i, j = rng.integers(0, n, size=2)
-            if i == j:
-                continue
-            p1, p2 = candidates[i], candidates[j]
-            d = p2 - p1
-            norm = np.linalg.norm(d)
-            if norm < 1e-9:
-                continue
-            d = d / norm
-            theta = float(np.arctan2(d[1], d[0]) % np.pi)
-            if selected_angles and any(_angular_distance(theta, t) < min_angle_sep for t in selected_angles):
-                continue
-            nvec = np.array([-d[1], d[0]])
-            distances = np.abs((candidates - p1) @ nvec)
-            inliers = distances <= dist_threshold
-            count = int(np.count_nonzero(inliers))
-            if count > best_count:
-                best_count = count
-                best_inliers = inliers
-
-        if best_inliers is None or best_count < line_min_inliers:
-            break
-
-        seg_points = candidates[best_inliers]
-        segment = _orthogonal_fit_fallback(seg_points)
-        segments.append(segment)
-        selected_angles.append(float(np.arctan2(segment.direction[1], segment.direction[0]) % np.pi))
-
-        # Remove points near this line to reveal a second dominant family.
-        rem_idx = np.where(remaining)[0]
-        all_candidates = pts[rem_idx]
-        d = segment.direction
-        nvec = np.array([-d[1], d[0]])
-        distances_all = np.abs((all_candidates - segment.centroid) @ nvec)
-        keep_local = distances_all > (dist_threshold * 3.0)
-        remaining[rem_idx[~keep_local]] = False
-
-    return segments
+    return M
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
+
+def _build_single_angle_matrix(theta: float) -> np.ndarray:
+    """Build a partial 2×2 M matrix from a single charge-transition angle.
+
+    Used for asymmetric pairs (plunger vs sensor/barrier) where only one
+    charge-transition direction is observed — typically a nearly-vertical
+    line (θ ≈ 0 or θ ≈ π in our convention).
+
+    Angle convention
+    ~~~~~~~~~~~~~~~~
+    ``θ = arctan2(d_col, d_row) % π``, so **vertical** lines in the plot
+    (along the row/y axis) have θ ≈ 0 or θ ≈ π, and **horizontal** lines
+    have θ ≈ π/2.
+
+    The cross-talk coefficient is the column (plunger) shift per unit row
+    (device-gate) change, i.e. ``α = d_col / d_row = sin(θ) / cos(θ) =
+    tan(θ)``.  For a perfectly vertical line (θ → 0) this is ≈ 0 (no
+    cross-talk), as expected.
+
+    In the symmetric ``_build_transformation_matrix`` the steep-line
+    entry is ``M[0,1] = 1/m_steep = 1/cot(θ) = tan(θ)``, consistent
+    with this formula.
+
+    Returns ``M = [[1, α], [0, 1]]``, so only M[0,1] is non-trivial.
+    """
+    cos_t = np.cos(theta)
+    alpha = np.sin(theta) / cos_t if abs(cos_t) > 1e-12 else 0.0
+    return np.array([[1.0, alpha], [0.0, 1.0]], dtype=float)
 
 
 def extract_virtual_plunger_coefficients(
@@ -391,12 +289,18 @@ def extract_virtual_plunger_coefficients(
     sensor_idx: int = 0,
     edge_threshold: float = 0.25,
     hazard: float = 1 / 200.0,
+    on_segment_tol: float = 2.5,
+    asymmetric: bool = False,
 ) -> Optional[Dict[str, Any]]:
-    """Extract virtual plunger gate coefficients from a plunger-plunger scan.
+    """Extract virtual plunger gate coefficients from a 2D scan.
 
-    From a 2D charge-stability map of two plunger gates, detect the charge
-    transition line slopes and construct the virtual gate transformation
-    matrix T that decouples the two dots.
+    For **symmetric** pairs (plunger–plunger), two charge-transition angles
+    are required to build the full 2×2 cross-talk matrix.
+
+    For **asymmetric** pairs (plunger–sensor, plunger–barrier), only one
+    angle is needed.  The single transition gives the device-gate→plunger
+    cross-talk coefficient.  Set ``asymmetric=True`` to accept a single
+    angle as success.
 
     Parameters
     ----------
@@ -414,12 +318,19 @@ def extract_virtual_plunger_coefficients(
         Threshold for binarising the BayesianCP edge map.
     hazard : float
         Hazard rate for the BayesianCP model.
+    on_segment_tol : float
+        Pixel tolerance for accepting an intersection point as lying on
+        both segments (passed to ``analyze_edge_map``).
+    asymmetric : bool
+        If True, accept a single detected angle and build a partial M
+        matrix with only the device→plunger cross-talk entry.
 
     Returns
     -------
     dict or None
-        ``{"T_matrix": ndarray, "theta1": float, "theta2": float,
-        "segments": list, "mean_cp": ndarray, "fit_params": dict}``
+        ``{"T_matrix": ndarray (2×2, virtual→physical), "theta1": float,
+        "theta2": float | None, "segments": list, "mean_cp": ndarray,
+        "fit_params": dict}``
         when analysis succeeds, or ``None`` on failure.
     """
     data = ds[signal_var]
@@ -431,21 +342,17 @@ def extract_virtual_plunger_coefficients(
     mean_cp, edge_base = _edge_detect(
         amplitude_2d,
         hazard=hazard,
-        edge_threshold=edge_threshold,
     )
 
-    intersections: list = []
-    if analyze_edge_map is None:
-        segments = _extract_segments_fallback(np.array(mean_cp), threshold=edge_threshold)
-    else:
-        edge_analysis = analyze_edge_map(
-            np.array(mean_cp),
-            threshold=edge_threshold,
-            base_image=edge_base,
-            show=False,
-        )
-        segments = edge_analysis["segments"]
-        intersections = edge_analysis.get("intersections", [])
+    edge_analysis = analyze_edge_map(
+        np.array(mean_cp),
+        threshold=edge_threshold,
+        on_segment_tol=on_segment_tol,
+        base_image=edge_base,
+        show=False,
+    )
+    segments = edge_analysis["segments"]
+    intersections = edge_analysis.get("intersections", [])
     if not segments:
         return {
             "T_matrix": None,
@@ -457,6 +364,39 @@ def extract_virtual_plunger_coefficients(
             "plunger_gate_name": plunger_gate_name,
             "device_gate_name": device_gate_name,
             "fit_params": {"success": False, "reason": "no segments detected"},
+        }
+
+    if asymmetric:
+        # For asymmetric pairs (plunger vs barrier/sensor), we look for the
+        # charge-transition cluster closest to vertical.  In our angle
+        # convention θ = arctan2(d_col, d_row) % π, vertical lines have
+        # θ ≈ 0 or θ ≈ π, so "distance from vertical" = min(θ, π − θ).
+        # If only one cluster is found, use it directly.
+        primary_angles = _extract_primary_angles(segments, n_angles=4)
+        if not primary_angles:
+            return {
+                "T_matrix": None,
+                "theta1": None,
+                "theta2": None,
+                "segments": segments,
+                "intersections": intersections,
+                "mean_cp": mean_cp,
+                "plunger_gate_name": plunger_gate_name,
+                "device_gate_name": device_gate_name,
+                "fit_params": {"success": False, "reason": "no primary angles found"},
+            }
+        theta1 = min(primary_angles, key=lambda a: min(a, np.pi - a))
+        T = _build_single_angle_matrix(theta1)
+        return {
+            "T_matrix": T,
+            "theta1": theta1,
+            "theta2": None,
+            "segments": segments,
+            "intersections": intersections,
+            "mean_cp": mean_cp,
+            "plunger_gate_name": plunger_gate_name,
+            "device_gate_name": device_gate_name,
+            "fit_params": {"success": True, "mode": "asymmetric"},
         }
 
     primary_angles = _extract_primary_angles(segments, n_angles=2)
