@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from calibration_utils.gate_virtualization.base_parameters import (
     GateVirtualizationBaseParameters,
@@ -25,3 +25,10 @@ class SensorCompensationParameters(GateVirtualizationBaseParameters):
     """Whether to perform the X axis sweep using the QDAC instead of the OPX."""
     device_gate_from_qdac: bool = False
     """Whether to perform the Y axis sweep using the QDAC instead of the OPX."""
+
+    fit_method: str = "bayesian_cp"
+    """Fitting method: ``"bayesian_cp"`` (robust to charge transitions via
+    profile-likelihood BCP) or ``"global"`` (legacy single Lorentzian)."""
+    fit_kwargs: Optional[Dict[str, Any]] = None
+    """Extra keyword arguments forwarded to the chosen fitting function.
+    For ``bayesian_cp``: ``{"hazard": 1/30, "cp_threshold": 0.3}``."""

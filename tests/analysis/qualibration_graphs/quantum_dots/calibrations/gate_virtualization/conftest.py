@@ -23,6 +23,7 @@ from unittest.mock import patch
 if "qualibrate.parameters" not in sys.modules:
     try:
         import qualibrate.core.parameters as _cp
+
         sys.modules["qualibrate.parameters"] = _cp
     except ImportError:
         pass
@@ -82,7 +83,9 @@ from validation_utils.charge_stability.default import init_dot_model  # noqa: E4
 from .simulation_helpers import simulate_sensor_device_scan, sweep_voltages_mV  # noqa: E402
 
 # ── Calibrated sensor compensation coefficients ───────────────────────
-CALIBRATED_SENSOR_COMP = {0: -0.015310, 1: -0.024623}
+# Extracted from node 01 analysis with the asymmetric model below
+# (Cds dot_0=0.003, dot_1=0.0015; Cgs gate_0=0.0015, gate_1=0.001).
+CALIBRATED_SENSOR_COMP = {0: -0.0290778656, 1: -0.0184242463}
 
 
 # ── qarray model fixtures ─────────────────────────────────────────────
@@ -90,8 +93,15 @@ CALIBRATED_SENSOR_COMP = {0: -0.015310, 1: -0.024623}
 
 @pytest.fixture
 def dot_model():
-    """Return a fully configured qarray ``ChargeSensedDotArray`` (6 dots + 1 sensor)."""
-    return init_dot_model()
+    """Return a fully configured qarray ``ChargeSensedDotArray`` (6 dots + 1 sensor).
+
+    Dot-sensor couplings are asymmetric so the two device dots produce
+    visibly different sensor responses (dot_0 couples more strongly).
+    """
+    return init_dot_model(
+        Cds=[[0.003, 0.0015, 0.002, 0.002, 0.002, 0.002]],
+        Cgs=[[0.0015, 0.001, 0.000, 0.000, 0.000, 0.000, 0.100]],
+    )
 
 
 # ── Simulation helpers ─────────────────────────────────────────────────
@@ -255,9 +265,13 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot):
         call_node_action(node, "save_results")
 
         artifacts_dir = ARTIFACTS_BASE / (artifacts_subdir or node_name)
-        for fig in node.results.get("figures", {}).values():
-            save_analysis_plot(fig, artifacts_dir)
-            break
+        figures = node.results.get("figures", {})
+        if len(figures) == 1:
+            save_analysis_plot(next(iter(figures.values())), artifacts_dir)
+        else:
+            for pair_key, fig in figures.items():
+                safe_name = pair_key.replace("/", "_")
+                save_analysis_plot(fig, artifacts_dir, filename=f"{safe_name}.png")
 
         return node
 

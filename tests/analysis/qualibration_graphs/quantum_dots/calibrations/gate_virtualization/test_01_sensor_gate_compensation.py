@@ -22,15 +22,15 @@ import numpy as np
 import pytest
 
 try:
-    # Standard pytest collection path (package import via __init__.py hierarchy)
     from .simulation_helpers import simulate_sensor_device_scan, sweep_voltages_mV
+    from .conftest import simulate_plunger_plunger_scan, simulate_sensor_sweep
 except ImportError:
-    # Direct execution path (e.g. PyCharm pydevd / `python test_01_...py`)
     import sys as _sys
     from pathlib import Path as _Path
 
     _sys.path.insert(0, str(_Path(__file__).parent))
     from simulation_helpers import simulate_sensor_device_scan, sweep_voltages_mV  # type: ignore[no-redef]
+    from conftest import simulate_plunger_plunger_scan, simulate_sensor_sweep  # type: ignore[no-redef]
 
 # Load analysis modules directly to avoid the package __init__.py, which
 # transitively pulls in optional UI dependencies at import time.
@@ -131,11 +131,11 @@ DEVICE_GATE_1 = "virtual_dot_1"
 DEVICE_GATE_2 = "virtual_dot_2"
 
 SENSOR_CENTER_V = 0.015
-SENSOR_SPAN_V = 0.010
+SENSOR_SPAN_V = 0.0025
 DEVICE_CENTER_V = 0.0
-DEVICE_SPAN_V = 0.050
+DEVICE_SPAN_V = 0.10
 SENSOR_POINTS = 100
-DEVICE_POINTS = 60
+DEVICE_POINTS = 150
 
 
 def _default_param_overrides(**extra):
@@ -145,6 +145,8 @@ def _default_param_overrides(**extra):
         "sensor_gate_points": SENSOR_POINTS,
         "device_gate_span": DEVICE_SPAN_V,
         "device_gate_points": DEVICE_POINTS,
+        "fit_method": "bayesian_cp",
+        "fit_kwargs": {"hazard": 1 / 30.0, "cp_threshold": 0.3},
     }
     base.update(extra)
     return base
@@ -192,7 +194,7 @@ class TestSensorCompensationE2E:
             param_overrides=_default_param_overrides(
                 sensor_device_mapping={SENSOR_GATE: [DEVICE_GATE_1]},
             ),
-            artifacts_subdir="01_sensor_gate_compensation_e2e",
+            artifacts_subdir="01_sensor_compensation",
         )
 
         assert "fit_results" in node.results, "analyse_data did not produce fit_results"
@@ -247,7 +249,7 @@ class TestSensorCompensationE2E:
                 device_gate_points=50,
                 sensor_device_mapping={SENSOR_GATE: [DEVICE_GATE_1, DEVICE_GATE_2]},
             ),
-            artifacts_subdir="01_sensor_gate_compensation_two_pairs",
+            artifacts_subdir="01_sensor_compensation",
         )
 
         assert len(node.results["fit_results"]) == 2
@@ -281,17 +283,11 @@ class TestSensorCompensationE2E:
             param_overrides=_default_param_overrides(
                 sensor_device_mapping={SENSOR_GATE: [DEVICE_GATE_1]},
             ),
-            artifacts_subdir="01_sensor_compensation_qarray",
+            artifacts_subdir="01_sensor_compensation",
         )
 
-        assert pair_key in node.results.get("figures", {}), "plot_data did not produce a figure"
-        fig = node.results["figures"][pair_key]
-
-        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "01_sensor_compensation_qarray"
-        artifacts_dir.mkdir(parents=True, exist_ok=True)
-        fig.savefig(artifacts_dir / "fit_diagnostic.png", dpi=150)
-        plt.close(fig)
-        assert (artifacts_dir / "fit_diagnostic.png").exists()
+        figures = node.results.get("figures", {})
+        assert len(figures) > 0, "plot_data did not produce a figure"
 
     def test_plot_compensation_comparison(self, dot_model, analysis_runner):
         """Alpha from node's analyse_data correctly removes cross-talk in a re-simulated scan."""
@@ -312,7 +308,7 @@ class TestSensorCompensationE2E:
             param_overrides=_default_param_overrides(
                 sensor_device_mapping={SENSOR_GATE: [DEVICE_GATE_1]},
             ),
-            artifacts_subdir="01_sensor_compensation_qarray",
+            artifacts_subdir="01_sensor_compensation",
         )
 
         alpha = node.results["fit_results"][pair_key]["coefficient"]
@@ -346,8 +342,103 @@ class TestSensorCompensationE2E:
         axes[1].set_ylabel("Virtual device gate (V)")
         plt.tight_layout()
 
-        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "01_sensor_compensation_qarray"
+        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "01_sensor_compensation"
         artifacts_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(artifacts_dir / "compensation_comparison.png", dpi=150)
         plt.close(fig)
         assert (artifacts_dir / "compensation_comparison.png").exists()
+
+    def test_plot_plunger_sweep_before_after(self, dot_model, analysis_runner):
+        """Show effect of sensor compensation on a dot_1-vs-dot_2 charge stability scan."""
+        # Run node analysis for both device gates to get alphas
+        v_sensor = sweep_voltages_mV(SENSOR_CENTER_V, SENSOR_SPAN_V, SENSOR_POINTS)
+        v_device = sweep_voltages_mV(DEVICE_CENTER_V, DEVICE_SPAN_V, DEVICE_POINTS)
+
+        ds_raw_all = {}
+        for gate_name, gate_idx in [(DEVICE_GATE_1, 0), (DEVICE_GATE_2, 1)]:
+            ds_raw_all[f"{SENSOR_GATE}_vs_{gate_name}"] = simulate_sensor_device_scan(
+                dot_model,
+                v_sensor,
+                v_device,
+                sensor_gate_idx=6,
+                device_gate_idx=gate_idx,
+            )
+
+        node = analysis_runner(
+            "01_sensor_gate_compensation",
+            ds_raw_all=ds_raw_all,
+            param_overrides=_default_param_overrides(
+                sensor_device_mapping={SENSOR_GATE: [DEVICE_GATE_1, DEVICE_GATE_2]},
+            ),
+            artifacts_subdir="01_sensor_compensation",
+        )
+
+        alphas = {
+            0: node.results["fit_results"][f"{SENSOR_GATE}_vs_{DEVICE_GATE_1}"]["coefficient"],
+            1: node.results["fit_results"][f"{SENSOR_GATE}_vs_{DEVICE_GATE_2}"]["coefficient"],
+        }
+        for pair_key, fit in node.results["fit_results"].items():
+            fp = fit["fit_params"]
+            n_cp = fp.get("n_changepoints", 0)
+            alpha_std = fp.get("alpha_std", float("nan"))
+            print(f"  {pair_key}: α={fit['coefficient']:.6f} ± {alpha_std:.6f}  ({n_cp} CPs)")
+
+        # Find sensor operating point
+        sensor_sweep_mV = np.linspace(
+            (SENSOR_CENTER_V - SENSOR_SPAN_V) * 1e3,
+            (SENSOR_CENTER_V + SENSOR_SPAN_V) * 1e3,
+            300,
+        )
+        ds_sensor = simulate_sensor_sweep(dot_model, sensor_sweep_mV)
+        signal = np.hypot(ds_sensor["I"].values[0], ds_sensor["Q"].values[0])
+        sensor_op_mV = float(sensor_sweep_mV[np.argmax(signal)])
+
+        plunger_span_V = 0.050
+        plunger_pts = 200
+        v_p = sweep_voltages_mV(0.0, plunger_span_V, plunger_pts)
+
+        data_uncomp = simulate_plunger_plunger_scan(
+            dot_model,
+            v_p,
+            v_p,
+            plunger_x_gate_idx=0,
+            plunger_y_gate_idx=1,
+            sensor_operating_point=sensor_op_mV,
+        )
+        data_comp = simulate_plunger_plunger_scan(
+            dot_model,
+            v_p,
+            v_p,
+            plunger_x_gate_idx=0,
+            plunger_y_gate_idx=1,
+            sensor_operating_point=sensor_op_mV,
+            sensor_compensation=alphas,
+        )
+
+        amp_uncomp = np.hypot(
+            data_uncomp["I"].values[0],
+            data_uncomp["Q"].values[0],
+        )
+        amp_comp = np.hypot(
+            data_comp["I"].values[0],
+            data_comp["Q"].values[0],
+        )
+        extent = [v_p[0], v_p[-1], v_p[0], v_p[-1]]
+
+        fig, axes = plt.subplots(1, 2, figsize=(10, 4.5))
+        for ax, data, title in [
+            (axes[0], amp_uncomp, "Physical (no sensor comp)"),
+            (axes[1], amp_comp, f"Sensor-compensated (α₁={alphas[0]:.4f}, α₂={alphas[1]:.4f})"),
+        ]:
+            ax.imshow(data, extent=extent, origin="lower", aspect="auto", cmap="hot")
+            ax.set_title(title, fontsize=9)
+            ax.set_xlabel("dot_1 (mV)")
+            ax.set_ylabel("dot_2 (mV)")
+        fig.suptitle("Plunger Sweep: Effect of Sensor Compensation", fontweight="bold")
+        fig.tight_layout(rect=[0, 0, 1, 0.95])
+
+        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "01_sensor_compensation"
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        fig.savefig(artifacts_dir / "plunger_sweep_comparison.png", dpi=150)
+        plt.close(fig)
+        assert (artifacts_dir / "plunger_sweep_comparison.png").exists()

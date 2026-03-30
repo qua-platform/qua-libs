@@ -14,12 +14,36 @@ from calibration_utils.gate_virtualization.sensor_compensation_analysis import (
 )
 
 
-def plot_sensor_compensation_diagnostic(
+def _build_piecewise_model(
+    v_s: np.ndarray,
+    v_d: np.ndarray,
+    fp: Dict[str, Any],
+) -> np.ndarray:
+    """Build the 2D model signal using piecewise-linear center when available."""
+    cp_indices = fp.get("changepoint_indices", [])
+    v0_segments = fp.get("v0_segments", [])
+
+    if cp_indices and len(v0_segments) == len(cp_indices) + 1:
+        N = len(v_d)
+        center = np.empty(N)
+        boundaries = [0] + sorted(cp_indices) + [N]
+        for seg_k, (start, end) in enumerate(zip(boundaries[:-1], boundaries[1:])):
+            center[start:end] = fp["alpha"] * v_d[start:end] + v0_segments[seg_k]
+    else:
+        center = fp["v0"] + fp["alpha"] * v_d
+
+    vs = v_s[np.newaxis, :]
+    c = center[:, np.newaxis]
+    return fp["A"] / (1.0 + ((vs - c) / fp["gamma"]) ** 2) + fp["offset"]
+
+
+def _plot_sensor_row(
+    axes: Sequence,
     ds_processed: xr.Dataset,
     fit_result: Optional[Dict[str, Any]],
     pair_key: str,
-) -> Figure:
-    """3-panel diagnostic figure: raw data / Lorentzian fit / residual."""
+) -> None:
+    """Populate a 3-axis row with raw scan / Lorentzian fit / residual."""
     amplitude = ds_processed["amplitude"].isel(sensors=0).values
     v_s = ds_processed["amplitude"].coords["x_volts"].values
     v_d = ds_processed["amplitude"].coords["y_volts"].values
@@ -27,25 +51,129 @@ def plot_sensor_compensation_diagnostic(
 
     fp = fit_result["fit_params"] if fit_result else None
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
-
     axes[0].imshow(amplitude, extent=extent, origin="lower", aspect="auto", cmap="hot")
-    axes[0].set_title(f"Sensor scan: {pair_key}")
+    axes[0].set_title(f"Sensor scan: {pair_key}", fontsize=9)
     axes[0].set_xlabel("Sensor gate (V)")
     axes[0].set_ylabel("Device gate (V)")
 
-    if fp is not None:
-        model_signal = shifted_lorentzian_2d(v_s, v_d, fp["A"], fp["v0"], fp["alpha"], fp["gamma"], fp["offset"])
-        axes[1].imshow(model_signal, extent=extent, origin="lower", aspect="auto", cmap="hot")
-        axes[1].set_title(f"Lorentzian fit (α={fp['alpha']:.4f})")
-        axes[1].set_xlabel("Sensor gate (V)")
+    if fp is None:
+        return
 
-        residual = amplitude - model_signal
-        axes[2].imshow(residual, extent=extent, origin="lower", aspect="auto", cmap="RdBu_r")
-        axes[2].set_title("Residual")
-        axes[2].set_xlabel("Sensor gate (V)")
+    cp_indices = fp.get("changepoint_indices", [])
+    v0_segments = fp.get("v0_segments", [])
+    has_cp = bool(cp_indices) and len(v0_segments) == len(cp_indices) + 1
 
-    plt.tight_layout()
+    if has_cp:
+        N = len(v_d)
+        boundaries = [0] + sorted(cp_indices) + [N]
+        seg_cmap = plt.get_cmap("Set2")
+        colors = seg_cmap(np.linspace(0, 1, len(v0_segments)))
+        for seg_k, (start, end) in enumerate(zip(boundaries[:-1], boundaries[1:])):
+            vd_seg = v_d[start:end]
+            peak_seg = fp["alpha"] * vd_seg + v0_segments[seg_k]
+            label = f"α={fp['alpha']:.4f}" if seg_k == 0 else None
+            axes[0].plot(
+                peak_seg,
+                vd_seg,
+                "-",
+                color=colors[seg_k],
+                lw=1.5,
+                label=label,
+            )
+        for cp_idx in cp_indices:
+            if 0 <= cp_idx < N:
+                axes[0].axhline(
+                    v_d[cp_idx],
+                    color="lime",
+                    ls=":",
+                    lw=0.8,
+                    alpha=0.8,
+                )
+        alpha_std = fp.get("alpha_std")
+        std_str = f" ± {alpha_std:.5f}" if alpha_std is not None else ""
+        axes[0].legend(fontsize=7, loc="upper right")
+        title_suffix = f"K={len(cp_indices)} CPs"
+    else:
+        peak_vs_device = fp["v0"] + fp["alpha"] * v_d
+        axes[0].plot(
+            peak_vs_device,
+            v_d,
+            "c--",
+            lw=1.2,
+            label=f"peak (α={fp['alpha']:.4f})",
+        )
+        axes[0].legend(fontsize=7, loc="upper right")
+        std_str = ""
+        title_suffix = "global fit"
+
+    model_signal = _build_piecewise_model(v_s, v_d, fp)
+    axes[1].imshow(
+        model_signal,
+        extent=extent,
+        origin="lower",
+        aspect="auto",
+        cmap="hot",
+    )
+    axes[1].set_title(
+        f"Lorentzian fit (α={fp['alpha']:.4f}{std_str})\n{title_suffix}",
+        fontsize=9,
+    )
+    axes[1].set_xlabel("Sensor gate (V)")
+
+    residual = amplitude - model_signal
+    axes[2].imshow(
+        residual,
+        extent=extent,
+        origin="lower",
+        aspect="auto",
+        cmap="RdBu_r",
+    )
+    axes[2].set_title("Residual", fontsize=9)
+    axes[2].set_xlabel("Sensor gate (V)")
+
+
+def plot_sensor_compensation_diagnostic(
+    ds_processed: xr.Dataset,
+    fit_result: Optional[Dict[str, Any]],
+    pair_key: str,
+) -> Figure:
+    """3-panel diagnostic figure for a single sensor-device pair."""
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+    _plot_sensor_row(axes, ds_processed, fit_result, pair_key)
+    fig.tight_layout()
+    return fig
+
+
+def plot_sensor_compensation_all_pairs(
+    datasets: Dict[str, xr.Dataset],
+    fit_results: Dict[str, Dict[str, Any]],
+) -> Figure:
+    """Combined multi-row diagnostic: one row per sensor-device pair.
+
+    Parameters
+    ----------
+    datasets : dict
+        ``{pair_key: processed xr.Dataset}``
+    fit_results : dict
+        ``{pair_key: fit_result_dict}`` (from ``extract_sensor_compensation_coefficients``).
+    """
+    pair_keys = list(datasets.keys())
+    n_rows = len(pair_keys)
+    if n_rows == 0:
+        fig, ax = plt.subplots(figsize=(6, 3))
+        ax.text(0.5, 0.5, "No pairs", ha="center", va="center")
+        ax.axis("off")
+        return fig
+
+    fig, axes = plt.subplots(n_rows, 3, figsize=(15, 4 * n_rows), squeeze=False)
+    for row, pair_key in enumerate(pair_keys):
+        _plot_sensor_row(
+            axes[row],
+            datasets[pair_key],
+            fit_results.get(pair_key),
+            pair_key,
+        )
+    fig.tight_layout()
     return fig
 
 
@@ -146,6 +274,19 @@ def plot_compensation_fit(
         x_s, x_e, y_s, y_e = _segment_to_voltage_coords(seg, x_values, y_values, ny, nx)
         ax.plot([x_s, x_e], [y_s, y_e], "c-", linewidth=1.5, alpha=0.8)
 
+    for pt in fit_results.get("intersections", []):
+        pt_x = x_values[0] + (pt[1] / max(nx, 1)) * (x_values[-1] - x_values[0])
+        pt_y = y_values[0] + (pt[0] / max(ny, 1)) * (y_values[-1] - y_values[0])
+        ax.scatter(
+            pt_x,
+            pt_y,
+            marker="*",
+            s=120,
+            c="gold",
+            edgecolor="k",
+            zorder=5,
+        )
+
     theta1 = fit_results.get("theta1")
     theta2 = fit_results.get("theta2")
     T = fit_results.get("T_matrix")
@@ -207,17 +348,30 @@ def plot_virtual_plunger_diagnostic(
             x_s, x_e, y_s, y_e = _segment_to_voltage_coords(seg, x_values, y_values, ny, nx)
             axes[2].plot([x_s, x_e], [y_s, y_e], "c-", linewidth=1.5, alpha=0.8)
 
+        for pt in fit_results.get("intersections", []):
+            pt_x = x_values[0] + (pt[1] / max(nx, 1)) * (x_values[-1] - x_values[0])
+            pt_y = y_values[0] + (pt[0] / max(ny, 1)) * (y_values[-1] - y_values[0])
+            axes[2].scatter(
+                pt_x,
+                pt_y,
+                marker="*",
+                s=120,
+                c="gold",
+                edgecolor="k",
+                zorder=5,
+            )
+
         theta1 = fit_results.get("theta1")
         theta2 = fit_results.get("theta2")
         T = fit_results.get("T_matrix")
-        title_lines = ["Segments + transform"]
+        title_lines = ["Segments + triple points"]
         if theta1 is not None and theta2 is not None:
             title_lines.append(f"θ1={np.degrees(theta1):.1f}°, θ2={np.degrees(theta2):.1f}°")
         if T is not None:
             title_lines.append(f"T=[[{T[0,0]:.3f}, {T[0,1]:.3f}], [{T[1,0]:.3f}, {T[1,1]:.3f}]]")
         axes[2].set_title("\n".join(title_lines))
     else:
-        axes[2].set_title("Segments + transform")
+        axes[2].set_title("Segments + triple points")
 
     fig.tight_layout()
     return fig

@@ -199,13 +199,6 @@ class TestVirtualPlungerE2E:
         assert abs(np.linalg.det(T)) > 1e-6, f"T matrix is singular: det={np.linalg.det(T)}"
 
         assert pair_key in node.results.get("figures", {}), "plot_data did not produce a figure"
-        fig = node.results["figures"][pair_key]
-
-        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "02_virtual_plunger_qarray"
-        artifacts_dir.mkdir(parents=True, exist_ok=True)
-        fig.savefig(artifacts_dir / "transition_analysis.png", dpi=150)
-        plt.close(fig)
-        assert (artifacts_dir / "transition_analysis.png").exists()
 
     def test_plot_charge_stability(self, dot_model):
         """Generate charge-stability diagrams with and without sensor compensation."""
@@ -258,30 +251,41 @@ class TestVirtualPlungerE2E:
         assert (artifacts_dir / "charge_stability.png").exists()
 
     def test_virtual_gate_sweep(self, dot_model, analysis_runner):
-        """Use node-derived T to sweep in virtual-gate space and compare maps."""
-        node, pair_key, ds_raw, v_px, v_py, sensor_opt_mV = self._run_node_pipeline(dot_model, analysis_runner)
+        """Run transition analysis on both physical and virtualized plunger sweeps."""
+        import xarray as xr
 
-        fit = node.results["fit_results"][pair_key]
+        # 1. Run node analysis on the physical (pre-virtualized) scan
+        node_phys, pair_key, ds_raw, v_px, v_py, sensor_opt_mV = self._run_node_pipeline(
+            dot_model,
+            analysis_runner,
+        )
+
+        fit = node_phys.results["fit_results"][pair_key]
         assert fit["fit_params"]["success"], f"Virtual plunger fit failed: {fit}"
         T = fit["T_matrix"]
         assert T is not None
 
-        raw_amplitude = np.hypot(ds_raw["I"].values[0], ds_raw["Q"].values[0])
-        T_inv = np.linalg.inv(T)
+        # Save the physical transition analysis figure
+        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "02_virtual_plunger_qarray"
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        if pair_key in node_phys.results.get("figures", {}):
+            node_phys.results["figures"][pair_key].savefig(
+                artifacts_dir / "transition_analysis_physical.png",
+                dpi=150,
+            )
+            plt.close(node_phys.results["figures"][pair_key])
 
-        v_virt_x = v_px
-        v_virt_y = v_py
-        VX, VY = np.meshgrid(v_virt_x, v_virt_y)
+        # 2. Build the virtualized scan dataset
+        T_inv = np.linalg.inv(T)
+        VX, VY = np.meshgrid(v_px, v_py)
         virt_flat = np.stack([VX.ravel(), VY.ravel()], axis=0)
         phys_flat = T_inv @ virt_flat
-
         phys_cx = T_inv @ np.array([(v_px[0] + v_px[-1]) / 2, (v_py[0] + v_py[-1]) / 2])
 
-        base = np.zeros(7)
         alpha_x = SENSOR_COMP.get(0, 0.0)
         alpha_y = SENSOR_COMP.get(1, 0.0)
 
-        voltage_array = np.tile(base, (phys_flat.shape[1], 1))
+        voltage_array = np.zeros((phys_flat.shape[1], 7))
         voltage_array[:, 0] = phys_flat[0]
         voltage_array[:, 1] = phys_flat[1]
         voltage_array[:, 6] = (
@@ -289,26 +293,60 @@ class TestVirtualPlungerE2E:
         )
 
         z, _ = dot_model.charge_sensor_open(-voltage_array)
-        virt_signal = z.squeeze().reshape(len(v_virt_y), len(v_virt_x))
+        virt_signal = z.squeeze().reshape(len(v_py), len(v_px))
 
         v_x_V = v_px * 1e-3
         v_y_V = v_py * 1e-3
+        ds_virt = xr.Dataset(
+            {
+                "I": xr.DataArray(
+                    virt_signal[np.newaxis, :, :],
+                    dims=["sensors", "y_volts", "x_volts"],
+                    coords={"sensors": ["sensor_1"], "x_volts": v_x_V, "y_volts": v_y_V},
+                ),
+                "Q": xr.DataArray(
+                    np.zeros_like(virt_signal)[np.newaxis, :, :],
+                    dims=["sensors", "y_volts", "x_volts"],
+                    coords={"sensors": ["sensor_1"], "x_volts": v_x_V, "y_volts": v_y_V},
+                ),
+            }
+        )
+
+        # 3. Run node analysis on the virtualized scan
+        virt_pair_key = f"{PLUNGER_X_GATE}_vs_{PLUNGER_Y_GATE}"
+        node_virt = analysis_runner(
+            "02_virtual_plunger_calibration",
+            ds_raw_all={virt_pair_key: ds_virt},
+            param_overrides=_default_param_overrides(),
+            artifacts_subdir="02_virtual_plunger_qarray",
+        )
+
+        # Save the virtualized transition analysis figure
+        if virt_pair_key in node_virt.results.get("figures", {}):
+            node_virt.results["figures"][virt_pair_key].savefig(
+                artifacts_dir / "transition_analysis_virtual.png",
+                dpi=150,
+            )
+            plt.close(node_virt.results["figures"][virt_pair_key])
+
+        # 4. Side-by-side comparison plot
+        raw_amplitude = np.hypot(ds_raw["I"].values[0], ds_raw["Q"].values[0])
         extent = [v_x_V[0], v_x_V[-1], v_y_V[0], v_y_V[-1]]
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
         axes[0].imshow(raw_amplitude, extent=extent, origin="lower", aspect="auto", cmap="hot")
-        axes[0].set_title("Raw plunger gates (with sensor comp)")
+        axes[0].set_title("Physical plunger gates (sensor-compensated)")
         axes[0].set_xlabel("Plunger 1 (V)")
         axes[0].set_ylabel("Plunger 2 (V)")
 
         axes[1].imshow(virt_signal, extent=extent, origin="lower", aspect="auto", cmap="hot")
-        axes[1].set_title("Virtual gates\n" f"T=[[{T[0,0]:.3f}, {T[0,1]:.3f}], [{T[1,0]:.3f}, {T[1,1]:.3f}]]")
+        axes[1].set_title(
+            "Virtual gates (plunger-virtualized)\n" f"T=[[{T[0,0]:.3f}, {T[0,1]:.3f}], [{T[1,0]:.3f}, {T[1,1]:.3f}]]"
+        )
         axes[1].set_xlabel("Virtual gate 1 (V)")
         axes[1].set_ylabel("Virtual gate 2 (V)")
 
         plt.tight_layout()
-        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "02_virtual_plunger_qarray"
-        artifacts_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(artifacts_dir / "virtual_gate_sweep.png", dpi=150)
         plt.close(fig)
         assert (artifacts_dir / "virtual_gate_sweep.png").exists()

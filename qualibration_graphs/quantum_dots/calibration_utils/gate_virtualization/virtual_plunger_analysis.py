@@ -434,6 +434,7 @@ def extract_virtual_plunger_coefficients(
         edge_threshold=edge_threshold,
     )
 
+    intersections: list = []
     if analyze_edge_map is None:
         segments = _extract_segments_fallback(np.array(mean_cp), threshold=edge_threshold)
     else:
@@ -444,12 +445,14 @@ def extract_virtual_plunger_coefficients(
             show=False,
         )
         segments = edge_analysis["segments"]
+        intersections = edge_analysis.get("intersections", [])
     if not segments:
         return {
             "T_matrix": None,
             "theta1": None,
             "theta2": None,
             "segments": [],
+            "intersections": [],
             "mean_cp": mean_cp,
             "plunger_gate_name": plunger_gate_name,
             "device_gate_name": device_gate_name,
@@ -464,6 +467,7 @@ def extract_virtual_plunger_coefficients(
             "theta1": primary_angles[0] if primary_angles else None,
             "theta2": None,
             "segments": segments,
+            "intersections": intersections,
             "mean_cp": mean_cp,
             "plunger_gate_name": plunger_gate_name,
             "device_gate_name": device_gate_name,
@@ -481,6 +485,7 @@ def extract_virtual_plunger_coefficients(
         "theta1": theta1,
         "theta2": theta2,
         "segments": segments,
+        "intersections": intersections,
         "mean_cp": mean_cp,
         "plunger_gate_name": plunger_gate_name,
         "device_gate_name": device_gate_name,
