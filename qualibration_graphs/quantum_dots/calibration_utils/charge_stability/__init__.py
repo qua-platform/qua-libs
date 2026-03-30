@@ -4,6 +4,8 @@ from .parameters import (
     Parameters,
     get_voltage_arrays,
     prepare_dc_lists,
+    DACParameters,
+    paused_program,
 )
 from .plotting import (
     plot_raw_amplitude,
@@ -40,6 +42,8 @@ __all__ = [
     "NodeSpecificParameters",
     "OPXParameters",
     "OPXQDACParameters",
+    "DACParameters",
+    "paused_program",
     "get_voltage_arrays",
     "prepare_dc_lists",
     "plot_raw_amplitude",

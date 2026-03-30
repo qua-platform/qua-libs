@@ -1,10 +1,11 @@
 from qua_dashboards.virtual_gates import virtual_layer_adder
-from qualibrate import NodeParameters
+from qualibrate import NodeParameters, QualibrationNode
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 from calibration_utils.run_video_mode.video_mode_specific_parameters import VideoModeCommonParameters
 
 from typing import List, Literal, Dict, Union, Callable, Optional
+import time
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -59,14 +60,81 @@ class OPXQDACParameters(
     CommonNodeParameters,
     NodeSpecificParameters,
 ):
+    dc_control: bool = True
+    """If an associated external DC offset exists."""
     x_from_qdac: bool = False
-    "Check to perform 2D map using the QDAC instead of the OPX"
+    """Check to perform 2D map using the QDAC instead of the OPX"""
     y_from_qdac: bool = False
-    "Check to perform 2D map using the QDAC instead of the OPX"
+    """Check to perform 2D map using the QDAC instead of the OPX"""
     post_trigger_wait_ns: int = 10000
     """A pause in the QUA programme to allow the QDAC to get to the correct level."""
     qdac_dwell_time_us: float = 200
     """The dwell time in microseconds for the QDAC."""
+
+
+class DACParameters(
+    NodeParameters,
+    VideoModeCommonParameters,
+    CommonNodeParameters,
+    NodeSpecificParameters,
+):
+    dc_control: bool = True
+    """If an associated external DC offset exists."""
+    x_external: bool = False
+    """Check to perform 2D map using the DAC instead of the OPX"""
+    y_external: bool = False
+    """Check to perform 2D map using the DAC instead of the OPX"""
+    triggered: bool = False
+    """Whether to trigger the external DAC."""
+    post_trigger_wait_ns: int = 10000
+    """A pause in the QUA programme to allow the DAC to get to the correct level."""
+    dwell_time_us: float = 200
+    """The dwell time in microseconds for the DAC."""
+
+
+def paused_program(node: QualibrationNode):
+    job = node.namespace["job"]
+    x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(
+        node.parameters.y_axis_name
+    )
+    x_vals, y_vals = get_voltage_arrays(node)
+    x_external, y_external = node.parameters.x_external, node.parameters.y_external
+
+    # Case 2: X external and Y OPX
+    if x_external and not y_external:
+        for _ in x_vals:
+            while not job.is_paused():
+                time.sleep(0.001)
+            x = job.get_io1_value().double_value
+            x_obj.physical_channel.offset_parameter(x)
+            print(f"Slow x coordinate: {x:.5f}")
+            time.sleep(0.01)
+            job.resume()
+
+    # Case 3: X OPX and Y external
+    elif y_external and not x_external:
+        for _ in y_vals:
+            while not job.is_paused():
+                time.sleep(0.001)
+            y = job.get_io2_value().double_value
+            y_obj.physical_channel.offset_parameter(y)
+            print(f"Slow y coordinate: {y:.5f}")
+            time.sleep(0.01)
+            job.resume()
+
+    # Case 4: X external and Y external
+    elif x_external and y_external:
+        for _ in x_vals:
+            for _ in y_vals:
+                while not job.is_paused():
+                    time.sleep(0.001)
+                x = job.get_io1_value().double_value
+                y = job.get_io2_value().double_value
+                x_obj.physical_channel.offset_parameter(x)
+                y_obj.physical_channel.offset_parameter(y)
+                print(f"Slow x and y coordinates: {x:.5f}, {y:.5f}")
+                time.sleep(0.01)
+                job.resume()
 
 
 class SimulationParameters(
