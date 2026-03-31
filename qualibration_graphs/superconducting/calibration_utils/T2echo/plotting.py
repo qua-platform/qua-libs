@@ -88,7 +88,7 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     ax.text(
         0.1,
         0.9,
-        f'T2e = {fit["T2_echo"].values*1e-3:.1f} ± {fit["T2_echo_error"].values*1e-3:.1f} ns',
+        f'T2e = {fit["T2_echo"].values*1e-3:.1f} ± {fit["T2_echo_error"].values*1e-3:.1f} µs',
         transform=ax.transAxes,
         fontsize=10,
         verticalalignment="top",
