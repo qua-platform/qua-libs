@@ -264,19 +264,17 @@ def _build_single_angle_matrix(theta: float) -> np.ndarray:
     (along the row/y axis) have θ ≈ 0 or θ ≈ π, and **horizontal** lines
     have θ ≈ π/2.
 
-    The cross-talk coefficient is the column (plunger) shift per unit row
-    (device-gate) change, i.e. ``α = d_col / d_row = sin(θ) / cos(θ) =
-    tan(θ)``.  For a perfectly vertical line (θ → 0) this is ≈ 0 (no
-    cross-talk), as expected.
-
-    In the symmetric ``_build_transformation_matrix`` the steep-line
-    entry is ``M[0,1] = 1/m_steep = 1/cot(θ) = tan(θ)``, consistent
-    with this formula.
+    The cross-talk coefficient is the unsigned tilt of the line away from
+    vertical: ``α = tan(θ_v)`` where ``θ_v = min(θ, π − θ)`` folds the
+    angle into [0, π/2].  This ensures that θ = 10° and θ = 170° (the
+    same physical line direction, differing only in segment orientation)
+    produce the same coefficient.
 
     Returns ``M = [[1, α], [0, 1]]``, so only M[0,1] is non-trivial.
     """
-    cos_t = np.cos(theta)
-    alpha = np.sin(theta) / cos_t if abs(cos_t) > 1e-12 else 0.0
+    theta_v = min(theta % np.pi, np.pi - theta % np.pi)
+    cos_t = np.cos(theta_v)
+    alpha = np.sin(theta_v) / cos_t if cos_t > 1e-12 else 0.0
     return np.array([[1.0, alpha], [0.0, 1.0]], dtype=float)
 
 

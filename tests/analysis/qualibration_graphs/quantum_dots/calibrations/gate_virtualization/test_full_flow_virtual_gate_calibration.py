@@ -412,10 +412,7 @@ class TestFullFlowVirtualGateCalibration:
 
     def _build_cgd(self) -> list[list[float]]:
         """Cgd matrix (6 dots × 8 gates). Override to add sensor coupling."""
-        return [
-            row + [0.02 if i < 2 else 0.0]
-            for i, row in enumerate(InitDotModel.dot_gate_capacitance())
-        ]
+        return [row + [0.02 if i < 2 else 0.0] for i, row in enumerate(InitDotModel.dot_gate_capacitance())]
 
     @staticmethod
     def _artifacts_subdir() -> str:
@@ -568,10 +565,42 @@ class TestFullFlowVirtualGateCalibration:
         scan_configs = [
             # (plunger_gate, device_gate, x_span, x_pts, y_center, y_span, y_pts)
             (DOT_1_GATE, DOT_2_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, PLUNGER_CENTER_V, PLUNGER_SPAN_V, PLUNGER_POINTS),
-            (DOT_1_GATE, BARRIER_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, PLUNGER_CENTER_V, BARRIER_PLUNGER_SPAN_V, PLUNGER_POINTS),
-            (DOT_2_GATE, BARRIER_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, PLUNGER_CENTER_V, BARRIER_PLUNGER_SPAN_V, PLUNGER_POINTS),
-            (DOT_1_GATE, SENSOR_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, sensor_op_mV * 1e-3, SENSOR_COMP_SPAN_V, PLUNGER_POINTS),
-            (DOT_2_GATE, SENSOR_GATE, PLUNGER_SPAN_V, PLUNGER_POINTS, sensor_op_mV * 1e-3, SENSOR_COMP_SPAN_V, PLUNGER_POINTS),
+            (
+                DOT_1_GATE,
+                BARRIER_GATE,
+                PLUNGER_SPAN_V,
+                PLUNGER_POINTS,
+                PLUNGER_CENTER_V,
+                BARRIER_PLUNGER_SPAN_V,
+                PLUNGER_POINTS,
+            ),
+            (
+                DOT_2_GATE,
+                BARRIER_GATE,
+                PLUNGER_SPAN_V,
+                PLUNGER_POINTS,
+                PLUNGER_CENTER_V,
+                BARRIER_PLUNGER_SPAN_V,
+                PLUNGER_POINTS,
+            ),
+            (
+                DOT_1_GATE,
+                SENSOR_GATE,
+                PLUNGER_SPAN_V,
+                PLUNGER_POINTS,
+                sensor_op_mV * 1e-3,
+                SENSOR_COMP_SPAN_V,
+                PLUNGER_POINTS,
+            ),
+            (
+                DOT_2_GATE,
+                SENSOR_GATE,
+                PLUNGER_SPAN_V,
+                PLUNGER_POINTS,
+                sensor_op_mV * 1e-3,
+                SENSOR_COMP_SPAN_V,
+                PLUNGER_POINTS,
+            ),
         ]
 
         for plunger_gate, device_gate, x_span, x_pts, y_center, y_span, y_pts in scan_configs:
@@ -605,10 +634,7 @@ class TestFullFlowVirtualGateCalibration:
             )
 
             fit = node.results["fit_results"][pair_key]
-            is_plunger_pair = (
-                plunger_gate in (DOT_1_GATE, DOT_2_GATE)
-                and device_gate in (DOT_1_GATE, DOT_2_GATE)
-            )
+            is_plunger_pair = plunger_gate in (DOT_1_GATE, DOT_2_GATE) and device_gate in (DOT_1_GATE, DOT_2_GATE)
             if is_plunger_pair:
                 assert fit["fit_params"]["success"], f"Fit failed for {pair_key}"
                 T = fit["T_matrix"]
@@ -645,9 +671,11 @@ class TestFullFlowVirtualGateCalibration:
                     "Scans": str(len(scan_configs)),
                 },
                 "results_text": ", ".join(
-                    f"det(T[{k}]) = {abs(np.linalg.det(v['T_matrix'])):.4f}"
-                    if v["T_matrix"] is not None
-                    else f"{k}: skipped"
+                    (
+                        f"det(T[{k}]) = {abs(np.linalg.det(v['T_matrix'])):.4f}"
+                        if v["T_matrix"] is not None
+                        else f"{k}: skipped"
+                    )
                     for k, v in results.items()
                 ),
                 "matrix_html": _matrix_snapshot_html(
@@ -877,8 +905,7 @@ class TestFullFlowVirtualGateCalibration:
             """Sensor voltage that tracks the Coulomb peak given physical
             plunger offsets, using the original step-1 alphas."""
             return sensor_op + (
-                sensor_comp.get(plunger_qi[0], 0.0) * phys_d1
-                + sensor_comp.get(plunger_qi[1], 0.0) * phys_d2
+                sensor_comp.get(plunger_qi[0], 0.0) * phys_d1 + sensor_comp.get(plunger_qi[1], 0.0) * phys_d2
             )
 
         def _build_voltage_rows(mode: str) -> np.ndarray:
@@ -961,8 +988,7 @@ class TestFullFlowVirtualGateCalibration:
                     "Sensor operating point": f"{sensor_op:.2f} mV",
                 },
                 "results_text": ", ".join(
-                    f"bg_std({mode})={np.std(d[n_sweep // 3 : 2 * n_sweep // 3, :]):.4f}"
-                    for mode, d in data.items()
+                    f"bg_std({mode})={np.std(d[n_sweep // 3 : 2 * n_sweep // 3, :]):.4f}" for mode, d in data.items()
                 ),
                 "matrix_html": _matrix_snapshot_html(
                     C[np.ix_(matrix_focus_idx, matrix_focus_idx)],
@@ -1010,12 +1036,17 @@ class TestFullFlowVirtualGateCalibration:
         focus_indices = sorted(gate_indices.values())
         focus_matrix = matrix[np.ix_(focus_indices, focus_indices)]
 
-        # Plunger→sensor entries may be zero if the plunger-vs-sensor
-        # analysis could not find a near-vertical charge transition.
+        # Plunger→sensor and plunger→barrier entries from step 2's asymmetric
+        # analysis may be zero when the charge transition tilt is too small
+        # for the edge detection to resolve (angle ≈ 0° → α = tan(0) = 0).
+        # The main barrier compensation comes from step 3.
         sensor_local = focus_indices.index(gate_indices[SENSOR_GATE])
+        barrier_local = focus_indices.index(gate_indices[BARRIER_GATE])
         maybe_zero = {
             (focus_indices.index(gate_indices[DOT_1_GATE]), sensor_local),
             (focus_indices.index(gate_indices[DOT_2_GATE]), sensor_local),
+            (focus_indices.index(gate_indices[DOT_1_GATE]), barrier_local),
+            (focus_indices.index(gate_indices[DOT_2_GATE]), barrier_local),
         }
 
         for i_local, i_global in enumerate(focus_indices):
