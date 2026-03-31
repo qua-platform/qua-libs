@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import QubitQuam as Quam
-from calibration_utils.common_utils.experiment import get_qubits
+from calibration_utils.common_utils.experiment import get_qubits, get_xy_reference_pulse_name
 from calibration_utils.qubit_spectroscopy_parity_diff import (
     Parameters,
     process_raw_dataset,
@@ -80,10 +80,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Change the pulse amplitude and duration as a tracked change
     node.namespace["tracked_resonators"] = []
-    for i, qubit in enumerate(qubits):
+    for qubit in qubits:
+        reference_pulse_name = get_xy_reference_pulse_name(qubit)
         with tracked_updates(qubit.xy, auto_revert=False, dont_assign_to_none=True) as xy:
-            xy.operations[operation].amplitude = xy.operations[operation].amplitude * operation_amp_factor
-            xy.operations[operation].length = operation_len
+            reference_pulse = xy.operations[reference_pulse_name]
+            reference_pulse.amplitude = reference_pulse.amplitude * operation_amp_factor
+            if operation_len is not None:
+                reference_pulse.length = operation_len
+                if hasattr(reference_pulse, "sigma"):
+                    reference_pulse.sigma = operation_len / 6
             node.namespace["tracked_resonators"].append(xy)
 
     u = unit(coerce_to_integer=True)
@@ -104,80 +109,68 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         df = declare(int)
         n = declare(int)
 
-        p1 = declare(int, size=num_qubits)
-        p2 = declare(int, size=num_qubits)
+        p1 = declare(int)
+        p2 = declare(int)
 
         p1_st = {qubit.name: declare_stream() for qubit in qubits}
         p2_st = {qubit.name: declare_stream() for qubit in qubits}
         pdiff_st = {qubit.name: declare_stream() for qubit in qubits}
         n_st = declare_stream()
 
-        for batched_qubits in qubits.batch():
+        for qubit in qubits:
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
-
                 with for_(*from_array(df, dfs)):
-
                     # Update the frequency before the sequence
-                    for i, qubit in batched_qubits.items():
-                        qubit.xy.update_frequency(qubit.xy.intermediate_frequency + df)
+                    qubit.xy.update_frequency(qubit.xy.intermediate_frequency + df)
 
                     # ---------------------------------------------------------
                     # Step 1a: Empty - step to empty point (fixed duration)
                     # ---------------------------------------------------------
                     align()
-                    for i, qubit in batched_qubits.items():
-                        qubit.empty()
+                    qubit.empty()
 
                     # ---------------------------------------------------------
                     # Step 1b: Initialize - load electron into dot (fixed duration)
                     # ---------------------------------------------------------
                     align()
-                    for i, qubit in batched_qubits.items():
-                        qubit.initialize()
+                    qubit.initialize()
 
                     # ---------------------------------------------------------
                     # Step 2: Measure state after initialization, no operation
                     # ---------------------------------------------------------
                     align()
-                    for i, qubit in batched_qubits.items():
-                        assign(
-                            p1[i], Cast.to_int(qubit.measure())
-                        )  # qubit.measure() handles the step to point + measurement
+                    assign(p1, Cast.to_int(qubit.measure()))  # qubit.measure() handles the step to point + measurement
 
                     # ---------------------------------------------------------
                     # Step 3: Apply operation macro
                     # ---------------------------------------------------------
-                    for i, qubit in batched_qubits.items():
-                        # qubit.apply macros moves the qubit to the relevant operation point, and applies the operation
-                        # The operation amplitude and length are already set as the tracked change
-                        qubit.apply(operation)
+                    # qubit.apply macros moves the qubit to the relevant operation point, and applies the operation
+                    # The operation amplitude and length are already set as the tracked change
+                    qubit.apply(operation)
 
                     # ---------------------------------------------------------
                     # Step 4: Measure - move to PSB and measure
                     # ---------------------------------------------------------
                     align()
-                    for i, qubit in batched_qubits.items():
-                        assign(p2[i], Cast.to_int(qubit.measure()))
+                    assign(p2, Cast.to_int(qubit.measure()))
 
                     # ---------------------------------------------------------
                     # Step 5: Apply compensation pulse to reset DC bias
                     # ---------------------------------------------------------
                     align()
-                    for i, qubit in batched_qubits.items():
-                        qubit.voltage_sequence.apply_compensation_pulse()
+                    qubit.voltage_sequence.apply_compensation_pulse()
 
                     # ---------------------------------------------------------
                     # Save results
                     # ---------------------------------------------------------
-                    for i, qubit in batched_qubits.items():
-                        save(p1[i], p1_st[qubit.name])
-                        save(p2[i], p2_st[qubit.name])
+                    save(p1, p1_st[qubit.name])
+                    save(p2, p2_st[qubit.name])
 
-                        with if_(p1[i] == p2[i]):
-                            save(0, pdiff_st[qubit.name])
-                        with else_():
-                            save(1, pdiff_st[qubit.name])
+                    with if_(p1 == p2):
+                        save(0, pdiff_st[qubit.name])
+                    with else_():
+                        save(1, pdiff_st[qubit.name])
 
         with stream_processing():
             n_st.save("n")

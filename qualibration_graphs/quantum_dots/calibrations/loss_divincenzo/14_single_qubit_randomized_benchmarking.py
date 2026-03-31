@@ -158,13 +158,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         decomp_length = declare(int)
 
         # Measurement variables (per qubit)
-        state = declare(int, size=num_qubits)
+        state = declare(int)
         state_st = {qubit.name: declare_stream() for qubit in qubits}
 
         # RNG for on-PPU Clifford generation
         rng = Random(seed=node.parameters.seed)
 
-        for batched_qubits in qubits.batch():
+        for qubit in qubits:
             # ═════════════════════════════════════════════════════════════
             # Outermost loop: circuits
             # ═════════════════════════════════════════════════════════════
@@ -211,18 +211,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     with for_(n, 0, n < num_shots, n + 1):
                         # --- Reset frame ---
-                        for i_q, qubit in batched_qubits.items():
-                            reset_frame(qubit.xy.name)
+                        reset_frame(qubit.xy.name)
                         align()
 
                         # --- Empty ---
-                        for i_q, qubit in batched_qubits.items():
-                            qubit.empty()
+                        qubit.empty()
                         align()
 
                         # --- Initialize ---
-                        for i_q, qubit in batched_qubits.items():
-                            qubit.initialize()
+                        qubit.initialize()
                         align()
 
                         # --- Gate sequence: d-1 random Cliffords ---
@@ -251,8 +248,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     current_gate,
                                     clifford_decomp_qua[decomp_offset + gate_idx],
                                 )
-                                for i_q, qubit in batched_qubits.items():
-                                    play_rb_gate(qubit, current_gate)
+                                play_rb_gate(qubit, current_gate)
 
                         # --- Inverse: play recovery Clifford ---
                         assign(inverse_clifford, inverses[depth_idx])
@@ -274,26 +270,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 current_gate,
                                 clifford_decomp_qua[decomp_offset + gate_idx],
                             )
-                            for i_q, qubit in batched_qubits.items():
-                                play_rb_gate(qubit, current_gate)
+                            play_rb_gate(qubit, current_gate)
 
                         # --- Measure ---
                         align()
-                        for i_q, qubit in batched_qubits.items():
-                            assign(
-                                state[i_q],
-                                Cast.to_int(qubit.measure()),
-                            )
-                            save(state[i_q], state_st[qubit.name])
+                        assign(
+                            state,
+                            Cast.to_int(qubit.measure()),
+                        )
+                        save(state, state_st[qubit.name])
 
                         # --- Compensation ---
-                        # TODO: Compensation pulse won't work until we set up
-                        # the mixin to track durations of macro operations for
-                        # the voltage pulse compensation.
+                        # TODO: Compensation pulse not working correctly
                         align()
-                        for i_q, qubit in batched_qubits.items():
-                            qubit.voltage_sequence.ramp_to_zero()
-                        #     qubit.voltage_sequence.apply_compensation_pulse()
+                        # qubit.voltage_sequence.ramp_to_zero()
+                        qubit.voltage_sequence.apply_compensation_pulse()
 
         # ── Stream processing ─────────────────────────────────────────
         # Buffer order matches loop nesting: circuit → depth → shot

@@ -239,7 +239,7 @@ def create_minimal_quam() -> LossDiVincenzoQuam:
         opx_output=LFFEMAnalogOutputPort(
             controller_id=controller,
             fem_id=lf_fem_slot,
-            port_id=4,
+            port_id=3,
             output_mode="direct",
         ),
         sticky=StickyChannelAddon(duration=1000, digital=False),
@@ -252,7 +252,7 @@ def create_minimal_quam() -> LossDiVincenzoQuam:
         opx_output=LFFEMAnalogOutputPort(
             controller_id=controller,
             fem_id=lf_fem_slot,
-            port_id=5,
+            port_id=4,
             output_mode="direct",
         ),
         sticky=StickyChannelAddon(duration=1000, digital=False),

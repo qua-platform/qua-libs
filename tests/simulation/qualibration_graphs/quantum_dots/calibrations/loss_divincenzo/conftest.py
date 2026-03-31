@@ -17,11 +17,16 @@ from unittest.mock import patch
 import pytest
 
 
-def pytest_configure(config):
-    """Suppress known QuAM port-reference warnings (int-key vs string-key mismatch)."""
+def _configure_warning_filters() -> None:
+    """Suppress known QuAM warnings emitted by the wiring-based test machine."""
     warnings.filterwarnings(
         "ignore",
-        message=r"Could not get reference.*#/ports/analog_outputs.*",
+        message=r"This component is not part of any QuamRoot.*",
+        category=UserWarning,
+    )
+    warnings.filterwarnings(
+        "ignore",
+        message=r"Could not get reference.*#/ports/(analog_outputs|mw_outputs).*",
         category=UserWarning,
     )
     warnings.filterwarnings(
@@ -156,6 +161,7 @@ def simulation_runner(minimal_quam_factory, save_simulation_plot, markdown_gener
 
 
 def pytest_configure(config):
+    _configure_warning_filters()
     config.addinivalue_line(
         "markers",
         "simulation: mark test as a simulation test (requires RUN_SIM_TESTS=1)",
