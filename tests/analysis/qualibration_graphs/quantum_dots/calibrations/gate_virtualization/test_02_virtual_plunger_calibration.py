@@ -21,6 +21,7 @@ from .conftest import (
     _call_node_action,
     _patch_action_manager_register_only,
     _reimport_node_to_register_actions,
+    apply_param_overrides,
     simulate_plunger_plunger_scan,
     simulate_sensor_sweep,
     sweep_voltages_mV,
@@ -70,8 +71,8 @@ def _qarray_available() -> bool:
         return False
 
 
-def test_update_state_composes_all_rows(minimal_quam_factory):
-    """update_state composes selected columns for all rows, including sensor row."""
+def test_update_state_sets_off_diagonal_entries(minimal_quam_factory):
+    """update_state additively sets the off-diagonal cross-talk entries from M."""
     from quam_config import Quam
 
     machine = minimal_quam_factory()
@@ -82,19 +83,17 @@ def test_update_state_composes_all_rows(minimal_quam_factory):
     sensor_idx = source_gates.index(sensor_gate)
     plunger_idx = source_gates.index(PLUNGER_X_GATE)
     device_idx = source_gates.index(PLUNGER_Y_GATE)
-    cols = [plunger_idx, device_idx]
 
-    # Seed a non-trivial existing matrix to verify composition (not replacement).
     old = np.asarray(layer.matrix, dtype=float)
     old[sensor_idx, plunger_idx] = -0.020
     old[sensor_idx, device_idx] = -0.035
-    old[plunger_idx, plunger_idx] = 1.12
+    old[plunger_idx, plunger_idx] = 1.0
     old[plunger_idx, device_idx] = 0.08
     old[device_idx, plunger_idx] = -0.06
-    old[device_idx, device_idx] = 0.93
+    old[device_idx, device_idx] = 1.0
     layer.matrix = old.tolist()
 
-    delta = np.array(
+    M = np.array(
         [
             [1.0, 0.14],
             [-0.09, 1.0],
@@ -102,7 +101,8 @@ def test_update_state_composes_all_rows(minimal_quam_factory):
         dtype=float,
     )
     expected = old.copy()
-    expected[:, cols] = old[:, cols] @ delta
+    expected[plunger_idx, device_idx] += M[0, 1]   # += 0.14
+    expected[device_idx, plunger_idx] += M[1, 0]    # += -0.09
 
     with (
         patch.object(Quam, "load", return_value=machine),
@@ -117,7 +117,7 @@ def test_update_state_composes_all_rows(minimal_quam_factory):
     node.results["fit_results"] = {
         f"{PLUNGER_X_GATE}_vs_{PLUNGER_Y_GATE}": {
             "fit_params": {"success": True},
-            "T_matrix": delta,
+            "T_matrix": M,
         }
     }
 
@@ -127,11 +127,88 @@ def test_update_state_composes_all_rows(minimal_quam_factory):
         machine.virtual_gate_sets["main_qpu"].layers[0].matrix,
         dtype=float,
     )
-    np.testing.assert_allclose(updated[:, cols], expected[:, cols], atol=1e-12)
+    # Only the two off-diagonal entries should change
+    np.testing.assert_allclose(updated, expected, atol=1e-12)
 
-    other_cols = [j for j in range(updated.shape[1]) if j not in cols]
-    if other_cols:
-        np.testing.assert_allclose(updated[:, other_cols], old[:, other_cols], atol=1e-12)
+    # Explicitly verify sensor row is unchanged
+    np.testing.assert_allclose(updated[sensor_idx, :], old[sensor_idx, :], atol=1e-12)
+
+    # Verify diagonals are unchanged
+    assert updated[plunger_idx, plunger_idx] == old[plunger_idx, plunger_idx]
+    assert updated[device_idx, device_idx] == old[device_idx, device_idx]
+
+
+def test_update_state_asymmetric_for_non_plunger_pairs(minimal_quam_factory):
+    """When plunger_gates is set and one gate is not a plunger, only the
+    non-plunger→plunger entry is written (barrier, sensor, etc.)."""
+    from quam_config import Quam
+
+    machine = minimal_quam_factory()
+    layer = machine.virtual_gate_sets["main_qpu"].layers[0]
+    source_gates = list(layer.source_gates)
+
+    plunger_gate = PLUNGER_X_GATE
+    barrier_gate = "virtual_barrier_1"
+    sensor_gate = "virtual_sensor_1"
+    plunger_idx = source_gates.index(plunger_gate)
+    barrier_idx = source_gates.index(barrier_gate)
+    sensor_idx = source_gates.index(sensor_gate)
+
+    old = np.asarray(layer.matrix, dtype=float)
+    old[plunger_idx, barrier_idx] = 0.05
+    old[barrier_idx, plunger_idx] = -0.03
+    old[plunger_idx, sensor_idx] = 0.02
+    old[sensor_idx, plunger_idx] = -0.01
+    layer.matrix = old.tolist()
+
+    M_barrier = np.array([[1.0, -0.35], [0.22, 1.0]], dtype=float)
+    M_sensor = np.array([[1.0, 0.08], [-0.14, 1.0]], dtype=float)
+
+    plunger_gates_list = [PLUNGER_X_GATE, PLUNGER_Y_GATE]
+
+    with (
+        patch.object(Quam, "load", return_value=machine),
+        _patch_action_manager_register_only(),
+    ):
+        node = _reimport_node_to_register_actions(
+            "02_virtual_plunger_calibration",
+            CALIBRATION_LIBRARY_ROOT,
+        )
+    assert node is not None
+    node.machine = machine
+    apply_param_overrides(node, {"plunger_gates": plunger_gates_list})
+    node.results["fit_results"] = {
+        f"{plunger_gate}_vs_{barrier_gate}": {
+            "fit_params": {"success": True},
+            "T_matrix": M_barrier,
+        },
+        f"{plunger_gate}_vs_{sensor_gate}": {
+            "fit_params": {"success": True},
+            "T_matrix": M_sensor,
+        },
+    }
+
+    _call_node_action(node, "update_state")
+
+    updated = np.asarray(layer.matrix, dtype=float)
+
+    # barrier→plunger entry should be updated (additive)
+    assert updated[plunger_idx, barrier_idx] == pytest.approx(
+        old[plunger_idx, barrier_idx] + M_barrier[0, 1]
+    )
+    # plunger→barrier entry should NOT be updated (asymmetric)
+    assert updated[barrier_idx, plunger_idx] == pytest.approx(
+        old[barrier_idx, plunger_idx]
+    ), "Barrier row should not be modified by plunger-barrier pair"
+
+    # sensor→plunger entry should be updated (additive)
+    assert updated[plunger_idx, sensor_idx] == pytest.approx(
+        old[plunger_idx, sensor_idx] + M_sensor[0, 1]
+    )
+    # plunger→sensor entry should NOT be updated (asymmetric)
+    assert updated[sensor_idx, plunger_idx] == pytest.approx(
+        old[sensor_idx, plunger_idx]
+    ), "Sensor row should not be modified by plunger-sensor pair"
 
 
 @pytest.mark.analysis
@@ -199,13 +276,6 @@ class TestVirtualPlungerE2E:
         assert abs(np.linalg.det(T)) > 1e-6, f"T matrix is singular: det={np.linalg.det(T)}"
 
         assert pair_key in node.results.get("figures", {}), "plot_data did not produce a figure"
-        fig = node.results["figures"][pair_key]
-
-        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "02_virtual_plunger_qarray"
-        artifacts_dir.mkdir(parents=True, exist_ok=True)
-        fig.savefig(artifacts_dir / "transition_analysis.png", dpi=150)
-        plt.close(fig)
-        assert (artifacts_dir / "transition_analysis.png").exists()
 
     def test_plot_charge_stability(self, dot_model):
         """Generate charge-stability diagrams with and without sensor compensation."""
@@ -258,30 +328,41 @@ class TestVirtualPlungerE2E:
         assert (artifacts_dir / "charge_stability.png").exists()
 
     def test_virtual_gate_sweep(self, dot_model, analysis_runner):
-        """Use node-derived T to sweep in virtual-gate space and compare maps."""
-        node, pair_key, ds_raw, v_px, v_py, sensor_opt_mV = self._run_node_pipeline(dot_model, analysis_runner)
+        """Run transition analysis on both physical and virtualized plunger sweeps."""
+        import xarray as xr
 
-        fit = node.results["fit_results"][pair_key]
+        # 1. Run node analysis on the physical (pre-virtualized) scan
+        node_phys, pair_key, ds_raw, v_px, v_py, sensor_opt_mV = self._run_node_pipeline(
+            dot_model,
+            analysis_runner,
+        )
+
+        fit = node_phys.results["fit_results"][pair_key]
         assert fit["fit_params"]["success"], f"Virtual plunger fit failed: {fit}"
-        T = fit["T_matrix"]
-        assert T is not None
+        M = fit["T_matrix"]
+        assert M is not None
 
-        raw_amplitude = np.hypot(ds_raw["I"].values[0], ds_raw["Q"].values[0])
-        T_inv = np.linalg.inv(T)
+        # Save the physical transition analysis figure
+        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "02_virtual_plunger_qarray"
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        if pair_key in node_phys.results.get("figures", {}):
+            node_phys.results["figures"][pair_key].savefig(
+                artifacts_dir / "transition_analysis_physical.png",
+                dpi=150,
+            )
+            plt.close(node_phys.results["figures"][pair_key])
 
-        v_virt_x = v_px
-        v_virt_y = v_py
-        VX, VY = np.meshgrid(v_virt_x, v_virt_y)
+        # 2. Build the virtualized scan dataset
+        # M is virtual→physical; apply it directly to virtual sweep coordinates
+        VX, VY = np.meshgrid(v_px, v_py)
         virt_flat = np.stack([VX.ravel(), VY.ravel()], axis=0)
-        phys_flat = T_inv @ virt_flat
+        phys_flat = M @ virt_flat
+        phys_cx = M @ np.array([(v_px[0] + v_px[-1]) / 2, (v_py[0] + v_py[-1]) / 2])
 
-        phys_cx = T_inv @ np.array([(v_px[0] + v_px[-1]) / 2, (v_py[0] + v_py[-1]) / 2])
-
-        base = np.zeros(7)
         alpha_x = SENSOR_COMP.get(0, 0.0)
         alpha_y = SENSOR_COMP.get(1, 0.0)
 
-        voltage_array = np.tile(base, (phys_flat.shape[1], 1))
+        voltage_array = np.zeros((phys_flat.shape[1], 7))
         voltage_array[:, 0] = phys_flat[0]
         voltage_array[:, 1] = phys_flat[1]
         voltage_array[:, 6] = (
@@ -289,26 +370,61 @@ class TestVirtualPlungerE2E:
         )
 
         z, _ = dot_model.charge_sensor_open(-voltage_array)
-        virt_signal = z.squeeze().reshape(len(v_virt_y), len(v_virt_x))
+        virt_signal = z.squeeze().reshape(len(v_py), len(v_px))
 
         v_x_V = v_px * 1e-3
         v_y_V = v_py * 1e-3
+        ds_virt = xr.Dataset(
+            {
+                "I": xr.DataArray(
+                    virt_signal[np.newaxis, :, :],
+                    dims=["sensors", "y_volts", "x_volts"],
+                    coords={"sensors": ["sensor_1"], "x_volts": v_x_V, "y_volts": v_y_V},
+                ),
+                "Q": xr.DataArray(
+                    np.zeros_like(virt_signal)[np.newaxis, :, :],
+                    dims=["sensors", "y_volts", "x_volts"],
+                    coords={"sensors": ["sensor_1"], "x_volts": v_x_V, "y_volts": v_y_V},
+                ),
+            }
+        )
+
+        # 3. Run node analysis on the virtualized scan
+        virt_pair_key = f"{PLUNGER_X_GATE}_vs_{PLUNGER_Y_GATE}"
+        node_virt = analysis_runner(
+            "02_virtual_plunger_calibration",
+            ds_raw_all={virt_pair_key: ds_virt},
+            param_overrides=_default_param_overrides(),
+            artifacts_subdir="02_virtual_plunger_qarray",
+        )
+
+        # Save the virtualized transition analysis figure
+        if virt_pair_key in node_virt.results.get("figures", {}):
+            node_virt.results["figures"][virt_pair_key].savefig(
+                artifacts_dir / "transition_analysis_virtual.png",
+                dpi=150,
+            )
+            plt.close(node_virt.results["figures"][virt_pair_key])
+
+        # 4. Side-by-side comparison plot
+        raw_amplitude = np.hypot(ds_raw["I"].values[0], ds_raw["Q"].values[0])
         extent = [v_x_V[0], v_x_V[-1], v_y_V[0], v_y_V[-1]]
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
         axes[0].imshow(raw_amplitude, extent=extent, origin="lower", aspect="auto", cmap="hot")
-        axes[0].set_title("Raw plunger gates (with sensor comp)")
+        axes[0].set_title("Physical plunger gates (sensor-compensated)")
         axes[0].set_xlabel("Plunger 1 (V)")
         axes[0].set_ylabel("Plunger 2 (V)")
 
         axes[1].imshow(virt_signal, extent=extent, origin="lower", aspect="auto", cmap="hot")
-        axes[1].set_title("Virtual gates\n" f"T=[[{T[0,0]:.3f}, {T[0,1]:.3f}], [{T[1,0]:.3f}, {T[1,1]:.3f}]]")
+        axes[1].set_title(
+            "Virtual gates (plunger-virtualized)\n"
+            f"M=[[{M[0,0]:.3f}, {M[0,1]:.3f}], [{M[1,0]:.3f}, {M[1,1]:.3f}]]"
+        )
         axes[1].set_xlabel("Virtual gate 1 (V)")
         axes[1].set_ylabel("Virtual gate 2 (V)")
 
         plt.tight_layout()
-        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "02_virtual_plunger_qarray"
-        artifacts_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(artifacts_dir / "virtual_gate_sweep.png", dpi=150)
         plt.close(fig)
         assert (artifacts_dir / "virtual_gate_sweep.png").exists()

@@ -1,12 +1,10 @@
 # %% {Imports}
-import numpy as np
 import xarray as xr
 
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
@@ -15,7 +13,7 @@ from calibration_utils.gate_virtualization import (
     get_voltage_arrays,
     create_2d_scan_program,
     read_qdac_voltage,
-    plot_sensor_compensation_diagnostic,
+    plot_sensor_compensation_all_pairs,
 )
 from calibration_utils.gate_virtualization.analysis import (
     process_raw_dataset,
@@ -174,6 +172,7 @@ def load_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
 @node.run_action(skip_if=node.parameters.run_in_video_mode or node.parameters.simulate)
 def analyse_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
     """Analyse each 2D scan to extract sensor-device cross-talk coefficients."""
+    p = node.parameters
     fit_results = {}
     for pair_key, ds_raw in node.results["ds_raw_all"].items():
         ds = process_raw_dataset(ds_raw, node)
@@ -182,6 +181,8 @@ def analyse_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
             ds,
             sensor_gate_name=sensor_gate_name,
             device_gate_name=device_gate_name,
+            method=p.fit_method,
+            fit_kwargs=p.fit_kwargs,
         )
     node.results["fit_results"] = fit_results
 
@@ -189,17 +190,11 @@ def analyse_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.run_in_video_mode or node.parameters.simulate)
 def plot_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
-    """Plot each 2D scan with Lorentzian fit overlay and residual panel."""
+    """Plot all 2D scans in a single multi-row figure (one row per pair)."""
     fit_results = node.results.get("fit_results", {})
-    figures = {
-        pair_key: plot_sensor_compensation_diagnostic(
-            process_raw_dataset(ds_raw),
-            fit_results.get(pair_key),
-            pair_key,
-        )
-        for pair_key, ds_raw in node.results["ds_raw_all"].items()
-    }
-    node.results["figures"] = figures
+    datasets = {pair_key: process_raw_dataset(ds_raw) for pair_key, ds_raw in node.results["ds_raw_all"].items()}
+    fig = plot_sensor_compensation_all_pairs(datasets, fit_results)
+    node.results["figures"] = {"sensor_compensation": fig}
 
 
 # %% {Update_state}
@@ -219,7 +214,10 @@ def update_state(
     The diagonal is never modified (sensor self-coupling stays 1).
     """
     if "fit_results" not in node.results:
-        return
+        raise RuntimeError(
+            "update_state called but 'fit_results' not found in node.results. "
+            "Run analyse_data before update_state."
+        )
 
     for pair_key, fit_res in node.results["fit_results"].items():
         sensor_gate, device_gate = pair_key.split("_vs_", maxsplit=1)

@@ -13,10 +13,21 @@ from __future__ import annotations
 
 import os
 import sys
-import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional
 from unittest.mock import patch
+
+# qualibrate 1.1.x moved parameters into core.parameters; qualibration-libs
+# still imports from qualibrate.parameters.
+if "qualibrate.parameters" not in sys.modules:
+    try:
+        import qualibrate.core.parameters as _cp
+
+        sys.modules["qualibrate.parameters"] = _cp
+    except ImportError:
+        pass
+
+os.environ.setdefault("QUAM_STATE_PATH", "/tmp/quam_test_state")
 
 import numpy as np
 import pytest
@@ -35,7 +46,6 @@ from shared_fixtures import (  # noqa: E402
     apply_param_overrides,
     call_node_action,
     ensure_qua_dashboards_stub,
-    get_parameters_dict,
     make_save_analysis_plot,
     patch_action_manager_register_only,
     patch_qualibrate_logger,
@@ -71,7 +81,9 @@ from validation_utils.charge_stability.default import init_dot_model  # noqa: E4
 from .simulation_helpers import simulate_sensor_device_scan, sweep_voltages_mV  # noqa: E402
 
 # ── Calibrated sensor compensation coefficients ───────────────────────
-CALIBRATED_SENSOR_COMP = {0: -0.015310, 1: -0.024623}
+# Extracted from node 01 analysis with the asymmetric model below
+# (Cds dot_0=0.003, dot_1=0.0015; Cgs gate_0=0.0015, gate_1=0.001).
+CALIBRATED_SENSOR_COMP = {0: -0.0290778656, 1: -0.0184242463}
 
 
 # ── qarray model fixtures ─────────────────────────────────────────────
@@ -79,8 +91,15 @@ CALIBRATED_SENSOR_COMP = {0: -0.015310, 1: -0.024623}
 
 @pytest.fixture
 def dot_model():
-    """Return a fully configured qarray ``ChargeSensedDotArray`` (6 dots + 1 sensor)."""
-    return init_dot_model()
+    """Return a fully configured qarray ``ChargeSensedDotArray`` (6 dots + 1 sensor).
+
+    Dot-sensor couplings are asymmetric so the two device dots produce
+    visibly different sensor responses (dot_0 couples more strongly).
+    """
+    return init_dot_model(
+        Cds=[[0.003, 0.0015, 0.002, 0.002, 0.002, 0.002]],
+        Cgs=[[0.0015, 0.001, 0.000, 0.000, 0.000, 0.000, 0.100]],
+    )
 
 
 # ── Simulation helpers ─────────────────────────────────────────────────
@@ -106,18 +125,35 @@ def simulate_plunger_plunger_scan(
     cx = (v_plunger_x[0] + v_plunger_x[-1]) / 2
     cy = (v_plunger_y[0] + v_plunger_y[-1]) / 2
 
+    sensor_is_x = sensor_gate_idx == plunger_x_gate_idx
+    sensor_is_y = sensor_gate_idx == plunger_y_gate_idx
+
     rows = []
     for vy in v_plunger_y:
         for vx in v_plunger_x:
             v = base_voltages.copy()
             v[plunger_x_gate_idx] = vx
             v[plunger_y_gate_idx] = vy
-            s_v = sensor_operating_point
-            if sensor_compensation:
-                alpha_x = sensor_compensation.get(plunger_x_gate_idx, 0.0)
-                alpha_y = sensor_compensation.get(plunger_y_gate_idx, 0.0)
-                s_v += alpha_x * (vx - cx) + alpha_y * (vy - cy)
-            v[sensor_gate_idx] = s_v
+
+            if sensor_is_x or sensor_is_y:
+                # Sensor IS one of the sweep axes.  The sweep value is already
+                # set above; add sensor compensation for the *other* (non-sensor)
+                # axis so the Coulomb peak tracks plunger movement.
+                if sensor_compensation:
+                    if sensor_is_y:
+                        alpha_x = sensor_compensation.get(plunger_x_gate_idx, 0.0)
+                        v[sensor_gate_idx] += alpha_x * (vx - cx)
+                    else:
+                        alpha_y = sensor_compensation.get(plunger_y_gate_idx, 0.0)
+                        v[sensor_gate_idx] += alpha_y * (vy - cy)
+            else:
+                s_v = sensor_operating_point
+                if sensor_compensation:
+                    alpha_x = sensor_compensation.get(plunger_x_gate_idx, 0.0)
+                    alpha_y = sensor_compensation.get(plunger_y_gate_idx, 0.0)
+                    s_v += alpha_x * (vx - cx) + alpha_y * (vy - cy)
+                v[sensor_gate_idx] = s_v
+
             rows.append(v)
 
     voltage_array = np.array(rows)
@@ -244,9 +280,13 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot):
         call_node_action(node, "save_results")
 
         artifacts_dir = ARTIFACTS_BASE / (artifacts_subdir or node_name)
-        for fig in node.results.get("figures", {}).values():
-            save_analysis_plot(fig, artifacts_dir)
-            break
+        figures = node.results.get("figures", {})
+        if len(figures) == 1:
+            save_analysis_plot(next(iter(figures.values())), artifacts_dir)
+        else:
+            for pair_key, fig in figures.items():
+                safe_name = pair_key.replace("/", "_")
+                save_analysis_plot(fig, artifacts_dir, filename=f"{safe_name}.png")
 
         return node
 

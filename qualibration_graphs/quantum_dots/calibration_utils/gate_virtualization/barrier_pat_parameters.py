@@ -70,6 +70,20 @@ class BarrierCompensationParameters(GateVirtualizationBaseParameters):
     """Minimum tunnel span in units of median per-point ``t`` uncertainty."""
     min_pair_fit_r2: float = 0.9
     """Minimum linear-fit R² for ``t`` vs drive slope acceptance."""
+    include_non_barrier_drives: bool = False
+    """When True, additionally sweep plunger and sensor gates to measure their
+    effect on tunnel coupling (Lambda terms in Hsiao et al.).  The resulting
+    beta = dt/dG_non_barrier / (dt/dB_self) coefficients populate the
+    barrier row of the compensation matrix for those columns."""
+    non_barrier_drive_span_mv: float = 40.0
+    """Total sweep span for non-barrier (plunger / sensor) drives (mV).
+    Typically larger than barrier drives due to smaller lever arms."""
+    non_barrier_drive_points: int = 7
+    """Number of sweep points per non-barrier drive."""
+    non_barrier_drive_gates: Optional[List[str]] = None
+    """Explicit list of non-barrier gate names to sweep.
+    When None and ``include_non_barrier_drives`` is True, gates are
+    auto-discovered from the pair's quantum dots and sensor dots."""
     pat_lever_arm_mapping: Optional[Dict[str, float]] = None
     """Optional PAT lever-arm map keyed by quantum-dot pair name.
     Used to scale detuning-axis values for tunnel-coupling extraction."""

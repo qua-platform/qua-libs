@@ -3,7 +3,7 @@ from .sensor_dot_tuning_parameters import SensorDotTuningParameters
 from .sensor_compensation_parameters import SensorCompensationParameters
 from .virtual_plunger_parameters import VirtualPlungerParameters
 from .barrier_pat_parameters import PATLeverArmParameters, BarrierCompensationParameters
-from .analysis import process_raw_dataset, update_compensation_matrix, update_compensation_submatrix
+from .analysis import process_raw_dataset, update_compensation_submatrix
 from .sensor_dot_analysis import fit_lorentzian, lorentzian, optimal_operating_point
 from .sensor_compensation_analysis import (
     extract_sensor_compensation_coefficients,
@@ -22,6 +22,7 @@ from .plotting import (
     plot_barrier_transform_history,
     plot_compensation_fit,
     plot_detuning_fit_family,
+    plot_sensor_compensation_all_pairs,
     plot_sensor_compensation_diagnostic,
     plot_target_barrier_coupling_summary,
     plot_tunnel_slope_fit,
@@ -60,7 +61,6 @@ __all__ = [
     "setup_qdac_dc_lists",
     "read_qdac_voltage",
     "process_raw_dataset",
-    "update_compensation_matrix",
     "update_compensation_submatrix",
     "fit_lorentzian",
     "lorentzian",
@@ -72,6 +72,7 @@ __all__ = [
     "extract_barrier_compensation_coefficients",
     "evaluate_slope_fit_acceptance",
     "resolve_pair_calibration_topology",
+    "plot_sensor_compensation_all_pairs",
     "plot_sensor_compensation_diagnostic",
     "plot_2d_scan",
     "plot_compensation_fit",
