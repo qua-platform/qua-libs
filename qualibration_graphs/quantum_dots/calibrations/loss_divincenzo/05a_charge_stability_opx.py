@@ -11,7 +11,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
-from quam_config import Quam
+from quam_config import QubitQuam as Quam
 from calibration_utils.charge_stability import (
     Parameters,
     get_voltage_arrays,
@@ -87,8 +87,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     x_offset, y_offset = node.parameters.x_center, node.parameters.y_center
 
     if node.parameters.dc_control:
-        external_qdac = "qdac_ip" in node.machine.network
-        node.machine.connect_to_external_source(external_qdac=external_qdac)
+        if "qdac_ip" in node.machine.network or "qdac_usb_port" in node.machine.network:
+            node.machine.connect_to_external_source(external_qdac=True)
+        else:
+            from quam_config.dac_mapping import channel_mapping
+
+            node.machine.connect_to_external_source(channel_source_mapping=channel_mapping(node.machine))
+
         virtual_dc_set = node.machine.virtual_dc_sets[vgs_id]
         # If no offsets are provided, then default to 0 if dc_control is False, default to current value if dc_control is True
         if x_offset is None:

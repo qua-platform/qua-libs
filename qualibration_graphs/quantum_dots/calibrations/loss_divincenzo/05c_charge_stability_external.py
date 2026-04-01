@@ -1,0 +1,507 @@
+# %% {Imports}
+import numpy as np
+import xarray as xr
+import matplotlib.pyplot as plt
+import time
+
+from qm.qua import *
+
+from qualang_tools.loops import from_array
+from qualang_tools.multi_user import qm_session
+from qualang_tools.results import progress_counter
+from qualang_tools.units import unit
+
+from qualibrate import QualibrationNode
+from quam_config import Quam
+from calibration_utils.charge_stability import (
+    DACParameters as Parameters,
+    get_voltage_arrays,
+    prepare_dc_lists,
+    ScanMode,
+    process_raw_dataset,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_amplitude,
+    plot_raw_phase,
+    plot_change_point_overlays,
+    plot_line_fit_overlays,
+    paused_program,
+)
+from calibration_utils.run_video_mode.qdac_video_mode import create_video_mode
+
+from qualibration_libs.runtime import simulate_and_plot
+from qualibration_libs.data import XarrayDataFetcher
+
+from calibration_utils.common_utils.experiment import get_dots, get_sensors, _make_batchable_list_from_multiplexed
+
+description = """
+            OPX & External DAC 2D CHARGE STABILITY MAP
+This script involves a simple 2D voltage map, done by stepping the X and Y Quantum Dots
+to their corresponding voltages, sending a readout pulse, and demodulating the 'I' and 'Q'
+quadratures. In this node, you may perform the 2D map using either OPX outputs or DAC
+voltage source outputs, which are triggered by the OPX.
+
+Prerequisites:
+    - Having calibrated the IQ mixer/Octave connected to the readout line (node 01a_mixer_calibration.py).
+    - Having calibrated the time of flight, offsets, and gains (node 01a_time_of_flight.py).
+    - Having calibrated the resonators coupled to the SensorDot components (nodes 02a_resonator_spectroscopy.py, 02b_resonator_spectroscopy_vs_power.py).
+    - Having initialized the QUAM state parameters for the readout pulse amplitude and duration.
+    - Having registered the QuantumDot elements and your SensorDot elements in your QUAM state.
+    - Having configured the QdacSpec on each of the VoltageGate objects.
+    - Having configured the VirtualDCSet in your machine.
+"""
+
+
+node = QualibrationNode[Parameters, Quam](
+    name="05c_charge_stability_external", description=description, parameters=Parameters()
+)
+
+
+# Any parameters that should change for debugging purposes only should go in here
+# These parameters are ignored when run through the GUI or as part of a graph
+@node.run_action(skip_if=node.modes.external)
+def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
+    # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.multiplexed = True
+    # node.parameters.num_shots = 2
+    pass
+
+
+# Instantiate the QUAM class from the state file
+node.machine = Quam.load("/Users/kalidu_laptop/_nodes/quam_state")
+node.parameters.x_axis_name = "virtual_dot_1"
+node.parameters.y_axis_name = "virtual_dot_2"
+node.parameters.x_external = True
+node.parameters.num_shots = 10
+
+
+# %% {Create_QUA_program}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
+def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    # Class containing tools to help handle units and conversions.
+    u = unit(coerce_to_integer=True)
+
+    x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(
+        node.parameters.y_axis_name
+    )
+    if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
+        raise ValueError(
+            f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
+        )
+    vgs_id = x_obj.voltage_sequence.gate_set.id
+
+    x_volts, y_volts = get_voltage_arrays(node)
+    dwell_time_ns = node.parameters.dwell_time_us * 1000
+
+    node.namespace["sensors"] = sensors = get_sensors(node)
+
+    # Connect machine to DAC
+    from quam_config.dac_mapping import channel_mapping
+
+    node.machine.connect_to_external_source(external_qdac=False, channel_source_mapping=channel_mapping(node.machine))
+
+    # Which one is external/not?
+    x_external, y_external = node.parameters.x_external, node.parameters.y_external
+
+    if node.parameters.dc_control:
+        dc_set = node.machine.virtual_dc_sets[vgs_id]
+        # If None, then default to current virtual values.
+        if node.parameters.x_center is None:
+            node.parameters.x_center = dc_set.get_voltage(node.parameters.x_axis_name)
+        if node.parameters.y_center is None:
+            node.parameters.y_center = dc_set.get_voltage(node.parameters.y_axis_name)
+
+        if (
+            not x_external
+        ):  # This means that the sweep itself for the x axis will be from the OPX, but the user wants dc_control, meaning that the offset centre comes from the DAC
+            dc_set.set_voltages({node.parameters.x_axis_name: node.parameters.x_center})
+        if not y_external:  # Same logic. Y axis should be OPX in this case, and dc_control is True.
+            dc_set.set_voltages({node.parameters.y_axis_name: node.parameters.y_center})
+
+    else:
+        # No DC control, meaning that the offsets have to come from the OPX.
+        # If None, then default to zero.
+        if node.parameters.x_center is None:
+            node.parameters.x_center = 0
+        if node.parameters.y_center is None:
+            node.parameters.y_center = 0
+        # Mutate the x/y_volts array if sweep comes from the OPX
+        if not x_external:
+            x_volts = x_volts + node.parameters.x_center
+        if not y_external:
+            y_volts = y_volts + node.parameters.y_center
+
+    num_sensors = len(sensors)
+
+    # Register the sweep axes to be added to the dataset when fetching data
+    node.namespace["sweep_axes"] = {
+        "sensors": xr.DataArray(sensors.get_names()),
+        "x_volts": xr.DataArray(
+            x_volts if (not node.parameters.dc_control and not x_external) else x_volts + node.parameters.x_center,
+            attrs={"long_name": "voltage", "units": "V"},
+        ),
+        "y_volts": xr.DataArray(
+            y_volts if (not node.parameters.dc_control and not y_external) else y_volts + node.parameters.y_center,
+            attrs={"long_name": "voltage", "units": "V"},
+        ),
+    }
+
+    # node.namespace["sweep"]
+    # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
+
+    # Case 1: Both axes OPX voltages
+    if not x_external and not y_external:
+        with program() as node.namespace["qua_program"]:
+            seq = node.machine.voltage_sequences[vgs_id]
+
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
+            x = declare(fixed)
+            y = declare(fixed)
+            for multiplexed_sensors in sensors.batch():
+                align()
+                with for_(n, 0, n < node.parameters.num_shots, n + 1):
+                    save(n, n_st)
+                    with for_(*from_array(x, x_volts)):
+                        with for_(*from_array(y, y_volts)):
+                            seq.ramp_to_voltages(
+                                {x_obj.name: x, y_obj.name: y},
+                                duration=node.parameters.hold_duration,
+                                ramp_duration=node.parameters.ramp_duration,
+                            )
+                            if node.parameters.pre_measurement_delay > 0:
+                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
+                            align()
+                            for i, sensor in multiplexed_sensors.items():
+                                # Select the resonator tied to the sensor
+                                rr = sensor.readout_resonator
+                                # Measure using said resonator
+                                rr.measure("readout", qua_vars=(I[i], Q[i]))
+                                # Post-measurement wait (Optional)
+                                rr.wait(500)
+
+                                # Save data
+                                save(I[i], I_st[i])
+                                save(Q[i], Q_st[i])
+                        if node.parameters.per_line_compensation:
+                            seq.apply_compensation_pulse()
+                    seq.apply_compensation_pulse()
+            with stream_processing():
+                n_st.save("n")
+                for i in range(num_sensors):
+                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
+
+    # Case 2: X external and Y OPX
+    elif x_external and not y_external:
+        with program() as node.namespace["qua_program"]:
+            seq = node.machine.voltage_sequences[vgs_id]
+
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
+            x = declare(fixed)
+            y = declare(fixed)
+
+            for multiplexed_sensors in sensors.batch():
+                align()
+                with for_(*from_array(x, x_volts)):
+                    assign(IO1, x)
+                    pause()
+                    seq.step_to_voltages({}, duration=dwell_time_ns)
+                    with for_(n, 0, n < node.parameters.num_shots, n + 1):
+                        save(n, n_st)
+                        with for_(*from_array(y, y_volts)):
+                            seq.ramp_to_voltages(
+                                {y_obj.id: y},
+                                duration=node.parameters.hold_duration,
+                                ramp_duration=node.parameters.ramp_duration,
+                            )
+                            align()
+                            if node.parameters.pre_measurement_delay > 0:
+                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
+                            align()
+                            for i, sensor in multiplexed_sensors.items():
+                                # Select the resonator tied to the sensor
+                                rr = sensor.readout_resonator
+                                # Measure using said resonator
+                                rr.measure("readout", qua_vars=(I[i], Q[i]))
+                                # Post-measurement wait (Optional)
+                                rr.wait(500)
+
+                                # Save data
+                                save(I[i], I_st[i])
+                                save(Q[i], Q_st[i])
+                        if node.parameters.per_line_compensation:
+                            seq.apply_compensation_pulse()
+                    seq.apply_compensation_pulse()
+            with stream_processing():
+                n_st.save("n")
+                for i in range(num_sensors):
+                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
+
+    # Case 3: X OPX and Y external
+    elif not x_external and y_external:
+        # Transpose so that the slow (Y) is on the outer loop
+        node.namespace["sweep_axes"] = {
+            "sensors": xr.DataArray(sensors.get_names()),
+            "y_volts": xr.DataArray(
+                y_volts if (not node.parameters.dc_control and not y_external) else y_volts + node.parameters.y_center,
+                attrs={"long_name": "voltage", "units": "V"},
+            ),
+            "x_volts": xr.DataArray(
+                x_volts if (not node.parameters.dc_control and not x_external) else x_volts + node.parameters.x_center,
+                attrs={"long_name": "voltage", "units": "V"},
+            ),
+        }
+        with program() as node.namespace["qua_program"]:
+            seq = node.machine.voltage_sequences[vgs_id]
+
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
+            x = declare(fixed)
+            y = declare(fixed)
+
+            for multiplexed_sensors in sensors.batch():
+                align()
+                with for_(*from_array(y, y_volts)):
+                    assign(IO2, y)
+                    pause()
+                    seq.step_to_voltages({}, duration=dwell_time_ns)
+                    with for_(n, 0, n < node.parameters.num_shots, n + 1):
+                        save(n, n_st)
+                        with for_(*from_array(x, x_volts)):
+                            seq.ramp_to_voltages(
+                                {x_obj.id: x},
+                                duration=node.parameters.hold_duration,
+                                ramp_duration=node.parameters.ramp_duration,
+                            )
+                            align()
+                            if node.parameters.pre_measurement_delay > 0:
+                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
+                            align()
+                            for i, sensor in multiplexed_sensors.items():
+                                # Select the resonator tied to the sensor
+                                rr = sensor.readout_resonator
+                                # Measure using said resonator
+                                rr.measure("readout", qua_vars=(I[i], Q[i]))
+                                # Post-measurement wait (Optional)
+                                rr.wait(500)
+
+                                # Save data
+                                save(I[i], I_st[i])
+                                save(Q[i], Q_st[i])
+                        if node.parameters.per_line_compensation:
+                            seq.apply_compensation_pulse()
+                    seq.apply_compensation_pulse()
+            with stream_processing():
+                n_st.save("n")
+                for i in range(num_sensors):
+                    I_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(f"Q{i}")
+
+    # Case 4: Both external
+    elif x_external and y_external:
+        raise ValueError("Estimated measurement time too long")
+        # with program() as node.namespace["qua_program"]:
+        #     seq = node.machine.voltage_sequences[vgs_id]
+
+        #     I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
+        #     trig_counter = declare(int)
+
+        #     for multiplexed_sensors in sensors.batch():
+        #         align()
+        #         # We know that the Y is the slow axis. Order it so that the Y axis comes first
+        #         with for_(n, 0, n < node.parameters.num_shots, n + 1):
+        #             save(n, n_st)
+
+        #             with for_(trig_counter, 0, trig_counter < int(len(x_volts) * len(y_volts)), trig_counter + 1):
+        #                 x_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
+        #                 y_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
+
+        #                 wait(node.parameters.post_trigger_wait_ns // 4)
+        #                 for i, sensor in multiplexed_sensors.items():
+        #                     # Select the resonator tied to the sensor
+        #                     rr = sensor.readout_resonator
+        #                     # Measure using said resonator
+        #                     rr.measure("readout", qua_vars=(I[i], Q[i]))
+        #                     # Post-measurement wait (Optional)
+        #                     rr.wait(500)
+
+        #                     # Save data
+        #                     save(I[i], I_st[i])
+        #                     save(Q[i], Q_st[i])
+        #     with stream_processing():
+        #         n_st.save("n")
+        #         for i in range(num_sensors):
+        #             I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+        #             Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
+
+
+# %% {Simulate}
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate or node.parameters.use_validation
+)
+def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP and simulate the QUA program"""
+    # Connect to the QOP
+    qmm = node.machine.connect()
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Simulate the QUA program, generate the waveform report and plot the simulated samples
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    # Store the figure, waveform report and simulated samples
+    node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
+
+
+# %% {Execute}
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
+)
+def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    # Connect to the QOP
+    qmm = node.machine.connect()
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        # The job is stored in the node namespace to be reused in the fetching_data run_action
+        node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        # Run the paused program code
+        if node.parameters.x_external or node.parameters.y_external:
+            paused_program(node)
+        # Display the progress bar
+        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+        for dataset in data_fetcher:
+            progress_counter(
+                data_fetcher.get("n", 0),
+                node.parameters.num_shots,
+                start_time=data_fetcher.t_start,
+            )
+        # Display the execution report to expose possible runtime errors
+        print(job.execution_report())
+    # Transpose X and Y for Case # 3
+    if not node.parameters.x_external and node.parameters.y_external:
+        dataset = dataset.transpose("sensors", "x_volts", "y_volts")
+    # Register the raw dataset
+    node.results["ds_raw"] = dataset
+
+
+# %% {Simulate validation data}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.use_validation)
+def simulate_data(node: QualibrationNode[Parameters, Quam]):
+    """Simulate the data."""
+    pass
+
+
+# %% {Load_historical_data}
+@node.run_action(skip_if=node.parameters.load_data_id is None)
+def load_data(node: QualibrationNode[Parameters, Quam]):
+    """Load a previously acquired dataset."""
+    load_data_id = node.parameters.load_data_id
+    # Load the specified dataset
+    node.load_from_id(node.parameters.load_data_id)
+    node.parameters.load_data_id = load_data_id
+    # Get the sensors from the loaded node parameters
+    node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
+
+
+# %% {Analyse_data}
+@node.run_action(skip_if=node.parameters.run_in_video_mode or not node.parameters.perform_edge_analysis)
+def analyse_data(node: QualibrationNode[Parameters, Quam]):
+    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    # TODO: Implement analysis - remove pass when complete
+    # Process raw dataset (convert ADC to volts, compute amplitude)
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
+
+    # Perform charge stability analysis
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+
+    # Convert FitParameters to dictionaries for storage (JSON serializable)
+    node.results["fit_results"] = {k: v.to_dict() for k, v in fit_results.items()}
+
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+
+
+# %% {Plot_data}
+@node.run_action(skip_if=node.parameters.run_in_video_mode)
+def plot_data(node: QualibrationNode[Parameters, Quam]):
+    """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+    fig_amplitude = plot_raw_amplitude(node.results["ds_raw"], node.namespace["sensors"])
+    fig_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
+    # Store the generated figures
+    node.results["figures"] = {
+        "amplitude": fig_amplitude,
+        "phase": fig_phase,
+    }
+    if node.parameters.perform_edge_analysis and "fit_results" in node.results:
+        for sensor in node.namespace["sensors"]:
+            sensor_data = node.results["ds_raw"].sel(sensors=sensor.id)
+            fit_params = node.results["fit_results"].get(sensor.id, {})
+            fig_cp = plot_change_point_overlays(sensor_data, fit_params, sensor.id)
+            node.results["figures"][f"{sensor.id}_change_points"] = fig_cp
+            if fit_params.get("segments"):
+                fig_lines = plot_line_fit_overlays(sensor_data, fit_params, sensor.id)
+                node.results["figures"][f"{sensor.id}_line_fits"] = fig_lines
+
+
+# %%
+@node.run_action(skip_if=node.parameters.run_in_video_mode is False)
+def run_video_mode(node: QualibrationNode[Parameters, Quam]):
+    if node.parameters.virtual_gate_set_id == None:
+        x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(
+            node.parameters.y_axis_name
+        )
+        if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
+            raise ValueError(
+                f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
+            )
+        vgs_id = x_obj.voltage_sequence.gate_set.id
+    else:
+        vgs_id = node.parameters.virtual_gate_set_id
+    if node.parameters.x_from_qdac:
+        import warnings
+
+        warnings.warn("Hybrid Video Mode will run with X Axis from OPX and Y Axis from QDAC")
+    x_axis_name = node.parameters.x_axis_name
+    y_axis_name = node.parameters.y_axis_name
+    x_span, x_points = node.parameters.x_span, node.parameters.x_points
+    y_span, y_points = node.parameters.y_span, node.parameters.y_points
+
+    from pathlib import Path
+
+    quam_state_path = Path(node.machine.serialiser._get_state_path()).resolve()
+
+    create_video_mode(
+        machine=node.machine,
+        num_software_averages=node.parameters.num_shots,
+        log=node.log,
+        x_axis_name=x_axis_name,
+        y_axis_name=y_axis_name,
+        x_span=x_span,
+        x_points=x_points,
+        y_span=y_span,
+        y_points=y_points,
+        virtual_gate_id=vgs_id,
+        dc_control=True,
+        readout_pulses=[
+            node.machine.sensor_dots[name].readout_resonator.operations["readout"]
+            for name in node.parameters.sensor_names
+        ],
+        save_path=str(quam_state_path),
+        settle_time=int(
+            getattr(node.machine.get_component(node.parameters.x_axis_name).physical_channel, "settling_time", None)
+            or node.parameters.qdac_dwell_time_us * 1e3
+        ),
+        qdac_ext_trigger_input_port=node.machine.get_component(
+            node.parameters.y_axis_name
+        ).physical_channel.qdac_spec.qdac_trigger_in,
+    )
+
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Save the node results and state."""
+    node.save()
