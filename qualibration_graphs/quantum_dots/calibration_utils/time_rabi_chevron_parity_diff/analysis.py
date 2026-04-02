@@ -14,7 +14,7 @@ from typing import Tuple, Dict, Any
 import numpy as np
 import xarray as xr
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 
 from calibration_utils.time_rabi_chevron_parity_diff.init_utils import (
     _estimate_f_res_and_omega_from_chevron,

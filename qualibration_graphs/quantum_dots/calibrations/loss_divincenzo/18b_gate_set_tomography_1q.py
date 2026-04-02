@@ -18,7 +18,7 @@ from qm import SimulationConfig
 from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import fetching_tool, progress_counter
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from qualibrate.core.parameters import NodeParameters
 from qualibration_libs.data import XarrayDataFetcher
 from quam_config import Quam

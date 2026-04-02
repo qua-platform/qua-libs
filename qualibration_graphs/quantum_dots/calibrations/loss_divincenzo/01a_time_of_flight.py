@@ -10,7 +10,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.time_of_flight import (
     Parameters,

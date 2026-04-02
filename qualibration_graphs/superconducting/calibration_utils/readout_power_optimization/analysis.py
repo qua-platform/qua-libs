@@ -5,7 +5,7 @@ import numpy as np
 import xarray as xr
 from sklearn.mixture import GaussianMixture
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
 from calibration_utils.iq_blobs import fit_raw_data as fit_iq_blobs
 from calibration_utils.iq_blobs.analysis import FitParameters as FitParametersIQblobs

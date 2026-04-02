@@ -8,7 +8,7 @@ from qm.qua import *
 
 from qualang_tools.results import fetching_tool
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from calibration_utils.time_of_flight import (
     Parameters,
     process_raw_data,

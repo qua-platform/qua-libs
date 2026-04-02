@@ -1,7 +1,7 @@
 # %%
 from quam_config import Quam
 from qm import QuantumMachinesManager
-from qualibrate import QualibrationNode, NodeParameters
+from qualibrate.core import QualibrationNode, NodeParameters
 from calibration_utils.run_video_mode import create_video_mode, Parameters
 
 description = """

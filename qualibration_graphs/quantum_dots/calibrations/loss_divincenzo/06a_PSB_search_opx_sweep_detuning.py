@@ -11,7 +11,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualang_tools.loops import from_array
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.psb_search_sweep_detuning import Parameters
 from calibration_utils.common_utils.experiment import get_sensors, _make_batchable_list_from_multiplexed

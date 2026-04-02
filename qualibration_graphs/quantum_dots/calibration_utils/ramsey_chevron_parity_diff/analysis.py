@@ -33,7 +33,7 @@ import numpy as np
 import xarray as xr
 from scipy.optimize import curve_fit, differential_evolution
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 
 _logger = logging.getLogger(__name__)
 

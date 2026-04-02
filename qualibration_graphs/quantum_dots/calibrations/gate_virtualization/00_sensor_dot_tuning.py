@@ -10,7 +10,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.gate_virtualization.sensor_dot_tuning_parameters import (
     SensorDotTuningParameters,

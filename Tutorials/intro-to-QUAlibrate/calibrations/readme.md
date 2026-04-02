@@ -49,7 +49,7 @@ This guide walks you through converting the [`03_time_of_flight.py`](https://git
 Add the relevant imports for the QUAlibrateNode, such as:
 
 ```python
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from calibration_utils.time_of_flight import (
     Parameters,
     process_raw_data,

@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 import matplotlib.pylab as plt
 import numpy as np
 import xarray as xr
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation, unwrap_phase
 from qualibration_libs.data import convert_IQ_to_V
 from scipy.optimize import curve_fit, minimize

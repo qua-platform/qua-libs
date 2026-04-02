@@ -4,7 +4,7 @@ from typing import Dict, Tuple
 
 import numpy as np
 import xarray as xr
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation, oscillation
 from scipy.optimize import curve_fit
 

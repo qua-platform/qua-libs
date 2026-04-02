@@ -7,7 +7,7 @@ import jax
 import jax.numpy as jnp
 from jax import lax
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 
 from ..bayesian_change_point import BayesianCP
 

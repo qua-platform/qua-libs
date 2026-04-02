@@ -3,7 +3,7 @@ import numpy as np
 import xarray as xr
 from dataclasses import dataclass
 from typing import Tuple
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
 from qualibration_libs.analysis import fit_decay_exp
 

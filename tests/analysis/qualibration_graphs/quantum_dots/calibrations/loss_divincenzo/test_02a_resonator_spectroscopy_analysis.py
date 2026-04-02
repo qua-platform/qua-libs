@@ -44,7 +44,7 @@ def _ensure_video_mode_parameters_stub() -> None:
             VideoModeCommonParameters,
         )
     except ModuleNotFoundError:
-        from qualibrate.parameters import RunnableParameters
+        from qualibrate.core.parameters import RunnableParameters
 
         package_mod = types.ModuleType("calibration_utils.run_video_mode")
         params_mod = types.ModuleType("calibration_utils.run_video_mode.video_mode_specific_parameters")

@@ -9,7 +9,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qualang_tools.results import progress_counter
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits, get_idle_times_in_clock_cycles

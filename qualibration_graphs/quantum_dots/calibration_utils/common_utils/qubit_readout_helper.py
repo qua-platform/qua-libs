@@ -1,7 +1,7 @@
 from typing import List, Set, Dict, Optional, Tuple, Literal
 from dataclasses import dataclass
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from qualibration_libs.core import BatchableList
 
 from quam_builder.architecture.quantum_dots.components import SensorDot

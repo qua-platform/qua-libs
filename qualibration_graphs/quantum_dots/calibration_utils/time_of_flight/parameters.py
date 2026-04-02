@@ -1,5 +1,5 @@
 from typing import Optional
-from qualibrate import NodeParameters
+from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 from calibration_utils.common_utils.experiment import BaseExperimentNodeParameters

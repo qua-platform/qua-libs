@@ -3,7 +3,7 @@ from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
 from qualang_tools.octave_tools.calibration_result_plotter import CalibrationResultPlotter
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from qm.octave.octave_mixer_calibration import MixerCalibrationResults
 
 u = unit(coerce_to_integer=True)

@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Optional
 
 import numpy as np
-from qualibrate import NodeParameters
+from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 from calibration_utils.common_utils.experiment import QubitsExperimentNodeParameters

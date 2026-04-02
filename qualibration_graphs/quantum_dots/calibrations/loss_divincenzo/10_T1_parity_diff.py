@@ -9,7 +9,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.loops import from_array
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.T1_parity_diff import (
     Parameters,

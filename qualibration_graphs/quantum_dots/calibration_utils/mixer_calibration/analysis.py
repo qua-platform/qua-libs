@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from qualang_tools.octave_tools.calibration_result_plotter import CalibrationResultPlotter
 
 

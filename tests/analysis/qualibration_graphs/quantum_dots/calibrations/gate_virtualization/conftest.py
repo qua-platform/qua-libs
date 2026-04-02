@@ -18,7 +18,7 @@ from typing import Any, Dict, Optional
 from unittest.mock import patch
 
 # qualibrate 1.1.x moved parameters into core.parameters; qualibration-libs
-# still imports from qualibrate.parameters.
+# still imports from qualibrate.core.parameters.
 if "qualibrate.parameters" not in sys.modules:
     try:
         import qualibrate.core.parameters as _cp

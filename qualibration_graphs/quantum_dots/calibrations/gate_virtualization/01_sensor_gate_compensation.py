@@ -6,7 +6,7 @@ from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.gate_virtualization import (
     SensorCompensationParameters,
@@ -215,8 +215,7 @@ def update_state(
     """
     if "fit_results" not in node.results:
         raise RuntimeError(
-            "update_state called but 'fit_results' not found in node.results. "
-            "Run analyse_data before update_state."
+            "update_state called but 'fit_results' not found in node.results. " "Run analyse_data before update_state."
         )
 
     for pair_key, fit_res in node.results["fit_results"].items():

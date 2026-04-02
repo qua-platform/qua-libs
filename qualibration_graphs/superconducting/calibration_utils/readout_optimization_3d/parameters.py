@@ -3,8 +3,8 @@ from typing import Literal
 import numpy as np
 from pydantic import model_validator
 from qualang_tools.units import unit
-from qualibrate import NodeParameters
-from qualibrate.parameters import RunnableParameters
+from qualibrate.core import NodeParameters
+from qualibrate.core.parameters import RunnableParameters
 
 from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonNodeParameters
 

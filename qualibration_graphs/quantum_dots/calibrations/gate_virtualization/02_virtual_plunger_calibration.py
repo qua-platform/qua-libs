@@ -7,7 +7,7 @@ from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.gate_virtualization.virtual_plunger_parameters import (
     VirtualPlungerParameters,
@@ -166,10 +166,7 @@ def analyse_data(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     for pair_key, ds_raw in node.results["ds_raw_all"].items():
         ds = process_raw_dataset(ds_raw, node)
         plunger_gate_name, device_gate_name = pair_key.split("_vs_", maxsplit=1)
-        is_asymmetric = bool(
-            plunger_set
-            and not (plunger_gate_name in plunger_set and device_gate_name in plunger_set)
-        )
+        is_asymmetric = bool(plunger_set and not (plunger_gate_name in plunger_set and device_gate_name in plunger_set))
         fit_results[pair_key] = extract_virtual_plunger_coefficients(
             ds,
             plunger_gate_name=plunger_gate_name,
@@ -232,42 +229,30 @@ def update_state(
     """
     if "fit_results" not in node.results:
         raise RuntimeError(
-            "update_state called but 'fit_results' not found in node.results. "
-            "Run analyse_data before update_state."
+            "update_state called but 'fit_results' not found in node.results. " "Run analyse_data before update_state."
         )
 
     plunger_set = set(node.parameters.plunger_gates or [])
 
     for pair_key, fit_res in node.results["fit_results"].items():
         plunger_gate, device_gate = pair_key.split("_vs_", maxsplit=1)
-        is_asymmetric = bool(
-            plunger_set
-            and not (plunger_gate in plunger_set and device_gate in plunger_set)
-        )
+        is_asymmetric = bool(plunger_set and not (plunger_gate in plunger_set and device_gate in plunger_set))
 
         if fit_res is None:
             if is_asymmetric:
-                warnings.warn(
-                    f"Skipping asymmetric pair '{pair_key}': analysis returned None."
-                )
+                warnings.warn(f"Skipping asymmetric pair '{pair_key}': analysis returned None.")
                 continue
             raise RuntimeError(f"fit_results['{pair_key}'] is None — analysis failed for this pair.")
         fit_params = fit_res.get("fit_params", {})
         if not fit_params.get("success", False):
             reason = fit_params.get("reason", "unknown")
             if is_asymmetric:
-                warnings.warn(
-                    f"Skipping asymmetric pair '{pair_key}': {reason}"
-                )
+                warnings.warn(f"Skipping asymmetric pair '{pair_key}': {reason}")
                 continue
-            raise RuntimeError(
-                f"Analysis for pair '{pair_key}' was not successful: {reason}"
-            )
+            raise RuntimeError(f"Analysis for pair '{pair_key}' was not successful: {reason}")
         M = fit_res["T_matrix"]
         if M is None:
-            raise RuntimeError(
-                f"T_matrix is None for pair '{pair_key}' despite success=True."
-            )
+            raise RuntimeError(f"T_matrix is None for pair '{pair_key}' despite success=True.")
 
         vgs = None
         for candidate in node.machine.virtual_gate_sets.values():
@@ -277,8 +262,7 @@ def update_state(
                 break
         if vgs is None:
             raise ValueError(
-                f"Could not find a VirtualGateSet containing both "
-                f"'{plunger_gate}' and '{device_gate}'."
+                f"Could not find a VirtualGateSet containing both " f"'{plunger_gate}' and '{device_gate}'."
             )
 
         source_gates = vgs.layers[0].source_gates
@@ -306,9 +290,8 @@ def update_state(
         )
 
         # Only write the reciprocal if both gates are plungers.
-        both_plungers = (
-            not plunger_set  # no list → treat all as symmetric
-            or (plunger_gate in plunger_set and device_gate in plunger_set)
+        both_plungers = not plunger_set or (  # no list → treat all as symmetric
+            plunger_gate in plunger_set and device_gate in plunger_set
         )
         if both_plungers:
             alpha_yx = float(delta[1, 0])

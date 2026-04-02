@@ -5,7 +5,7 @@ from typing import Tuple, Dict
 import numpy as np
 import xarray as xr
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 
 
 @dataclass

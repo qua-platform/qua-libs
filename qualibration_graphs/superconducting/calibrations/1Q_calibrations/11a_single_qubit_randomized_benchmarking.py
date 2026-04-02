@@ -12,7 +12,7 @@ from qualang_tools.units import unit
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.loops import from_array
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.single_qubit_randomized_benchmarking import (
     Parameters,

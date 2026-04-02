@@ -5,7 +5,7 @@ Signal processing utilities for Qualibrate nodes.
 from scipy.signal import savgol_filter
 import numpy as np
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 
 from qualang_tools.units import unit
 

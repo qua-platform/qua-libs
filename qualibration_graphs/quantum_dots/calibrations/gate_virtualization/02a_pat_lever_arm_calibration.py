@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 
 from calibration_utils.gate_virtualization import PATLeverArmParameters

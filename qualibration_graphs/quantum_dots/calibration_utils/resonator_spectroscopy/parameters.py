@@ -1,4 +1,4 @@
-from qualibrate import NodeParameters
+from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from calibration_utils.common_utils.experiment import BaseExperimentNodeParameters
 from qualibration_libs.parameters import CommonNodeParameters

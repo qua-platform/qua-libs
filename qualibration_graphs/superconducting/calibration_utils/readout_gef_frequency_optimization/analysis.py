@@ -4,7 +4,7 @@ from typing import Tuple, Dict
 import numpy as np
 import xarray as xr
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
 
 

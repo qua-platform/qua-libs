@@ -10,7 +10,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.psb_search_fixed_detuning import Parameters
 from calibration_utils.common_utils.experiment import get_sensors, _make_batchable_list_from_multiplexed

@@ -13,7 +13,7 @@ from more_itertools import flatten
 from qm.qua import *
 from qm.qua._expressions import QuaArrayVariable, QuaVariable
 from qualang_tools.units import unit
-from qualibrate import NodeParameters, QualibrationNode
+from qualibrate.core import NodeParameters, QualibrationNode
 from quam_config import Quam
 
 

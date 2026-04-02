@@ -12,7 +12,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.gate_virtualization import (
     BarrierCompensationParameters,
@@ -333,9 +333,7 @@ def create_qua_program(node: QualibrationNode[BarrierCompensationParameters, Qua
             nb_points = int(node.parameters.non_barrier_drive_points)
             drive_center = 0.0
             detuning_center = _resolve_detuning_center(node, target_pair_id)
-            drive_values = drive_center + np.linspace(
-                -0.5 * nb_span_v, 0.5 * nb_span_v, nb_points
-            )
+            drive_values = drive_center + np.linspace(-0.5 * nb_span_v, 0.5 * nb_span_v, nb_points)
             detuning_values = detuning_center + np.linspace(
                 float(node.parameters.detuning_min),
                 float(node.parameters.detuning_max),
@@ -678,6 +676,7 @@ def update_virtual_gate_matrix(
         _resolve_virtual_gate_set,
         _resolve_layer,
     )
+
     vgs = _resolve_virtual_gate_set(node)
     layer = _resolve_layer(vgs, node.parameters.matrix_layer_id)
     v2p = dict(zip(layer.source_gates, layer.target_gates))
@@ -698,9 +697,7 @@ def update_virtual_gate_matrix(
         for target_barrier, gate_betas in non_barrier_betas.items():
             for drive_gate, beta in gate_betas.items():
                 if not np.isfinite(beta):
-                    raise RuntimeError(
-                        f"Non-finite beta for {target_barrier} vs {drive_gate}: {beta}"
-                    )
+                    raise RuntimeError(f"Non-finite beta for {target_barrier} vs {drive_gate}: {beta}")
                 barrier_row_idx = list(layer.source_gates).index(target_barrier)
                 physical_col = v2p.get(drive_gate, drive_gate)
                 col_idx = list(layer.target_gates).index(physical_col)

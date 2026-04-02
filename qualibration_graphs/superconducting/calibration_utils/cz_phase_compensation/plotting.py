@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import xarray as xr
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 
 from .parameters import Parameters

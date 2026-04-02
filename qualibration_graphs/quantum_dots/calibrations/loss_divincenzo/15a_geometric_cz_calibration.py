@@ -11,7 +11,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.geometric_cz.parameters import Parameters
 from calibration_utils.common_utils.experiment import get_qubits

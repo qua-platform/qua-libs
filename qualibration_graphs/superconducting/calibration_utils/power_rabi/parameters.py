@@ -1,8 +1,8 @@
 from typing import Literal, Protocol, runtime_checkable
 
 import numpy as np
-from qualibrate import NodeParameters
-from qualibrate.parameters import RunnableParameters
+from qualibrate.core import NodeParameters
+from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
 
 

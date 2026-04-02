@@ -11,7 +11,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
-from qualibrate import QualibrationNode
+from qualibrate.core import QualibrationNode
 from quam_config import QubitQuam as Quam
 from calibration_utils.common_utils.experiment import get_qubits, get_xy_reference_pulse_name
 from calibration_utils.qubit_spectroscopy_parity_diff import (
