@@ -102,14 +102,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             node.parameters.simulate,
                             log_callable=node.log,
                         )
+                    # Multiplexed sync: every qubit must finish reset (possibly different durations, e.g. active reset)
+                    # before any manipulation starts; also keeps shared resources (e.g. TWPA sticky elements) coherent.
                     align()
 
                     # The qubit manipulation sequence
                     for i, qubit in multiplexed_qubits.items():
+                        # Per-qubit timing: π pulse completes before the shared idle wait begins on this qubit.
                         qubit.align()
                         qubit.xy.play("x180")
                         qubit.align()
                         qubit.resonator.wait(t)
+                    # No readout until all qubits have finished manipulation + wait for this idle_time step.
                     align()
 
                     # Measure the state of the resonators
@@ -122,6 +126,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # save data
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
+                    # End-of-segment barrier before the next sweep step (and before sticky/aux elements ramp down early).
                     align()
 
         with stream_processing():
