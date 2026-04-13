@@ -84,7 +84,7 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
         raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
 
     ax.set_title(qubit["qubit"])
-    ax.set_xlabel("Idle_time (µs)")
+    ax.set_xlabel("Idle_time (ns)")
     ax.text(
         0.1,
         0.9,
