@@ -1,24 +1,24 @@
 # %% {Imports}
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
 import time
 
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
-
-from quam.components import pulses
 
 from qualibrate import QualibrationNode
 from quam_config import Quam
-from calibration_utils.fast_line_dc_attenuation import Parameters
+from calibration_utils.fast_line_dc_attenuation import (
+    Parameters,
+    validate_and_add_square_wave,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+)
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from calibration_utils.fast_line_dc_attenuation import validate_and_add_square_wave
 
 
 # %% {Node initialisation}
@@ -40,7 +40,7 @@ Prerequisites:
     - Having set up the external DC settings in your Quam state.
 
 State update:
-    - The attenuation value of the VoltageGate elements, so that the VoltageSequence can scale the outputs.
+    - The attenuation value and the opx_external_ratio of the VoltageGate elements, so that the VoltageSequence can scale the outputs.
 """
 
 
@@ -55,10 +55,10 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.quantum_dot_pair_names = ["virtual_dot_1_virtual_dot_2_pair"]
-    # node.parameters.sensor_names = ["virtual_sensor_1"]
-    # node.parameters.components = ["virtual_dot_1"]
-    # node.parameters.dc_sweep_span = 0.01
-    # node.parameters.dc_sweep_step = 0.00005
+    node.parameters.sensor_names = ["virtual_sensor_1"]
+    node.parameters.components = ["virtual_dot_1"]
+    node.parameters.dc_sweep_span = 0.01
+    node.parameters.dc_sweep_step = 0.001
     pass
 
 
@@ -70,7 +70,7 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
-    # node.machine.connect_to_external_source()
+    node.machine.connect_to_external_source()
 
     dc_array = np.arange(
         -node.parameters.dc_sweep_span / 2, node.parameters.dc_sweep_span / 2, node.parameters.dc_sweep_step
@@ -204,41 +204,24 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    pass
+    ds_fit, fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["ds_fit"] = ds_fit
+    node.results["fit_results"] = fit_results
+    log_fitted_results(fit_results, log_callable=node.log)
+    node.outcomes = {key: ("successful" if r["success"] else "failed") for key, r in fit_results.items()}
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
-    for comp in node.namespace["components"]:
-        fig, axes = plt.subplots(
-            len(node.namespace["sensor_names"]),
-            2,
-            figsize=(12, 4 * len(node.namespace["sensor_names"])),
-            squeeze=False,
-        )
-        fig.suptitle(f"Component: {comp}")
-
-        ds = node.results["ds_raw"]
-        dc_values = node.namespace["dc_list_values"][node.machine.get_component(comp).physical_channel.name]
-
-        for i, sensor in enumerate(node.namespace["sensor_names"]):
-            I = ds[f"I_{comp}_sensor_{sensor.name}"].values
-            Q = ds[f"Q_{comp}_sensor_{sensor.name}"].values
-
-            axes[i, 0].plot(dc_values, I)
-            axes[i, 0].set_ylabel(f"{sensor.name}")
-            axes[i, 0].set_title("I" if i == 0 else "")
-
-            axes[i, 1].plot(dc_values, Q)
-            axes[i, 1].set_title("Q" if i == 0 else "")
-
-        axes[-1, 0].set_xlabel("DC voltage (V)")
-        axes[-1, 1].set_xlabel("DC voltage (V)")
-        fig.tight_layout()
-
-        node.results[f"figure_{comp}"] = fig
+    figures = plot_raw_data_with_fit(
+        node.results["ds_raw"],
+        node.results.get("ds_fit"),
+        node,
+        node.results.get("fit_results", {}),
+    )
+    node.results.update(figures)
 
 
 # %% {Update_state}
@@ -253,16 +236,30 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     for comp in node.namespace["components"]:
         del node.machine.get_component(comp).physical_channel.operations["square_wave"]
 
+    fit_results = node.results["fit_results"]
     with node.record_state_updates():
-        # This is a characterization measurement and typically does not update state parameters.
-        # If needed in the future, the identified PSB region coordinates and optimal detuning could be stored.
-        # Example of potential state update (commented out):
-        # for qubit_pair in node.namespace["qubit_pairs"]:
-        #     if not node.results["fit_results"][qubit_pair.name]["success"]:
-        #         continue
-        #     # Update PSB region coordinates and optimal detuning if needed
-        # TODO: how to update the PSB region coordinates and optimal detuning for a given qd pair?
-        pass
+        for comp in node.namespace["components"]:
+            ch = node.machine.get_component(comp)
+
+            # Pick the best result across sensors for this component
+            best = None
+            for sensor in node.namespace["sensor_names"]:
+                key = f"{comp}__{sensor.name}"
+                r = fit_results.get(key)
+                if r and r["success"]:
+                    if best is None or r["dc_separation"] > best["dc_separation"]:
+                        best = r
+
+            if best is None:
+                node.log(f"No successful fit for {comp}, skipping state update")
+                continue
+
+            ratio = best["attenuation_ratio"]
+            attenuation_db = -20 * np.log10(ratio)
+
+            node.log(f"Updating {comp}: attenuation = {attenuation_db:.2f} dB, " f"opx_external_ratio = {ratio:.4f}")
+            ch.physical_channel.attenuation = attenuation_db
+            ch.physical_channel.opx_external_ratio = ratio
 
 
 # %% {Save_results}
