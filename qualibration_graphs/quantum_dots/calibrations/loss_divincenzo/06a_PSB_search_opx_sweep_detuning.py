@@ -8,16 +8,26 @@ from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
 from qualang_tools.loops import from_array
-
+from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.psb_search_sweep_detuning import Parameters
-from calibration_utils.common_utils.experiment import get_sensors, _make_batchable_list_from_multiplexed
+from calibration_utils.common_utils.experiment import (
+    get_sensors,
+)
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.core import tracked_updates
+
+from calibration_utils.iq_sweep import (
+    fit_raw_data,
+    log_fitted_results,
+    plot_fidelity_vs_sweep,
+    plot_visibility_vs_sweep,
+    plot_sweep_summary,
+)
+
+from qualibrate.models.outcome import Outcome
 
 
 # %% {Node initialisation}
@@ -55,7 +65,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.quantum_dot_pair_names = ["virtual_dot_1_virtual_dot_2_pair"]
+    # node.parameters.qubit_pairs = ["q1_q2"]
     pass
 
 
@@ -63,27 +73,35 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 node.machine = Quam.load()
 
 
+def _resolve_qubit_pairs(node: QualibrationNode[Parameters, Quam]):
+    """Resolve logical qubit pairs from parameters or default to all machine pairs."""
+    if node.parameters.qubit_pairs not in (None, ""):
+        return [node.machine.qubit_pairs[name] for name in node.parameters.qubit_pairs]
+
+    return list(node.machine.qubit_pairs.values())
+
+
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 
-    dot_pair_objects = [node.machine.quantum_dot_pairs[name] for name in node.parameters.quantum_dot_pair_names]
+    qubit_pairs = _resolve_qubit_pairs(node)
+    dot_pair_objects = [qp.quantum_dot_pair for qp in qubit_pairs]
+
+    # Detuning axes may be added after the voltage sequence was first cached.
+    # Refresh the sequence so keep-level tracking includes the detuning virtual axis.
+    for gate_set_id in {dot_pair.voltage_sequence.gate_set.id for dot_pair in dot_pair_objects}:
+        node.machine.reset_voltage_sequence(gate_set_id)
+    for dot_pair in dot_pair_objects:
+        if len(dot_pair.sensor_dots) != 1:
+            raise ValueError(
+                f"06a_PSB_search_opx_sweep_detuning expects exactly one sensor dot per pair; "
+                f"{dot_pair.id!r} has {len(dot_pair.sensor_dots)}"
+            )
 
     node.namespace["dot_pairs"] = dot_pair_objects
-
-    multiplexed_sensors_by_dot_pair = {
-        pair.name: _make_batchable_list_from_multiplexed(pair.sensor_dots, multiplexed=node.parameters.multiplexed)
-        for pair in dot_pair_objects
-    }
-
-    pair_sensors = {}
-    # We can assume that all the sensors connected to each QD pair are multiplexed. You cannot really sequentially measure
-    # Each dot pair object will have a multiplexed batch
-    for dpo in dot_pair_objects:
-        pair_sensors[dpo.name] = _make_batchable_list_from_multiplexed(
-            dpo.sensor_dots, multiplexed=node.parameters.multiplexed or True
-        )
+    node.namespace["qubit_pairs"] = qubit_pairs
 
     detuning_min = node.parameters.detuning_min
     detuning_max = node.parameters.detuning_max
@@ -92,9 +110,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     detuning_array = np.arange(detuning_min, detuning_max, detuning_step)
 
-    # The swept 'axes'. Do we do a full 2D scan here?
+    # The swept axes. n_runs is the shot index (inner→outer: detuning, n_runs).
+    # The qubit_pair dim is inferred from the per-pair stream names.
     node.namespace["sweep_axes"] = {
-        "quantum_dot_pair": xr.DataArray([pair.name for pair in dot_pair_objects]),
+        "qubit_pair": xr.DataArray([pair.name for pair in qubit_pairs]),
+        "n_runs": xr.DataArray(np.arange(node.parameters.num_shots), attrs={"long_name": "shot"}),
         "detuning": xr.DataArray(detuning_array, attrs={"long_name": "voltage", "units": "V"}),
     }
     with program() as prog:
@@ -103,29 +123,19 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         detuning = declare(fixed)
 
-        # For each dot pair, we likely have a single stream, for the multiplexed batch (range(len(...)) == 1)
-        I_st = {
-            pair.name: [declare_stream() for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
-        Q_st = {
-            pair.name: [declare_stream() for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
-        I = {
-            pair.name: [declare(fixed) for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
-        Q = {
-            pair.name: [declare(fixed) for _ in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch()))]
-            for pair in dot_pair_objects
-        }
+        # Each logical qubit pair is read out through the single sensor dot of
+        # its underlying quantum-dot pair.
+        I_st = {qp.name: declare_stream() for qp in qubit_pairs}
+        Q_st = {qp.name: declare_stream() for qp in qubit_pairs}
+        I = {qp.name: declare(fixed) for qp in qubit_pairs}
+        Q = {qp.name: declare(fixed) for qp in qubit_pairs}
 
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
             save(n, n_st)
 
             # Perform them all sequentially for now. Can add footprint batching later
-            for dot_pair in dot_pair_objects:
+            for qubit_pair in qubit_pairs:
+                dot_pair = qubit_pair.quantum_dot_pair
                 with for_(*from_array(detuning, detuning_array)):
                     # ---------------------------------------------------------
                     # Step 1a: Empty - step to empty point (fixed duration)
@@ -146,28 +156,23 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # No macro used here, since this node will characterise the macro
 
                     # First ramp to the fixed detuning point
-                    dot_pair.ramp_to_detuning(detuning, ramp_duration=node.parameters.ramp_duration)
+                    dot_pair.ramp_to_detuning(
+                        detuning,
+                        ramp_duration=node.parameters.ramp_duration,
+                        hold_duration=node.parameters.buffer_duration,
+                    )
 
                     align()
 
-                    # And then explicitly measure.
-                    # The measuring will be in batches of multiplexed sensors. Each dot_pair will have a list of SensorDot objects.
-                    # For each multiplexable batch, we have a single measurement saved to a single stream.
+                    # And then explicitly measure using the pair's single sensor dot.
+                    sensor = dot_pair.sensor_dots[0]
+                    rr = sensor.readout_resonator
+                    readout_length = rr.operations["readout"].length
+                    sensor.step_to_voltage({}, duration=readout_length)
+                    rr.measure("readout", qua_vars=(I[qubit_pair.name], Q[qubit_pair.name]))
 
-                    for i, batch in enumerate(
-                        multiplexed_sensors_by_dot_pair[dot_pair.name].batch()
-                    ):  # Probably one batch, seeing as one dot pair should have sensors multiplexed
-                        for sensor in batch.values():
-                            # Select the resonator tied to the sensor
-                            rr = sensor.readout_resonator
-                            # Measure using said resonator
-                            rr.measure("readout", qua_vars=(I[dot_pair.name][i], Q[dot_pair.name][i]))
-                            # Post-measurement wait (Optional)
-                            rr.wait(500)
-
-                        # Save data
-                        save(I[dot_pair.name][i], I_st[dot_pair.name][i])
-                        save(Q[dot_pair.name][i], Q_st[dot_pair.name][i])
+                    save(I[qubit_pair.name], I_st[qubit_pair.name])
+                    save(Q[qubit_pair.name], Q_st[qubit_pair.name])
 
                     align()
                     # Apply the compensation pulse via the voltage sequence
@@ -175,10 +180,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         with stream_processing():
             n_st.save("n")
-            for pair in dot_pair_objects:
-                for i in range(len(multiplexed_sensors_by_dot_pair[pair.name].batch())):
-                    I_st[pair.name][i].buffer(len(detuning_array)).average().save(f"I_{pair.name}_sensor_{i}")
-                    Q_st[pair.name][i].buffer(len(detuning_array)).average().save(f"Q_{pair.name}_sensor_{i}")
+            for qubit_pair in qubit_pairs:
+                # Shot-by-shot: inner buffer = detuning, outer buffer = n_runs.
+                I_st[qubit_pair.name].buffer(len(detuning_array)).buffer(node.parameters.num_shots).save(
+                    f"I_{qubit_pair.name}"
+                )
+                Q_st[qubit_pair.name].buffer(len(detuning_array)).buffer(node.parameters.num_shots).save(
+                    f"Q_{qubit_pair.name}"
+                )
 
 
 # %% {Simulate}
@@ -217,8 +226,13 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-    # Register the raw dataset
-    node.results["ds_raw"] = dataset
+    # Reshape the per-pair streams into a qubit_pair-indexed ds with I/Q variables.
+    pair_names = [pair.name for pair in node.namespace["qubit_pairs"]]
+    I_arr = xr.concat([dataset[f"I_{p}"] for p in pair_names], dim="qubit_pair")
+    Q_arr = xr.concat([dataset[f"Q_{p}"] for p in pair_names], dim="qubit_pair")
+    I_arr = I_arr.assign_coords(qubit_pair=pair_names)
+    Q_arr = Q_arr.assign_coords(qubit_pair=pair_names)
+    node.results["ds_raw"] = xr.Dataset({"I": I_arr, "Q": Q_arr})
 
 
 # %% {Load_historical_data}
@@ -229,6 +243,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
+    node.namespace["qubit_pairs"] = _resolve_qubit_pairs(node)
     # Get the active sensors from the loaded node parameters
     node.namespace["sensors"] = get_sensors(node)
 
@@ -238,28 +253,69 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
 
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    node.outcomes = {
+        qubit_name: (Outcome.SUCCESSFUL if fit_result["success"] else Outcome.FAILED)
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
+
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data."""
+    """Plot fidelity and visibility vs detuning for each qubit pair."""
+    qubit_pairs = node.namespace["qubit_pairs"]
+    sweep_name = node.parameters.sweep_name
+
+    fig_fidelity = plot_fidelity_vs_sweep(
+        node.results["ds_raw"], qubit_pairs, node.results["ds_fit"], sweep_name=sweep_name
+    )
+    fig_visibility = plot_visibility_vs_sweep(
+        node.results["ds_raw"], qubit_pairs, node.results["ds_fit"], sweep_name=sweep_name
+    )
+    fig_summary = plot_sweep_summary(node.results["ds_raw"], qubit_pairs, node.results["ds_fit"], sweep_name=sweep_name)
+    plt.show()
+    node.results["figures"] = {
+        "fidelity_vs_detuning": fig_fidelity,
+        "visibility_vs_detuning": fig_visibility,
+        "sweep_summary": fig_summary,
+    }
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor data analysis was successful."""
-
     with node.record_state_updates():
-        # This is a characterization measurement and typically does not update state parameters.
-        # If needed in the future, the identified PSB region coordinates and optimal detuning could be stored.
-        # Example of potential state update (commented out):
-        # for qubit_pair in node.namespace["qubit_pairs"]:
-        #     if not node.results["fit_results"][qubit_pair.name]["success"]:
-        #         continue
-        #     # Update PSB region coordinates and optimal detuning if needed
-        # TODO: how to update the PSB region coordinates and optimal detuning for a given qd pair?
-        pass
+        for qp in node.namespace["qubit_pairs"]:
+            fit_result = node.results["fit_results"][qp.name]
+            if not fit_result["success"]:
+                continue
+
+            dot_pair = qp.quantum_dot_pair
+            dot_pair.add_point(
+                VoltagePointName.MEASURE,
+                voltages={dot_pair.detuning_axis_name: float(fit_result["optimal_sweep_value"])},
+                duration=node.parameters.buffer_duration,
+                replace_existing_point=True,
+            )
+
+            # Current PSB readout assumes the first sensor dot defines the pair readout.
+            sensor_dot = dot_pair.sensor_dots[0]
+
+            operation = sensor_dot.readout_resonator.operations[node.parameters.operation]
+            operation.integration_weights_angle -= float(fit_result["iw_angle"])
+
+            # SensorDot.measure("readout") already returns IQ demodulated using
+            # the operation's integration_weights_angle, so PSB state
+            # discrimination should threshold the rotated I quadrature directly.
+            pair_ids = {getattr(dot_pair, "id", None), getattr(dot_pair, "name", None)} - {None, ""}
+            for pair_id in pair_ids:
+                sensor_dot._add_readout_params(pair_id, threshold=float(fit_result["I_threshold"]))
 
 
 # %% {Save_results}

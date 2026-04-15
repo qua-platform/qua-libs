@@ -208,6 +208,7 @@ def create_ld_quam():
         for key, qubit in machine.qubits.items():
             qubit.id = key
 
+        _define_default_detuning_axes(machine)
         _override_default_pulse_lengths(machine)
         _add_default_voltage_points(machine)
         _apply_port_delays(machine)
@@ -245,6 +246,22 @@ def _override_default_pulse_lengths(machine) -> None:
             if "readout" in getattr(rr, "operations", {}):
                 rr.operations["readout"].length = 1000
                 rr.operations["readout"].amplitude = 0.025
+
+
+def _define_default_detuning_axes(machine) -> None:
+    """Materialize a simple detuning axis for each registered dot pair."""
+    for qdp in machine.quantum_dot_pairs.values():
+        gate_set = qdp.voltage_sequence.gate_set
+        if qdp.detuning_axis_name in getattr(gate_set, "valid_channel_names", []):
+            continue
+        qdp.define_detuning_axis(
+            matrix=[[1.0, -1.0]],
+            detuning_axis_name=qdp.detuning_axis_name,
+            set_dc_virtual_axis=False,
+        )
+
+    for gate_set_id in machine.virtual_gate_sets:
+        machine.reset_voltage_sequence(gate_set_id)
 
 
 def _add_default_voltage_points(machine) -> None:
