@@ -55,22 +55,22 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.quantum_dot_pair_names = ["virtual_dot_1_virtual_dot_2_pair"]
+    # node.parameters.sensor_names = ["virtual_sensor_1"]
+    # node.parameters.components = ["virtual_dot_1"]
+    # node.parameters.dc_sweep_span = 0.01
+    # node.parameters.dc_sweep_step = 0.00005
     pass
 
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
-node.parameters.sensor_names = ["virtual_sensor_1"]
-node.parameters.components = ["virtual_dot_1"]
-node.parameters.dc_sweep_span = 0.01
-node.parameters.dc_sweep_step = 0.001
 
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
-    node.machine.connect_to_external_source()
+    # node.machine.connect_to_external_source()
 
     dc_array = np.arange(
         -node.parameters.dc_sweep_span / 2, node.parameters.dc_sweep_span / 2, node.parameters.dc_sweep_step
