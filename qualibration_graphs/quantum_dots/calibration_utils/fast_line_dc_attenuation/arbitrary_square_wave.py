@@ -1,8 +1,12 @@
 import numpy as np
+from typing import Any, List
+
+from quam_builder.architecture.quantum_dots.components.mixins import VoltageMacroMixin
 
 from quam.components.pulses import Pulse
 from quam.core import quam_dataclass
 from qualibration_libs.core import tracked_updates
+from qualibrate import QualibrationNode
 
 __all__ = ["SquareWave", "validate_and_add_square_wave"]
 
@@ -37,9 +41,9 @@ class SquareWave(Pulse):
 
 
 def validate_and_add_square_wave(
-    node,
-    channel,
-    tracked_updates_list,
+    node: QualibrationNode,
+    channel: VoltageMacroMixin,
+    tracked_updates_list: List,
 ):
     if (
         not type(channel.physical_channel).__name__ == "VoltageGate"

@@ -85,7 +85,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # A dict of the arrays to be used in the measurement. Accessed below in execute
     node.namespace["dc_list_values"] = dc_list_values = {
         channel.physical_channel.name: dc_offsets[channel.physical_channel.name] + dc_array
-        for channel in machine.channel_list
+        for channel in machine_channel_list
     }
 
     node.namespace["sweep_axes"] = {
