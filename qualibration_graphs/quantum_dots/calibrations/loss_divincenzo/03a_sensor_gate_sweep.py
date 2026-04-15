@@ -10,6 +10,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
+from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.sensor_gate_sweep import Parameters
@@ -143,9 +144,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if not node.results["fit_results"][sensor.name]["success"]:
                 continue
             optimal_offset = 0.0  # find_optimal_offset(node.results["ds_fit"], sensor.name)
-        # TODO: replace "measure" by its enum
+
         sensor.add_point(
-            "measure",
+            VoltagePointName.MEASURE,
             voltages={sensor.name: optimal_offset},
             duration=sensor.readout_resonator.operation["readout"].duration,
         )

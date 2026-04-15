@@ -121,11 +121,6 @@ def get_xy_reference_pulse_name(qubit: AnySpinQubit) -> str:
     return pulse_name
 
 
-def get_xy_reference_pulse(qubit: AnySpinQubit):
-    """Return the pulse object backing the qubit's default XY macros."""
-    return qubit.xy.operations[get_xy_reference_pulse_name(qubit)]
-
-
 def quantize_pulse_length_ns(pulse_length_ns: int | float) -> int:
     """Round a pulse length to the nearest hardware-valid 4 ns multiple."""
     requested_length_ns = float(pulse_length_ns)

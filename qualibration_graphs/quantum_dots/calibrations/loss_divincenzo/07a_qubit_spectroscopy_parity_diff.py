@@ -13,7 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import QubitQuam as Quam
-from calibration_utils.common_utils.experiment import get_qubits, get_xy_reference_pulse_name
+from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.qubit_spectroscopy_parity_diff import (
     Parameters,
     process_raw_dataset,
@@ -23,7 +23,6 @@ from calibration_utils.qubit_spectroscopy_parity_diff import (
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
 description = """
@@ -78,18 +77,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
     operation_amp_factor = node.parameters.operation_amplitude_factor
 
-    # Change the pulse amplitude and duration as a tracked change
-    node.namespace["tracked_resonators"] = []
     for qubit in qubits:
-        reference_pulse_name = get_xy_reference_pulse_name(qubit)
-        with tracked_updates(qubit.xy, auto_revert=False, dont_assign_to_none=True) as xy:
-            reference_pulse = xy.operations[reference_pulse_name]
-            reference_pulse.amplitude = reference_pulse.amplitude * operation_amp_factor
-            if operation_len is not None:
-                reference_pulse.length = operation_len
-                if hasattr(reference_pulse, "sigma"):
-                    reference_pulse.sigma = operation_len / 6
-            node.namespace["tracked_resonators"].append(xy)
+        qubit.x.update(
+            amplitude_scale=operation_amp_factor,
+            duration=operation_len,
+        )
 
     u = unit(coerce_to_integer=True)
     n_avg = node.parameters.num_shots  # The number of averages
@@ -121,9 +113,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(df, dfs)):
+                    intermediate_frequency = qubit.x.intermediate_frequency
                     # Update the frequency before the sequence
-                    qubit.xy.update_frequency(qubit.xy.intermediate_frequency + df)
-
+                    # qubit.xy.update_frequency(qubit.xy.intermediate_frequency + df)
+                    qubit.x.update(frequency=intermediate_frequency + df)
                     # ---------------------------------------------------------
                     # Step 1a: Empty - step to empty point (fixed duration)
                     # ---------------------------------------------------------
@@ -160,7 +153,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ---------------------------------------------------------
                     align()
                     qubit.voltage_sequence.apply_compensation_pulse()
-
+                    
+                    # Reset the frequency to the original value
+                    qubit.x.update(frequency=intermediate_frequency)
                     # ---------------------------------------------------------
                     # Save results
                     # ---------------------------------------------------------
@@ -269,12 +264,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-
             opt_frequency = node.results["fit_results"][q.name]["frequency"]
-            q.larmor_frequency = opt_frequency
-            q.xy.RF_frequency = None
-            q.xy.RF_frequency = opt_frequency
-
+            intermediate_frequency = q.x.intermediate_frequency
+            q.larmor_frequency = opt_frequency + intermediate_frequency
+            q.x.update(frequency=intermediate_frequency + opt_frequency)
 
 # %% {Save_results}
 @node.run_action()
