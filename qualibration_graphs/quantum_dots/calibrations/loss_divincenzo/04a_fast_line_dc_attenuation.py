@@ -60,11 +60,17 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
+node.parameters.sensor_names = ["virtual_sensor_1"]
+node.parameters.components = ["virtual_dot_1"]
+node.parameters.dc_sweep_span = 0.01
+node.parameters.dc_sweep_step = 0.001
 
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+
+    node.machine.connect_to_external_source()
 
     dc_array = np.arange(
         -node.parameters.dc_sweep_span / 2, node.parameters.dc_sweep_span / 2, node.parameters.dc_sweep_step
@@ -74,11 +80,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["components"] = components = node.parameters.components  # This gives list of strings
     machine_channel_list = [node.machine.get_component(name) for name in components]  # This gives the actual objects
     node.namespace["original_offsets"] = dc_offsets = {}
-    node.namespace["tracked_operations"] = []
 
     # For each chosen component, add a square wave operation (tracked) and save the current offset, so that it can be returned later
     for ch in machine_channel_list:
-        validate_and_add_square_wave(node, ch, node.namespace["tracked_operations"])
+        validate_and_add_square_wave(node, ch)
         channel_offset = ch.physical_channel.offset_parameter()
         dc_offsets[ch.physical_channel.name] = channel_offset
 
@@ -91,8 +96,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sweep_axes"] = {
         "components": xr.DataArray(components),
         "dc_values": xr.DataArray(
-            [dc_list_values[c.physical_channel.name] for c in machine_channel_list],
-            attrs={"long_name": "voltage", "units": "V"},
+            dc_array,
+            attrs={"long_name": "voltage offset", "units": "V"},
         ),
     }
 
@@ -116,7 +121,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
                     chan.play("square_wave")
                     for s in sensors:
-                        I[s.name][ch.name], Q[s.name][ch.name] = s.measure("readout")
+                        I[s.name][ch.name], Q[s.name][ch.name] = s.readout_resonator.measure("readout")
                         save(I[s.name][ch.name], I_st[s.name][ch.name])
                         save(Q[s.name][ch.name], Q_st[s.name][ch.name])
 
@@ -154,7 +159,9 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
 
     node.namespace["gate_set_names"] = gate_set_names = {
-        node.machine.get_component(k).physical_channel.name: node.machine.get_component(k).voltage_sequence.gate_set
+        node.machine.get_component(k)
+        .physical_channel.name: node.machine.get_component(k)
+        .voltage_sequence.gate_set.name
         for k in node.namespace["components"]
     }
 
@@ -165,8 +172,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         for physical_channel_name, dc_values in node.namespace["dc_list_values"].items():
             for val in dc_values:
                 while not job.is_paused():
-                    time.sleep(0.01)  # Wait until next pause
-
+                    time.sleep(0.001)  # Wait until next pause
+                print(f"Setting {physical_channel_name} to {val}V")
                 node.machine.virtual_dc_sets[gate_set_names[physical_channel_name]].set_voltages(
                     {physical_channel_name: val}
                 )
@@ -197,12 +204,41 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    pass
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
+    for comp in node.namespace["components"]:
+        fig, axes = plt.subplots(
+            len(node.namespace["sensor_names"]),
+            2,
+            figsize=(12, 4 * len(node.namespace["sensor_names"])),
+            squeeze=False,
+        )
+        fig.suptitle(f"Component: {comp}")
+
+        ds = node.results["ds_raw"]
+        dc_values = node.namespace["dc_list_values"][node.machine.get_component(comp).physical_channel.name]
+
+        for i, sensor in enumerate(node.namespace["sensor_names"]):
+            I = ds[f"I_{comp}_sensor_{sensor.name}"].values
+            Q = ds[f"Q_{comp}_sensor_{sensor.name}"].values
+
+            axes[i, 0].plot(dc_values, I)
+            axes[i, 0].set_ylabel(f"{sensor.name}")
+            axes[i, 0].set_title("I" if i == 0 else "")
+
+            axes[i, 1].plot(dc_values, Q)
+            axes[i, 1].set_title("Q" if i == 0 else "")
+
+        axes[-1, 0].set_xlabel("DC voltage (V)")
+        axes[-1, 1].set_xlabel("DC voltage (V)")
+        fig.tight_layout()
+
+        node.results[f"figure_{comp}"] = fig
 
 
 # %% {Update_state}
@@ -212,7 +248,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     # Re-set the DC offsets to the previous state
     for phys_name, val in node.namespace["original_offsets"].items():
         gate_set_name = node.namespace["gate_set_names"][phys_name]
+        print(f"Resetting {phys_name} to {val}V")
         node.machine.virtual_dc_sets[gate_set_name].set_voltages({phys_name: val})
+    for comp in node.namespace["components"]:
+        del node.machine.get_component(comp).physical_channel.operations["square_wave"]
 
     with node.record_state_updates():
         # This is a characterization measurement and typically does not update state parameters.

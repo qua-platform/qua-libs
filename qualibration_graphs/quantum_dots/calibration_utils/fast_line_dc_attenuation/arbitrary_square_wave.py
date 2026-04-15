@@ -37,13 +37,15 @@ class SquareWave(Pulse):
             )
             * self.amplitude
         )
-        return np.tile(full_period_samples, number_of_periods_in_duration)
+        waveform = np.tile(full_period_samples, number_of_periods_in_duration)
+        # if len(waveform) < self.length:
+        #     waveform = np.pad(waveform, (0, self.length - len(waveform)), constant_values=0)
+        return waveform
 
 
 def validate_and_add_square_wave(
     node: QualibrationNode,
     channel: VoltageMacroMixin,
-    tracked_updates_list: List,
 ):
     if (
         not type(channel.physical_channel).__name__ == "VoltageGate"
@@ -53,12 +55,19 @@ def validate_and_add_square_wave(
         )
     elif channel.physical_channel.offset_parameter is None:
         raise ValueError(f"Channel {channel.name}'s physical_channel does not have an offset_parameter")
+    readout_length = max([s.readout_resonator.operations["readout"].length for s in node.namespace["sensor_names"]])
+    period_ns = int(1 / node.parameters.square_wave_frequency * 1e9)
+    extended_length = int(readout_length * 5)
+    remainder = extended_length % period_ns
+    if remainder != 0:
+        extended_length += period_ns - remainder
 
-    with tracked_updates(channel.physical_channel.operations, auto_revert=False, dont_assign_to_none=True) as ops:
-        pulse = SquareWave(
-            length=max([s.readout_resonator.operations["readout"].length for s in node.namespace["sensors"]]),
-            amplitude=node.parameters.square_wave_amplitude,
-            frequency_hz=node.parameters.square_wave_frequency,
-        )
-        ops["square_wave"] = pulse
-        tracked_updates_list.append(ops)
+    if extended_length % 4 != 0:
+        extended_length += 4 - (extended_length % 4)
+
+    pulse = SquareWave(
+        length=extended_length,
+        amplitude=node.parameters.square_wave_amplitude,
+        frequency_hz=node.parameters.square_wave_frequency,
+    )
+    channel.physical_channel.operations["square_wave"] = pulse
