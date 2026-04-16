@@ -72,10 +72,10 @@ HOST_IP, CLUSTER_NAME = _load_cluster_config()
 CONTROLLER_ID: int = 1
 """Controller number passed to ``Instruments.add_*_fem(controller=...)``."""
 
-MW_FEM_SLOT: int = 1
+MW_FEM_SLOT: int = 7
 """MW-FEM slot for qubit XY drive lines (Stage 2 only)."""
 
-LF_FEM_SLOT: int = 5
+LF_FEM_SLOT: int = 1
 """LF-FEM slot for plungers 1-2, sensor 1, and resonator 1."""
 
 LF_FEM_DELAY_NS: int = 155
@@ -83,6 +83,13 @@ LF_FEM_DELAY_NS: int = 155
 
 MW_FEM_DELAY_NS: int = 0
 """Delay (ns) applied to all MW-FEM output ports."""
+
+DEFAULT_LARMOR_FREQUENCY: float = 5.1e9
+"""Nominal qubit Larmor (RF) frequency in Hz.
+
+The MW-FEM upconverter is at 5 GHz, so this gives IF = 100 MHz —
+well within the MW-FEM NCO limit of ±500 MHz.
+"""
 
 # ── Quantum-dot topology ───────────────────────────────────────────────
 
@@ -208,11 +215,23 @@ def create_ld_quam():
         for key, qubit in machine.qubits.items():
             qubit.id = key
 
+        _set_default_larmor_frequencies(machine)
         _define_default_detuning_axes(machine)
         _override_default_pulse_lengths(machine)
         _add_default_voltage_points(machine)
         _apply_port_delays(machine)
     return machine
+
+
+def _set_default_larmor_frequencies(machine) -> None:
+    """Set a nominal Larmor frequency on each qubit so the MW-FEM IF resolves.
+
+    XYDriveMW.RF_frequency refs qubit.larmor_frequency; without a numeric
+    value the reference string leaks into the QM config as a non-number.
+    """
+    for qubit in machine.qubits.values():
+        if getattr(qubit, "larmor_frequency", None) is None:
+            qubit.larmor_frequency = DEFAULT_LARMOR_FREQUENCY
 
 
 def _apply_port_delays(machine) -> None:

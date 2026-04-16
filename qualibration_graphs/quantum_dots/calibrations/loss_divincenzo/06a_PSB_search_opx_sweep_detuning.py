@@ -117,7 +117,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "n_runs": xr.DataArray(np.arange(node.parameters.num_shots), attrs={"long_name": "shot"}),
         "detuning": xr.DataArray(detuning_array, attrs={"long_name": "voltage", "units": "V"}),
     }
-    with program() as prog:
+    with program() as node.namespace["qua_program"]:
         n = declare(int)
         n_st = declare_stream()
 
@@ -159,7 +159,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     dot_pair.ramp_to_detuning(
                         detuning,
                         ramp_duration=node.parameters.ramp_duration,
-                        hold_duration=node.parameters.buffer_duration,
+                        duration=node.parameters.buffer_duration,
                     )
 
                     align()
@@ -168,8 +168,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     sensor = dot_pair.sensor_dots[0]
                     rr = sensor.readout_resonator
                     readout_length = rr.operations["readout"].length
-                    
-                    sensor.step_to_voltage({}, duration=readout_length)
+
+                    dot_pair.step_to_voltages({}, duration=readout_length)
                     rr.measure("readout", qua_vars=(I[qubit_pair.name], Q[qubit_pair.name]))
 
                     save(I[qubit_pair.name], I_st[qubit_pair.name])
