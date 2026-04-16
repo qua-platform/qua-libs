@@ -76,28 +76,38 @@ if _vqpu_platforms not in sys.path:
 
 import jax.numpy as jnp  # noqa: E402
 
-from virtual_qpu.dynamics import simulate as _simulate  # noqa: E402
-from virtual_qpu.operators import expval as _expval  # noqa: E402
-from virtual_qpu.sweep import sweep as _sweep  # noqa: E402
+try:
+    from virtual_qpu.dynamics import simulate as _simulate  # noqa: E402
+    from virtual_qpu.operators import expval as _expval  # noqa: E402
+    from virtual_qpu.sweep import sweep as _sweep  # noqa: E402
 
-from quantum_dots.device import LossDiVincenzoDevice  # noqa: E402
-from quantum_dots.params import ExchangeModel, LossDiVincenzoParams, MU_B_OVER_H  # noqa: E402
+    from quantum_dots.device import LossDiVincenzoDevice  # noqa: E402
+    from quantum_dots.params import ExchangeModel, LossDiVincenzoParams, MU_B_OVER_H  # noqa: E402
 
-_VIRTUAL_QPU_AVAILABLE = True
+    _VIRTUAL_QPU_AVAILABLE = True
+except Exception:  # pragma: no cover — environment without virtual_qpu installed
+    _simulate = _expval = _sweep = None  # type: ignore[assignment]
+    LossDiVincenzoDevice = None  # type: ignore[assignment]
+    ExchangeModel = LossDiVincenzoParams = None  # type: ignore[assignment]
+    MU_B_OVER_H = 1.0  # type: ignore[assignment]
+    _VIRTUAL_QPU_AVAILABLE = False
 
 # ── Default device configuration ──────────────────────────────────────
 
-DEFAULT_LD_PARAMS = LossDiVincenzoParams(
-    n_qubits=2,
-    g_factors=[2.0, 2.04],
-    magnetic_field=10.0 / (2.0 * MU_B_OVER_H),
-    exchange_models=[ExchangeModel(J_0=0.001, V_ref=0.0, lever_arm=0.050)],
-    ref_freqs=None,
-    frame="rot",
-    use_rwa=True,
-    t1=[1000.0, 1000.0],
-    t2=[400.0, 400.0],
-)
+if _VIRTUAL_QPU_AVAILABLE:
+    DEFAULT_LD_PARAMS = LossDiVincenzoParams(
+        n_qubits=2,
+        g_factors=[2.0, 2.04],
+        magnetic_field=10.0 / (2.0 * MU_B_OVER_H),
+        exchange_models=[ExchangeModel(J_0=0.001, V_ref=0.0, lever_arm=0.050)],
+        ref_freqs=None,
+        frame="rot",
+        use_rwa=True,
+        t1=[1000.0, 1000.0],
+        t2=[400.0, 400.0],
+    )
+else:
+    DEFAULT_LD_PARAMS = None  # type: ignore[assignment]
 
 DEFAULT_SOLVER = "me"
 DEFAULT_NOISE_STD = 0.1

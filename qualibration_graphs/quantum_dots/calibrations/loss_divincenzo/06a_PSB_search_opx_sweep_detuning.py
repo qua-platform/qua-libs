@@ -143,13 +143,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     dot_pair.empty()
                     # Requires the dot pair object to have the empty macro, in addition to the qubits
                     # Equivalet step to the lvl_init
-
+                    align()
                     # ---------------------------------------------------------
                     # Step 2: Initialize - load electron into dots (fixed duration)
                     # ---------------------------------------------------------
                     dot_pair.initialize()
                     # Requires the dot pair object to have the initialize macro, in addition to the qubits
-
+                    align()
                     # ---------------------------------------------------------
                     # Step 3: Measure
                     # ---------------------------------------------------------
@@ -168,6 +168,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     sensor = dot_pair.sensor_dots[0]
                     rr = sensor.readout_resonator
                     readout_length = rr.operations["readout"].length
+                    
                     sensor.step_to_voltage({}, duration=readout_length)
                     rr.measure("readout", qua_vars=(I[qubit_pair.name], Q[qubit_pair.name]))
 

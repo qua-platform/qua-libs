@@ -111,11 +111,116 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 node.machine = Quam.load()
 
 
+def _resolve_qubit_pairs(node: QualibrationNode[Parameters, Quam]):
+    """Resolve logical qubit pairs from parameters or default to all machine pairs."""
+    if node.parameters.qubit_pairs not in (None, ""):
+        return [node.machine.qubit_pairs[name] for name in node.parameters.qubit_pairs]
+
+    return list(node.machine.qubit_pairs.values())
+
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    pass
+    
+    qubit_pairs = _resolve_qubit_pairs(node)
+
+    # Detuning axes may be added after the voltage sequence was first cached.
+    # Refresh the sequence so keep-level tracking includes the detuning virtual axis.
+    for gate_set_id in {dot_pair.voltage_sequence.gate_set.id for dot_pair in dot_pair_objects}:
+        node.machine.reset_voltage_sequence(gate_set_id)
+
+    node.namespace["qubit_pairs"] = qubit_pairs
+
+    exchange_min = node.parameters.exchange_min
+    exchange_max = node.parameters.exchange_max
+    exchange_points = node.parameters.exchange_points
+    exchange_step = (exchange_max - exchange_min) / exchange_points
+
+    exchange_array = np.arange(exchange_min, exchange_max, exchange_step)
+
+    # The swept axes. n_runs is the shot index (inner→outer: exchange, n_runs).
+    # The qubit_pair dim is inferred from the per-pair stream names.
+    node.namespace["sweep_axes"] = {
+        "qubit_pair": xr.DataArray([pair.name for pair in qubit_pairs]),
+        "n_runs": xr.DataArray(np.arange(node.parameters.num_shots), attrs={"long_name": "shot"}),
+        "exchange": xr.DataArray(exchange_array, attrs={"long_name": "voltage", "units": "V"}),
+    }
+    with program() as prog:
+        n = declare(int)
+        n_st = declare_stream()
+
+        exchange = declare(fixed)
+
+        p1 = declare(int)
+        p2 = declare(int)
+
+        p1_st = {qubit_pair.name: declare_stream() for qubit_pair in qubit_pairs}
+        p2_st = {qubit_pair.name: declare_stream() for qubit_pair in qubit_pairs}
+        pdiff_st = {qubit_pair.name: declare_stream() for qubit_pair in qubit_pairs}
+        n_st = declare_stream()
+
+        with for_(n, 0, n < node.parameters.num_shots, n + 1):
+            save(n, n_st)
+
+            # Perform them all sequentially for now. Can add footprint batching later
+            for qubit_pair in qubit_pairs:
+                with for_(*from_array(exchange, exchange_array)):
+                    # ---------------------------------------------------------
+                    # Step 1a: Empty - step to empty point (fixed duration)
+                    # ---------------------------------------------------------
+                    qubit_pair.empty()
+                    # Requires the dot pair object to have the empty macro, in addition to the qubits
+                    # Equivalet step to the lvl_init
+                    align()
+
+
+                    assign(p1, Cast.to_int(qubit.measure()))
+                    align()
+                    # ---------------------------------------------------------
+                    # Step 2: Initialize - load electron into dots (fixed duration)
+                    # ---------------------------------------------------------
+                    qubit_pair.initialize()
+                    # Requires the dot pair object to have the initialize macro, in addition to the qubits
+                    align()
+                    # ---------------------------------------------------------
+                    # Step 3: Measure
+                    # ---------------------------------------------------------
+                    # No macro used here, since this node will characterise the macro
+
+                    # First ramp to the fixed detuning point
+                    qubit_pair.go_to_point(
+                        exchange,
+                        duration=node.parameters.duration
+                    )
+
+                    align()
+
+                    assign(p2, Cast.to_int(qubit_pair.measure()))
+
+                    align()
+                    qubit_pair.voltage_sequence.apply_compensation_pulse()
+
+                    # Save results
+                    save(p1, p1_st[qubit_pair.name])
+                    save(p2, p2_st[qubit_pair.name])
+
+                    with if_(p1 == p2):
+                        save(0, pdiff_st[qubit_pair.name])
+                    with else_():
+                        save(1, pdiff_st[qubit_pair.name])
+
+        with stream_processing():
+            n_st.save("n")
+
+            n_exchange = len(exchange_array)
+            for qubit_pair in qubit_pairs:
+                pass
+                # p1_st[qubit.name].buffer(n_detuning, n_tau).average().save(f"p1_{qubit.name}")
+                # p2_st[qubit.name].buffer(n_detuning, n_tau).average().save(f"p2_{qubit.name}")
+                # pdiff_st[qubit.name].buffer(n_detuning, n_tau).average().save(f"pdiff_{qubit.name}")
+
+
 
 
 # %% {Simulate}

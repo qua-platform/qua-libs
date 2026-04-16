@@ -18,6 +18,17 @@ from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
 
+from calibration_utils.iq_blobs.plotting import plot_histograms, plot_visibility_curves
+
+from calibration_utils.iq_blobs import (
+    Parameters,
+    process_raw_dataset,
+    fit_raw_data,
+    log_fitted_results,
+    plot_iq_blobs,
+    plot_confusion_matrices,
+    simulate_quantum_dot_readout_from_node,
+)
 
 # %% {Node initialisation}
 description = """
