@@ -61,16 +61,24 @@ CALIBRATION_LIBRARY_ROOT = REPO_ROOT / "qualibration_graphs" / "quantum_dots" / 
 ARTIFACTS_BASE = ANALYSIS_ROOT / "artifacts"
 
 QUBIT_NAMES: list[str] = ["q1", "q2", "q3", "q4"]
+QUBIT_PAIR_NAMES: list[str] = ["q1_q2"]
 ANALYSE_QUBITS: list[str] = ["q1"]
 
 # ── virtual_qpu path setup ────────────────────────────────────────────
-VIRTUAL_QPU_ROOT = REPO_ROOT.parent / "virtual_qpu"
-_vqpu_src = str(VIRTUAL_QPU_ROOT / "src")
-_vqpu_platforms = str(VIRTUAL_QPU_ROOT / "platforms")
-if _vqpu_src not in sys.path:
-    sys.path.insert(0, _vqpu_src)
-if _vqpu_platforms not in sys.path:
-    sys.path.insert(0, _vqpu_platforms)
+# Prefer the installed virtual_qpu package (from the project venv).
+# Only fall back to the local dev checkout if the package is missing.
+try:
+    import virtual_qpu as _vqpu_probe  # noqa: F811
+
+    del _vqpu_probe
+except ImportError:
+    VIRTUAL_QPU_ROOT = REPO_ROOT.parent / "virtual_qpu"
+    _vqpu_src = str(VIRTUAL_QPU_ROOT / "src")
+    _vqpu_platforms = str(VIRTUAL_QPU_ROOT / "platforms")
+    if _vqpu_src not in sys.path:
+        sys.path.insert(0, _vqpu_src)
+    if _vqpu_platforms not in sys.path:
+        sys.path.insert(0, _vqpu_platforms)
 
 # ── virtual_qpu imports (lazy) ─────────────────────────────────────────
 
@@ -82,34 +90,38 @@ try:
     from virtual_qpu.sweep import sweep as _sweep  # noqa: E402
 
     from quantum_dots.device import LossDiVincenzoDevice  # noqa: E402
-    from quantum_dots.params import ExchangeModel, LossDiVincenzoParams, MU_B_OVER_H  # noqa: E402
+    from quantum_dots.params import (  # noqa: E402
+        ExchangeModel,
+        LossDiVincenzoParams,
+        MU_B_OVER_H,
+    )
 
     _VIRTUAL_QPU_AVAILABLE = True
 except Exception:  # pragma: no cover — environment without virtual_qpu installed
     _simulate = _expval = _sweep = None  # type: ignore[assignment]
     LossDiVincenzoDevice = None  # type: ignore[assignment]
-    ExchangeModel = LossDiVincenzoParams = None  # type: ignore[assignment]
-    MU_B_OVER_H = 1.0  # type: ignore[assignment]
+    LossDiVincenzoParams = None  # type: ignore[assignment]
+    ExchangeModel = None  # type: ignore[assignment]
+    MU_B_OVER_H = None  # type: ignore[assignment]
     _VIRTUAL_QPU_AVAILABLE = False
 
 # ── Default device configuration ──────────────────────────────────────
 
 if _VIRTUAL_QPU_AVAILABLE:
+    _B_FIELD = 10.0 / (2.0 * MU_B_OVER_H)  # qubit 0 at exactly 10.0 GHz
     DEFAULT_LD_PARAMS = LossDiVincenzoParams(
         n_qubits=2,
-        g_factors=[2.0, 2.04],
-        magnetic_field=10.0 / (2.0 * MU_B_OVER_H),
-        exchange_models=[ExchangeModel(J_0=0.001, V_ref=0.0, lever_arm=0.050)],
+        g_factors=[2.0, 2.0 * 10.2 / 10.0],  # qubit 1 at 10.2 GHz
+        magnetic_field=_B_FIELD,
+        exchange_models=[ExchangeModel(J_0=0.005, V_ref=0.0, lever_arm=0.050)],
         ref_freqs=None,
         frame="rot",
         use_rwa=True,
-        t1=[1000.0, 1000.0],
-        t2=[400.0, 400.0],
     )
 else:
     DEFAULT_LD_PARAMS = None  # type: ignore[assignment]
 
-DEFAULT_SOLVER = "me"
+DEFAULT_SOLVER = "se"
 DEFAULT_NOISE_STD = 0.1
 DEFAULT_DRIVE_AMP_GHZ = 0.008
 DEFAULT_PULSE_DURATION_NS = 100.0
@@ -199,8 +211,7 @@ def ld_device():
     """A pre-configured ``LossDiVincenzoDevice`` with default parameters."""
     device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
     jump_ops = device.collapse_operators()
-    n_expected = 2 * DEFAULT_LD_PARAMS.n_qubits
-    assert len(jump_ops) == n_expected, f"Expected {n_expected} collapse ops, got {len(jump_ops)}"
+    assert len(jump_ops) == 0, "Default device has no decoherence; collapse_operators should be empty"
     return device
 
 
@@ -239,6 +250,43 @@ def calibrated_pi_half_amp():
     pi_idx = int(np.argmax(parity))
     pi_amp = float(DEFAULT_DRIVE_AMP_GHZ * amp_prefactors[pi_idx])
     return pi_amp / 2.0
+
+
+@pytest.fixture(scope="session")
+def calibrated_control_pi_amp():
+    """Calibrate the pi pulse amplitude for the control qubit (qubit 1)."""
+    from virtual_qpu.pulse import GaussianIQPulse
+    from virtual_qpu.schedule import Schedule
+
+    device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
+    control_freq_ghz = device.params.qubit_freqs[1]
+
+    amp_prefactors = jnp.linspace(0.1, 3.0, 200, dtype=jnp.float32)
+
+    def make_schedule(amp):
+        sched = Schedule()
+        sched.play(
+            GaussianIQPulse(
+                duration=DEFAULT_PULSE_DURATION_NS,
+                amplitude=DEFAULT_DRIVE_AMP_GHZ * amp,
+                frequency=control_freq_ghz,
+                sigma=DEFAULT_PULSE_DURATION_NS / 5,
+            ),
+            channel="drive_q1",
+        )
+        return sched.resolve()
+
+    result = simulate_sweep(
+        device,
+        make_schedule,
+        tsave=jnp.array([0.0, DEFAULT_PULSE_DURATION_NS], dtype=jnp.float32),
+        observable_qubit=1,
+        noise_std=0.0,
+        amp=amp_prefactors,
+    )
+    parity = np.asarray(result[..., -1])
+    pi_idx = int(np.argmax(parity))
+    return float(DEFAULT_DRIVE_AMP_GHZ * amp_prefactors[pi_idx])
 
 
 @pytest.fixture(scope="session")
@@ -401,11 +449,15 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         artifacts_subdir: Optional[str] = None,
         library_root: Optional[Path] = None,
         analyse_qubits: Optional[list[str]] = None,
+        analyse_qubit_pairs: Optional[list[str]] = None,
     ) -> Any:
-        if analyse_qubits is None:
+        if analyse_qubits is None and analyse_qubit_pairs is None:
             analyse_qubits = ANALYSE_QUBITS
         overrides = dict(param_overrides) if param_overrides else {}
-        overrides.setdefault("qubits", analyse_qubits)
+        if analyse_qubits:
+            overrides.setdefault("qubits", analyse_qubits)
+        if analyse_qubit_pairs:
+            overrides.setdefault("qubit_pairs", analyse_qubit_pairs)
 
         machine = minimal_quam_factory()
         library_root = library_root or CALIBRATION_LIBRARY_ROOT
@@ -435,6 +487,15 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
                 node.namespace["qubits"] = list(qubits.values()) if isinstance(qubits, dict) else list(qubits)
 
         try:
+            from calibration_utils.common_utils.experiment import get_qubit_pairs
+
+            node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+        except Exception:
+            if hasattr(machine, "qubit_pairs"):
+                qp = machine.qubit_pairs
+                node.namespace["qubit_pairs"] = list(qp.values()) if isinstance(qp, dict) else list(qp)
+
+        try:
             from calibration_utils.common_utils.experiment import get_sensors
 
             node.namespace["sensors"] = get_sensors(node)
@@ -443,9 +504,10 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
                 sensors = machine.sensor_dots
                 node.namespace["sensors"] = list(sensors.values()) if isinstance(sensors, dict) else list(sensors)
 
-        if analyse_qubits:
+        filter_names = analyse_qubit_pairs or analyse_qubits
+        if filter_names:
             keep_vars = []
-            for q in analyse_qubits:
+            for q in filter_names:
                 for prefix in ("p1_", "p2_", "pdiff_"):
                     v = f"{prefix}{q}"
                     if v in ds_raw.data_vars:
@@ -462,7 +524,7 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
             call_node_action(node, "update_state")
 
         artifacts_dir = ARTIFACTS_BASE / (artifacts_subdir or node_name)
-        fig_to_save = node.results.get("figure") or fig
+        fig_to_save = node.results.get("figures", {}).get("crot_spectroscopy") or node.results.get("figure") or fig
         if fig_to_save is not None:
             save_analysis_plot(fig_to_save, artifacts_dir, "simulation.png")
 

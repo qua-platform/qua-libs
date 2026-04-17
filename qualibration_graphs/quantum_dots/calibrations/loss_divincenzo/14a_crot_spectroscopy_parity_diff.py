@@ -2,47 +2,27 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
 
 from qm.qua import *
 
+from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
 
-from qualibrate.core import NodeParameters, QualibrationNode
-from qualibrate.core.parameters import RunnableParameters
-from qualibration_libs.parameters import CommonNodeParameters
+from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import QubitPairExperimentNodeParameters, get_qubits
+from calibration_utils.common_utils.experiment import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.core import tracked_updates
 
-try:
-    from calibration_utils.crot_spectroscopy_parity_diff import Parameters
-except ModuleNotFoundError:
+from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 
-    class NodeSpecificParameters(RunnableParameters):
-        """Fallback parameter set until the CROT parameter module is restored."""
-
-        num_shots: int = 100
-        frequency_span_in_mhz: float = 100.0
-        frequency_step_in_mhz: float = 0.25
-        min_exchange_amplitude: float = 0.0
-        max_exchange_amplitude: float = 0.5
-        amplitude_step: float = 0.01
-        operation: str = "x90"
-        target_qubit: str = "q1"
-        control_qubit: str = "q2"
-
-    class Parameters(
-        NodeParameters,
-        CommonNodeParameters,
-        NodeSpecificParameters,
-        QubitPairExperimentNodeParameters,
-    ):
-        """Fallback Parameters used only to keep the node importable."""
+from calibration_utils.crot_spectroscopy_parity_diff import (
+    Parameters,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+)
 
 
 # %% {Node initialisation}
@@ -111,26 +91,15 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 node.machine = Quam.load()
 
 
-def _resolve_qubit_pairs(node: QualibrationNode[Parameters, Quam]):
-    """Resolve logical qubit pairs from parameters or default to all machine pairs."""
-    if node.parameters.qubit_pairs not in (None, ""):
-        return [node.machine.qubit_pairs[name] for name in node.parameters.qubit_pairs]
-
-    return list(node.machine.qubit_pairs.values())
-
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    
-    qubit_pairs = _resolve_qubit_pairs(node)
 
-    # Detuning axes may be added after the voltage sequence was first cached.
-    # Refresh the sequence so keep-level tracking includes the detuning virtual axis.
-    for gate_set_id in {dot_pair.voltage_sequence.gate_set.id for dot_pair in dot_pair_objects}:
+    node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
+
+    for gate_set_id in {qp.voltage_sequence.gate_set.id for qp in qubit_pairs}:
         node.machine.reset_voltage_sequence(gate_set_id)
-
-    node.namespace["qubit_pairs"] = qubit_pairs
 
     exchange_min = node.parameters.exchange_min
     exchange_max = node.parameters.exchange_max
@@ -139,18 +108,30 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     exchange_array = np.arange(exchange_min, exchange_max, exchange_step)
 
-    # The swept axes. n_runs is the shot index (inner→outer: exchange, n_runs).
-    # The qubit_pair dim is inferred from the per-pair stream names.
+    esr_frequency_min = int(node.parameters.esr_frequency_min)
+    esr_frequency_max = int(node.parameters.esr_frequency_max)
+    esr_frequency_points = node.parameters.esr_frequency_points
+    esr_frequency_step = int((esr_frequency_max - esr_frequency_min) / esr_frequency_points)
+    esr_frequency_array = np.arange(esr_frequency_min, esr_frequency_max, esr_frequency_step)
+
+    control_x180_values = [False, True]
+
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray([pair.name for pair in qubit_pairs]),
-        "n_runs": xr.DataArray(np.arange(node.parameters.num_shots), attrs={"long_name": "shot"}),
+        "control_x180": xr.DataArray(
+            control_x180_values,
+            attrs={"long_name": "x180 on control qubit", "units": "bool"},
+        ),
         "exchange": xr.DataArray(exchange_array, attrs={"long_name": "voltage", "units": "V"}),
+        "esr_frequency": xr.DataArray(esr_frequency_array, attrs={"long_name": "frequency", "units": "Hz"}),
     }
-    with program() as prog:
+
+    with program() as node.namespace["qua_program"]:
         n = declare(int)
         n_st = declare_stream()
 
         exchange = declare(fixed)
+        esr_frequency = declare(int)
 
         p1 = declare(int)
         p2 = declare(int)
@@ -158,69 +139,81 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         p1_st = {qubit_pair.name: declare_stream() for qubit_pair in qubit_pairs}
         p2_st = {qubit_pair.name: declare_stream() for qubit_pair in qubit_pairs}
         pdiff_st = {qubit_pair.name: declare_stream() for qubit_pair in qubit_pairs}
-        n_st = declare_stream()
 
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
             save(n, n_st)
 
-            # Perform them all sequentially for now. Can add footprint batching later
             for qubit_pair in qubit_pairs:
-                with for_(*from_array(exchange, exchange_array)):
-                    # ---------------------------------------------------------
-                    # Step 1a: Empty - step to empty point (fixed duration)
-                    # ---------------------------------------------------------
-                    qubit_pair.empty()
-                    # Requires the dot pair object to have the empty macro, in addition to the qubits
-                    # Equivalet step to the lvl_init
-                    align()
+                for apply_x180 in control_x180_values:
+                    with for_(*from_array(exchange, exchange_array)):
+                        with for_(*from_array(esr_frequency, esr_frequency_array)):
+                            # ---------------------------------------------------------
+                            # Step 1a: Empty - step to empty point (fixed duration)
+                            # ---------------------------------------------------------
+                            qubit_pair.empty()
+                            align()
 
+                            assign(p1, Cast.to_int(qubit_pair.measure()))
+                            align()
 
-                    assign(p1, Cast.to_int(qubit.measure()))
-                    align()
-                    # ---------------------------------------------------------
-                    # Step 2: Initialize - load electron into dots (fixed duration)
-                    # ---------------------------------------------------------
-                    qubit_pair.initialize()
-                    # Requires the dot pair object to have the initialize macro, in addition to the qubits
-                    align()
-                    # ---------------------------------------------------------
-                    # Step 3: Measure
-                    # ---------------------------------------------------------
-                    # No macro used here, since this node will characterise the macro
+                            # ---------------------------------------------------------
+                            # Step 2: Initialize - load electron into dots (fixed duration)
+                            # ---------------------------------------------------------
+                            qubit_pair.initialize()
+                            align()
 
-                    # First ramp to the fixed detuning point
-                    qubit_pair.go_to_point(
-                        exchange,
-                        duration=node.parameters.duration
-                    )
+                            # ---------------------------------------------------------
+                            # Step 3: Optionally flip control qubit before CROT drive
+                            # ---------------------------------------------------------
+                            if apply_x180:
+                                qubit_pair.qubit_control.x180()
+                                align()
 
-                    align()
+                            # ---------------------------------------------------------
+                            # Step 4: CROT spectroscopy drive on target qubit
+                            # ---------------------------------------------------------
+                            qubit_pair.crot(
+                                voltage_point={qubit_pair.quantum_dot_pair.barrier_gate.id: exchange},
+                                esr_frequency=esr_frequency,
+                                duration=node.parameters.duration,
+                                hold_time=node.parameters.hold_duration,
+                            )
+                            align()
 
-                    assign(p2, Cast.to_int(qubit_pair.measure()))
+                            qubit_pair.step_to_point(VoltagePointName.INITIALIZE, duration=16)
 
-                    align()
-                    qubit_pair.voltage_sequence.apply_compensation_pulse()
+                            # ---------------------------------------------------------
+                            # Step 5: Measure
+                            # ---------------------------------------------------------
+                            assign(p2, Cast.to_int(qubit_pair.measure()))
+                            align()
 
-                    # Save results
-                    save(p1, p1_st[qubit_pair.name])
-                    save(p2, p2_st[qubit_pair.name])
+                            qubit_pair.voltage_sequence.apply_compensation_pulse()
 
-                    with if_(p1 == p2):
-                        save(0, pdiff_st[qubit_pair.name])
-                    with else_():
-                        save(1, pdiff_st[qubit_pair.name])
+                            save(p1, p1_st[qubit_pair.name])
+                            save(p2, p2_st[qubit_pair.name])
+
+                            with if_(p1 == p2):
+                                save(0, pdiff_st[qubit_pair.name])
+                            with else_():
+                                save(1, pdiff_st[qubit_pair.name])
 
         with stream_processing():
             n_st.save("n")
 
+            n_control_x180 = len(control_x180_values)
             n_exchange = len(exchange_array)
+            n_esr_frequency = len(esr_frequency_array)
             for qubit_pair in qubit_pairs:
-                pass
-                # p1_st[qubit.name].buffer(n_detuning, n_tau).average().save(f"p1_{qubit.name}")
-                # p2_st[qubit.name].buffer(n_detuning, n_tau).average().save(f"p2_{qubit.name}")
-                # pdiff_st[qubit.name].buffer(n_detuning, n_tau).average().save(f"pdiff_{qubit.name}")
-
-
+                p1_st[qubit_pair.name].buffer(n_control_x180, n_exchange, n_esr_frequency).average().save(
+                    f"p1_{qubit_pair.name}"
+                )
+                p2_st[qubit_pair.name].buffer(n_control_x180, n_exchange, n_esr_frequency).average().save(
+                    f"p2_{qubit_pair.name}"
+                )
+                pdiff_st[qubit_pair.name].buffer(n_control_x180, n_exchange, n_esr_frequency).average().save(
+                    f"pdiff_{qubit_pair.name}"
+                )
 
 
 # %% {Simulate}
@@ -271,22 +264,32 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    # Get the active qubits from the loaded node parameters
-    node.namespace["qubits"] = get_qubits(node)
+    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    pass
+    """Analyse the raw data: fit Lorentzians to extract CROT frequencies and exchange coupling J."""
+    ds_fit, fit_results = fit_raw_data(node.results["ds_raw"], node.namespace["qubit_pairs"])
+    node.results["ds_fit"] = ds_fit
+    node.results["fit_results"] = fit_results
+    log_fitted_results(fit_results, log_callable=node.log)
+    node.outcomes = {name: ("successful" if r["success"] else "failed") for name, r in fit_results.items()}
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data."""
-    pass
+    """Plot the raw and fitted CROT spectroscopy data."""
+    fig = plot_raw_data_with_fit(
+        node.results["ds_raw"],
+        node.results.get("ds_fit"),
+        node.namespace["qubit_pairs"],
+        node.results.get("fit_results", {}),
+    )
+    plt.show()
+    node.results["figures"] = {"crot_spectroscopy": fig}
 
 
 # %% {Update_state}
@@ -295,13 +298,13 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
 
     with node.record_state_updates():
-        for qubit in node.namespace["qubits"]:
-            if not node.results["fit_results"][qubit.name]["success"]:
+        for qubit_pair in node.namespace["qubit_pairs"]:
+            if not node.results["fit_results"][qubit_pair.name]["success"]:
                 continue
-            fit_result = node.results["fit_results"][qubit.name]
-            qubit.exchange_coupling_J = fit_result["exchange_coupling_J"]
-            qubit.crot_frequency_down = fit_result["crot_frequency_down"]
-            qubit.crot_frequency_up = fit_result["crot_frequency_up"]
+            fit_result = node.results["fit_results"][qubit_pair.name]
+            qubit_pair.exchange_coupling_J = fit_result["exchange_coupling_J"]
+            qubit_pair.crot_frequency_down = fit_result["crot_frequency_down"]
+            qubit_pair.crot_frequency_up = fit_result["crot_frequency_up"]
 
 
 # %% {Save_results}

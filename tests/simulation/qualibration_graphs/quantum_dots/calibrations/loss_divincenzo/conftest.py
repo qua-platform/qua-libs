@@ -9,31 +9,11 @@ from __future__ import annotations
 import os
 import sys
 import types
-import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional
 from unittest.mock import patch
 
 import pytest
-
-
-def _configure_warning_filters() -> None:
-    """Suppress known QuAM warnings emitted by the wiring-based test machine."""
-    warnings.filterwarnings(
-        "ignore",
-        message=r"This component is not part of any QuamRoot.*",
-        category=UserWarning,
-    )
-    warnings.filterwarnings(
-        "ignore",
-        message=r"Could not get reference.*#/ports/(analog_outputs|mw_outputs).*",
-        category=UserWarning,
-    )
-    warnings.filterwarnings(
-        "ignore",
-        message=r"Skipping sticky-voltage tracking for macro.*",
-        category=UserWarning,
-    )
 
 
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -160,8 +140,23 @@ def simulation_runner(minimal_quam_factory, save_simulation_plot, markdown_gener
 # ── Pytest hooks ───────────────────────────────────────────────────────
 
 
+def _remove_deprecated_version_from_qua_config_template() -> None:
+    """Remove the deprecated ``version`` key from QuAM's QUA config template.
+
+    ``qm-qua >= 1.2.2`` warns when ``version`` is present in the config.
+    ``quam`` 0.4.x still includes it in the template; removing it here avoids
+    the warning until quam drops it upstream.
+    """
+    try:
+        from quam.core.qua_config_template import qua_config_template
+
+        qua_config_template.pop("version", None)
+    except Exception:
+        pass
+
+
 def pytest_configure(config):
-    _configure_warning_filters()
+    _remove_deprecated_version_from_qua_config_template()
     config.addinivalue_line(
         "markers",
         "simulation: mark test as a simulation test (requires RUN_SIM_TESTS=1)",

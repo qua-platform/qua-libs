@@ -1,6 +1,6 @@
 from typing import Literal
 from qualibrate import NodeParameters
-from qualibrate.parameters import RunnableParameters
+from qualibrate.core.parameters import RunnableParameters
 from calibration_utils.common_utils.experiment import (
     QubitsExperimentNodeParameters,
     QubitPairExperimentNodeParameters,

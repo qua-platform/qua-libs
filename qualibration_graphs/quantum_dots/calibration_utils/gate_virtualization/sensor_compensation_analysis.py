@@ -212,9 +212,7 @@ def fit_shifted_lorentzian_bayesian_cp(
     )
 
     if not result.segment_intercepts:
-        raise RuntimeError(
-            "BCP fit produced no segment intercepts — unable to determine v0."
-        )
+        raise RuntimeError("BCP fit produced no segment intercepts — unable to determine v0.")
     v0_effective = result.segment_intercepts[0]
 
     return {

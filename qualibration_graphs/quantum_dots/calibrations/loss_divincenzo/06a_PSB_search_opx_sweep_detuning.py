@@ -27,7 +27,7 @@ from calibration_utils.iq_sweep import (
     plot_sweep_summary,
 )
 
-from qualibrate.models.outcome import Outcome
+from qualibrate.core.models.outcome import Outcome
 
 
 # %% {Node initialisation}

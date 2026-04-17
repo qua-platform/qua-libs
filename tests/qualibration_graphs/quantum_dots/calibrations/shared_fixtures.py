@@ -260,15 +260,22 @@ def get_parameters_dict(node: Any) -> Dict[str, Any]:
     params: Dict[str, Any] = {}
     if params_obj is None:
         return params
-    for name in dir(params_obj):
-        if name.startswith("_"):
-            continue
-        try:
-            val = getattr(params_obj, name)
-            if not callable(val):
-                params[name] = val
-        except Exception:
-            pass
+    if hasattr(type(params_obj), "model_fields"):
+        for name in type(params_obj).model_fields:
+            try:
+                params[name] = getattr(params_obj, name)
+            except Exception:
+                pass
+    else:
+        for name in dir(params_obj):
+            if name.startswith("_"):
+                continue
+            try:
+                val = getattr(params_obj, name)
+                if not callable(val):
+                    params[name] = val
+            except Exception:
+                pass
     return params
 
 
@@ -458,6 +465,7 @@ def make_save_simulation_plot():
 
         simulated_samples = simulated_output
         if hasattr(simulated_output, "get_simulated_samples"):
+            simulated_output.wait_until("Done", 1000)
             simulated_samples = simulated_output.get_simulated_samples()
 
         con_names = sorted(name for name in dir(simulated_samples) if name.startswith("con"))
@@ -490,3 +498,169 @@ def make_save_analysis_plot():
         return output_path
 
     return _save
+
+
+# ── Execute-test helpers ───────────────────────────────────────────────
+
+
+def _diff_dicts(before: Dict[str, Any], after: Dict[str, Any], prefix: str = "") -> list:
+    """Recursively compare two nested dicts, returning changed leaf entries.
+
+    Returns a list of ``(dotted_key, before_value, after_value)`` tuples.
+    Keys starting with ``_`` or equal to ``__class__`` are skipped.
+    """
+    changes: list = []
+    all_keys = set(before) | set(after)
+    for key in sorted(all_keys):
+        if isinstance(key, str) and (key.startswith("_") or key == "__class__"):
+            continue
+        path = f"{prefix}.{key}" if prefix else str(key)
+        b_val = before.get(key)
+        a_val = after.get(key)
+        if isinstance(b_val, dict) and isinstance(a_val, dict):
+            changes.extend(_diff_dicts(b_val, a_val, path))
+        elif b_val != a_val:
+            changes.append((path, b_val, a_val))
+    return changes
+
+
+def save_execute_figures(node, artifacts_dir: Path) -> list:
+    """Extract and save all figures from a node's results after execution.
+
+    Returns a list of saved filenames (relative to *artifacts_dir*).
+    """
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    saved: list = []
+    results = getattr(node, "results", None) or {}
+
+    single_fig = results.get("figure")
+    if single_fig is not None and hasattr(single_fig, "savefig"):
+        fname = "figure.png"
+        single_fig.savefig(artifacts_dir / fname, dpi=200)
+        plt.close(single_fig)
+        saved.append(fname)
+
+    figures = results.get("figures")
+    if isinstance(figures, dict):
+        for name, fig in figures.items():
+            if fig is not None and hasattr(fig, "savefig"):
+                safe_name = str(name).replace("/", "_").replace(" ", "_")
+                fname = f"{safe_name}.png"
+                fig.savefig(artifacts_dir / fname, dpi=200)
+                plt.close(fig)
+                saved.append(fname)
+
+    return saved
+
+
+def make_markdown_generator_exec():
+    """Return a callable that generates README.md for an execute-test node."""
+
+    def _generate(
+        node,
+        parameters_dict: Dict[str, Any],
+        artifacts_dir: Path,
+        figures_saved: list,
+        fit_results: Dict[str, Any],
+        state_diff: list,
+        metadata: Dict[str, Any],
+    ) -> Path:
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+
+        # -- Parameters table (skip Pydantic internals) --
+        _SKIP_PARAMS = {
+            "model_fields",
+            "model_config",
+            "model_computed_fields",
+            "model_extra",
+            "model_fields_set",
+            "targets",
+            "targets_name",
+        }
+        params_table = [
+            "| Parameter | Value | Description |",
+            "|-----------|-------|-------------|",
+        ]
+        node_params = getattr(node, "parameters", None)
+        for name, value in parameters_dict.items():
+            if name in _SKIP_PARAMS:
+                continue
+            doc = ""
+            if node_params is not None and hasattr(node_params, "__class__"):
+                for cls in node_params.__class__.__mro__:
+                    if hasattr(cls, "__annotations__") and name in cls.__annotations__:
+                        if hasattr(cls, "__pydantic_fields__"):
+                            fi = cls.__pydantic_fields__.get(name)
+                            if fi and fi.description:
+                                doc = fi.description
+                                break
+            params_table.append(f"| `{name}` | `{value}` | {doc} |")
+
+        sections = [
+            f"# {getattr(node, 'name', 'Unknown Node')}",
+            "",
+            "## Description",
+            "",
+            getattr(node, "description", "No description available"),
+            "",
+            "## Parameters",
+            "",
+            *params_table,
+        ]
+
+        # -- Figures --
+        if figures_saved:
+            sections += ["", "## Execution Output", ""]
+            for fname in figures_saved:
+                label = fname.rsplit(".", 1)[0].replace("_", " ").title()
+                sections.append(f"![{label}]({fname})")
+            sections.append("")
+
+        # -- Fit results --
+        if fit_results:
+            sections += ["", "## Fit Results", ""]
+            for target_name, params in fit_results.items():
+                sections.append(f"### {target_name}")
+                sections += [
+                    "| Parameter | Value |",
+                    "|-----------|-------|",
+                ]
+                if isinstance(params, dict):
+                    for k, v in params.items():
+                        sections.append(f"| `{k}` | `{v}` |")
+                sections.append("")
+
+        # -- State updates --
+        if state_diff:
+            sections += ["", "## State Updates", ""]
+            sections += [
+                "| Parameter | Before | After |",
+                "|-----------|--------|-------|",
+            ]
+            for key, before, after in state_diff:
+                sections.append(f"| `{key}` | `{before}` | `{after}` |")
+            sections.append("")
+
+        # -- Metadata --
+        if metadata:
+            sections += ["", "## Metadata", ""]
+            sections += [
+                "| Key | Value |",
+                "|-----|-------|",
+            ]
+            for k, v in metadata.items():
+                sections.append(f"| {k} | {v} |")
+            sections.append("")
+
+        sections += [
+            "---",
+            "*Generated by execute test infrastructure*",
+            "",
+        ]
+
+        content = "\n".join(sections)
+        output_path = artifacts_dir / "README.md"
+        output_path.write_text(content, encoding="utf-8")
+        return output_path
+
+    return _generate

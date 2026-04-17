@@ -51,7 +51,7 @@ Prerequisites:
     - Having calibrated the "empty" and "initialization" voltage points, and having defined the detuning axis.
 
 State update:
-    - The optimal detuning value for PSB readout, as the voltage point associated with the .measure macro. 
+    - The optimal detuning value for PSB readout, as the voltage point associated with the .measure macro.
 """
 
 

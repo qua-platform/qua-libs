@@ -101,8 +101,8 @@ def test_update_state_sets_off_diagonal_entries(minimal_quam_factory):
         dtype=float,
     )
     expected = old.copy()
-    expected[plunger_idx, device_idx] += M[0, 1]   # += 0.14
-    expected[device_idx, plunger_idx] += M[1, 0]    # += -0.09
+    expected[plunger_idx, device_idx] += M[0, 1]  # += 0.14
+    expected[device_idx, plunger_idx] += M[1, 0]  # += -0.09
 
     with (
         patch.object(Quam, "load", return_value=machine),
@@ -193,18 +193,14 @@ def test_update_state_asymmetric_for_non_plunger_pairs(minimal_quam_factory):
     updated = np.asarray(layer.matrix, dtype=float)
 
     # barrier→plunger entry should be updated (additive)
-    assert updated[plunger_idx, barrier_idx] == pytest.approx(
-        old[plunger_idx, barrier_idx] + M_barrier[0, 1]
-    )
+    assert updated[plunger_idx, barrier_idx] == pytest.approx(old[plunger_idx, barrier_idx] + M_barrier[0, 1])
     # plunger→barrier entry should NOT be updated (asymmetric)
     assert updated[barrier_idx, plunger_idx] == pytest.approx(
         old[barrier_idx, plunger_idx]
     ), "Barrier row should not be modified by plunger-barrier pair"
 
     # sensor→plunger entry should be updated (additive)
-    assert updated[plunger_idx, sensor_idx] == pytest.approx(
-        old[plunger_idx, sensor_idx] + M_sensor[0, 1]
-    )
+    assert updated[plunger_idx, sensor_idx] == pytest.approx(old[plunger_idx, sensor_idx] + M_sensor[0, 1])
     # plunger→sensor entry should NOT be updated (asymmetric)
     assert updated[sensor_idx, plunger_idx] == pytest.approx(
         old[sensor_idx, plunger_idx]
@@ -418,8 +414,7 @@ class TestVirtualPlungerE2E:
 
         axes[1].imshow(virt_signal, extent=extent, origin="lower", aspect="auto", cmap="hot")
         axes[1].set_title(
-            "Virtual gates (plunger-virtualized)\n"
-            f"M=[[{M[0,0]:.3f}, {M[0,1]:.3f}], [{M[1,0]:.3f}, {M[1,1]:.3f}]]"
+            "Virtual gates (plunger-virtualized)\n" f"M=[[{M[0,0]:.3f}, {M[0,1]:.3f}], [{M[1,0]:.3f}, {M[1,1]:.3f}]]"
         )
         axes[1].set_xlabel("Virtual gate 1 (V)")
         axes[1].set_ylabel("Virtual gate 2 (V)")

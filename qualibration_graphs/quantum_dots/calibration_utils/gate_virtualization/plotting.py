@@ -9,6 +9,7 @@ import numpy as np
 import xarray as xr
 from matplotlib.figure import Figure
 
+
 def _build_piecewise_model(
     v_s: np.ndarray,
     v_d: np.ndarray,
@@ -53,8 +54,7 @@ def _plot_sensor_row(
 
     if fp is None:
         for ax in axes[1:]:
-            ax.text(0.5, 0.5, "NO FIT DATA", ha="center", va="center",
-                    fontsize=14, color="red", transform=ax.transAxes)
+            ax.text(0.5, 0.5, "NO FIT DATA", ha="center", va="center", fontsize=14, color="red", transform=ax.transAxes)
             ax.set_axis_off()
         return
 

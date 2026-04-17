@@ -546,15 +546,12 @@ class TestSensorDotCouplingEffect:
 
         for col, coupling in enumerate(self.COUPLING_STRENGTHS):
             r = results_by_coupling[coupling]
-            extent = [r["v_sensor"][0], r["v_sensor"][-1],
-                      r["v_device"][0], r["v_device"][-1]]
+            extent = [r["v_sensor"][0], r["v_sensor"][-1], r["v_device"][0], r["v_device"][-1]]
 
             ax_scan = axes[0, col]
-            ax_scan.imshow(r["amplitude_2d"], extent=extent,
-                           origin="lower", aspect="auto", cmap="hot")
+            ax_scan.imshow(r["amplitude_2d"], extent=extent, origin="lower", aspect="auto", cmap="hot")
             ax_scan.set_title(
-                f"Cgd(sensor→dot) = {coupling:.3f}\n"
-                f"α = {r['alpha']:.6f}  (CPs: {r['n_changepoints']})",
+                f"Cgd(sensor→dot) = {coupling:.3f}\n" f"α = {r['alpha']:.6f}  (CPs: {r['n_changepoints']})",
                 fontsize=9,
             )
             ax_scan.set_xlabel("Sensor gate (V)")
@@ -563,16 +560,18 @@ class TestSensorDotCouplingEffect:
             # Also run with compensation to show residual
             model = self._make_model(coupling)
             ds_comp = simulate_sensor_device_scan(
-                model, v_sensor, v_device,
-                sensor_gate_idx=6, device_gate_idx=0,
+                model,
+                v_sensor,
+                v_device,
+                sensor_gate_idx=6,
+                device_gate_idx=0,
                 compensation_alpha=r["alpha"],
             )
             ds_comp_proc = process_raw_dataset(ds_comp)
             amp_comp = ds_comp_proc["amplitude"].isel(sensors=0).values
 
             ax_comp = axes[1, col]
-            ax_comp.imshow(amp_comp, extent=extent,
-                           origin="lower", aspect="auto", cmap="hot")
+            ax_comp.imshow(amp_comp, extent=extent, origin="lower", aspect="auto", cmap="hot")
             ax_comp.set_title(
                 f"After compensation (α = {r['alpha']:.6f})",
                 fontsize=9,
@@ -583,7 +582,8 @@ class TestSensorDotCouplingEffect:
         fig.suptitle(
             "Effect of Sensor-Dot Capacitive Coupling on Sensor Compensation\n"
             "Top: raw scan  |  Bottom: after applying fitted α",
-            fontsize=12, fontweight="bold",
+            fontsize=12,
+            fontweight="bold",
         )
         fig.tight_layout(rect=[0, 0, 1, 0.93])
 

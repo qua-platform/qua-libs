@@ -20,9 +20,9 @@ Synthetic pair scans are generated from:
 ### Extracted `dt_i/dB_j`
 
 ```text
-[[ 7.5754e-01 -1.8677e-01  7.9174e-16]
+[[ 7.5754e-01 -1.8677e-01  7.1527e-16]
  [-1.8677e-01  1.0940e+00 -1.8677e-01]
- [ 7.9174e-16 -1.7646e-01  7.5754e-01]]
+ [ 7.1527e-16 -1.7646e-01  7.5754e-01]]
 ```
 
 ### Ground-truth at operating point

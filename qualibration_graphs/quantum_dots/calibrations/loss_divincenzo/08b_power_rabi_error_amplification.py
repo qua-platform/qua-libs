@@ -274,6 +274,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             opt_prefactor = node.results["fit_results"][q.name]["opt_amp"]
             q.update(amplitude_scale=opt_prefactor)
 
+
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):

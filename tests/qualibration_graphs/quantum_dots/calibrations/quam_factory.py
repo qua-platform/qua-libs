@@ -23,9 +23,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from contextlib import contextmanager
-import warnings
-
 from qualang_tools.wirer import Connectivity, Instruments, allocate_wiring
 
 from qualang_tools.wirer.wirer.wirer import ChannelSpec
@@ -72,7 +69,7 @@ HOST_IP, CLUSTER_NAME = _load_cluster_config()
 CONTROLLER_ID: int = 1
 """Controller number passed to ``Instruments.add_*_fem(controller=...)``."""
 
-MW_FEM_SLOT: int = 7
+MW_FEM_SLOT: int = 4
 """MW-FEM slot for qubit XY drive lines (Stage 2 only)."""
 
 LF_FEM_SLOT: int = 1
@@ -111,23 +108,6 @@ QUBIT_PAIR_SENSOR_MAP: dict[str, list[str]] = {
 # ── Factory functions ──────────────────────────────────────────────────
 
 
-@contextmanager
-def _suppress_known_quam_builder_warnings():
-    """Hide known non-fatal QuAM builder warnings from the test factory."""
-    with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore",
-            message=r"This component is not part of any QuamRoot.*",
-            category=UserWarning,
-        )
-        warnings.filterwarnings(
-            "ignore",
-            message=r"Could not get reference.*#/ports/(analog_outputs|mw_outputs).*",
-            category=UserWarning,
-        )
-        yield
-
-
 def create_qd_quam() -> BaseQuamQD:
     """Build a Stage-1 ``BaseQuamQD`` with the dot layer only.
 
@@ -159,9 +139,8 @@ def create_qd_quam() -> BaseQuamQD:
     allocate_wiring(connectivity, instruments)
 
     machine = BaseQuamQD()
-    with _suppress_known_quam_builder_warnings():
-        machine = build_quam_wiring(connectivity, HOST_IP, CLUSTER_NAME, machine)
-        machine = build_base_quam(machine, connect_qdac=False, save=False)
+    machine = build_quam_wiring(connectivity, HOST_IP, CLUSTER_NAME, machine)
+    machine = build_base_quam(machine, connect_qdac=False, save=False)
     return machine
 
 
@@ -201,25 +180,24 @@ def create_ld_quam():
 
     allocate_wiring(connectivity, instruments)
 
-    with _suppress_known_quam_builder_warnings():
-        machine = build_quam_wiring(connectivity, HOST_IP, CLUSTER_NAME, base_machine)
-        machine = build_loss_divincenzo_quam(
-            machine,
-            qubit_pair_sensor_map=QUBIT_PAIR_SENSOR_MAP,
-            implicit_mapping=True,
-            save=False,
-        )
+    machine = build_quam_wiring(connectivity, HOST_IP, CLUSTER_NAME, base_machine)
+    machine = build_loss_divincenzo_quam(
+        machine,
+        qubit_pair_sensor_map=QUBIT_PAIR_SENSOR_MAP,
+        implicit_mapping=True,
+        save=False,
+    )
 
-        # The builder sets qubit.id to the quantum-dot name (e.g. "virtual_dot_1")
-        # but downstream code expects qubit.name to equal the dict key ("q1").
-        for key, qubit in machine.qubits.items():
-            qubit.id = key
+    # The builder sets qubit.id to the quantum-dot name (e.g. "virtual_dot_1")
+    # but downstream code expects qubit.name to equal the dict key ("q1").
+    for key, qubit in machine.qubits.items():
+        qubit.id = key
 
-        _set_default_larmor_frequencies(machine)
-        _define_default_detuning_axes(machine)
-        _override_default_pulse_lengths(machine)
-        _add_default_voltage_points(machine)
-        _apply_port_delays(machine)
+    _set_default_larmor_frequencies(machine)
+    _define_default_detuning_axes(machine)
+    _override_default_pulse_lengths(machine)
+    _add_default_voltage_points(machine)
+    _apply_port_delays(machine)
     return machine
 
 
@@ -305,10 +283,24 @@ def _add_default_voltage_points(machine) -> None:
     # can dispatch by enum-backed names as well.
     for qdp in machine.quantum_dot_pairs.values():
         dot_ids = [d.id for d in qdp.quantum_dots]
-        qdp.add_point(VoltagePointName.INITIALIZE, {did: 0.075 for did in dot_ids}, duration=248)
-        qdp.add_point(VoltagePointName.MEASURE, {did: 0.05 for did in dot_ids}, duration=248)
-        qdp.add_point(VoltagePointName.EMPTY, {did: -0.05 for did in dot_ids}, duration=524)
-        qdp.add_point(VoltagePointName.EXCHANGE, {did: 0.025 for did in dot_ids}, duration=248)
+        barrier_id = qdp.barrier_gate.id
+        qdp.add_point(VoltagePointName.INITIALIZE, {**{did: 0.075 for did in dot_ids}, barrier_id: 0.0}, duration=248)
+        qdp.add_point(VoltagePointName.MEASURE, {**{did: 0.05 for did in dot_ids}, barrier_id: 0.0}, duration=248)
+        qdp.add_point(VoltagePointName.EMPTY, {**{did: -0.05 for did in dot_ids}, barrier_id: 0.0}, duration=524)
+        qdp.add_point(VoltagePointName.EXCHANGE, {**{did: 0.025 for did in dot_ids}, barrier_id: 0.0}, duration=248)
+
+    # Register the same canonical points on qubit pairs (LDQubitPair).
+    # Qubit pairs have a different id (e.g. "q1_q2") than their underlying
+    # quantum-dot pair ("virtual_dot_1_virtual_dot_2_pair"), so macros like
+    # qubit_pair.empty() resolve to a different prefixed name ("q1_q2_empty").
+    for qp in machine.qubit_pairs.values():
+        qdp = qp.quantum_dot_pair
+        dot_ids = [d.id for d in qdp.quantum_dots]
+        barrier_id = qdp.barrier_gate.id
+        qp.add_point(VoltagePointName.INITIALIZE, {**{did: 0.075 for did in dot_ids}, barrier_id: 0.0}, duration=248)
+        qp.add_point(VoltagePointName.MEASURE, {**{did: 0.05 for did in dot_ids}, barrier_id: 0.0}, duration=248)
+        qp.add_point(VoltagePointName.EMPTY, {**{did: -0.05 for did in dot_ids}, barrier_id: 0.0}, duration=524)
+        qp.add_point(VoltagePointName.EXCHANGE, {**{did: 0.025 for did in dot_ids}, barrier_id: 0.0}, duration=248)
 
     # Populate default readout thresholds / projectors on sensor dots so
     # the SensorDotMeasureMacro can perform state discrimination.

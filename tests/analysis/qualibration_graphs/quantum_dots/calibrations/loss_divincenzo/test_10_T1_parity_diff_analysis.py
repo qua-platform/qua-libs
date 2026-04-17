@@ -20,6 +20,9 @@ import jax.numpy as jnp
 from virtual_qpu.pulse import GaussianIQPulse, SquarePulse
 from virtual_qpu.schedule import Schedule
 
+from quantum_dots.device import LossDiVincenzoDevice
+from quantum_dots.params import ExchangeModel, LossDiVincenzoParams, MU_B_OVER_H
+
 from .conftest import (
     DEFAULT_PULSE_DURATION_NS,
     build_parity_ds_raw,
@@ -34,6 +37,10 @@ TAU_MIN_NS = 16
 TAU_MAX_NS = 4000  # well beyond T1 = 1000 ns for clear decay
 TAU_STEP_NS = 40
 
+# Device with decoherence for realistic T1 simulation
+Q1_T1_NS = 1000.0
+Q1_T2_NS = 500.0
+
 # Qubits to analyse: Q1 from virtual_qpu, Q2 from synthetic exponential
 MULTI_QUBITS = ["q1", "q2"]
 
@@ -42,9 +49,27 @@ Q2_T1_NS = 500.0
 Q2_AMPLITUDE = 0.75
 Q2_OFFSET = 0.05
 
+_B_FIELD = 10.0 / (2.0 * MU_B_OVER_H)
+
+
+def _make_t1_device() -> LossDiVincenzoDevice:
+    """Create a 2-qubit device with T1/T2 decoherence for Lindblad simulation."""
+    params = LossDiVincenzoParams(
+        n_qubits=2,
+        g_factors=[2.0, 2.0 * 10.2 / 10.0],
+        magnetic_field=_B_FIELD,
+        exchange_models=[ExchangeModel(J_0=0.005, V_ref=0.0, lever_arm=0.050)],
+        ref_freqs=None,
+        frame="rot",
+        use_rwa=True,
+        t1=[Q1_T1_NS, Q1_T1_NS],
+        t2=[Q1_T2_NS, Q1_T2_NS],
+    )
+    return LossDiVincenzoDevice(params=params)
+
 
 def _simulate_q1_decay(device, pi_amp, tau_values_ns):
-    """Run virtual_qpu T₁ simulation for Q1."""
+    """Run virtual_qpu T₁ Lindblad simulation for Q1."""
     qubit_freq_ghz = device.params.qubit_freqs[0]
 
     def make_t1_schedule(idle_time):
@@ -72,6 +97,7 @@ def _simulate_q1_decay(device, pi_amp, tau_values_ns):
         device,
         make_t1_schedule,
         tsave=lambda idle_time, **_: jnp.array([0.0, PI_PULSE_DUR + idle_time], dtype=jnp.float32),
+        solver="me",
         idle_time=jnp.array(tau_values_ns, dtype=jnp.float32),
     )
     return result[..., -1]
@@ -86,9 +112,9 @@ def _synthetic_q2_decay(tau_values_ns, seed=123):
 
 
 @pytest.mark.analysis
-def test_10_T1_parity_diff_analysis(ld_device, calibrated_pi_half_amp, analysis_runner):
-    """T₁ decay fit from virtual_qpu simulation (2 qubits)."""
-    device = ld_device
+def test_10_T1_parity_diff_analysis(calibrated_pi_half_amp, analysis_runner):
+    """T₁ decay fit from virtual_qpu Lindblad simulation (2 qubits)."""
+    device = _make_t1_device()
     pi_amp = 2.0 * calibrated_pi_half_amp
 
     tau_values_ns = np.arange(TAU_MIN_NS, TAU_MAX_NS, TAU_STEP_NS)
@@ -121,13 +147,13 @@ def test_10_T1_parity_diff_analysis(ld_device, calibrated_pi_half_amp, analysis_
         analyse_qubits=MULTI_QUBITS,
     )
 
-    # ── Assertions: Q1 (virtual_qpu, T1 ≈ 1000 ns) ──────────────────
+    # ── Assertions: Q1 (virtual_qpu Lindblad, T1 ≈ 1000 ns) ─────────
     assert "fit_results" in node.results
     fit_q1 = node.results["fit_results"]["q1"]
     assert fit_q1["success"], f"q1 analysis should succeed: {fit_q1}"
 
     t1_q1 = fit_q1["T1"]
-    assert 200 < t1_q1 < 5000, f"q1 T1 should be near 1000 ns, got {t1_q1:.1f} ns"
+    assert 200 < t1_q1 < 5000, f"q1 T1 should be near {Q1_T1_NS} ns, got {t1_q1:.1f} ns"
     assert fit_q1["amplitude"] > 0.01, f"q1 expected positive amplitude, got {fit_q1['amplitude']}"
 
     gamma_q1 = fit_q1["decay_rate"]

@@ -278,13 +278,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             state,
                             Cast.to_int(qubit.measure()),
                         )
-                        save(state, state_st[qubit.name])
 
                         # --- Compensation ---
                         # TODO: Compensation pulse not working correctly
                         align()
                         # qubit.voltage_sequence.ramp_to_zero()
                         qubit.voltage_sequence.apply_compensation_pulse()
+
+                        save(state, state_st[qubit.name])
 
         # ── Stream processing ─────────────────────────────────────────
         # Buffer order matches loop nesting: circuit → depth → shot

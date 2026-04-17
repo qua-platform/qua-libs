@@ -41,7 +41,7 @@ State update:
 | `model_config` | `{'extra': 'forbid', 'use_attribute_docstrings': True}` |  |
 | `model_extra` | `None` |  |
 | `model_fields` | `{'multiplexed': FieldInfo(annotation=bool, required=False, default=False, description='Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)\nor to play the experiment sequentially for each qubit (False). Default is False.'), 'use_state_discrimination': FieldInfo(annotation=bool, required=False, default=False, description="Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated\nquadratures 'I' and 'Q'. Default is False."), 'reset_wait_time': FieldInfo(annotation=int, required=False, default=5000, description='The wait time for qubit reset.'), 'qubits': FieldInfo(annotation=Union[List[str], NoneType], required=False, default=None, description='A list of qubit names which should participate in the execution of the node. Default is None.'), 'num_shots': FieldInfo(annotation=int, required=False, default=100, description='Number of averages to perform. Default is 100.'), 'min_wait_time_in_ns': FieldInfo(annotation=int, required=False, default=16, description='Minimum pulse duration in nanoseconds. Must be larger than 4 clock cycles. Default is 16 ns.'), 'max_wait_time_in_ns': FieldInfo(annotation=int, required=False, default=10000, description='Maximum pulse duration in nanoseconds. Default is 10000 ns (10 us).'), 'time_step_in_ns': FieldInfo(annotation=int, required=False, default=52, description='Step size for the pulse duration sweep in nanoseconds. Default is 52 ns.'), 'frequency_span_in_mhz': FieldInfo(annotation=float, required=False, default=2, description='Span of frequencies to sweep in MHz. Default is 2 MHz.'), 'frequency_step_in_mhz': FieldInfo(annotation=float, required=False, default=0.025, description='Step size for the frequency detuning sweep in MHz. Default is 0.025 MHz.'), 'operation': FieldInfo(annotation=str, required=False, default='x180', description="Name of the qubit operation to perform. Default is 'x180'."), 'simulate': FieldInfo(annotation=bool, required=False, default=False, description='Simulate the waveforms on the OPX instead of executing the program. Default is False.'), 'simulation_duration_ns': FieldInfo(annotation=int, required=False, default=50000, description='Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns.'), 'use_waveform_report': FieldInfo(annotation=bool, required=False, default=True, description='Whether to use the interactive waveform report in simulation. Default is True.'), 'timeout': FieldInfo(annotation=int, required=False, default=120, description='Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s.'), 'load_data_id': FieldInfo(annotation=Union[int, NoneType], required=False, default=None, description='Optional QUAlibrate node run index for loading historical data. Default is None.')}` |  |
-| `model_fields_set` | `{'max_wait_time_in_ns', 'time_step_in_ns', 'qubits', 'frequency_step_in_mhz', 'simulate', 'min_wait_time_in_ns', 'num_shots', 'frequency_span_in_mhz'}` |  |
+| `model_fields_set` | `{'time_step_in_ns', 'min_wait_time_in_ns', 'simulate', 'frequency_step_in_mhz', 'frequency_span_in_mhz', 'qubits', 'max_wait_time_in_ns', 'num_shots'}` |  |
 | `multiplexed` | `False` | Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)
 or to play the experiment sequentially for each qubit (False). Default is False. |
 | `num_shots` | `4` | Number of averages to perform. Default is 100. |
@@ -62,13 +62,13 @@ quadratures 'I' and 'Q'. Default is False. |
 
 | Qubit | f_res (GHz) | t_pi (ns) | Omega_R (rad/ns) | gamma (1/ns) | T2* (ns) | success |
 |-------|-------------|----------|--------------|----------|----------|--------|
-| q1 | 10.0007 | 62.8 | 0.050017 | 0.00706 | 142 | True |
+| q1 | 9.9977 | 63.0 | 0.049867 | 0.00705 | 142 | True |
 
 ## Updated State
 
 | Qubit | intermediate_frequency (Hz) | xy.operations.x180.length (ns) |
 |-------|-----------------------------|-----------------------------------------|
-| q1 | 10000721363 | 62.8 |
+| q1 | 9997666179 | 63.0 |
 
 ## Analysis Output
 

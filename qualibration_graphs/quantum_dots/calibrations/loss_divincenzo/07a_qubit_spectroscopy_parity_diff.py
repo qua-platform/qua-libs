@@ -153,7 +153,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ---------------------------------------------------------
                     align()
                     qubit.voltage_sequence.apply_compensation_pulse()
-                    
+
                     # Reset the frequency to the original value
                     qubit.x.update(frequency=intermediate_frequency)
                     # ---------------------------------------------------------
@@ -268,6 +268,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             intermediate_frequency = q.x.intermediate_frequency
             q.larmor_frequency = opt_frequency + intermediate_frequency
             q.x.update(frequency=intermediate_frequency + opt_frequency)
+
 
 # %% {Save_results}
 @node.run_action()
