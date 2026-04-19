@@ -27,6 +27,7 @@ from quam.components.pulses import _CosineBipolarPulse, _FlatTopGaussianPulse, S
 ########################################################################################################################
 # Loads the QUAM
 machine = Quam.load()
+# machine.iqcc_device = "your_device_name"  # Uncomment for IQCC Cloud execution
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 

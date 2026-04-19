@@ -70,6 +70,36 @@ This step populates the QUAM state file (e.g., `state.json`) created in the prev
 - Edit the chosen script: These files contain initial guesses for parameters like qubit/resonator frequencies, pulse amplitudes/durations, gains, etc.. **You must adjust these values** to be reasonable starting points for your specific qubits and setup.
 - Run the script: Execute `python populate_quam_{hw_type}.py` (replacing `{hw_type}` accordingly). This loads the existing QUAM state, populates the dynamic parameters based on the script's logic and values, and saves the updated, populated QUAM state file (e.g., `state.json`).
 
+### 4b. (Optional) Configure IQCC Cloud Execution
+
+You can run calibrations against IQCC Cloud instead of a local Quantum Orchestration Platform (QOP) by setting the QUAM field `iqcc_device` (supported in `quam-builder` on the superconducting `BaseQuam`). When this field is set, `connect()` returns an IQCC-backed manager proxy; calibration nodes keep using the same `connect()` / `qm_session` / execution flow.
+
+1. Install the client (for example):
+
+   ```bash
+   pip install iqcc-cloud-client
+   ```
+
+   Alternatively, install `quam-builder` with the optional IQCC extra: `pip install "quam-builder[iqcc]"`, which pulls in `iqcc-cloud-client`.
+
+2. Complete IQCC authentication and project setup using the CLI from the IQCC documentation, for example:
+
+   ```bash
+   iqcc-setup
+   ```
+
+3. Set the device name on your QUAM root (e.g. after `Quam.load()` in a populate script or in your own setup code):
+
+   ```python
+   machine.iqcc_device = "your_device_name"
+   ```
+
+   Save the state so the value is persisted in `state.json` (e.g. `machine.save()`).
+
+**Simulation:** The IQCC path does **not** support simulation (`simulate=True`, `simulate_and_plot`, or `qmm.simulate`). Use a local QOP, clear `iqcc_device`, or run nodes with simulation disabled.
+
+**Closing QMs:** IQCC has no equivalent of closing all quantum machines on a manager. The proxy implements `close_all_qms()` as a harmless no-op so scripts that call it (for example admin-style nodes) do not fail when `iqcc_device` is set.
+
 ### 5️⃣ (Optional) Specify Instrument Limits (using `instrument_limits.py`)
 
 For device safety or operational constraints, you can define limits on parameters such as waveform amplitudes in `instrument_limits.py`. This step ensures that analysis steps or manual changes do not set parameters outside safe operating ranges.
