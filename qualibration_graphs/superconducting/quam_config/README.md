@@ -49,6 +49,7 @@ This step creates the static part of the QUAM state, primarily defining the hard
 
 - Find the example script in the `wiring_examples/` directory that most closely matches your hardware setup (e.g., `wiring_opxp_octave.py`, `wiring_lffem_mwfem.py`).
 - Copy the entire content of the chosen example script into `generate_quam.py`.
+- The checked-in `generate_quam.py` is already aligned with **LF + MW FEM** topology (`wiring_lffem_mwfem.py` style) for cluster **CS_3** (host `172.16.33.115`, port `80`, MW slots 1/2/6, LF slots 3/5). Replace those values if your rack differs.
 - Modify the `generate_quam.py` script:
   - Adjust static parameters like IP addresses and cluster names.
   - Define the available instruments in your setup.
@@ -88,13 +89,17 @@ You can run calibrations against IQCC Cloud instead of a local Quantum Orchestra
    iqcc-setup
    ```
 
-3. Set the device name on your QUAM root (e.g. after `Quam.load()` in a populate script or in your own setup code):
+3. Set the device name on your QUAM root (e.g. after `Quam.load()` in a populate script or in your own setup code). For this repository’s IQCC target, use the device name **`arbel`** (must match the name in your IQCC project / CLI):
 
    ```python
-   machine.iqcc_device = "your_device_name"
+   machine.iqcc_device = "arbel"
    ```
 
-   Save the state so the value is persisted in `state.json` (e.g. `machine.save()`).
+   For any other cloud device, substitute your device string. Remove or unset `iqcc_device` when using a local QOP.
+
+   Save the state so the value is persisted in `state.json` (e.g. `machine.save()`). In `populate_quam_lf_mw_fems.py`, set `IQCC_DEVICE = "arbel"` after `iqcc-setup` when you enable IQCC; leave it `None` for local QOP.
+
+4. **Python dependency:** IQCC cloud runs currently require **`qualang-tools` 0.21.x** (0.22.x can break execution). The superconducting [`pyproject.toml`](../pyproject.toml) pins `qualang-tools` accordingly; use that environment when targeting IQCC.
 
 **Simulation:** The IQCC path does **not** support simulation (`simulate=True`, `simulate_and_plot`, or `qmm.simulate`). Use a local QOP, clear `iqcc_device`, or run nodes with simulation disabled.
 

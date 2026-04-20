@@ -88,7 +88,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
+        # Match IQ / stream count to this node's qubit list (not len(machine.qubits)), so partial-qubit runs work.
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubits)
         df = declare(int)  # QUA variable for the readout frequency
 
         for multiplexed_qubits in qubits.batch():

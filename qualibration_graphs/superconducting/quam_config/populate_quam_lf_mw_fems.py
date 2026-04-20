@@ -12,6 +12,7 @@ readout and saturation pulses.
 # %%                                             Import section
 ########################################################################################################################
 import json
+import os
 from pprint import pprint
 
 import numpy as np
@@ -27,7 +28,16 @@ from quam.components.pulses import _CosineBipolarPulse, _FlatTopGaussianPulse, S
 ########################################################################################################################
 # Loads the QUAM
 machine = Quam.load()
-# machine.iqcc_device = "your_device_name"  # Uncomment for IQCC Cloud execution
+
+# IQCC Cloud (optional): install ``iqcc-cloud-client`` or ``pip install "quam-builder[iqcc]"``, run ``iqcc-cloud setup``
+# (stores credentials; same flow as legacy ``iqcc-setup``), then set env ``IQCC_DEVICE=arbel`` or edit below.
+# Keep unset / ``None`` for local QOP / simulation.
+_raw_iqcc = os.environ.get("IQCC_DEVICE", "").strip()
+IQCC_DEVICE: str | None = _raw_iqcc if _raw_iqcc else None  # e.g. export IQCC_DEVICE=arbel
+if IQCC_DEVICE is not None:
+    machine.iqcc_device = IQCC_DEVICE
+
+# Analysis nodes cap amplitudes using ``quam_config/instrument_limits.py``; tune there for stricter safety (README step 5).
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 
