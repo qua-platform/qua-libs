@@ -79,6 +79,8 @@ Once you have the code locally:
     uv pip install -e . --prerelease=allow
     ```
 
+    _Note:_ `uv` can save up 10x time in installating the packages and dependencies, e.g., from 10 min, down to 1 minute.
+
 ### Initial Setup (QUAlibrate Configuration)
 
 The QUAlibrate framework needs some initial configuration to know where to find calibration scripts, store data, and manage the system state (QUAM).
