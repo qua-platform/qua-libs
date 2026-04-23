@@ -78,7 +78,7 @@ Prerequisites:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="18b_gate_set_tomography_1q",  # Name should be unique
+    name="18a_gate_set_tomography_1q",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/gate_set_tomography/parameters.py
 )
@@ -91,6 +91,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1"]
+    pass
 
 
 if node.parameters.use_input_stream:
