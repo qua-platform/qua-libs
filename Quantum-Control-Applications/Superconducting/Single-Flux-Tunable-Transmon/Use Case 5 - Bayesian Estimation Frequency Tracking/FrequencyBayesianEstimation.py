@@ -137,7 +137,7 @@ def build_qua_program(params: Params):
                 wait(x180_duration_ticks, "Q1.z")
                 wait(t, "Q1.xy")
 
-                # flux pulse during the wait
+                # flux pulse during the wait for physical detuning
                 play("const" * amp(flux_shift / flux_const_amp), "Q1.z", duration=t)
 
                 play("x90", "Q1.xy")
