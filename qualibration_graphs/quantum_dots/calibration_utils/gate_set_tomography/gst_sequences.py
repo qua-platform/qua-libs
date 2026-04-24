@@ -3,36 +3,35 @@
 
 from __future__ import annotations
 
+import importlib
+import pkgutil
 import re
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import pygsti
 
 PREP_FIDUCIAL_MAP: dict[str, int] = {
-    "{}": 0,
-    "Gxpi2:0": 1,
-    "Gypi2:0": 2,
-    "Gxpi2:0Gxpi2": 3,
-    "Gxpi2:0Gxpi2:0Gxpi2:0": 4,
-    "Gypi2:0Gypi2:0Gypi2:0": 5,
+    "{}": 0,                    # no gate applied
+    "Gxpi2:0": 1,               # X90
+    "Gypi2:0": 2,               # Y90
+    "Gxpi2:0Gxpi2": 3,          # X180
+    "Gxpi2:0Gxpi2:0Gxpi2:0": 4, # -X90
+    "Gypi2:0Gypi2:0Gypi2:0": 5, # -Y90
 }
 
 MEAS_FIDUCIAL_MAP: dict[str, int] = {
-    "{}": 0,
-    "Gxpi2:0": 1,
-    "Gypi2:0": 2,
-    "Gxpi2:0Gxpi2": 3,
-    "Gxpi2:0Gxpi2:0Gxpi2:0": 4,
-    "Gypi2:0Gypi2:0Gypi2:0": 5,
+    "{}": 0,                    # no gate applied
+    "Gxpi2:0": 1,               # X90
+    "Gypi2:0": 2,               # Y90
+    "Gxpi2:0Gxpi2": 3,          # X180
+    "Gxpi2:0Gxpi2:0Gxpi2:0": 4, # -X90
+    "Gypi2:0Gypi2:0Gypi2:0": 5, # -Y90
 }
 
 GERM_MAP: dict[str, int] = {
-    "{}": 0,
-    "Gxpi2:0": 1,
-    "Gypi2:0": 2,
-    "Gxpi2:0Gypi2:0": 3,
-    "Gxpi2:0Gxpi2:0Gypi2:0": 4,
+    "{}": 0,                    # no gate applied
+    "Gxpi2:0": 1,               # X90
+    "Gypi2:0": 2,               # Y90
+    "Gxpi2:0Gypi2:0": 3,        # X90Y90
+    "Gxpi2:0Gxpi2:0Gypi2:0": 4, # X180Y90
+    "[]": 5,                    # Identity gate (must be different from {})
 }
 
 GST_SEQUENCE_COUNT_LIMIT = 2000  # max circuits returned by build_gst_sequences
@@ -108,26 +107,81 @@ def gst_sequence_to_indices(sequence: str) -> list[int]:
     ]
 
 
-def build_gst_sequences(model: pygsti.Model, max_lengths: list[int]) -> list[str]:
+def gst_sequences_to_index_lists(
+    sequences: list[str],
+) -> tuple[list[int], list[int], list[int], list[int]]:
+    """Convert a list of GST circuit strings to four parallel index lists.
+
+    For each string, applies :func:`gst_sequence_to_indices` and collects
+    preparation, measurement, germ indices, and repetition counts into
+    separate lists. Each list has length ``n = len(sequences)`` (all empty
+    if ``sequences`` is empty).
+
+    Args:
+        sequences: GST circuit strings in pyGSTi line format.
+
+    Returns:
+        ``(prep_indices, meas_indices, germ_indices, repetitions)``, each a
+        ``list[int]`` of length ``n``.
+    """
+    if not sequences:
+        return [], [], [], []
+    rows = [gst_sequence_to_indices(s) for s in sequences]
+    prep_indices, meas_indices, germ_indices, repetitions = map(list, zip(*rows))
+    return prep_indices, meas_indices, germ_indices, repetitions
+
+
+def _load_pygsti_model_pack(model_name: str):
+    """Return the ``pygsti.modelpacks.<model_name>`` module, or raise ``ValueError`` if missing."""
+    if not model_name.isidentifier():
+        raise ValueError(
+            f"Invalid GST model name {model_name!r}; expected a model pack identifier (e.g. 'smq1Q_XY')."
+        )
+    import pygsti.modelpacks as modelpacks_pkg  # noqa: PLC0415
+
+    try:
+        return importlib.import_module(f"pygsti.modelpacks.{model_name}")
+    except ModuleNotFoundError as e:
+        available = sorted(
+            m.name for m in pkgutil.iter_modules(modelpacks_pkg.__path__)
+        )
+        raise ValueError(
+            f"Unknown pyGSTi model pack {model_name!r} (no submodule pygsti.modelpacks.{model_name}). "
+            f"Available model packs: {', '.join(available)}."
+        ) from e
+
+
+def build_gst_sequences(model_name: str, max_lengths: list[int]) -> list[str]:
     """Build GST sequences for gate set tomography.
 
     Args:
-        model: Pygsti model.
+        model_name: Name of a ``pygsti.modelpacks`` module (e.g. ``\"smq1Q_XY\"``, ``\"smq1Q_XYI\"``).
         max_lengths: Maximum lengths of the GST sequences.
 
     Returns:
         List of GST sequences.
 
     Raises:
-        ValueError: If the number of sequences exceeds :data:`GST_SEQUENCE_COUNT_LIMIT`.
+        ValueError: If ``model_name`` is not a loadable model pack, if the pack lacks
+            the usual GST helpers, or if the number of sequences exceeds
+            :data:`GST_SEQUENCE_COUNT_LIMIT`.
     """
     import pygsti  # noqa: PLC0415
 
-    prep_fiducials = model.prep_fiducials()
-    meas_fiducials = model.meas_fiducials()
-    germs = model.germs()
+    pack = _load_pygsti_model_pack(model_name)
+    try:
+        prep_fiducials = pack.prep_fiducials()
+        meas_fiducials = pack.meas_fiducials()
+        germs = pack.germs()
+        target_model = pack.target_model()
+    except AttributeError as e:
+        raise ValueError(
+            f"Model pack {model_name!r} does not exist."
+        ) from e
 
-    lsgst_lists = pygsti.circuits.create_lsgst_circuit_lists(model.target_model(), prep_fiducials, meas_fiducials, germs, max_lengths)
+    lsgst_lists = pygsti.circuits.create_lsgst_circuit_lists(
+        target_model, prep_fiducials, meas_fiducials, germs, max_lengths
+    )
 
     sequences = [circuit.str for circuit in lsgst_lists[-1]]
     if len(sequences) > GST_SEQUENCE_COUNT_LIMIT:
