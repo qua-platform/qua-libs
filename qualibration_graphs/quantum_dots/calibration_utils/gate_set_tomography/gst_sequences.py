@@ -11,18 +11,18 @@ PREP_FIDUCIAL_MAP: dict[str, int] = {
     "{}": 0,                    # no gate applied
     "Gxpi2:0": 1,               # X90
     "Gypi2:0": 2,               # Y90
-    "Gxpi2:0Gxpi2": 3,          # X180
-    "Gxpi2:0Gxpi2:0Gxpi2:0": 4, # -X90
-    "Gypi2:0Gypi2:0Gypi2:0": 5, # -Y90
+    "Gxpi2:0Gxpi2": 3,          # X90X90
+    "Gxpi2:0Gxpi2:0Gxpi2:0": 4, # X90X90X90
+    "Gypi2:0Gypi2:0Gypi2:0": 5, # Y90Y90Y90
 }
 
 MEAS_FIDUCIAL_MAP: dict[str, int] = {
     "{}": 0,                    # no gate applied
     "Gxpi2:0": 1,               # X90
     "Gypi2:0": 2,               # Y90
-    "Gxpi2:0Gxpi2": 3,          # X180
-    "Gxpi2:0Gxpi2:0Gxpi2:0": 4, # -X90
-    "Gypi2:0Gypi2:0Gypi2:0": 5, # -Y90
+    "Gxpi2:0Gxpi2": 3,          # X90X90
+    "Gxpi2:0Gxpi2:0Gxpi2:0": 4, # X90X90X90
+    "Gypi2:0Gypi2:0Gypi2:0": 5, # Y90Y90Y90
 }
 
 GERM_MAP: dict[str, int] = {
@@ -30,7 +30,7 @@ GERM_MAP: dict[str, int] = {
     "Gxpi2:0": 1,               # X90
     "Gypi2:0": 2,               # Y90
     "Gxpi2:0Gypi2:0": 3,        # X90Y90
-    "Gxpi2:0Gxpi2:0Gypi2:0": 4, # X180Y90
+    "Gxpi2:0Gxpi2:0Gypi2:0": 4, # X90X90Y90
     "[]": 5,                    # Identity gate (must be different from {})
 }
 

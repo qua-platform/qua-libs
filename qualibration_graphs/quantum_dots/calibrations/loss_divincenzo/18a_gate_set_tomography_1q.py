@@ -23,8 +23,15 @@ from qualibrate.core.parameters import NodeParameters
 from qualibration_libs.data import XarrayDataFetcher
 from quam_config import Quam
 
-from calibration_utils.gate_set_tomography.parameters import Parameters
+# from calibration_utils.gate_set_tomography.parameters import Parameters
+from calibration_utils.gate_set_tomography import (
+    Parameters,
+    build_gst_sequences,
+    gst_sequences_to_index_lists,
+    play_gst_sequence,
+)
 from calibration_utils.common_utils.experiment import get_qubits
+from qualibration_libs.runtime import simulate_and_plot
 
 
 # %% {Initialisation}
@@ -105,7 +112,126 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    pass
+    
+    node.namespace["qubits"] = qubits = get_qubits(node)
+    num_qubits = len(qubits)
+
+    # Build GST sequences (Python-side, once)
+    node.log("Building GST sequences...")
+    gst_sequences = build_gst_sequences(
+        node.parameters.model,
+        node.parameters.get_lengths(),
+    )
+    prep_indices, meas_indices, germ_indices, repetitions = gst_sequences_to_index_lists(gst_sequences)
+
+    length_values = node.parameters.get_lengths()
+    num_lengths = len(length_values)
+    max_length = max(length_values)
+    num_shots = node.parameters.num_shots
+    num_sequences = len(gst_sequences)
+
+    node.log(
+        f"GST config: {num_lengths} lengths (max {max_length}), {len(gst_sequences)} distinct sequences, {num_shots} shots/sequence."
+    )
+
+    # # Register sweep axes for xarray dataset
+    # node.namespace["sweep_axes"] = {
+    #     "qubit": xr.DataArray(qubits.get_names()),
+    #     "circuit": xr.DataArray(
+    #         np.arange(num_circuits),
+    #         attrs={"long_name": "circuit index"},
+    #     ),
+    #     "depth": xr.DataArray(
+    #         depths,
+    #         attrs={"long_name": "number of Cliffords"},
+    #     ),
+    # }
+
+    with program() as node.namespace["qua_program"]:
+        # ── QVA variables ─────────────────────────────────────────────────
+        sequence_idx = declare(int)
+        n = declare(int)
+        n_st = declare_stream()
+        
+        prep_id = declare(int)
+        meas_id = declare(int)
+        germ_id = declare(int)
+        repetition = declare(int)
+        
+        prep_id_list = declare(int, value=prep_indices)
+        meas_id_list = declare(int, value=meas_indices)
+        germ_id_list = declare(int, value=germ_indices)
+        repetition_list = declare(int, value=repetitions)
+
+        # Measurement variables (per qubit)
+        state = declare(int)
+        state_st = {qubit.name: declare_stream() for qubit in qubits}
+
+        for qubit in qubits:
+            with for_(sequence_idx, 0, sequence_idx < num_sequences, sequence_idx + 1):
+                save(sequence_idx, n_st)
+                assign(prep_id, prep_id_list[sequence_idx])
+                assign(meas_id, meas_id_list[sequence_idx])
+                assign(germ_id, germ_id_list[sequence_idx])
+                assign(repetition, repetition_list[sequence_idx])
+
+                with for_(n, 0, n < num_shots, n + 1):
+                    # --- Reset frame ---
+                    reset_frame(qubit.xy.name)
+                    align()
+
+                    # --- Empty ---
+                    qubit.empty()
+                    align()
+
+                    # --- Initialize ---
+                    qubit.initialize()
+                    align()
+
+                    # --- Play GST sequence ---
+                    play_gst_sequence(qubit, prep_id, meas_id, germ_id, repetition)
+
+                    # --- Measure ---
+                    align()
+                    assign(
+                        state,
+                        Cast.to_int(qubit.measure()),
+                    )
+
+                    # --- Compensation ---
+                    # TODO: Compensation pulse not working correctly
+                    align()
+                    # qubit.voltage_sequence.ramp_to_zero()
+                    qubit.voltage_sequence.apply_compensation_pulse()
+
+                    save(state, state_st[qubit.name])
+        
+        # ── Stream processing ─────────────────────────────────────────
+        # Buffer order matches loop nesting: sequence → shot
+        with stream_processing():
+            n_st.save("n")
+            for qubit in qubits:
+                (
+                    state_st[qubit.name]
+                    .buffer(num_shots)
+                    .map(FUNCTIONS.average())
+                    .buffer(num_sequences)
+                    .save(f"state_{qubit.name}")
+                )
+
+
+# %% {Simulate}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP and simulate the QUA program."""
+    qmm = node.machine.connect()
+    config = node.machine.generate_config()
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    node.results["simulation"] = {
+        "figure": fig,
+        "wf_report": wf_report,
+        "samples": samples,
+    }
 
 
 # %% {Execute}
