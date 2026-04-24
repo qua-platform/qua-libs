@@ -287,11 +287,11 @@ with program() as rb:
                 save(state1, state1_st)
                 assign(state2, I[1] > ge_threshold_q2)
                 save(state2, state2_st)
-
-                assign(start, start + len_list_qua[run])
-                assign(run, run + 1)
-                # Go to the next depth
                 align()
+
+            assign(start, start + len_list_qua[run])
+            assign(run, run + 1)
+            # Go to the next depth
         save(m, m_st)
 
     with stream_processing():
