@@ -134,18 +134,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         f"GST config: {num_lengths} lengths (max {max_length}), {len(gst_sequences)} distinct sequences, {num_shots} shots/sequence."
     )
 
-    # # Register sweep axes for xarray dataset
-    # node.namespace["sweep_axes"] = {
-    #     "qubit": xr.DataArray(qubits.get_names()),
-    #     "circuit": xr.DataArray(
-    #         np.arange(num_circuits),
-    #         attrs={"long_name": "circuit index"},
-    #     ),
-    #     "depth": xr.DataArray(
-    #         depths,
-    #         attrs={"long_name": "number of Cliffords"},
-    #     ),
-    # }
+    # Register sweep axes for xarray dataset
+    node.namespace["sweep_axes"] = {
+        "qubit": xr.DataArray(qubits.get_names()),
+        "sequence": xr.DataArray(
+            np.arange(num_sequences),
+            attrs={"long_name": "sequence index"},
+        ),
+    }
 
     with program() as node.namespace["qua_program"]:
         # ── QVA variables ─────────────────────────────────────────────────
@@ -164,7 +160,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         repetition_list = declare(int, value=repetitions)
 
         # Measurement variables (per qubit)
-        state = declare(int)
+        state_counts = declare(int)
         state_st = {qubit.name: declare_stream() for qubit in qubits}
 
         for qubit in qubits:
@@ -194,8 +190,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # --- Measure ---
                     align()
                     assign(
-                        state,
-                        Cast.to_int(qubit.measure()),
+                        state_counts,
+                        Cast.to_int(qubit.measure()) + state_counts,
                     )
 
                     # --- Compensation ---
@@ -204,7 +200,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # qubit.voltage_sequence.ramp_to_zero()
                     qubit.voltage_sequence.apply_compensation_pulse()
 
-                    save(state, state_st[qubit.name])
+                    save(state_counts, state_st[qubit.name])
         
         # ── Stream processing ─────────────────────────────────────────
         # Buffer order matches loop nesting: sequence → shot
@@ -213,10 +209,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for qubit in qubits:
                 (
                     state_st[qubit.name]
-                    .buffer(num_shots)
-                    .map(FUNCTIONS.average())
                     .buffer(num_sequences)
-                    .save(f"state_{qubit.name}")
+                    .save(f"state_counts_{qubit.name}")
                 )
 
 
