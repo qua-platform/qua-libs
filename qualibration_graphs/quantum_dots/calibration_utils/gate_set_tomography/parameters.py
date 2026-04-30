@@ -9,6 +9,8 @@ from typing import ClassVar, Literal
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
+# import pygsti
+from .gst_sequences import _load_pygsti_model_pack
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -39,6 +41,21 @@ class Parameters(
     QubitsExperimentNodeParameters,
 ):
     """Combined parameters for single-qubit GST experiments."""
+
+    # GST_SEQUENCE_COUNT_LIMIT = 2000
+
+    # prep_fiducials: list[str] = []
+    # meas_fiducials: list[str] = []
+    # germs: list[str] = []
+    # gst_sequences: list[str] = []
+    # target_model: pygsti.model.ExplicitModel = None
+    # """Target model for GST."""
+    # prep_fiducial_map: dict[str, int] = {"{}": 0}
+    # """Map of preparation fiducials to indices."""
+    # meas_fiducial_map: dict[str, int] = {"{}": 0}
+    # """Map of measurement fiducials to indices."""
+    # germ_map: dict[str, int] = {"{}": 0}
+    # """Map of germs to indices."""
 
     def get_lengths(self) -> list[int]:
         """Generate circuit depths based on the parameter configuration.
@@ -73,3 +90,66 @@ class Parameters(
         lengths = list(range(0, self.max_length + 1, self.delta_length))
         lengths[0] = 1
         return lengths
+    
+    def get_gst_components(self) -> tuple[list[str], list[str], list[str]]:
+        """Get the GST components from the model.
+        
+        Returns:
+            Lists of preparation fiducials, measurement fiducials, germs, and target model.
+        """
+        pack = _load_pygsti_model_pack(self.model)
+        # import pygsti.modelpacks as modelpacks_pkg  # noqa: PLC0415
+        # pack = modelpacks_pkg.get_model_pack(self.model)
+
+        prep_fiducials = pack.prep_fiducials()
+        meas_fiducials = pack.meas_fiducials()
+        germs = pack.germs()
+        target_model = pack.target_model()
+
+        return prep_fiducials, meas_fiducials, germs, target_model
+
+    # prep_fiducials, meas_fiducials, germs, target_model = self.get_gst_components()
+
+    # def get_gst_sequences(self) -> list[str]:
+    #     """Get the GST sequences from the model.
+        
+    #     Returns:
+    #         List of GST sequences converted to strings.
+    #     """
+    #     if len(self.prep_fiducials) == 0 or len(self.meas_fiducials) == 0 or len(self.germs) == 0 or self.target_model is None:
+    #         self.get_gst_components()
+
+    #     max_lengths = self.get_lengths()
+    #     lsgst_lists = pygsti.circuits.create_lsgst_circuit_lists(
+    #         target_model, prep_fiducials, meas_fiducials, germs, max_lengths
+    #     )
+
+    #     self.gst_sequences = [circuit.str for circuit in lsgst_lists[-1]]
+    #     if len(self.gst_sequences) > self.GST_SEQUENCE_COUNT_LIMIT:
+    #         raise ValueError(
+    #             f"GST sequence count ({len(self.gst_sequences)}) exceeds the limit ({self.GST_SEQUENCE_COUNT_LIMIT}). "
+    #             "Reduce max_lengths, the fiducial set, or the germ set."
+    #         )
+    #     return self.gst_sequences
+    
+    # def _build_gate_map(self, circuit_strings: list[str]) -> dict[str, int]:
+    #     """Build a gate map from a list of circuit strings.
+    #     Used to construct the PREP_FIDUCIAL_MAP, MEAS_FIDUCIAL_MAP and GERM_MAP dictionaries.
+        
+    #     Args:
+    #         circuit_strings: List of circuit strings.
+    #     """
+    #     gate_map = {"{}": 0}
+    #     idx = 1
+    #     for circuit_string in circuit_strings:
+    #         if not circuit_string in gate_map.keys():
+    #             gate_map[circuit_string] = idx
+    #             idx += 1
+    #     return gate_map
+    
+
+
+
+# PREP_FIDUCIAL_MAP: dict[str, int] = {"{}": 0}
+# MEAS_FIDUCIAL_MAP: dict[str, int] = {"{}": 0}
+# GERM_MAP: dict[str, int] = {"{}": 0}

@@ -27,6 +27,7 @@ from quam_config import Quam
 from calibration_utils.gate_set_tomography import (
     Parameters,
     build_gst_sequences,
+    build_gate_map,
     gst_sequences_to_index_lists,
     play_gst_sequence,
 )
@@ -101,8 +102,8 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     pass
 
 
-if node.parameters.use_input_stream:
-    raise NotImplementedError("Input streams is not supported yet.")
+# if node.parameters.use_input_stream:
+#     raise NotImplementedError("Input streams is not supported yet.")
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
@@ -118,21 +119,35 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Build GST sequences (Python-side, once)
     node.log("Building GST sequences...")
-    gst_sequences = build_gst_sequences(
-        node.parameters.model,
-        node.parameters.get_lengths(),
-    )
-    prep_indices, meas_indices, germ_indices, repetitions = gst_sequences_to_index_lists(gst_sequences)
-
     length_values = node.parameters.get_lengths()
+    prep_fiducials, meas_fiducials, germs, target_model = node.parameters.get_gst_components()
+    gst_sequences = build_gst_sequences(
+        target_model, 
+        prep_fiducials, 
+        meas_fiducials, 
+        germs, 
+        length_values)
+    
+    PREP_FIDUCIAL_MAP = build_gate_map(prep_fiducials)
+    MEAS_FIDUCIAL_MAP = build_gate_map(meas_fiducials)
+    GERM_MAP = build_gate_map(germs)
+
+    prep_indices, meas_indices, germ_indices, repetitions = gst_sequences_to_index_lists(
+        gst_sequences, PREP_FIDUCIAL_MAP, MEAS_FIDUCIAL_MAP, GERM_MAP
+        )
+    
     num_lengths = len(length_values)
     max_length = max(length_values)
     num_shots = node.parameters.num_shots
     num_sequences = len(gst_sequences)
 
     node.log(
+        f"Sequence construction: {len(prep_fiducials)} preparation fiducials, {len(meas_fiducials)} measurement fiducials, and {len(germs)} germs."
+    )
+    node.log(
         f"GST config: {num_lengths} lengths (max {max_length}), {len(gst_sequences)} distinct sequences, {num_shots} shots/sequence."
     )
+    
 
     # Register sweep axes for xarray dataset
     node.namespace["sweep_axes"] = {

@@ -3,38 +3,118 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    import pygsti
+
 import importlib
 import pkgutil
 import re
 
-PREP_FIDUCIAL_MAP: dict[str, int] = {
-    "{}": 0,                    # no gate applied
-    "Gxpi2:0": 1,               # X90
-    "Gypi2:0": 2,               # Y90
-    "Gxpi2:0Gxpi2": 3,          # X90X90
-    "Gxpi2:0Gxpi2:0Gxpi2:0": 4, # X90X90X90
-    "Gypi2:0Gypi2:0Gypi2:0": 5, # Y90Y90Y90
-}
+# PREP_FIDUCIAL_MAP: dict[str, int] = {
+#     "{}": 0,                    # no gate applied
+#     "Gxpi2:0": 1,               # X90
+#     "Gypi2:0": 2,               # Y90
+#     "Gxpi2:0Gxpi2": 3,          # X90X90
+#     "Gxpi2:0Gxpi2:0Gxpi2:0": 4, # X90X90X90
+#     "Gypi2:0Gypi2:0Gypi2:0": 5, # Y90Y90Y90
+# }
 
-MEAS_FIDUCIAL_MAP: dict[str, int] = {
-    "{}": 0,                    # no gate applied
-    "Gxpi2:0": 1,               # X90
-    "Gypi2:0": 2,               # Y90
-    "Gxpi2:0Gxpi2": 3,          # X90X90
-    "Gxpi2:0Gxpi2:0Gxpi2:0": 4, # X90X90X90
-    "Gypi2:0Gypi2:0Gypi2:0": 5, # Y90Y90Y90
-}
+# MEAS_FIDUCIAL_MAP: dict[str, int] = {
+#     "{}": 0,                    # no gate applied
+#     "Gxpi2:0": 1,               # X90
+#     "Gypi2:0": 2,               # Y90
+#     "Gxpi2:0Gxpi2": 3,          # X90X90
+#     "Gxpi2:0Gxpi2:0Gxpi2:0": 4, # X90X90X90
+#     "Gypi2:0Gypi2:0Gypi2:0": 5, # Y90Y90Y90
+# }
 
-GERM_MAP: dict[str, int] = {
-    "{}": 0,                    # no gate applied
-    "Gxpi2:0": 1,               # X90
-    "Gypi2:0": 2,               # Y90
-    "Gxpi2:0Gypi2:0": 3,        # X90Y90
-    "Gxpi2:0Gxpi2:0Gypi2:0": 4, # X90X90Y90
-    "[]": 5,                    # Identity gate (must be different from {})
-}
+# GERM_MAP: dict[str, int] = {
+#     "{}": 0,                    # no gate applied
+#     "Gxpi2:0": 1,               # X90
+#     "Gypi2:0": 2,               # Y90
+#     "Gxpi2:0Gypi2:0": 3,        # X90Y90
+#     "Gxpi2:0Gxpi2:0Gypi2:0": 4, # X90X90Y90
+#     "[]": 5,                    # Identity gate (must be different from {})
+# }
 
 GST_SEQUENCE_COUNT_LIMIT = 2000  # max circuits returned by build_gst_sequences
+
+
+def _load_pygsti_model_pack(model_name: str):
+    """Return the ``pygsti.modelpacks.<model_name>`` module, or raise ``ValueError`` if missing."""
+    if not model_name.isidentifier():
+        raise ValueError(
+            f"Invalid GST model name {model_name!r}; expected a model pack identifier (e.g. 'smq1Q_XY')."
+        )
+    import pygsti.modelpacks as modelpacks_pkg  # noqa: PLC0415
+
+    try:
+        return importlib.import_module(f"pygsti.modelpacks.{model_name}")
+    except ModuleNotFoundError as e:
+        available = sorted(
+            m.name for m in pkgutil.iter_modules(modelpacks_pkg.__path__)
+        )
+        raise ValueError(
+            f"Unknown pyGSTi model pack {model_name!r} (no submodule pygsti.modelpacks.{model_name}). "
+            f"Available model packs: {', '.join(available)}."
+        ) from e
+
+
+# def get_gst_components(model_name: str) -> tuple[list[str], list[str], list[str]]:
+#     """Get the GST components from a model pack.
+
+#     Args:
+#         model_name: Name of a ``pygsti.modelpacks`` module (e.g. ``\"smq1Q_XY\"``, ``\"smq1Q_XYI\"``).
+
+#     Returns:
+#         Lists of preparation fiducials, measurement fiducials, germs, and target model.
+#     """
+    
+#     pack = _load_pygsti_model_pack(model_name)
+#     try:
+#         prep_fiducials = pack.prep_fiducials()
+#         meas_fiducials = pack.meas_fiducials()
+#         germs = pack.germs()
+#         target_model = pack.target_model()
+#     except AttributeError as e:
+#         raise ValueError(
+#             f"Model pack {model_name!r} does not exist."
+#         ) from e
+#     return prep_fiducials, meas_fiducials, germs, target_model
+
+
+def build_gst_sequences(target_model, prep_fiducials, meas_fiducials, germs, max_lengths) -> list[str]:
+    """Build GST sequences for gate set tomography.
+
+    Args:
+        target_model: Target model for GST.
+        prep_fiducials: Preparation fiducials.
+        meas_fiducials: Measurement fiducials.
+        germs: Germs that will be repeated in the GST sequences.
+        max_lengths: Maximum lengths of the germ repetitions in the GST sequences.
+
+    Returns:
+        List of GST sequences converted to strings.
+
+    Raises:
+        ValueError: If ``model_name`` is not a loadable model pack, if the pack lacks
+            the usual GST helpers, or if the number of sequences exceeds
+            :data:`GST_SEQUENCE_COUNT_LIMIT`.
+    """
+    import pygsti  # noqa: PLC0415
+
+    lsgst_lists = pygsti.circuits.create_lsgst_circuit_lists(
+        target_model, prep_fiducials, meas_fiducials, germs, max_lengths
+    )
+
+    sequences = [circuit.str for circuit in lsgst_lists[-1]]
+    if len(sequences) > GST_SEQUENCE_COUNT_LIMIT:
+        raise ValueError(
+            f"GST sequence count ({len(sequences)}) exceeds the limit ({GST_SEQUENCE_COUNT_LIMIT}). "
+            "Reduce max_lengths, the fiducial set, or the germ set."
+        )
+    return sequences
 
 
 def strip_pygsti_line_labels(sequence: str) -> str:
@@ -44,6 +124,23 @@ def strip_pygsti_line_labels(sequence: str) -> str:
 
 def _normalize_empty_for_map(segment: str) -> str:
     return "{}" if segment == "" else segment
+
+
+def build_gate_map(circuit_objects: list[pygsti.Circuit]) -> dict[str, int]:
+    """Build a gate map from a list of circuit objects.
+    Used to construct the PREP_FIDUCIAL_MAP, MEAS_FIDUCIAL_MAP and GERM_MAP dictionaries.
+    
+    Args:
+        circuit_objects: List of circuit objects.
+    """
+    gate_map = {"{}": 0}
+    idx = 1
+    for circuit in circuit_objects:
+        circuit_string = strip_pygsti_line_labels(circuit.str)
+        if not circuit_string in gate_map.keys():
+            gate_map[circuit_string] = idx
+            idx += 1
+    return gate_map
 
 
 def split_lsgst_circstring(sequence: str) -> tuple[str, str, int, str]:
@@ -83,10 +180,18 @@ def split_lsgst_circstring(sequence: str) -> tuple[str, str, int, str]:
     return prep, germ, repetition, meas
 
 
-def gst_sequence_to_indices(sequence: str) -> list[int]:
+def gst_sequence_to_indices(sequence: str, prep_fiducial_map: dict[str, int], meas_fiducial_map: dict[str, int], germ_map: dict[str, int]) -> list[int]:
     """Map a pyGSTi GST circuit string to ``[prep_idx, meas_idx, germ_idx, repetition]``.
 
-    Uses :data:`PREP_FIDUCIAL_MAP`, :data:`MEAS_FIDUCIAL_MAP`, and :data:`GERM_MAP`.
+    Args:
+        sequence: GST circuit string in pyGSTi line format.
+        prep_fiducial_map: Map of preparation fiducials to indices.
+        meas_fiducial_map: Map of measurement fiducials to indices.
+        germ_map: Map of germs to indices.
+
+    Returns:
+        List of indices: [prep_idx, meas_idx, germ_idx, repetition].
+
     Repetition is ``0`` when the germ is ``\"{}\"``; see :func:`split_lsgst_circstring`.
     """
     prep_s, germ_s, repetition, meas_s = split_lsgst_circstring(sequence)
@@ -100,15 +205,18 @@ def gst_sequence_to_indices(sequence: str) -> list[int]:
             ) from e
 
     return [
-        miss("prep", prep_s, PREP_FIDUCIAL_MAP),
-        miss("meas", meas_s, MEAS_FIDUCIAL_MAP),
-        miss("germ", germ_s, GERM_MAP),
+        miss("prep", prep_s, prep_fiducial_map),
+        miss("meas", meas_s, meas_fiducial_map),
+        miss("germ", germ_s, germ_map),
         repetition,
     ]
 
 
 def gst_sequences_to_index_lists(
     sequences: list[str],
+    prep_fiducial_map: dict[str, int],
+    meas_fiducial_map: dict[str, int],
+    germ_map: dict[str, int],
 ) -> tuple[list[int], list[int], list[int], list[int]]:
     """Convert a list of GST circuit strings to four parallel index lists.
 
@@ -119,74 +227,16 @@ def gst_sequences_to_index_lists(
 
     Args:
         sequences: GST circuit strings in pyGSTi line format.
-
+        prep_fiducial_map: Map of preparation fiducials to indices.
+        meas_fiducial_map: Map of measurement fiducials to indices.
+        germ_map: Map of germs to indices.
     Returns:
         ``(prep_indices, meas_indices, germ_indices, repetitions)``, each a
         ``list[int]`` of length ``n``.
     """
     if not sequences:
         return [], [], [], []
-    rows = [gst_sequence_to_indices(s) for s in sequences]
+    rows = [gst_sequence_to_indices(s, prep_fiducial_map, meas_fiducial_map, germ_map) for s in sequences]
     prep_indices, meas_indices, germ_indices, repetitions = map(list, zip(*rows))
     return prep_indices, meas_indices, germ_indices, repetitions
 
-
-def _load_pygsti_model_pack(model_name: str):
-    """Return the ``pygsti.modelpacks.<model_name>`` module, or raise ``ValueError`` if missing."""
-    if not model_name.isidentifier():
-        raise ValueError(
-            f"Invalid GST model name {model_name!r}; expected a model pack identifier (e.g. 'smq1Q_XY')."
-        )
-    import pygsti.modelpacks as modelpacks_pkg  # noqa: PLC0415
-
-    try:
-        return importlib.import_module(f"pygsti.modelpacks.{model_name}")
-    except ModuleNotFoundError as e:
-        available = sorted(
-            m.name for m in pkgutil.iter_modules(modelpacks_pkg.__path__)
-        )
-        raise ValueError(
-            f"Unknown pyGSTi model pack {model_name!r} (no submodule pygsti.modelpacks.{model_name}). "
-            f"Available model packs: {', '.join(available)}."
-        ) from e
-
-
-def build_gst_sequences(model_name: str, max_lengths: list[int]) -> list[str]:
-    """Build GST sequences for gate set tomography.
-
-    Args:
-        model_name: Name of a ``pygsti.modelpacks`` module (e.g. ``\"smq1Q_XY\"``, ``\"smq1Q_XYI\"``).
-        max_lengths: Maximum lengths of the GST sequences.
-
-    Returns:
-        List of GST sequences.
-
-    Raises:
-        ValueError: If ``model_name`` is not a loadable model pack, if the pack lacks
-            the usual GST helpers, or if the number of sequences exceeds
-            :data:`GST_SEQUENCE_COUNT_LIMIT`.
-    """
-    import pygsti  # noqa: PLC0415
-
-    pack = _load_pygsti_model_pack(model_name)
-    try:
-        prep_fiducials = pack.prep_fiducials()
-        meas_fiducials = pack.meas_fiducials()
-        germs = pack.germs()
-        target_model = pack.target_model()
-    except AttributeError as e:
-        raise ValueError(
-            f"Model pack {model_name!r} does not exist."
-        ) from e
-
-    lsgst_lists = pygsti.circuits.create_lsgst_circuit_lists(
-        target_model, prep_fiducials, meas_fiducials, germs, max_lengths
-    )
-
-    sequences = [circuit.str for circuit in lsgst_lists[-1]]
-    if len(sequences) > GST_SEQUENCE_COUNT_LIMIT:
-        raise ValueError(
-            f"GST sequence count ({len(sequences)}) exceeds the limit ({GST_SEQUENCE_COUNT_LIMIT}). "
-            "Reduce max_lengths, the fiducial set, or the germ set."
-        )
-    return sequences
