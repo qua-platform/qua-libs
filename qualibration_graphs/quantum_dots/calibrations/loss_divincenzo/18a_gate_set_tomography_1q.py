@@ -170,6 +170,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 assign(meas_id, meas_id_list[sequence_idx])
                 assign(germ_id, germ_id_list[sequence_idx])
                 assign(repetition, repetition_list[sequence_idx])
+                assign(state_counts, 0)
 
                 with for_(n, 0, n < num_shots, n + 1):
                     # --- Reset frame ---
@@ -200,7 +201,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # qubit.voltage_sequence.ramp_to_zero()
                     qubit.voltage_sequence.apply_compensation_pulse()
 
-                    save(state_counts, state_st[qubit.name])
+                # --- Save results ---
+                save(state_counts, state_st[qubit.name])
         
         # ── Stream processing ─────────────────────────────────────────
         # Buffer order matches loop nesting: sequence → shot
