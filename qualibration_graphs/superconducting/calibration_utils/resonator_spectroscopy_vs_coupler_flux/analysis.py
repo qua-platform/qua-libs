@@ -36,9 +36,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     # Add the amplitude and phase to the raw dataset
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     # Add the RF frequency as a per-(qubit, detuning) coordinate.
-    full_freq = np.array(
-        [ds.detuning.values + q.resonator.RF_frequency for q in measured_qubits]
-    )
+    full_freq = np.array([ds.detuning.values + q.resonator.RF_frequency for q in measured_qubits])
     ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     # Add the coupler current axis as a per-flux_bias coordinate.
@@ -48,9 +46,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     # Add attenuated current to dataset
     attenuation_factor = 10 ** (-node.parameters.line_attenuation_in_db / 20)
     attenuated_current = ds.current * attenuation_factor
-    ds = ds.assign_coords(
-        {"attenuated_current": (["flux_bias"], attenuated_current.values)}
-    )
+    ds = ds.assign_coords({"attenuated_current": (["flux_bias"], attenuated_current.values)})
     ds.attenuated_current.attrs = {"long_name": "Attenuated Current", "units": "A"}
 
     return ds

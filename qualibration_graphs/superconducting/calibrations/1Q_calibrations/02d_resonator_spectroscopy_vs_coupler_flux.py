@@ -69,6 +69,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
 
+
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -261,8 +262,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     # fit_results is keyed by the qubit coordinate, which is the qubit-pair name.
     qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
     node.outcomes = {
-        qp_name: node.results["fit_results"].get(qp_name, {}).get("success", False)
-        for qp_name in qubit_pair_names
+        qp_name: node.results["fit_results"].get(qp_name, {}).get("success", False) for qp_name in qubit_pair_names
     }
     # Convert boolean outcomes to "successful"/"failed" strings
     node.outcomes = {k: ("successful" if v else "failed") for k, v in node.outcomes.items()}
