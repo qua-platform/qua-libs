@@ -22,6 +22,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
+
 # %% {Node initialisation}
 description = """
         RESONATOR SPECTROSCOPY VERSUS COUPLER FLUX
@@ -32,10 +33,15 @@ coupler flux biases and corresponding readout frequency.
 
 This information can then be used to adjust the readout frequency for different coupler flux points.
 
+Multiplexing behaviour:
+    - multiplexed=False (default): each coupler is swept individually while all other couplers are held at
+      their idle flux point. Resonators are measured one at a time.
+    - multiplexed=True: all couplers are swept to the same DC value simultaneously and all resonators
+      are measured at the same time. 
+
 Prerequisites:
     - Having calibrated the resonator frequency (nodes 02a, 02b and/or 02c).
     - Having specified the desired flux point (qubit.z.flux_point).
-
 
 State update:
     - update coupler flux biases
@@ -62,7 +68,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
-
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
@@ -128,17 +133,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Apply coupler flux bias via DC offset for EACH qubit pair's coupler
                     for ii, qp in multiplexed_qubit_pairs.items():
                         qp.coupler.set_dc_offset(dc)
-                    # Wait for coupler to settle
-                    qp.coupler.wait(settle_time)
+                        # Wait for coupler to settle
+                        qp.coupler.wait(settle_time)
+                    # align all the couplers
+                    align()
                     # Measure all qubits in the batch
-                    for ii, qp in multiplexed_qubit_pairs.items():
-                        if node.parameters.measure_qubit == "control":
-                            measured_qubit = qp.qubit_control
-                        else:
-                            measured_qubit = qp.qubit_target
-                        rr = measured_qubit.resonator
-                        measured_qubit.align()
-                        with for_(*from_array(df, dfs)):
+                    with for_(*from_array(df, dfs)):
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            measured_qubit = (
+                                qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
+                            )
+                            rr = measured_qubit.resonator
                             # Update the resonator frequency
                             rr.update_frequency(df + rr.intermediate_frequency)
                             # Readout the resonator
@@ -148,11 +153,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Save data
                             save(I[ii], I_st[ii])
                             save(Q[ii], Q_st[ii])
-
-            # Measure sequentially if not multiplexed
-            if not node.parameters.multiplexed:
-                align()
-
+                        align()
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubit_pairs):
