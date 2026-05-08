@@ -298,8 +298,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.outcomes[qp.name] == "failed":
                 continue
 
-            # fit_results is keyed by the coupler (qubit-pair) name, not the measured qubit name.
-            # measured_qubit = qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
+            # Access the measured qubit-pair if needed:
             # fit_results = node.results["fit_results"][qp.name]
             # Update manually the state according to the data
 
