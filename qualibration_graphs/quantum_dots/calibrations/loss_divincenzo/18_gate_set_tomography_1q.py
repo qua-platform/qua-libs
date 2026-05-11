@@ -100,7 +100,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1"]
+    node.parameters.qubits = ["q1"]
     node.parameters.num_shots = 100
     node.parameters.max_length = 256
     node.parameters.log_scale = True
