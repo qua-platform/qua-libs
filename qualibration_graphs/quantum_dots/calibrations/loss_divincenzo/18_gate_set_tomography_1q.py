@@ -26,8 +26,10 @@ from quam_config import Quam
 # from calibration_utils.gate_set_tomography.parameters import Parameters
 from calibration_utils.gate_set_tomography import (
     Parameters,
+    analyse_raw_data,
     build_gst_sequences,
     gst_sequences_to_index_lists,
+    log_gst_results,
     play_gst_sequence,
 )
 from calibration_utils.common_utils.experiment import get_qubits
@@ -98,11 +100,16 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1"]
+    node.parameters.num_shots = 100
+    node.parameters.max_length = 256
+    node.parameters.log_scale = True
+    # node.parameters.delta_length = 20
+    node.parameters.model = "smq1Q_XY"
     pass
 
 
-if node.parameters.use_input_stream:
-    raise NotImplementedError("Input streams is not supported yet.")
+# if node.parameters.use_input_stream:
+#     raise NotImplementedError("Input streams is not supported yet.")
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
@@ -130,22 +137,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num_shots = node.parameters.num_shots
     num_sequences = len(gst_sequences)
 
+    # node.log(
+    #     f"Sequence construction: {len(prep_fiducials)} preparation fiducials, {len(meas_fiducials)} measurement fiducials, and {len(germs)} germs."
+    # )
     node.log(
         f"GST config: {num_lengths} lengths (max {max_length}), {len(gst_sequences)} distinct sequences, {num_shots} shots/sequence."
     )
 
-    # # Register sweep axes for xarray dataset
-    # node.namespace["sweep_axes"] = {
-    #     "qubit": xr.DataArray(qubits.get_names()),
-    #     "circuit": xr.DataArray(
-    #         np.arange(num_circuits),
-    #         attrs={"long_name": "circuit index"},
-    #     ),
-    #     "depth": xr.DataArray(
-    #         depths,
-    #         attrs={"long_name": "number of Cliffords"},
-    #     ),
-    # }
+    # Register sweep axes for xarray dataset
+    node.namespace["sweep_axes"] = {
+        "qubit": xr.DataArray(qubits.get_names()),
+        "sequence": xr.DataArray(
+            np.arange(num_sequences),
+            attrs={"long_name": "sequence index"},
+        ),
+    }
 
     with program() as node.namespace["qua_program"]:
         # ── QVA variables ─────────────────────────────────────────────────
@@ -164,7 +170,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         repetition_list = declare(int, value=repetitions)
 
         # Measurement variables (per qubit)
-        state = declare(int)
+        result = declare(int) # result of a single measurement
+        state_counts = declare(int) # number of 1 counts for a given sequence
         state_st = {qubit.name: declare_stream() for qubit in qubits}
 
         for qubit in qubits:
@@ -174,6 +181,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 assign(meas_id, meas_id_list[sequence_idx])
                 assign(germ_id, germ_id_list[sequence_idx])
                 assign(repetition, repetition_list[sequence_idx])
+                assign(state_counts, 0)
 
                 with for_(n, 0, n < num_shots, n + 1):
                     # --- Reset frame ---
@@ -182,7 +190,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     # --- Empty ---
                     qubit.empty()
-                    align()
 
                     # --- Initialize ---
                     qubit.initialize()
@@ -193,18 +200,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     # --- Measure ---
                     align()
-                    assign(
-                        state,
-                        Cast.to_int(qubit.measure()),
-                    )
+                    result = qubit.measure()
 
                     # --- Compensation ---
-                    # TODO: Compensation pulse not working correctly
                     align()
-                    # qubit.voltage_sequence.ramp_to_zero()
-                    qubit.voltage_sequence.apply_compensation_pulse()
+                    qubit.voltage_sequence.apply_compensation_pulse(go_to_zero=True, return_to_zero=True)
+                    align()
 
-                    save(state, state_st[qubit.name])
+                    # --- Update state counts ---
+                    assign(
+                        state_counts,
+                        Cast.to_int(result)+state_counts,
+                    )
+
+                # --- Save results ---
+                save(state_counts, state_st[qubit.name])
         
         # ── Stream processing ─────────────────────────────────────────
         # Buffer order matches loop nesting: sequence → shot
@@ -213,8 +223,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for qubit in qubits:
                 (
                     state_st[qubit.name]
-                    .buffer(num_shots)
-                    .map(FUNCTIONS.average())
                     .buffer(num_sequences)
                     .save(f"state_{qubit.name}")
                 )
@@ -237,30 +245,27 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """
-    Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset
-    called "ds_raw".
-    """
-    # # Connect to the QOP
-    # qmm = node.machine.connect()
-    # # Get the config from the machine
-    # config = node.machine.generate_config()
-    # # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
-    # with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-    #     # The job is stored in the node namespace to be reused in the fetching_data run_action
-    #     node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-    #     # Display the progress bar
-    #     data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
-    #     for dataset in data_fetcher:
-    #         progress_counter(
-    #             data_fetcher["n"],
-    #             node.parameters.num_shots,
-    #             start_time=data_fetcher.t_start,
-    #         )
-    #     # Display the execution report to expose possible runtime errors
-    #     node.log(job.execution_report())
-    # # Register the raw dataset
-    # node.results["ds_raw"] = dataset
+    """Connect to the QOP, execute the QUA program and fetch raw data."""
+    # Connect to the QOP
+    qmm = node.machine.connect()
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        # The job is stored in the node namespace to be reused in the fetching_data run_action
+        node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        # Display the progress bar
+        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+        for dataset in data_fetcher:
+            progress_counter(
+                data_fetcher.get("n", 0),
+                node.parameters.num_sequences,
+                start_time=data_fetcher.t_start,
+            )
+        # Display the execution report to expose possible runtime errors
+        node.log(job.execution_report())
+    # Register the raw dataset
+    node.results["ds_raw"] = dataset
 
 
 # %% {Load_data}
@@ -279,7 +284,17 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analysis the raw data and store the fitted data in another xarray dataset and the fitted results."""
-    pass
+    ds_raw = node.results["ds_raw"]
+    qubits = node.namespace["qubits"]
+    gst_results = analyse_raw_data(
+        ds_raw,
+        qubits,
+        model_name=node.parameters.model,
+        lengths=node.parameters.get_lengths(),
+        num_shots=node.parameters.num_shots,
+    )
+    node.results["gst_analysis"] = gst_results
+    log_gst_results(gst_results, node_logger=node.log)
 
 
 # %% {Plot_data}

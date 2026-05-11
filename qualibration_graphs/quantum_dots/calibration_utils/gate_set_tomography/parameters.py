@@ -22,7 +22,7 @@ class NodeSpecificParameters(RunnableParameters):
     """If True, use log-scale lengths: 1, 2, 4, 8, 16, ... up to max_length. Default is True."""
     delta_length: int = 20
     """Step between lengths in linear scale mode. Default is 20."""
-    model: Literal["smq1Q_XY", "smq1Q_XYI"] = "smq1Q_XY"
+    model: Literal["smq1Q_XY"] = "smq1Q_XY"
     """Model to use for the GST experiment. Default is "smq1Q_XY"."""
     # use_state_discrimination: bool = True
     # """Whether to use state discrimination for readout. Default is True."""

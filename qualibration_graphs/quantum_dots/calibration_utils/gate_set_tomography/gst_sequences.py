@@ -11,7 +11,7 @@ PREP_FIDUCIAL_MAP: dict[str, int] = {
     "{}": 0,                    # no gate applied
     "Gxpi2:0": 1,               # X90
     "Gypi2:0": 2,               # Y90
-    "Gxpi2:0Gxpi2": 3,          # X90X90
+    "Gxpi2:0Gxpi2:0": 3,          # X90X90
     "Gxpi2:0Gxpi2:0Gxpi2:0": 4, # X90X90X90
     "Gypi2:0Gypi2:0Gypi2:0": 5, # Y90Y90Y90
 }
@@ -20,7 +20,7 @@ MEAS_FIDUCIAL_MAP: dict[str, int] = {
     "{}": 0,                    # no gate applied
     "Gxpi2:0": 1,               # X90
     "Gypi2:0": 2,               # Y90
-    "Gxpi2:0Gxpi2": 3,          # X90X90
+    "Gxpi2:0Gxpi2:0": 3,          # X90X90
     "Gxpi2:0Gxpi2:0Gxpi2:0": 4, # X90X90X90
     "Gypi2:0Gypi2:0Gypi2:0": 5, # Y90Y90Y90
 }
@@ -31,7 +31,6 @@ GERM_MAP: dict[str, int] = {
     "Gypi2:0": 2,               # Y90
     "Gxpi2:0Gypi2:0": 3,        # X90Y90
     "Gxpi2:0Gxpi2:0Gypi2:0": 4, # X90X90Y90
-    "[]": 5,                    # Identity gate (must be different from {})
 }
 
 GST_SEQUENCE_COUNT_LIMIT = 2000  # max circuits returned by build_gst_sequences

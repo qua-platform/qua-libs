@@ -45,24 +45,25 @@ def play_gst_sequence(qubit, prep_id, meas_id, germ_id, repetition) -> None:
             qubit.y90()
     
     # repetition and switch on germ fiducial
-    with for_(germ_rep, 0, germ_rep < repetition, germ_rep + 1):
-        with switch_(germ_id, unsafe=True):
-            with case_(0):
-                pass
-            with case_(1):
+    # with for_(germ_rep, 0, germ_rep < repetition, germ_rep + 1):
+    with switch_(germ_id, unsafe=True):
+        with case_(0):
+            pass
+        with case_(1):
+            with for_(germ_rep, 0, germ_rep < repetition, germ_rep + 1):
                 qubit.x90()
-            with case_(2):
+        with case_(2):
+            with for_(germ_rep, 0, germ_rep < repetition, germ_rep + 1):
                 qubit.y90()
-            with case_(3):
+        with case_(3):
+            with for_(germ_rep, 0, germ_rep < repetition, germ_rep + 1):
                 qubit.x90()
                 qubit.y90()
-            with case_(4):
+        with case_(4):
+            with for_(germ_rep, 0, germ_rep < repetition, germ_rep + 1):
                 qubit.x90()
                 qubit.x90()
                 qubit.y90()
-            with case_(5):
-                # TODO: add case for identity gate
-                pass
     
     # switch on measurement fiducial
     with switch_(meas_id, unsafe=True):
