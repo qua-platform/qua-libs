@@ -106,6 +106,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.log_scale = True
     # node.parameters.delta_length = 20
     node.parameters.model = "smq1Q_XY"
+    node.parameters.use_simulated_data = True
     pass
 
 

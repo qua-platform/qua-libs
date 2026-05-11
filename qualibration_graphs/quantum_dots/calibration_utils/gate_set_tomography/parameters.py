@@ -24,6 +24,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Step between lengths in linear scale mode. Default is 20."""
     model: Literal["smq1Q_XY"] = "smq1Q_XY"
     """Model to use for the GST experiment. Default is "smq1Q_XY"."""
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX. Default False."""
     # use_state_discrimination: bool = True
     # """Whether to use state discrimination for readout. Default is True."""
     # use_strict_timing: bool = False
