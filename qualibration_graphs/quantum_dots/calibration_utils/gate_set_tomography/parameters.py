@@ -91,6 +91,7 @@ class Parameters(
         lengths[0] = 1
         return lengths
     
+
     def get_gst_components(self) -> tuple[list[str], list[str], list[str]]:
         """Get the GST components from the model.
         
@@ -107,6 +108,20 @@ class Parameters(
         target_model = pack.target_model()
 
         return prep_fiducials, meas_fiducials, germs, target_model
+    
+
+    basic_gates_map: dict[str, str] = {
+        "Gxpi2:0": "x90",
+        "Gypi2:0": "y90",
+        "[]": "identity",
+    }
+    """Map pyGSTi primitive labels to qubit gate names.
+
+    Keys are matched longest-first against each fiducial/germ/meas segment (see
+    :func:`~.gst_sequences.tokenize_pygsti_segment`). Use an empty string for a
+    no-op (e.g. ``Gi:0`` idle in ``smq1Q_XYI``). Extend this dict when changing
+    ``model`` so every label appearing in prep/meas/germs is covered.
+    """
 
     # prep_fiducials, meas_fiducials, germs, target_model = self.get_gst_components()
 

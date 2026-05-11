@@ -26,8 +26,9 @@ from quam_config import Quam
 # from calibration_utils.gate_set_tomography.parameters import Parameters
 from calibration_utils.gate_set_tomography import (
     Parameters,
-    build_gst_sequences,
     build_gate_map,
+    build_gst_playback_macro_lists,
+    build_gst_sequences,
     gst_sequences_to_index_lists,
     play_gst_sequence,
 )
@@ -99,6 +100,11 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1"]
+    node.parameters.num_shots = 100
+    node.parameters.max_length = 256
+    node.parameters.log_scale = True
+    # node.parameters.delta_length = 20
+    node.parameters.model = "smq1Q_XYI"
     pass
 
 
@@ -179,6 +185,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         state_st = {qubit.name: declare_stream() for qubit in qubits}
 
         for qubit in qubits:
+            prep_case_macros = build_gst_playback_macro_lists(
+                PREP_FIDUCIAL_MAP, node.parameters.basic_gates_map, qubit
+            )
+            meas_case_macros = build_gst_playback_macro_lists(
+                MEAS_FIDUCIAL_MAP, node.parameters.basic_gates_map, qubit
+            )
+            germ_case_macros = build_gst_playback_macro_lists(
+                GERM_MAP, node.parameters.basic_gates_map, qubit
+            )
             with for_(sequence_idx, 0, sequence_idx < num_sequences, sequence_idx + 1):
                 save(sequence_idx, n_st)
                 assign(prep_id, prep_id_list[sequence_idx])
@@ -201,7 +216,16 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
 
                     # --- Play GST sequence ---
-                    play_gst_sequence(qubit, prep_id, meas_id, germ_id, repetition)
+                    play_gst_sequence(
+                        qubit,
+                        prep_id,
+                        meas_id,
+                        germ_id,
+                        repetition,
+                        prep_case_macros,
+                        meas_case_macros,
+                        germ_case_macros,
+                    )
 
                     # --- Measure ---
                     align()

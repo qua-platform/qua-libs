@@ -3,13 +3,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    import pygsti
-
 import importlib
 import pkgutil
 import re
+from typing import TYPE_CHECKING, Any, Callable
+
+if TYPE_CHECKING:
+    import pygsti
 
 # PREP_FIDUCIAL_MAP: dict[str, int] = {
 #     "{}": 0,                    # no gate applied
@@ -239,4 +239,149 @@ def gst_sequences_to_index_lists(
     rows = [gst_sequence_to_indices(s, prep_fiducial_map, meas_fiducial_map, germ_map) for s in sequences]
     prep_indices, meas_indices, germ_indices, repetitions = map(list, zip(*rows))
     return prep_indices, meas_indices, germ_indices, repetitions
+
+
+def _normalize_pygsti_segment(segment: str) -> str:
+    """Strip line labels and whitespace from a pyGSTi fiducial/germ/meas segment string."""
+    s = strip_pygsti_line_labels(segment.strip())
+    return re.sub(r"\s+", "", s)
+
+
+def tokenize_pygsti_segment(segment: str, basic_gates_map: dict[str, str]) -> list[str]:
+    """Split a pyGSTi layer string into primitive labels using longest-prefix matching.
+
+    ``basic_gates_map`` keys (except the empty-circuit sentinel ``\"{}\"``) define the
+    vocabulary. At each position we pick the **longest** key that matches from that
+    position. That avoids ambiguity when one label is a prefix of another (if both
+    ``Gxpi2`` and ``Gxpi2:0`` were in the map, shorter-first would wrongly split
+    ``Gxpi2:0`` into ``Gxpi2`` plus leftover ``:0``). Keys are sorted by length only
+    to implement that longest-match rule, not for alphabetical ordering.
+
+    Parameters
+    ----------
+    segment
+        A single fiducial, germ, or meas substring as stored in :func:`build_gate_map`
+        (e.g. ``Gxpi2:0Gypi2:0``).
+    basic_gates_map
+        Maps pyGSTi gate labels to QUAM macro attribute names; keys supply the tokenizer
+        vocabulary.
+
+    Returns
+    -------
+    list[str]
+        Ordered pyGSTi labels (keys into ``basic_gates_map``).
+
+    Raises
+    ------
+    ValueError
+        If the segment cannot be fully tokenized.
+    """
+    s = _normalize_pygsti_segment(segment)
+    if s == "" or s == "{}":
+        return []
+    # Same keys as basic_gates_map; sorted by length only so try-order is longest-first
+    # (dict iteration order is insertion order and does not imply longest-prefix match).
+    vocab = sorted(
+        (k for k in basic_gates_map if k not in ("{}",)),
+        key=len,
+        reverse=True,
+    )
+    if not vocab:
+        raise ValueError("basic_gates_map must contain at least one gate label besides '{}'.")
+    tokens: list[str] = []
+    pos = 0
+    while pos < len(s):
+        for key in vocab:
+            if s.startswith(key, pos):
+                tokens.append(key)
+                pos += len(key)
+                break
+        else:
+            raise ValueError(
+                f"Cannot tokenize pyGSTi segment {segment!r} at position {pos}: "
+                f"remainder {s[pos:]!r}. Vocabulary (from basic_gates_map keys): {vocab}"
+            )
+    return tokens
+
+
+def circuit_segment_to_macro_names(segment: str, basic_gates_map: dict[str, str]) -> list[str]:
+    """Translate a pyGSTi segment string to QUAM macro attribute names (e.g. ``\"x90\"``).
+
+    The empty circuit ``\"{}\"`` (after normalization) yields an empty list (no pulses).
+    """
+    s = _normalize_pygsti_segment(segment)
+    if s == "" or s == "{}":
+        return []
+    macro_names: list[str] = []
+    for label in tokenize_pygsti_segment(segment, basic_gates_map):
+        try:
+            macro = basic_gates_map[label]
+        except KeyError as e:
+            raise KeyError(
+                f"No basic_gates_map entry for pyGSTi label {label!r} (from segment {segment!r})."
+            ) from e
+        if macro:
+            macro_names.append(macro)
+    return macro_names
+
+
+def build_gst_playback_macro_lists(
+    gate_map: dict[str, int],
+    basic_gates_map: dict[str, str],
+    qubit: Any,
+) -> list[list[Callable[..., None]]]:
+    """Build per-``case_(i)`` lists of bound qubit gate callables for QUA ``switch_`` playback.
+
+    Index *i* is the integer stored in ``gate_map`` for some circuit string (same dense
+    indexing as :func:`build_gate_map`: contiguous ``0 .. max``).
+
+    Parameters
+    ----------
+    gate_map
+        Maps segment strings (e.g. ``Gxpi2:0Gxpi2:0Gypi2:0``) to case indices.
+    basic_gates_map
+        Maps each pyGSTi primitive label to a qubit attribute name (``\"x90\"``, …).
+    qubit
+        QUAM qubit (or any object) exposing those attributes as callable macros.
+
+    Returns
+    -------
+    list[list[Callable[..., None]]]
+        ``result[i]`` is the ordered list of callables for ``with case_(i):``.
+
+    Raises
+    ------
+    AttributeError
+        If a macro name is missing on ``qubit``.
+    ValueError
+        If ``gate_map`` indices are not contiguous from 0.
+    """
+    if not gate_map:
+        return []
+    max_idx = max(gate_map.values())
+    circuits_by_idx: list[str | None] = [None] * (max_idx + 1)
+    for circuit_str, idx in gate_map.items():
+        circuits_by_idx[idx] = circuit_str
+    missing_idx = [i for i, c in enumerate(circuits_by_idx) if c is None]
+    if missing_idx:
+        raise ValueError(
+            "gate_map must use contiguous indices 0..N-1; missing circuit for indices: "
+            f"{missing_idx}"
+        )
+    out: list[list[Callable[..., None]]] = []
+    for circuit_str in circuits_by_idx:
+        assert circuit_str is not None
+        names = circuit_segment_to_macro_names(circuit_str, basic_gates_map)
+        macros: list[Callable[..., None]] = []
+        for name in names:
+            try:
+                fn = getattr(qubit, name)
+            except AttributeError as e:
+                raise AttributeError(
+                    f"Qubit type {type(qubit).__name__!r} has no gate macro or method {name!r} "
+                    f"(from circuit {circuit_str!r})."
+                ) from e
+            macros.append(fn)
+        out.append(macros)
+    return out
 
