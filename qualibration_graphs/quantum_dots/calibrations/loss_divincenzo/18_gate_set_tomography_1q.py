@@ -31,6 +31,7 @@ from calibration_utils.gate_set_tomography import (
     gst_sequences_to_index_lists,
     log_gst_results,
     play_gst_sequence,
+    generate_simulated_dataset,
 )
 from calibration_utils.common_utils.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
@@ -116,7 +117,10 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.use_simulated_data
+)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     
@@ -143,6 +147,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.log(
         f"GST config: {num_lengths} lengths (max {max_length}), {len(gst_sequences)} distinct sequences, {num_shots} shots/sequence."
     )
+
+    node.namespace["num_sequences"] = num_sequences
 
     # Register sweep axes for xarray dataset
     node.namespace["sweep_axes"] = {
@@ -229,7 +235,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None
+    or not node.parameters.simulate
+    or node.parameters.use_simulated_data
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
     qmm = node.machine.connect()
@@ -243,7 +253,11 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.simulate
+    or node.parameters.use_simulated_data
+)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch raw data."""
     # Connect to the QOP
@@ -259,13 +273,21 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         for dataset in data_fetcher:
             progress_counter(
                 data_fetcher.get("n", 0),
-                node.parameters.num_sequences,
+                node.namespace["num_sequences"],
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
+
+
+# %% {Generate_simulated_data}
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate simulated GST data so the full analysis pipeline can run without hardware."""
+    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.log("[sim] Simulated dataset generated successfully.")
 
 
 # %% {Load_data}
