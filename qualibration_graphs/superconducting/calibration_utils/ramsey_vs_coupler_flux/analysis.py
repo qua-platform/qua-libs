@@ -4,6 +4,10 @@ Extracts oscillation frequencies from the Ramsey data.  No model
 (e.g. parabola) is fitted to the resulting frequency-vs-coupler-flux curve.
 """
 
+import io
+import contextlib
+from unittest.mock import patch
+
 import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
@@ -31,7 +35,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
         Dataset augmented with per-slice fit results, the fitted state curves,
         and the absolute qubit frequency ``qubit_frequency`` (Hz).
     """
-    fit_data = fit_oscillation_decay_exp(ds.state, "idle_times")
+    with contextlib.redirect_stdout(io.StringIO()), patch("matplotlib.pyplot.show"):
+        fit_data = fit_oscillation_decay_exp(ds.state, "idle_times")
     fit_data.attrs = {"long_name": "time", "units": "µs"}
 
     fitted = oscillation_decay_exp(
