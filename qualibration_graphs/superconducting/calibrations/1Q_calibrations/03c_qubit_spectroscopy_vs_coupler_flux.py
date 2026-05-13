@@ -25,7 +25,6 @@ from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
-
 # %% {Description}
 description = """
         QUBIT SPECTROSCOPY VERSUS COUPLER FLUX
@@ -68,7 +67,7 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(
-    node: QualibrationNode[Parameters, Quam]
+    node: QualibrationNode[Parameters, Quam],
 ):  # pylint: disable=too-many-branches,too-many-statements
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
@@ -289,8 +288,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     # fit_results is now keyed by pair name (unique), not measured qubit name
     qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
     node.outcomes = {
-        qp_name: node.results["fit_results"].get(qp_name, {}).get("success", False)
-        for qp_name in qubit_pair_names
+        qp_name: node.results["fit_results"].get(qp_name, {}).get("success", False) for qp_name in qubit_pair_names
     }
     # Convert boolean outcomes to "successful"/"failed" strings
     node.outcomes = {k: ("successful" if v else "failed") for k, v in node.outcomes.items()}
@@ -305,7 +303,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.namespace["qubits"] = node.namespace["measured_qubits"]
 
     fig_raw_fit = plot_raw_data_with_fit(
-        node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["ds_fit"],
+        node.results["ds_raw"],
+        node.namespace["qubit_pairs"],
+        node.results["ds_fit"],
     )
     plt.show()
     # Store the generated figures
