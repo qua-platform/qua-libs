@@ -35,10 +35,18 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
         Dataset augmented with per-slice fit results, the fitted state curves,
         and the absolute qubit frequency ``qubit_frequency`` (Hz).
     """
-    with contextlib.redirect_stdout(io.StringIO()), patch("matplotlib.pyplot.show"):
+    # Fit a * exp(decay * t) * cos(2π f t + phi) + offset to each (qubit_pair, coupler_flux)
+    # slice. The context managers suppress the debug print and popup plot that the library
+    # emits when curve_fit fails to converge on a noisy/flat slice.
+    with (
+        contextlib.redirect_stdout(io.StringIO()),
+        patch("matplotlib.pyplot.show"),
+        patch("matplotlib.pyplot.plot"),
+    ):
         fit_data = fit_oscillation_decay_exp(ds.state, "idle_times")
     fit_data.attrs = {"long_name": "time", "units": "µs"}
 
+    # Evaluate the fitted model on the original time axis for plotting
     fitted = oscillation_decay_exp(
         ds.state.idle_times,
         fit_data.sel(fit_vals="a"),
@@ -55,20 +63,16 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     ds_fit["artificial_detuning"] = node.parameters.frequency_detuning_in_mhz
     ds_fit["frequency"] = frequency
 
-    measured_qubit_role = node.parameters.measured_qubit
-    qubit_pair_names = ds.qubit_pair.values
-    rf_freqs = []
-    for qp_name in qubit_pair_names:
-        qp = node.machine.qubit_pairs[str(qp_name)]
-        qubit = qp.qubit_control if measured_qubit_role == "control" else qp.qubit_target
-        rf_freqs.append(qubit.xy.RF_frequency)
-    rf_freq_da = xr.DataArray(rf_freqs, dims=["qubit_pair"], coords={"qubit_pair": qubit_pair_names})
+    # Convert Ramsey detuning frequency back to absolute qubit frequency:
+    # f_qubit = RF_freq - f_Ramsey + f_detuning
+    qubit_names = ds.qubit.values
+    rf_freqs = [q.xy.RF_frequency for q in node.namespace["measured_qubits"]]
+    rf_freq_da = xr.DataArray(rf_freqs, dims=["qubit"], coords={"qubit": qubit_names})
 
     ds_fit["qubit_frequency"] = rf_freq_da - frequency * 1e9 + node.parameters.frequency_detuning_in_mhz * 1e6
     ds_fit["qubit_frequency"].attrs = {
         "long_name": "qubit frequency",
         "units": "Hz",
-        "measured_qubit": measured_qubit_role,
     }
 
     return ds_fit
