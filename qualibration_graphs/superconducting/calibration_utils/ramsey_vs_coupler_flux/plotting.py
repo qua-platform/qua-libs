@@ -1,9 +1,7 @@
 """Plotting functions for Ramsey versus coupler flux calibration."""
 
-from typing import List
-
+import numpy as np
 import xarray as xr
-from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from qualibration_libs.plotting import grid_iter
 
@@ -19,7 +17,8 @@ def plot_raw_data(ds: xr.Dataset, qubit_pairs) -> Figure:
     Parameters
     ----------
     ds : xr.Dataset
-        Dataset with ``state`` variable, dims (qubit_pair, coupler_flux, idle_times).
+        Dataset with ``state`` variable, dims (qubit, coupler_flux, idle_times).
+        Must have a ``measured_qubit_name`` coordinate on the ``qubit`` dimension.
     qubit_pairs : list
         Qubit pair objects (must expose ``.qubit_control`` / ``.qubit_target``
         with ``.grid_location`` and ``.name``).
@@ -31,52 +30,90 @@ def plot_raw_data(ds: xr.Dataset, qubit_pairs) -> Figure:
     g_names, qp_names = grid_pair_names(qubit_pairs)
     grid = QubitPairGrid(g_names, qp_names)
     for ax, qubit in grid_iter(grid):
-        _plot_raw_panel(ax, ds, qubit)
+        qp_name = qubit["qubit"]
+        measured_name = str(ds.measured_qubit_name.sel(qubit=qp_name).values)
+        ds.state.loc[qubit].plot(ax=ax)
+        ax.set_title(f"{qp_name}\nMeasured: {measured_name}")
+        ax.set_xlabel("Idle time (ns)")
+        ax.set_ylabel("Coupler flux (V)")
     grid.fig.suptitle("Ramsey vs coupler flux — raw data")
     grid.fig.tight_layout()
     return grid.fig
 
 
-def _plot_raw_panel(ax: Axes, ds: xr.Dataset, qubit: dict) -> None:
-    qp_name = qubit["qubit"]
-    ds.state.sel(qubit_pair=qp_name).plot(ax=ax)
-    ax.set_title(qp_name)
-    ax.set_xlabel("Idle time (ns)")
-    ax.set_ylabel("Coupler flux (V)")
+def plot_fit_data(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
+    """2D heatmap of the fitted Ramsey oscillation for each pair.
 
-
-def plot_frequency_vs_coupler_flux(ds_fit: xr.Dataset, qubit_pairs) -> Figure:
-    """Absolute qubit frequency vs coupler flux for each pair.
-
-    The subplot layout is computed automatically from the qubit-pair
-    grid locations using :class:`~calibration_utils.pair_grid.QubitPairGrid`.
+    Skips pairs where all fits failed (all ``qubit_frequency`` values are NaN)
+    and returns ``None`` if there is nothing to plot.
 
     Parameters
     ----------
     ds_fit : xr.Dataset
-        Fitted dataset containing ``qubit_frequency`` (Hz).
+        Fitted dataset containing ``fitted_state`` and ``qubit_frequency``.
+        Must have a ``measured_qubit_name`` coordinate on the ``qubit`` dimension.
     qubit_pairs : list
         Qubit pair objects (must expose ``.qubit_control`` / ``.qubit_target``
         with ``.grid_location`` and ``.name``).
 
     Returns
     -------
-    Figure
+    Figure or None
     """
-    g_names, qp_names = grid_pair_names(qubit_pairs)
+    valid_pairs = [qp for qp in qubit_pairs if not np.isnan(ds_fit.qubit_frequency.sel(qubit=qp.name).values).all()]
+    if not valid_pairs:
+        return None
+
+    g_names, qp_names = grid_pair_names(valid_pairs)
     grid = QubitPairGrid(g_names, qp_names)
     for ax, qubit in grid_iter(grid):
-        _plot_frequency_panel(ax, ds_fit, qubit)
-    grid.fig.suptitle("Ramsey vs coupler flux — qubit frequency")
+        qp_name = qubit["qubit"]
+        measured_name = str(ds_fit.measured_qubit_name.sel(qubit=qp_name).values)
+        ds_fit.fitted_state.loc[qubit].plot(ax=ax)
+        ax.set_title(f"{qp_name}\nMeasured: {measured_name}")
+        ax.set_xlabel("Idle time (ns)")
+        ax.set_ylabel("Coupler flux (V)")
+    grid.fig.suptitle("Ramsey vs coupler flux — fit data")
     grid.fig.tight_layout()
     return grid.fig
 
 
-def _plot_frequency_panel(ax: Axes, ds_fit: xr.Dataset, qubit: dict) -> None:
-    qp_name = qubit["qubit"]
-    freq_ghz = ds_fit.qubit_frequency.sel(qubit_pair=qp_name) / 1e9
-    freq_ghz.plot(ax=ax, linestyle="--", marker=".", label="Extracted freq")
-    ax.set_title(qp_name)
-    ax.set_xlabel("Coupler flux (V)")
-    ax.set_ylabel("Qubit frequency (GHz)")
-    ax.legend(fontsize="small")
+def plot_frequency_vs_coupler_flux(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
+    """Absolute qubit frequency vs coupler flux for each pair.
+
+    The subplot layout is computed automatically from the qubit-pair
+    grid locations using :class:`~calibration_utils.pair_grid.QubitPairGrid`.
+    Pairs where all fits failed are skipped. Returns ``None`` if there is
+    nothing to plot.
+
+    Parameters
+    ----------
+    ds_fit : xr.Dataset
+        Fitted dataset containing ``qubit_frequency`` (Hz).
+        Must have a ``measured_qubit_name`` coordinate on the ``qubit`` dimension.
+    qubit_pairs : list
+        Qubit pair objects (must expose ``.qubit_control`` / ``.qubit_target``
+        with ``.grid_location`` and ``.name``).
+
+    Returns
+    -------
+    Figure or None
+    """
+    valid_pairs = [qp for qp in qubit_pairs if not np.isnan(ds_fit.qubit_frequency.sel(qubit=qp.name).values).all()]
+    if not valid_pairs:
+        return None
+
+    g_names, qp_names = grid_pair_names(valid_pairs)
+    grid = QubitPairGrid(g_names, qp_names)
+    for ax, qubit in grid_iter(grid):
+        qp_name = qubit["qubit"]
+        measured_name = str(ds_fit.measured_qubit_name.sel(qubit=qp_name).values)
+        freq_ghz = ds_fit.qubit_frequency.loc[qubit] / 1e9
+        freq_ghz.plot(ax=ax, linestyle="--", marker=".", label="Extracted freq")
+        ax.legend(fontsize="small")
+        ax.set_title(f"{qp_name}\nMeasured: {measured_name}")
+        ax.set_xlabel("Coupler flux (V)")
+        ax.set_ylabel("Qubit frequency (GHz)")
+    grid.fig.suptitle("Ramsey vs coupler flux — qubit frequency")
+    grid.fig.tight_layout()
+    return grid.fig
