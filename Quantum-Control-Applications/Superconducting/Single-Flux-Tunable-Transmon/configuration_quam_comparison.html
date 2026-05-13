@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QUAM configuration comparison — Single Flux-Tunable Transmon (LF/MW FEM)</title>
+<style>
+:root { --bg:#0f1419; --panel:#1a2332; --text:#e6edf3; --muted:#8b9cb3; --accent:#58a6ff; --ok:#3fb950; --warn:#d29922; }
+* { box-sizing: border-box; }
+body { margin:0; font-family: "Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--text); line-height:1.55; }
+header { padding:2rem 1.5rem; background:linear-gradient(135deg,#1a2332 0%,#0f1419 100%); border-bottom:1px solid #30363d; }
+header h1 { margin:0 0 .5rem; font-size:1.45rem; font-weight:600; }
+header p { margin:0; color:var(--muted); max-width:58rem; }
+nav { display:flex; flex-wrap:wrap; gap:.5rem; padding:1rem 1.5rem; background:var(--panel); position:sticky; top:0; z-index:10; border-bottom:1px solid #30363d; }
+nav a { color:var(--accent); text-decoration:none; font-size:.9rem; }
+nav a:hover { text-decoration:underline; }
+main { max-width:72rem; margin:0 auto; padding:1.5rem; }
+section { margin-bottom:2.5rem; scroll-margin-top:3.5rem; }
+h2 { font-size:1.15rem; border-bottom:1px solid #30363d; padding-bottom:.35rem; margin-top:0; }
+table { width:100%; border-collapse:collapse; font-size:.82rem; margin:1rem 0; }
+th, td { border:1px solid #30363d; padding:.5rem .55rem; vertical-align:top; text-align:left; }
+th { background:#21262d; color:#c9d1d9; font-weight:600; }
+tr:nth-child(even) td { background:#161b22; }
+.tag { display:inline-block; padding:.12rem .45rem; border-radius:4px; font-size:.72rem; font-weight:600; margin-right:.2rem; }
+.tag-core { background:#23863633; color:var(--ok); }
+.tag-builder { background:#1f6feb33; color:var(--accent); }
+.tag-wirer { background:#d2992233; color:var(--warn); }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+@media (max-width:900px) { .grid2 { grid-template-columns:1fr; } }
+.card { background:var(--panel); border:1px solid #30363d; border-radius:8px; padding:1rem 1.1rem; }
+.card h3 { margin:0 0 .5rem; font-size:.95rem; }
+ul.compact { margin:.3rem 0; padding-left:1.2rem; }
+ul.compact li { margin:.2rem 0; }
+pre.json { background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:.75rem; overflow:auto; max-height:26rem; font-size:.72rem; line-height:1.35; margin:.5rem 0; white-space:pre; }
+.tabs { display:flex; flex-wrap:wrap; gap:.35rem; margin:.75rem 0; }
+.tabs button { background:#21262d; border:1px solid #30363d; color:var(--text); padding:.45rem .8rem; border-radius:6px; cursor:pointer; font-size:.78rem; }
+.tabs button.active { background:var(--accent); color:#0f1419; border-color:var(--accent); }
+.note { color:var(--muted); font-size:.88rem; }
+footer { padding:1rem 1.5rem 2rem; color:var(--muted); font-size:.8rem; border-top:1px solid #30363d; }
+code { font-size:.85em; }
+</style>
+</head>
+<body>
+<header>
+<h1>Technical comparison: five QUAM configuration generators</h1>
+<p>Folder: <code>Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon/</code>. Compares manual QUAM vs quam-builder transmon-centric vs flat builder-channel layouts, wiring choices, JSON state shape, readability, and trade-offs. JSON snapshots are embedded for offline viewing.</p>
+</header>
+<nav>
+<a href="#matrix">Matrix</a>
+<a href="#similarities">Similarities</a>
+<a href="#differences">Differences</a>
+<a href="#readability">Readability</a>
+<a href="#json">JSON</a>
+</nav>
+<main>
+<section id="matrix"><h2>1. Configuration matrix</h2><table><thead><tr><th>Variant</th><th>Root QUAM</th><th>Wiring</th><th>Logical model</th><th>Lines (.py)</th><th>State JSON</th></tr></thead><tbody><tr><td><strong>Manual (core QUAM)</strong><br><code>configuration_quam_lf_fem_and_mw_fem.py</code><br><span class="tag tag-core">quam</span></td><td>BasicFEMQuam</td><td>None</td><td>Flat machine.channels (MWChannel, InOutMWChannel, SingleChannel)</td><td>283</td><td><code>quam_state_lf_mw_fem.json</code><br>11886 bytes</td></tr><tr><td><strong>Builder — full pipeline</strong><br><code>configuration_quam_builder_lf_mw_fem.py</code><br><span class="tag tag-core">quam</span><span class="tag tag-builder">quam-builder</span><span class="tag tag-wirer">wirer</span></td><td>FluxTunableQuam</td><td>wirer + build_quam_wiring + build_quam</td><td>machine.qubits[&#x27;q1&#x27;] FluxTunableTransmon (xy / resonator / z)</td><td>221</td><td><code>quam_state_builder_lf_mw_fem.json</code><br>15414 bytes</td></tr><tr><td><strong>Builder — components, no wirer</strong><br><code>configuration_quam_builder_components_lf_mw_fem.py</code><br><span class="tag tag-core">quam</span><span class="tag tag-builder">quam-builder</span><span class="tag tag-wirer">wirer</span></td><td>FluxTunableQuam</td><td>None</td><td>machine.qubits[&#x27;q1&#x27;] with XYDriveMW / ReadoutResonatorMW / FluxLine</td><td>231</td><td><code>quam_state_builder_components_lf_mw_fem.json</code><br>14941 bytes</td></tr><tr><td><strong>Builder channels — manual FEM</strong><br><code>configuration_quam_builder_channel_lf_mw_fem.py</code><br><span class="tag tag-core">quam</span><span class="tag tag-builder">quam-builder</span></td><td>BasicFEMQuam</td><td>None</td><td>Flat machine.channels (XYDriveMW, ReadoutResonatorMW, FluxLine)</td><td>265</td><td><code>quam_state_builder_channel_lf_mw_fem.json</code><br>12869 bytes</td></tr><tr><td><strong>Builder channels — wirer FEM</strong><br><code>configuration_quam_builder_channel_wirer_lf_mw_fem.py</code><br><span class="tag tag-core">quam</span><span class="tag tag-builder">quam-builder</span><span class="tag tag-wirer">wirer</span></td><td>BasicFEMQuam</td><td>allocate_wiring only (no build_quam_wiring)</td><td>Flat machine.channels (same builder types)</td><td>312</td><td><code>quam_state_builder_channel_wirer_lf_mw_fem.json</code><br>12881 bytes</td></tr></tbody></table></section>
+<section id="similarities"><h2>2. Similarities</h2>
+<div class="grid2">
+<div class="card"><h3>Hardware & pulses</h3>
+<ul class="compact">
+<li>Identical LF/MW FEM topology: resonator in+out on MW-FEM, XY on a second MW output, flux on LF-FEM (plus sticky flux alias).</li>
+<li>Same pulse library pattern as the manual reference: DRAG Gaussian gates on the qubit drive, square readout, square flux const.</li>
+<li>All variants expose <code>config = machine.generate_config()</code> and the same legacy scalar exports at module bottom.</li>
+</ul></div>
+<div class="card"><h3>Persistence</h3>
+<ul class="compact">
+<li>Each Python entry point saves a sibling JSON state file on first import; later imports load from JSON.</li>
+<li>Builder MW channel types may require clearing string-reference frequency fields before assigning numeric LO/IF/RF (handled in the builder-based modules).</li>
+</ul></div>
+</div></section>
+
+<section id="differences"><h2>3. Differences & discrepancies</h2>
+<div class="grid2">
+<div class="card"><h3>JSON & object graph</h3>
+<ul class="compact">
+<li><strong>BasicFEMQuam</strong> variants serialize <code>channels</code> + <code>ports</code> + empty <code>octaves</code>; no <code>qubits</code> or <code>wiring</code>.</li>
+<li><strong>FluxTunableQuam</strong> variants add <code>qubits</code>, <code>active_qubit_names</code>, <code>wiring</code>, <code>network</code>, and empty <code>mixers</code>/<code>twpas</code> — larger JSON and more indirection.</li>
+<li><strong>Class paths in JSON</strong>: manual uses <code>quam.components.channels.*</code>; builder-based use <code>quam_builder.architecture.superconducting.components.*</code> for XY/resonator/flux.</li>
+</ul></div>
+<div class="card"><h3>Code paths</h3>
+<ul class="compact">
+<li><strong>Full builder</strong> is the only variant that calls <code>build_quam_wiring</code> and <code>build_quam</code> — maximum automation, minimum explicit port typing in Python.</li>
+<li><strong>Channel + wirer</strong> uses allocation results to call <code>get_mw_output</code> / <code>get_mw_input</code> / <code>get_analog_output</code> — good when hardware addressing should follow the same allocator as larger apps.</li>
+<li><strong>Discrepancy</strong>: line count is not complexity: the full builder module is shorter because heavy lifting lives in libraries.</li>
+</ul></div>
+</div></section>
+
+<section id="readability"><h2>4. Readability & simplicity (qualitative)</h2>
+<table><thead><tr><th>Variant</th><th>Newcomer readability</th><th>Scaling to many qubits</th><th>Explicitness / “magic”</th></tr></thead><tbody>
+<tr><td>Manual</td><td>Best — only core QUAM types, linear flow.</td><td>Poor — hand duplication.</td><td>Maximum explicitness.</td></tr>
+<tr><td>Builder full</td><td>Hardest — reload + builder steps.</td><td>Best — intended for generated machines.</td><td>Most magic in one place.</td></tr>
+<tr><td>Builder components</td><td>Medium — transmon object + manual FEM.</td><td>Medium.</td><td>Balanced.</td></tr>
+<tr><td>Builder channels (manual FEM)</td><td>High — same as manual but richer types.</td><td>Low–medium.</td><td>High explicitness, more typing for pulses.</td></tr>
+<tr><td>Builder channels + wirer</td><td>Medium — extra wirer vocabulary.</td><td>Medium — addresses from allocator.</td><td>Medium.</td></tr>
+</tbody></table>
+<p class="note">Suggested use: <strong>manual</strong> for tutorials; <strong>builder full</strong> for production-scale QUAM generation; <strong>builder channels</strong> when you want builder channel helpers without a transmon wrapper; <strong>builder components</strong> when you want transmon helpers but not wirer.</p>
+</section>
+<section id="json"><h2>5. Embedded JSON state files</h2><p class="note">Select a tab to pretty-print the embedded snapshot. If a file was missing at build time, the tab shows an error object.</p><div class="tabs" id="json-tabs"></div><pre class="json" id="json-panel"></pre><script type="application/json" id="embed-manual">
+{
+    "channels": {
+        "qubit": {
+            "operations": {
+                "cw": {
+                    "length": 100,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.03,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "saturation": {
+                    "length": 10000,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.03,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "pi": {
+                    "length": 100,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.03,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "pi_half": {
+                    "length": 100,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.015,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "x180": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 0.0,
+                    "amplitude": 1.0,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "x90": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 0.0,
+                    "amplitude": 0.5,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "-x90": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 0.0,
+                    "amplitude": -0.5,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "y180": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 1.5707963267948966,
+                    "amplitude": 1.0,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "y90": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 1.5707963267948966,
+                    "amplitude": 0.5,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "-y90": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 1.5707963267948966,
+                    "amplitude": -0.5,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                }
+            },
+            "id": null,
+            "digital_outputs": {},
+            "sticky": null,
+            "intermediate_frequency": 110000000,
+            "thread": null,
+            "core": null,
+            "LO_frequency": "#./upconverter_frequency",
+            "RF_frequency": "#./inferred_RF_frequency",
+            "opx_output": "#/ports/mw_outputs/con1/1/2",
+            "upconverter": 1,
+            "__class__": "quam.components.channels.MWChannel"
+        },
+        "resonator": {
+            "operations": {
+                "cw": {
+                    "length": 100,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.03,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "readout": {
+                    "length": 5000,
+                    "id": null,
+                    "digital_marker": "ON",
+                    "amplitude": 0.6,
+                    "axis_angle": null,
+                    "threshold": null,
+                    "rus_exit_threshold": null,
+                    "integration_weights": "#./default_integration_weights",
+                    "integration_weights_angle": 0,
+                    "__class__": "quam.components.pulses.SquareReadoutPulse"
+                }
+            },
+            "id": null,
+            "digital_outputs": {},
+            "sticky": null,
+            "intermediate_frequency": 60000000,
+            "thread": null,
+            "core": null,
+            "opx_input": "#/ports/mw_inputs/con1/1/1",
+            "time_of_flight": 28,
+            "smearing": 0,
+            "LO_frequency": "#./upconverter_frequency",
+            "RF_frequency": "#./inferred_RF_frequency",
+            "opx_output": "#/ports/mw_outputs/con1/1/1",
+            "upconverter": 1,
+            "__class__": "quam.components.channels.InOutMWChannel"
+        },
+        "flux_line": {
+            "operations": {
+                "const": {
+                    "length": 200,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.45,
+                    "axis_angle": null,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": null,
+            "digital_outputs": {},
+            "sticky": null,
+            "intermediate_frequency": null,
+            "thread": null,
+            "core": null,
+            "opx_output": "#/ports/analog_outputs/con1/5/1",
+            "filter_fir_taps": null,
+            "filter_iir_taps": null,
+            "opx_output_offset": null,
+            "__class__": "quam.components.channels.SingleChannel"
+        },
+        "flux_line_sticky": {
+            "operations": {
+                "const": {
+                    "length": 200,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.45,
+                    "axis_angle": null,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": null,
+            "digital_outputs": {},
+            "sticky": {
+                "duration": 20,
+                "enabled": true,
+                "analog": true,
+                "digital": true,
+                "__class__": "quam.components.channels.StickyChannelAddon"
+            },
+            "intermediate_frequency": null,
+            "thread": null,
+            "core": null,
+            "opx_output": "#/ports/analog_outputs/con1/5/1",
+            "filter_fir_taps": null,
+            "filter_iir_taps": null,
+            "opx_output_offset": null,
+            "__class__": "quam.components.channels.SingleChannel"
+        }
+    },
+    "octaves": {},
+    "ports": {
+        "analog_outputs": {
+            "con1": {
+                "5": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 5,
+                        "port_id": 1,
+                        "offset": 0.0,
+                        "delay": 141,
+                        "crosstalk": null,
+                        "feedforward_filter": null,
+                        "feedback_filter": null,
+                        "shareable": true,
+                        "sampling_rate": 1000000000,
+                        "upsampling_mode": "pulse",
+                        "exponential_filter": null,
+                        "output_mode": "amplified",
+                        "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                    }
+                }
+            }
+        },
+        "analog_inputs": {},
+        "mw_outputs": {
+            "con1": {
+                "1": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 1,
+                        "band": 2,
+                        "upconverter_frequency": 5500000000,
+                        "upconverters": null,
+                        "delay": 0,
+                        "shareable": false,
+                        "sampling_rate": 1000000000.0,
+                        "full_scale_power_dbm": 1,
+                        "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
+                    },
+                    "2": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 2,
+                        "band": 2,
+                        "upconverter_frequency": 7400000000,
+                        "upconverters": null,
+                        "delay": 0,
+                        "shareable": false,
+                        "sampling_rate": 1000000000.0,
+                        "full_scale_power_dbm": 1,
+                        "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
+                    }
+                }
+            }
+        },
+        "mw_inputs": {
+            "con1": {
+                "1": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 1,
+                        "band": 2,
+                        "downconverter_frequency": "#/ports/mw_outputs/con1/1/1/upconverter_frequency",
+                        "gain_db": null,
+                        "sampling_rate": 1000000000.0,
+                        "shareable": false,
+                        "__class__": "quam.components.ports.analog_inputs.MWFEMAnalogInputPort"
+                    }
+                }
+            }
+        },
+        "digital_outputs": {},
+        "__class__": "quam.components.ports.ports_containers.FEMPortsContainer"
+    },
+    "qop_ip": "127.0.0.1",
+    "cluster_name": null,
+    "qop_port": null,
+    "qubit_T1": 10000,
+    "thermalization_time": 50000,
+    "depletion_time": 2000,
+    "flux_settle_time": 100,
+    "ge_threshold": 0.0,
+    "rotation_angle": 0.0,
+    "amplitude_fit": 0.0,
+    "frequency_fit": 0.0,
+    "phase_fit": 0.0,
+    "offset_fit": 0.0,
+    "__class__": "configuration_quam_lf_fem_and_mw_fem.FluxTunableTransmonQuam"
+}
+</script><script type="application/json" id="embed-builder_full">
+{
+    "octaves": {},
+    "mixers": {},
+    "twpas": {},
+    "qubits": {
+        "q1": {
+            "id": "q1",
+            "macros": {},
+            "xy": {
+                "extras": {},
+                "operations": {
+                    "saturation": {
+                        "length": 10000,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.03,
+                        "axis_angle": 0.0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "x180_DragGaussian": {
+                        "length": 40,
+                        "id": null,
+                        "digital_marker": null,
+                        "axis_angle": 0,
+                        "amplitude": 1.0,
+                        "sigma": 8,
+                        "alpha": 0.0,
+                        "anharmonicity": -200000000,
+                        "detuning": 0.0,
+                        "subtracted": true,
+                        "__class__": "quam.components.pulses.DragGaussianPulse"
+                    },
+                    "x90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
+                        "id": null,
+                        "digital_marker": "#../x180_DragGaussian/digital_marker",
+                        "axis_angle": 0,
+                        "amplitude": 0.5,
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
+                        "detuning": "#../x180_DragGaussian/detuning",
+                        "subtracted": "#../x180_DragGaussian/subtracted",
+                        "__class__": "quam.components.pulses.DragGaussianPulse"
+                    },
+                    "-x90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
+                        "id": null,
+                        "digital_marker": "#../x180_DragGaussian/digital_marker",
+                        "axis_angle": 3.141592653589793,
+                        "amplitude": "#../x90_DragGaussian/amplitude",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
+                        "detuning": "#../x180_DragGaussian/detuning",
+                        "subtracted": "#../x180_DragGaussian/subtracted",
+                        "__class__": "quam.components.pulses.DragGaussianPulse"
+                    },
+                    "y180_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
+                        "id": null,
+                        "digital_marker": "#../x180_DragGaussian/digital_marker",
+                        "axis_angle": 1.5707963267948966,
+                        "amplitude": "#../x180_DragGaussian/amplitude",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
+                        "detuning": "#../x180_DragGaussian/detuning",
+                        "subtracted": "#../x180_DragGaussian/subtracted",
+                        "__class__": "quam.components.pulses.DragGaussianPulse"
+                    },
+                    "y90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
+                        "id": null,
+                        "digital_marker": "#../x180_DragGaussian/digital_marker",
+                        "axis_angle": 1.5707963267948966,
+                        "amplitude": "#../x90_DragGaussian/amplitude",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x90_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
+                        "detuning": "#../x90_DragGaussian/detuning",
+                        "subtracted": "#../x180_DragGaussian/subtracted",
+                        "__class__": "quam.components.pulses.DragGaussianPulse"
+                    },
+                    "-y90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
+                        "id": null,
+                        "digital_marker": "#../x180_DragGaussian/digital_marker",
+                        "axis_angle": -1.5707963267948966,
+                        "amplitude": "#../x90_DragGaussian/amplitude",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x90_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
+                        "detuning": "#../x90_DragGaussian/detuning",
+                        "subtracted": "#../x180_DragGaussian/subtracted",
+                        "__class__": "quam.components.pulses.DragGaussianPulse"
+                    },
+                    "x180": "#./x180_DragGaussian",
+                    "x90": "#./x90_DragGaussian",
+                    "-x90": "#./-x90_DragGaussian",
+                    "y180": "#./y180_DragGaussian",
+                    "y90": "#./y90_DragGaussian",
+                    "-y90": "#./-y90_DragGaussian",
+                    "cw": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.03,
+                        "axis_angle": 0.0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "pi": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.03,
+                        "axis_angle": 0.0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "pi_half": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.015,
+                        "axis_angle": 0.0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    }
+                },
+                "id": null,
+                "digital_outputs": {},
+                "sticky": null,
+                "intermediate_frequency": 110000000,
+                "thread": null,
+                "core": null,
+                "LO_frequency": 7400000000,
+                "RF_frequency": 7510000000.0,
+                "opx_output": "#/wiring/qubits/q1/xy/opx_output",
+                "upconverter": 1,
+                "__class__": "quam_builder.architecture.superconducting.components.xy_drive.XYDriveMW"
+            },
+            "resonator": {
+                "depletion_time": 2000,
+                "frequency_bare": null,
+                "f_01": 5560000000.0,
+                "f_12": null,
+                "confusion_matrix": null,
+                "gef_centers": null,
+                "gef_confusion_matrix": null,
+                "GEF_frequency_shift": null,
+                "extras": {},
+                "operations": {
+                    "readout": {
+                        "length": 5000,
+                        "id": null,
+                        "digital_marker": "ON",
+                        "amplitude": 0.6,
+                        "axis_angle": null,
+                        "threshold": 0.0,
+                        "rus_exit_threshold": null,
+                        "integration_weights": "#./default_integration_weights",
+                        "integration_weights_angle": 0,
+                        "__class__": "quam.components.pulses.SquareReadoutPulse"
+                    },
+                    "cw": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.03,
+                        "axis_angle": 0.0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    }
+                },
+                "id": null,
+                "digital_outputs": {},
+                "sticky": null,
+                "intermediate_frequency": 60000000,
+                "thread": null,
+                "core": null,
+                "opx_input": "#/wiring/qubits/q1/rr/opx_input",
+                "time_of_flight": 28,
+                "smearing": 0,
+                "LO_frequency": 5500000000,
+                "RF_frequency": 5560000000.0,
+                "opx_output": "#/wiring/qubits/q1/rr/opx_output",
+                "upconverter": 1,
+                "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
+            },
+            "f_01": 7510000000.0,
+            "f_12": null,
+            "anharmonicity": -200000000,
+            "T1": 1e-05,
+            "T2ramsey": null,
+            "T2echo": null,
+            "thermalization_time_factor": 5,
+            "sigma_time_factor": 5,
+            "GEF_frequency_shift": null,
+            "chi": null,
+            "grid_location": "0,0",
+            "gate_fidelity": {},
+            "extras": {},
+            "z": {
+                "operations": {
+                    "const": {
+                        "length": 200,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.45,
+                        "axis_angle": null,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    }
+                },
+                "id": null,
+                "digital_outputs": {},
+                "sticky": null,
+                "intermediate_frequency": null,
+                "thread": null,
+                "core": null,
+                "opx_output": "#/wiring/qubits/q1/z/opx_output",
+                "filter_fir_taps": null,
+                "filter_iir_taps": null,
+                "opx_output_offset": null,
+                "independent_offset": 0.0,
+                "joint_offset": 0.0,
+                "min_offset": 0.0,
+                "arbitrary_offset": 0.0,
+                "flux_point": "joint",
+                "settle_time": 100,
+                "__class__": "quam_builder.architecture.superconducting.components.flux_line.FluxLine"
+            },
+            "freq_vs_flux_01_quad_term": 0.0,
+            "phi0_current": 0.0,
+            "phi0_voltage": 0.0,
+            "__class__": "quam_builder.architecture.superconducting.qubit.flux_tunable_transmon.FluxTunableTransmon"
+        }
+    },
+    "qubit_pairs": {},
+    "wiring": {
+        "qubits": {
+            "q1": {
+                "rr": {
+                    "opx_input": "#/ports/mw_inputs/con1/1/1",
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
+                },
+                "xy": {
+                    "opx_output": "#/ports/mw_outputs/con1/1/2"
+                },
+                "z": {
+                    "opx_output": "#/ports/analog_outputs/con1/5/1"
+                }
+            }
+        }
+    },
+    "network": {
+        "host": "127.0.0.1",
+        "port": null,
+        "cluster_name": "Cluster_1"
+    },
+    "active_qubit_names": [
+        "q1"
+    ],
+    "active_qubit_pair_names": [],
+    "ports": {
+        "analog_outputs": {
+            "con1": {
+                "5": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 5,
+                        "port_id": 1,
+                        "offset": null,
+                        "delay": 141,
+                        "crosstalk": null,
+                        "feedforward_filter": null,
+                        "feedback_filter": null,
+                        "shareable": true,
+                        "sampling_rate": 1000000000,
+                        "upsampling_mode": "pulse",
+                        "exponential_filter": null,
+                        "exponential_dc_gain": null,
+                        "high_pass_filter": null,
+                        "output_mode": "amplified",
+                        "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                    }
+                }
+            }
+        },
+        "analog_inputs": {},
+        "mw_outputs": {
+            "con1": {
+                "1": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 1,
+                        "band": 2,
+                        "upconverter_frequency": 5500000000,
+                        "upconverters": null,
+                        "delay": 0,
+                        "shareable": false,
+                        "sampling_rate": 1000000000.0,
+                        "full_scale_power_dbm": 1,
+                        "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
+                    },
+                    "2": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 2,
+                        "band": 2,
+                        "upconverter_frequency": 7400000000,
+                        "upconverters": null,
+                        "delay": 0,
+                        "shareable": false,
+                        "sampling_rate": 1000000000.0,
+                        "full_scale_power_dbm": 1,
+                        "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
+                    }
+                }
+            }
+        },
+        "mw_inputs": {
+            "con1": {
+                "1": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 1,
+                        "band": 2,
+                        "downconverter_frequency": "#/ports/mw_outputs/con1/1/1/upconverter_frequency",
+                        "gain_db": null,
+                        "sampling_rate": 1000000000.0,
+                        "shareable": false,
+                        "__class__": "quam.components.ports.analog_inputs.MWFEMAnalogInputPort"
+                    }
+                }
+            }
+        },
+        "digital_outputs": {},
+        "__class__": "quam.components.ports.ports_containers.FEMPortsContainer"
+    },
+    "extras": {},
+    "qop_ip": "127.0.0.1",
+    "cluster_name": "Cluster_1",
+    "qop_port": null,
+    "qubit_T1": 10000,
+    "thermalization_time": 50000,
+    "depletion_time": 2000,
+    "flux_settle_time": 100,
+    "ge_threshold": 0.0,
+    "rotation_angle": 0.0,
+    "amplitude_fit": 0.0,
+    "frequency_fit": 0.0,
+    "phase_fit": 0.0,
+    "offset_fit": 0.0,
+    "__class__": "configuration_quam_builder_lf_mw_fem.FluxTunableTransmonQuamBuilder"
+}
+</script><script type="application/json" id="embed-builder_components">
+{
+    "octaves": {},
+    "mixers": {},
+    "twpas": {},
+    "qubits": {
+        "q1": {
+            "id": "q1",
+            "macros": {},
+            "xy": {
+                "extras": {},
+                "operations": {
+                    "x180_DragGaussian": {
+                        "length": 40,
+                        "id": null,
+                        "digital_marker": null,
+                        "axis_angle": 0,
+                        "amplitude": 1.0,
+                        "sigma": 8,
+                        "alpha": 0.0,
+                        "anharmonicity": -200000000,
+                        "detuning": 0.0,
+                        "subtracted": true,
+                        "__class__": "quam.components.pulses.DragGaussianPulse"
+                    },
+                    "x90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
+                        "id": null,
+                        "digital_marker": "#../x180_DragGaussian/digital_marker",
+                        "axis_angle": 0,
+                        "amplitude": 0.5,
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
+                        "detuning": "#../x180_DragGaussian/detuning",
+                        "subtracted": "#../x180_DragGaussian/subtracted",
+                        "__class__": "quam.components.pulses.DragGaussianPulse"
+                    },
+                    "-x90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
+                        "id": null,
+                        "digital_marker": "#../x180_DragGaussian/digital_marker",
+                        "axis_angle": 3.141592653589793,
+                        "amplitude": "#../x90_DragGaussian/amplitude",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
+                        "detuning": "#../x180_DragGaussian/detuning",
+                        "subtracted": "#../x180_DragGaussian/subtracted",
+                        "__class__": "quam.components.pulses.DragGaussianPulse"
+                    },
+                    "y180_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
+                        "id": null,
+                        "digital_marker": "#../x180_DragGaussian/digital_marker",
+                        "axis_angle": 1.5707963267948966,
+                        "amplitude": "#../x180_DragGaussian/amplitude",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
+                        "detuning": "#../x180_DragGaussian/detuning",
+                        "subtracted": "#../x180_DragGaussian/subtracted",
+                        "__class__": "quam.components.pulses.DragGaussianPulse"
+                    },
+                    "y90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
+                        "id": null,
+                        "digital_marker": "#../x180_DragGaussian/digital_marker",
+                        "axis_angle": 1.5707963267948966,
+                        "amplitude": "#../x90_DragGaussian/amplitude",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x90_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
+                        "detuning": "#../x90_DragGaussian/detuning",
+                        "subtracted": "#../x180_DragGaussian/subtracted",
+                        "__class__": "quam.components.pulses.DragGaussianPulse"
+                    },
+                    "-y90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
+                        "id": null,
+                        "digital_marker": "#../x180_DragGaussian/digital_marker",
+                        "axis_angle": -1.5707963267948966,
+                        "amplitude": "#../x90_DragGaussian/amplitude",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x90_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
+                        "detuning": "#../x90_DragGaussian/detuning",
+                        "subtracted": "#../x180_DragGaussian/subtracted",
+                        "__class__": "quam.components.pulses.DragGaussianPulse"
+                    },
+                    "x180": "#./x180_DragGaussian",
+                    "x90": "#./x90_DragGaussian",
+                    "-x90": "#./-x90_DragGaussian",
+                    "y180": "#./y180_DragGaussian",
+                    "y90": "#./y90_DragGaussian",
+                    "-y90": "#./-y90_DragGaussian",
+                    "cw": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.03,
+                        "axis_angle": 0.0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "saturation": {
+                        "length": 10000,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.03,
+                        "axis_angle": 0.0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "pi": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.03,
+                        "axis_angle": 0.0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "pi_half": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.015,
+                        "axis_angle": 0.0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    }
+                },
+                "id": null,
+                "digital_outputs": {},
+                "sticky": null,
+                "intermediate_frequency": 110000000,
+                "thread": null,
+                "core": null,
+                "LO_frequency": 7400000000,
+                "RF_frequency": 7510000000.0,
+                "opx_output": "#/ports/mw_outputs/con1/1/2",
+                "upconverter": 1,
+                "__class__": "quam_builder.architecture.superconducting.components.xy_drive.XYDriveMW"
+            },
+            "resonator": {
+                "depletion_time": 2000,
+                "frequency_bare": null,
+                "f_01": 5560000000.0,
+                "f_12": null,
+                "confusion_matrix": null,
+                "gef_centers": null,
+                "gef_confusion_matrix": null,
+                "GEF_frequency_shift": null,
+                "extras": {},
+                "operations": {
+                    "cw": {
+                        "length": 100,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.03,
+                        "axis_angle": 0.0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "readout": {
+                        "length": 5000,
+                        "id": null,
+                        "digital_marker": "ON",
+                        "amplitude": 0.6,
+                        "axis_angle": null,
+                        "threshold": 0.0,
+                        "rus_exit_threshold": null,
+                        "integration_weights": "#./default_integration_weights",
+                        "integration_weights_angle": 0,
+                        "__class__": "quam.components.pulses.SquareReadoutPulse"
+                    }
+                },
+                "id": null,
+                "digital_outputs": {},
+                "sticky": null,
+                "intermediate_frequency": 60000000,
+                "thread": null,
+                "core": null,
+                "opx_input": "#/ports/mw_inputs/con1/1/1",
+                "time_of_flight": 28,
+                "smearing": 0,
+                "LO_frequency": 5500000000,
+                "RF_frequency": 5560000000.0,
+                "opx_output": "#/ports/mw_outputs/con1/1/1",
+                "upconverter": 1,
+                "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
+            },
+            "f_01": 7510000000.0,
+            "f_12": null,
+            "anharmonicity": -200000000,
+            "T1": 1e-05,
+            "T2ramsey": null,
+            "T2echo": null,
+            "thermalization_time_factor": 5,
+            "sigma_time_factor": 5,
+            "GEF_frequency_shift": null,
+            "chi": null,
+            "grid_location": null,
+            "gate_fidelity": {},
+            "extras": {},
+            "z": {
+                "operations": {
+                    "const": {
+                        "length": 200,
+                        "id": null,
+                        "digital_marker": null,
+                        "amplitude": 0.45,
+                        "axis_angle": null,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    }
+                },
+                "id": null,
+                "digital_outputs": {},
+                "sticky": null,
+                "intermediate_frequency": null,
+                "thread": null,
+                "core": null,
+                "opx_output": "#/ports/analog_outputs/con1/5/1",
+                "filter_fir_taps": null,
+                "filter_iir_taps": null,
+                "opx_output_offset": null,
+                "independent_offset": 0.0,
+                "joint_offset": 0.0,
+                "min_offset": 0.0,
+                "arbitrary_offset": 0.0,
+                "flux_point": "joint",
+                "settle_time": 100,
+                "__class__": "quam_builder.architecture.superconducting.components.flux_line.FluxLine"
+            },
+            "freq_vs_flux_01_quad_term": 0.0,
+            "phi0_current": 0.0,
+            "phi0_voltage": 0.0,
+            "__class__": "quam_builder.architecture.superconducting.qubit.flux_tunable_transmon.FluxTunableTransmon"
+        }
+    },
+    "qubit_pairs": {},
+    "wiring": {},
+    "network": {
+        "host": "127.0.0.1",
+        "port": null,
+        "cluster_name": "Cluster_1"
+    },
+    "active_qubit_names": [
+        "q1"
+    ],
+    "active_qubit_pair_names": [],
+    "ports": {
+        "analog_outputs": {
+            "con1": {
+                "5": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 5,
+                        "port_id": 1,
+                        "offset": 0.0,
+                        "delay": 141,
+                        "crosstalk": null,
+                        "feedforward_filter": null,
+                        "feedback_filter": null,
+                        "shareable": true,
+                        "sampling_rate": 1000000000,
+                        "upsampling_mode": "pulse",
+                        "exponential_filter": null,
+                        "exponential_dc_gain": null,
+                        "high_pass_filter": null,
+                        "output_mode": "amplified",
+                        "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                    }
+                }
+            }
+        },
+        "analog_inputs": {},
+        "mw_outputs": {
+            "con1": {
+                "1": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 1,
+                        "band": 2,
+                        "upconverter_frequency": 5500000000,
+                        "upconverters": null,
+                        "delay": 0,
+                        "shareable": false,
+                        "sampling_rate": 1000000000.0,
+                        "full_scale_power_dbm": 1,
+                        "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
+                    },
+                    "2": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 2,
+                        "band": 2,
+                        "upconverter_frequency": 7400000000,
+                        "upconverters": null,
+                        "delay": 0,
+                        "shareable": false,
+                        "sampling_rate": 1000000000.0,
+                        "full_scale_power_dbm": 1,
+                        "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
+                    }
+                }
+            }
+        },
+        "mw_inputs": {
+            "con1": {
+                "1": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 1,
+                        "band": 2,
+                        "downconverter_frequency": "#/ports/mw_outputs/con1/1/1/upconverter_frequency",
+                        "gain_db": null,
+                        "sampling_rate": 1000000000.0,
+                        "shareable": false,
+                        "__class__": "quam.components.ports.analog_inputs.MWFEMAnalogInputPort"
+                    }
+                }
+            }
+        },
+        "digital_outputs": {},
+        "__class__": "quam.components.ports.ports_containers.FEMPortsContainer"
+    },
+    "extras": {},
+    "qop_ip": "127.0.0.1",
+    "cluster_name": "Cluster_1",
+    "qop_port": null,
+    "qubit_T1": 10000,
+    "thermalization_time": 50000,
+    "depletion_time": 2000,
+    "flux_settle_time": 100,
+    "ge_threshold": 0.0,
+    "rotation_angle": 0.0,
+    "amplitude_fit": 0.0,
+    "frequency_fit": 0.0,
+    "phase_fit": 0.0,
+    "offset_fit": 0.0,
+    "__class__": "configuration_quam_builder_components_lf_mw_fem.FluxTunableTransmonQuamComponents"
+}
+</script><script type="application/json" id="embed-channel_manual">
+{
+    "channels": {
+        "qubit": {
+            "extras": {},
+            "operations": {
+                "cw": {
+                    "length": 100,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.03,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "saturation": {
+                    "length": 10000,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.03,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "pi": {
+                    "length": 100,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.03,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "pi_half": {
+                    "length": 100,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.015,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "x180": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 0.0,
+                    "amplitude": 1.0,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "x90": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 0.0,
+                    "amplitude": 0.5,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "-x90": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 0.0,
+                    "amplitude": -0.5,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "y180": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 1.5707963267948966,
+                    "amplitude": 1.0,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "y90": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 1.5707963267948966,
+                    "amplitude": 0.5,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "-y90": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 1.5707963267948966,
+                    "amplitude": -0.5,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                }
+            },
+            "id": null,
+            "digital_outputs": {},
+            "sticky": null,
+            "intermediate_frequency": 110000000,
+            "thread": null,
+            "core": null,
+            "LO_frequency": 7400000000,
+            "RF_frequency": 7510000000.0,
+            "opx_output": "#/ports/mw_outputs/con1/1/2",
+            "upconverter": 1,
+            "__class__": "quam_builder.architecture.superconducting.components.xy_drive.XYDriveMW"
+        },
+        "resonator": {
+            "depletion_time": 2000,
+            "frequency_bare": null,
+            "f_01": 5560000000.0,
+            "f_12": null,
+            "confusion_matrix": null,
+            "gef_centers": null,
+            "gef_confusion_matrix": null,
+            "GEF_frequency_shift": null,
+            "extras": {},
+            "operations": {
+                "cw": {
+                    "length": 100,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.03,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "readout": {
+                    "length": 5000,
+                    "id": null,
+                    "digital_marker": "ON",
+                    "amplitude": 0.6,
+                    "axis_angle": null,
+                    "threshold": 0.0,
+                    "rus_exit_threshold": null,
+                    "integration_weights": "#./default_integration_weights",
+                    "integration_weights_angle": 0,
+                    "__class__": "quam.components.pulses.SquareReadoutPulse"
+                }
+            },
+            "id": null,
+            "digital_outputs": {},
+            "sticky": null,
+            "intermediate_frequency": 60000000,
+            "thread": null,
+            "core": null,
+            "opx_input": "#/ports/mw_inputs/con1/1/1",
+            "time_of_flight": 28,
+            "smearing": 0,
+            "LO_frequency": 5500000000,
+            "RF_frequency": 5560000000.0,
+            "opx_output": "#/ports/mw_outputs/con1/1/1",
+            "upconverter": 1,
+            "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
+        },
+        "flux_line": {
+            "operations": {
+                "const": {
+                    "length": 200,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.45,
+                    "axis_angle": null,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": null,
+            "digital_outputs": {},
+            "sticky": null,
+            "intermediate_frequency": null,
+            "thread": null,
+            "core": null,
+            "opx_output": "#/ports/analog_outputs/con1/5/1",
+            "filter_fir_taps": null,
+            "filter_iir_taps": null,
+            "opx_output_offset": null,
+            "independent_offset": 0.0,
+            "joint_offset": 0.0,
+            "min_offset": 0.0,
+            "arbitrary_offset": 0.0,
+            "flux_point": "joint",
+            "settle_time": 100,
+            "__class__": "quam_builder.architecture.superconducting.components.flux_line.FluxLine"
+        },
+        "flux_line_sticky": {
+            "operations": {
+                "const": {
+                    "length": 200,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.45,
+                    "axis_angle": null,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": null,
+            "digital_outputs": {},
+            "sticky": {
+                "duration": 20,
+                "enabled": true,
+                "analog": true,
+                "digital": true,
+                "__class__": "quam.components.channels.StickyChannelAddon"
+            },
+            "intermediate_frequency": null,
+            "thread": null,
+            "core": null,
+            "opx_output": "#/ports/analog_outputs/con1/5/1",
+            "filter_fir_taps": null,
+            "filter_iir_taps": null,
+            "opx_output_offset": null,
+            "independent_offset": 0.0,
+            "joint_offset": 0.0,
+            "min_offset": 0.0,
+            "arbitrary_offset": 0.0,
+            "flux_point": "joint",
+            "settle_time": 100,
+            "__class__": "quam_builder.architecture.superconducting.components.flux_line.FluxLine"
+        }
+    },
+    "octaves": {},
+    "ports": {
+        "analog_outputs": {
+            "con1": {
+                "5": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 5,
+                        "port_id": 1,
+                        "offset": 0.0,
+                        "delay": 141,
+                        "crosstalk": null,
+                        "feedforward_filter": null,
+                        "feedback_filter": null,
+                        "shareable": true,
+                        "sampling_rate": 1000000000,
+                        "upsampling_mode": "pulse",
+                        "exponential_filter": null,
+                        "exponential_dc_gain": null,
+                        "high_pass_filter": null,
+                        "output_mode": "amplified",
+                        "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                    }
+                }
+            }
+        },
+        "analog_inputs": {},
+        "mw_outputs": {
+            "con1": {
+                "1": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 1,
+                        "band": 2,
+                        "upconverter_frequency": 5500000000,
+                        "upconverters": null,
+                        "delay": 0,
+                        "shareable": false,
+                        "sampling_rate": 1000000000.0,
+                        "full_scale_power_dbm": 1,
+                        "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
+                    },
+                    "2": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 2,
+                        "band": 2,
+                        "upconverter_frequency": 7400000000,
+                        "upconverters": null,
+                        "delay": 0,
+                        "shareable": false,
+                        "sampling_rate": 1000000000.0,
+                        "full_scale_power_dbm": 1,
+                        "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
+                    }
+                }
+            }
+        },
+        "mw_inputs": {
+            "con1": {
+                "1": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 1,
+                        "band": 2,
+                        "downconverter_frequency": "#/ports/mw_outputs/con1/1/1/upconverter_frequency",
+                        "gain_db": null,
+                        "sampling_rate": 1000000000.0,
+                        "shareable": false,
+                        "__class__": "quam.components.ports.analog_inputs.MWFEMAnalogInputPort"
+                    }
+                }
+            }
+        },
+        "digital_outputs": {},
+        "__class__": "quam.components.ports.ports_containers.FEMPortsContainer"
+    },
+    "qop_ip": "127.0.0.1",
+    "cluster_name": null,
+    "qop_port": null,
+    "qubit_T1": 10000,
+    "thermalization_time": 50000,
+    "depletion_time": 2000,
+    "flux_settle_time": 100,
+    "ge_threshold": 0.0,
+    "rotation_angle": 0.0,
+    "amplitude_fit": 0.0,
+    "frequency_fit": 0.0,
+    "phase_fit": 0.0,
+    "offset_fit": 0.0,
+    "__class__": "configuration_quam_builder_channel_lf_mw_fem.StandaloneChannelQuamManual"
+}
+</script><script type="application/json" id="embed-channel_wirer">
+{
+    "channels": {
+        "qubit": {
+            "extras": {},
+            "operations": {
+                "cw": {
+                    "length": 100,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.03,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "saturation": {
+                    "length": 10000,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.03,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "pi": {
+                    "length": 100,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.03,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "pi_half": {
+                    "length": 100,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.015,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "x180": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 0.0,
+                    "amplitude": 1.0,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "x90": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 0.0,
+                    "amplitude": 0.5,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "-x90": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 0.0,
+                    "amplitude": -0.5,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "y180": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 1.5707963267948966,
+                    "amplitude": 1.0,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "y90": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 1.5707963267948966,
+                    "amplitude": 0.5,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                },
+                "-y90": {
+                    "length": 40,
+                    "id": null,
+                    "digital_marker": null,
+                    "axis_angle": 1.5707963267948966,
+                    "amplitude": -0.5,
+                    "sigma": 8.0,
+                    "alpha": 0.0,
+                    "anharmonicity": -200000000,
+                    "detuning": 0.0,
+                    "subtracted": true,
+                    "__class__": "quam.components.pulses.DragGaussianPulse"
+                }
+            },
+            "id": null,
+            "digital_outputs": {},
+            "sticky": null,
+            "intermediate_frequency": 110000000,
+            "thread": null,
+            "core": null,
+            "LO_frequency": 7400000000,
+            "RF_frequency": 7510000000.0,
+            "opx_output": "#/ports/mw_outputs/con1/1/2",
+            "upconverter": 1,
+            "__class__": "quam_builder.architecture.superconducting.components.xy_drive.XYDriveMW"
+        },
+        "resonator": {
+            "depletion_time": 2000,
+            "frequency_bare": null,
+            "f_01": 5560000000.0,
+            "f_12": null,
+            "confusion_matrix": null,
+            "gef_centers": null,
+            "gef_confusion_matrix": null,
+            "GEF_frequency_shift": null,
+            "extras": {},
+            "operations": {
+                "cw": {
+                    "length": 100,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.03,
+                    "axis_angle": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                },
+                "readout": {
+                    "length": 5000,
+                    "id": null,
+                    "digital_marker": "ON",
+                    "amplitude": 0.6,
+                    "axis_angle": null,
+                    "threshold": 0.0,
+                    "rus_exit_threshold": null,
+                    "integration_weights": "#./default_integration_weights",
+                    "integration_weights_angle": 0,
+                    "__class__": "quam.components.pulses.SquareReadoutPulse"
+                }
+            },
+            "id": null,
+            "digital_outputs": {},
+            "sticky": null,
+            "intermediate_frequency": 60000000,
+            "thread": null,
+            "core": null,
+            "opx_input": "#/ports/mw_inputs/con1/1/1",
+            "time_of_flight": 28,
+            "smearing": 0,
+            "LO_frequency": 5500000000,
+            "RF_frequency": 5560000000.0,
+            "opx_output": "#/ports/mw_outputs/con1/1/1",
+            "upconverter": 1,
+            "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
+        },
+        "flux_line": {
+            "operations": {
+                "const": {
+                    "length": 200,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.45,
+                    "axis_angle": null,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": null,
+            "digital_outputs": {},
+            "sticky": null,
+            "intermediate_frequency": null,
+            "thread": null,
+            "core": null,
+            "opx_output": "#/ports/analog_outputs/con1/5/1",
+            "filter_fir_taps": null,
+            "filter_iir_taps": null,
+            "opx_output_offset": null,
+            "independent_offset": 0.0,
+            "joint_offset": 0.0,
+            "min_offset": 0.0,
+            "arbitrary_offset": 0.0,
+            "flux_point": "joint",
+            "settle_time": 100,
+            "__class__": "quam_builder.architecture.superconducting.components.flux_line.FluxLine"
+        },
+        "flux_line_sticky": {
+            "operations": {
+                "const": {
+                    "length": 200,
+                    "id": null,
+                    "digital_marker": null,
+                    "amplitude": 0.45,
+                    "axis_angle": null,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": null,
+            "digital_outputs": {},
+            "sticky": {
+                "duration": 20,
+                "enabled": true,
+                "analog": true,
+                "digital": true,
+                "__class__": "quam.components.channels.StickyChannelAddon"
+            },
+            "intermediate_frequency": null,
+            "thread": null,
+            "core": null,
+            "opx_output": "#/ports/analog_outputs/con1/5/1",
+            "filter_fir_taps": null,
+            "filter_iir_taps": null,
+            "opx_output_offset": null,
+            "independent_offset": 0.0,
+            "joint_offset": 0.0,
+            "min_offset": 0.0,
+            "arbitrary_offset": 0.0,
+            "flux_point": "joint",
+            "settle_time": 100,
+            "__class__": "quam_builder.architecture.superconducting.components.flux_line.FluxLine"
+        }
+    },
+    "octaves": {},
+    "ports": {
+        "analog_outputs": {
+            "con1": {
+                "5": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 5,
+                        "port_id": 1,
+                        "offset": 0.0,
+                        "delay": 141,
+                        "crosstalk": null,
+                        "feedforward_filter": null,
+                        "feedback_filter": null,
+                        "shareable": true,
+                        "sampling_rate": 1000000000,
+                        "upsampling_mode": "pulse",
+                        "exponential_filter": null,
+                        "exponential_dc_gain": null,
+                        "high_pass_filter": null,
+                        "output_mode": "amplified",
+                        "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                    }
+                }
+            }
+        },
+        "analog_inputs": {},
+        "mw_outputs": {
+            "con1": {
+                "1": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 1,
+                        "band": 2,
+                        "upconverter_frequency": 5500000000,
+                        "upconverters": null,
+                        "delay": 0,
+                        "shareable": false,
+                        "sampling_rate": 1000000000.0,
+                        "full_scale_power_dbm": 1,
+                        "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
+                    },
+                    "2": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 2,
+                        "band": 2,
+                        "upconverter_frequency": 7400000000,
+                        "upconverters": null,
+                        "delay": 0,
+                        "shareable": false,
+                        "sampling_rate": 1000000000.0,
+                        "full_scale_power_dbm": 1,
+                        "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
+                    }
+                }
+            }
+        },
+        "mw_inputs": {
+            "con1": {
+                "1": {
+                    "1": {
+                        "controller_id": "con1",
+                        "fem_id": 1,
+                        "port_id": 1,
+                        "band": 2,
+                        "downconverter_frequency": "#/ports/mw_outputs/con1/1/1/upconverter_frequency",
+                        "gain_db": null,
+                        "sampling_rate": 1000000000.0,
+                        "shareable": false,
+                        "__class__": "quam.components.ports.analog_inputs.MWFEMAnalogInputPort"
+                    }
+                }
+            }
+        },
+        "digital_outputs": {},
+        "__class__": "quam.components.ports.ports_containers.FEMPortsContainer"
+    },
+    "qop_ip": "127.0.0.1",
+    "cluster_name": "Cluster_1",
+    "qop_port": null,
+    "qubit_T1": 10000,
+    "thermalization_time": 50000,
+    "depletion_time": 2000,
+    "flux_settle_time": 100,
+    "ge_threshold": 0.0,
+    "rotation_angle": 0.0,
+    "amplitude_fit": 0.0,
+    "frequency_fit": 0.0,
+    "phase_fit": 0.0,
+    "offset_fit": 0.0,
+    "__class__": "configuration_quam_builder_channel_wirer_lf_mw_fem.StandaloneChannelQuamWirer"
+}
+</script><script>
+(function(){
+  var meta = [{"id": "manual", "label": "Manual (core QUAM)", "fn": "quam_state_lf_mw_fem.json"}, {"id": "builder_full", "label": "Builder \u2014 full pipeline", "fn": "quam_state_builder_lf_mw_fem.json"}, {"id": "builder_components", "label": "Builder \u2014 components, no wirer", "fn": "quam_state_builder_components_lf_mw_fem.json"}, {"id": "channel_manual", "label": "Builder channels \u2014 manual FEM", "fn": "quam_state_builder_channel_lf_mw_fem.json"}, {"id": "channel_wirer", "label": "Builder channels \u2014 wirer FEM", "fn": "quam_state_builder_channel_wirer_lf_mw_fem.json"}];
+  var tabs = document.getElementById('json-tabs');
+  var panel = document.getElementById('json-panel');
+  function show(key){
+    var el = document.getElementById('embed-' + key);
+    if(!el){ panel.textContent = 'Missing embed for ' + key; return; }
+    try {
+      var obj = JSON.parse(el.textContent);
+      panel.textContent = JSON.stringify(obj, null, 2);
+    } catch(e) { panel.textContent = el.textContent; }
+    [].forEach.call(tabs.querySelectorAll('button'), function(b){
+      b.classList.toggle('active', b.getAttribute('data-key') === key);
+    });
+  }
+  meta.forEach(function(m, i){
+    var b = document.createElement('button');
+    b.textContent = m.label;
+    b.setAttribute('data-key', m.id);
+    b.addEventListener('click', function(){ show(m.id); });
+    tabs.appendChild(b);
+    if(i===0) b.classList.add('active');
+  });
+  if(meta.length) show(meta[0].id);
+})();
+</script>
+
+</main>
+<footer>
+Generated by <code>_build_config_comparison_html.py</code> in this folder. Re-run after changing JSON or Python configs to refresh embedded data.
+</footer>
+</body>
+</html>
