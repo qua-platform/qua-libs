@@ -12,6 +12,7 @@ from calibration_utils.ramsey_vs_coupler_flux import (
     Parameters,
     fit_raw_data,
     plot_raw_data,
+    plot_fit_data,
     plot_frequency_vs_coupler_flux,
     process_raw_dataset,
 )
@@ -47,9 +48,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
-    node.parameters.qubit_pairs = ["coupler_q1_q2", "coupler_q2_q3", "coupler_q3_q4", "coupler_q4_q5"]
-    node.parameters.coupler_flux_min = -0.2
-    node.parameters.coupler_flux_max = 0.2
     pass
 
 
@@ -63,6 +61,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     u = unit(coerce_to_integer=True)
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
+
+    measured_qubit_role = node.parameters.measured_qubit
+    measured_qubits = [qp.qubit_control if measured_qubit_role == "control" else qp.qubit_target for qp in qubit_pairs]
+    node.namespace["measured_qubits"] = measured_qubits
+    node.namespace["qubits"] = measured_qubits
 
     n_avg = node.parameters.num_shots
 
@@ -85,8 +88,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "coupler_flux": xr.DataArray(fluxes, attrs={"long_name": "coupler flux", "units": "V"}),
         "idle_times": xr.DataArray(4 * idle_times, attrs={"long_name": "idle times", "units": "ns"}),
     }
-
-    measured_qubit_role = node.parameters.measured_qubit
 
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
@@ -171,6 +172,12 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 start_time=data_fetcher.t_start,
             )
         node.log(job.execution_report())
+    if "qubit_pair" in dataset.dims:
+        qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
+        measured_qubit_names = [q.name for q in node.namespace["measured_qubits"]]
+        dataset = dataset.rename({"qubit_pair": "qubit"})
+        dataset = dataset.assign_coords(qubit=qubit_pair_names)
+        dataset = dataset.assign_coords(measured_qubit_name=("qubit", measured_qubit_names))
     node.results["ds_raw"] = dataset
 
 
@@ -181,7 +188,27 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     load_data_id = node.parameters.load_data_id
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    node.namespace["qubit_pairs"] = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
+    # Get the active qubit pairs from the loaded node parameters
+    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+    # Extract measured qubits
+    measured_qubits = []
+    for qp in node.namespace["qubit_pairs"]:
+        if node.parameters.measured_qubit == "control":
+            measured_qubits.append(qp.qubit_control)
+        else:
+            measured_qubits.append(qp.qubit_target)
+    node.namespace["measured_qubits"] = measured_qubits
+    node.namespace["qubits"] = measured_qubits
+    # Rename qubit_pair dimension to qubit for compatibility with analysis functions
+    # Use unique pair names as coordinate values (see execute_qua_program for rationale)
+    if "qubit_pair" in node.results["ds_raw"].dims:
+        qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
+        measured_qubit_names = [q.name for q in measured_qubits]
+        node.results["ds_raw"] = node.results["ds_raw"].rename({"qubit_pair": "qubit"})
+        node.results["ds_raw"] = node.results["ds_raw"].assign_coords(qubit=qubit_pair_names)
+        node.results["ds_raw"] = node.results["ds_raw"].assign_coords(
+            measured_qubit_name=("qubit", measured_qubit_names)
+        )
 
 
 # %% {Analyse_data}
@@ -197,10 +224,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw data heatmap and extracted frequency vs coupler flux."""
     fig_raw = plot_raw_data(node.results["ds_raw"], node.namespace["qubit_pairs"])
+    fig_fitted = plot_fit_data(node.results["ds_fit"], node.namespace["qubit_pairs"])
     fig_freq = plot_frequency_vs_coupler_flux(node.results["ds_fit"], node.namespace["qubit_pairs"])
     node.results["figures"] = {
         "raw_data": fig_raw,
-        "frequency_vs_coupler_flux": fig_freq,
+        **({"fitted_state": fig_fitted} if fig_fitted is not None else {}),
+        **({"frequency_vs_coupler_flux": fig_freq} if fig_freq is not None else {}),
     }
 
 
