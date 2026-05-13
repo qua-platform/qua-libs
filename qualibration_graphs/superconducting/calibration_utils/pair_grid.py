@@ -31,10 +31,7 @@ def grid_pair_names(qubit_pairs) -> Tuple[List[str], List[str]]:
         One entry per pair, the pair's ``.name`` attribute.
     """
     return (
-        [
-            f"{qp.qubit_control.grid_location}-{qp.qubit_target.grid_location}"
-            for qp in qubit_pairs
-        ],
+        [f"{qp.qubit_control.grid_location}-{qp.qubit_target.grid_location}" for qp in qubit_pairs],
         [qp.name for qp in qubit_pairs],
     )
 
@@ -68,9 +65,7 @@ class QubitPairGrid:
     def _list_clean(self, list_input_string):
         return [self._clean_up(s) for s in list_input_string]
 
-    def __init__(
-        self, grid_names: list[str], qubit_pair_names: list[str], size: int = 4
-    ):
+    def __init__(self, grid_names: list[str], qubit_pair_names: list[str], size: int = 4):
         qubit_indices = [
             (
                 tuple(map(int, self._list_clean(gp.split("-")[0].split(",")))),
@@ -99,9 +94,7 @@ class QubitPairGrid:
             max(grid_col_idxs) - min_grid_col + 1,
         )
 
-        figure, all_axes = plt.subplots(
-            *shape, figsize=(shape[1] * size, shape[0] * size), squeeze=False
-        )
+        figure, all_axes = plt.subplots(*shape, figsize=(shape[1] * size, shape[0] * size), squeeze=False)
 
         axes_grid = all_axes.reshape(shape)
 
