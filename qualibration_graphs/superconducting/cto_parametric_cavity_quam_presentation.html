@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Parametric Cavity QUAM — Technical Summary</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e8eef7;
+      --muted: #8b9cb3;
+      --accent: #3d9cfd;
+      --ok: #3ecf8e;
+      --warn: #f5a524;
+      --border: #2a3a52;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Consolas", "Cascadia Code", monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    header.nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.5rem;
+      background: rgba(15, 20, 25, 0.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    header.nav span.brand {
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      font-size: 0.95rem;
+    }
+    header.nav nav a {
+      color: var(--muted);
+      text-decoration: none;
+      margin-left: 1rem;
+      font-size: 0.8rem;
+    }
+    header.nav nav a:hover { color: var(--accent); }
+    main { padding-top: 3.5rem; counter-reset: slide; }
+    section.slide {
+      --slide-total: 4;
+      position: relative;
+      min-height: 100vh;
+      padding: 4rem clamp(1.5rem, 5vw, 4rem) 3.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 56rem;
+      margin: 0 auto;
+      counter-increment: slide;
+    }
+    section.slide .slide-num {
+      position: absolute;
+      bottom: 1.25rem;
+      right: clamp(1.5rem, 5vw, 4rem);
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+    }
+    section.slide .slide-num::before {
+      content: "Slide " counter(slide) " / " var(--slide-total);
+    }
+    section.slide h1 {
+      font-size: clamp(1.75rem, 4vw, 2.75rem);
+      font-weight: 700;
+      margin: 0 0 0.75rem;
+      letter-spacing: -0.02em;
+    }
+    section.slide h2 {
+      font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+      font-weight: 600;
+      margin: 2rem 0 0.75rem;
+      color: var(--accent);
+    }
+    section.slide p.lead {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 42rem;
+      margin: 0 0 1.5rem;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      margin-bottom: 1rem;
+    }
+    ul.clean { margin: 0; padding-left: 1.2rem; }
+    ul.clean li { margin: 0.45rem 0; }
+    ul.decisions li { margin: 0.65rem 0; }
+    ul.decisions strong { color: var(--text); }
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+    }
+    .card h3 {
+      margin: 0 0 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin: 1rem 0;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--border);
+    }
+    th { background: var(--panel); color: var(--muted); font-weight: 600; }
+    tfoot td { font-weight: 600; color: var(--accent); }
+    code, pre {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+    }
+    pre {
+      background: #0a0e14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+      overflow-x: auto;
+      margin: 0.75rem 0;
+    }
+    .ok { color: var(--ok); font-weight: 600; }
+    .warn { color: var(--warn); }
+    .loc-highlight {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.03em;
+      margin: 0.25rem 0 0.5rem;
+    }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    @media print {
+      header.nav { position: static; }
+      section.slide { min-height: auto; page-break-after: always; }
+      section.slide .slide-num { position: static; display: block; margin-top: 1rem; text-align: right; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <span class="brand">QM · Superconducting QUAM</span>
+    <nav>
+      <a href="#s0">Title</a>
+      <a href="#s-loc">LOC · Decisions</a>
+      <a href="#s1">Device</a>
+      <a href="#s2">Software</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="slide" id="s0">
+      <div class="slide-num"></div>
+      <span class="tag">Internal · CTO briefing</span>
+      <h1>Parametric cavity device in QUAM</h1>
+      <p class="lead">
+        Summary of local architecture work: custom QUAM components for a fixed-frequency transmon
+        with readout resonator, storage cavity (direct XY drive), and a single MW parametric line
+        for inter-mode coupling tones — OPX1000-oriented wiring in QUAM, cluster <strong>CS_4</strong>.
+      </p>
+      <div class="grid2">
+        <div class="card">
+          <h3>Scope</h3>
+          <p>Repository-local changes under <code>qualibration_graphs/superconducting/quam_config/</code>; no upstream package forks.</p>
+        </div>
+        <div class="card">
+          <h3>Hardware</h3>
+          <p>OPX1000, MW-FEM only for this slice; cluster CS_4 at 172.16.33.114:80.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="s-loc">
+      <div class="slide-num"></div>
+      <span class="tag">Local quam_config · Engineering</span>
+      <h1>Code volume and design decisions</h1>
+      <p class="lead">
+        All new behaviour lives under <code>quam_config/</code> as requested (local-only). Line counts below are current file lengths (physical lines including blanks and docstrings).
+      </p>
+      <p class="loc-highlight">≈ 453 lines</p>
+      <p class="lead" style="margin-top:0;">of new or materially changed Python across the three main modules (excluding comments-only churn in legacy templates).</p>
+      <table>
+        <thead>
+          <tr><th>File</th><th>Lines</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>my_quam.py</code></td><td>78</td><td>Custom QUAM types + root class (single file, no separate <code>custom_components.py</code>)</td></tr>
+          <tr><td><code>generate_quam_parametric_cavity.py</code></td><td>152</td><td>Manual FEM wiring, network, ports, initial pulses, <code>active_qubit_names</code></td></tr>
+          <tr><td><code>populate_quam_parametric_cavity.py</code></td><td>223</td><td>Frequencies, bands, powers, DragCosine + parametric pulse library, save</td></tr>
+          <tr><td><code>__init__.py</code></td><td>3</td><td>Unchanged export surface (<code>Quam</code> only)</td></tr>
+        </tbody>
+        <tfoot>
+          <tr><td colspan="2">Total (three modules above)</td><td>453 lines</td></tr>
+        </tfoot>
+      </table>
+
+      <h2>Key decisions (why, not only what)</h2>
+      <ul class="clean decisions">
+        <li><strong>Single-file components.</strong> Kept <code>StorageCavity</code>, <code>ParametricDriveMW</code>, <code>ParametricCavityTransmon</code>, and <code>Quam</code> in <code>my_quam.py</code> so calibration imports stay one hop (<code>from quam_config import Quam</code>) and review surface stays small.</li>
+        <li><strong><code>BaseQuam</code> root.</strong> Chosen over <code>FluxTunableQuam</code> (no flux-tunable transmon / no <code>z</code> in v1) and over tightening to <code>FixedFrequencyQuam</code> while still adding <code>cavity</code> and <code>parametric_drive</code> fields on the qubit type — explicit <code>Dict[str, ParametricCavityTransmon]</code> on the root avoids stock pair / flux init assumptions until needed.</li>
+        <li><strong>Manual <code>generate_quam_parametric_cavity</code>.</strong> Skipped <code>Connectivity</code> / <code>allocate_wiring</code> because no stock pattern maps “cavity XY + parametric MW on flux line” without misleading semantics.</li>
+        <li><strong>Port deduplication via <code>#/ports/...</code> strings.</strong> Readout and transmon XY share MW-FEM O1; QuAM forbids assigning the same <code>MWFEMAnalogOutputPort</code> instance to two parents — references resolve to one port object in <code>ports</code>.</li>
+        <li><strong>Initial <code>RF_frequency</code> on channels at generate time.</strong> Required so <code>ReadoutResonatorMW</code> can resolve <code>inferred_intermediate_frequency</code>; avoids hung or warning-heavy <code>generate_config()</code> during first load.</li>
+        <li><strong>Cluster vs controller id split.</strong> <code>network.cluster_name = "CS_4"</code> for QMM discovery; <code>controller_id = "con1"</code> (and <code>FEMPortsContainer</code> keys) for QUA <code>controllers</code> — QOP validates resource names separately from dashboard labels.</li>
+        <li><strong><code>active_qubit_names</code>.</strong> Explicit list in generate plus populate fallback — empty list breaks Qualibration nodes (zero qubits → empty stream processing).</li>
+        <li><strong><code>QUAM_STATE_PATH</code> → <code>quam_config/quam_state</code>.</strong> Co-locates machine JSON with the package that owns the schema; repeatable CI / laptop runs.</li>
+        <li><strong>MW-FEM only in v1.</strong> No LF-FEM / DC flux; all difference tones (0.2 / 1.5 / 1.7 GHz) on O4 Band 1 per hardware discussion.</li>
+      </ul>
+
+      <h2>Reuse of stock tools — line-count headroom</h2>
+      <p class="lead">
+        If we leaned harder on existing repo tooling (<code>qualang_tools.wirer</code> + <code>build_quam_wiring</code> / <code>build_quam</code>, and helpers from <code>populate_quam_lf_mw_fems.py</code>) <em>without</em> changing the physics model, approximate savings:
+      </p>
+      <div class="grid2">
+        <div class="card">
+          <h3><code>my_quam.py</code></h3>
+          <p><strong>~0 lines.</strong> Custom components remain; switching stock QUAM roots saves at most a few import / typing lines.</p>
+        </div>
+        <div class="card">
+          <h3><code>populate_quam_parametric_cavity.py</code></h3>
+          <p><strong>~40–90 lines.</strong> Mostly by importing or factoring shared helpers (<code>get_band</code>, <code>get_full_scale_power_dBm_and_amplitude</code>, etc.) instead of duplicating the LF/MW-FEM populate script.</p>
+        </div>
+        <div class="card">
+          <h3><code>generate_quam_parametric_cavity.py</code></h3>
+          <p><strong>~10–30 lines</strong> of comments / boilerplate. Larger cuts (<strong>~60–100</strong>) only if the wirer gains first-class topology support or we add a <em>new</em> shared FEM builder — not “reuse as-is” today.</p>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Scenario</th><th>Order of magnitude</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Realistic: DRY populate + light cleanup of generate</td><td><strong>~50–120 lines</strong> (~10–25% of ~453)</td></tr>
+          <tr><td>Hypothetical: upstream / shared abstraction for this wiring shape</td><td>Additional headroom beyond the row above</td></tr>
+        </tbody>
+      </table>
+      <p class="lead" style="margin-top:0.75rem;font-size:0.95rem;">Bottom line: most of the line count is intrinsic to an explicit object graph and a device layout that standard <code>Connectivity</code> recipes do not express yet.</p>
+    </section>
+
+    <section class="slide" id="s1">
+      <div class="slide-num"></div>
+      <span class="tag">Physics &amp; connectivity</span>
+      <h1>Device model</h1>
+      <p class="lead">Three coupled modes; two physical lines to the chip (microwave feed and “flux” line carrying parametric RF).</p>
+      <table>
+        <thead>
+          <tr><th>Mode</th><th>Role</th><th>Typical frequency</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Transmon</td><td>Qubit (fixed frequency)</td><td>4.3 GHz</td></tr>
+          <tr><td>Readout resonator</td><td>Dispersive readout</td><td>4.5 GHz</td></tr>
+          <tr><td>Storage cavity</td><td>Bosonic mode, XY drive only</td><td>6.0 GHz</td></tr>
+        </tbody>
+      </table>
+      <p class="lead" style="margin-top:1rem;">LF-FEM / DC flux was deferred in this revision; parametric coupling uses MW tones only.</p>
+    </section>
+
+    <section class="slide" id="s2">
+      <div class="slide-num"></div>
+      <span class="tag">QUAM / code</span>
+      <h1>What we built</h1>
+      <h2><code>my_quam.py</code> (single module)</h2>
+      <ul class="clean">
+        <li><strong>StorageCavity</strong> — <code>QuamComponent</code> with <code>xy: XYDriveMW</code>, lifetimes, <code>f_01</code>.</li>
+        <li><strong>ParametricDriveMW</strong> — extends <code>MWChannel</code>; tracks mode frequencies; detuning helpers (0.2 / 1.5 / 1.7 GHz).</li>
+        <li><strong>ParametricCavityTransmon</strong> — extends <code>FixedFrequencyTransmon</code>; adds <code>cavity</code> and <code>parametric_drive</code> (no flux <code>z</code> line in v1).</li>
+        <li><strong>Quam</strong> — extends <code>BaseQuam</code> with <code>qubits: Dict[str, ParametricCavityTransmon]</code> (avoids flux-tunable root assumptions while keeping fixed-frequency qubit semantics).</li>
+      </ul>
+      <h2>Scripts</h2>
+      <ul class="clean">
+        <li><strong>generate_quam_parametric_cavity.py</strong> — Manual FEM wiring (no generic wirer template); shared O1 via <code>#/ports/...</code> references; saves QUAM state.</li>
+        <li><strong>populate_quam_parametric_cavity.py</strong> — Frequencies, bands, powers, readout / XY / cavity / parametric pulses; writes <code>qua_config.json</code> when run.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    QUAlibrate · QUAM · OPX1000 · May 2026 · 4 slides · Line counts from repo snapshot · Single-file HTML
+  </footer>
+</body>
+</html>
