@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CS_4 QUAM Configuration — CTO Briefing</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --text: #e8eef5;
+      --muted: #8b9cb3;
+      --accent: #3d9cfd;
+      --accent2: #5ce1c0;
+      --warn: #f0b429;
+      --border: rgba(255,255,255,0.08);
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Cascadia Code", "Consolas", monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: clamp(15px, 1.5vw, 18px);
+    }
+    .deck {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    header.deck-header {
+      text-align: center;
+      padding: 3rem 1rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2.5rem;
+    }
+    header.deck-header .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      border: 1px solid var(--accent2);
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      margin-bottom: 1rem;
+    }
+    header.deck-header h1 {
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+    header.deck-header p.sub {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 42rem;
+      margin: 0 auto;
+    }
+    section.slide {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem 2rem;
+      margin-bottom: 1.25rem;
+      break-inside: avoid;
+    }
+    section.slide h2 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    section.slide h2 span.num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 6px;
+      background: var(--surface2);
+      color: var(--accent2);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    section.slide h3 {
+      font-size: 0.95rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 1.25rem 0 0.5rem;
+    }
+    ul { margin-left: 1.25rem; }
+    li { margin-bottom: 0.4rem; }
+    p { margin-bottom: 0.75rem; }
+    strong { color: #fff; font-weight: 600; }
+    .muted { color: var(--muted); }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 720px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      margin: 0.5rem 0;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    tr:last-child td { border-bottom: none; }
+    code, .mono { font-family: var(--mono); font-size: 0.88em; }
+    .callout {
+      background: var(--surface2);
+      border-left: 3px solid var(--warn);
+      padding: 0.85rem 1rem;
+      margin: 1rem 0;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.95rem;
+    }
+    .callout.ok { border-left-color: var(--accent2); }
+    .diagram {
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin: 1rem 0;
+      overflow-x: auto;
+    }
+    .diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+    footer.meta {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 2rem 1rem;
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
+    @media print {
+      body { background: #fff; color: #111; }
+      section.slide { background: #f8f9fb; border: 1px solid #ddd; page-break-inside: avoid; }
+      :root { --text: #111; --muted: #444; --accent: #0066cc; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck">
+    <header class="deck-header">
+      <div class="badge">Technical briefing</div>
+      <h1>CS_4 QUAM configuration</h1>
+      <p class="sub">
+        Two-qubit superconducting stack with a flux-tunable coupler and an additional microwave drive on the coupler,
+        using QUAlibrate <code>quam_config</code> and a targeted extension to the standard <code>quam-builder</code> model.
+      </p>
+    </header>
+
+    <section class="slide">
+      <h2><span class="num">1</span> Executive summary</h2>
+      <p>
+        We are configuring the <strong>CS_4</strong> OPX1000 cluster for a compact two-qubit experiment:
+        one flux-tunable transmon, one fixed-frequency transmon, and a <strong>tunable coupler</strong> between them.
+        The coupler must support both <strong>flux bias</strong> (standard) and a dedicated <strong>XY microwave line</strong>
+        for new control experiments (for example continuous-wave spectroscopy on the coupler).
+      </p>
+      <div class="callout ok">
+        <strong>CTO takeaway:</strong> The approach reuses the existing QUAM / wirer pipeline for most of the wiring and
+        avoids forking <code>quam-builder</code> until upstream supports coupler XY natively. The CS_4-specific footprint is
+        explicit code volume under <code class="mono">qualibration_graphs/superconducting/quam_config/</code>
+        (physical lines per file—includes docstrings, comments, and blank lines; counted on the working tree):
+      </div>
+      <table style="margin-top: 0.75rem;">
+        <thead>
+          <tr><th>File</th><th>Physical lines</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code class="mono">my_quam.py</code></td><td><strong>176</strong></td></tr>
+          <tr><td><code class="mono">generate_quam.py</code></td><td><strong>122</strong></td></tr>
+          <tr><td><code class="mono">populate_quam_two_transmons.py</code></td><td><strong>256</strong></td></tr>
+          <tr><td><code class="mono">__init__.py</code> (re-export <code>Quam</code>)</td><td><strong>3</strong></td></tr>
+          <tr><td><strong>Total (four modules)</strong></td><td><strong>557</strong></td></tr>
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top: 1rem;">
+        <strong>Latest field check (May&nbsp;2026):</strong> readout resonator spectroscopy (<code>02a_resonator_spectroscopy</code>) ran on CS_4 after a routine <code>00_close_other_qms</code> pre-step.
+        The mixed topology (Q1 with flux, Q2 fixed-frequency) surfaced one gap in upstream joint-flux helpers; we patched <code>Quam</code> locally—details on slide&nbsp;5.
+      </p>
+    </section>
+
+    <section class="slide">
+      <h2><span class="num">2</span> Logical system topology</h2>
+      <div class="diagram" aria-hidden="true">
+        <svg viewBox="0 0 520 120" width="520" height="120" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#3d9cfd;stop-opacity:0.25"/>
+              <stop offset="100%" style="stop-color:#5ce1c0;stop-opacity:0.25"/>
+            </linearGradient>
+          </defs>
+          <rect x="10" y="30" width="120" height="60" rx="10" fill="#1a2332" stroke="#3d9cfd" stroke-width="1.5"/>
+          <text x="70" y="58" text-anchor="middle" fill="#e8eef5" font-size="13" font-family="Segoe UI,sans-serif">Q1</text>
+          <text x="70" y="76" text-anchor="middle" fill="#8b9cb3" font-size="10" font-family="Segoe UI,sans-serif">Flux-tunable</text>
+          <rect x="200" y="15" width="120" height="90" rx="10" fill="#1a2332" stroke="#5ce1c0" stroke-width="1.5"/>
+          <text x="260" y="48" text-anchor="middle" fill="#e8eef5" font-size="13" font-family="Segoe UI,sans-serif">Coupler</text>
+          <text x="260" y="66" text-anchor="middle" fill="#8b9cb3" font-size="10" font-family="Segoe UI,sans-serif">z (flux)</text>
+          <text x="260" y="82" text-anchor="middle" fill="#8b9cb3" font-size="10" font-family="Segoe UI,sans-serif">xy (MW)</text>
+          <rect x="390" y="30" width="120" height="60" rx="10" fill="#1a2332" stroke="#3d9cfd" stroke-width="1.5"/>
+          <text x="450" y="58" text-anchor="middle" fill="#e8eef5" font-size="13" font-family="Segoe UI,sans-serif">Q2</text>
+          <text x="450" y="76" text-anchor="middle" fill="#8b9cb3" font-size="10" font-family="Segoe UI,sans-serif">Fixed freq.</text>
+          <line x1="130" y1="60" x2="198" y2="60" stroke="#8b9cb3" stroke-width="2"/>
+          <line x1="320" y1="60" x2="388" y2="60" stroke="#8b9cb3" stroke-width="2"/>
+          <rect x="0" y="0" width="520" height="120" fill="url(#g1)" opacity="0.35" rx="12"/>
+        </svg>
+      </div>
+      <ul>
+        <li><strong>Q1:</strong> readout resonator, XY drive, individual flux line.</li>
+        <li><strong>Q2:</strong> readout resonator, XY drive; no qubit flux line.</li>
+        <li><strong>Coupler:</strong> dedicated flux line <em>plus</em> dedicated XY (microwave) line for advanced protocols.</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2><span class="num">3</span> Software stack and workflow</h2>
+      <div class="two-col">
+        <div>
+          <h3>Stack</h3>
+          <ul>
+            <li><strong>QUAM</strong> — machine state, JSON round-trip, <code>generate_config()</code></li>
+            <li><strong>quam-builder</strong> — transmon / pair types, <code>build_quam</code>, CZ helpers</li>
+            <li><strong>qualang_tools.wirer</strong> — connectivity allocation</li>
+            <li><strong>quam_config</strong> (this repo) — site-specific <code>Quam</code>, <code>generate_quam.py</code>, populate scripts</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Workflow</h3>
+          <ol style="margin-left: 1.25rem;">
+            <li>Run <code class="mono">generate_quam.py</code> → wiring + skeleton <code>state.json</code></li>
+            <li>Post-process coupler → attach composite <strong>z + xy</strong></li>
+            <li>Run <code class="mono">populate_quam_*.py</code> → frequencies, pulses, CZ macros</li>
+            <li>Calibrations consume <code class="mono">Quam.load()</code> in nodes</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2><span class="num">4</span> Gap vs upstream <code>quam-builder</code></h2>
+      <p>
+        Today, <code>TunableCoupler</code> is implemented as a <strong>single flux channel</strong>. There is no first-class
+        “coupler XY” line type in the wirer, and pair <code>align()</code> only registers one coupler element name.
+      </p>
+      <div class="callout">
+        <strong>Risk if ignored:</strong> Experiments that need <code>coupler.xy.play("cw")</code>-style APIs would be forced into
+        ad-hoc QUA elements outside QUAM, losing serialization, reuse across calibrations, and alignment guarantees.
+      </div>
+      <h3>Mitigation (local extension)</h3>
+      <ul>
+        <li>Composite <strong><code>TunableCouplerWithXY</code></strong>: holds <code>z: TunableCoupler</code> and <code>xy: XYDriveMW</code>; delegates flux helpers to <code>z</code>.</li>
+        <li>Subclass pair: <strong><code>FluxTunableTransmonPairXYCoupler</code></strong> — <code>align</code> / <code>wait</code> include both channel names.</li>
+        <li><strong><code>Quam</code></strong> overrides <code>qubit_pair_type</code> so the builder instantiates the extended pair type.</li>
+        <li><code>generate_quam.py</code> performs a <strong>post-build swap</strong> of the coupler object and wires MW port O4 for XY.</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2><span class="num">5</span> Lab validation — resonator spectroscopy (CS_4)</h2>
+      <p>
+        After closing other quantum machines (<code>00_close_other_qms</code>), we ran the standard QUAlibrate node
+        <code class="mono">calibrations/1Q_calibrations/02a_resonator_spectroscopy.py</code> against the live cluster using
+        <code>Quam.load()</code> from this configuration.
+      </p>
+      <h3>What broke (first attempt)</h3>
+      <p>
+        Program generation failed inside <code>initialize_qpu</code> → <code>FluxTunableQuam.set_all_fluxes</code>:
+        for <code>flux_point="joint"</code> the stock code read <code>target.z.joint_offset</code> for every active transmon.
+        <strong>Q2 has no qubit flux line</strong> (<code>z</code> is absent), so Python raised <code>AttributeError: 'NoneType' object has no attribute 'joint_offset'</code>.
+      </p>
+      <h3>What we changed</h3>
+      <ul>
+        <li><strong><code>quam_config/my_quam.py</code> — <code>Quam</code> overrides:</strong> <code>set_all_fluxes</code> skips per-qubit <code>z</code> access when the target has no flux; still applies global joint-idle where flux exists, and only calls <code>settle()</code> when <code>z</code> is present.</li>
+        <li><strong>Same file — <code>apply_all_flux_to_zero</code>:</strong> guard so active fixed-frequency qubits do not go through <code>q.z.to_zero()</code> (upstream would also fail there).</li>
+      </ul>
+      <h3>What succeeded (second attempt)</h3>
+      <ul>
+        <li><strong>Hardware path:</strong> QOP health check passed; QM opened; program queued and completed with a clean execution report.</li>
+        <li><strong>Readout fit — Q1:</strong> automated fit reported <strong>success</strong> (logged resonator ~<strong>5.50&nbsp;GHz</strong>, FWHM on the order of a few MHz — values depend on placeholder vs chip-tuned state).</li>
+        <li><strong>Readout fit — Q2:</strong> automated fit returned <strong>NaN</strong> (failure). This points to readout guess / SNR / multiplexing or placeholder frequencies rather than the flux-initialization bug; engineering follow-up is standard spectroscopy tuning, not the coupler-XY extension.</li>
+      </ul>
+      <h3>Operational notes</h3>
+      <ul>
+        <li><strong>Tooling:</strong> runtime warned that installed <code>qm-qua</code> is older than the QOP pairing recommends; plan a controlled upgrade when convenient.</li>
+        <li><strong>QUAlibrate DB:</strong> saving machine state to the project database was skipped (<em>no database connection configured</em>); local <code>quam_state</code> and run-folder copies still saved.</li>
+        <li><strong>Expected noise:</strong> <code>quam-builder</code> emits user warnings when joint-idle skips Q2 because it has no <code>z</code>; harmless once flux helpers are guarded.</li>
+      </ul>
+      <div class="callout ok">
+        <strong>CTO takeaway:</strong> The CS_4 QUAM model is now exercised on real hardware for a representative 1Q calibration.
+        One real mixed-architecture sharp edge was found and fixed in our thin extension layer; remaining Q2 fit work is normal calibration hygiene.
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2><span class="num">6</span> Appendix — repository pointers</h2>
+      <ul>
+        <li><code class="mono">qualibration_graphs/superconducting/quam_config/README.md</code> — QUAM state workflow</li>
+        <li><code class="mono">qualibration_graphs/superconducting/quam_config/wiring_examples/wiring_lffem_mwfem.py</code> — baseline wirer pattern</li>
+        <li><code class="mono">qualibration_graphs/superconducting/quam_config/populate_quam_lf_mw_fems.py</code> — reference for MW-FEM population</li>
+        <li><code class="mono">Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon/</code> — classical QUA examples (parallel track)</li>
+      </ul>
+    </section>
+
+    <footer class="meta">
+      QM Machines — CS_4 QUAM / QUAlibrate configuration briefing · For internal CTO review ·
+      Updated May&nbsp;2026 (live resonator spectroscopy) · Source: engineering plan (qua-libs)
+    </footer>
+  </div>
+</body>
+</html>
