@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Test · 03a qubit spec · XarrayDataFetcher regex break (IQ stream tags)</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e8eef7;
+      --muted: #8b9cb3;
+      --accent: #3d9cfd;
+      --ok: #3ecf8e;
+      --bad: #f47174;
+      --warn: #f5a524;
+      --border: #2a3a52;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Consolas", "Cascadia Code", monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    header.nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.5rem;
+      background: rgba(15, 20, 25, 0.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    header.nav span.brand { font-weight: 600; font-size: 0.95rem; letter-spacing: 0.02em; }
+    header.nav nav a {
+      color: var(--muted);
+      text-decoration: none;
+      margin-left: 1rem;
+      font-size: 0.8rem;
+    }
+    header.nav nav a:hover { color: var(--accent); }
+    main {
+      padding-top: 3.5rem;
+      counter-reset: slide;
+      --slide-total: 6;
+    }
+    section.slide {
+      position: relative;
+      min-height: 100vh;
+      padding: 4rem clamp(1.5rem, 5vw, 4rem) 3.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 58rem;
+      margin: 0 auto;
+      counter-increment: slide;
+    }
+    section.slide .slide-num {
+      position: absolute;
+      bottom: 1.25rem;
+      right: clamp(1.5rem, 5vw, 4rem);
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    section.slide .slide-num::before {
+      content: "Slide " counter(slide) " / " var(--slide-total);
+    }
+    section.slide h1 {
+      font-size: clamp(1.65rem, 3.8vw, 2.5rem);
+      font-weight: 700;
+      margin: 0 0 0.75rem;
+      letter-spacing: -0.02em;
+    }
+    section.slide h2 {
+      font-size: clamp(1.15rem, 2.2vw, 1.5rem);
+      font-weight: 600;
+      margin: 1.75rem 0 0.65rem;
+      color: var(--accent);
+    }
+    p.lead {
+      font-size: 1.05rem;
+      color: var(--muted);
+      max-width: 48rem;
+      margin: 0 0 1.25rem;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      margin-bottom: 1rem;
+    }
+    ul.clean { margin: 0; padding-left: 1.2rem; }
+    ul.clean li { margin: 0.4rem 0; }
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+    }
+    .card h3 { margin: 0 0 0.45rem; font-size: 0.92rem; font-weight: 600; }
+    .card p { margin: 0; font-size: 0.88rem; color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin: 1rem 0;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.5rem 0.65rem;
+      border: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th { background: var(--panel); color: var(--muted); font-weight: 600; }
+    code, pre { font-family: var(--mono); font-size: 0.8rem; }
+    pre {
+      background: #0a0e14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      overflow-x: auto;
+      margin: 0.65rem 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .ok { color: var(--ok); font-weight: 600; }
+    .bad { color: var(--bad); font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    @media print {
+      header.nav { position: static; }
+      section.slide { min-height: auto; page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <span class="brand">qua-libs · Data path &amp; fetcher</span>
+    <nav>
+      <a href="#s0">Title</a>
+      <a href="#s1">Pipeline</a>
+      <a href="#s2">Files</a>
+      <a href="#s3">Regex</a>
+      <a href="#s4">Data shape</a>
+      <a href="#s5">Crash map</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="slide" id="s0">
+      <div class="slide-num"></div>
+      <span class="tag">Archived test · May 2026</span>
+      <h1>Stream result tags, <code>XarrayDataFetcher</code>, and downstream IQ analysis</h1>
+      <p class="lead">
+        This deck records what was observed when <code>03a_qubit_spectroscopy.py</code> was changed so that
+        <strong>saved stream names no longer match</strong> the grouping regex inside
+        <code>qualibration_libs.data.fetcher.XarrayDataFetcher</code>. Execution on hardware still completes;
+        Python analysis then fails with a clear <code>KeyError</code> on <code>I</code> / <code>Q</code>.
+      </p>
+      <div class="grid2">
+        <div class="card">
+          <h3>Observation</h3>
+          <p>Tags like <code>I1</code>, <code>Q1</code> are not arbitrary labels: they are the coupling surface between QM job handles and xarray layout.</p>
+        </div>
+        <div class="card">
+          <h3>Hypothesis → outcome</h3>
+          <p>Breaking the regex breaks <span class="bad">automatic stacking</span> into variables named <code>I</code> and <code>Q</code> with a <code>qubit</code> dimension.</p>
+        </div>
+        <div class="card">
+          <h3>Evidence</h3>
+          <p>A full run after the tag change: job OK, <code>analyse_data</code> raised <code>KeyError: 'I'</code> inside <code>convert_IQ_to_V</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="s1">
+      <div class="slide-num"></div>
+      <span class="tag">What ties to what</span>
+      <h1>End-to-end pipeline (contract chain)</h1>
+      <p class="lead">
+        Each arrow is a <strong>named contract</strong>: stream keys from QUA, axis dict keys, xarray variable names, and analysis entry points must stay aligned unless you insert an adapter.
+      </p>
+      <pre>QUA program (create_qua_program)
+  stream_processing():  .save("…")  ──►  QM job result_handles (string keys)
+
+execute_qua_program
+  XarrayDataFetcher(job, sweep_axes)  ──►  uses keys + axes to build xr.Dataset
+
+analyse_data
+  process_raw_dataset(ds_raw, node)
+    convert_IQ_to_V(ds, qubits)     expects  data_vars  "I" and "Q"  (default IQ_list)
+    add_amplitude_and_phase(ds, …)  expects  I, Q  after conversion
+
+fit_raw_data
+  uses  ds.I, ds.Q, ds.IQ_abs, …   on dimensions  qubit × detuning</pre>
+      <h2>Critical link</h2>
+      <p class="lead" style="margin-top:0">
+        The fetcher’s regex is the <strong>only</strong> place that turns <code>I1</code>, <code>I2</code>, … into one variable <code>I</code> stacked on <code>qubit</code>.
+        Rename streams without updating this chain → downstream code never sees <code>I</code>/<code>Q</code>.
+      </p>
+    </section>
+
+    <section class="slide" id="s2">
+      <div class="slide-num"></div>
+      <span class="tag">Files &amp; code blocks</span>
+      <h1>Where each responsibility lives</h1>
+      <table>
+        <thead>
+          <tr>
+            <th>Location</th>
+            <th>Role</th>
+            <th>Relevant block</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>qualibration_graphs/superconducting/calibrations/1Q_calibrations/03a_qubit_spectroscopy.py</code></td>
+            <td>Defines sweep axes, QUA program, job execution, passes <code>sweep_axes</code> into fetcher.</td>
+            <td><code>create_qua_program</code>: <code>node.namespace["sweep_axes"]</code> + <code>stream_processing()</code> <code>.save(...)</code> tags.<br /><code>execute_qua_program</code>: <code>XarrayDataFetcher(job, node.namespace["sweep_axes"])</code>.</td>
+          </tr>
+          <tr>
+            <td><code>qualibration_libs/data/fetcher.py</code> (installed package, e.g. site-packages)</td>
+            <td>Maps result-handle keys to xarray; groups multiplexed IQ when the regex matches.</td>
+            <td><code>XarrayDataFetcher._update_qubit_data_arrays</code>: <code>re.match(r"([a-zA-Z_]+?(?:_(c|t)+)?)(\d+)$", key)</code> then stack by index.</td>
+          </tr>
+          <tr>
+            <td><code>qualibration_libs/data/processing.py</code></td>
+            <td>Scales raw counts to volts using readout length; assumes variable names.</td>
+            <td><code>convert_IQ_to_V(..., IQ_list=("I", "Q"))</code> indexes <code>da["I"]</code>, <code>da["Q"]</code>.</td>
+          </tr>
+          <tr>
+            <td><code>qualibration_graphs/superconducting/calibration_utils/qubit_spectroscopy/analysis.py</code></td>
+            <td>Fitting and metadata; assumes dataset from <code>process_raw_dataset</code>.</td>
+            <td><code>process_raw_dataset</code> → <code>convert_IQ_to_V</code>; <code>fit_raw_data</code> uses <code>ds.IQ_abs</code>, <code>ds.I</code>, <code>ds.Q</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="lead" style="margin-top:0.5rem">
+        <span class="warn">Runtime note:</span> Running the node as a file puts the script directory first on <code>sys.path</code>.
+        Set <code>PYTHONPATH</code> to <code>qualibration_graphs/superconducting</code> so <code>from quam_config import Quam</code> resolves the <strong>repo</strong> <code>quam_config</code>, not another installed copy.
+      </p>
+    </section>
+
+    <section class="slide" id="s3">
+      <div class="slide-num"></div>
+      <span class="tag">Regex mechanics</span>
+      <h1>Why <code>I1</code> groups and <code>demod_I_slot_1_v</code> does not</h1>
+      <p class="lead">
+        The fetcher groups keys only when the <strong>entire</strong> string matches: a prefix (the “base” name) plus <strong>digits only at the end</strong>.
+      </p>
+      <pre class="mono">re.match(r"([a-zA-Z_]+?(?:_(c|t)+)?)(\d+)$", key)</pre>
+      <table>
+        <thead><tr><th>Example key</th><th>Regex match?</th><th>Effect in fetcher</th></tr></thead>
+        <tbody>
+          <tr><td><code>I1</code>, <code>Q2</code></td><td class="ok">Yes</td><td>Grouped into base <code>I</code> / <code>Q</code>; stacked along first axis (<code>qubit</code>).</td></tr>
+          <tr><td><code>n</code></td><td>No (no trailing <code>\d+</code>)</td><td>Unmatched branch: assigned with dims <code>detuning</code> only (already observed in working runs).</td></tr>
+          <tr><td><code>demod_I_slot_1_v</code></td><td class="bad">No</td><td>Each key becomes its own data variable; no merge into <code>I</code>.</td></tr>
+        </tbody>
+      </table>
+      <h2>Intentional experiment (this run only)</h2>
+      <p class="lead" style="margin-top:0">
+        For this test, <code>create_qua_program</code> temporarily saved averages as <code>demod_I_slot_{i+1}_v</code> and <code>demod_Q_slot_{i+1}_v</code> so the pattern above did not match — the grouping regex <strong>did not fire</strong> for those keys. The calibration script was restored to standard <code>I{i+1}</code> / <code>Q{i+1}</code> tags afterward for further work.
+      </p>
+    </section>
+
+    <section class="slide" id="s4">
+      <div class="slide-num"></div>
+      <span class="tag">Types &amp; shapes</span>
+      <h1>What the dataset looks like before vs after</h1>
+      <table>
+        <thead>
+          <tr><th>Aspect</th><th>Classic tags (<code>I1</code>, <code>Q1</code>)</th><th>New tags (<code>demod_*_v</code>)</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Coordinates</strong></td>
+            <td><code>qubit</code>, <code>detuning</code> (from <code>sweep_axes</code>)</td>
+            <td>Same coordinates registered; unused for unmatched IQ keys on the qubit axis.</td>
+          </tr>
+          <tr>
+            <td><strong>Raw IQ variables</strong></td>
+            <td><code>I(qubit, detuning)</code>, <code>Q(qubit, detuning)</code> — <code>numpy</code> arrays inside <code>xarray.DataArray</code></td>
+            <td><code>demod_I_slot_1_v(detuning)</code>, <code>demod_Q_slot_1_v(detuning)</code> — still real arrays, <strong>no</strong> <code>qubit</code> dimension on those vars.</td>
+          </tr>
+          <tr>
+            <td><strong>Types</strong></td>
+            <td colspan="2"><code>xarray.Dataset</code> of float-like time-integrated demodulation results (counts before <code>convert_IQ_to_V</code>); job also exposes <code>n</code> for shot progress.</td>
+          </tr>
+        </tbody>
+      </table>
+      <h2>Why analysis fails (precise failure)</h2>
+      <ul class="clean">
+        <li><code>convert_IQ_to_V</code> does a dict comprehension over <code>("I", "Q")</code> and indexes the dataset.</li>
+        <li>After the tag change, available keys were reported as <code>demod_I_slot_1_v</code>, <code>demod_Q_slot_1_v</code> only (plus coords) — so <code>KeyError: 'I'</code>.</li>
+        <li>No exception in QUA or on the cluster for this mismatch; it is a <strong>pure Python / xarray contract break</strong>.</li>
+      </ul>
+    </section>
+
+    <section class="slide" id="s5">
+      <div class="slide-num"></div>
+      <span class="tag">Resilience map</span>
+      <h1>What crashes, what does not, and what is skipped</h1>
+      <table>
+        <thead>
+          <tr><th>Stage</th><th>Outcome with broken IQ tags</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>QUA compile / queue / job run</td><td class="ok">Succeeds — stream names are opaque to the compiler as long as they are unique and consistent with <code>save</code>.</td></tr>
+          <tr><td><code>XarrayDataFetcher</code> iteration</td><td class="ok">Succeeds — it still builds a dataset; shape rules for non-matching keys use <code>dims_order[1:]</code> only.</td></tr>
+          <tr><td><code>execute_qua_program</code> exit</td><td class="ok">Leaves <code>node.results["ds_raw"]</code> populated with the “wrong” variable names.</td></tr>
+          <tr><td><code>analyse_data</code></td><td class="bad">Raises (unhandled) — first hard stop at <code>convert_IQ_to_V</code>.</td></tr>
+          <tr><td><code>plot_data</code>, <code>update_state</code>, <code>save_results</code></td><td><span class="warn">Not reached</span> in the same process — Qualibrate run actions short-circuit on uncaught exceptions (so no plots, no QUAM updates from this node in that run).</td></tr>
+        </tbody>
+      </table>
+      <h2>How to avoid breakage (options)</h2>
+      <ul class="clean">
+        <li><strong>Revert stream tags</strong> to <code>I{i+1}</code> / <code>Q{i+1}</code> for this node family.</li>
+        <li><strong>Adapter after fetch:</strong> rename / <code>xr.concat</code> demod variables into <code>I</code> and <code>Q</code> with a <code>qubit</code> dimension before <code>process_raw_dataset</code>.</li>
+        <li><strong>Upstream change:</strong> extend <code>convert_IQ_to_V</code> / analysis to accept configurable names (larger surface area).</li>
+      </ul>
+      <p class="lead" style="margin-top:1rem;font-size:0.95rem;">
+        Bottom line: the system does not “crush” silently — hardware and fetching succeed — but the <strong>calibration node’s Python tail</strong> fails fast with a typed dataset key error until names or adapters are restored.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    Single-file HTML · qua-libs · <code>test_03a_qubit_spec_xarray_fetcher_regex_break_presentation.html</code> · May 2026
+  </footer>
+</body>
+</html>

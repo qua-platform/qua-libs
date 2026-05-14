@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Observations deck · template</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e8eef7;
+      --muted: #8b9cb3;
+      --accent: #3d9cfd;
+      --border: #2a3a52;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Consolas", "Cascadia Code", monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.55; }
+    header.nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1.5rem; background: rgba(15, 20, 25, 0.92);
+      border-bottom: 1px solid var(--border); backdrop-filter: blur(8px);
+    }
+    header.nav span.brand { font-weight: 600; font-size: 0.95rem; }
+    header.nav nav a { color: var(--muted); text-decoration: none; margin-left: 1rem; font-size: 0.8rem; }
+    header.nav nav a:hover { color: var(--accent); }
+    main { padding-top: 3.5rem; counter-reset: slide; --slide-total: 2; }
+    section.slide {
+      position: relative; min-height: 100vh;
+      padding: 4rem clamp(1.5rem, 5vw, 4rem) 3.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; justify-content: center;
+      max-width: 58rem; margin: 0 auto; counter-increment: slide;
+    }
+    section.slide .slide-num {
+      position: absolute; bottom: 1.25rem; right: clamp(1.5rem, 5vw, 4rem);
+      font-size: 0.9rem; color: var(--muted); font-variant-numeric: tabular-nums;
+    }
+    section.slide .slide-num::before { content: "Slide " counter(slide) " / " var(--slide-total); }
+    section.slide h1 {
+      font-size: clamp(1.65rem, 3.8vw, 2.5rem); font-weight: 700;
+      margin: 0 0 0.75rem; letter-spacing: -0.02em;
+    }
+    section.slide h2 { font-size: 1.25rem; font-weight: 600; margin: 1.5rem 0 0.5rem; color: var(--accent); }
+    p.lead { font-size: 1.05rem; color: var(--muted); max-width: 48rem; margin: 0 0 1.25rem; }
+    .tag {
+      display: inline-block; font-size: 0.7rem; text-transform: uppercase;
+      letter-spacing: 0.08em; padding: 0.2rem 0.5rem; border-radius: 4px;
+      background: var(--panel); color: var(--accent); border: 1px solid var(--border); margin-bottom: 1rem;
+    }
+    pre {
+      font-family: var(--mono); font-size: 0.82rem; background: #0a0e14;
+      border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto;
+    }
+    footer { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.8rem; }
+    @media print {
+      header.nav { position: static; }
+      section.slide { min-height: auto; page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <span class="brand">qua-libs · Superconducting</span>
+    <nav><a href="#s0">Title</a><a href="#s1">Next slides</a></nav>
+  </header>
+
+  <main>
+    <section class="slide" id="s0">
+      <div class="slide-num"></div>
+      <span class="tag">Template · duplicate this file for a new run</span>
+      <h1>Observations deck (blank iteration)</h1>
+      <p class="lead">
+        This file keeps the original name <code>data_fetcher_stream_tags_observations.html</code> as a
+        <strong>starter</strong> for the next experiment. The archived regex-break write-up lives in
+        <code>test_03a_qubit_spec_xarray_fetcher_regex_break_presentation.html</code>.
+      </p>
+      <p class="lead">
+        <code>03a_qubit_spectroscopy.py</code> is restored to standard <code>I{i+1}</code> / <code>Q{i+1}</code>
+        stream tags so <code>XarrayDataFetcher</code> stacks IQ and analysis runs normally.
+      </p>
+    </section>
+
+    <section class="slide" id="s1">
+      <div class="slide-num"></div>
+      <span class="tag">Checklist</span>
+      <h1>Add your next story here</h1>
+      <h2>Copy workflow</h2>
+      <pre>1. Duplicate this HTML (or rename) before editing, if you want to keep a clean template.
+2. Bump --slide-total in &lt;main&gt; and add &lt;section class="slide" id="…"&gt; blocks.
+3. Mirror nav links in the header for jump navigation.</pre>
+      <p class="lead">Remove this slide once you have real content, or replace the checklist with your notes.</p>
+    </section>
+  </main>
+
+  <footer>
+    Template · <code>data_fetcher_stream_tags_observations.html</code> · May 2026
+  </footer>
+</body>
+</html>

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CTO · Qubit spec · Plot / fit / IQ contract experiment</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e8eef7;
+      --muted: #8b9cb3;
+      --accent: #3d9cfd;
+      --ok: #3ecf8e;
+      --warn: #f5a524;
+      --bad: #f47174;
+      --border: #2a3a52;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Consolas", "Cascadia Code", monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    header.nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.5rem;
+      background: rgba(15, 20, 25, 0.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    header.nav span.brand {
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      font-size: 0.95rem;
+    }
+    header.nav nav a {
+      color: var(--muted);
+      text-decoration: none;
+      margin-left: 1rem;
+      font-size: 0.8rem;
+    }
+    header.nav nav a:hover { color: var(--accent); }
+    main {
+      padding-top: 3.5rem;
+      counter-reset: slide;
+      --slide-total: 6;
+    }
+    section.slide {
+      position: relative;
+      min-height: 100vh;
+      padding: 4rem clamp(1.5rem, 5vw, 4rem) 3.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 56rem;
+      margin: 0 auto;
+      counter-increment: slide;
+    }
+    section.slide .slide-num {
+      position: absolute;
+      bottom: 1.25rem;
+      right: clamp(1.5rem, 5vw, 4rem);
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+    }
+    section.slide .slide-num::before {
+      content: "Slide " counter(slide) " / " var(--slide-total);
+    }
+    section.slide h1 {
+      font-size: clamp(1.75rem, 4vw, 2.6rem);
+      font-weight: 700;
+      margin: 0 0 0.75rem;
+      letter-spacing: -0.02em;
+    }
+    section.slide h2 {
+      font-size: clamp(1.2rem, 2.4vw, 1.6rem);
+      font-weight: 600;
+      margin: 2rem 0 0.75rem;
+      color: var(--accent);
+    }
+    section.slide p.lead {
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 44rem;
+      margin: 0 0 1.35rem;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      margin-bottom: 1rem;
+    }
+    ul.clean { margin: 0; padding-left: 1.2rem; }
+    ul.clean li { margin: 0.45rem 0; }
+    ul.decisions li { margin: 0.6rem 0; }
+    ul.decisions strong { color: var(--text); }
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.2rem;
+    }
+    .card h3 {
+      margin: 0 0 0.45rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .card p { margin: 0; font-size: 0.88rem; color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+      margin: 1rem 0;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.7rem;
+      border: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th { background: var(--panel); color: var(--muted); font-weight: 600; }
+    code, pre {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+    pre {
+      background: #0a0e14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+      overflow-x: auto;
+      margin: 0.75rem 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .ok { color: var(--ok); font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    .bad { color: var(--bad); font-weight: 600; }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    @media print {
+      header.nav { position: static; }
+      section.slide { min-height: auto; page-break-after: always; }
+      section.slide .slide-num { position: static; display: block; margin-top: 1rem; text-align: right; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <span class="brand">QM · Superconducting calibrations · CTO</span>
+    <nav>
+      <a href="#s0">Summary</a>
+      <a href="#s1">Hypotheses</a>
+      <a href="#s2">Code</a>
+      <a href="#s3">Method</a>
+      <a href="#s4">Results</a>
+      <a href="#s5">Next</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="slide" id="s0">
+      <div class="slide-num"></div>
+      <span class="tag">Experiment · May 2026 · No hardware</span>
+      <h1>03a qubit spectroscopy: plot layer is fused to the fit pipeline</h1>
+      <p class="lead">
+        We validated three engineering claims about <code>03a_qubit_spectroscopy.py</code> and
+        <code>calibration_utils/qubit_spectroscopy/plotting.py</code>: there is no independent “plot raw IQ” path;
+        matplotlib traces read <strong><code>fit.I_rot</code></strong> (output of analysis), not <code>ds.IQ_abs</code>;
+        and the node always hands plotting both <code>ds_raw</code> (post-<code>process_raw_dataset</code>) and <code>ds_fit</code>.
+        A small Python harness reproduced the contracts without touching <code>create_qua_program</code>.
+      </p>
+      <div class="grid2">
+        <div class="card">
+          <h3>Artifact</h3>
+          <p><code>calibrations/1Q_calibrations/experiment_plot_fit_iq_contracts.py</code> &mdash; static source checks plus three runtime probes (Agg backend).</p>
+        </div>
+        <div class="card">
+          <h3>Verdict</h3>
+          <p><span class="ok">All hypotheses confirmed</span> as stated; one nuance: “raw” in UI text means processed volts / IQ_abs on <code>ds_raw</code>, while the drawn spectrum line is still <code>I_rot</code> from <code>ds_fit</code>.</p>
+        </div>
+        <div class="card">
+          <h3>Run status</h3>
+          <p>Script exit code <strong>0</strong>; logs may show QM session init from import side-effects only &mdash; no OPX program executed by the harness.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="s1">
+      <div class="slide-num"></div>
+      <span class="tag">Hypotheses</span>
+      <h1>What we set out to prove</h1>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Claim</th><th>Outcome</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Plotting has no dedicated path for raw demod IQ (e.g. <code>IQ_abs</code> vs frequency) separate from the fit workflow.</td>
+            <td class="ok">Confirmed: no <code>ds.IQ_abs</code> / <code>ds.I</code> / <code>ds.Q</code> in trace code; only <code>ds.detuning</code> feeds the Lorentzian x grid.</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Plotting and fitting are surgically coupled: the visible line uses variables that only exist after <code>fit_raw_data</code> (e.g. <code>I_rot</code>).</td>
+            <td class="ok">Confirmed: <code>.plot()</code> calls chain off <code>fit</code>; <code>fit=None</code> crashes before any draw.</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Trace naming is fixed to the analysis convention (<code>I</code>, <code>Q</code> in analysis; <code>I_rot</code> in plot).</td>
+            <td class="ok">Confirmed: plot hard-codes <code>I_rot</code> on the fit dataset; analysis defines <code>I_rot</code> from <code>I</code> and <code>Q</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide" id="s2">
+      <div class="slide-num"></div>
+      <span class="tag">Code reality</span>
+      <h1>Where coupling lives (two files)</h1>
+      <p class="lead"><strong>Plotting</strong> &mdash; primary curves are <code>fit</code>-side; <code>ds</code> only supplies <code>detuning</code> to the analytic overlay.</p>
+      <pre>(fit.assign_coords(full_freq_GHz=fit.full_freq / u.GHz).I_rot / u.mV).plot(ax=ax, x="full_freq_GHz")
+(fit.assign_coords(detuning_MHz=fit.detuning / u.MHz).I_rot / u.mV).plot(ax=ax2, x="detuning_MHz", ...)
+
+lorentzian_peak(ds.detuning, float(fit.amplitude.values), ...)</pre>
+      <p class="lead"><strong>Analysis</strong> &mdash; <code>I_rot</code> is derived from standard quadrature names on the merged fit dataset.</p>
+      <pre>ds_fit = ds_fit.assign({
+  "I_rot": ds_fit.I * np.cos(ds_fit.iw_angle) + ds_fit.Q * np.sin(ds_fit.iw_angle)
+})</pre>
+      <p class="lead"><strong>Node</strong> &mdash; single call site; no alternate plot entry.</p>
+      <pre>plot_raw_data_with_fit(node.results["ds_raw"], qubits, node.results["ds_fit"])</pre>
+    </section>
+
+    <section class="slide" id="s3">
+      <div class="slide-num"></div>
+      <span class="tag">Method</span>
+      <h1>How the harness exercises the contracts</h1>
+      <ul class="clean">
+        <li><strong>Static:</strong> <code>inspect.getsource(plot_individual_data_with_fit)</code> &mdash; assert no <code>ds.IQ_abs</code> / <code>ds.I_rot</code> substring; assert <code>03a</code> file text contains the dual-argument <code>plot_raw_data_with_fit(..., ds_fit)</code> pattern.</li>
+        <li><strong>Runtime A:</strong> call <code>plot_individual_data_with_fit(..., fit=None)</code> &mdash; expect immediate <code>AttributeError</code> on <code>fit.assign_coords</code> (the <code>if fit:</code> guard does not wrap the main <code>.plot</code> calls).</li>
+        <li><strong>Runtime B:</strong> minimal <code>xr.Dataset</code> <code>fit</code> with Lorentzian scalars but <strong>without</strong> <code>I_rot</code> &mdash; expect <code>AttributeError</code> (<code>Dataset</code> has no <code>I_rot</code>).</li>
+        <li><strong>Runtime C:</strong> <code>ds</code> carries <strong>only</strong> a <code>detuning</code> coordinate (no <code>I</code>/<code>Q</code>/<code>IQ_abs</code>); <code>fit</code> carries a synthetic <code>I_rot</code> &mdash; plot completes, proving the trace does not read IQ from <code>ds</code>.</li>
+      </ul>
+      <p class="lead" style="margin-top:0.5rem;font-size:0.95rem;">
+        Command: <code>PYTHONPATH=&lt;superconducting&gt;</code> then <code>python calibrations/1Q_calibrations/experiment_plot_fit_iq_contracts.py</code>.
+      </p>
+    </section>
+
+    <section class="slide" id="s4">
+      <div class="slide-num"></div>
+      <span class="tag">Observed results</span>
+      <h1>Runtime table (latest run)</h1>
+      <table>
+        <thead>
+          <tr><th>Probe</th><th>Result</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Static source rules</td><td class="ok">Passed &mdash; confirms trace variables are <code>fit.*</code> / <code>I_rot</code>, not raw <code>ds</code> IQ.</td></tr>
+          <tr><td><code>fit=None</code></td><td class="bad"><code>AttributeError: 'NoneType' object has no attribute 'assign_coords'</code> at first <code>fit.assign_coords(...).I_rot.plot</code>.</td></tr>
+          <tr><td><code>fit</code> missing <code>I_rot</code></td><td class="bad"><code>AttributeError: 'Dataset' object has no attribute 'I_rot'</code>.</td></tr>
+          <tr><td><code>ds</code> minimal + <code>fit</code> with <code>I_rot</code></td><td class="ok">Figure built successfully &mdash; decouples “need IQ on <code>ds</code>” from “need fit pipeline fields”.</td></tr>
+        </tbody>
+      </table>
+      <h2>Nuance for stakeholders</h2>
+      <p class="lead" style="margin-top:0">
+        The object named <code>ds_raw</code> at plot time is already processed (volts, <code>IQ_abs</code>, etc.). The experiment still shows that <strong>the matplotlib line is not wired to those fields</strong>; it is wired to <code>I_rot</code> living on the fit/merged dataset.
+      </p>
+    </section>
+
+    <section class="slide" id="s5">
+      <div class="slide-num"></div>
+      <span class="tag">Recommendations</span>
+      <h1>If we want looser coupling later</h1>
+      <ul class="clean decisions">
+        <li><strong>Rename APIs for honesty</strong> &mdash; e.g. <code>plot_rotated_quadrature_with_fit</code> to signal that the “data” trace is post-rotation, not raw counts.</li>
+        <li><strong>Optional raw panel</strong> &mdash; add an explicit code path: <code>ds["IQ_abs"].plot(...)</code> (or <code>I</code>/<code>Q</code>) behind a parameter, independent of Lorentzian overlay.</li>
+        <li><strong>Guard <code>fit</code></strong> &mdash; wrap all <code>fit.</code> dereferences in one guard or require non-<code>None</code> <code>ds_fit</code> before any plotting run action.</li>
+        <li><strong>Regression</strong> &mdash; keep <code>experiment_plot_fit_iq_contracts.py</code> in CI (fast, no cluster) to catch accidental rewiring.</li>
+      </ul>
+      <h2>Relation to prior CTO deck</h2>
+      <p class="lead" style="margin-top:0.5rem;font-size:0.95rem;">
+        The sweep-axis <code>detuning</code> rename experiment tested <strong>dimension naming</strong> in the fetcher and <code>add_amplitude_and_phase</code>. This deck tests <strong>plotting vs analysis variable naming</strong> &mdash; same theme: implicit string and field contracts, different layer.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    Single-file HTML · <code>cto_presentation_qubit_spec_plot_fit_contract_experiment.html</code> · May 2026 · 6 slides
+  </footer>
+</body>
+</html>

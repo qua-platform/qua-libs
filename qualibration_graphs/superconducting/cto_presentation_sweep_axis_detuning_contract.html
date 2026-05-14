@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CTO · Sweep axis name contract — “detuning”</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e8eef7;
+      --muted: #8b9cb3;
+      --accent: #3d9cfd;
+      --ok: #3ecf8e;
+      --warn: #f5a524;
+      --bad: #f47174;
+      --border: #2a3a52;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Consolas", "Cascadia Code", monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    header.nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.5rem;
+      background: rgba(15, 20, 25, 0.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    header.nav span.brand {
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      font-size: 0.95rem;
+    }
+    header.nav nav a {
+      color: var(--muted);
+      text-decoration: none;
+      margin-left: 1rem;
+      font-size: 0.8rem;
+    }
+    header.nav nav a:hover { color: var(--accent); }
+    main {
+      padding-top: 3.5rem;
+      counter-reset: slide;
+      --slide-total: 6;
+    }
+    section.slide {
+      position: relative;
+      min-height: 100vh;
+      padding: 4rem clamp(1.5rem, 5vw, 4rem) 3.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 56rem;
+      margin: 0 auto;
+      counter-increment: slide;
+    }
+    section.slide .slide-num {
+      position: absolute;
+      bottom: 1.25rem;
+      right: clamp(1.5rem, 5vw, 4rem);
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+    }
+    section.slide .slide-num::before {
+      content: "Slide " counter(slide) " / " var(--slide-total);
+    }
+    section.slide h1 {
+      font-size: clamp(1.75rem, 4vw, 2.65rem);
+      font-weight: 700;
+      margin: 0 0 0.75rem;
+      letter-spacing: -0.02em;
+    }
+    section.slide h2 {
+      font-size: clamp(1.2rem, 2.4vw, 1.6rem);
+      font-weight: 600;
+      margin: 2rem 0 0.75rem;
+      color: var(--accent);
+    }
+    section.slide p.lead {
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 44rem;
+      margin: 0 0 1.35rem;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      margin-bottom: 1rem;
+    }
+    ul.clean { margin: 0; padding-left: 1.2rem; }
+    ul.clean li { margin: 0.45rem 0; }
+    ul.decisions li { margin: 0.6rem 0; }
+    ul.decisions strong { color: var(--text); }
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.2rem;
+    }
+    .card h3 {
+      margin: 0 0 0.45rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .card p { margin: 0; font-size: 0.88rem; color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+      margin: 1rem 0;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.7rem;
+      border: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th { background: var(--panel); color: var(--muted); font-weight: 600; }
+    code, pre {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+    pre {
+      background: #0a0e14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+      overflow-x: auto;
+      margin: 0.75rem 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .ok { color: var(--ok); font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    .bad { color: var(--bad); font-weight: 600; }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    @media print {
+      header.nav { position: static; }
+      section.slide { min-height: auto; page-break-after: always; }
+      section.slide .slide-num { position: static; display: block; margin-top: 1rem; text-align: right; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <span class="brand">QM · Superconducting calibrations · CTO</span>
+    <nav>
+      <a href="#s0">Summary</a>
+      <a href="#s1">Change</a>
+      <a href="#s2">Chain</a>
+      <a href="#s3">Dependencies</a>
+      <a href="#s4">Failure</a>
+      <a href="#s5">Actions</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="slide" id="s0">
+      <div class="slide-num"></div>
+      <span class="tag">Experiment · May 2026</span>
+      <h1>Sweep axis rename: why <code>detuning</code> is not “just a label”</h1>
+      <p class="lead">
+        In <code>03a_qubit_spectroscopy.py</code>, the second entry in <code>node.namespace["sweep_axes"]</code> was renamed
+        from <code>"detuning"</code> to <code>"drive_freq_offset_hz"</code>. Hardware acquisition and data fetching completed
+        normally. Analysis failed immediately afterward because multiple layers assume the literal dimension name
+        <code>detuning</code> — there is no indirection or parameter today.
+      </p>
+      <div class="grid2">
+        <div class="card">
+          <h3>Business takeaway</h3>
+          <p>Calibration UX and library code bake in axis names. Renaming for clarity without coordinated refactors yields a <span class="bad">late, opaque xarray error</span>, not a compile-time guard.</p>
+        </div>
+        <div class="card">
+          <h3>Technical takeaway</h3>
+          <p>The contract is: <strong>sweep_axes keys → xarray dimension names → analysis <code>dim=</code> and <code>ds.detuning</code> accessors</strong>. One rename breaks the chain.</p>
+        </div>
+        <div class="card">
+          <h3>Status after doc</h3>
+          <p>Production script was restored to <code>"detuning"</code> after verification; this deck is the record of the experiment.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="s1">
+      <div class="slide-num"></div>
+      <span class="tag">Single-line surface</span>
+      <h1>What changed in the node</h1>
+      <p class="lead">
+        Only the <strong>dictionary key</strong> for the frequency sweep axis inside <code>create_qua_program</code> was altered.
+        QUA logic (same <code>dfs</code> array, same buffers) was unchanged.
+      </p>
+      <pre>node.namespace["sweep_axes"] = {
+    "qubit": xr.DataArray(qubits.get_names()),
+    "drive_freq_offset_hz": xr.DataArray(dfs, attrs={...}),  # was "detuning"
+}</pre>
+      <h2>What stayed green</h2>
+      <ul class="clean">
+        <li><span class="ok">Program build</span> — independent of axis labels.</li>
+        <li><span class="ok">QOP execution</span> — job finished; execution report reported no errors.</li>
+        <li><span class="ok"><code>XarrayDataFetcher</code></span> — builds a dataset whose <code>I</code> / <code>Q</code> variables use the new dimension name.</li>
+      </ul>
+    </section>
+
+    <section class="slide" id="s2">
+      <div class="slide-num"></div>
+      <span class="tag">Data path</span>
+      <h1>How the name propagates</h1>
+      <pre>sweep_axes dict keys
+    → XarrayDataFetcher.initialize_dataset / update_dataset
+        → coordinate + dimension names on I, Q (and n)
+
+process_raw_dataset(ds_raw, node)
+    → convert_IQ_to_V(ds, qubits)          # still OK (I, Q exist)
+    → add_amplitude_and_phase(ds, "detuning", ...)   # HARDCODED dim name</pre>
+      <p class="lead">
+        The fetcher is innocent: it faithfully uses whatever string appears in <code>sweep_axes</code> as the non-qubit dimension.
+        The failure is a <strong>string contract mismatch</strong> between that dict and downstream Python.
+      </p>
+    </section>
+
+    <section class="slide" id="s3">
+      <div class="slide-num"></div>
+      <span class="tag">Three surfaces</span>
+      <h1>Where <code>detuning</code> is assumed today</h1>
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Location</th>
+            <th>Examples</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Repo analysis</td>
+            <td><code>qualibration_graphs/superconducting/calibration_utils/qubit_spectroscopy/analysis.py</code></td>
+            <td><code>add_amplitude_and_phase(ds, "detuning", …)</code>; <code>ds.detuning</code>; <code>.mean(dim="detuning")</code>; <code>peaks_dips(..., dim="detuning")</code>; <code>assign_coords(..., ["qubit","detuning"])</code></td>
+          </tr>
+          <tr>
+            <td>Repo plotting</td>
+            <td><code>…/qubit_spectroscopy/plotting.py</code></td>
+            <td><code>ds.detuning</code>; <code>fit.detuning</code>; derived <code>detuning_MHz</code> coord from <code>fit.detuning</code></td>
+          </tr>
+          <tr>
+            <td>Shared library</td>
+            <td><code>qualibration_libs/data/processing.py</code> (installed)</td>
+            <td><code>add_amplitude_and_phase(ds, dim: str)</code> — caller passes <code>"detuning"</code>; phase unwrap uses that <code>dim</code> as a core dimension on <code>I + jQ</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="lead">
+        None of these accept a configurable sweep-axis alias for this node path. Renaming only in <code>03a</code> is therefore sufficient to break the pipeline.
+      </p>
+    </section>
+
+    <section class="slide" id="s4">
+      <div class="slide-num"></div>
+      <span class="tag">Observed failure</span>
+      <h1>First crash site and error shape</h1>
+      <p class="lead">
+        <code>analyse_data</code> → <code>process_raw_dataset</code> → <code>add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)</code>.
+        Inside <code>add_amplitude_and_phase</code>, <code>_apply_angle</code> calls <code>xarray.apply_ufunc</code> with <code>input_core_dims=[["detuning"]]</code> while <code>I + 1j*Q</code> only has <code>drive_freq_offset_hz</code> on that axis.
+      </p>
+      <pre>ValueError: tuple.index(x): x not in tuple
+  … xarray … apply_ufunc … broadcast_compat_data
+  qualibration_libs … add_amplitude_and_phase → _apply_angle
+  calibration_utils … process_raw_dataset (line with add_amplitude_and_phase)</pre>
+      <h2>Downstream not reached</h2>
+      <ul class="clean">
+        <li><span class="warn">plot_data</span>, <span class="warn">update_state</span>, <span class="warn">save_results</span> — skipped in that run due to uncaught exception (same Qualibrate action ordering as prior experiments).</li>
+      </ul>
+    </section>
+
+    <section class="slide" id="s5">
+      <div class="slide-num"></div>
+      <span class="tag">Recommendations</span>
+      <h1>How to evolve without surprise</h1>
+      <ul class="clean decisions">
+        <li><strong>Document the contract</strong> in the node docstring or README: sweep axis for this frequency sweep must remain <code>detuning</code> unless analysis and plotting are updated together.</li>
+        <li><strong>Parameterize once</strong> — e.g. <code>SWEEP_DIM = "detuning"</code> in a shared module used by <code>03a</code>, <code>analysis.py</code>, and <code>plotting.py</code> (still one name, but a single edit point).</li>
+        <li><strong>Rename for real</strong> — rename in all three places and pass the new <code>dim</code> into <code>add_amplitude_and_phase</code>; add a small unit test on a fake <code>xr.Dataset</code> dims tuple.</li>
+        <li><strong>Guardrail (optional)</strong> — assert <code>"detuning" in ds.dims</code> (or compare to a constant) at the top of <code>process_raw_dataset</code> with a clear <code>ValueError</code> message listing expected producers.</li>
+      </ul>
+      <h2>Related prior test</h2>
+      <p class="lead" style="margin-top:0.5rem;font-size:0.95rem;">
+        An earlier experiment broke <code>XarrayDataFetcher</code> multiplex grouping by changing IQ stream tags (<code>I1</code>/<code>Q1</code> → non-matching names). That failed at <code>convert_IQ_to_V</code> with <code>KeyError: 'I'</code>. Here the IQ tags stayed canonical; only the <strong>sweep dimension name</strong> changed — different layer, same class of problem: <strong>implicit string coupling</strong>.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    Single-file HTML · <code>cto_presentation_sweep_axis_detuning_contract.html</code> · QUAlibrate · May 2026 · 6 slides
+  </footer>
+</body>
+</html>
