@@ -34,7 +34,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Line attenuation in dB. Default is 0 dB."""
     measure_qubit: Literal["control", "target"] = "target"
     """Which qubit to measure: 'control' or 'target'. Default is 'target'."""
-    settle_time_in_ns: int = 20000
+    settle_time_in_ns: int = 5000
     """Settle time in ns. Default is 5000 ns."""
     buffer_time_in_ns: int = 100
     """Buffer time before readout in ns. Default is 100 ns."""
