@@ -26,8 +26,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Input line impedance in ohms. Default is 50 Ohm."""
     line_attenuation_in_db: float = 0
     """Line attenuation in dB. Default is 0 dB."""
-    update_flux_min: bool = False
-    """Flag to update flux minimum frequency point. Default is False."""
     settle_time_in_ns: int = 20000
     """Settle time in ns. Default is 20000 ns."""
     measure_qubit: Literal["control", "target"] = "target"
