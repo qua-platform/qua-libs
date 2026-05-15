@@ -117,7 +117,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_qubit_pairs)
         dc = declare(fixed)  # QUA variable for the coupler flux bias
         df = declare(int)  # QUA variable for the readout frequency detuning
 
