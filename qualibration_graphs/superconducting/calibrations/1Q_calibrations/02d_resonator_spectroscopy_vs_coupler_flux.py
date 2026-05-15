@@ -33,12 +33,6 @@ coupler flux biases and corresponding readout frequency.
 
 This information can then be used to adjust the readout frequency for different coupler flux points.
 
-Multiplexing behaviour:
-    - multiplexed=False (default): each coupler is swept individually while all other couplers are held at
-      their idle flux point. Resonators are measured one at a time.
-    - multiplexed=True: all couplers are swept to the same DC value simultaneously and all resonators
-      are measured at the same time. 
-
 Prerequisites:
     - Having calibrated the resonator frequency (nodes 02a, 02b and/or 02c).
     - Having specified the desired flux point (qubit.z.flux_point).
