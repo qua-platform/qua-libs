@@ -49,7 +49,7 @@ Next steps before going to the next node:
 
 
 node = QualibrationNode[Parameters, Quam](
-    name="09_ramsey_vs_flux_calibration",
+    name="09a_ramsey_vs_flux_calibration",
     description=description,
     parameters=Parameters(),
 )

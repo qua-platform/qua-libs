@@ -34,7 +34,7 @@ g = QualibrationGraph(
             name="readout_frequency_optimization"
         ),
         "IQ_blobs": library.nodes["07_iq_blobs"].copy(name="IQ_blobs"),
-        "ramsey_vs_flux_calibration": library.nodes["09_ramsey_vs_flux_calibration"].copy(
+        "ramsey_vs_flux_calibration": library.nodes["09a_ramsey_vs_flux_calibration"].copy(
             name="ramsey_vs_flux_calibration"
         ),
         "power_rabi_error_amplification_x180": library.nodes["04b_power_rabi"].copy(
