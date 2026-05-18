@@ -130,6 +130,14 @@ def create_qua_program(
                 ii: qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
                 for ii, qp in multiplexed_qubit_pairs.items()
             }
+            operation_durations = {
+                ii: (
+                    operation_len * u.ns
+                    if operation_len is not None
+                    else measured_qubits_map[ii].xy.operations[operation].length * u.ns
+                ) // 4
+                for ii in multiplexed_qubit_pairs
+            }
 
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
@@ -141,12 +149,6 @@ def create_qua_program(
                             measured_qubit.xy.update_frequency(df + measured_qubit.xy.intermediate_frequency)
                             # Wait for the qubits to decay to the ground state
                             measured_qubit.reset_qubit_thermal()
-                            # Compute operation duration
-                            duration = (
-                                operation_len * u.ns
-                                if operation_len is not None
-                                else measured_qubit.xy.operations[operation].length * u.ns
-                            ) // 4
                         align()
 
                         # Qubit manipulation
@@ -156,14 +158,14 @@ def create_qua_program(
                             qp.coupler.play(
                                 "const",
                                 amplitude_scale=dc / qp.coupler.operations["const"].amplitude,
-                                duration=duration + settle_t + buffer_t,
+                                duration=operation_durations[ii] + settle_t + buffer_t,
                             )
                             measured_qubit.xy.wait(settle_t)
                             # Apply saturation pulse to the measured qubit
                             measured_qubit.xy.play(
                                 operation,
                                 amplitude_scale=operation_amp,
-                                duration=duration,
+                                duration=operation_durations[ii],
                             )
                         align()
 
