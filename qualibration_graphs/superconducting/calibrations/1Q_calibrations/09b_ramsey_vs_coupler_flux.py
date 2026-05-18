@@ -20,6 +20,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 
+
 # %% {Node initialisation}
 description = """
         RAMSEY VS COUPLER FLUX
@@ -62,8 +63,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
 
-    measured_qubit_role = node.parameters.measured_qubit
-    measured_qubits = [qp.qubit_control if measured_qubit_role == "control" else qp.qubit_target for qp in qubit_pairs]
+    measured_qubits = []
+    for qp in qubit_pairs:
+        if node.parameters.measured_qubit == "control":
+            measured_qubits.append(qp.qubit_control)
+        else:
+            measured_qubits.append(qp.qubit_target)
     node.namespace["measured_qubits"] = measured_qubits
     node.namespace["qubits"] = measured_qubits
 
@@ -106,17 +111,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 node.machine.initialize_qpu(target=qp.qubit_target)
             align()
 
+            measured_qubits_map = {
+                ii: qp.qubit_control if node.parameters.measured_qubit == "control" else qp.qubit_target
+                for ii, qp in multiplexed_qubit_pairs.items()
+            }
+
             # Initial readout for XOR-based state tracking
             for ii, qp in multiplexed_qubit_pairs.items():
-                qubit = qp.qubit_control if measured_qubit_role == "control" else qp.qubit_target
-                qubit.readout_state(init_state[ii])
+                measured_qubits_map[ii].readout_state(init_state[ii])
 
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(flux, fluxes)):
                     with for_(*from_array(t, idle_times)):
                         for ii, qp in multiplexed_qubit_pairs.items():
-                            qubit = qp.qubit_control if measured_qubit_role == "control" else qp.qubit_target
+                            qubit = measured_qubits_map[ii]
                             assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
                             with strict_timing_():
                                 qubit.xy.play("x90")
@@ -132,7 +141,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
 
                         for ii, qp in multiplexed_qubit_pairs.items():
-                            qubit = qp.qubit_control if measured_qubit_role == "control" else qp.qubit_target
+                            qubit = measured_qubits_map[ii]
                             qubit.readout_state(current_state[ii])
                             assign(state[ii], init_state[ii] ^ current_state[ii])
                             assign(init_state[ii], current_state[ii])
@@ -190,7 +199,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     # Get the active qubit pairs from the loaded node parameters
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
-    # Extract measured qubits
     measured_qubits = []
     for qp in node.namespace["qubit_pairs"]:
         if node.parameters.measured_qubit == "control":
