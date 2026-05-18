@@ -21,7 +21,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Whether to reset the coupler bias to 0V before each measurement (True)."""
     measure_qubit: Literal["control", "target"] = "target"
     """Which qubit to measure: 'control' or 'target'. Default is 'target'."""
-    flux_point: Literal["joint", "independent"] = "joint"
+    flux_point: Literal["joint", "independent"] = "independent"
     """Flux point setting strategy: 'joint' or 'independent'. Default is 'independent'."""
     reset_type: Literal["active", "thermal"] = "thermal"
     """Type of qubit reset to use before each measurement: 'active' or 'thermal'. Default is 'thermal'."""
