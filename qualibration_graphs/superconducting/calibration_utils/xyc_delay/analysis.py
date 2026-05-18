@@ -7,7 +7,6 @@ from typing import Dict, Tuple
 import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
-from qualibration_libs.data import convert_IQ_to_V
 
 __all__ = [
     "FitParameters",
@@ -49,7 +48,15 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     """Convert IQ data to voltage and compute difference between |e> and |g> states."""
     if not node.parameters.use_state_discrimination:
-        ds = convert_IQ_to_V(ds, node.namespace["qubits"])
+        # Build readout lengths keyed by the coupler name so the coordinate
+        # matches the 'qubit' dimension already in ds (which uses coupler names).
+        measured_qubits = node.namespace["measured_qubits"]
+        qubit_pairs = node.namespace["qubit_pairs"]
+        readout_lengths = xr.DataArray(
+            [q.resonator.operations["readout"].length for q in measured_qubits],
+            coords=[("qubit", [qp.name for qp in qubit_pairs])],
+        )
+        ds = ds.assign({key: ds[key] * 2**12 / readout_lengths for key in ("I", "Q")})
 
     data = "state" if hasattr(ds, "state") else "I"
 
