@@ -261,11 +261,28 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 start_time=data_fetcher.t_start,
             )
         node.log(job.execution_report())
-    # Rename qubit_pair dimension to qubit for compatibility with analysis functions
+    # Rename qubit_pair dimension to qubit, using pair names as the coordinate
+    # (consistent with resonator_spectroscopy_vs_coupler_flux).
     if "qubit_pair" in dataset.dims:
-        qubit_names = [q.name for q in node.namespace["measured_qubits"]]
+        qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
+        measured_qubit_names = [q.name for q in node.namespace["measured_qubits"]]
         dataset = dataset.rename({"qubit_pair": "qubit"})
-        dataset = dataset.assign_coords(qubit=qubit_names)
+        dataset = dataset.assign_coords(qubit=qubit_pair_names)
+        dataset = dataset.assign_coords(measured_qubit_name=("qubit", measured_qubit_names))
+    # Store each coupler's set point as a per-pair coordinate so it survives save/load
+    # and is unambiguous when pairs have different decouple offsets.
+    qubit_pairs = node.namespace["qubit_pairs"]
+    coupler_set_points_mv = []
+    for qp in qubit_pairs:
+        if node.parameters.reset_coupler_bias:
+            v = node.parameters.coupler_pulse_amplitude
+        else:
+            v = qp.coupler.decouple_offset + node.parameters.coupler_pulse_amplitude
+        coupler_set_points_mv.append(v * 1e3)
+    dataset = dataset.assign_coords(
+        coupler_set_point_mv=("qubit", coupler_set_points_mv)
+    )
+    dataset.coupler_set_point_mv.attrs = {"long_name": "Coupler set point", "units": "mV"}
     node.results["ds_raw"] = dataset
 
 
@@ -290,11 +307,16 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["measured_qubits"] = measured_qubits
     node.namespace["qubits"] = measured_qubits
 
-    # Rename qubit_pair dimension to qubit for compatibility with analysis functions
+    # Rename qubit_pair dimension to qubit, using pair names as the coordinate
+    # (consistent with resonator_spectroscopy_vs_coupler_flux).
     if "qubit_pair" in node.results["ds_raw"].dims:
-        qubit_names = [q.name for q in measured_qubits]
+        qubit_pair_names = [qp.name for qp in qubit_pairs]
+        measured_qubit_names = [q.name for q in measured_qubits]
         node.results["ds_raw"] = node.results["ds_raw"].rename({"qubit_pair": "qubit"})
-        node.results["ds_raw"] = node.results["ds_raw"].assign_coords(qubit=qubit_names)
+        node.results["ds_raw"] = node.results["ds_raw"].assign_coords(qubit=qubit_pair_names)
+        node.results["ds_raw"] = node.results["ds_raw"].assign_coords(
+            measured_qubit_name=("qubit", measured_qubit_names)
+        )
 
 
 # %% {Analyse_data}
@@ -305,19 +327,6 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     if "qubits" not in node.namespace:
         node.namespace["qubits"] = node.namespace["measured_qubits"]
 
-    # Calculate coupler set point for plotting
-    qubit_pairs = node.namespace["qubit_pairs"]
-    reset_coupler_bias = node.parameters.reset_coupler_bias
-
-    # Use first qubit pair's coupler for coupler_set_point (for plot title)
-    if len(qubit_pairs) > 0:
-        coupler = qubit_pairs[0].coupler
-        if reset_coupler_bias:
-            coupler_set_point = 0.0 + node.parameters.coupler_pulse_amplitude
-        else:
-            coupler_set_point = coupler.decouple_offset + node.parameters.coupler_pulse_amplitude
-        node.namespace["coupler_set_point"] = coupler_set_point
-
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     log_fitted_results(fit_results, log_callable=node.log)
@@ -325,12 +334,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     # Convert to dict format for storage
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
-    # Map outcomes to qubit_pair names for state update
+    # fit_results is keyed by pair name (qubit coordinate = pair name), consistent with
+    # resonator_spectroscopy_vs_coupler_flux.
     qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
-    measured_qubit_names = [q.name for q in node.namespace["measured_qubits"]]
     node.outcomes = {
-        qubit_pair_name: node.results["fit_results"].get(measured_qubit_name, {}).get("success", False)
-        for qubit_pair_name, measured_qubit_name in zip(qubit_pair_names, measured_qubit_names)
+        qp_name: node.results["fit_results"].get(qp_name, {}).get("success", False)
+        for qp_name in qubit_pair_names
     }
     # Convert boolean outcomes to "successful"/"failed" strings
     node.outcomes = {k: ("successful" if v else "failed") for k, v in node.outcomes.items()}
@@ -344,12 +353,12 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     if "qubits" not in node.namespace:
         node.namespace["qubits"] = node.namespace["measured_qubits"]
 
-    coupler_set_point = node.namespace.get("coupler_set_point", 0.0)
-
     fig_raw_fit = plot_raw_data_with_fit(
-        node.results["ds_raw"], node.namespace["measured_qubits"], node.results["ds_fit"]
+        node.results["ds_raw"],
+        node.namespace["qubit_pairs"],
+        node.namespace["measured_qubits"],
+        node.results["ds_fit"],
     )
-    plt.suptitle(f"Qubit XY - Coupler Z Delay Calibration,  Coupler flux (full) : {coupler_set_point * 1e3} mV")
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
@@ -369,7 +378,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.outcomes[qp.name] == "failed":
                 continue
 
-            res = node.results["fit_results"].get(measured_qubit.name)
+            res = node.results["fit_results"].get(qp.name)
             if res is None:
                 continue
 
