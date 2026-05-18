@@ -56,7 +56,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubit_pairs = ["coupler_q1_q2"]
     pass
 
 
@@ -130,12 +129,14 @@ def create_qua_program(
                 ii: qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
                 for ii, qp in multiplexed_qubit_pairs.items()
             }
+            # Pre-compute the operation durations for each qubit pair
             operation_durations = {
                 ii: (
                     operation_len * u.ns
                     if operation_len is not None
                     else measured_qubits_map[ii].xy.operations[operation].length * u.ns
-                ) // 4
+                )
+                // 4
                 for ii in multiplexed_qubit_pairs
             }
 
