@@ -65,7 +65,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     measured_qubits = []
     for qp in qubit_pairs:
-        if node.parameters.measured_qubit == "control":
+        if node.parameters.measure_qubit == "control":
             measured_qubits.append(qp.qubit_control)
         else:
             measured_qubits.append(qp.qubit_target)
@@ -95,7 +95,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
+        _, _, _, _, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
         init_state = [declare(int) for _ in range(num_qubit_pairs)]
         current_state = [declare(int) for _ in range(num_qubit_pairs)]
         state = [declare(int) for _ in range(num_qubit_pairs)]
@@ -112,7 +112,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             align()
 
             measured_qubits_map = {
-                ii: qp.qubit_control if node.parameters.measured_qubit == "control" else qp.qubit_target
+                ii: qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
                 for ii, qp in multiplexed_qubit_pairs.items()
             }
 
@@ -201,7 +201,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
     measured_qubits = []
     for qp in node.namespace["qubit_pairs"]:
-        if node.parameters.measured_qubit == "control":
+        if node.parameters.measure_qubit == "control":
             measured_qubits.append(qp.qubit_control)
         else:
             measured_qubits.append(qp.qubit_target)
@@ -248,7 +248,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
             measured_qubit_name = (
-                qp.qubit_control.name if node.parameters.measured_qubit == "control" else qp.qubit_target.name
+                qp.qubit_control.name if node.parameters.measure_qubit == "control" else qp.qubit_target.name
             )
             node.machine.qubits[measured_qubit_name].extras[f"{qp.coupler.name}_dispersion_load_id"] = node.snapshot_idx
 

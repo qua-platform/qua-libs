@@ -17,7 +17,7 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 100
     """Number of averages per point."""
-    measured_qubit: Literal["control", "target"] = "control"
+    measure_qubit: Literal["control", "target"] = "control"
     """Which qubit in the pair to perform the Ramsey measurement on."""
     frequency_detuning_in_mhz: float = 5.0
     """Artificial detuning for the virtual Z rotation (MHz)."""
