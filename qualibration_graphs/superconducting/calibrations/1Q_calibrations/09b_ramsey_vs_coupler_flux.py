@@ -20,7 +20,6 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 
-
 # %% {Node initialisation}
 description = """
         RAMSEY VS COUPLER FLUX
