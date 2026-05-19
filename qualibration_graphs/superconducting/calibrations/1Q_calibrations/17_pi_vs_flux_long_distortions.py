@@ -144,7 +144,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 q_upd.xy.RF_frequency -= node.parameters.detuning_in_mhz * 1e6
                 tracked_qubits.append(q_upd)
         else:
-            if_update.append(int(node.parameters.detuning_in_mhz))
+            if_update.append(int(node.parameters.detuning_in_mhz * 1e6))
 
     node.namespace["if_update"] = if_update
     node.namespace["tracked_qubits"] = tracked_qubits
