@@ -1,0 +1,51 @@
+"""Parameter definitions for qubit spectroscopy vs coupler flux calibration."""
+
+from typing import ClassVar, Literal, Optional
+
+from qualibrate import NodeParameters
+from qualibrate.core.parameters import RunnableParameters
+from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
+
+
+class NodeSpecificParameters(RunnableParameters):
+    """Node-specific parameters for qubit spectroscopy vs coupler flux calibration."""
+
+    num_shots: int = 50
+    """Number of averages to perform. Default is 50."""
+    operation: str = "saturation"
+    """Operation to perform. Default is "saturation"."""
+    operation_amplitude_factor: float = 0.1
+    """Amplitude factor for the operation. Default is 0.1."""
+    operation_len_in_ns: Optional[int] = None
+    """Length of the operation in ns. Default is the predefined pulse length."""
+    frequency_span_in_mhz: float = 100.0
+    """Frequency span in MHz. Default is 100 MHz."""
+    frequency_step_in_mhz: float = 0.5
+    """Frequency step in MHz. Default is 0.5 MHz."""
+    min_flux_in_v: float = -0.025
+    """Minimum flux bias in volts. Default is -0.025 V."""
+    max_flux_in_v: float = 0.025
+    """Maximum flux bias in volts. Default is 0.025 V."""
+    num_flux_points: int = 11
+    """Number of flux points. Default is 11."""
+    input_line_impedance_in_ohm: Optional[int] = 50
+    """Input line impedance in ohms. Default is 50 Ohm."""
+    line_attenuation_in_db: Optional[int] = 0
+    """Line attenuation in dB. Default is 0 dB."""
+    measure_qubit: Literal["control", "target"] = "target"
+    """Which qubit to measure: 'control' or 'target'. Default is 'target'."""
+    settle_time_in_ns: int = 5000
+    """Settle time in ns. Default is 5000 ns."""
+    buffer_time_in_ns: int = 100
+    """Buffer time before readout in ns. Default is 100 ns."""
+
+
+class Parameters(
+    NodeParameters,
+    CommonNodeParameters,
+    NodeSpecificParameters,
+    QubitPairExperimentNodeParameters,
+):
+    """Combined parameters for qubit spectroscopy vs coupler flux calibration."""
+
+    targets_name: ClassVar[str] = "qubit_pairs"
