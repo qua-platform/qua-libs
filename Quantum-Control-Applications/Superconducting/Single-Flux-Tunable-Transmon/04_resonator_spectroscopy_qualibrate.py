@@ -15,7 +15,7 @@ from qualang_tools.units import unit
 
 from qualibrate import NodeParameters, QualibrationNode
 
-from configuration_quam_lf_fem_and_mw_fem import config, machine, state_path
+from configuration_quam_quamroot_lf_mw_fem import config, machine, state_path
 
 u = unit(coerce_to_integer=True)
 
@@ -40,7 +40,7 @@ This sequence involves measuring the resonator by sending a readout pulse and de
 'I' and 'Q' quadratures across varying readout intermediate frequencies.
 The data is then post-processed to determine the resonator resonance frequency.
 This frequency can be used to update the readout intermediate frequency on the QUAM resonator channel
-(``machine.channels["resonator"].intermediate_frequency``).
+(``machine.qubits["q1"].resonator.intermediate_frequency``).
 
 Prerequisites:
     - Ensure calibration of the time of flight, offsets, and gains (referenced as "time_of_flight").
@@ -58,7 +58,8 @@ Before proceeding to the next node:
 # %% {Create QUA program}
 @node.run_action()
 def create_qua_program(node: QualibrationNode[Parameters, None]):
-    resonator = machine.channels["resonator"]
+    q1 = machine.qubits["q1"]
+    resonator = q1.resonator
 
     n_avg = node.parameters.n_avg
     f_min = int(node.parameters.f_min_mhz * u.MHz)
@@ -68,8 +69,7 @@ def create_qua_program(node: QualibrationNode[Parameters, None]):
 
     node.namespace["frequencies"] = frequencies
     node.namespace["readout_len"] = int(resonator.operations["readout"].length)
-    res_out_port = resonator.opx_output.get_reference_value()
-    node.namespace["resonator_LO"] = int(res_out_port.upconverter_frequency)
+    node.namespace["resonator_LO"] = int(resonator.opx_output.upconverter_frequency)
 
     with program() as resonator_spec:
         n = declare(int)
@@ -213,7 +213,7 @@ def update_state(node: QualibrationNode[Parameters, None]):
 
     new_if_hz = int(fit_results["intermediate_frequency_hz"])
     with node.record_state_updates():
-        machine.channels["resonator"].intermediate_frequency = new_if_hz
+        machine.qubits["q1"].resonator.intermediate_frequency = new_if_hz
     machine.save(state_path)
 
 
