@@ -56,8 +56,6 @@ node = QualibrationNode[Parameters, Quam](
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
-#instrument_calibration_node(node)
-
 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
@@ -209,11 +207,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             else:
                                 save(I[ii], I_st[ii])
                                 save(Q[ii], Q_st[ii])
+                        align()
 
-            # Measure sequentially if not multiplexed
-            if not node.parameters.multiplexed:
-                align()
-        align()
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubit_pairs):
@@ -251,8 +246,9 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 start_time=data_fetcher.t_start,
             )
         node.log(job.execution_report())
-    # Rename qubit_pair dimension to qubit, using pair names as the coordinate
-    # (consistent with resonator_spectroscopy_vs_coupler_flux).
+    # Rename qubit_pair dimension to qubit for compatibility with analysis functions
+    # Use unique pair names as coordinate values to avoid duplicates when multiple
+    # pairs share the same measured qubit (e.g. q3 in q0-3, q3-4, q3-6).
     if "qubit_pair" in dataset.dims:
         qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
         measured_qubit_names = [q.name for q in node.namespace["measured_qubits"]]
@@ -262,17 +258,17 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Store each coupler's set point as a per-pair coordinate so it survives save/load
     # and is unambiguous when pairs have different decouple offsets.
     qubit_pairs = node.namespace["qubit_pairs"]
-    coupler_set_points_mv = []
+    total_coupler_flux_mv = []
     for qp in qubit_pairs:
         if node.parameters.reset_coupler_bias:
             v = node.parameters.coupler_pulse_amplitude
         else:
             v = qp.coupler.decouple_offset + node.parameters.coupler_pulse_amplitude
-        coupler_set_points_mv.append(v * 1e3)
+        total_coupler_flux_mv.append(v * 1e3)
     dataset = dataset.assign_coords(
-        coupler_set_point_mv=("qubit", coupler_set_points_mv)
+        total_coupler_flux_mv=("qubit", total_coupler_flux_mv)
     )
-    dataset.coupler_set_point_mv.attrs = {"long_name": "Coupler set point", "units": "mV"}
+    dataset.total_coupler_flux_mv.attrs = {"long_name": "Total coupler flux", "units": "mV"}
     node.results["ds_raw"] = dataset
 
 
@@ -298,7 +294,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = measured_qubits
 
     # Rename qubit_pair dimension to qubit, using pair names as the coordinate
-    # (consistent with resonator_spectroscopy_vs_coupler_flux).
+    # Use unique pair names as coordinate values (see execute_qua_program for rationale)
     if "qubit_pair" in node.results["ds_raw"].dims:
         qubit_pair_names = [qp.name for qp in qubit_pairs]
         measured_qubit_names = [q.name for q in measured_qubits]

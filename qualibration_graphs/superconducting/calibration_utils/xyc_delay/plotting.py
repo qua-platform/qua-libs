@@ -46,9 +46,9 @@ def plot_raw_data_with_fit(
         fit_q = fits.sel(qubit=pair_name) if fits is not None else None
         plot_individual_data_with_fit(ax, ds.sel(qubit=pair_name), fit_q)
         title = f"Measured qubit: {q.name}\nCoupler: {pair_name}"
-        if "coupler_set_point_mv" in ds.coords:
-            sp = float(ds.coupler_set_point_mv.sel(qubit=pair_name).values)
-            title += f"\nCoupler flux: {sp:.1f} mV"
+        if "total_coupler_flux_mv" in ds.coords:
+            sp = float(ds.total_coupler_flux_mv.sel(qubit=pair_name).values)
+            title += f"\nTotal coupler flux: {sp:.1f} mV"
         ax.set_title(title)
 
     grid.fig.suptitle("XY-Coupler Z delay calibration")
