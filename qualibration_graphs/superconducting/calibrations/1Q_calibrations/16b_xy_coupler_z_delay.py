@@ -320,8 +320,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
 
-    # fit_results is keyed by pair name (qubit coordinate = pair name), consistent with
-    # resonator_spectroscopy_vs_coupler_flux.
+    # fit_results is keyed by the qubit coordinate, which is the qubit-pair name.
     qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
     node.outcomes = {
         qp_name: node.results["fit_results"].get(qp_name, {}).get("success", False)
