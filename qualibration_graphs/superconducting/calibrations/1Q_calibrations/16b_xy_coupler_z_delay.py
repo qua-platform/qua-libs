@@ -57,6 +57,7 @@ node = QualibrationNode[Parameters, Quam](
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
 
+
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
@@ -265,9 +266,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         else:
             v = qp.coupler.decouple_offset + node.parameters.coupler_pulse_amplitude
         total_coupler_flux_mv.append(v * 1e3)
-    dataset = dataset.assign_coords(
-        total_coupler_flux_mv=("qubit", total_coupler_flux_mv)
-    )
+    dataset = dataset.assign_coords(total_coupler_flux_mv=("qubit", total_coupler_flux_mv))
     dataset.total_coupler_flux_mv.attrs = {"long_name": "Total coupler flux", "units": "mV"}
     node.results["ds_raw"] = dataset
 
@@ -323,8 +322,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     # fit_results is keyed by the qubit coordinate, which is the qubit-pair name.
     qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
     node.outcomes = {
-        qp_name: node.results["fit_results"].get(qp_name, {}).get("success", False)
-        for qp_name in qubit_pair_names
+        qp_name: node.results["fit_results"].get(qp_name, {}).get("success", False) for qp_name in qubit_pair_names
     }
     # Convert boolean outcomes to "successful"/"failed" strings
     node.outcomes = {k: ("successful" if v else "failed") for k, v in node.outcomes.items()}
