@@ -68,7 +68,7 @@ def plot_individual_data_with_fit(ax: Axes, ds_q: xr.Dataset, fit_q: xr.Dataset 
     fit_q : xr.Dataset, optional
         Fit dataset already selected for the same coupler/pair.
     """
-    fit_q.difference.plot(ax=ax)
+    ds_q.difference.plot(ax=ax)
     if fit_q is not None and fit_q.success.data:
         ax.axvline(fit_q.flux_delay.data, color="red", linestyle="--", label="fitted center")
         ax.legend()
