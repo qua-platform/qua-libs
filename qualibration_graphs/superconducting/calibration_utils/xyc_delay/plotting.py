@@ -70,5 +70,6 @@ def plot_individual_data_with_fit(ax: Axes, ds_q: xr.Dataset, fit_q: xr.Dataset 
     """
     ds_q.difference.plot(ax=ax)
     if fit_q is not None and fit_q.success.data:
+        fit_q.fit.plot(ax=ax)
         ax.axvline(fit_q.flux_delay.data, color="red", linestyle="--", label="fitted center")
         ax.legend()

@@ -36,7 +36,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     """
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        plot_individual_data_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+        plot_individual_data_with_fit(ax, ds.sel(qubit=qubit["qubit"]), qubit, fits.sel(qubit=qubit["qubit"]))
 
     grid.fig.suptitle("XY-Z delay calibration")
     grid.fig.set_size_inches(15, 9)
@@ -64,7 +64,8 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    fit.difference.plot(ax=ax)
+    ds.difference.plot(ax=ax)
     if fit.success.data:
+        fit.fit.plot(ax=ax)
         ax.axvline(fit.flux_delay.data, color="red", linestyle="--", label="fitted center")
         ax.legend()
