@@ -111,12 +111,12 @@ def fit_routine(da, node):
     # Look up the qubit object for this group to get its x180 duration
     qubit = next(q for q in node.namespace["qubits"] if q.id == da.qubit.item())
     xy_duration = qubit.xy.operations["x180"].length  # ns
-    
+
     # Smooth before argmax to prevent a single noise spike from seeding the fit
-    y_smooth     = uniform_filter1d(y, size=5)
-    t0_guess     = float(x[np.argmax(y_smooth)])
+    y_smooth = uniform_filter1d(y, size=5)
+    t0_guess = float(x[np.argmax(y_smooth)])
     # 10th percentile as a proxy for the signal floor (robust to the peak inflating the mean)
-    amp_guess    = float(y_smooth.max()) - float(np.percentile(y, 10))
+    amp_guess = float(y_smooth.max()) - float(np.percentile(y, 10))
     # Same floor as the peak (could be noise or baseline offset).
     offset_guess = float(np.percentile(y, 10))
 
@@ -129,30 +129,26 @@ def fit_routine(da, node):
     try:
         p0 = [amp_guess, t0_guess, xy_duration, offset_guess]
         bounds = (
-            [0,      x.min(), 0.5 * xy_duration, -np.inf],
-            [np.inf, x.max(), 1.5 * xy_duration,  np.inf],
+            [0, x.min(), 0.5 * xy_duration, -np.inf],
+            [np.inf, x.max(), 1.5 * xy_duration, np.inf],
         )
-        popt, pcov = curve_fit(
-            triangle_peak, x, y,
-            p0=p0, bounds=bounds, maxfev=3000
-        )
+        popt, pcov = curve_fit(triangle_peak, x, y, p0=p0, bounds=bounds, maxfev=3000)
         amp, flux_delay, half_width, offset = popt
         # Uncertainty on t0 from the diagonal of the covariance matrix
         flux_delay_std = np.sqrt(pcov[1, 1])
 
         # Ensure the peak is far enough from the scan edges (prevent edge effects)
-        assert x.min() + xy_duration < flux_delay < x.max() - xy_duration, \
-            f"Peak at {flux_delay:.2f} ns is too close to scan edge — increase zeros_each_side."
+        assert (
+            x.min() + xy_duration < flux_delay < x.max() - xy_duration
+        ), f"Peak at {flux_delay:.2f} ns is too close to scan edge — increase zeros_each_side."
         # Ensure the uncertainty is small enough (prevent overfitting)
-        assert flux_delay_std < 5.0, \
-            f"Fit uncertainty too large: {flux_delay_std:.2f} ns."
+        assert flux_delay_std < 5.0, f"Fit uncertainty too large: {flux_delay_std:.2f} ns."
         # Ensure the amplitude is positive (prevent negative signals)
-        assert amp > 0, \
-            "Fitted amplitude is negative — check signal polarity."
+        assert amp > 0, "Fitted amplitude is negative — check signal polarity."
         # Ensure the peak is significant enough (prevent noise-only fits)
-        assert amp / noise_std > 3.0, \
-            f"Fitted peak not significant: SNR = {amp / noise_std:.1f} " \
-            f"(amp={amp:.3f}, noise={noise_std:.3f})."
+        assert amp / noise_std > 3.0, (
+            f"Fitted peak not significant: SNR = {amp / noise_std:.1f} " f"(amp={amp:.3f}, noise={noise_std:.3f})."
+        )
 
         y_fit = triangle_peak(x, *popt)
         da = da.assign(fit=xr.DataArray(y_fit, coords={"relative_time": x}))
