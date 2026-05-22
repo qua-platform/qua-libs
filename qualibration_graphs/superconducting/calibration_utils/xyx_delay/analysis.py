@@ -6,6 +6,8 @@ import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
+from scipy.optimize import curve_fit
+from scipy.ndimage import uniform_filter1d
 
 __all__ = [
     "FitParameters",
@@ -93,26 +95,78 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     return fit_results
 
 
-def fit_routine(da, node):
+def triangle_peak(t, amp, t0, half_width, offset):
+    """
+    Cross-correlation of two equal-duration rectangular pulses.
+    Both XY and coupler flux pulses have the same length by construction
+    (flux waveform is passed in already matching x180 length).
+    """
+    return amp * np.maximum(0, 1 - np.abs(t - t0) / half_width) + offset
 
+
+def fit_routine(da, node):
     x = da.relative_time.data
     y = da.difference.data[0]
 
+    # Look up the qubit object for this group to get its x180 duration
+    qubit = next(q for q in node.namespace["qubits"] if q.id == da.qubit.item())
+    xy_duration = qubit.xy.operations["x180"].length  # ns
+    
+    # Smooth before argmax to prevent a single noise spike from seeding the fit
+    y_smooth     = uniform_filter1d(y, size=5)
+    t0_guess     = float(x[np.argmax(y_smooth)])
+    # 10th percentile as a proxy for the signal floor (robust to the peak inflating the mean)
+    amp_guess    = float(y_smooth.max()) - float(np.percentile(y, 10))
+    # Same floor as the peak (could be noise or baseline offset).
+    offset_guess = float(np.percentile(y, 10))
+
+    # Only consider samples far from the peak (coupler fully misaligned)
+    wing_mask = np.abs(x - t0_guess) > xy_duration
+    # Noise from wings (far from peak, coupler fully misaligned); fall back to
+    # full-signal std if too few wing points (peak near scan edge).
+    noise_std = float(np.std(y[wing_mask])) if wing_mask.sum() > 10 else float(np.std(y))
+
     try:
-        sign_changes = np.sign(y)
-        crossings = np.where(np.diff(sign_changes) != 0)[0]
-        assert len(crossings) == 2, "Expected exactly two sign change points in the data."
-        flux_delay = x[(crossings[1] + crossings[0]) // 2]
-        da = da.assign(flux_delay=flux_delay)
-        da = da.assign(success=True)
+        p0 = [amp_guess, t0_guess, xy_duration, offset_guess]
+        bounds = (
+            [0,      x.min(), 0.5 * xy_duration, -np.inf],
+            [np.inf, x.max(), 1.5 * xy_duration,  np.inf],
+        )
+        popt, pcov = curve_fit(
+            triangle_peak, x, y,
+            p0=p0, bounds=bounds, maxfev=3000
+        )
+        amp, flux_delay, half_width, offset = popt
+        # Uncertainty on t0 from the diagonal of the covariance matrix
+        flux_delay_std = np.sqrt(pcov[1, 1])
 
-    except AssertionError as e:
-        print(f"Error processing {da.qubit.data}: {e}")
-        flux_delay = 0
-        da = da.assign(flux_delay=flux_delay)
-        da = da.assign(success=False)
-        return da
+        # Ensure the peak is far enough from the scan edges (prevent edge effects)
+        assert x.min() + xy_duration < flux_delay < x.max() - xy_duration, \
+            f"Peak at {flux_delay:.2f} ns is too close to scan edge — increase zeros_each_side."
+        # Ensure the uncertainty is small enough (prevent overfitting)
+        assert flux_delay_std < 5.0, \
+            f"Fit uncertainty too large: {flux_delay_std:.2f} ns."
+        # Ensure the amplitude is positive (prevent negative signals)
+        assert amp > 0, \
+            "Fitted amplitude is negative — check signal polarity."
+        # Ensure the peak is significant enough (prevent noise-only fits)
+        assert amp / noise_std > 3.0, \
+            f"Fitted peak not significant: SNR = {amp / noise_std:.1f} " \
+            f"(amp={amp:.3f}, noise={noise_std:.3f})."
 
-    print(f"Flux delay for {da.qubit.data}: {flux_delay:.2f} ns")
+        y_fit = triangle_peak(x, *popt)
+        da = da.assign(fit=xr.DataArray(y_fit, coords={"relative_time": x}))
+        da = da.assign(flux_delay=flux_delay, flux_delay_std=flux_delay_std, success=True)
+
+    except Exception as e:
+        # Fallback: use argmax of the raw signal (no smoothing)
+        y_fit = np.full_like(x, np.nan, dtype=float)
+        da = da.assign(fit=xr.DataArray(y_fit, coords={"relative_time": x}))
+        # 10th percentile as a proxy for the signal floor (robust to the peak inflating the mean)
+        baseline = np.percentile(y, 10)
+        # Use argmax of the raw signal (no smoothing)
+        flux_delay = float(x[np.argmax(y - baseline)])
+        print(f"{da.qubit.data}: fit failed ({e}), argmax fallback → {flux_delay:.2f} ns")
+        da = da.assign(flux_delay=flux_delay, flux_delay_std=np.nan, success=False)
 
     return da
