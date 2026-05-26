@@ -66,7 +66,7 @@ node = QualibrationNode[Parameters, Quam](
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
 )
-#instrument_calibration_node(node)
+# instrument_calibration_node(node)
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -109,7 +109,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_shots
     amplitudes = np.arange(node.parameters.amp_min, node.parameters.amp_max, node.parameters.amp_step)
-    durations = np.arange(node.parameters.time_min_in_ns, node.parameters.time_max_in_ns, node.parameters.time_step_in_ns) // 4
+    durations = (
+        np.arange(node.parameters.time_min_in_ns, node.parameters.time_max_in_ns, node.parameters.time_step_in_ns) // 4
+    )
     detuning = node.parameters.artificial_detuning_in_mhz * u.MHz
 
     # Register the sweep axes to be added to the dataset when fetching data
