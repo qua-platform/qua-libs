@@ -72,18 +72,20 @@ and preparing the system for entangling gate calibration.
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="18a_coupler_zero_point_coarse",  # Name should be unique
+    name="30_coupler_zero_point_coarse",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
 
-#instrument_calibration_node(node)
-
-
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Custom parameter configuration function."""
-    # node.parameters.qubit_pairs = ["q1-2"]
+    node.parameters.qubit_pairs = ["coupler_q2_q3"]
+    node.parameters.cz_or_iswap = "cz"
+    node.parameters.coupler_flux_step = 0.01
+    node.parameters.qubit_flux_step = 0.01
+    node.parameters.use_state_discrimination = True
+    
     pass
 
 
@@ -149,12 +151,12 @@ def create_qua_program(
         flux_coupler = declare(fixed)
         flux_qubit = declare(fixed)
         comp_flux_qubit = declare(fixed)
-        n_st = declare_stream()
+        n_st = declare_output_stream()
         if node.parameters.use_state_discrimination:
             state_c = [declare(int) for _ in range(num_qubit_pairs)]
             state_t = [declare(int) for _ in range(num_qubit_pairs)]
-            state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
-            state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state_c_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+            state_t_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
         else:
             I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
             I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
