@@ -1,3 +1,5 @@
+"""Analysis utilities for GEF readout frequency optimization: centroid distance fitting."""
+
 import logging
 from dataclasses import dataclass
 from typing import Tuple, Dict
@@ -41,6 +43,7 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
+    """Convert raw IQ data to voltage for all g, e, f states."""
     # Convert IQ data into volts
     ds = convert_IQ_to_V(ds, node.namespace["qubits"], IQ_list=["Ig", "Qg", "Ie", "Qe", "If", "Qf"])
     return ds
