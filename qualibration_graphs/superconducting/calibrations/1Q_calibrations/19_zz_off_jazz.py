@@ -1,28 +1,24 @@
 # %% {Imports}
 from dataclasses import asdict
 
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from calibration_utils.JAZZ_ZZ import (
-    FitResults,
     Parameters,
     fit_raw_data,
     log_fitted_results,
     plot_decay_rate_data,
-    plot_oscillation_data,
-    plot_raw_data_with_fit,
+    plot_effective_coupling,
+    plot_fit_data,
+    plot_raw_data,
     process_raw_dataset,
 )
-from qm import SimulationConfig
 from qm.qua import *
-from qualang_tools.bakery import baking
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
-from qualibration_libs.core import tracked_updates
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
@@ -62,11 +58,10 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="24_zz_off_jazz",  # Name should be unique
+    name="19_zz_off_jazz",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
-    parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
+    parameters=Parameters(),  # Node parameters defined under calibration_utils/JAZZ_ZZ/parameters.py
 )
-# instrument_calibration_node(node)
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -75,14 +70,18 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubit_pairs = ["q1-q2"]
+    node.parameters.qubit_pairs = None
+    node.parameters.measure_qubit = "control"
+    node.parameters.amp_step = 0.01
+    node.parameters.num_shots = 10
+
     # node.parameters.qubit_pairs = ["qC4-C5"]
     # node.parameters.time_min_in_ns = 16
     # node.parameters.time_max_in_ns = 500
     # node.parameters.time_step_in_ns = 4
     # node.parameters.artificial_detuning_in_mhz = 10
-    # node.parameters.amp_min = -0.04
-    # node.parameters.amp_max = 0.04
+    node.parameters.amp_min = -0.1
+    node.parameters.amp_max = 0.1
     # node.parameters.amp_step = 0.001
     # node.parameters.num_shots = 200
     # node.parameters.use_state_discrimination = True
@@ -105,20 +104,25 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
     # Get the active qubit pairs from the node and organize them by batches
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
+    measured_qubits = []
+    for qp in qubit_pairs:
+        if node.parameters.measure_qubit == "control":
+            measured_qubits.append(qp.qubit_control)
+        else:
+            measured_qubits.append(qp.qubit_target)
+    node.namespace["measured_qubits"] = measured_qubits
 
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_shots
     amplitudes = np.arange(node.parameters.amp_min, node.parameters.amp_max, node.parameters.amp_step)
-    durations = (
-        np.arange(node.parameters.time_min_in_ns, node.parameters.time_max_in_ns, node.parameters.time_step_in_ns) // 4
-    )
+    durations = np.arange(node.parameters.time_min_in_ns, node.parameters.time_max_in_ns, node.parameters.time_step_in_ns) // 4
     detuning = node.parameters.artificial_detuning_in_mhz * u.MHz
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "amp": xr.DataArray(amplitudes, attrs={"long_name": "coupler amplitude", "units": "V"}),
-        "time": xr.DataArray(durations * 4, attrs={"long_name": "coupler amplitude", "units": "ns"}),
+        "time": xr.DataArray(durations * 4, attrs={"long_name": "interaction time", "units": "ns"}),
     }
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
@@ -151,33 +155,38 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
                             # Reset the frames of both qubits
                             reset_frame(qp.qubit_target.xy.name)
                             reset_frame(qp.qubit_control.xy.name)
+                            qp.align()
+                            # setting the protagonist and antagonist qubits
                             if node.parameters.measure_qubit == "control":
                                 protagonist_qubit = qp.qubit_control
                                 antagonist_qubit = qp.qubit_target
                             else:
                                 protagonist_qubit = qp.qubit_target
                                 antagonist_qubit = qp.qubit_control
-                            protagonist_qubit.xy.play("x90")
                             qp.align()
-                            qp.coupler.wait(10)
-                            # play the CZ gate
+                            # play the x90 gate on the protagonist qubit
+                            protagonist_qubit.xy.play("x90")
+                            qp.coupler.wait(protagonist_qubit.xy.operations["x90"].length//4)
+                            antagonist_qubit.wait(protagonist_qubit.xy.operations["x90"].length//4)
+                            # play the coupler pulse
                             qp.coupler.play(
                                 "const", amplitude_scale=amp / qp.coupler.operations["const"].amplitude, duration=t
                             )
-                            qp.align()
+                            protagonist_qubit.xy.wait(t)
+                            antagonist_qubit.xy.wait(t)
                             # Echo pulse
                             protagonist_qubit.xy.play("x180")
                             antagonist_qubit.xy.play("x180")
-                            qp.align()
+                            qp.coupler.wait(protagonist_qubit.xy.operations["x180"].length//4)
                             # rotate the frame
                             protagonist_qubit.xy.frame_rotation_2pi(virtual_detuning_phase)
-                            qp.coupler.wait(10)
-                            # play the CZ gate
+                            # play the coupler pulse
                             qp.coupler.play(
                                 "const", amplitude_scale=amp / qp.coupler.operations["const"].amplitude, duration=t
                             )
-                            qp.align()
-                            # Tomographic rotation on the target qubit
+                            protagonist_qubit.xy.wait(t)
+                            antagonist_qubit.xy.wait(t)
+                            # Tomographic rotation on the protagonist qubit
                             protagonist_qubit.xy.play("x90")
                             qp.align()
 
@@ -185,14 +194,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
                                 # measure both qubits
                                 protagonist_qubit.readout_state(state_t[ii])
                                 save(state_t[ii], state_t_st[ii])
-
-                        else:
-                            protagonist_qubit.resonator.measure("readout", qua_vars=(I_t[ii], Q_t[ii]))
-                            save(I_t[ii], I_t_st[ii])
-                            save(Q_t[ii], Q_t_st[ii])
+                            else:
+                                protagonist_qubit.resonator.measure("readout", qua_vars=(I_t[ii], Q_t[ii]))
+                                save(I_t[ii], I_t_st[ii])
+                                save(Q_t[ii], Q_t_st[ii])
 
             align()
-
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubit_pairs):
@@ -212,7 +219,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    _, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
@@ -239,6 +246,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
+    measured_qubit_names = [q.name for q in node.namespace["measured_qubits"]]
+    dataset = dataset.assign_coords(measured_qubit_name=("qubit_pair", measured_qubit_names))
     # Register the raw dataset
     node.results["ds_raw"] = dataset
 
@@ -253,6 +262,18 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     # Get the active qubit pairs from the loaded node parameters
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+    measured_qubits = []
+    for qp in node.namespace["qubit_pairs"]:
+        if node.parameters.measure_qubit == "control":
+            measured_qubits.append(qp.qubit_control)
+        else:
+            measured_qubits.append(qp.qubit_target)
+    node.namespace["measured_qubits"] = measured_qubits
+    if "measured_qubit_name" not in node.results["ds_raw"].coords:
+        measured_qubit_names = [q.name for q in measured_qubits]
+        node.results["ds_raw"] = node.results["ds_raw"].assign_coords(
+            measured_qubit_name=("qubit_pair", measured_qubit_names)
+        )
 
 
 # %% {Analyse_data}
@@ -278,21 +299,21 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the JAZZ_ZZ coupling analysis, decay time constant analysis, and oscillation traces."""
+    """Plot J_eff, decay time, raw oscillations, and fitted oscillations."""
     qubit_pairs = node.namespace["qubit_pairs"]
+    ds_fit = node.results["ds_fit"]
 
-    # Plot coupling vs flux bias
-    fig_coupling = plot_raw_data_with_fit(node.results["ds_fit"], qubit_pairs, node)
+    fig_jeff = plot_effective_coupling(ds_fit, qubit_pairs)
+    fig_decay = plot_decay_rate_data(ds_fit, qubit_pairs)
+    fig_raw = plot_raw_data(node.results["ds_raw"], qubit_pairs)
+    fig_fit = plot_fit_data(ds_fit, qubit_pairs)
 
-    # Plot decay time constant vs coupler amplitude
-    fig_decay_time = plot_decay_rate_data(node.results["ds_fit"], qubit_pairs, node)
-
-    # Plot oscillation traces for verification
-    fig_oscillations = plot_oscillation_data(node.results["ds_raw"], qubit_pairs)
-
-    node.results["coupling_figure"] = fig_coupling
-    node.results["decay_time_figure"] = fig_decay_time
-    node.results["oscillation_figure"] = fig_oscillations
+    node.results["figures"] = {
+        "jeff_vs_amp": fig_jeff,
+        "decay_time": fig_decay,
+        "raw_data": fig_raw,
+        **({"fit_data": fig_fit} if fig_fit is not None else {}),
+    }
 
 
 # %% {Update_state}
