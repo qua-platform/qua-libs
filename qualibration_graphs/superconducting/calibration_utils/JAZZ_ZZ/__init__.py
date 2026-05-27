@@ -2,7 +2,7 @@
 
 from .analysis import FitResults, damped_cosine, fit_raw_data, log_fitted_results, process_raw_dataset
 from .parameters import Parameters
-from .plotting import plot_oscillation_data, plot_raw_data_with_fit, plot_decay_rate_data
+from .plotting import plot_decay_rate_data, plot_effective_coupling, plot_fit_data, plot_raw_data
 
 __all__ = [
     "Parameters",
@@ -11,7 +11,8 @@ __all__ = [
     "log_fitted_results",
     "FitResults",
     "damped_cosine",
-    "plot_raw_data_with_fit",
-    "plot_oscillation_data",
+    "plot_effective_coupling",
     "plot_decay_rate_data",
+    "plot_raw_data",
+    "plot_fit_data",
 ]

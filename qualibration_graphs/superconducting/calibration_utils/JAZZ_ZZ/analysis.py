@@ -7,7 +7,6 @@ from typing import Dict, Tuple
 import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
-from qualibration_libs.analysis import fit_oscillation, oscillation
 from scipy.optimize import curve_fit
 from scipy.signal import savgol_filter
 
@@ -127,8 +126,9 @@ def fit_jazz_zz_routine(da, node):  # pylint: disable=too-many-statements
     else:
         data = "I_target"
 
-    # Extract the data matrix (time vs amplitude)
-    data_matrix = da[data].data[0].T  # shape = (n_time, n_amp)
+    # Extract the data matrix with time along axis 0, amplitude along axis 1
+    signal_da = da[data].squeeze()
+    data_matrix = signal_da.transpose("time", "amp").values  # shape = (n_time, n_amp)
     flux_bias = da.amp.data  # amplitude values
     time_us = da.time_us.data  # time in µs
 
@@ -136,6 +136,7 @@ def fit_jazz_zz_routine(da, node):  # pylint: disable=too-many-statements
     jeff_raw = []
     gamma_raw = []
     fit_mask = []
+    fitted_matrix = np.full(data_matrix.shape, np.nan)
 
     for i in range(data_matrix.shape[1]):
         ydata = data_matrix[:, i] - np.mean(data_matrix[:, i])
@@ -154,6 +155,7 @@ def fit_jazz_zz_routine(da, node):  # pylint: disable=too-many-statements
             jeff_raw.append(freq_mhz)
             gamma_raw.append(gamma_mhz)
             fit_mask.append(True)
+            fitted_matrix[:, i] = damped_cosine(time_us, *popt)
         except RuntimeError:
             jeff_raw.append(0.0)
             gamma_raw.append(0.0)
@@ -210,8 +212,16 @@ def fit_jazz_zz_routine(da, node):  # pylint: disable=too-many-statements
         max_decay_time_amplitude = np.nan
         success = False
 
+    # Match fitted_state dim order to the measured signal (typically amp, time)
+    fitted_state = xr.DataArray(
+        fitted_matrix,
+        dims=("time", "amp"),
+        coords={"time": da.time, "amp": da.amp},
+    ).transpose(*signal_da.dims)
+
     # Add results to data array
     da = da.assign(
+        fitted_state=fitted_state,
         jeff_raw=("amp", jeff_raw),
         jeff_smooth=("amp", jeff_smooth),
         gamma_raw=("amp", gamma_raw),
@@ -264,6 +274,9 @@ def _extract_relevant_parameters(
             "long_name": "amplitude at maximum decay time",
             "units": "a.u.",
         }
+    if "fitted_state" in ds_fit.data_vars:
+        ds_fit.fitted_state.attrs = {"long_name": "fitted oscillation", "units": "a.u."}
+    ds_fit["artificial_detuning"] = node.parameters.artificial_detuning_in_mhz
     if "jeff_raw" in ds_fit.data_vars:
         ds_fit.jeff_raw.attrs = {"long_name": "raw extracted effective coupling", "units": "MHz"}
     if "jeff_smooth" in ds_fit.data_vars:
