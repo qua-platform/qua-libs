@@ -127,79 +127,84 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
         virtual_detuning_phase = declare(fixed)
         amp = declare(fixed)
         t = declare(int)
         if node.parameters.use_state_discrimination:
             state = [declare(int) for _ in range(num_qubit_pairs)]
-            state_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
-            # Initialize the qubits
+            # Initialize the QPU
             for qp in multiplexed_qubit_pairs.values():
                 node.machine.initialize_qpu(target=qp.qubit_control)
                 node.machine.initialize_qpu(target=qp.qubit_target)
-            # Loop for averaging
+            align()
+
+            measured_qubits_map = {
+                ii: qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
+                for ii, qp in multiplexed_qubit_pairs.items()
+            }
+            partner_qubits_map = {
+                ii: qp.qubit_target if node.parameters.measure_qubit == "control" else qp.qubit_control
+                for ii, qp in multiplexed_qubit_pairs.items()
+            }
+
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
-                # Loop over the amplitude scale
                 with for_(*from_array(amp, amplitudes)):
                     with for_(*from_array(t, durations)):
                         assign(virtual_detuning_phase, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
+
+                        # Reset
                         for ii, qp in multiplexed_qubit_pairs.items():
-                            # Reset the qubits
                             qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
                             qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
-                            qp.align()
-                            # Reset the frames of both qubits
                             reset_frame(qp.qubit_target.xy.name)
                             reset_frame(qp.qubit_control.xy.name)
-                            qp.align()
-                            # setting the protagonist and antagonist qubits
-                            if node.parameters.measure_qubit == "control":
-                                protagonist_qubit = qp.qubit_control
-                                antagonist_qubit = qp.qubit_target
-                            else:
-                                protagonist_qubit = qp.qubit_target
-                                antagonist_qubit = qp.qubit_control
-                            qp.align()
-                            # play the x90 gate on the protagonist qubit
-                            protagonist_qubit.xy.play("x90")
-                            qp.coupler.wait(protagonist_qubit.xy.operations["x90"].length//4)
-                            antagonist_qubit.wait(protagonist_qubit.xy.operations["x90"].length//4)
-                            # play the coupler pulse
-                            qp.coupler.play(
-                                "const", amplitude_scale=amp / qp.coupler.operations["const"].amplitude, duration=t
-                            )
-                            protagonist_qubit.xy.wait(t)
-                            antagonist_qubit.xy.wait(t)
-                            # Echo pulse
-                            protagonist_qubit.xy.play("x180")
-                            antagonist_qubit.xy.play("x180")
-                            qp.coupler.wait(protagonist_qubit.xy.operations["x180"].length//4)
-                            # rotate the frame
-                            protagonist_qubit.xy.frame_rotation_2pi(virtual_detuning_phase)
-                            # play the coupler pulse
-                            qp.coupler.play(
-                                "const", amplitude_scale=amp / qp.coupler.operations["const"].amplitude, duration=t
-                            )
-                            protagonist_qubit.xy.wait(t)
-                            antagonist_qubit.xy.wait(t)
-                            # Tomographic rotation on the protagonist qubit
-                            protagonist_qubit.xy.play("x90")
-                            qp.align()
+                        align()
 
+                        # Qubit manipulation (JAZZ echo sequence)
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            measured_qubit = measured_qubits_map[ii]
+                            partner_qubit = partner_qubits_map[ii]
+                            measured_qubit.xy.play("x90")
+                            qp.coupler.wait(measured_qubit.xy.operations["x90"].length // 4)
+                            partner_qubit.wait(measured_qubit.xy.operations["x90"].length // 4)
+                            qp.coupler.play(
+                                "const",
+                                amplitude_scale=amp / qp.coupler.operations["const"].amplitude,
+                                duration=t,
+                            )
+                            measured_qubit.xy.wait(t)
+                            partner_qubit.xy.wait(t)
+                            measured_qubit.xy.play("x180")
+                            partner_qubit.xy.play("x180")
+                            qp.coupler.wait(measured_qubit.xy.operations["x180"].length // 4)
+                            measured_qubit.xy.frame_rotation_2pi(virtual_detuning_phase)
+                            qp.coupler.play(
+                                "const",
+                                amplitude_scale=amp / qp.coupler.operations["const"].amplitude,
+                                duration=t,
+                            )
+                            measured_qubit.xy.wait(t)
+                            partner_qubit.xy.wait(t)
+                            measured_qubit.xy.play("x90")
+                        align()
+
+                        # Qubit readout — measure the selected qubit only
+                        for ii, _ in multiplexed_qubit_pairs.items():
+                            measured_qubit = measured_qubits_map[ii]
                             if node.parameters.use_state_discrimination:
-                                # measure both qubits
-                                protagonist_qubit.readout_state(state[ii])
+                                measured_qubit.readout_state(state[ii])
                                 save(state[ii], state_st[ii])
                             else:
-                                protagonist_qubit.resonator.measure("readout", qua_vars=(I[ii], Q[ii]))
+                                measured_qubit.resonator.measure("readout", qua_vars=(I[ii], Q[ii]))
                                 save(I[ii], I_st[ii])
                                 save(Q[ii], Q_st[ii])
+                        align()
 
-            align()
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubit_pairs):
