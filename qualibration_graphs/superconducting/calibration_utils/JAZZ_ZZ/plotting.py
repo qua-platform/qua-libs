@@ -1,69 +1,62 @@
 """Plotting functions for JAZZ_ZZ calibration results."""
 
-from typing import Dict
-
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.JAZZ_ZZ.analysis import FitResults
-from qualibration_libs.core import BatchableList
+from matplotlib.figure import Figure
+from qualibration_libs.plotting import grid_iter
+
+from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
+
+_FIG_TITLE_PREFIX = "ZZ coupling off - JAZZ"
 
 
-def plot_raw_data_with_fit(
-    fit_results: xr.Dataset,
-    qubit_pairs: BatchableList,
-    node=None,
-) -> plt.Figure:
+def _subplot_title(ds: xr.Dataset, qp_name: str) -> str:
+    if "measured_qubit_name" in ds.coords:
+        measured_name = str(ds.measured_qubit_name.sel(qubit_pair=qp_name).values)
+        return f"{qp_name}\nMeasured: {measured_name}"
+    return qp_name
+
+
+def _pairs_with_successful_fits(ds_fit: xr.Dataset, qubit_pairs) -> list:
+    return [qp for qp in qubit_pairs if bool(ds_fit.sel(qubit_pair=qp.name).success.values)]
+
+
+def plot_effective_coupling(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
+    """Effective coupling $|J_{eff}|$ vs coupler flux for each pair.
+
+    The subplot layout is computed automatically from the qubit-pair
+    grid locations using :class:`~calibration_utils.pair_grid.QubitPairGrid`.
+    Pairs where all per-amplitude fits failed are skipped. Returns ``None`` if
+    there is nothing to plot.
+
+    Parameters
+    ----------
+    ds_fit : xr.Dataset
+        Fitted dataset containing ``jeff_raw``, ``jeff_smooth``, ``fit_mask``,
+        ``optimal_amplitude``, ``measured_qubit_name``, and ``artificial_detuning``.
+    qubit_pairs : list
+        Qubit pair objects (must expose ``.qubit_control`` / ``.qubit_target``
+        with ``.grid_location`` and ``.name``).
+
+    Returns
+    -------
+    Figure or None
     """
-    Plot the JAZZ_ZZ data showing effective coupling J_eff vs flux bias with optimal point.
+    valid_pairs = _pairs_with_successful_fits(ds_fit, qubit_pairs)
+    if not valid_pairs:
+        return None
 
-    Parameters:
-    -----------
-    fit_results : xr.Dataset
-        Fit results for each qubit pair containing jeff_raw, jeff_smooth, fit_mask, optimal_amplitude
-    qubit_pairs : BatchableList
-        List of qubit pairs
-    node : QualibrationNode, optional
-        Node containing parameters like artificial_detuning_in_mhz
-
-    Returns:
-    --------
-    plt.Figure
-        The generated figure
-    """
-    n_pairs = len(qubit_pairs)
-    cols = min(4, n_pairs)  # Max 4 columns
-    rows = (n_pairs + cols - 1) // cols  # Ceiling division
-
-    fig, axes = plt.subplots(rows, cols, figsize=(8 * cols, 5 * rows), squeeze=False)
-    axes = axes.flatten()
-
-    for i, qp in enumerate(qubit_pairs):
-        ax = axes[i]
-        qp_name = qp.name
-        fit_result = fit_results.sel(qubit_pair=qp_name)
-
-        # Get flux bias values and coupling data
+    artificial_detuning = float(ds_fit.artificial_detuning)
+    g_names, qp_names = grid_pair_names(valid_pairs)
+    grid = QubitPairGrid(g_names, qp_names)
+    for ax, qubit in grid_iter(grid):
+        qp_name = qubit["qubit"]
+        fit_result = ds_fit.sel(qubit_pair=qp_name)
         flux_bias = fit_result.amp.values
         jeff_raw = fit_result.jeff_raw.values
         jeff_smooth = fit_result.jeff_smooth.values
         fit_mask = fit_result.fit_mask.values.astype(bool)
 
-        # Get artificial detuning from parameters
-        artificial_detuning = node.parameters.artificial_detuning_in_mhz if node else 1.0
-
-        # Plot flat traces (failed fits) - Blue
-        plt.sca(ax)
-        # ax.plot(
-        #     flux_bias[~fit_mask],
-        #     jeff_raw[~fit_mask] - artificial_detuning,
-        #     "o",
-        #     color="blue",
-        #     alpha=0.5,
-        #     label="Flat signal (J = 0)",
-        # )
-
-        # Plot valid fits - Gold
         ax.plot(
             flux_bias[fit_mask],
             np.abs(jeff_raw[fit_mask] - artificial_detuning),
@@ -72,19 +65,14 @@ def plot_raw_data_with_fit(
             alpha=0.6,
             label="Extracted $J_{eff}$",
         )
-
-        # Plot smoothed fit - Orange
-        if np.any(fit_mask):
-            ax.plot(
-                flux_bias[fit_mask],
-                np.abs(jeff_smooth[fit_mask] - artificial_detuning),
-                "-",
-                color="orange",
-                linewidth=2,
-                label="Smoothed $J_{eff}$",
-            )
-
-        # Mark optimal amplitude (minimum coupling)
+        ax.plot(
+            flux_bias[fit_mask],
+            np.abs(jeff_smooth[fit_mask] - artificial_detuning),
+            "-",
+            color="orange",
+            linewidth=2,
+            label="Smoothed $J_{eff}$",
+        )
         if not np.isnan(fit_result.optimal_amplitude.values):
             ax.axvline(
                 x=fit_result.optimal_amplitude.values,
@@ -94,147 +82,72 @@ def plot_raw_data_with_fit(
                 label="Optimal amplitude",
             )
 
-        ax.set_xlabel("Flux Bias (arb. units)")
-        ax.set_ylabel("Effective Coupling $|J_{eff}|$ (MHz)")
-        ax.set_title(f"JAZZ_ZZ Coupling vs Flux Bias - {qp_name}")
+        ax.set_title(_subplot_title(ds_fit, qp_name))
+        ax.set_xlabel("Coupler flux (V)")
+        ax.set_ylabel(r"Effective coupling $|J_{eff}|$ (MHz)")
         ax.grid(True)
-        ax.legend()
+        ax.legend(fontsize="small")
 
-    # Hide unused axes
-    for i in range(n_pairs, len(axes)):
-        axes[i].axis("off")
-
-    fig.suptitle("JAZZ_ZZ Effective Coupling Extraction")
-    fig.tight_layout()
-
-    return fig
+    grid.fig.suptitle(f"{_FIG_TITLE_PREFIX} — $J_{{eff}}$ vs coupler flux")
+    grid.fig.tight_layout()
+    return grid.fig
 
 
-def plot_oscillation_data(
-    ds_raw: xr.Dataset,
-    qubit_pairs: BatchableList,
-    amp_indices: list = None,
-) -> plt.Figure:
+def plot_decay_rate_data(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
+    """Decay time constant τ vs coupler flux for each pair.
+
+    The subplot layout is computed automatically from the qubit-pair
+    grid locations using :class:`~calibration_utils.pair_grid.QubitPairGrid`.
+    Pairs with no valid decay-time extraction are skipped. Returns ``None`` if
+    there is nothing to plot.
+
+    Parameters
+    ----------
+    ds_fit : xr.Dataset
+        Fitted dataset containing ``tau_raw``, ``tau_smooth``, ``fit_mask``,
+        ``max_decay_time``, ``max_decay_time_amplitude``, and ``measured_qubit_name``.
+    qubit_pairs : list
+        Qubit pair objects (must expose ``.qubit_control`` / ``.qubit_target``
+        with ``.grid_location`` and ``.name``).
+
+    Returns
+    -------
+    Figure or None
     """
-    Plot raw oscillation data for selected amplitudes to show the time evolution.
+    valid_pairs = [
+        qp for qp in qubit_pairs if np.any(ds_fit.sel(qubit_pair=qp.name).tau_raw.values > 0)
+    ]
+    if not valid_pairs:
+        return None
 
-    Parameters:
-    -----------
-    ds_raw : xr.Dataset
-        Raw dataset containing state_target oscillations
-    qubit_pairs : BatchableList
-        List of qubit pairs
-    amp_indices : list, optional
-        List of amplitude indices to plot. If None, plots a few representative ones.
-
-    Returns:
-    --------
-    plt.Figure
-        The generated figure showing oscillation traces
-    """
-    n_pairs = len(qubit_pairs)
-    cols = min(4, n_pairs)
-    rows = (n_pairs + cols - 1) // cols
-
-    fig, axes = plt.subplots(rows, cols, figsize=(8 * cols, 5 * rows), squeeze=False)
-    axes = axes.flatten()
-
-    for i, qp in enumerate(qubit_pairs):
-        ax = axes[i]
-        qp_name = qp.name
-        qp_data = ds_raw.sel(qubit_pair=qp_name)
-
-        qp_data.state_target.plot(ax=ax, x="amp")
-
-        ax.set_xlabel("Time (µs)")
-        ax.set_ylabel("State Target")
-        ax.set_title(f"JAZZ_ZZ Oscillations - {qp_name}")
-
-    # Hide unused axes
-    for i in range(n_pairs, len(axes)):
-        axes[i].axis("off")
-
-    fig.suptitle("JAZZ_ZZ Raw Oscillation Data")
-    fig.tight_layout()
-
-    return fig
-
-
-def plot_decay_rate_data(
-    fit_results: xr.Dataset,
-    qubit_pairs: BatchableList,
-    node=None,
-) -> plt.Figure:
-    """
-    Plot the decay time constant (τ = 1/γ) vs coupler amplitude for JAZZ_ZZ data.
-
-    Parameters:
-    -----------
-    fit_results : xr.Dataset
-        Fit results for each qubit pair containing tau_raw, tau_smooth, fit_mask, max_decay_time
-    qubit_pairs : BatchableList
-        List of qubit pairs
-    node : QualibrationNode, optional
-        Node containing parameters
-
-    Returns:
-    --------
-    plt.Figure
-        The generated figure showing decay time constant vs coupler amplitude
-    """
-    n_pairs = len(qubit_pairs)
-    cols = min(4, n_pairs)  # Max 4 columns
-    rows = (n_pairs + cols - 1) // cols  # Ceiling division
-
-    fig, axes = plt.subplots(rows, cols, figsize=(8 * cols, 5 * rows), squeeze=False)
-    axes = axes.flatten()
-
-    for i, qp in enumerate(qubit_pairs):
-        ax = axes[i]
-        qp_name = qp.name
-        fit_result = fit_results.sel(qubit_pair=qp_name)
-
-        # Get flux bias values and decay time data
+    g_names, qp_names = grid_pair_names(valid_pairs)
+    grid = QubitPairGrid(g_names, qp_names)
+    for ax, qubit in grid_iter(grid):
+        qp_name = qubit["qubit"]
+        fit_result = ds_fit.sel(qubit_pair=qp_name)
         flux_bias = fit_result.amp.values
         tau_raw = fit_result.tau_raw.values
         tau_smooth = fit_result.tau_smooth.values
         fit_mask = fit_result.fit_mask.values.astype(bool)
-
-        # Plot flat traces (failed fits) - Blue
-        plt.sca(ax)
-        # ax.plot(
-        #     flux_bias[~fit_mask],
-        #     tau_raw[~fit_mask],
-        #     "o",
-        #     color="blue",
-        #     alpha=0.5,
-        #     label="Failed fits (τ = 0)",
-        # )
-
-        # Plot valid fits - Gold
         valid_tau_mask = fit_mask & (tau_raw > 0)
-        if np.any(valid_tau_mask):
-            ax.plot(
-                flux_bias[valid_tau_mask],
-                tau_raw[valid_tau_mask],
-                "o",
-                color="gold",
-                alpha=0.6,
-                label="Extracted decay time",
-            )
 
-        # Plot smoothed fit - Orange
-        if np.any(valid_tau_mask):
-            ax.plot(
-                flux_bias[valid_tau_mask],
-                tau_smooth[valid_tau_mask],
-                "-",
-                color="orange",
-                linewidth=2,
-                label="Smoothed decay time",
-            )
+        ax.plot(
+            flux_bias[valid_tau_mask],
+            tau_raw[valid_tau_mask],
+            "o",
+            color="gold",
+            alpha=0.6,
+            label="Extracted decay time",
+        )
+        ax.plot(
+            flux_bias[valid_tau_mask],
+            tau_smooth[valid_tau_mask],
+            "-",
+            color="orange",
+            linewidth=2,
+            label="Smoothed decay time",
+        )
 
-        # Mark maximum decay time
         if not np.isnan(fit_result.max_decay_time.values):
             max_tau = fit_result.max_decay_time.values
             max_tau_amp = fit_result.max_decay_time_amplitude.values
@@ -245,8 +158,6 @@ def plot_decay_rate_data(
                 linewidth=2,
                 label=f"Max τ amplitude (τ={max_tau:.3f} µs)",
             )
-
-            # Mark the maximum decay time point
             ax.plot(
                 max_tau_amp,
                 max_tau,
@@ -255,7 +166,6 @@ def plot_decay_rate_data(
                 label="Maximum decay time",
             )
 
-        # Also mark optimal amplitude for reference
         if not np.isnan(fit_result.optimal_amplitude.values):
             ax.axvline(
                 x=fit_result.optimal_amplitude.values,
@@ -266,16 +176,80 @@ def plot_decay_rate_data(
                 label="Optimal coupling amplitude",
             )
 
-        ax.set_xlabel("Coupler Amplitude (arb. units)")
-        ax.set_ylabel("Decay Time Constant τ (µs)")
-        ax.set_title(f"JAZZ_ZZ Decay Time vs Coupler Amplitude - {qp_name}")
+        ax.set_title(_subplot_title(ds_fit, qp_name))
+        ax.set_xlabel("Coupler flux (V)")
+        ax.set_ylabel("Decay time constant τ (µs)")
         ax.grid(True)
-        ax.legend()
+        ax.legend(fontsize="small")
 
-    # Hide unused axes
-    for i in range(n_pairs, len(axes)):
-        axes[i].axis("off")
+    grid.fig.suptitle(f"{_FIG_TITLE_PREFIX} — decay vs coupler flux")
+    grid.fig.tight_layout()
+    return grid.fig
 
-    fig.suptitle("JAZZ_ZZ Decay Time Constant Analysis")
 
-    return fig
+def plot_raw_data(ds: xr.Dataset, qubit_pairs) -> Figure:
+    """2D heatmap of measured signal vs (coupler flux, time) for each pair.
+
+    The subplot layout is computed automatically from the qubit-pair
+    grid locations using :class:`~calibration_utils.pair_grid.QubitPairGrid`.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Raw dataset containing ``state_target`` or ``I_target``, and
+        ``measured_qubit_name``.
+    qubit_pairs : list
+        Qubit pair objects (must expose ``.qubit_control`` / ``.qubit_target``
+        with ``.grid_location`` and ``.name``).
+
+    Returns
+    -------
+    Figure
+    """
+    data_var = "state_target" if "state_target" in ds.data_vars else "I_target"
+    g_names, qp_names = grid_pair_names(qubit_pairs)
+    grid = QubitPairGrid(g_names, qp_names)
+    for ax, qubit in grid_iter(grid):
+        qp_name = qubit["qubit"]
+        ds[data_var].sel(qubit_pair=qp_name).squeeze().plot(ax=ax, x="amp", y="time")
+        ax.set_xlabel("Coupler flux (V)")
+        ax.set_ylabel("Time (ns)")
+        ax.set_title(_subplot_title(ds, qp_name))
+    grid.fig.suptitle(f"{_FIG_TITLE_PREFIX} — raw data")
+    grid.fig.tight_layout()
+    return grid.fig
+
+
+def plot_fit_data(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
+    """2D heatmap of the fitted oscillation for each pair.
+
+    Skips pairs where all fits failed (all ``fitted_state`` values are NaN)
+    and returns ``None`` if there is nothing to plot.
+
+    Parameters
+    ----------
+    ds_fit : xr.Dataset
+        Fitted dataset containing ``fitted_state`` and ``measured_qubit_name``.
+    qubit_pairs : list
+        Qubit pair objects (must expose ``.qubit_control`` / ``.qubit_target``
+        with ``.grid_location`` and ``.name``).
+
+    Returns
+    -------
+    Figure or None
+    """
+    valid_pairs = _pairs_with_successful_fits(ds_fit, qubit_pairs)
+    if not valid_pairs:
+        return None
+
+    g_names, qp_names = grid_pair_names(valid_pairs)
+    grid = QubitPairGrid(g_names, qp_names)
+    for ax, qubit in grid_iter(grid):
+        qp_name = qubit["qubit"]
+        ds_fit.fitted_state.sel(qubit_pair=qp_name).squeeze().plot(ax=ax, x="amp", y="time")
+        ax.set_xlabel("Coupler flux (V)")
+        ax.set_ylabel("Time (ns)")
+        ax.set_title(_subplot_title(ds_fit, qp_name))
+    grid.fig.suptitle(f"{_FIG_TITLE_PREFIX} — fit")
+    grid.fig.tight_layout()
+    return grid.fig
