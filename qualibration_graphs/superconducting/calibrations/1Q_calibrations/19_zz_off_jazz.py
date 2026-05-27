@@ -70,23 +70,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubit_pairs = None
-    node.parameters.measure_qubit = "control"
-    node.parameters.amp_step = 0.01
-    node.parameters.num_shots = 10
-
-    # node.parameters.qubit_pairs = ["qC4-C5"]
-    # node.parameters.time_min_in_ns = 16
-    # node.parameters.time_max_in_ns = 500
-    # node.parameters.time_step_in_ns = 4
-    # node.parameters.artificial_detuning_in_mhz = 10
-    node.parameters.amp_min = -0.1
-    node.parameters.amp_max = 0.1
-    # node.parameters.amp_step = 0.001
-    # node.parameters.num_shots = 200
-    # node.parameters.use_state_discrimination = True
-    # node.parameters.reset_type = "active"
-    # node.parameters.measure_qubit = "target"
     pass
 
 
@@ -308,14 +291,14 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     qubit_pairs = node.namespace["qubit_pairs"]
     ds_fit = node.results["ds_fit"]
 
-    fig_jeff = plot_effective_coupling(ds_fit, qubit_pairs)
-    fig_decay = plot_decay_rate_data(ds_fit, qubit_pairs)
+    fig_jeff = plot_effective_coupling(ds_fit, qubit_pairs, log_y=True)
+    fig_decay = plot_decay_rate_data(ds_fit, qubit_pairs, log_y=True)
     fig_raw = plot_raw_data(node.results["ds_raw"], qubit_pairs)
     fig_fit = plot_fit_data(ds_fit, qubit_pairs)
 
     node.results["figures"] = {
-        "jeff_vs_amp": fig_jeff,
-        "decay_time": fig_decay,
+        **({"jeff_vs_amp": fig_jeff} if fig_jeff is not None else {}),
+        **({"decay_time": fig_decay} if fig_decay is not None else {}),
         "raw_data": fig_raw,
         **({"fit_data": fig_fit} if fig_fit is not None else {}),
     }
@@ -334,8 +317,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             # Update decouple_offset using the coupler amplitude from this run (accumulates across calibrations).
             # Analysis provides two candidates — choose one:
             #   optimal_amplitude: coupler amp where J_eff ≈ artificial_detuning (minimize residual ZZ).
-            #   max_decay_time_amplitude: coupler amp with longest decay time (diagnostic / alternative bias point).
             node.machine.qubit_pairs[qp.name].coupler.decouple_offset += fit_results[qp.name]["optimal_amplitude"]
+            #   max_decay_time_amplitude: coupler amp with longest decay time (diagnostic / alternative bias point).
             # node.machine.qubit_pairs[qp.name].coupler.decouple_offset += fit_results[qp.name]["max_decay_time_amplitude"]
 
 

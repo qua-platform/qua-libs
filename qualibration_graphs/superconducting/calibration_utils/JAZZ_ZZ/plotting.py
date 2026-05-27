@@ -7,7 +7,7 @@ from qualibration_libs.plotting import grid_iter
 
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
 
-_FIG_TITLE_PREFIX = "ZZ coupling off - JAZZ"
+_FIG_TITLE_PREFIX = "ZZ coupling off (JAZZ)"
 
 
 def _subplot_title(ds: xr.Dataset, qp_name: str) -> str:
@@ -21,8 +21,8 @@ def _pairs_with_successful_fits(ds_fit: xr.Dataset, qubit_pairs) -> list:
     return [qp for qp in qubit_pairs if bool(ds_fit.sel(qubit_pair=qp.name).success.values)]
 
 
-def plot_effective_coupling(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
-    """Effective coupling $|J_{eff}|$ vs coupler flux for each pair.
+def plot_effective_coupling(ds_fit: xr.Dataset, qubit_pairs, log_y: bool = False) -> Figure | None:
+    """Residual coupling $|J_{eff} - \\delta|$ vs coupler flux for each pair.
 
     The subplot layout is computed automatically from the qubit-pair
     grid locations using :class:`~calibration_utils.pair_grid.QubitPairGrid`.
@@ -37,6 +37,9 @@ def plot_effective_coupling(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
     qubit_pairs : list
         Qubit pair objects (must expose ``.qubit_control`` / ``.qubit_target``
         with ``.grid_location`` and ``.name``).
+    log_y : bool
+        If ``True``, use a logarithmic y-axis (only points with positive residual
+        coupling are shown).
 
     Returns
     -------
@@ -57,22 +60,50 @@ def plot_effective_coupling(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
         jeff_smooth = fit_result.jeff_smooth.values
         fit_mask = fit_result.fit_mask.values.astype(bool)
 
-        ax.plot(
-            flux_bias[fit_mask],
-            np.abs(jeff_raw[fit_mask] - artificial_detuning),
-            "o",
-            color="gold",
-            alpha=0.6,
-            label="Extracted $J_{eff}$",
-        )
-        ax.plot(
-            flux_bias[fit_mask],
-            np.abs(jeff_smooth[fit_mask] - artificial_detuning),
-            "-",
-            color="orange",
-            linewidth=2,
-            label="Smoothed $J_{eff}$",
-        )
+        residual_raw = np.abs(jeff_raw[fit_mask] - artificial_detuning)
+        residual_smooth = np.abs(jeff_smooth[fit_mask] - artificial_detuning)
+        flux_plot = flux_bias[fit_mask]
+
+        if log_y:
+            positive = residual_raw > 0
+            if np.any(positive):
+                ax.plot(
+                    flux_plot[positive],
+                    residual_raw[positive],
+                    "o",
+                    color="gold",
+                    alpha=0.6,
+                    label="Extracted residual",
+                )
+            positive_smooth = residual_smooth > 0
+            if np.any(positive_smooth):
+                ax.plot(
+                    flux_plot[positive_smooth],
+                    residual_smooth[positive_smooth],
+                    "-",
+                    color="orange",
+                    linewidth=2,
+                    label="Smoothed residual",
+                )
+            ax.set_yscale("log")
+        else:
+            ax.plot(
+                flux_plot,
+                residual_raw,
+                "o",
+                color="gold",
+                alpha=0.6,
+                label="Extracted residual",
+            )
+            ax.plot(
+                flux_plot,
+                residual_smooth,
+                "-",
+                color="orange",
+                linewidth=2,
+                label="Smoothed residual",
+            )
+
         if not np.isnan(fit_result.optimal_amplitude.values):
             ax.axvline(
                 x=fit_result.optimal_amplitude.values,
@@ -84,16 +115,16 @@ def plot_effective_coupling(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
 
         ax.set_title(_subplot_title(ds_fit, qp_name))
         ax.set_xlabel("Coupler flux (V)")
-        ax.set_ylabel(r"Effective coupling $|J_{eff}|$ (MHz)")
-        ax.grid(True)
+        ax.set_ylabel(r"Residual $|J_{eff} - \delta|$ (MHz)")
+        ax.grid(True, which="both" if log_y else "major")
         ax.legend(fontsize="small")
 
-    grid.fig.suptitle(f"{_FIG_TITLE_PREFIX} — $J_{{eff}}$ vs coupler flux")
+    grid.fig.suptitle(f"{_FIG_TITLE_PREFIX} — residual coupling vs coupler flux")
     grid.fig.tight_layout()
     return grid.fig
 
 
-def plot_decay_rate_data(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
+def plot_decay_rate_data(ds_fit: xr.Dataset, qubit_pairs, log_y: bool = False) -> Figure | None:
     """Decay time constant τ vs coupler flux for each pair.
 
     The subplot layout is computed automatically from the qubit-pair
@@ -109,6 +140,8 @@ def plot_decay_rate_data(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
     qubit_pairs : list
         Qubit pair objects (must expose ``.qubit_control`` / ``.qubit_target``
         with ``.grid_location`` and ``.name``).
+    log_y : bool
+        If ``True``, use a logarithmic y-axis (only τ > 0 are shown).
 
     Returns
     -------
@@ -130,41 +163,67 @@ def plot_decay_rate_data(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
         tau_smooth = fit_result.tau_smooth.values
         fit_mask = fit_result.fit_mask.values.astype(bool)
         valid_tau_mask = fit_mask & (tau_raw > 0)
+        flux_plot = flux_bias[valid_tau_mask]
+        tau_raw_plot = tau_raw[valid_tau_mask]
+        tau_smooth_plot = tau_smooth[valid_tau_mask]
 
-        ax.plot(
-            flux_bias[valid_tau_mask],
-            tau_raw[valid_tau_mask],
-            "o",
-            color="gold",
-            alpha=0.6,
-            label="Extracted decay time",
-        )
-        ax.plot(
-            flux_bias[valid_tau_mask],
-            tau_smooth[valid_tau_mask],
-            "-",
-            color="orange",
-            linewidth=2,
-            label="Smoothed decay time",
-        )
+        if log_y:
+            smooth_mask = tau_smooth_plot > 0
+            if np.any(valid_tau_mask):
+                ax.plot(
+                    flux_plot,
+                    tau_raw_plot,
+                    "o",
+                    color="gold",
+                    alpha=0.6,
+                    label="Extracted decay time",
+                )
+            if np.any(smooth_mask):
+                ax.plot(
+                    flux_plot[smooth_mask],
+                    tau_smooth_plot[smooth_mask],
+                    "-",
+                    color="orange",
+                    linewidth=2,
+                    label="Smoothed decay time",
+                )
+            ax.set_yscale("log")
+        else:
+            ax.plot(
+                flux_plot,
+                tau_raw_plot,
+                "o",
+                color="gold",
+                alpha=0.6,
+                label="Extracted decay time",
+            )
+            ax.plot(
+                flux_plot,
+                tau_smooth_plot,
+                "-",
+                color="orange",
+                linewidth=2,
+                label="Smoothed decay time",
+            )
 
         if not np.isnan(fit_result.max_decay_time.values):
             max_tau = fit_result.max_decay_time.values
             max_tau_amp = fit_result.max_decay_time_amplitude.values
-            ax.axvline(
-                x=max_tau_amp,
-                color="red",
-                linestyle="--",
-                linewidth=2,
-                label=f"Max τ amplitude (τ={max_tau:.3f} µs)",
-            )
-            ax.plot(
-                max_tau_amp,
-                max_tau,
-                "ro",
-                markersize=8,
-                label="Maximum decay time",
-            )
+            if not log_y or max_tau > 0:
+                ax.axvline(
+                    x=max_tau_amp,
+                    color="red",
+                    linestyle="--",
+                    linewidth=2,
+                    label=f"Max τ amplitude (τ={max_tau:.3f} µs)",
+                )
+                ax.plot(
+                    max_tau_amp,
+                    max_tau,
+                    "ro",
+                    markersize=8,
+                    label="Maximum decay time",
+                )
 
         if not np.isnan(fit_result.optimal_amplitude.values):
             ax.axvline(
@@ -179,7 +238,7 @@ def plot_decay_rate_data(ds_fit: xr.Dataset, qubit_pairs) -> Figure | None:
         ax.set_title(_subplot_title(ds_fit, qp_name))
         ax.set_xlabel("Coupler flux (V)")
         ax.set_ylabel("Decay time constant τ (µs)")
-        ax.grid(True)
+        ax.grid(True, which="both" if log_y else "major")
         ax.legend(fontsize="small")
 
     grid.fig.suptitle(f"{_FIG_TITLE_PREFIX} — decay vs coupler flux")
