@@ -196,7 +196,7 @@ def plot_raw_data(ds: xr.Dataset, qubit_pairs) -> Figure:
     Parameters
     ----------
     ds : xr.Dataset
-        Raw dataset containing ``state_target`` or ``I_target``, and
+        Raw dataset containing ``state_measured`` or ``I_measured``, and
         ``measured_qubit_name``.
     qubit_pairs : list
         Qubit pair objects (must expose ``.qubit_control`` / ``.qubit_target``
@@ -206,7 +206,7 @@ def plot_raw_data(ds: xr.Dataset, qubit_pairs) -> Figure:
     -------
     Figure
     """
-    data_var = "state_target" if "state_target" in ds.data_vars else "I_target"
+    data_var = "state_measured" if "state_measured" in ds.data_vars else "I_measured"
     g_names, qp_names = grid_pair_names(qubit_pairs)
     grid = QubitPairGrid(g_names, qp_names)
     for ax, qubit in grid_iter(grid):

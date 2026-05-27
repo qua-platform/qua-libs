@@ -127,13 +127,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
-        I_t, I_t_st, Q_t, Q_t_st, n, n_st = node.machine.declare_qua_variables()
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         virtual_detuning_phase = declare(fixed)
         amp = declare(fixed)
         t = declare(int)
         if node.parameters.use_state_discrimination:
-            state_t = [declare(int) for _ in range(num_qubit_pairs)]
-            state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state = [declare(int) for _ in range(num_qubit_pairs)]
+            state_st = [declare_stream() for _ in range(num_qubit_pairs)]
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the qubits
@@ -192,22 +192,22 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
 
                             if node.parameters.use_state_discrimination:
                                 # measure both qubits
-                                protagonist_qubit.readout_state(state_t[ii])
-                                save(state_t[ii], state_t_st[ii])
+                                protagonist_qubit.readout_state(state[ii])
+                                save(state[ii], state_st[ii])
                             else:
-                                protagonist_qubit.resonator.measure("readout", qua_vars=(I_t[ii], Q_t[ii]))
-                                save(I_t[ii], I_t_st[ii])
-                                save(Q_t[ii], Q_t_st[ii])
+                                protagonist_qubit.resonator.measure("readout", qua_vars=(I[ii], Q[ii]))
+                                save(I[ii], I_st[ii])
+                                save(Q[ii], Q_st[ii])
 
             align()
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubit_pairs):
                 if node.parameters.use_state_discrimination:
-                    state_t_st[i].buffer(len(durations)).buffer(len(amplitudes)).average().save(f"state_target{i + 1}")
+                    state_st[i].buffer(len(durations)).buffer(len(amplitudes)).average().save(f"state_measured{i + 1}")
                 else:
-                    I_t_st[i].buffer(len(durations)).buffer(len(amplitudes)).average().save(f"I_target{i + 1}")
-                    Q_t_st[i].buffer(len(durations)).buffer(len(amplitudes)).average().save(f"Q_target{i + 1}")
+                    I_st[i].buffer(len(durations)).buffer(len(amplitudes)).average().save(f"I_measured{i + 1}")
+                    Q_st[i].buffer(len(durations)).buffer(len(amplitudes)).average().save(f"Q_measured{i + 1}")
 
 
 # %% {Simulate}

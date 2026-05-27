@@ -121,10 +121,10 @@ def fit_jazz_zz_routine(da, node):  # pylint: disable=too-many-statements
     xr.DataArray
         Data array with added fit results
     """
-    if hasattr(da, "state_target"):
-        data = "state_target"
+    if hasattr(da, "state_measured"):
+        data = "state_measured"
     else:
-        data = "I_target"
+        data = "I_measured"
 
     # Extract the data matrix with time along axis 0, amplitude along axis 1
     signal_da = da[data].squeeze()
