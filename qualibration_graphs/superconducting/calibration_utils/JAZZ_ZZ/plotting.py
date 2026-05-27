@@ -147,9 +147,7 @@ def plot_decay_rate_data(ds_fit: xr.Dataset, qubit_pairs, log_y: bool = False) -
     -------
     Figure or None
     """
-    valid_pairs = [
-        qp for qp in qubit_pairs if np.any(ds_fit.sel(qubit_pair=qp.name).tau_raw.values > 0)
-    ]
+    valid_pairs = [qp for qp in qubit_pairs if np.any(ds_fit.sel(qubit_pair=qp.name).tau_raw.values > 0)]
     if not valid_pairs:
         return None
 
