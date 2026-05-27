@@ -331,11 +331,12 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
                 continue
+            # Update decouple_offset using the coupler amplitude from this run (accumulates across calibrations).
+            # Analysis provides two candidates — choose one:
+            #   optimal_amplitude: coupler amp where J_eff ≈ artificial_detuning (minimize residual ZZ).
+            #   max_decay_time_amplitude: coupler amp with longest decay time (diagnostic / alternative bias point).
             node.machine.qubit_pairs[qp.name].coupler.decouple_offset += fit_results[qp.name]["optimal_amplitude"]
-            # node.machine.qubit_pairs[qp.name].coupler.decouple_offset += fit_results[qp.name][
-            #     "max_decay_time_amplitude"
-            # ]
-            # pass
+            # node.machine.qubit_pairs[qp.name].coupler.decouple_offset += fit_results[qp.name]["max_decay_time_amplitude"]
 
 
 # %% {Save_results}
