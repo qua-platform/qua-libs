@@ -1,3 +1,5 @@
+"""Analysis utilities for XY-Z delay calibration."""
+
 import logging
 from dataclasses import dataclass
 from typing import Dict, Tuple
@@ -6,8 +8,8 @@ import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
-from scipy.optimize import curve_fit
 from scipy.ndimage import uniform_filter1d
+from scipy.optimize import curve_fit
 
 __all__ = [
     "FitParameters",
@@ -19,7 +21,7 @@ __all__ = [
 
 @dataclass
 class FitParameters:
-    """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
+    """Stores XY-Z delay fit parameters: success status and extracted flux delay."""
 
     success: bool
     flux_delay: int
@@ -63,19 +65,21 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
-    Fit the qubit frequency and FWHM for each qubit in the dataset.
+    Fit the XY-Z delay response for each qubit and extract flux-delay parameters.
 
     Parameters:
     -----------
     ds : xr.Dataset
-        Dataset containing the raw data.
-    node_parameters : Parameters
-        Parameters related to the node, including whether state discrimination is used.
+        Dataset containing per-qubit `difference` traces versus `relative_time`.
+    node : QualibrationNode
+        Node context used by the fitter (e.g., measured qubit objects and config).
 
     Returns:
     --------
-    xr.Dataset
-        Dataset containing the fit results.
+    Tuple[xr.Dataset, dict[str, FitParameters]]
+        `dfit`: dataset with fitted curve (`fit`) and extracted values
+        (`flux_delay`, `flux_delay_std`, `success`) per qubit.
+        `fit_results`: summarized fit outcomes keyed by qubit name.
     """
 
     dfit = ds.groupby("qubit").apply(fit_routine, node=node)
@@ -104,13 +108,10 @@ def triangle_peak(t, amp, t0, half_width, offset):
     return amp * np.maximum(0, 1 - np.abs(t - t0) / half_width) + offset
 
 
-def fit_routine(da, node):
+def fit_delay_trace(da, xy_duration: float):
+    """Fit a single delay scan trace to a triangle peak and attach fit metadata."""
     x = da.relative_time.data
     y = da.difference.data[0]
-
-    # Look up the qubit object for this group to get its x180 duration
-    qubit = next(q for q in node.namespace["qubits"] if q.id == da.qubit.item())
-    xy_duration = qubit.xy.operations["x180"].length  # ns
 
     # Smooth before argmax to prevent a single noise spike from seeding the fit
     y_smooth = uniform_filter1d(y, size=5)
@@ -166,3 +167,9 @@ def fit_routine(da, node):
         da = da.assign(flux_delay=flux_delay, flux_delay_std=np.nan, success=False)
 
     return da
+
+
+def fit_routine(da, node):
+    qubit = next(q for q in node.namespace["qubits"] if q.id == da.qubit.item())
+    xy_duration = qubit.xy.operations["x180"].length  # ns
+    return fit_delay_trace(da, xy_duration)

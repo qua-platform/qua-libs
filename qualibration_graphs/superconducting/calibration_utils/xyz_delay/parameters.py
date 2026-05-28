@@ -1,3 +1,5 @@
+"""Parameter definitions for XY-Z delay calibration experiment."""
+
 from typing import List
 
 from qualang_tools.bakery import baking

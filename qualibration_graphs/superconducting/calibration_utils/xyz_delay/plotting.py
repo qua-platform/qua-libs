@@ -1,3 +1,5 @@
+"""Plotting utilities for XY-Z delay calibration visualizations."""
+
 from typing import List
 
 import xarray as xr
