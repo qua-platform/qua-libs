@@ -18,7 +18,6 @@ from quam_builder.builder.superconducting.add_default_pulses import add_DragCosi
 import numpy as np
 from pprint import pprint
 
-
 ########################################################################################################################
 # %%                                 QUAM loading and auxiliary functions
 ########################################################################################################################

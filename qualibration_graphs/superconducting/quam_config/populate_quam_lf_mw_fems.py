@@ -277,9 +277,7 @@ for qp in qubit_pairs:
     cz_interaction_duration = 100  # in ns
     smoothing_duration = 20  # in ns (rise + fall for flattop; rise/switch/fall budget for bipolar)
     post_zero_padding_length = 2  # in ns
-    cz_pulse_length = int(
-        np.ceil((cz_interaction_duration + smoothing_duration + post_zero_padding_length) / 4) * 4
-    )
+    cz_pulse_length = int(np.ceil((cz_interaction_duration + smoothing_duration + post_zero_padding_length) / 4) * 4)
 
     print(f"Creating CZ Unipolar gate macro for {pair.name}")
     cz_pulse = SquarePulse(length=cz_interaction_duration, amplitude=0.1, id="cz_unipolar_pulse")
