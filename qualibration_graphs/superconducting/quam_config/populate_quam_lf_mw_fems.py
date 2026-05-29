@@ -227,7 +227,13 @@ for k, q in enumerate(machine.qubits):
 ########################################################################################################################
 # %%                                    Qubit Pairs
 ########################################################################################################################
-# Pairs from generate_quam use ids like "q1-2". Create any missing pair, then add CZ macros.
+# For each pair:
+#   - If it already exists on the machine, it is reused (nothing recreated).
+#   - If it is missing, it is created here.
+#   - qubit_control is set to the qubit with the higher f_01 (from the xy frequencies above). Useful for a CZ/iSWAP gate.
+#   - moving_qubit and CZ gate macros (cz_unipolar, cz_flattop, cz_bipolar) are added on the flux Z line.
+#
+# Edit qubit_pairs if your chip has different neighbors than the default 1-2, 2-3, … chain.
 qubit_pairs = [("1", "2"), ("2", "3"), ("3", "4"), ("4", "5"), ("5", "6"), ("6", "7"), ("7", "8")]
 
 for qp in qubit_pairs:
@@ -250,6 +256,12 @@ for qp in qubit_pairs:
             machine.active_qubit_pair_names.append(pair_id)
 
     pair = machine.qubit_pairs[pair_id]
+    if pair.qubit_control.f_01 < pair.qubit_target.f_01:
+        pair.qubit_control, pair.qubit_target = (
+            pair.qubit_target.get_reference(),
+            pair.qubit_control.get_reference(),
+        )
+
     # Which qubit carries the flux pulse during two-qubit gates
     alpha = pair.qubit_control.anharmonicity
     delta = pair.qubit_control.f_01 - pair.qubit_target.f_01
