@@ -227,31 +227,29 @@ for k, q in enumerate(machine.qubits):
 ########################################################################################################################
 # %%                                    Qubit Pairs
 ########################################################################################################################
-# Add qubit pairs for CZ gates, if qubit pairs are already defined on the machine this line should be commented out
-# This is the case when tunable couplers have been defined in generate_quam.py.
-
-# If pairs are not defined:
+# Pairs from generate_quam use ids like "q1-2". Create any missing pair, then add CZ macros.
 qubit_pairs = [("1", "2"), ("2", "3"), ("3", "4"), ("4", "5"), ("5", "6"), ("6", "7"), ("7", "8")]
 
-# If pairs are already defined, comment the previous line and uncomment the following one:
-# qubit_pairs = machine.qubit_pairs
-
 for qp in qubit_pairs:
+    pair_id = f"q{qp[0]}-{qp[1]}"
 
-    q0_freq = machine.qubits[f"q{qp[0]}"].f_01
-    q1_freq = machine.qubits[f"q{qp[1]}"].f_01
+    if pair_id not in machine.qubit_pairs:
+        q0_freq = machine.qubits[f"q{qp[0]}"].f_01
+        q1_freq = machine.qubits[f"q{qp[1]}"].f_01
 
-    if q0_freq > q1_freq:
-        control = machine.qubits[f"q{qp[0]}"].get_reference()
-        target = machine.qubits[f"q{qp[1]}"].get_reference()
-    else:
-        control = machine.qubits[f"q{qp[1]}"].get_reference()
-        target = machine.qubits[f"q{qp[0]}"].get_reference()
+        if q0_freq > q1_freq:
+            control = machine.qubits[f"q{qp[0]}"].get_reference()
+            target = machine.qubits[f"q{qp[1]}"].get_reference()
+        else:
+            control = machine.qubits[f"q{qp[1]}"].get_reference()
+            target = machine.qubits[f"q{qp[0]}"].get_reference()
 
-    pair = machine.qubit_pair_type(id=f"q{qp[0]}-q{qp[1]}", qubit_control=control, qubit_target=target)
+        pair = machine.qubit_pair_type(id=pair_id, qubit_control=control, qubit_target=target)
+        machine.qubit_pairs[pair_id] = pair
+        if pair_id not in machine.active_qubit_pair_names:
+            machine.active_qubit_pair_names.append(pair_id)
 
-    machine.qubit_pairs[pair.id] = pair
-
+    pair = machine.qubit_pairs[pair_id]
     # Which qubit carries the flux pulse during two-qubit gates
     alpha = pair.qubit_control.anharmonicity
     delta = pair.qubit_control.f_01 - pair.qubit_target.f_01
