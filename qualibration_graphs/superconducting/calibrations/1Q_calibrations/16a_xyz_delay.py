@@ -4,7 +4,7 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.xyx_delay import (
+from calibration_utils.xyz_delay import (
     Parameters,
     fit_raw_data,
     log_fitted_results,
@@ -55,7 +55,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1", "q2"]
     pass
 
 
