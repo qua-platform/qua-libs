@@ -1,3 +1,5 @@
+"""Analysis utilities for IQ blobs GEF: Gaussian fitting for g, e, f state centers."""
+
 import logging
 import re
 from dataclasses import dataclass
@@ -12,7 +14,7 @@ from scipy.optimize import curve_fit, minimize
 
 @dataclass
 class FitParameters:
-    """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
+    """Stores the IQ blob center positions for g, e, f states of a single qubit."""
 
     I_g_center: float
     Q_g_center: float
@@ -53,6 +55,8 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 
 def find_biggest_gaussian(da):
+    """Fit a Gaussian to histogram data and return the peak position (mu)."""
+
     # Define Gaussian function
     def gaussian(x, amp, mu, sigma):
         return amp * np.exp(-((x - mu) ** 2) / (2 * sigma**2))
@@ -118,6 +122,8 @@ def fit_gaussian_centers(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
+    """Convert raw IQ data to voltage and fix tuple structure in dataset."""
+
     # Fix the structure of ds to avoid tuples
     def extract_value(element):
         if isinstance(element, tuple):
@@ -182,6 +188,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
 
 def center_matrix(da: xr.DataArray) -> xr.DataArray:
+    """Build center matrix from fitted g, e, f state IQ centers."""
     center = np.array(
         [
             [da.I_g_center.item(), da.Q_g_center.item()],
