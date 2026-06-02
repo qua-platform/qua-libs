@@ -6,7 +6,7 @@ of tunable couplers between superconducting qubits.
 
 from .parameters import Parameters
 from .analysis import process_raw_dataset, fit_raw_data, log_fitted_results
-from .plotting import plot_raw_data_with_fit, plot_individual_data_with
+from .plotting import plot_raw_data_with_fit, plot_individual_data_with_fit
 
 __all__ = [
     "Parameters",
@@ -14,5 +14,5 @@ __all__ = [
     "fit_raw_data",
     "log_fitted_results",
     "plot_raw_data_with_fit",
-    "plot_individual_data_with",
+    "plot_individual_data_with_fit",
 ]
