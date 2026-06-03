@@ -7,7 +7,7 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.coupler_zero_point import (
+from calibration_utils.cz_iswap_flux_bootstrap import (
     Parameters,
     estimate_qubit_flux_shift,
     fit_raw_data,
