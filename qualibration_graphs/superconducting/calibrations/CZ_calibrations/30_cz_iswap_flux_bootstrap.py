@@ -1,5 +1,5 @@
 # pylint: disable=duplicate-code
-"""Coupler zero-point calibration."""
+"""Bootstrap CZ / iSWAP flux operating points for a tunable-coupler qubit pair."""
 
 # %% {Imports}
 from dataclasses import asdict
@@ -9,6 +9,7 @@ import numpy as np
 import xarray as xr
 from calibration_utils.coupler_zero_point import (
     Parameters,
+    estimate_qubit_flux_shift,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
@@ -26,50 +27,36 @@ from quam_config import Quam
 
 # %% {Description}
 description = """
-        COUPLER ZERO-INTERACTION CALIBRATION
-This calibration program determines the flux bias point for tunable couplers that
-results in zero effective coupling (g ≈ 0) between pairs of flux-tunable qubits.
-This is a crucial step for architectures relying on dynamically tunable coupling
-to implement high-fidelity two-qubit gates and isolate qubits during single-qubit operations.
+CZ / iSWAP flux operating-point bootstrap
 
-The method performs a 2D sweep of:
-    - The coupler flux bias (around its idle point).
-    - The qubit control flux (to bring qubit frequencies closer to resonance).
+First step in the two-qubit flux calibration chain. Finds coarse moving-qubit and coupler
+flux biases for the selected macro (`operation`, e.g. `cz_unipolar` or `iswap_unipolar`)
+before finer tuning. Set `cz_or_iswap` for preparation/readout/analysis; set `operation`
+to the macro you want to calibrate and update in state.
 
-Each point in this sweep involves initializing the control qubit in the excited state and applying
-concurrent flux pulses to both the control qubit and the coupler. The resulting excitation in the
-target qubit is measured either using state discrimination or IQ integration, depending on the
-configuration. The aim is to identify the coupler bias point at which the residual interaction vanishes.
+Method
+------
+2D sweep of coupler flux (relative to `coupler.decouple_offset`) and moving-qubit flux
+(centred via `estimate_qubit_flux_shift`). At each point: prepare |11⟩ (CZ) or |10⟩ (iSWAP),
+play ``macros[operation]`` with scaled flux amplitudes, measure control and target
+(state discrimination or IQ).
 
-From the data, the optimal coupler flux (yielding minimal excitation transfer) and corresponding
-control qubit flux (yielding maximal excitation retention) are extracted. These values are used
-to update the coupler’s `decouple_offset` and the estimated qubit `detuning`.
+Prerequisites
+-------------
+- Tunable coupler pair with ``macros[operation]`` defined in QUAM.
+- CZ: GEF readout on control; iSWAP: standard state readout on both qubits.
+- Moving qubit `freq_vs_flux_01_quad_term` (09a_ramsey_vs_flux); partner anharmonicity for CZ estimate.
+- Coupler sweep spans the idle plateau and the first interaction fringe.
 
-This procedure ensures precise decoupling between qubits during idle or single-qubit operations, helping
-mitigate unwanted crosstalk and residual ZZ interactions.
+State update
+------------
+- `coupler.decouple_offset`, `qubit_pair.detuning`, and ``macros[operation]`` pulse amplitudes.
+- Set ``analysis_debug=True`` for an optional 1D contrast-cut figure in ``plot_data``.
 
-Prerequisites:
-    - Coupler hardware model with known calibration structure.
-    - Qubit frequencies, flux tuning models (quadratic term at least).
-    - Active reset routines for fast initialization (optional).
-    - Calibrated readout and XY pulses on the control and target qubits.
-    - Initial coupler `decouple_offset` set near its expected g ≈ 0 point.
-
-State update:
-    - Coupler zero-point flux: `coupler.decouple_offset`
-    - Control qubit detuning: `qubit_pair.detuning`
-
-Additional notes:
-    - Supports both simulation and hardware execution.
-    - Results are visualized in a 2D map with overlays for idle and calibrated zero-g coupler flux points.
-    - If enabled, detuning is also plotted on a secondary axis for interpretation.
-
-This calibration is essential for optimizing gate scheduling, minimizing idling errors,
-and preparing the system for entangling gate calibration.
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="30_coupler_zero_point_coarse",
+    name="30_cz_iswap_flux_bootstrap",
     description=description,
     parameters=Parameters(),
 )
@@ -80,38 +67,11 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
-    node.parameters.qubit_pairs = ["coupler_q2_q3"]
-    node.parameters.cz_or_iswap = "cz"
-    node.parameters.coupler_flux_step = 0.01
-    node.parameters.qubit_flux_step = 0.01
-    node.parameters.use_state_discrimination = True
-    #pass
+    pass
 
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
-
-
-def _compute_fluxes_qp(node: QualibrationNode[Parameters, Quam], qubit_pairs, fluxes_qubit):
-    """Return per-pair qubit flux sweep arrays centred on the estimated detuning."""
-    fluxes_qp = {}
-    for qp in qubit_pairs:
-        if node.parameters.use_saved_detuning:
-            est_flux_shift = qp.detuning
-        elif node.parameters.cz_or_iswap == "iswap":
-            est_flux_shift = np.sqrt(
-                -(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency)
-                / qp.qubit_control.freq_vs_flux_01_quad_term
-            )
-        elif node.parameters.cz_or_iswap == "cz":
-            est_flux_shift = np.sqrt(
-                -(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency + qp.qubit_target.anharmonicity)
-                / qp.qubit_control.freq_vs_flux_01_quad_term
-            )
-        else:
-            raise ValueError(f"Invalid cz_or_iswap value: {node.parameters.cz_or_iswap}")
-        fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
-    return fluxes_qp
 
 
 # %% {Create_QUA_program}
@@ -139,7 +99,10 @@ def create_qua_program(
         node.parameters.qubit_flux_span / 2,
         node.parameters.qubit_flux_step,
     )
-    fluxes_qp = _compute_fluxes_qp(node, qubit_pairs, fluxes_qubit)
+    fluxes_qp = {}
+    for qp in qubit_pairs:
+        est_flux_shift = estimate_qubit_flux_shift(node.parameters, qp, log_callable=node.log)
+        fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
     node.namespace["fluxes_qp"] = fluxes_qp
 
     # Register the sweep axes to be added to the dataset when fetching data
@@ -215,9 +178,10 @@ def create_qua_program(
                             if node.parameters.use_state_discrimination:
                                 if node.parameters.cz_or_iswap == "cz":
                                     qp.qubit_control.readout_state_gef(state_c[ii])
+                                    qp.qubit_target.readout_state_gef(state_t[ii])
                                 else:
                                     qp.qubit_control.readout_state(state_c[ii])
-                                qp.qubit_target.readout_state(state_t[ii])
+                                    qp.qubit_target.readout_state(state_t[ii])
                                 save(state_c[ii], state_c_st[ii])
                                 save(state_t[ii], state_t_st[ii])
                             else:
@@ -294,6 +258,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
     load_data_id = node.parameters.load_data_id
+    node.namespace["analysis_debug"] = node.parameters.analysis_debug
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
@@ -302,7 +267,11 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
         node.parameters.qubit_flux_span / 2,
         node.parameters.qubit_flux_step,
     )
-    node.namespace["fluxes_qp"] = _compute_fluxes_qp(node, node.namespace["qubit_pairs"], fluxes_qubit)
+    fluxes_qp = {}
+    for qp in node.namespace["qubit_pairs"]:
+        est_flux_shift = estimate_qubit_flux_shift(node.parameters, qp, log_callable=node.log)
+        fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
+    node.namespace["fluxes_qp"] = fluxes_qp
 
 
 # %% {Analyse_data}
@@ -328,26 +297,45 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    figs_raw_fit = plot_raw_data_with_fit(
-        node.results["ds_raw"], node.namespace["qubit_pairs"], node.results["fit_results"]
+    """Plot control/target maps with fit markers; optional contrast-cut debug figure."""
+    figs = plot_raw_data_with_fit(
+        node.results["ds_raw"],
+        node.namespace["qubit_pairs"],
+        node.results["fit_results"],
+        analysis_debug=node.namespace.get(
+            "analysis_debug", node.parameters.analysis_debug
+        ),
+        cz_or_iswap=node.parameters.cz_or_iswap,
     )
     plt.show()
     node.results["figures"] = {
-        "raw_fit_target": figs_raw_fit["target"],
-        "raw_fit_control": figs_raw_fit["control"],
+        "target": figs["target"],
+        "control": figs["control"],
     }
+    if "contrast_debug" in figs:
+        node.results["figures"]["contrast_debug"] = figs["contrast_debug"]
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the qubit data analysis was successful."""
+    """Update coupler decouple, qubit detuning, and ``macros[operation]`` flux amplitudes."""
 
+    operation = node.parameters.operation
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
-            qp.coupler.decouple_offset = node.results["fit_results"][qp.name]["optimal_coupler_flux"]
-            qp.detuning = node.results["fit_results"][qp.name]["optimal_qubit_flux"]
+            fit_result = node.results["fit_results"][qp.name]
+            if not fit_result.get("success", True):
+                node.log(f"Skipping state update for {qp.name}: fit flagged unsuccessful.")
+                continue
+            qp.coupler.decouple_offset = fit_result["optimal_decouple_offset"]
+            qp.detuning = fit_result["optimal_qubit_flux"]
+            macro = qp.macros[operation]
+            macro.flux_pulse_qubit.amplitude = fit_result["optimal_qubit_flux"]
+            macro.coupler_flux_pulse.amplitude = (
+                fit_result["optimal_cz_coupler_flux_total"]
+                - fit_result["optimal_decouple_offset"]
+            )
 
 
 # %% {Save_results}
