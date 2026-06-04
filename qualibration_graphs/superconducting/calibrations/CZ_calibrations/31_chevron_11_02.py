@@ -55,8 +55,8 @@ State update:
         - (If missing) adds unipolar and flattop CZ gate macros to each calibrated qubit pair
             (node.machine.qubit_pairs[<pair_name>].macros["cz_unipolar"]).
         - Updates their flux pulse amplitude
-            (qp.macros["cz_unipolar"].flux_pulse_control.amplitude) to the fitted CZ amplitude.
-        - Updates their flux pulse duration (qp.macros["cz_unipolar"].flux_pulse_control.length) to the
+            (qp.macros["cz_unipolar"].flux_pulse_qubit.amplitude) to the fitted CZ amplitude.
+        - Updates their flux pulse duration (qp.macros["cz_unipolar"].flux_pulse_qubit.length) to the
             fitted CZ length rounded up to the next multiple of 4 ns.
 """
 
@@ -73,7 +73,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # node.parameters.qubit_pairs = ["q1-q2"]
+    node.parameters.qubit_pairs = ["coupler_q4_q5"]
     pass
 
 
@@ -346,23 +346,23 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.outcomes[qp.name] == "failed":
                 continue
             else:
-                qp.macros["cz_unipolar"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
+                qp.macros["cz_unipolar"].flux_pulse_qubit.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
                 # Round up to the upper 4 ns to be compatible with the hardware time resolution
-                qp.macros["cz_unipolar"].flux_pulse_control.length = int(
+                qp.macros["cz_unipolar"].flux_pulse_qubit.length = int(
                     np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4
                 )
                 if node.parameters.update_all_pulses:
-                    qp.macros["cz_bipolar"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name][
+                    qp.macros["cz_bipolar"].flux_pulse_qubit.amplitude = node.results["fit_results"][qp.name][
                         "cz_amp"
                     ]
-                    qp.macros["cz_flattop"].flux_pulse_control.amplitude = node.results["fit_results"][qp.name][
+                    qp.macros["cz_flattop"].flux_pulse_qubit.amplitude = node.results["fit_results"][qp.name][
                         "cz_amp"
                     ]
                     # Round up to the upper 4 ns to be compatible with the hardware time resolution
-                    qp.macros["cz_flattop"].flux_pulse_control.flat_length = int(
+                    qp.macros["cz_flattop"].flux_pulse_qubit.flat_length = int(
                         np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 2) * 2
                     )
-                    qp.macros["cz_bipolar"].flux_pulse_control.flat_length = int(
+                    qp.macros["cz_bipolar"].flux_pulse_qubit.flat_length = int(
                         np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 2) * 2
                     )
 

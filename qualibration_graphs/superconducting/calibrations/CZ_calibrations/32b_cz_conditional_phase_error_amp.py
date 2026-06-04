@@ -57,7 +57,7 @@ Prerequisites:
 - Initial estimate of the CZ gate amplitude
 
 State update:
-- The optimal CZ gate amplitude: qubit_pair.gates["Cz"].flux_pulse_control.amplitude
+- The optimal CZ gate amplitude: qubit_pair.macros[operation].flux_pulse_qubit.amplitude
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
