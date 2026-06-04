@@ -208,7 +208,7 @@ def fit_jazz_zz_routine(da, node):  # pylint: disable=too-many-statements
 
     # Fit a damped cosine to the oscillation vs t_single for each coupler amplitude.
     # Extracted frequency ωm = ζ + ωb  →  stored as jeff_raw  (see module docstring).
-    jeff_raw = []   # ωm = ζ + ωb [MHz]
+    jeff_raw = []  # ωm = ζ + ωb [MHz]
     gamma_raw = []  # γ [1/µs]
     fit_mask = []
     fitted_matrix = np.full(data_matrix.shape, np.nan)
@@ -225,7 +225,7 @@ def fit_jazz_zz_routine(da, node):  # pylint: disable=too-many-statements
                 # bounds=([-np.inf, -np.inf, -np.inf, -np.pi, -np.inf], [np.inf, np.inf, np.inf, np.pi, np.inf]),
                 maxfev=5000,
             )
-            freq_mhz = popt[2]   # ωm [MHz] = ζ + ωb  (stored as jeff_raw)
+            freq_mhz = popt[2]  # ωm [MHz] = ζ + ωb  (stored as jeff_raw)
             gamma_mhz = popt[1]  # γ [1/µs]
             jeff_raw.append(freq_mhz)
             gamma_raw.append(gamma_mhz)
