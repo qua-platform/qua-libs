@@ -22,7 +22,14 @@ def _pairs_with_successful_fits(ds_fit: xr.Dataset, qubit_pairs) -> list:
 
 
 def plot_effective_coupling(ds_fit: xr.Dataset, qubit_pairs, log_y: bool = False) -> Figure | None:
-    """Residual coupling $|J_{eff} - \\delta|$ vs coupler flux for each pair.
+    """Residual ZZ coupling |ζ| vs coupler flux for each pair.
+
+    Following arXiv:2402.18926 (Li et al., Sec. III.1):
+      - ``jeff_raw`` stores ωm_code = ζ + ωb_eff, the total oscillation frequency
+        measured vs t_single (one coupler pulse duration).
+      - The true ZZ coupling is ζ = jeff_raw − artificial_detuning.
+      - The plotted quantity is |ζ| = |jeff_raw − artificial_detuning|.
+      - The optimal amplitude is the coupler bias where |ζ| is minimised (ζ ≈ 0).
 
     The subplot layout is computed automatically from the qubit-pair
     grid locations using :class:`~calibration_utils.pair_grid.QubitPairGrid`.
@@ -60,6 +67,7 @@ def plot_effective_coupling(ds_fit: xr.Dataset, qubit_pairs, log_y: bool = False
         jeff_smooth = fit_result.jeff_smooth.values
         fit_mask = fit_result.fit_mask.values.astype(bool)
 
+        # |ζ| = |ωm_code − ωb_eff| = |jeff_raw − artificial_detuning|
         residual_raw = np.abs(jeff_raw[fit_mask] - artificial_detuning)
         residual_smooth = np.abs(jeff_smooth[fit_mask] - artificial_detuning)
         flux_plot = flux_bias[fit_mask]
@@ -115,11 +123,11 @@ def plot_effective_coupling(ds_fit: xr.Dataset, qubit_pairs, log_y: bool = False
 
         ax.set_title(_subplot_title(ds_fit, qp_name))
         ax.set_xlabel("Coupler flux (V)")
-        ax.set_ylabel(r"Residual $|J_{eff} - \delta|$ (MHz)")
+        ax.set_ylabel(r"Residual ZZ coupling $|\zeta|$ (MHz)")
         ax.grid(True, which="both" if log_y else "major")
         ax.legend(fontsize="small")
 
-    grid.fig.suptitle(f"{_FIG_TITLE_PREFIX} — residual coupling vs coupler flux")
+    grid.fig.suptitle(f"{_FIG_TITLE_PREFIX} — residual ZZ coupling |ζ| vs coupler flux")
     grid.fig.tight_layout()
     return grid.fig
 

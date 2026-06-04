@@ -1,4 +1,71 @@
-"""Analysis functions for JAZZ_ZZ calibration: fitting and extracting effective ZZ coupling."""
+"""Analysis functions for JAZZ_ZZ calibration: fitting and extracting residual ZZ coupling.
+
+Reference: arXiv:2402.18926 — Li et al., "Realization of High-Fidelity CZ Gate based on a
+Double-Transmon Coupler", Sec. III.1.
+
+JAZZ pulse sequence (as implemented in 19_zz_off_jazz.py)
+---------------------------------------------------------
+The ZZ Hamiltonian is H_ZZ = (ζ/4) σz¹σz², so the phase rate seen by Q1's superposition
+depends on Q2's state:
+    Q2 = |0⟩  →  phase rate = −ζ/2  (σz eigenvalue = +1 for |0⟩)
+    Q2 = |1⟩  →  phase rate = +ζ/2  (σz eigenvalue = −1 for |1⟩)
+ZZ is ALWAYS active; only its sign changes with Q2's state. The purpose of the echo
+is NOT to switch ZZ on — it is to cancel single-qubit phase offsets while keeping
+both ZZ contributions accumulating in the same direction.
+
+Step 1 — x90 on Q1 (measured qubit):
+    Q1 is prepared in superposition |+⟩ = (|0⟩ + |1⟩) / √2.
+    Q2 is in |0⟩ after reset.
+
+Step 2 — First coupler pulse for duration t_single:
+    Q2 is in |0⟩. ZZ is active with rate −ζ/2.
+    Phase accumulated on Q1:  φ₁ = −(ζ/2) · t_single.
+
+Step 3 — x180 echo on both Q1 and Q2:
+    Xπ on Q1: inverts the sign of the already-accumulated phase (φ₁ → +ζ/2 · t_single).
+    Xπ on Q2: flips Q2 from |0⟩ → |1⟩, switching the ZZ rate from −ζ/2 to +ζ/2.
+    Combined effect: single-qubit phase offsets (bare qubit frequencies etc.) cancel,
+    while the ZZ phase from step 2 and step 5 accumulate additively.
+
+Step 4 — Frame rotation on Q1 by ωb · t_single  (artificial detuning):
+    An intentional phase ωb · t_single is added to Q1's rotating frame, where
+    ωb = artificial_detuning_in_mhz [MHz].
+    This shifts the oscillation away from DC so the fitting is more reliable.
+    Necessary because ζ near the idle point is tiny (~kHz), giving a very slow
+    oscillation that is hard to resolve within the qubit coherence time.
+
+Step 5 — Second coupler pulse for duration t_single:
+    Q2 is now in |1⟩. ZZ is active with rate +ζ/2.
+    Phase accumulated on Q1:  φ₂ = +(ζ/2) · t_single.
+
+Step 6 — x90 on Q1 → measure:
+    Population oscillates as  P = (1 − cos φ) / 2.
+
+Phase and frequency summary
+---------------------------
+Both intervals contribute ZZ phase in the same direction after the echo:
+    φ_ZZ = (ζ/2)·t_single  +  (ζ/2)·t_single  =  ζ · t_single
+
+Total phase including artificial detuning:
+    φ = ζ · t_single + ωb · t_single = (ζ + ωb) · t_single
+
+Fitting  cos(2π · ωm · t_single)  to the signal gives:
+    ωm = ζ + ωb                          ← stored as ``jeff_raw`` [MHz]
+
+True residual ZZ coupling:
+    ζ = ωm − ωb = jeff_raw − artificial_detuning
+
+The optimal coupler amplitude is where |ζ| is minimised (ζ → 0),
+i.e. where  jeff_raw ≈ artificial_detuning.
+
+Variable reference
+------------------
+``jeff_raw``   = ωm = ζ + ωb  [MHz]  (measured oscillation frequency, NOT ζ itself)
+``jeff_smooth``                        (Savitzky–Golay smoothed version of jeff_raw)
+``gamma_raw``  = γ  [1/µs]    (decay rate of the damped cosine envelope)
+``tau_raw``    = τ = 1/γ [µs] (decay time constant)
+residual       = |ζ| = |jeff_raw − artificial_detuning|  [MHz]
+"""
 
 import logging
 from dataclasses import dataclass
@@ -22,7 +89,14 @@ class FitResults:
 
 
 def damped_cosine(t, A, gamma, f, phi, C):  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    """Damped cosine fitting function for JAZZ_ZZ oscillations."""
+    """Damped cosine fitting function for JAZZ_ZZ oscillations.
+
+    Args:
+        t     : t_single [µs]  — single coupler pulse duration (sweep axis)
+        f     : ωm [MHz]       — total oscillation frequency; ωm = ζ + ωb  (stored as jeff_raw)
+        gamma : γ [1/µs]       — decay rate of the oscillation envelope
+        A, phi, C              — amplitude, phase offset, vertical offset
+    """
     return A * np.exp(-gamma * t) * np.cos(2 * np.pi * f * t + phi) + C
 
 
@@ -130,11 +204,12 @@ def fit_jazz_zz_routine(da, node):  # pylint: disable=too-many-statements
     signal_da = da[data].squeeze()
     data_matrix = signal_da.transpose("time", "amp").values  # shape = (n_time, n_amp)
     flux_bias = da.amp.data  # amplitude values
-    time_us = da.time_us.data  # time in µs
+    time_us = da.time_us.data  # t_single [µs]: single coupler pulse duration (sweep axis)
 
-    # Extract J_eff and gamma (decay rate) from each flux slice
-    jeff_raw = []
-    gamma_raw = []
+    # Fit a damped cosine to the oscillation vs t_single for each coupler amplitude.
+    # Extracted frequency ωm = ζ + ωb  →  stored as jeff_raw  (see module docstring).
+    jeff_raw = []   # ωm = ζ + ωb [MHz]
+    gamma_raw = []  # γ [1/µs]
     fit_mask = []
     fitted_matrix = np.full(data_matrix.shape, np.nan)
 
@@ -150,8 +225,8 @@ def fit_jazz_zz_routine(da, node):  # pylint: disable=too-many-statements
                 # bounds=([-np.inf, -np.inf, -np.inf, -np.pi, -np.inf], [np.inf, np.inf, np.inf, np.pi, np.inf]),
                 maxfev=5000,
             )
-            freq_mhz = popt[2]
-            gamma_mhz = popt[1]  # decay rate
+            freq_mhz = popt[2]   # ωm [MHz] = ζ + ωb  (stored as jeff_raw)
+            gamma_mhz = popt[1]  # γ [1/µs]
             jeff_raw.append(freq_mhz)
             gamma_raw.append(gamma_mhz)
             fit_mask.append(True)
@@ -188,7 +263,7 @@ def fit_jazz_zz_routine(da, node):  # pylint: disable=too-many-statements
         gamma_smooth = gamma_raw.copy()
         tau_smooth = tau_raw.copy()
 
-    # Find optimal amplitude (closest to artificial_detuning_in_mhz to minimize coupling)
+    # Find the coupler amplitude where |ζ| = |ωm − ωb| is minimised (ζ → 0).
     valid_indices = np.where(fit_mask)[0]
     if len(valid_indices) > 0:
         coupling_deviation = np.abs(jeff_smooth[fit_mask] - node.parameters.artificial_detuning_in_mhz)
@@ -278,9 +353,15 @@ def _extract_relevant_parameters(
         ds_fit.fitted_state.attrs = {"long_name": "fitted oscillation", "units": "a.u."}
     ds_fit["artificial_detuning"] = node.parameters.artificial_detuning_in_mhz
     if "jeff_raw" in ds_fit.data_vars:
-        ds_fit.jeff_raw.attrs = {"long_name": "raw extracted effective coupling", "units": "MHz"}
+        ds_fit.jeff_raw.attrs = {
+            "long_name": "measured oscillation frequency",
+            "units": "MHz",
+        }
     if "jeff_smooth" in ds_fit.data_vars:
-        ds_fit.jeff_smooth.attrs = {"long_name": "smoothed effective coupling", "units": "MHz"}
+        ds_fit.jeff_smooth.attrs = {
+            "long_name": "smoothed oscillation frequency",
+            "units": "MHz",
+        }
     if "gamma_raw" in ds_fit.data_vars:
         ds_fit.gamma_raw.attrs = {"long_name": "raw extracted decay rate", "units": "MHz"}
     if "gamma_smooth" in ds_fit.data_vars:
