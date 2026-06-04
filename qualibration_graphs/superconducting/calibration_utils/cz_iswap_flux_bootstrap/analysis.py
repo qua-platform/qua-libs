@@ -73,18 +73,22 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
         lines = [
             f"Results for qubit pair {qp_name}: {'SUCCESS' if success else 'FAIL'}",
-            f"\tOptimal qubit flux: {qubit_v:.6f} V"
-            if np.isfinite(qubit_v)
-            else "\tOptimal qubit flux: N/A",
-            f"\tDecouple offset (min |contrast| in flat): {decouple_v:.6f} V"
-            if np.isfinite(decouple_v)
-            else "\tDecouple offset: N/A",
-            f"\tGate coupler flux (1st dip after decouple): {gate_total:.6f} V"
-            if np.isfinite(gate_total)
-            else "\tGate coupler flux: N/A",
-            f"\tGate coupler pulse amplitude (rel. to decouple): {gate_rel:.6f} V"
-            if np.isfinite(gate_rel)
-            else "\tGate coupler pulse (rel.): N/A",
+            f"\tOptimal qubit flux: {qubit_v:.6f} V" if np.isfinite(qubit_v) else "\tOptimal qubit flux: N/A",
+            (
+                f"\tDecouple offset (min |contrast| in flat): {decouple_v:.6f} V"
+                if np.isfinite(decouple_v)
+                else "\tDecouple offset: N/A"
+            ),
+            (
+                f"\tGate coupler flux (1st dip after decouple): {gate_total:.6f} V"
+                if np.isfinite(gate_total)
+                else "\tGate coupler flux: N/A"
+            ),
+            (
+                f"\tGate coupler pulse amplitude (rel. to decouple): {gate_rel:.6f} V"
+                if np.isfinite(gate_rel)
+                else "\tGate coupler pulse (rel.): N/A"
+            ),
         ]
         log_callable("\n".join(lines))
 
@@ -134,9 +138,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 # ---------------------------------------------------------------------------
 
 
-def _interaction_map(
-    control: xr.DataArray, target: xr.DataArray, cz_or_iswap: str
-) -> xr.DataArray:
+def _interaction_map(control: xr.DataArray, target: xr.DataArray, cz_or_iswap: str) -> xr.DataArray:
     """2D interaction contrast (sign depends on gate)."""
     if cz_or_iswap == "cz":
         return target - control
@@ -327,9 +329,7 @@ def _index_on_sweep_boundary(idx: int, size: int) -> bool:
     return size <= 1 or idx == 0 or idx == size - 1
 
 
-def _coupler_fit_is_valid(
-    decouple_idx: int | None, gate_idx: int | None, n_coupler: int
-) -> bool:
+def _coupler_fit_is_valid(decouple_idx: int | None, gate_idx: int | None, n_coupler: int) -> bool:
     if decouple_idx is None or gate_idx is None:
         return False
     if decouple_idx == gate_idx:
@@ -367,36 +367,23 @@ def _fit_pair_from_contrast_cut(
     y_fine = _savgol_smooth(y_raw, _SAVGOL_WINDOW_FINE)
     ac_power_norm, osc_mask, flat_mask = _region_masks(y_heavy)
 
-    decouple_coarse, gate_coarse = _coarse_coupler_indices(
-        y_heavy, flat_mask, osc_mask, coupler_rel
-    )
-    decouple_idx, gate_idx = _refine_coupler_indices(
-        y_fine, flat_mask, decouple_coarse, gate_coarse
-    )
+    decouple_coarse, gate_coarse = _coarse_coupler_indices(y_heavy, flat_mask, osc_mask, coupler_rel)
+    decouple_idx, gate_idx = _refine_coupler_indices(y_fine, flat_mask, decouple_coarse, gate_coarse)
 
-    success = (
-        not _index_on_sweep_boundary(qubit_idx, control.sizes["qubit_flux"])
-        and _coupler_fit_is_valid(decouple_idx, gate_idx, n_coupler)
+    success = not _index_on_sweep_boundary(qubit_idx, control.sizes["qubit_flux"]) and _coupler_fit_is_valid(
+        decouple_idx, gate_idx, n_coupler
     )
 
     return FitParameters(
         success=success,
         optimal_qubit_flux=optimal_qubit_flux,
         optimal_decouple_offset=(
-            float(coupler_full.isel(coupler_flux=decouple_idx).values)
-            if decouple_idx is not None
-            else np.nan
+            float(coupler_full.isel(coupler_flux=decouple_idx).values) if decouple_idx is not None else np.nan
         ),
-        optimal_decouple_coupler_flux_rel=(
-            float(coupler_rel[decouple_idx]) if decouple_idx is not None else np.nan
-        ),
-        optimal_cz_coupler_flux=(
-            float(coupler_rel[gate_idx]) if gate_idx is not None else np.nan
-        ),
+        optimal_decouple_coupler_flux_rel=(float(coupler_rel[decouple_idx]) if decouple_idx is not None else np.nan),
+        optimal_cz_coupler_flux=(float(coupler_rel[gate_idx]) if gate_idx is not None else np.nan),
         optimal_cz_coupler_flux_total=(
-            float(coupler_full.isel(coupler_flux=gate_idx).values)
-            if gate_idx is not None
-            else np.nan
+            float(coupler_full.isel(coupler_flux=gate_idx).values) if gate_idx is not None else np.nan
         ),
         contrast_coupler_rel=coupler_rel.copy(),
         contrast_coupler_full=np.asarray(coupler_full).ravel().astype(float).copy(),

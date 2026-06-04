@@ -73,7 +73,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    node.parameters.qubit_pairs = ["coupler_q4_q5"]
+    # node.parameters.qubit_pairs = ["q1-q2"]
     pass
 
 
@@ -352,12 +352,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                     np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4
                 )
                 if node.parameters.update_all_pulses:
-                    qp.macros["cz_bipolar"].flux_pulse_qubit.amplitude = node.results["fit_results"][qp.name][
-                        "cz_amp"
-                    ]
-                    qp.macros["cz_flattop"].flux_pulse_qubit.amplitude = node.results["fit_results"][qp.name][
-                        "cz_amp"
-                    ]
+                    qp.macros["cz_bipolar"].flux_pulse_qubit.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
+                    qp.macros["cz_flattop"].flux_pulse_qubit.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
                     # Round up to the upper 4 ns to be compatible with the hardware time resolution
                     qp.macros["cz_flattop"].flux_pulse_qubit.flat_length = int(
                         np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 2) * 2

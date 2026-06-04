@@ -81,9 +81,7 @@ def plot_raw_data_with_fit(
         figures[state_type] = grid.fig
 
     if analysis_debug:
-        figures["contrast_debug"] = plot_contrast_cut_debug(
-            ds, qubit_pairs, fits, cz_or_iswap=cz_or_iswap
-        )
+        figures["contrast_debug"] = plot_contrast_cut_debug(ds, qubit_pairs, fits, cz_or_iswap=cz_or_iswap)
 
     return figures
 

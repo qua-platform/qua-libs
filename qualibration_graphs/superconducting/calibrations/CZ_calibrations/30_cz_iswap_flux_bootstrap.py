@@ -144,7 +144,7 @@ def create_qua_program(
                 has_crosstalk = "coupler_qubit_crosstalk" in qp.extras
                 crosstalk = qp.extras["coupler_qubit_crosstalk"] if has_crosstalk else 0.0
                 wait(1000)
-                
+
                 with for_(n, 0, n < n_avg, n + 1):
                     save(n, n_st)
                     with for_(*from_array(flux_coupler, fluxes_coupler)):
@@ -169,7 +169,8 @@ def create_qua_program(
                             # Coupler and qubit flux pulses
                             qp.macros[operation].apply(
                                 amplitude_scale_qubit=comp_flux_qubit / qp.macros[operation].flux_pulse_qubit.amplitude,
-                                amplitude_scale_coupler=flux_coupler / qp.macros[operation].coupler_flux_pulse.amplitude,
+                                amplitude_scale_coupler=flux_coupler
+                                / qp.macros[operation].coupler_flux_pulse.amplitude,
                             )
                             align()
                             wait(20)
@@ -302,9 +303,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results["ds_raw"],
         node.namespace["qubit_pairs"],
         node.results["fit_results"],
-        analysis_debug=node.namespace.get(
-            "analysis_debug", node.parameters.analysis_debug
-        ),
+        analysis_debug=node.namespace.get("analysis_debug", node.parameters.analysis_debug),
         cz_or_iswap=node.parameters.cz_or_iswap,
     )
     plt.show()
@@ -333,8 +332,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             macro = qp.macros[operation]
             macro.flux_pulse_qubit.amplitude = fit_result["optimal_qubit_flux"]
             macro.coupler_flux_pulse.amplitude = (
-                fit_result["optimal_cz_coupler_flux_total"]
-                - fit_result["optimal_decouple_offset"]
+                fit_result["optimal_cz_coupler_flux_total"] - fit_result["optimal_decouple_offset"]
             )
 
 
