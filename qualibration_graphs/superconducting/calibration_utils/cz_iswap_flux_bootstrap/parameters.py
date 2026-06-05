@@ -57,6 +57,11 @@ class NodeSpecificParameters(RunnableParameters):
         oscillation masks, decouple and gate coupler markers). Diagnostic only; does not
         affect fitting.
 
+    analysis_fit_preset : Literal["default", "noisy", "coarse"], default = "default"
+        Contrast-cut fit profile. ``default`` for normal coupler sweep resolution and SNR;
+        ``noisy`` for good resolution but poor SNR (try more shots first); ``coarse`` for a
+        wide exploratory coupler scan to locate idle and interaction dynamics.
+
     Notes
     -----
     Choosing smaller step sizes greatly increases the number of measurement points:
@@ -86,7 +91,9 @@ class NodeSpecificParameters(RunnableParameters):
     use_saved_detuning: bool = False
     """Whether to reuse the previously extracted qubit detuning instead of recalculating. Default is False."""
     analysis_debug: bool = False
-    """If True, add the 1D contrast-cut debug figure in ``plot_data``. Default is False."""
+    """If True, add the 1D contrast-cut debug figure in plot_data. Default is False."""
+    analysis_fit_preset: Literal["default", "noisy", "coarse"] = "default"
+    """Contrast-cut fit preset: default, noisy, or coarse. Default is default."""
 
 
 class Parameters(

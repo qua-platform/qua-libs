@@ -23,20 +23,54 @@ from qualibration_libs.analysis import oscillation
 from .parameters import moving_qubit
 from scipy.signal import find_peaks, savgol_filter
 
-# --- Contrast-cut / region detection ---
-_FFT_WINDOW = 30
+# Fringe band for sliding-window FFT (fixed; not exposed in presets).
 _FRINGE_FREQ_LOW = 0.05
 _FRINGE_FREQ_HIGH = 0.45
-_OSC_POWER_THRESH = 0.05
-_FLAT_POWER_THRESH = 0.03
-_SAVGOL_WINDOW_COARSE = 21
-_SAVGOL_WINDOW_FINE = 7
-_SAVGOL_POLY = 3
-_GUARD_FRACTION = 0.05
-_GATE_DIP_PROMINENCE = 0.05
+
+# Fixed refine / guard knobs (not preset-dependent).
 _MIN_FLAT_POINTS = 4
+_GUARD_FRACTION = 0.05
 _REFINE_HALF_WIDTH_DECOUPLE = 20
 _REFINE_HALF_WIDTH_GATE = 15
+_SAVGOL_POLY = 3
+
+_ANALYSIS_PRESETS: dict[str, dict] = {
+    "default": {
+        # Standard resolution, clean data (enough coupler flux points, normal SNR).
+        "flat_power_thresh": 0.03,
+        "osc_power_thresh": 0.05,
+        "gate_dip_prominence": 0.05,
+        "savgol_window_coarse": 21,
+        "savgol_window_fine": 7,
+        "fft_window": 30,
+    },
+    "noisy": {
+        # Good resolution but poor SNR (few averages, shot noise, or short T2).
+        "flat_power_thresh": 0.05,
+        "osc_power_thresh": 0.08,
+        "gate_dip_prominence": 0.02,
+        "savgol_window_coarse": 41,
+        "savgol_window_fine": 15,
+        "fft_window": 30,
+    },
+    "coarse": {
+        # Wide exploratory scan, few points per fringe (first pass to locate dynamics).
+        "flat_power_thresh": 0.03,
+        "osc_power_thresh": 0.04,
+        "gate_dip_prominence": 0.08,
+        "savgol_window_coarse": 11,
+        "savgol_window_fine": 5,
+        "fft_window": 15,
+    },
+}
+
+
+def get_analysis_fit_config(preset: str) -> dict:
+    """Resolve ``analysis_fit_preset`` name to a contrast-cut settings dict."""
+    if preset not in _ANALYSIS_PRESETS:
+        valid = ", ".join(sorted(_ANALYSIS_PRESETS))
+        raise ValueError(f"analysis_fit_preset must be one of {{{valid}}}, got {preset!r}")
+    return _ANALYSIS_PRESETS[preset]
 
 
 @dataclass
@@ -160,11 +194,11 @@ def _qubit_flux_cut_index(contrast: xr.DataArray, cz_or_iswap: str) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _sliding_fringe_power(y: np.ndarray) -> np.ndarray:
+def _sliding_fringe_power(y: np.ndarray, cfg: dict) -> np.ndarray:
     """Normalised sliding-window FFT power in the fringe band (0–1 after max scaling)."""
-    half_w = _FFT_WINDOW // 2
+    half_w = cfg["fft_window"] // 2
     n = y.size
-    freqs = np.fft.rfftfreq(_FFT_WINDOW)
+    freqs = np.fft.rfftfreq(cfg["fft_window"])
     band = (freqs >= _FRINGE_FREQ_LOW) & (freqs <= _FRINGE_FREQ_HIGH)
 
     ac_power = np.zeros(n)
@@ -172,7 +206,7 @@ def _sliding_fringe_power(y: np.ndarray) -> np.ndarray:
         i0 = max(0, i - half_w)
         i1 = min(n, i + half_w)
         seg = y[i0:i1]
-        seg_pad = np.pad(seg, (0, _FFT_WINDOW - len(seg)), mode="edge")
+        seg_pad = np.pad(seg, (0, cfg["fft_window"] - len(seg)), mode="edge")
         spectrum = np.abs(np.fft.rfft(seg_pad - seg_pad.mean())) ** 2
         ac_power[i] = spectrum[band].mean()
 
@@ -188,15 +222,15 @@ def _savgol_smooth(y: np.ndarray, window: int) -> np.ndarray:
     return savgol_filter(y, window_length=sw, polyorder=min(_SAVGOL_POLY, sw - 1))
 
 
-def _region_masks(y_heavy: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _region_masks(y_heavy: np.ndarray, cfg: dict) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Return (ac_power_norm, oscillation_mask, flat_mask) from the heavy-smoothed trace."""
-    ac_power_norm = _sliding_fringe_power(y_heavy)
-    osc_mask = ac_power_norm > _OSC_POWER_THRESH
-    flat_mask = ac_power_norm < _FLAT_POWER_THRESH
+    ac_power_norm = _sliding_fringe_power(y_heavy, cfg)
+    osc_mask = ac_power_norm > cfg["osc_power_thresh"]
+    flat_mask = ac_power_norm < cfg["flat_power_thresh"]
     return ac_power_norm, osc_mask, flat_mask
 
 
-def _decouple_index_in_flat_region(smoothed: np.ndarray, flat_mask: np.ndarray) -> int | None:
+def _decouple_index_in_flat_region(smoothed: np.ndarray, flat_mask: np.ndarray, cfg: dict) -> int | None:
     """Coupler index of min |contrast| within the FFT-flat (idle) region."""
     flat_indices = np.where(flat_mask)[0]
     if flat_indices.size < _MIN_FLAT_POINTS:
@@ -222,7 +256,7 @@ def _refine_decouple_index(
     return int(in_flat[np.argmin(np.abs(y_fine[in_flat]))])
 
 
-def _refine_gate_coupler_index(y_fine: np.ndarray, coarse_gate: int | None) -> int | None:
+def _refine_gate_coupler_index(y_fine: np.ndarray, coarse_gate: int | None, cfg: dict) -> int | None:
     """Refine gate-coupler dip index in a window around the coarse dip."""
     if coarse_gate is None:
         return None
@@ -232,7 +266,7 @@ def _refine_gate_coupler_index(y_fine: np.ndarray, coarse_gate: int | None) -> i
     if seg.size < 3:
         return coarse_gate
     sig_range = float(seg.max() - seg.min())
-    prom = max(_GATE_DIP_PROMINENCE, 0.05 * sig_range)
+    prom = max(cfg["gate_dip_prominence"], 0.05 * sig_range)
     dips, _ = find_peaks(-seg, prominence=prom)
     if len(dips) == 0:
         return coarse_gate
@@ -272,6 +306,7 @@ def _gate_coupler_index_from_contrast(
     decouple_idx: int,
     osc_mask: np.ndarray,
     coupler_rel: np.ndarray,
+    cfg: dict,
 ) -> int | None:
     """First contrast dip on the oscillation side of decouple (toward interaction fringes)."""
     osc_indices = np.where(osc_mask)[0]
@@ -282,8 +317,8 @@ def _gate_coupler_index_from_contrast(
     osc_center = float(coupler_rel[osc_indices].mean())
     decouple_v = float(coupler_rel[decouple_idx])
 
-    dip_l = _first_dip_beyond_decouple(smoothed[: decouple_idx + 1], "left", _GATE_DIP_PROMINENCE, guard_pts)
-    dip_r = _first_dip_beyond_decouple(smoothed[decouple_idx:], "right", _GATE_DIP_PROMINENCE, guard_pts)
+    dip_l = _first_dip_beyond_decouple(smoothed[: decouple_idx + 1], "left", cfg["gate_dip_prominence"], guard_pts)
+    dip_r = _first_dip_beyond_decouple(smoothed[decouple_idx:], "right", cfg["gate_dip_prominence"], guard_pts)
     gate_l = dip_l
     gate_r = (decouple_idx + dip_r) if dip_r is not None else None
 
@@ -297,12 +332,13 @@ def _coarse_coupler_indices(
     flat_mask: np.ndarray,
     osc_mask: np.ndarray,
     coupler_rel: np.ndarray,
+    cfg: dict,
 ) -> Tuple[int | None, int | None]:
     """Coarse decouple + gate coupler indices from heavy-smoothed contrast."""
-    decouple = _decouple_index_in_flat_region(y_heavy, flat_mask)
+    decouple = _decouple_index_in_flat_region(y_heavy, flat_mask, cfg)
     if decouple is None:
         return None, None
-    gate = _gate_coupler_index_from_contrast(y_heavy, decouple, osc_mask, coupler_rel)
+    gate = _gate_coupler_index_from_contrast(y_heavy, decouple, osc_mask, coupler_rel, cfg)
     return decouple, gate
 
 
@@ -311,12 +347,13 @@ def _refine_coupler_indices(
     flat_mask: np.ndarray,
     decouple_coarse: int | None,
     gate_coarse: int | None,
+    cfg: dict,
 ) -> Tuple[int | None, int | None]:
     """Refine decouple and gate indices on the lightly smoothed trace."""
     if decouple_coarse is None:
         return None, None
     decouple = _refine_decouple_index(y_fine, flat_mask, decouple_coarse)
-    gate = _refine_gate_coupler_index(y_fine, gate_coarse)
+    gate = _refine_gate_coupler_index(y_fine, gate_coarse, cfg)
     return decouple, gate
 
 
@@ -348,6 +385,7 @@ def _fit_pair_from_contrast_cut(
     coupler_full: xr.DataArray,
     qubit_full: xr.DataArray,
     cz_or_iswap: str,
+    cfg: dict,
 ) -> FitParameters:
     """Full contrast-cut fit for one pair (see module docstring pipeline)."""
     contrast = _interaction_map(control, target, cz_or_iswap)
@@ -363,12 +401,12 @@ def _fit_pair_from_contrast_cut(
             optimal_decouple_offset=np.nan,
         )
 
-    y_heavy = _savgol_smooth(y_raw, _SAVGOL_WINDOW_COARSE)
-    y_fine = _savgol_smooth(y_raw, _SAVGOL_WINDOW_FINE)
-    ac_power_norm, osc_mask, flat_mask = _region_masks(y_heavy)
+    y_heavy = _savgol_smooth(y_raw, cfg["savgol_window_coarse"])
+    y_fine = _savgol_smooth(y_raw, cfg["savgol_window_fine"])
+    ac_power_norm, osc_mask, flat_mask = _region_masks(y_heavy, cfg)
 
-    decouple_coarse, gate_coarse = _coarse_coupler_indices(y_heavy, flat_mask, osc_mask, coupler_rel)
-    decouple_idx, gate_idx = _refine_coupler_indices(y_fine, flat_mask, decouple_coarse, gate_coarse)
+    decouple_coarse, gate_coarse = _coarse_coupler_indices(y_heavy, flat_mask, osc_mask, coupler_rel, cfg)
+    decouple_idx, gate_idx = _refine_coupler_indices(y_fine, flat_mask, decouple_coarse, gate_coarse, cfg)
 
     success = not _index_on_sweep_boundary(qubit_idx, control.sizes["qubit_flux"]) and _coupler_fit_is_valid(
         decouple_idx, gate_idx, n_coupler
@@ -400,6 +438,13 @@ def _extract_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     use_sd = node.parameters.use_state_discrimination
     cz_or_iswap = node.parameters.cz_or_iswap
     coupler_rel = np.asarray(fit.coupler_flux).astype(float)
+    preset = node.parameters.analysis_fit_preset
+    cfg = get_analysis_fit_config(preset)
+    node.log(
+        f"Contrast-cut analysis preset: {preset} "
+        f"(flat<{cfg['flat_power_thresh']}, osc>{cfg['osc_power_thresh']}, "
+        f"gate_prom={cfg['gate_dip_prominence']})"
+    )
 
     fit_results = {}
     for qp_name in fit.qubit_pair.values:
@@ -418,6 +463,7 @@ def _extract_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             fit.coupler_flux_full.sel(qubit_pair=qp_name),
             fit.qubit_flux_full.sel(qubit_pair=qp_name),
             cz_or_iswap,
+            cfg,
         )
 
     return fit, fit_results

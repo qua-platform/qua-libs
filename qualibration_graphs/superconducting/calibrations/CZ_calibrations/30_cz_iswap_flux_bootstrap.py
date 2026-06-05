@@ -51,7 +51,12 @@ Prerequisites
 State update
 ------------
 - `coupler.decouple_offset`, `qubit_pair.detuning`, and ``macros[operation]`` pulse amplitudes.
-- Set ``analysis_debug=True`` for an optional 1D contrast-cut figure in ``plot_data``.
+
+Notes
+-----
+- ``analysis_debug`` — optional 1D contrast-cut figure in ``plot_data`` (diagnostic only).
+- ``analysis_fit_preset`` — ``default`` (normal sweep/SNR), ``noisy`` (poor SNR), or
+  ``coarse`` (wide exploratory coupler scan).
 
 """
 
@@ -67,6 +72,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
+    node.parameters.qubit_pairs = ["coupler_q4_q5"]
     pass
 
 
