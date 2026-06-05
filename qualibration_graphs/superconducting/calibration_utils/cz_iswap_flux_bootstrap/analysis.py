@@ -401,6 +401,13 @@ def _fit_pair_from_contrast_cut(
             optimal_decouple_offset=np.nan,
         )
 
+    # Normalize contrast to ~[-1, 1] so absolute thresholds (gate_dip_prominence,
+    # flat/osc power) work equally for raw IQ (tiny voltages) and state-discrimination
+    # outputs (already ~0–1). Peak-to-peak normalization; guard against flat arrays.
+    y_range = y_raw.max() - y_raw.min()
+    if y_range > 1e-12:
+        y_raw = y_raw / y_range
+
     y_heavy = _savgol_smooth(y_raw, cfg["savgol_window_coarse"])
     y_fine = _savgol_smooth(y_raw, cfg["savgol_window_fine"])
     ac_power_norm, osc_mask, flat_mask = _region_masks(y_heavy, cfg)
@@ -440,12 +447,6 @@ def _extract_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     coupler_rel = np.asarray(fit.coupler_flux).astype(float)
     preset = node.parameters.analysis_fit_preset
     cfg = get_analysis_fit_config(preset)
-    node.log(
-        f"Contrast-cut analysis preset: {preset} "
-        f"(flat<{cfg['flat_power_thresh']}, osc>{cfg['osc_power_thresh']}, "
-        f"gate_prom={cfg['gate_dip_prominence']})"
-    )
-
     fit_results = {}
     for qp_name in fit.qubit_pair.values:
         qp_name = str(qp_name)

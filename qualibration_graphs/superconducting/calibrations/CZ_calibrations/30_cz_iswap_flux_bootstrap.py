@@ -72,7 +72,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
-    node.parameters.qubit_pairs = ["coupler_q4_q5"]
+    # node.parameters.qubit_pairs = ["q1_q2"]
     pass
 
 

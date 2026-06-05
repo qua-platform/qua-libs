@@ -240,14 +240,12 @@ def plot_contrast_cut_debug(
         smoothed = np.asarray(fit["contrast_smoothed"]).ravel()
         osc_mask = np.asarray(fit["osc_mask"]).astype(bool)
         flat_mask = np.asarray(fit["flat_mask"]).astype(bool)
-
-        ylo, yhi = y.min() - 0.05, y.max() + 0.05
         ax.plot(x, y, color="steelblue", lw=1.0, alpha=0.4, label="raw")
         ax.plot(x, smoothed, color="steelblue", lw=1.8, label="smoothed")
         ax.fill_between(
             x,
-            ylo,
-            yhi,
+            0,
+            1,
             where=osc_mask,
             alpha=0.12,
             color="tomato",
@@ -256,8 +254,8 @@ def plot_contrast_cut_debug(
         )
         ax.fill_between(
             x,
-            ylo,
-            yhi,
+            0,
+            1,
             where=flat_mask,
             alpha=0.15,
             color="limegreen",
@@ -278,7 +276,6 @@ def plot_contrast_cut_debug(
             ax.axvline(1e3 * cz, color="red", ls="--", lw=1.5, label=_gate_point_label(cz_or_iswap))
 
         qubit_v = fit.get("optimal_qubit_flux", np.nan)
-        ax.set_ylim(ylo, yhi)
         ax.set_xlabel("Coupler flux [mV]")
         ylab = "contrast (T−C)" if cz_or_iswap == "cz" else "contrast (C−T)"
         ax.set_ylabel(ylab)
