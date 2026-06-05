@@ -1,5 +1,5 @@
 from .analysis import fit_raw_data, log_fitted_results, process_raw_dataset
-from .parameters import Parameters, baked_waveform
+from .parameters import Parameters, baked_waveform, estimate_cz_flux_amplitude
 from .plotting import plot_raw_data_with_fit
 
 __all__ = [
@@ -9,4 +9,5 @@ __all__ = [
     "log_fitted_results",
     "plot_raw_data_with_fit",
     "baked_waveform",
+    "estimate_cz_flux_amplitude",
 ]
