@@ -1,12 +1,12 @@
 # %% {Imports}
 from dataclasses import asdict
-
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from calibration_utils.chevron_cz import (
     Parameters,
     baked_waveform,
+    estimate_cz_flux_amplitude,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
@@ -16,48 +16,45 @@ from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
-from quam_builder.architecture.superconducting.custom_gates.flux_tunable_transmon_pair.two_qubit_gates import CZGate
 from quam_config import Quam
 
 # %% {Node_parameters}
 description = """
-Unipolar CPhase Gate Calibration
-This sequence measures the time and detuning required for a unipolar CPhase gate. The process involves:
+CZ |11⟩↔|02⟩ Flux Chevron Calibration
 
-1. Preparing both qubits in their excited states.
-2. Applying a flux pulse with varying amplitude and duration.
-3. Measuring the resulting state populations as a function of these parameters.
-4. Fitting the results to a Ramsey-Chevron pattern.
+Measures the time and amplitude required for the CZ gate by sweeping the moving-qubit flux
+pulse amplitude (around the estimated |11⟩↔|02⟩ operating point) and duration (1 ns
+granularity via baking). The resulting 2D Chevron pattern is fitted to extract the optimal gate amplitude and duration.
 
-From this pattern, we extract:
-- The coupling strength (J2) between the qubits.
-- The optimal gate parameters (amplitude and duration) for the CPhase gate.
+For tunable-coupler architectures the coupler is held at its CZ bias point
+(``macros[operation].coupler_flux_pulse.amplitude``) throughout each flux pulse. For fixed-coupler
+architectures no coupler element is needed.
 
-The Ramsey-Chevron pattern emerges due to the interplay between the qubit-qubit coupling and the flux-induced detuning,
-allowing us to precisely calibrate the CPhase gate.
+Method
+------
+1. Prepare |11⟩ by applying x180 to both qubits.
+2. Apply the moving-qubit flux pulse at scaled amplitude and variable duration, bringing it
+   to the |11⟩↔|02⟩ avoided crossing. For tunable couplers, the coupler is simultaneously
+   held at the CZ bias.
+3. Measure both qubits (state discrimination or raw IQ).
+4. Fit the 2D population map to a Rabi-Chevron model to extract the resonance amplitude and gate time.
 
 Prerequisites:
 - Calibrated single-qubit gates for both qubits in the pair.
 - Calibrated readout for both qubits.
-- Initial estimate of the flux pulse amplitude range.
+- Initial estimate of the coupler flux amplitude in case of tunable couplers.
 
 Outcomes:
-- Extracted J2 coupling strength.
-- Optimal flux pulse amplitude and duration for the CPhase gate.
-- Fitted Ramsey-Chevron pattern for visualization and verification.
+- Optimal flux pulse amplitude and duration for the CZ gate.
+- Fitted Chevron pattern for visualization and verification.
 
 State update:
-        - (If missing) adds unipolar and flattop CZ gate macros to each calibrated qubit pair
-            (node.machine.qubit_pairs[<pair_name>].macros["cz_unipolar"]).
-        - Updates their flux pulse amplitude
-            (qp.macros["cz_unipolar"].flux_pulse_qubit.amplitude) to the fitted CZ amplitude.
-        - Updates their flux pulse duration (qp.macros["cz_unipolar"].flux_pulse_qubit.length) to the
-            fitted CZ length rounded up to the next multiple of 4 ns.
+        - Updates the amplitude and duration of the flux pulse in ``macros[operation]``
+          to the fitted CZ values (duration rounded up to the next multiple of 4 ns).
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -86,8 +83,6 @@ node.machine = Quam.load()
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 
-    u = unit(coerce_to_integer=True)
-
     # Get the qubit pairs to be calibrated
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
@@ -95,8 +90,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # define the amplitudes for the flux pulses
     pulse_amplitudes = {}
     for qp in qubit_pairs:
-        detuning = qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency - qp.qubit_target.anharmonicity
-        pulse_amplitudes[qp.name] = float(np.sqrt(-detuning / qp.qubit_control.freq_vs_flux_01_quad_term))
+        pulse_amplitudes[qp.name] = estimate_cz_flux_amplitude(node.parameters, qp, log_callable=node.log)
 
     node.namespace["pulse_amplitudes"] = pulse_amplitudes
 
@@ -115,7 +109,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     baked_config = node.machine.generate_config()
 
-    # Pre-compute the baked short segments (1..16 samples) for each control qubit in the pairs
+    # Detect tunable coupler presence for each pair (Python-time, not QUA-time).
+    operation = node.parameters.operation
+    has_coupler = {}
+    coupler_amplitudes = {}
+    for qp in qubit_pairs:
+        macro = qp.macros[operation]
+        has_coupler[qp.name] = macro.coupler_flux_pulse is not None
+        if has_coupler[qp.name]:
+            coupler_amplitudes[qp.name] = macro.coupler_flux_pulse.amplitude
+            node.namespace["has_coupler"] = has_coupler
+            node.namespace["coupler_amplitudes"] = coupler_amplitudes
+
+    # Pre-compute baked short segments (1..16 ns) for each control qubit (qubit only —
+    # the coupler is played separately with 4 ns granularity to avoid strict_timing gaps).
     baked_signals = {
         qp.qubit_control.name: baked_waveform(
             qp.qubit_control, baked_config, base_level=pulse_amplitudes[qp.name], max_samples=16
@@ -128,8 +135,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     with program() as node.namespace["qua_program"]:
         t = declare(int)  # QUA variable for the flux pulse segment index
         a = declare(fixed)
-        n = declare(int)
-        n_st = declare_stream()
         t_left_ns = declare(int)  # QUA variable for the flux pulse segment index
         t_cycles = declare(int)  # QUA variable for the flux pulse segment index
         I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
@@ -137,8 +142,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         if node.parameters.use_state_discrimination:
             state_c = [declare(int) for _ in range(num_qubit_pairs)]
             state_t = [declare(int) for _ in range(num_qubit_pairs)]
-            state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
-            state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state_c_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+            state_t_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
@@ -169,6 +174,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                             align()
 
+                            if has_coupler[qp.name]:
+                                coupler_scale = coupler_amplitudes[qp.name] / qp.coupler.operations["const"].amplitude
+
                             # For the first 16ns we play baked pulses exclusively. Loop the time index until 16.
                             with if_(t <= 16):
                                 with switch_(t):
@@ -178,6 +186,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                             baked_signals[qp.qubit_control.name][j - 1].run(
                                                 amp_array=[(qp.qubit_control.z.name, a)]
                                             )
+                                            if has_coupler[qp.name]:
+                                                # Coupler only needs to hold the CZ bias level — 4 ns granularity is sufficient.
+                                                # ceil(j/4) cycles ensures the hold covers the full j ns qubit baked pulse.
+                                                qp.coupler.play(
+                                                    "const", duration=(j + 3) // 4, amplitude_scale=coupler_scale
+                                                )
 
                             # For pulse durations above 16ns we combine baking with regular play statements.
                             with else_():
@@ -198,6 +212,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                             duration=t_cycles,
                                             amplitude_scale=scale,
                                         )
+                                        if has_coupler[qp.name]:
+                                            qp.coupler.play("const", duration=t_cycles, amplitude_scale=coupler_scale)
                                     # Play the pulse multiple of 4 followed by the baked pulse of the missing duration
                                     for j in range(1, 4):
                                         with case_(j):
@@ -205,6 +221,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                             p = pulse_amplitudes[qp.name]
                                             denom = qp.qubit_control.z.operations["const"].amplitude
                                             scale = (p / denom) * a
+                                            if has_coupler[qp.name]:
+                                                qp.coupler.play(
+                                                    "const", duration=t_cycles + 1, amplitude_scale=coupler_scale
+                                                )
                                             with strict_timing_():
                                                 qp.qubit_control.z.play(
                                                     "const",
@@ -218,7 +238,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                             if node.parameters.use_state_discrimination:
                                 qp.qubit_control.readout_state_gef(state_c[ii])
-                                qp.qubit_target.readout_state(state_t[ii])
+                                qp.qubit_target.readout_state_gef(state_t[ii])
                                 save(state_c[ii], state_c_st[ii])
                                 save(state_t[ii], state_t_st[ii])
                             else:
@@ -275,7 +295,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
-                data_fetcher["n"],
+                data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
@@ -297,8 +317,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # define the amplitudes for the flux pulses
     pulse_amplitudes = {}
     for qp in qubit_pairs:
-        detuning = qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency - qp.qubit_target.anharmonicity
-        pulse_amplitudes[qp.name] = float(np.sqrt(-detuning / qp.qubit_control.freq_vs_flux_01_quad_term))
+        pulse_amplitudes[qp.name] = estimate_cz_flux_amplitude(node.parameters, qp, log_callable=node.log)
     node.namespace["pulse_amplitudes"] = pulse_amplitudes
     node.namespace["qubits"] = [qp.qubit_control for qp in qubit_pairs] + [qp.qubit_target for qp in qubit_pairs]
     node.namespace["qubit_pairs"] = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
@@ -341,26 +360,17 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
 
+    operation = node.parameters.operation
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
                 continue
             else:
-                qp.macros["cz_unipolar"].flux_pulse_qubit.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
+                qp.macros[operation].flux_pulse_qubit.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
                 # Round up to the upper 4 ns to be compatible with the hardware time resolution
-                qp.macros["cz_unipolar"].flux_pulse_qubit.length = int(
+                qp.macros[operation].flux_pulse_qubit.length = int(
                     np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4
                 )
-                if node.parameters.update_all_pulses:
-                    qp.macros["cz_bipolar"].flux_pulse_qubit.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
-                    qp.macros["cz_flattop"].flux_pulse_qubit.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
-                    # Round up to the upper 4 ns to be compatible with the hardware time resolution
-                    qp.macros["cz_flattop"].flux_pulse_qubit.flat_length = int(
-                        np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 2) * 2
-                    )
-                    qp.macros["cz_bipolar"].flux_pulse_qubit.flat_length = int(
-                        np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 2) * 2
-                    )
 
 
 # %% {Save_results}
