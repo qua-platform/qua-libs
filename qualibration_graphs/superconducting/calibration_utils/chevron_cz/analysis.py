@@ -9,8 +9,6 @@ from qualibration_libs.analysis.fitting import fit_oscillation_decay_exp, oscill
 from qualibration_libs.data import convert_IQ_to_V
 from scipy.optimize import curve_fit
 
-from quam.components.quantum_components import qubit
-
 
 def rabi_chevron_model(ft, J, f0, a, offset):
     """Model the Rabi chevron response for a driven two-level (or effective two-qubit CZ) system."""
@@ -269,5 +267,4 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             "cz_amp": ("qubit_pair", [fit_results[qp].cz_amp for qp in fit.qubit_pair.values]),
         }
     )
-    return fit, fit_results
     return fit, fit_results
