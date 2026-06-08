@@ -68,14 +68,8 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    node.parameters.qubit_pairs = ["coupler_q3_q4", "coupler_q4_q5"]
-    node.parameters.operation = "cz_unipolar"
-    node.parameters.use_state_discrimination = False
-    node.parameters.reset_type = "active"
-    node.parameters.amp_range = 0.2
-    node.parameters.amp_step = 0.005
     # You can get type hinting in your IDE by typing node.parameters.
-    # pass
+    pass
 
 
 # Instantiate the QUAM class from the state file
@@ -216,12 +210,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 else:
                     I_m_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(f"I_moving{i + 1}")
                     Q_m_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(f"Q_moving{i + 1}")
-                    I_s_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(
-                        f"I_stationary{i + 1}"
-                    )
-                    Q_s_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(
-                        f"Q_stationary{i + 1}"
-                    )
+                    I_s_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(f"I_stationary{i + 1}")
+                    Q_s_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).average().save(f"Q_stationary{i + 1}")
 
 
 # %% {Simulate}
@@ -313,6 +303,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         fig_populations = plot_moving_qubit_populations(ds_fit, qubit_pairs)
         plt.show()
         node.results["populations_figure"] = fig_populations
+    else:
+        node.log("No populations data found in the fit dataset.")
 
 
 # %% {Update_state}
@@ -338,6 +330,5 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
         qp.revert_changes()
 
     node.save()
-
 
 # %%
