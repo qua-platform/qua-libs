@@ -75,15 +75,15 @@ class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of shots to perform. Default is 100."""
     coupler_flux_min: float = -0.1
-    """Minimum coupler flux bias relative to the coupler set point. Default is -0.05."""
+    """Minimum coupler flux bias relative to the coupler set point. Default is -0.1."""
     coupler_flux_max: float = 0.1
-    """Maximum coupler flux bias relative to the coupler set point. Default is 0.05."""
-    coupler_flux_step: float = 0.002
-    """Step size for the coupler flux sweep. Default is 0.0005."""
+    """Maximum coupler flux bias relative to the coupler set point. Default is 0.1."""
+    coupler_flux_step: float = 0.001
+    """Step size for the coupler flux sweep. Default is 0.001."""
     qubit_flux_span: float = 0.1
-    """Total qubit flux detuning span, relative to the known/calculated detuning between the qubits. Default is 0.05."""
-    qubit_flux_step: float = 0.002
-    """Step size for the qubit flux detuning sweep. Default is 0.0005."""
+    """Total qubit flux detuning span, relative to the known/calculated detuning between the qubits. Default is 0.1."""
+    qubit_flux_step: float = 0.001
+    """Step size for the qubit flux detuning sweep. Default is 0.001."""
     operation: str = "cz_unipolar"
     """Pair macro for sweep and state update (e.g. cz_unipolar or iswap_unipolar). Default is cz_unipolar."""
     cz_or_iswap: Literal["cz", "iswap"] = "cz"

@@ -10,22 +10,6 @@ from qualibration_libs.plotting import grid_iter
 
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
 
-
-def _landscape_suptitle(cz_or_iswap: str, state_type: str) -> str:
-    """Figure title from gate type and readout panel."""
-    gate = "CZ" if cz_or_iswap == "cz" else "iSWAP"
-    return f"{gate} flux landscape ({state_type})"
-
-
-def _gate_point_label(cz_or_iswap: str) -> str:
-    return "CZ coupler flux" if cz_or_iswap == "cz" else "iSWAP coupler flux"
-
-
-def _contrast_cut_panel_title(cz_or_iswap: str, qubit_flux_v: float) -> str:
-    gate = "CZ" if cz_or_iswap == "cz" else "iSWAP"
-    return f"{gate} contrast cut @ qubit flux {qubit_flux_v*1e3:.1f} mV"
-
-
 def plot_raw_data_with_fit(
     ds: xr.Dataset,
     qubit_pairs: list,
@@ -76,7 +60,7 @@ def plot_raw_data_with_fit(
                 cz_or_iswap=cz_or_iswap,
             )
 
-        grid.fig.suptitle(_landscape_suptitle(cz_or_iswap, state_type))
+        grid.fig.suptitle(f"{'CZ' if cz_or_iswap == 'cz' else 'iSWAP'} flux landscape ({state_type})")
         grid.fig.tight_layout()
         figures[state_type] = grid.fig
 
@@ -134,7 +118,7 @@ def plot_individual_data_with_fit(
         }
     ).plot(ax=ax, x="qubit_flux_mV", y="coupler_flux_mV", cmap="viridis")
 
-    gate_label = _gate_point_label(cz_or_iswap)
+    gate_label = "CZ coupler flux" if cz_or_iswap == "cz" else "iSWAP coupler flux"
     has_legend = False
 
     if qubit_pair_obj is not None:
@@ -183,7 +167,7 @@ def plot_individual_data_with_fit(
                 color="white",
                 lw=1.5,
                 ls="-.",
-                label="CZ qubit flux",
+                label="CZ qubit flux" if cz_or_iswap == "cz" else "iSWAP qubit flux",
             )
             has_legend = True
 
@@ -273,7 +257,7 @@ def plot_contrast_cut_debug(
             if np.isfinite(cz_rel) and np.isfinite(dec):
                 cz = dec + cz_rel
         if np.isfinite(cz):
-            ax.axvline(1e3 * cz, color="red", ls="--", lw=1.5, label=_gate_point_label(cz_or_iswap))
+            ax.axvline(1e3 * cz, color="red", ls="--", lw=1.5, label="CZ coupler flux" if cz_or_iswap == "cz" else "iSWAP coupler flux")
 
         qubit_v = fit.get("optimal_qubit_flux", np.nan)
         ax.set_xlabel("Coupler flux [mV]")
@@ -281,7 +265,7 @@ def plot_contrast_cut_debug(
         ax.set_ylabel(ylab)
         ax.legend(fontsize=6, loc="upper left")
         if np.isfinite(qubit_v):
-            ax.set_title(_contrast_cut_panel_title(cz_or_iswap, float(qubit_v)))
+            ax.set_title(f"{'CZ' if cz_or_iswap == 'cz' else 'iSWAP'} contrast cut @ qubit flux {float(qubit_v)*1e3:.1f} mV")
         else:
             ax.set_title(qp_name)
 
