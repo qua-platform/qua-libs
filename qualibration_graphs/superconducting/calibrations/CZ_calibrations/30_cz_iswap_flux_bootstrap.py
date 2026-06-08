@@ -40,15 +40,15 @@ Method
 ------
 2D sweep of coupler flux (relative to `coupler.decouple_offset`) and moving-qubit flux
 (centred via `estimate_qubit_flux_shift`). At each point: prepare |11⟩ (CZ) or |10⟩ (iSWAP),
-play ``macros[operation]`` with scaled flux amplitudes, measure control and target
+play ``macros[operation]`` with scaled flux amplitudes, measure both qubits
 (state discrimination or IQ).
 
 Prerequisites
 -------------
 - Tunable coupler pair with ``macros[operation]`` defined in QUAM.
-- CZ: GEF readout on control; iSWAP: standard state readout on both qubits.
+- CZ: GEF readout on both qubits; iSWAP: standard state readout on both qubits.
 - Moving qubit `freq_vs_flux_01_quad_term` (09a_ramsey_vs_flux); partner anharmonicity for CZ estimate.
-- Coupler sweep spans the idle plateau and the first interaction fringe.
+- Coupler sweep spans should be wide enough to cover the idle plateau and the first interaction fringe.
 
 State update
 ------------
