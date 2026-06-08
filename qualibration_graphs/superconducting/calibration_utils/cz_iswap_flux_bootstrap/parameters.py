@@ -114,8 +114,8 @@ def moving_qubit(qp):
     return qp.qubit_control
 
 
-def other_qubit(qp):
-    """Partner transmon of the moving qubit."""
+def stationary_qubit(qp):
+    """Partner transmon of the moving qubit (stays at its idle frequency)."""
     if qp.moving_qubit == "target":
         return qp.qubit_control
     return qp.qubit_target
@@ -139,27 +139,27 @@ def estimate_qubit_flux_shift(
         centre = qp.detuning
         source = "from qubit_pair.detuning"
     else:
-        qb = moving_qubit(qp)
-        other = other_qubit(qp)
-        quad = qb.freq_vs_flux_01_quad_term
+        moving_q = moving_qubit(qp)
+        stationary_q = stationary_qubit(qp)
+        quad = moving_q.freq_vs_flux_01_quad_term
         if quad == 0:
             raise ValueError(
-                f"Pair {qp.name}: moving qubit '{qb.name}' has freq_vs_flux_01_quad_term=0. "
-                f"Run 09a_ramsey_vs_flux_calibration on {qb.name} first, or set "
+                f"Pair {qp.name}: moving qubit '{moving_q.name}' has freq_vs_flux_01_quad_term=0. "
+                f"Run 09a_ramsey_vs_flux_calibration on {moving_q.name} first, or set "
                 "qubit_pair.detuning and use_saved_detuning=True."
             )
 
         if parameters.cz_or_iswap == "iswap":
-            detuning_hz = qb.xy.RF_frequency - other.xy.RF_frequency
+            detuning_hz = moving_q.xy.RF_frequency - stationary_q.xy.RF_frequency
             if detuning_hz < 0:
                 raise ValueError(
-                    f"Pair {qp.name} [iSWAP]: moving qubit '{qb.name}' "
-                    f"({qb.xy.RF_frequency/1e9:.4f} GHz) is below partner '{other.name}' "
-                    f"({other.xy.RF_frequency/1e9:.4f} GHz) by {abs(detuning_hz)/1e6:.1f} MHz. "
+                    f"Pair {qp.name} [iSWAP]: moving qubit '{moving_q.name}' "
+                    f"({moving_q.xy.RF_frequency/1e9:.4f} GHz) is below partner '{stationary_q.name}' "
+                    f"({stationary_q.xy.RF_frequency/1e9:.4f} GHz) by {abs(detuning_hz)/1e6:.1f} MHz. "
                     "iSWAP requires the flux-tunable qubit to tune down to the partner."
                 )
         elif parameters.cz_or_iswap == "cz":
-            detuning_hz = qb.xy.RF_frequency - other.xy.RF_frequency + other.anharmonicity
+            detuning_hz = moving_q.xy.RF_frequency - stationary_q.xy.RF_frequency + stationary_q.anharmonicity
         else:
             raise ValueError(f"Invalid cz_or_iswap value: {parameters.cz_or_iswap}")
 
