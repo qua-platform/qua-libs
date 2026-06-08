@@ -10,6 +10,7 @@ from qualibration_libs.plotting import grid_iter
 
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
 
+
 def plot_raw_data_with_fit(
     ds: xr.Dataset,
     qubit_pairs: list,
@@ -257,7 +258,13 @@ def plot_contrast_cut_debug(
             if np.isfinite(cz_rel) and np.isfinite(dec):
                 cz = dec + cz_rel
         if np.isfinite(cz):
-            ax.axvline(1e3 * cz, color="red", ls="--", lw=1.5, label="CZ coupler flux" if cz_or_iswap == "cz" else "iSWAP coupler flux")
+            ax.axvline(
+                1e3 * cz,
+                color="red",
+                ls="--",
+                lw=1.5,
+                label="CZ coupler flux" if cz_or_iswap == "cz" else "iSWAP coupler flux",
+            )
 
         qubit_v = fit.get("optimal_qubit_flux", np.nan)
         ax.set_xlabel("Coupler flux [mV]")
@@ -265,7 +272,9 @@ def plot_contrast_cut_debug(
         ax.set_ylabel(ylab)
         ax.legend(fontsize=6, loc="upper left")
         if np.isfinite(qubit_v):
-            ax.set_title(f"{'CZ' if cz_or_iswap == 'cz' else 'iSWAP'} contrast cut @ qubit flux {float(qubit_v)*1e3:.1f} mV")
+            ax.set_title(
+                f"{'CZ' if cz_or_iswap == 'cz' else 'iSWAP'} contrast cut @ qubit flux {float(qubit_v)*1e3:.1f} mV"
+            )
         else:
             ax.set_title(qp_name)
 
