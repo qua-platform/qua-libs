@@ -7,6 +7,7 @@ from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
 
+from calibration_utils.cz_iswap_flux_bootstrap.parameters import moving_qubit, stationary_qubit
 
 class NodeSpecificParameters(RunnableParameters):
     """Parameters for the CZ chevron calibration (node 31).
@@ -50,19 +51,6 @@ class Parameters(
 ):
     targets_name: ClassVar[str] = "qubit_pairs"
 
-
-def moving_qubit(qp):
-    """Transmon that carries the flux pulse (``qubit_pair.moving_qubit`` attribute)."""
-    if getattr(qp, "moving_qubit", None) == "target":
-        return qp.qubit_target
-    return qp.qubit_control
-
-
-def other_qubit(qp):
-    """Partner transmon of the moving qubit."""
-    if getattr(qp, "moving_qubit", None) == "target":
-        return qp.qubit_control
-    return qp.qubit_target
 
 
 def estimate_cz_flux_amplitude(
@@ -114,7 +102,7 @@ def estimate_cz_flux_amplitude(
         source = "from qubit_pair.detuning"
     else:
         qb = moving_qubit(qp)
-        other = other_qubit(qp)
+        other = stationary_qubit(qp)
         quad = qb.freq_vs_flux_01_quad_term
         if quad == 0:
             raise ValueError(
