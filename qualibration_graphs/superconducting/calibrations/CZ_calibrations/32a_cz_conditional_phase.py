@@ -29,7 +29,7 @@ description = """
 CALIBRATION OF THE CONTROLLED-PHASE (CPHASE) OF THE CZ GATE
 
 Calibrates the CPhase of the CZ gate by scanning the flux-pulse amplitude on the moving qubit
-(the qubit that is flux-pulsed to the |11⟩↔|02⟩ avoided crossing) and measuring the
+(the qubit that is flux-pulsed to the |11⟩↔|02⟩ or |11⟩↔|20⟩ avoided crossing) and measuring the
 conditional phase acquired by the target qubit.
 
 The calibration compares two scenarios:
@@ -44,13 +44,10 @@ The optimal CZ gate amplitude is the point where:
 1. The phase difference equals π (0.5 in normalised units)
 2. The |f⟩-state leakage of the moving qubit is minimised
 
-The "moving qubit" is resolved dynamically as ``macros[operation].flux_pulse_qubit``, so this
-node works correctly whether the control or the target qubit carries the flux pulse.
-
 Prerequisites:
 - Calibrated single-qubit gates for both qubits in the pair.
 - Calibrated readout for both qubits.
-- Initial estimate of the CZ gate amplitude (from node 31 or manual entry).
+- Initial estimate of the CZ gate amplitude (from node 30 (for tunable couplers) or 31 (for fixed couplers) or manual entry).
 
 State update:
 - ``qubit_pair.macros[operation].flux_pulse_qubit.amplitude`` → optimal CZ amplitude.

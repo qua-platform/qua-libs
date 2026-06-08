@@ -26,10 +26,10 @@ from quam_config import Quam
 
 # %% {Node_parameters}
 description = """
-CZ |11⟩↔|02⟩ Flux Chevron Calibration
+CZ |11⟩↔|02⟩ or |11⟩↔|20⟩ Flux Chevron Calibration
 
 Measures the time and amplitude required for the CZ gate by sweeping the moving-qubit flux
-pulse amplitude (around the estimated |11⟩↔|02⟩ operating point) and duration (1 ns
+pulse amplitude (around the estimated |11⟩↔|02⟩ or |11⟩↔|20⟩ operating point) and duration (1 ns
 granularity via baking). The resulting 2D Chevron pattern is fitted to extract the optimal gate amplitude and duration.
 
 For tunable-coupler architectures the coupler is held at its CZ bias point
@@ -40,7 +40,7 @@ Method
 ------
 1. Prepare |11⟩ by applying x180 to both qubits.
 2. Apply the moving-qubit flux pulse at scaled amplitude and variable duration, bringing it
-   to the |11⟩↔|02⟩ avoided crossing. For tunable couplers, the coupler is simultaneously
+   to the |11⟩↔|02⟩ or |11⟩↔|20⟩ avoided crossing. For tunable couplers, the coupler is simultaneously
    held at the CZ bias.
 3. Measure both qubits (state discrimination or raw IQ).
 4. Fit the 2D population map to a Rabi-Chevron model to extract the resonance amplitude and gate time.
