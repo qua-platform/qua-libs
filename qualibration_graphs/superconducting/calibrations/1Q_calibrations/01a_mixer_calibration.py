@@ -18,7 +18,7 @@ description = """
 
 
 node = QualibrationNode[Parameters, Quam](
-    name="01a_mixer_calibration", description=description, parameters=Parameters()
+    name="01a_mixer_calibration", description=description, parameters=Parameters(), machine=Quam.load()
 )
 
 
@@ -28,10 +28,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {Execute_QUA_program}

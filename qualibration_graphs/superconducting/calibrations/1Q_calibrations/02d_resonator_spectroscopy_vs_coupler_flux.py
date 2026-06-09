@@ -47,6 +47,7 @@ node = QualibrationNode[Parameters, Quam](
     name="02d_resonator_spectroscopy_vs_coupler_flux",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
+    machine=Quam.load(),
 )
 
 
@@ -58,10 +59,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubit_pairs = ["coupler_q1_q2", "coupler_q2_q3"]
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}

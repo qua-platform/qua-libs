@@ -63,6 +63,7 @@ node = QualibrationNode[Parameters, Quam](
     name="11b_single_qubit_randomized_benchmarking_interleaved",
     description=description,
     parameters=Parameters(),
+    machine=Quam.load(),
 )
 
 
@@ -73,10 +74,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1", "q2"]
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}

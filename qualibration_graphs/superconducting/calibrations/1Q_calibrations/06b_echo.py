@@ -40,7 +40,7 @@ Next steps before going to the next node:
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="06b_echo", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](name="06b_echo", description=description, parameters=Parameters(), machine=Quam.load())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -50,10 +50,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1", "q2"]
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}

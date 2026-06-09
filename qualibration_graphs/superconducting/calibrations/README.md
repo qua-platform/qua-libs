@@ -20,12 +20,8 @@ Each calibration script instantiates a `QualbirationNode` close to the top of th
 
 ### `QualibrationNode` attributes
 
-- **`node.machine`**: The QUAM root-level object, typically loaded as follows:
-  ```python
-  from quam_config import Quam
-  node.machine = Quam.load()
-  ```
-  This step is optional, if it is omitted, the QUAM state won't be saved in the data folder when calling `node.save()`.
+- **`node.machine`**: The QUAM root-level object, initialized by passing `machine=Quam.load()` to the QualibrationNode constructor.
+  If this attribute is not initialized, the QUAM state won't be saved in the data folder when calling `node.save()`.
 - **`node.modes`**: A collection of different modes in which the node is used.  
   For example, the node may be run from the web app (`modes.external is True`), or directly through the IDE (`modes.interactive is True`).
 - **`node.name`**: The unique name of the `QualibrationNode`, typically matches the filename.

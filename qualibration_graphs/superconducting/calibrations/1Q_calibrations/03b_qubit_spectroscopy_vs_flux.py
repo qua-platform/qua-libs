@@ -45,6 +45,7 @@ node = QualibrationNode[Parameters, Quam](
     name="03b_qubit_spectroscopy_vs_flux",
     description=description,
     parameters=Parameters(),
+    machine=Quam.load(),
 )
 
 
@@ -56,10 +57,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubits = ["q1", "q3"]
 
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}

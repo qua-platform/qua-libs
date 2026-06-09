@@ -22,7 +22,7 @@ description = """
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="00_hello_qua", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](name="00_hello_qua", description=description, parameters=Parameters(), machine=Quam.load())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -34,10 +34,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.multiplexed = True
     # node.parameters.num_shots = 2
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
