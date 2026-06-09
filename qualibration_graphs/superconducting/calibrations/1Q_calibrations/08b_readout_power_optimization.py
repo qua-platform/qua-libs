@@ -25,7 +25,6 @@ from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-
 # %% {Description}
 description = """
         READOUT POWER OPTIMIZATION

@@ -27,7 +27,6 @@ from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-
 # %% {Node initialisation}
 description = """
         SINGLE QUBIT RANDOMIZED BENCHMARKING - INTERLEAVED

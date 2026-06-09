@@ -2,7 +2,6 @@
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import Quam
 
-
 description = """
         CLOSE ALL OTHER QMs.
 """

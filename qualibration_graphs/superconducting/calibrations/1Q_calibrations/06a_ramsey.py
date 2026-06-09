@@ -23,7 +23,6 @@ from qualibration_libs.parameters import get_qubits, get_idle_times_in_clock_cyc
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-
 # %% {Description}
 description = """
         RAMSEY WITH VIRTUAL Z ROTATIONS
@@ -46,7 +45,9 @@ State update:
     - T2*: qubit.T2ramsey.
 """
 
-node = QualibrationNode[Parameters, Quam](name="06a_ramsey", description=description, parameters=Parameters(), machine=Quam.load())
+node = QualibrationNode[Parameters, Quam](
+    name="06a_ramsey", description=description, parameters=Parameters(), machine=Quam.load()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here

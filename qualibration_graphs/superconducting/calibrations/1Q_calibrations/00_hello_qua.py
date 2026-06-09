@@ -16,13 +16,14 @@ from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-
 description = """
         Basic script to play with the QUA program and test the QOP connectivity.
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="00_hello_qua", description=description, parameters=Parameters(), machine=Quam.load())
+node = QualibrationNode[Parameters, Quam](
+    name="00_hello_qua", description=description, parameters=Parameters(), machine=Quam.load()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here
