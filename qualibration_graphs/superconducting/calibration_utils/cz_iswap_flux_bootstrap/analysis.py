@@ -18,7 +18,6 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
-from qualibration_libs.analysis import oscillation
 
 from .parameters import moving_qubit
 from scipy.signal import find_peaks, savgol_filter
@@ -129,7 +128,6 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     """Add absolute flux coordinates and detuning for plotting."""
-    detuning_mode = "quadratic"
     qubit_pairs = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
     fluxes_qp = node.namespace["fluxes_qp"]
     fluxes_coupler = ds.coupler_flux.values
@@ -137,25 +135,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     ds = ds.assign_coords({"qubit_flux_full": (["qubit_pair", "qubit_flux"], qubit_flux_full)})
 
     coupler_flux_full = np.array([fluxes_coupler + qp.coupler.decouple_offset for qp in qubit_pairs])
-    if detuning_mode == "quadratic":
-        detuning = np.array(
-            [-fluxes_qp[qp.name] ** 2 * moving_qubit(qp).freq_vs_flux_01_quad_term for qp in qubit_pairs]
-        )
-    elif detuning_mode == "cosine":
-        detuning = np.array(
-            [
-                oscillation(
-                    fluxes_qp,
-                    moving_qubit(qp).extras["a"],
-                    moving_qubit(qp).extras["f"],
-                    moving_qubit(qp).extras["phi"],
-                    moving_qubit(qp).extras["offset"],
-                )
-                for qp in qubit_pairs
-            ]
-        )
-    else:
-        raise ValueError(f"Invalid detuning_mode: {detuning_mode}. Must be 'quadratic' or 'cosine'")
+    detuning = np.array([-fluxes_qp[qp.name] ** 2 * moving_qubit(qp).freq_vs_flux_01_quad_term for qp in qubit_pairs])
     ds = ds.assign_coords({"coupler_flux_full": (["qubit_pair", "coupler_flux"], coupler_flux_full)})
     ds = ds.assign_coords({"detuning": (["qubit_pair", "qubit_flux"], detuning)})
 
