@@ -47,7 +47,7 @@ State update:
 
 
 node = QualibrationNode[Parameters, Quam](
-    name="01b_time_of_flight_mw_fem", description=description, parameters=Parameters()
+    name="01b_time_of_flight_mw_fem", description=description, parameters=Parameters(), machine=Quam.load()
 )
 
 
@@ -58,10 +58,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1", "q2"]
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {QUA_program}

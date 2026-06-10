@@ -42,6 +42,7 @@ node = QualibrationNode[Parameters, Quam](
     name="09b_ramsey_vs_coupler_flux",
     description=description,
     parameters=Parameters(),
+    machine=Quam.load(),
 )
 
 
@@ -49,9 +50,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
     pass
-
-
-node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}

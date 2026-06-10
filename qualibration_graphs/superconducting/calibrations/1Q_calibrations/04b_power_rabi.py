@@ -25,7 +25,6 @@ from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-
 # %% {Description}
 description = """
         POWER RABI WITH ERROR AMPLIFICATION
@@ -51,6 +50,7 @@ node = QualibrationNode[Parameters, Quam](
     name="04b_power_rabi",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
+    machine=Quam.load(),
 )
 
 
@@ -66,10 +66,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.max_amp_factor = 1.2
     # node.parameters.amp_factor_step = 0.01
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
