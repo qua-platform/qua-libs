@@ -2,7 +2,7 @@
 
 Pipeline (per qubit pair)
 -------------------------
-1. **2D contrast** — ``target − control`` (CZ) or ``control − target`` (iSWAP).
+1. **2D contrast** — ``stationary − moving`` (CZ) or ``moving − stationary`` (iSWAP).
 2. **Qubit flux** — average contrast over coupler; CZ → argmax, iSWAP → argmin.
 3. **1D cut** — contrast vs coupler flux at that qubit flux.
 4. **Coarse (heavy Savitzky–Golay)** — sliding-window FFT → flat vs oscillation masks;
@@ -19,7 +19,7 @@ import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
 
-from .parameters import moving_qubit
+from .parameters import get_moving_qubit
 from scipy.signal import find_peaks, savgol_filter
 
 # Fringe band for sliding-window FFT (fixed; not exposed in presets).
@@ -135,7 +135,14 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     ds = ds.assign_coords({"qubit_flux_full": (["qubit_pair", "qubit_flux"], qubit_flux_full)})
 
     coupler_flux_full = np.array([fluxes_coupler + qp.coupler.decouple_offset for qp in qubit_pairs])
-    detuning = np.array([-fluxes_qp[qp.name] ** 2 * moving_qubit(qp).freq_vs_flux_01_quad_term for qp in qubit_pairs])
+        detuning = np.array(
+            [
+                -fluxes_qp[qp.name] ** 2
+                * get_moving_qubit(qp, node.parameters.cz_or_iswap).freq_vs_flux_01_quad_term
+                for qp in qubit_pairs
+            ]
+        )
+    
     ds = ds.assign_coords({"coupler_flux_full": (["qubit_pair", "coupler_flux"], coupler_flux_full)})
     ds = ds.assign_coords({"detuning": (["qubit_pair", "qubit_flux"], detuning)})
 
@@ -152,12 +159,12 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 # ---------------------------------------------------------------------------
 
 
-def _interaction_map(control: xr.DataArray, target: xr.DataArray, cz_or_iswap: str) -> xr.DataArray:
+def _interaction_map(moving: xr.DataArray, stationary: xr.DataArray, cz_or_iswap: str) -> xr.DataArray:
     """2D interaction contrast (sign depends on gate)."""
     if cz_or_iswap == "cz":
-        return target - control
+        return stationary - moving
     if cz_or_iswap == "iswap":
-        return control - target
+        return moving - stationary
     raise ValueError(f"cz_or_iswap must be 'cz' or 'iswap', got {cz_or_iswap!r}")
 
 
@@ -359,8 +366,8 @@ def _coupler_fit_is_valid(decouple_idx: int | None, gate_idx: int | None, n_coup
 
 
 def _fit_pair_from_contrast_cut(
-    control: xr.DataArray,
-    target: xr.DataArray,
+    moving: xr.DataArray,
+    stationary: xr.DataArray,
     coupler_rel: np.ndarray,
     coupler_full: xr.DataArray,
     qubit_full: xr.DataArray,
@@ -368,7 +375,7 @@ def _fit_pair_from_contrast_cut(
     cfg: dict,
 ) -> FitParameters:
     """Full contrast-cut fit for one pair (see module docstring pipeline)."""
-    contrast = _interaction_map(control, target, cz_or_iswap)
+    contrast = _interaction_map(moving, stationary, cz_or_iswap)
     qubit_idx = _qubit_flux_cut_index(contrast, cz_or_iswap)
     optimal_qubit_flux = float(qubit_full.isel(qubit_flux=qubit_idx).values)
 
@@ -395,7 +402,7 @@ def _fit_pair_from_contrast_cut(
     decouple_coarse, gate_coarse = _coarse_coupler_indices(y_heavy, flat_mask, osc_mask, coupler_rel, cfg)
     decouple_idx, gate_idx = _refine_coupler_indices(y_fine, flat_mask, decouple_coarse, gate_coarse, cfg)
 
-    success = not _index_on_sweep_boundary(qubit_idx, control.sizes["qubit_flux"]) and _coupler_fit_is_valid(
+    success = not _index_on_sweep_boundary(qubit_idx, moving.sizes["qubit_flux"]) and _coupler_fit_is_valid(
         decouple_idx, gate_idx, n_coupler
     )
 
@@ -430,16 +437,16 @@ def _extract_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     fit_results = {}
     for qp_name in fit.qubit_pair.values:
         qp_name = str(qp_name)
-        if use_sd and "state_control" in fit:
-            control = fit.state_control.sel(qubit_pair=qp_name)
-            target = fit.state_target.sel(qubit_pair=qp_name)
+        if use_sd and "state_moving" in fit:
+            moving = fit.state_moving.sel(qubit_pair=qp_name)
+            stationary = fit.state_stationary.sel(qubit_pair=qp_name)
         else:
-            control = fit.I_control.sel(qubit_pair=qp_name)
-            target = fit.I_target.sel(qubit_pair=qp_name)
+            moving = fit.I_moving.sel(qubit_pair=qp_name)
+            stationary = fit.I_stationary.sel(qubit_pair=qp_name)
 
         fit_results[qp_name] = _fit_pair_from_contrast_cut(
-            control,
-            target,
+            moving,
+            stationary,
             coupler_rel,
             fit.coupler_flux_full.sel(qubit_pair=qp_name),
             fit.qubit_flux_full.sel(qubit_pair=qp_name),

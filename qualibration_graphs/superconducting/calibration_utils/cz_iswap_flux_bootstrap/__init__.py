@@ -1,6 +1,6 @@
 """CZ / iSWAP flux bootstrap calibration utilities (node 30)."""
 
-from .parameters import Parameters, estimate_qubit_flux_shift
+from .parameters import Parameters, estimate_qubit_flux_shift, get_moving_qubit, get_stationary_qubit, verify_moving_qubit
 from .analysis import process_raw_dataset, fit_raw_data, log_fitted_results
 from .plotting import (
     plot_contrast_cut_debug,
@@ -11,6 +11,9 @@ from .plotting import (
 __all__ = [
     "Parameters",
     "estimate_qubit_flux_shift",
+    "get_moving_qubit",
+    "get_stationary_qubit",
+    "verify_moving_qubit",
     "process_raw_dataset",
     "fit_raw_data",
     "log_fitted_results",

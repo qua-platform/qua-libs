@@ -107,18 +107,105 @@ class Parameters(
     targets_name: ClassVar[str] = "qubit_pairs"
 
 
-def moving_qubit(qp):
-    """Transmon that carries ``flux_pulse_qubit`` (``qubit_pair.moving_qubit``)."""
-    if qp.moving_qubit == "target":
-        return qp.qubit_target
-    return qp.qubit_control
+def get_moving_qubit(qp, gate_type: Literal["cz", "iswap"] = "cz"):
+    """Transmon that is flux-tuned for the selected two-qubit interaction.
+
+    For both CZ and iSWAP, the higher-frequency qubit is always identified first.
+    δ = f_high − f_low  (always positive, qubit-role-agnostic).
+
+    iSWAP:
+        The high-freq qubit tunes down to meet the low-freq qubit at resonance.
+
+    CZ:
+        - δ > |α_high|  →  high-freq qubit moves  (|11⟩↔|20⟩ avoided crossing)
+        - δ ≤ |α_high|  →  low-freq qubit moves   (|11⟩↔|02⟩ avoided crossing)
+    """
+    if qp.qubit_control.f_01 >= qp.qubit_target.f_01:
+        high_q, low_q = qp.qubit_control, qp.qubit_target
+    else:
+        high_q, low_q = qp.qubit_target, qp.qubit_control
+
+    if gate_type == "iswap":
+        return high_q
+    if gate_type == "cz":
+        delta = high_q.f_01 - low_q.f_01
+        if delta > abs(high_q.anharmonicity):
+            return high_q
+        return low_q
+    raise ValueError(f"Invalid gate_type value: {gate_type}")
 
 
-def other_qubit(qp):
-    """Partner transmon of the moving qubit."""
-    if qp.moving_qubit == "target":
+def get_stationary_qubit(qp, gate_type: Literal["cz", "iswap"] = "cz"):
+    """Partner transmon of the moving qubit (stays at its idle frequency)."""
+    if get_moving_qubit(qp, gate_type) is qp.qubit_target:
         return qp.qubit_control
     return qp.qubit_target
+
+
+def verify_moving_qubit(
+    qp,
+    gate_type: Literal["cz", "iswap"] = "cz",
+    log_callable: Optional[Callable[[str], None]] = None,
+) -> None:
+    """Verify that qp.moving_qubit matches the physics-based calculation; update in-place if not.
+
+    Recalculates the moving qubit from qubit frequencies and anharmonicity, then compares
+    it to the ``moving_qubit`` field stored on the QUAM qubit-pair object. If they disagree,
+    logs a warning, updates ``qp.moving_qubit`` in memory, and relies on the caller's state save
+    to persist the correction to disk.
+
+    Parameters
+    ----------
+    qp:
+        QUAM qubit-pair object with ``qubit_control``, ``qubit_target``, and ``moving_qubit``.
+    gate_type:
+        ``"cz"`` (default) or ``"iswap"`` — selects the physics rule used by
+        :func:`get_moving_qubit`.
+    log_callable:
+        Callable that accepts a single string and emits it to the node's output
+        (e.g. ``node.log``). Defaults to ``logging.getLogger(__name__).info``.
+    """
+    if log_callable is None:
+        log_callable = logging.getLogger(__name__).info
+
+    computed = get_moving_qubit(qp, gate_type)
+    computed_label = "control" if computed is qp.qubit_control else "target"
+
+    # Build a compact physics context string for logging
+    if qp.qubit_control.f_01 >= qp.qubit_target.f_01:
+        high_q, low_q = qp.qubit_control, qp.qubit_target
+    else:
+        high_q, low_q = qp.qubit_target, qp.qubit_control
+    delta_mhz = (high_q.f_01 - low_q.f_01) / 1e6
+    alpha_mhz = high_q.anharmonicity / 1e6
+    physics_ctx = (
+        f"high={high_q.name} ({high_q.f_01/1e9:.4f} GHz), "
+        f"low={low_q.name} ({low_q.f_01/1e9:.4f} GHz), "
+        f"δ={delta_mhz:.1f} MHz, α_high={alpha_mhz:.1f} MHz"
+    )
+
+    def _label_with_name(label: str) -> str:
+        qubit = qp.qubit_control if label == "control" else qp.qubit_target
+        return f"'{label}' ({qubit.name})"
+
+    stored = getattr(qp, "moving_qubit", None)
+    if stored is None:
+        log_callable(
+            f"WARNING Pair {qp.name}: qp.moving_qubit is not set. "
+            f"Setting to {_label_with_name(computed_label)} from recalculation ({gate_type} gate). [{physics_ctx}]"
+        )
+        qp.moving_qubit = computed_label
+    elif stored != computed_label:
+        log_callable(
+            f"WARNING Pair {qp.name}: qp.moving_qubit={_label_with_name(stored)} disagrees with recalculation "
+            f"result={_label_with_name(computed_label)} for {gate_type} gate — updating. "
+            f"State will be persisted at the end of the node. [{physics_ctx}]"
+        )
+        qp.moving_qubit = computed_label
+    else:
+        log_callable(
+            f"Pair {qp.name}: qp.moving_qubit={_label_with_name(stored)} consistent with physics ({gate_type} gate). [{physics_ctx}]"
+        )
 
 
 def estimate_qubit_flux_shift(
@@ -139,27 +226,27 @@ def estimate_qubit_flux_shift(
         centre = qp.detuning
         source = "from qubit_pair.detuning"
     else:
-        qb = moving_qubit(qp)
-        other = other_qubit(qp)
-        quad = qb.freq_vs_flux_01_quad_term
+        moving_q = get_moving_qubit(qp, parameters.cz_or_iswap)
+        stationary_q = get_stationary_qubit(qp, parameters.cz_or_iswap)
+        quad = moving_q.freq_vs_flux_01_quad_term
         if quad == 0:
             raise ValueError(
-                f"Pair {qp.name}: moving qubit '{qb.name}' has freq_vs_flux_01_quad_term=0. "
-                f"Run 09a_ramsey_vs_flux_calibration on {qb.name} first, or set "
+                f"Pair {qp.name}: moving qubit '{moving_q.name}' has freq_vs_flux_01_quad_term=0. "
+                f"Run 09a_ramsey_vs_flux_calibration on {moving_q.name} first, or set "
                 "qubit_pair.detuning and use_saved_detuning=True."
             )
 
         if parameters.cz_or_iswap == "iswap":
-            detuning_hz = qb.xy.RF_frequency - other.xy.RF_frequency
+            detuning_hz = moving_q.xy.RF_frequency - stationary_q.xy.RF_frequency
             if detuning_hz < 0:
                 raise ValueError(
-                    f"Pair {qp.name} [iSWAP]: moving qubit '{qb.name}' "
-                    f"({qb.xy.RF_frequency/1e9:.4f} GHz) is below partner '{other.name}' "
-                    f"({other.xy.RF_frequency/1e9:.4f} GHz) by {abs(detuning_hz)/1e6:.1f} MHz. "
+                    f"Pair {qp.name} [iSWAP]: moving qubit '{moving_q.name}' "
+                    f"({moving_q.xy.RF_frequency/1e9:.4f} GHz) is below partner '{stationary_q.name}' "
+                    f"({stationary_q.xy.RF_frequency/1e9:.4f} GHz) by {abs(detuning_hz)/1e6:.1f} MHz. "
                     "iSWAP requires the flux-tunable qubit to tune down to the partner."
                 )
         elif parameters.cz_or_iswap == "cz":
-            detuning_hz = qb.xy.RF_frequency - other.xy.RF_frequency + other.anharmonicity
+            detuning_hz = moving_q.xy.RF_frequency - stationary_q.xy.RF_frequency + stationary_q.anharmonicity
         else:
             raise ValueError(f"Invalid cz_or_iswap value: {parameters.cz_or_iswap}")
 
