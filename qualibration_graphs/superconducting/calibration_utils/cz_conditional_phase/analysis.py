@@ -8,17 +8,39 @@ from qualibrate import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation, oscillation
 from scipy.optimize import curve_fit
 
+from calibration_utils.cz_iswap_flux_bootstrap.parameters import get_moving_qubit
+
 
 @dataclass
 class FitResults:
-    """Stores the relevant CZ conditional phase experiment fit parameters for a single qubit pair"""
+    """Fit results for a single qubit pair from the CZ conditional phase calibration.
+
+    Attributes:
+    -----------
+    optimal_amplitude : float
+        Flux pulse amplitude (V) at which the conditional phase equals π.
+    success : bool
+        True if the tanh fit converged and the optimal amplitude lies within
+        the swept range.
+    """
 
     optimal_amplitude: float
     success: bool
 
 
 def fix_oscillation_phi_2pi(fit_data):
-    """Extract the phase parameter from oscillation fit data."""
+    """Extract and normalise the oscillation phase to the [0, 1) range (representing 0 to 2π).
+
+    Parameters:
+    -----------
+    fit_data : xr.DataArray
+        Oscillation fit result with a ``fit_vals`` dimension containing ``"phi"``.
+
+    Returns:
+    --------
+    xr.DataArray
+        Phase values normalised to [0, 1).
+    """
     # Extract the phase parameter from the fit results
     phase = fit_data.sel(fit_vals="phi")
     # Normalize phase to [0, 1] range (representing 0 to 2π)
@@ -27,7 +49,20 @@ def fix_oscillation_phi_2pi(fit_data):
 
 
 def tanh_fit(x, a, b, c, d):
-    """Tanh fitting function for phase difference vs amplitude."""
+    """Tanh model for phase difference vs flux amplitude: ``a * tanh(b*x + c) + d``.
+
+    Parameters:
+    -----------
+    x : array-like
+        Flux pulse amplitude values (V).
+    a, b, c, d : float
+        Shape, slope, offset, and vertical shift parameters.
+
+    Returns:
+    --------
+    np.ndarray
+        Predicted phase difference values in [0, 1) units.
+    """
     return a * np.tanh(b * x + c) + d
 
 
@@ -84,7 +119,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
     def detuning(qp, amp):
         amplitude_squared = (amp * qp.macros[operation].flux_pulse_qubit.amplitude) ** 2
-        return -amplitude_squared * qp.qubit_control.freq_vs_flux_01_quad_term
+        return -amplitude_squared * get_moving_qubit(qp).freq_vs_flux_01_quad_term
 
     ds = ds.assign_coords({"amp_full": (["qubit_pair", "amp"], np.array([abs_amp(qp, ds.amp) for qp in qubit_pairs]))})
     ds = ds.assign_coords({"detuning": (["qubit_pair", "amp"], np.array([detuning(qp, ds.amp) for qp in qubit_pairs]))})
@@ -117,11 +152,28 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
 
 
 def fit_routine(da):
+    """Fit the frame-rotation oscillation and extract the optimal CZ amplitude for one qubit pair.
 
-    if hasattr(da, "state_target"):
-        data = "state_target"
+    For each amplitude point, fits a sinusoidal oscillation over the ``frame`` axis for
+    both moving-qubit states (``control_axis`` 0 and 1), computes the conditional phase
+    difference, and fits a tanh curve to find the amplitude where phase_diff = 0.5 (π).
+
+    Parameters:
+    -----------
+    da : xr.Dataset
+        Single-pair dataset with ``state_stationary`` or ``I_stationary``, ``frame``,
+        ``amp_full``, and ``control_axis`` dimensions.
+
+    Returns:
+    --------
+    xr.Dataset
+        Input dataset extended with ``fitted``, ``phase_diff``, ``optimal_amplitude``,
+        ``fitted_curve``, and ``success`` data variables.
+    """
+    if hasattr(da, "state_stationary"):
+        data = "state_stationary"
     else:
-        data = "I_target"
+        data = "I_stationary"
     # Fit oscillation for each control state and amplitude
     fit_data = fit_oscillation(da[data], "frame")
 
@@ -157,8 +209,7 @@ def fit_routine(da):
         fitted_curve = tanh_fit(phase_diff.amp_full, *fit_params)
         success = True
 
-    except Exception as e:
-        # Fallback: find amplitude closest to π phase difference (0.5 in normalized units)
+    except Exception:
         optimal_amp = np.nan
         fitted_curve = (phase_diff.dims, np.full_like(phase_diff.values, np.nan))
         success = False
@@ -181,19 +232,22 @@ def _extract_relevant_parameters(
     ds_fit: xr.Dataset, node: QualibrationNode
 ) -> Tuple[xr.Dataset, Dict[str, FitResults]]:
     """
-    Extract relevant fit parameters and create FitResults for each qubit pair.
+    Assign xarray metadata attributes and build the FitResults dictionary.
 
     Parameters:
     -----------
     ds_fit : xr.Dataset
-        Dataset containing the fit results from fit_routine.
+        Dataset produced by applying ``fit_routine`` per qubit pair. Must contain
+        ``optimal_amplitude``, ``phase_diff``, ``fitted_curve``, and ``success``
+        data variables.
     node : QualibrationNode
-        The calibration node containing parameters and qubit pairs.
+        Calibration node providing ``qubit_pairs`` from its namespace.
 
     Returns:
     --------
     Tuple[xr.Dataset, Dict[str, FitResults]]
-        Dataset with additional metadata and dictionary of FitResults for each qubit pair.
+        Dataset with ``long_name`` / ``units`` attrs set on key variables, and a
+        dictionary of ``FitResults`` keyed by qubit pair name.
     """
     qubit_pairs = node.namespace["qubit_pairs"]
 
