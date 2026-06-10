@@ -135,13 +135,13 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     ds = ds.assign_coords({"qubit_flux_full": (["qubit_pair", "qubit_flux"], qubit_flux_full)})
 
     coupler_flux_full = np.array([fluxes_coupler + qp.coupler.decouple_offset for qp in qubit_pairs])
-        detuning = np.array(
-            [
-                -fluxes_qp[qp.name] ** 2
-                * get_moving_qubit(qp, node.parameters.cz_or_iswap).freq_vs_flux_01_quad_term
-                for qp in qubit_pairs
-            ]
-        )
+    detuning = np.array(
+        [
+            -fluxes_qp[qp.name] ** 2
+            * get_moving_qubit(qp, node.parameters.cz_or_iswap).freq_vs_flux_01_quad_term
+            for qp in qubit_pairs
+        ]
+    )
     
     ds = ds.assign_coords({"coupler_flux_full": (["qubit_pair", "coupler_flux"], coupler_flux_full)})
     ds = ds.assign_coords({"detuning": (["qubit_pair", "qubit_flux"], detuning)})
