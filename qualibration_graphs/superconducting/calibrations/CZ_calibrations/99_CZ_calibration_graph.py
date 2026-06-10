@@ -19,12 +19,12 @@ g = QualibrationGraph(
     name="CZ_Calibration_Fixed_Couplers",
     parameters=Parameters(),
     nodes={
-        "chevron": library.nodes["19_chevron_1102"].copy(name="chevron"),
-        "conditional_phase": library.nodes["20a_cz_conditional_phase"].copy(name="conditional_phase"),
-        "conditional_phase_error_amp": library.nodes["20b_cz_conditional_phase_error_amp"].copy(
+        "chevron": library.nodes["31_chevron_1102"].copy(name="chevron"),
+        "conditional_phase": library.nodes["32a_cz_conditional_phase"].copy(name="conditional_phase"),
+        "conditional_phase_error_amp": library.nodes["32b_cz_conditional_phase_error_amp"].copy(
             name="conditional_phase_error_amp"
         ),
-        "phase_compensation": library.nodes["21_cz_phase_compensation"].copy(name="phase_compensation"),
+        "phase_compensation": library.nodes["33_cz_phase_compensation"].copy(name="phase_compensation"),
     },
     connectivity=[
         ("chevron", "conditional_phase"),
