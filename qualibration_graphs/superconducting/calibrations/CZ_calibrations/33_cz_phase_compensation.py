@@ -15,10 +15,9 @@ from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.parameters import get_qubit_pairs, get_qubits
+from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
@@ -71,8 +70,6 @@ node.machine = Quam.load()
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 
-    # Class containing tools to help handle units and conversions.
-    u = unit(coerce_to_integer=True)
     # Get the active qubit pairs from the node and organize them by batches
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
@@ -91,14 +88,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
         frame = declare(fixed)
-        n = declare(int)
-        n_st = declare_stream()
         I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
         I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
         state_c = [declare(int) for _ in range(num_qubit_pairs)]
         state_t = [declare(int) for _ in range(num_qubit_pairs)]
-        state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
-        state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
+        state_c_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+        state_t_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
         extra_phase_c = declare(fixed)
         extra_phase_t = declare(fixed)
 
@@ -207,7 +202,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
-                data_fetcher["n"],
+                data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
@@ -284,6 +279,3 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
-
-
-# %%
