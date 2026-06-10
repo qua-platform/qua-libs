@@ -121,13 +121,17 @@ def create_qua_program(
         "qubit_flux": xr.DataArray(fluxes_qubit, attrs={"long_name": "qubit flux", "units": "V"}),
     }
 
+    # Verify that qp.moving_qubit in state matches the recalculation from qubit frequencies and
+    # anharmonicity. Logs a warning and corrects it in-memory if they disagree; state is persisted
+    # at the end of the node.
     for qp in qubit_pairs:
         verify_moving_qubit(qp, node.parameters.cz_or_iswap, log_callable=node.log)
-        mq = get_moving_qubit(qp, node.parameters.cz_or_iswap)
-        sq = get_stationary_qubit(qp, node.parameters.cz_or_iswap)
-        node.log(f"Pair {qp.name}: moving={mq.name}, stationary={sq.name}")
         if "coupler_qubit_crosstalk" not in qp.extras:
-            node.log(f"No crosstalk compensation for {qp.name}")
+            node.log(f"Pair {qp.name}: no crosstalk compensation configured")
+
+    # Precompute moving/stationary qubit objects once per pair so QUA program loops use dict lookups.
+    moving_qubit_map = {qp.name: get_moving_qubit(qp, node.parameters.cz_or_iswap) for qp in qubit_pairs}
+    stationary_qubit_map = {qp.name: get_stationary_qubit(qp, node.parameters.cz_or_iswap) for qp in qubit_pairs}
 
     with program() as node.namespace["qua_program"]:
         flux_coupler = declare(fixed)
@@ -148,15 +152,15 @@ def create_qua_program(
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the QPU for pairs in this batch
             for qp in multiplexed_qubit_pairs.values():
-                mq = get_moving_qubit(qp, node.parameters.cz_or_iswap)
-                sq = get_stationary_qubit(qp, node.parameters.cz_or_iswap)
+                mq = moving_qubit_map[qp.name]
+                sq = stationary_qubit_map[qp.name]
                 node.machine.initialize_qpu(target=mq)
                 node.machine.initialize_qpu(target=sq)
             align()
 
             for ii, qp in multiplexed_qubit_pairs.items():
-                mq = get_moving_qubit(qp, node.parameters.cz_or_iswap)
-                sq = get_stationary_qubit(qp, node.parameters.cz_or_iswap)
+                mq = moving_qubit_map[qp.name]
+                sq = stationary_qubit_map[qp.name]
                 has_crosstalk = "coupler_qubit_crosstalk" in qp.extras
                 crosstalk = qp.extras["coupler_qubit_crosstalk"] if has_crosstalk else 0.0
                 wait(1000)

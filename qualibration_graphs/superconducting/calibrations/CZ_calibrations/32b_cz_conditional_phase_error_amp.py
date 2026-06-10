@@ -85,8 +85,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
 
+    # Verify that qp.moving_qubit in state matches the recalculation from qubit frequencies and
+    # anharmonicity. Logs a warning and corrects it in-memory if they disagree; state is persisted
+    # at the end of the node.
     for qp in qubit_pairs:
         verify_moving_qubit(qp, log_callable=node.log)
+
+    # Precompute moving/stationary qubit objects once per pair so QUA program loops use dict lookups.
+    moving_qubit_map = {qp.name: get_moving_qubit(qp) for qp in qubit_pairs}
+    stationary_qubit_map = {qp.name: get_stationary_qubit(qp) for qp in qubit_pairs}
 
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_averages
@@ -137,8 +144,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the qubits
             for qp in multiplexed_qubit_pairs.values():
-                mq = get_moving_qubit(qp)
-                sq = get_stationary_qubit(qp)
+                mq = moving_qubit_map[qp.name]
+                sq = stationary_qubit_map[qp.name]
                 node.machine.initialize_qpu(target=mq)
                 node.machine.initialize_qpu(target=sq)
             # Loop for averaging
@@ -153,8 +160,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Loop over the initial state of the control qubit
                             with for_(*from_array(moving_initial, [0, 1])):
                                 for ii, qp in multiplexed_qubit_pairs.items():
-                                    mq = get_moving_qubit(qp)
-                                    sq = get_stationary_qubit(qp)
+                                    mq = moving_qubit_map[qp.name]
+                                    sq = stationary_qubit_map[qp.name]
                                     # Reset the qubits
                                     mq.reset(node.parameters.reset_type, node.parameters.simulate)
                                     sq.reset(node.parameters.reset_type, node.parameters.simulate)

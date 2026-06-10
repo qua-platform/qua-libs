@@ -90,8 +90,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
 
+    # Verify that qp.moving_qubit in state matches the recalculation from qubit frequencies and
+    # anharmonicity. Logs a warning and corrects it in-memory if they disagree; state is persisted
+    # at the end of the node.
     for qp in qubit_pairs:
         verify_moving_qubit(qp, log_callable=node.log)
+
+    # Precompute moving/stationary qubit objects once per pair so QUA program loops use dict lookups.
+    moving_qubit_map = {qp.name: get_moving_qubit(qp) for qp in qubit_pairs}
+    stationary_qubit_map = {qp.name: get_stationary_qubit(qp) for qp in qubit_pairs}
 
     # define the amplitudes for the flux pulses
     pulse_amplitudes = {}
@@ -131,7 +138,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # the coupler is played separately with 4 ns granularity to avoid strict_timing gaps).
     baked_signals = {
         qp.name: baked_waveform(
-            get_moving_qubit(qp), baked_config, base_level=pulse_amplitudes[qp.name], max_samples=16
+            moving_qubit_map[qp.name], baked_config, base_level=pulse_amplitudes[qp.name], max_samples=16
         )
         for qp in qubit_pairs
     }
@@ -154,8 +161,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
             for qp in multiplexed_qubit_pairs.values():
-                mq = get_moving_qubit(qp)
-                sq = get_stationary_qubit(qp)
+                mq = moving_qubit_map[qp.name]
+                sq = stationary_qubit_map[qp.name]
                 node.machine.initialize_qpu(target=mq)
                 node.machine.initialize_qpu(target=sq)
             align()
@@ -172,8 +179,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     ################################################################################################
                     with for_(*from_array(t, times_cycles)):
                         for ii, qp in multiplexed_qubit_pairs.items():
-                            mq = get_moving_qubit(qp)
-                            sq = get_stationary_qubit(qp)
+                            mq = moving_qubit_map[qp.name]
+                            sq = stationary_qubit_map[qp.name]
                             # Qubit initialization
                             mq.reset(node.parameters.reset_type, node.parameters.simulate)
                             sq.reset(node.parameters.reset_type, node.parameters.simulate)
