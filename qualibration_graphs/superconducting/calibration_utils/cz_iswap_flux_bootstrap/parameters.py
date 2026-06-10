@@ -168,8 +168,9 @@ def verify_moving_qubit(
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
 
-    computed = get_moving_qubit(qp, gate_type)
-    computed_label = "control" if computed is qp.qubit_control else "target"
+    computed_mq = get_moving_qubit(qp, gate_type)
+    computed_sq = get_stationary_qubit(qp, gate_type)
+    computed_label = "control" if computed_mq is qp.qubit_control else "target"
 
     # Build a compact physics context string for logging
     if qp.qubit_control.f_01 >= qp.qubit_target.f_01:
@@ -184,27 +185,29 @@ def verify_moving_qubit(
         f"δ={delta_mhz:.1f} MHz, α_high={alpha_mhz:.1f} MHz"
     )
 
-    def _label_with_name(label: str) -> str:
-        qubit = qp.qubit_control if label == "control" else qp.qubit_target
-        return f"'{label}' ({qubit.name})"
-
     stored = getattr(qp, "moving_qubit", None)
+    stored_mq = qp.qubit_control if stored == "control" else qp.qubit_target
+    stored_sq = qp.qubit_target if stored == "control" else qp.qubit_control
+
     if stored is None:
         log_callable(
             f"WARNING Pair {qp.name}: qp.moving_qubit is not set. "
-            f"Setting to {_label_with_name(computed_label)} from recalculation ({gate_type} gate). [{physics_ctx}]"
+            f"Setting moving={computed_mq.name}, stationary={computed_sq.name} "
+            f"from recalculation ({gate_type} gate). [{physics_ctx}]"
         )
         qp.moving_qubit = computed_label
     elif stored != computed_label:
         log_callable(
-            f"WARNING Pair {qp.name}: qp.moving_qubit={_label_with_name(stored)} disagrees with recalculation "
-            f"result={_label_with_name(computed_label)} for {gate_type} gate — updating. "
+            f"WARNING Pair {qp.name}: moving={stored_mq.name}, stationary={stored_sq.name} "
+            f"disagrees with recalculation: moving={computed_mq.name}, stationary={computed_sq.name} "
+            f"for {gate_type} gate — updating. "
             f"State will be persisted at the end of the node. [{physics_ctx}]"
         )
         qp.moving_qubit = computed_label
     else:
         log_callable(
-            f"Pair {qp.name}: qp.moving_qubit={_label_with_name(stored)} consistent with physics ({gate_type} gate). [{physics_ctx}]"
+            f"Pair {qp.name}: moving={computed_mq.name}, stationary={computed_sq.name}. "
+            f"Consistent with recalculation ({gate_type} gate). [{physics_ctx}]"
         )
 
 
