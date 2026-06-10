@@ -128,12 +128,16 @@ x90_I_wf_q2 = x90_wf_q2
 x90_Q_wf_q2 = x90_der_wf_q2
 
 minus_x90_wf_q1, minus_x90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(-pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+    drag_gaussian_pulse_waveforms(
+        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1
+    )
 )
 minus_x90_I_wf_q1 = minus_x90_wf_q1
 minus_x90_Q_wf_q1 = minus_x90_der_wf_q1
 minus_x90_wf_q2, minus_x90_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(-pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+    drag_gaussian_pulse_waveforms(
+        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2
+    )
 )
 minus_x90_I_wf_q2 = minus_x90_wf_q2
 minus_x90_Q_wf_q2 = minus_x90_der_wf_q2
@@ -161,12 +165,16 @@ y90_I_wf_q2 = (-1) * y90_der_wf_q2
 y90_Q_wf_q2 = y90_wf_q2
 
 minus_y90_wf_q1, minus_y90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(-pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+    drag_gaussian_pulse_waveforms(
+        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1
+    )
 )
 minus_y90_I_wf_q1 = (-1) * minus_y90_der_wf_q1
 minus_y90_Q_wf_q1 = minus_y90_wf_q1
 minus_y90_wf_q2, minus_y90_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(-pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+    drag_gaussian_pulse_waveforms(
+        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2
+    )
 )
 minus_y90_I_wf_q2 = (-1) * minus_y90_der_wf_q2
 minus_y90_Q_wf_q2 = minus_y90_wf_q2
@@ -193,6 +201,7 @@ mixer_resonator_phi_q2 = 0.0
 opt_weights = False
 if opt_weights:
     from qualang_tools.config.integration_weights_tools import convert_integration_weights
+
     weights_q1 = np.load("optimal_weights_q1.npz")
     opt_weights_real_q1 = convert_integration_weights(weights_q1["weights_real"])
     opt_weights_minus_imag_q1 = convert_integration_weights(weights_q1["weights_minus_imag"])
@@ -504,14 +513,30 @@ config = {
     },
     "mixers": {
         "mixer_qubit_q1": [
-            {"intermediate_frequency": qubit_IF_q1, "lo_frequency": qubit_LO_q1, "correction": IQ_imbalance(mixer_qubit_g_q1, mixer_qubit_phi_q1)},
+            {
+                "intermediate_frequency": qubit_IF_q1,
+                "lo_frequency": qubit_LO_q1,
+                "correction": IQ_imbalance(mixer_qubit_g_q1, mixer_qubit_phi_q1),
+            },
         ],
         "mixer_qubit_q2": [
-            {"intermediate_frequency": qubit_IF_q2, "lo_frequency": qubit_LO_q2, "correction": IQ_imbalance(mixer_qubit_g_q2, mixer_qubit_phi_q2)},
+            {
+                "intermediate_frequency": qubit_IF_q2,
+                "lo_frequency": qubit_LO_q2,
+                "correction": IQ_imbalance(mixer_qubit_g_q2, mixer_qubit_phi_q2),
+            },
         ],
         "mixer_resonator": [
-            {"intermediate_frequency": resonator_IF_q1, "lo_frequency": resonator_LO, "correction": IQ_imbalance(mixer_resonator_g_q1, mixer_resonator_phi_q1)},
-            {"intermediate_frequency": resonator_IF_q2, "lo_frequency": resonator_LO, "correction": IQ_imbalance(mixer_resonator_g_q2, mixer_resonator_phi_q2)},
+            {
+                "intermediate_frequency": resonator_IF_q1,
+                "lo_frequency": resonator_LO,
+                "correction": IQ_imbalance(mixer_resonator_g_q1, mixer_resonator_phi_q1),
+            },
+            {
+                "intermediate_frequency": resonator_IF_q2,
+                "lo_frequency": resonator_LO,
+                "correction": IQ_imbalance(mixer_resonator_g_q2, mixer_resonator_phi_q2),
+            },
         ],
     },
 }

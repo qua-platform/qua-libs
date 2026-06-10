@@ -63,17 +63,17 @@ u = unit(coerce_to_integer=True)
 #    Parameters     #
 #####################
 # Qubit element names in this config
-qc = "q1_xy"   # control qubit (fixed-frequency transmon)
-qt = "q2_xy"   # target qubit (flux-tunable transmon)
-rr_c = "rr1"   # resonator for control qubit
-rr_t = "rr2"   # resonator for target qubit
+qc = "q1_xy"  # control qubit (fixed-frequency transmon)
+qt = "q2_xy"  # target qubit (flux-tunable transmon)
+rr_c = "rr1"  # resonator for control qubit
+rr_t = "rr2"  # resonator for target qubit
 
 # RB parameters
-num_of_sequences = 10    # Number of random Clifford sequences per depth
-n_avg = 500              # Averages per sequence
+num_of_sequences = 10  # Number of random Clifford sequences per depth
+n_avg = 500  # Averages per sequence
 depth_list = [0, 1, 2, 3, 5, 7, 10]  # Clifford depths
 
-seed = 42    # None for random each run
+seed = 42  # None for random each run
 method = "cooldown"  # "cooldown" or "active"
 
 # GZ correction angles (turns) — calibrate these for your system
@@ -174,12 +174,7 @@ def _circuit_to_encoded(transpiled_qc):
             patterns.append(CZ_PATTERN)
             rz_c.append(ctrl_rz)
             rz_t.append(tgt_rz)
-        elif (
-            ctrl_phys != PHYS["idle"]
-            or tgt_phys != PHYS["idle"]
-            or ctrl_rz != 0.0
-            or tgt_rz != 0.0
-        ):
+        elif ctrl_phys != PHYS["idle"] or tgt_phys != PHYS["idle"] or ctrl_rz != 0.0 or tgt_rz != 0.0:
             patterns.append(PATTERN_MAP[(ctrl_phys, tgt_phys)])
             rz_c.append(ctrl_rz)
             rz_t.append(tgt_rz)
@@ -547,12 +542,12 @@ def build_rb_program(patterns, rz_c_data, rz_t_data, len_list_data, tag_suffix="
 
         with stream_processing():
             m_st.save("iteration")
-            state_st_gg.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                len(depth_list)
-            ).save_all(f"state_gg_{tag_suffix}")
-            state_st_gg.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                len(depth_list)
-            ).average().save(f"state_gg_{tag_suffix}_avg")
+            state_st_gg.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(len(depth_list)).save_all(
+                f"state_gg_{tag_suffix}"
+            )
+            state_st_gg.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(len(depth_list)).average().save(
+                f"state_gg_{tag_suffix}_avg"
+            )
 
     return rb_prog
 
@@ -592,9 +587,7 @@ def analyze_results(y_std, y_int, depth_list):
     results = {}
 
     try:
-        popt_std, pcov_std = curve_fit(
-            rb_decay, x, y_std, p0=[0.75, 0.99, 0.25], bounds=([0, 0, 0], [1, 1, 1])
-        )
+        popt_std, pcov_std = curve_fit(rb_decay, x, y_std, p0=[0.75, 0.99, 0.25], bounds=([0, 0, 0], [1, 1, 1]))
         A_std, alpha_std, B_std = popt_std
         alpha_std_err = np.sqrt(np.diag(pcov_std))[1]
         results["fit_std"] = True
@@ -607,9 +600,7 @@ def analyze_results(y_std, y_int, depth_list):
         results["fit_std"] = False
 
     try:
-        popt_int, pcov_int = curve_fit(
-            rb_decay, x, y_int, p0=[0.75, 0.98, 0.25], bounds=([0, 0, 0], [1, 1, 1])
-        )
+        popt_int, pcov_int = curve_fit(rb_decay, x, y_int, p0=[0.75, 0.98, 0.25], bounds=([0, 0, 0], [1, 1, 1]))
         A_int, alpha_int, B_int = popt_int
         alpha_int_err = np.sqrt(np.diag(pcov_int))[1]
         results["fit_int"] = True
@@ -627,9 +618,7 @@ def analyze_results(y_std, y_int, depth_list):
         CZ_error = 1 - F_CZ
         dF_dalpha_int = (d - 1) / (d * alpha_std)
         dF_dalpha_std = (d - 1) / d * alpha_int / alpha_std**2
-        F_CZ_err = np.sqrt(
-            (dF_dalpha_int * alpha_int_err) ** 2 + (dF_dalpha_std * alpha_std_err) ** 2
-        )
+        F_CZ_err = np.sqrt((dF_dalpha_int * alpha_int_err) ** 2 + (dF_dalpha_std * alpha_std_err) ** 2)
         results["F_CZ"] = F_CZ
         results["F_CZ_err"] = F_CZ_err
         results["CZ_error"] = CZ_error
@@ -748,8 +737,7 @@ def main():
     print(f"\n--- Memory: std={len(pat_std)}, int={len(pat_int)} (limit ~{OPX_LIMIT}) ---")
     if max_arr > OPX_LIMIT:
         raise RuntimeError(
-            f"Array size {max_arr} exceeds OPX limit {OPX_LIMIT}! "
-            "Reduce num_of_sequences or depth_list."
+            f"Array size {max_arr} exceeds OPX limit {OPX_LIMIT}! " "Reduce num_of_sequences or depth_list."
         )
     print("OK — fits in OPX memory.")
 
