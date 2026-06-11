@@ -12,8 +12,7 @@ from calibration_utils.cz_iswap_flux_bootstrap import (
     estimate_qubit_flux_shift,
     fit_raw_data,
     log_fitted_results,
-    get_moving_qubit,
-    get_stationary_qubit,
+    QubitRoles,
     verify_moving_qubit,
     plot_raw_data_with_fit,
     process_raw_dataset,
@@ -121,17 +120,16 @@ def create_qua_program(
         "qubit_flux": xr.DataArray(fluxes_qubit, attrs={"long_name": "qubit flux", "units": "V"}),
     }
 
-    # Verify that qp.moving_qubit in state matches the recalculation from qubit frequencies and
-    # anharmonicity. Logs a warning and corrects it in-memory if they disagree; state is persisted
+    # Verify qp.moving_qubit against recalculation and precompute roles for QUA program loops.
+    # Logs a warning and corrects qp.moving_qubit in-memory if they disagree; state is persisted
     # at the end of the node.
+    qubit_roles_map = {}
     for qp in qubit_pairs:
         verify_moving_qubit(qp, node.parameters.cz_or_iswap, log_callable=node.log)
+        qubit_roles_map[qp.name] = QubitRoles.resolve(qp, node.parameters.cz_or_iswap)
         if "coupler_qubit_crosstalk" not in qp.extras:
             node.log(f"Pair {qp.name}: no crosstalk compensation configured")
-
-    # Precompute moving/stationary qubit objects once per pair so QUA program loops use dict lookups.
-    moving_qubit_map = {qp.name: get_moving_qubit(qp, node.parameters.cz_or_iswap) for qp in qubit_pairs}
-    stationary_qubit_map = {qp.name: get_stationary_qubit(qp, node.parameters.cz_or_iswap) for qp in qubit_pairs}
+    node.namespace["qubit_roles_map"] = qubit_roles_map
 
     with program() as node.namespace["qua_program"]:
         flux_coupler = declare(fixed)
@@ -152,15 +150,13 @@ def create_qua_program(
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the QPU for pairs in this batch
             for qp in multiplexed_qubit_pairs.values():
-                mq = moving_qubit_map[qp.name]
-                sq = stationary_qubit_map[qp.name]
+                qubit_role = qubit_roles_map[qp.name]; mq, sq = qubit_role.moving, qubit_role.stationary
                 node.machine.initialize_qpu(target=mq)
                 node.machine.initialize_qpu(target=sq)
             align()
 
             for ii, qp in multiplexed_qubit_pairs.items():
-                mq = moving_qubit_map[qp.name]
-                sq = stationary_qubit_map[qp.name]
+                qubit_role = qubit_roles_map[qp.name]; mq, sq = qubit_role.moving, qubit_role.stationary
                 has_crosstalk = "coupler_qubit_crosstalk" in qp.extras
                 crosstalk = qp.extras["coupler_qubit_crosstalk"] if has_crosstalk else 0.0
                 wait(1000)
@@ -270,8 +266,14 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-    # Register the raw dataset
+    # Register the raw dataset and the sweep/role data needed for reproducible re-analysis
     node.results["ds_raw"] = dataset
+    node.results["fluxes_qp"] = node.namespace["fluxes_qp"]
+    qubit_roles_map = node.namespace["qubit_roles_map"]
+    node.results["qubit_roles"] = {
+        name: {field: getattr(role, field).name for field in role._fields}
+        for name, role in qubit_roles_map.items()
+    }
 
 
 # %% {Load_historical_data}
@@ -283,16 +285,13 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
-    fluxes_qubit = np.arange(
-        -node.parameters.qubit_flux_span / 2,
-        node.parameters.qubit_flux_span / 2,
-        node.parameters.qubit_flux_step,
-    )
-    fluxes_qp = {}
-    for qp in node.namespace["qubit_pairs"]:
-        est_flux_shift = estimate_qubit_flux_shift(node.parameters, qp, log_callable=node.log)
-        fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
-    node.namespace["fluxes_qp"] = fluxes_qp
+    node.namespace["fluxes_qp"] = {
+        name: np.array(arr) for name, arr in node.results["fluxes_qp"].items()
+    }
+    node.namespace["qubit_roles_map"] = {
+        name: QubitRoles(**{field: node.machine.qubits[qname] for field, qname in roles.items()})
+        for name, roles in node.results["qubit_roles"].items()
+    }
 
 
 # %% {Analyse_data}
@@ -323,6 +322,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results["ds_raw"],
         node.namespace["qubit_pairs"],
         node.results["fit_results"],
+        qubit_roles_map=node.namespace["qubit_roles_map"],
         analysis_debug=node.namespace.get("analysis_debug", node.parameters.analysis_debug),
         cz_or_iswap=node.parameters.cz_or_iswap,
     )

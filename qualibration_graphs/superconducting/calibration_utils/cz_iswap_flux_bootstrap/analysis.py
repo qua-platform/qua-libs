@@ -19,7 +19,6 @@ import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
 
-from .parameters import get_moving_qubit
 from scipy.signal import find_peaks, savgol_filter
 
 # Fringe band for sliding-window FFT (fixed; not exposed in presets).
@@ -129,6 +128,7 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     """Add absolute flux coordinates and detuning for plotting."""
     qubit_pairs = [node.machine.qubit_pairs[pair] for pair in node.parameters.qubit_pairs]
+    qubit_roles_map = node.namespace["qubit_roles_map"]
     fluxes_qp = node.namespace["fluxes_qp"]
     fluxes_coupler = ds.coupler_flux.values
     qubit_flux_full = np.array([fluxes_qp[qp.name] for qp in qubit_pairs])
@@ -137,12 +137,11 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     coupler_flux_full = np.array([fluxes_coupler + qp.coupler.decouple_offset for qp in qubit_pairs])
     detuning = np.array(
         [
-            -fluxes_qp[qp.name] ** 2
-            * get_moving_qubit(qp, node.parameters.cz_or_iswap).freq_vs_flux_01_quad_term
+            -fluxes_qp[qp.name] ** 2 * qubit_roles_map[qp.name].moving.freq_vs_flux_01_quad_term
             for qp in qubit_pairs
         ]
     )
-    
+
     ds = ds.assign_coords({"coupler_flux_full": (["qubit_pair", "coupler_flux"], coupler_flux_full)})
     ds = ds.assign_coords({"detuning": (["qubit_pair", "qubit_flux"], detuning)})
 

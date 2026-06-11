@@ -9,13 +9,12 @@ from matplotlib.figure import Figure
 from qualibration_libs.plotting import grid_iter
 
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
-from calibration_utils.cz_iswap_flux_bootstrap.parameters import get_moving_qubit, get_stationary_qubit
-
 
 def plot_raw_data_with_fit(
     ds: xr.Dataset,
     qubit_pairs: list,
     fits: Optional[Dict] = None,
+    qubit_roles_map: Optional[Dict] = None,
     analysis_debug: bool = False,
     cz_or_iswap: str = "cz",
 ) -> Dict[str, Figure]:
@@ -59,6 +58,7 @@ def plot_raw_data_with_fit(
                 fit_data,
                 data_var=state_type,
                 qubit_pair_obj=pair_by_name.get(qp_name),
+                qubit_role=qubit_roles_map.get(qp_name) if qubit_roles_map else None,
                 cz_or_iswap=cz_or_iswap,
             )
 
@@ -79,6 +79,7 @@ def plot_individual_data_with_fit(
     fit: Optional[Dict] = None,
     data_var: str = "stationary",
     qubit_pair_obj=None,
+    qubit_role=None,
     cz_or_iswap: str = "cz",
 ):
     """Plot one qubit-pair 2D heatmap; optional fit and machine-state markers.
@@ -173,12 +174,8 @@ def plot_individual_data_with_fit(
             )
             has_legend = True
 
-    if qubit_pair_obj is not None:
-        qb = (
-            get_moving_qubit(qubit_pair_obj, cz_or_iswap)
-            if data_var == "moving"
-            else get_stationary_qubit(qubit_pair_obj, cz_or_iswap)
-        )
+    if qubit_role is not None:
+        qb = qubit_role.moving if data_var == "moving" else qubit_role.stationary
         ax.set_title(f"{qubit_pair} \n {data_var} qubit ({qb.name})")
     else:
         ax.set_title(f"{qubit_pair} ({data_var})")
