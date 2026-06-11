@@ -8,8 +8,6 @@ from qualibrate import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation, oscillation
 from scipy.optimize import curve_fit
 
-from calibration_utils.cz_iswap_flux_bootstrap.parameters import get_moving_qubit
-
 
 @dataclass
 class FitResults:
@@ -119,7 +117,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
     def detuning(qp, amp):
         amplitude_squared = (amp * qp.macros[operation].flux_pulse_qubit.amplitude) ** 2
-        return -amplitude_squared * get_moving_qubit(qp).freq_vs_flux_01_quad_term
+        return -amplitude_squared * node.namespace["qubit_roles_map"][qp.name].moving.freq_vs_flux_01_quad_term
 
     ds = ds.assign_coords({"amp_full": (["qubit_pair", "amp"], np.array([abs_amp(qp, ds.amp) for qp in qubit_pairs]))})
     ds = ds.assign_coords({"detuning": (["qubit_pair", "amp"], np.array([detuning(qp, ds.amp) for qp in qubit_pairs]))})
@@ -161,7 +159,7 @@ def fit_routine(da):
     Parameters:
     -----------
     da : xr.Dataset
-        Single-pair dataset with ``state_stationary`` or ``I_stationary``, ``frame``,
+        Single-pair dataset with ``e_state_stationary`` or ``I_stationary``, ``frame``,
         ``amp_full``, and ``control_axis`` dimensions.
 
     Returns:
@@ -170,8 +168,8 @@ def fit_routine(da):
         Input dataset extended with ``fitted``, ``phase_diff``, ``optimal_amplitude``,
         ``fitted_curve``, and ``success`` data variables.
     """
-    if hasattr(da, "state_stationary"):
-        data = "state_stationary"
+    if "e_state_stationary" in da:
+        data = "e_state_stationary"
     else:
         data = "I_stationary"
     # Fit oscillation for each control state and amplitude

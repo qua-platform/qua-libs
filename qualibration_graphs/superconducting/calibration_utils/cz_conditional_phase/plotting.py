@@ -6,13 +6,13 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from qualibration_libs.plotting import grid_iter
 
-from calibration_utils.cz_iswap_flux_bootstrap.parameters import get_moving_qubit
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
 
 
 def plot_raw_data_with_fit(
     ds_fit: xr.Dataset,
     qubit_pairs: list,
+    qubit_roles_map: Optional[dict] = None,
 ) -> Figure:
     """Plot phase difference vs amplitude with fit for every qubit pair on a chip-topology grid.
 
@@ -35,7 +35,8 @@ def plot_raw_data_with_fit(
     qp_map = {qp.name: qp for qp in qubit_pairs}
     for ax, qubit in grid_iter(grid):
         qp_name = qubit["qubit"]
-        plot_individual_data_with_fit(ax, ds_fit, qp_name, qp_map[qp_name])
+        qubit_role_obj = qubit_roles_map.get(qp_name) if qubit_roles_map else None
+        plot_individual_data_with_fit(ax, ds_fit, qp_name, qp_map[qp_name], qubit_role_obj=qubit_role_obj)
 
     grid.fig.suptitle("CZ phase calibration — phase difference vs amplitude")
     grid.fig.tight_layout()
@@ -47,6 +48,7 @@ def plot_individual_data_with_fit(
     ds_fit: xr.Dataset,
     qp_name: str,
     qp,
+    qubit_role_obj=None,
 ):
     """Plot phase difference + fit curve for one qubit pair.
 
@@ -76,16 +78,17 @@ def plot_individual_data_with_fit(
     ax.scatter([opt_amp], [0.5], color="red", zorder=5, label="optimal")
     ax.legend(fontsize=8)
 
-    mq = get_moving_qubit(qp)
+    mq = qubit_role_obj.moving if qubit_role_obj is not None else None
 
-    def amp_to_detuning_MHz(amp):
-        return -(amp**2) * mq.freq_vs_flux_01_quad_term / 1e6
+    if mq is not None:
+        def amp_to_detuning_MHz(amp):
+            return -(amp**2) * mq.freq_vs_flux_01_quad_term / 1e6
 
-    def detuning_MHz_to_amp(detuning_MHz):
-        return np.sqrt(-detuning_MHz * 1e6 / mq.freq_vs_flux_01_quad_term)
+        def detuning_MHz_to_amp(detuning_MHz):
+            return np.sqrt(-detuning_MHz * 1e6 / mq.freq_vs_flux_01_quad_term)
 
-    secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
-    secax.set_xlabel("Detuning (MHz)")
+        secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
+        secax.set_xlabel("Detuning (MHz)")
 
     title_suffix = "fit OK" if success else "fit failed"
     ax.set_title(f"{qp_name} — {title_suffix}")
@@ -93,23 +96,23 @@ def plot_individual_data_with_fit(
     ax.set_ylabel("Phase difference")
 
 
-def plot_moving_qubit_populations(
+def plot_leakage_qubit_populations(
     ds_fit: xr.Dataset,
     qubit_pairs: list,
+    qubit_roles_map: Optional[dict] = None,
 ) -> Figure:
-    """Plot moving-qubit g/e/f populations vs amplitude for every pair on a chip-topology grid.
+    """Plot leakage-qubit g/e/f populations vs amplitude for every pair on a chip-topology grid.
 
-    The moving qubit (the one flux-pulsed during the CZ gate) is the source of
-    leakage to the |f⟩ state.  The moving qubit is resolved via
-    ``cz_iswap_flux_bootstrap.parameters.get_moving_qubit`` from the pair
-    frequencies and anharmonicity, so this works for both control-as-moving
-    and target-as-moving architectures.
+    The leakage qubit (always the higher-frequency qubit, whose |1⟩→|2⟩ transition
+    is resonant at the |11⟩↔|20⟩ crossing) is resolved via ``QubitRoles.resolve``
+    (.leakage) from qubit frequencies and anharmonicity, so this works regardless of
+    which qubit is moving.
 
     Parameters
     ----------
     ds_fit : xr.Dataset
-        Fit dataset (must contain ``g_state_moving``, ``e_state_moving``,
-        ``f_state_moving``, ``optimal_amplitude``).
+        Fit dataset (must contain ``g/e/f_state_moving`` and ``g/e/f_state_stationary``,
+        plus ``optimal_amplitude``).
     qubit_pairs : list
         Qubit pair objects used for grid placement.
 
@@ -124,38 +127,49 @@ def plot_moving_qubit_populations(
     qp_map = {qp.name: qp for qp in qubit_pairs}
     for ax, qubit in grid_iter(grid):
         qp_name = qubit["qubit"]
-        plot_individual_moving_qubit_populations(ax, ds_fit, qp_name, qp_map[qp_name])
+        qubit_role_obj = qubit_roles_map.get(qp_name) if qubit_roles_map else None
+        plot_individual_leakage_qubit_populations(ax, ds_fit, qp_name, qp_map[qp_name], qubit_role_obj=qubit_role_obj)
 
-    grid.fig.suptitle("CZ phase calibration — moving qubit populations")
+    grid.fig.suptitle("CZ phase calibration — leakage qubit populations")
     grid.fig.tight_layout()
     return grid.fig
 
 
-def plot_individual_moving_qubit_populations(
+def plot_individual_leakage_qubit_populations(
     ax: Axes,
     ds_fit: xr.Dataset,
     qp_name: str,
     qp,
+    qubit_role_obj=None,
 ):
-    """Plot g/e/f moving-qubit populations vs amplitude for one qubit pair.
+    """Plot g/e/f populations of the leakage qubit vs amplitude for one qubit pair.
+
+    Populations for both the moving and stationary qubits are stored in the dataset.
+    This function selects the correct set (``_moving`` or ``_stationary``) by
+    checking whether ``roles.leakage`` is the moving or stationary qubit.
 
     Parameters
     ----------
     ax : Axes
         Axis to draw on.
     ds_fit : xr.Dataset
-        Fit dataset containing ``g_state_moving``, ``e_state_moving``,
-        ``f_state_moving``, and ``optimal_amplitude``.
+        Fit dataset containing ``g/e/f_state_moving``, ``g/e/f_state_stationary``,
+        and ``optimal_amplitude``.
     qp_name : str
         Qubit pair name used to select data.
     qp : qubit pair object
-        Used to compute the secondary detuning axis via the moving qubit.
+        Used to resolve qubit roles and compute the secondary detuning axis.
     """
     fit = ds_fit.sel(qubit_pair=qp_name)
 
-    data_g = fit.g_state_moving.sel(control_axis=1).mean(dim="frame")
-    data_e = fit.e_state_moving.sel(control_axis=1).mean(dim="frame")
-    data_f = fit.f_state_moving.sel(control_axis=1).mean(dim="frame")
+    roles = qubit_role_obj
+    lq = roles.leakage if roles is not None else None
+    mq = roles.moving if roles is not None else None
+    leakage_key = "moving" if (roles is not None and roles.leakage is roles.moving) else "stationary"
+
+    data_g = fit[f"g_state_{leakage_key}"].sel(control_axis=1).mean(dim="frame")
+    data_e = fit[f"e_state_{leakage_key}"].sel(control_axis=1).mean(dim="frame")
+    data_f = fit[f"f_state_{leakage_key}"].sel(control_axis=1).mean(dim="frame")
 
     amps = fit.amp_full.values if "amp_full" in fit.coords else fit.amp.values
     ax.plot(amps, data_g, label="g", color="steelblue")
@@ -168,17 +182,19 @@ def plot_individual_moving_qubit_populations(
     ax.axhline(1.0, color="grey", ls=":", lw=0.5)
     ax.legend(fontsize=8)
 
-    mq = get_moving_qubit(qp)
+    if mq is not None:
+        def amp_to_detuning_MHz(amp):
+            return -(amp**2) * mq.freq_vs_flux_01_quad_term / 1e6
 
-    def amp_to_detuning_MHz(amp):
-        return -(amp**2) * mq.freq_vs_flux_01_quad_term / 1e6
+        def detuning_MHz_to_amp(detuning_MHz):
+            return np.sqrt(-detuning_MHz * 1e6 / mq.freq_vs_flux_01_quad_term)
 
-    def detuning_MHz_to_amp(detuning_MHz):
-        return np.sqrt(-detuning_MHz * 1e6 / mq.freq_vs_flux_01_quad_term)
+        secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
+        secax.set_xlabel("Detuning (MHz)")
 
-    secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
-    secax.set_xlabel("Detuning (MHz)")
-
-    ax.set_title(f"{qp_name} — moving qubit: {mq.name}")
+    if lq is not None and mq is not None:
+        ax.set_title(f"{qp_name} — leakage qubit: {lq.name} (moving: {mq.name})")
+    else:
+        ax.set_title(qp_name)
     ax.set_xlabel("Amplitude (V)")
-    ax.set_ylabel("Moving qubit population")
+    ax.set_ylabel("Leakage qubit population")
