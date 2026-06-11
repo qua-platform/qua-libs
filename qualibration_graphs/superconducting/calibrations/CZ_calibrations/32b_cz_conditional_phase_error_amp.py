@@ -144,7 +144,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the qubits
             for qp in multiplexed_qubit_pairs.values():
-                qubit_role = qubit_roles_map[qp.name]; mq, sq = qubit_role.moving, qubit_role.stationary
+                qubit_role = qubit_roles_map[qp.name]
+                mq, sq = qubit_role.moving, qubit_role.stationary
                 node.machine.initialize_qpu(target=mq)
                 node.machine.initialize_qpu(target=sq)
             # Loop for averaging
@@ -159,7 +160,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Loop over the initial state of the control qubit
                             with for_(*from_array(moving_initial, [0, 1])):
                                 for ii, qp in multiplexed_qubit_pairs.items():
-                                    qubit_role = qubit_roles_map[qp.name]; mq, sq = qubit_role.moving, qubit_role.stationary
+                                    qubit_role = qubit_roles_map[qp.name]
+                                    mq, sq = qubit_role.moving, qubit_role.stationary
                                     # Reset the qubits
                                     mq.reset(node.parameters.reset_type, node.parameters.simulate)
                                     sq.reset(node.parameters.reset_type, node.parameters.simulate)
@@ -306,8 +308,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
     qubit_roles_map = node.namespace["qubit_roles_map"]
     node.results["qubit_roles"] = {
-        name: {field: getattr(role, field).name for field in role._fields}
-        for name, role in qubit_roles_map.items()
+        name: {field: getattr(role, field).name for field in role._fields} for name, role in qubit_roles_map.items()
     }
 
 
@@ -354,12 +355,14 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
     node.results["phase_figure"] = fig_phase
 
-    if "g_state_moving" in ds_fit.data_vars:
-        fig_populations = plot_leakage_qubit_populations(ds_fit, qubit_pairs, qubit_roles_map=node.namespace.get("qubit_roles_map"))
+    if "f_state_moving" in ds_fit.data_vars or "f_state_stationary" in ds_fit.data_vars:
+        fig_populations = plot_leakage_qubit_populations(
+            ds_fit, qubit_pairs, qubit_roles_map=node.namespace.get("qubit_roles_map")
+        )
         plt.show()
         node.results["populations_figure"] = fig_populations
     else:
-        node.log("No populations data found in the fit dataset.")
+        node.log("No leakage (f-state) populations data found in the fit dataset.")
 
 
 # %% {Update_state}

@@ -37,7 +37,7 @@ def plot_raw_data_with_fit(
         qubit_role_obj = qubit_roles_map.get(qp_name) if qubit_roles_map else None
         plot_individual_data_with_fit(ax, ds_fit, qp_name, qp_map[qp_name], qubit_role_obj=qubit_role_obj)
 
-    grid.fig.suptitle("CZ conditional phase error amplification \n phase difference")
+    grid.fig.suptitle("CZ conditional phase error amplification - phase difference")
     grid.fig.tight_layout()
     return grid.fig
 
@@ -179,7 +179,7 @@ def plot_individual_leakage_qubit_populations(
         ax.text(0.5, 0.5, f"Plot failed:\n{e}", ha="center", va="center", transform=ax.transAxes, fontsize=8)
 
     if lq is not None and mq is not None:
-        ax.set_title(f"{qp_name} — leakage: {lq.name} (moving: {mq.name})")
+        ax.set_title(f"{qp_name} \n leakage qubit: {lq.name}")
     else:
         ax.set_title(qp_name)
     ax.set_xlabel("# CZ operations")

@@ -9,7 +9,7 @@ from calibration_utils.cz_conditional_phase import (
     log_fitted_results,
     QubitRoles,
     verify_moving_qubit,
-    plot_moving_qubit_populations,
+    plot_leakage_qubit_populations,
     plot_raw_data_with_fit,
     process_raw_dataset,
 )
@@ -66,6 +66,12 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.qubit_pairs = ["coupler_q4_q5"]
+    node.parameters.operation = "cz_unipolar"
+    node.parameters.amp_range = 0.1
+    node.parameters.amp_step = 0.01
+    node.parameters.num_averages = 50
+    node.parameters.use_state_discrimination = False
     pass
 
 
@@ -338,12 +344,12 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
     node.results["phase_figure"] = fig_phase
 
-    if "g_state_moving" in ds_fit.data_vars:
-        fig_populations = plot_moving_qubit_populations(ds_fit, qubit_pairs, qubit_roles_map=node.namespace.get("qubit_roles_map"))
+    if "f_state_moving" in ds_fit.data_vars or "f_state_stationary" in ds_fit.data_vars:
+        fig_populations = plot_leakage_qubit_populations(ds_fit, qubit_pairs, qubit_roles_map=node.namespace.get("qubit_roles_map"))
         plt.show()
         node.results["populations_figure"] = fig_populations
     else:
-        node.log("No populations data found in the fit dataset.")
+        node.log("No leakage (f-state) populations data found in the fit dataset.")
 
 
 # %% {Update_state}

@@ -90,8 +90,7 @@ def plot_individual_data_with_fit(
         secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
         secax.set_xlabel("Detuning (MHz)")
 
-    title_suffix = "fit OK" if success else "fit failed"
-    ax.set_title(f"{qp_name} — {title_suffix}")
+    ax.set_title(f"{qp_name}")
     ax.set_xlabel("Amplitude (V)")
     ax.set_ylabel("Phase difference")
 
@@ -193,7 +192,7 @@ def plot_individual_leakage_qubit_populations(
         secax.set_xlabel("Detuning (MHz)")
 
     if lq is not None and mq is not None:
-        ax.set_title(f"{qp_name} — leakage qubit: {lq.name} (moving: {mq.name})")
+        ax.set_title(f"{qp_name} \n leakage qubit: {lq.name}")
     else:
         ax.set_title(qp_name)
     ax.set_xlabel("Amplitude (V)")
