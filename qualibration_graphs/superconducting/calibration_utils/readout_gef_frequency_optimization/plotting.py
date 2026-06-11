@@ -1,3 +1,5 @@
+"""Plotting utilities for GEF readout frequency optimization visualizations."""
+
 from typing import List
 
 import xarray as xr
@@ -45,7 +47,7 @@ def plot_distances_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.
 
 def plot_individual_distance_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
-    Plots the distance between the resonator responses when the qubit is in |g> and |e> on a given axis with optional fit.
+    Plot IQ distance vs frequency for g, e, f states with optimal detuning marker.
 
     Parameters
     ----------

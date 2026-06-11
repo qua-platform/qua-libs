@@ -7,7 +7,6 @@ from calibration_utils.readout_optimization_3d.parameters import (
     ReadoutOptimization3dParameters,
 )
 
-
 try:
     from qm.qua.type_hints import QuaVariable
 

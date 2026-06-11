@@ -61,9 +61,10 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="20a_cz_conditional_phase",  # Name should be unique
+    name="32a_cz_conditional_phase",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
+    machine=Quam.load(),
 )
 
 
@@ -72,12 +73,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubit_pairs = ["q1-q2"]
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
@@ -157,7 +153,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qp.qubit_target.xy.play("x90")
                                 qp.align()
                                 # play the CZ gate
-                                qp.macros[operation].apply(amplitude_scale_control=amp)
+                                qp.macros[operation].apply(amplitude_scale_qubit=amp)
                                 # rotate the frame
                                 qp.qubit_target.xy.frame_rotation_2pi(frame)
                                 # Tomographic rotation on the target qubit
@@ -319,7 +315,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
                 continue
-            qp.macros[operation].flux_pulse_control.amplitude = fit_results[qp.name]["optimal_amplitude"]
+            qp.macros[operation].flux_pulse_qubit.amplitude = fit_results[qp.name]["optimal_amplitude"]
 
 
 # %% {Save_results}

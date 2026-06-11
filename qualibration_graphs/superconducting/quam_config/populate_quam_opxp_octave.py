@@ -14,11 +14,9 @@ readout and saturation pulses.
 import json
 from qualang_tools.units import unit
 from quam_config import Quam
-from quam_builder.builder.superconducting.pulses import add_DragCosine_pulses
-from quam.components.pulses import GaussianPulse
+from quam_builder.builder.superconducting.add_default_pulses import add_DragCosine_pulses
 import numpy as np
 from pprint import pprint
-
 
 ########################################################################################################################
 # %%                                 QUAM loading and auxiliary functions
@@ -124,15 +122,10 @@ for k, qubit in enumerate(machine.qubits.values()):
 # %%                                        Pulse parameters
 ########################################################################################################################
 # How to add new pulses
-# from quam.components.pulses import (
-#     SquarePulse,
-#     DragGaussianPulse,
-#     DragCosinePulse,
-#     _FlatTopGaussianPulse,
-#     WaveformPulse,
-#     SquareReadoutPulse,
-# )
-# e.g., machine.qubits[q].xy.operations["new_pulse"] = _FlatTopGaussianPulse(...)
+# from quam.components.pulses import SquarePulse, SquareReadoutPulse
+# from quam_builder.architecture.superconducting.components.pulses import DragCosinePulse, DragGaussianPulse
+# from quam_builder.common.pulses import FlatTopGaussianPulse, GaussianPulse
+# e.g., machine.qubits[q].xy.operations["new_pulse"] = FlatTopGaussianPulse(...)
 
 ## Update pulses
 for k, q in enumerate(machine.qubits):
@@ -152,6 +145,7 @@ for k, q in enumerate(machine.qubits):
         detuning=0,
     )
     # Single Gaussian flux pulse
+    # from quam_builder.common.pulses import GaussianPulse
     # if hasattr(machine.qubits[q], "z"):
     #     machine.qubits[q].z.operations["gauss"] = GaussianPulse(amplitude=0.1, length=200, sigma=40)
 

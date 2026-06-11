@@ -17,7 +17,6 @@ from my_quam import Quam
 from quam.components.pulses import Pulse, SquarePulse, GaussianPulse
 import numpy as np
 
-
 ########################################################################################################################
 # %%                                 QUAM loading and auxiliary functions
 ########################################################################################################################

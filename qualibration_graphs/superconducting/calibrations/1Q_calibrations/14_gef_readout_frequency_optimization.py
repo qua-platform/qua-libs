@@ -1,4 +1,5 @@
 # %% {Imports}
+import dataclasses
 from dataclasses import asdict
 
 import matplotlib.pyplot as plt
@@ -61,9 +62,10 @@ Notes:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="14_gef_frequency_optimization",  # Name should be unique
+    name="14_gef_readout_frequency_optimization",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
+    machine=Quam.load(),
 )
 
 
@@ -71,17 +73,9 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    """
-    Allow the user to locally set the node parameters for debugging purposes, or
-    execution in the Python IDE.
-    """
+    """Allow the user to locally set the node parameters."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1", "q2"]
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
@@ -96,6 +90,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
+
+    for qubit_obj in qubits:
+        if "readout_GEF" in qubit_obj.resonator.operations:
+            continue
+        readout_op = qubit_obj.resonator.operations["readout"]
+        new_length = int(round(readout_op.length * 1.5 / 4) * 4)  # multiple of 4 ns
+        qubit_obj.resonator.operations["readout_GEF"] = dataclasses.replace(
+            readout_op,
+            length=new_length,
+            threshold=None,
+            rus_exit_threshold=None,
+        )
 
     n_runs = node.parameters.num_shots  # Number of runs
     operation = node.parameters.operation
@@ -227,7 +233,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
-                data_fetcher["n"],
+                data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
             )
@@ -304,6 +310,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Save all node results and state updates."""
     node.save()
 
 

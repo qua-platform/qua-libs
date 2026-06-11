@@ -57,14 +57,15 @@ Prerequisites:
 - Initial estimate of the CZ gate amplitude
 
 State update:
-- The optimal CZ gate amplitude: qubit_pair.gates["Cz"].flux_pulse_control.amplitude
+- The optimal CZ gate amplitude: qubit_pair.macros[operation].flux_pulse_qubit.amplitude
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="20b_cz_conditional_phase_error_amp",  # Name should be unique
+    name="32b_cz_conditional_phase_error_amp",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
+    machine=Quam.load(),
 )
 
 
@@ -74,10 +75,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubit_pairs = ["q1-q2"]
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
@@ -170,7 +167,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     # Loop over the number of CZ operations
                                     with for_(count, 0, count < n_op, count + 1):
                                         # play the CZ gate
-                                        qp.macros[operation].apply(amplitude_scale_control=amp)
+                                        qp.macros[operation].apply(amplitude_scale_qubit=amp)
                                     # rotate the frame by 𝜋/2 for odd number of operations
                                     with if_(((n_op & 1) == 0) & (control_initial == 1)):
                                         assign(frame_odd, frame - 0.5)
@@ -335,7 +332,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
                 continue
-            qp.macros[operation].flux_pulse_control.amplitude = fit_results[qp.name]["optimal_amplitude"]
+            qp.macros[operation].flux_pulse_qubit.amplitude = fit_results[qp.name]["optimal_amplitude"]
 
 
 # %% {Save_results}

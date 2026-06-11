@@ -49,6 +49,7 @@ node = QualibrationNode[EfParameters, Quam](
     name="13_power_rabi_ef",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=EfParameters(),  # EF-specific parameters set
+    machine=Quam.load(),
 )
 
 
@@ -60,10 +61,6 @@ def custom_param(node: QualibrationNode[EfParameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1", "q2"]
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
