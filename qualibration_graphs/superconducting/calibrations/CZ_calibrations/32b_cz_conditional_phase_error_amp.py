@@ -9,10 +9,9 @@ from calibration_utils.cz_conditional_phase_error_amp import (
     Parameters,
     fit_raw_data,
     log_fitted_results,
-    get_moving_qubit,
-    get_stationary_qubit,
+    QubitRoles,
     verify_moving_qubit,
-    plot_moving_qubit_populations,
+    plot_leakage_qubit_populations,
     plot_raw_data_with_fit,
     process_raw_dataset,
 )
@@ -85,15 +84,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
 
-    # Verify that qp.moving_qubit in state matches the recalculation from qubit frequencies and
-    # anharmonicity. Logs a warning and corrects it in-memory if they disagree; state is persisted
+    # Verify qp.moving_qubit against recalculation and precompute roles for QUA program loops.
+    # Logs a warning and corrects qp.moving_qubit in-memory if they disagree; state is persisted
     # at the end of the node.
+    qubit_roles_map = {}
     for qp in qubit_pairs:
         verify_moving_qubit(qp, log_callable=node.log)
-
-    # Precompute moving/stationary qubit objects once per pair so QUA program loops use dict lookups.
-    moving_qubit_map = {qp.name: get_moving_qubit(qp) for qp in qubit_pairs}
-    stationary_qubit_map = {qp.name: get_stationary_qubit(qp) for qp in qubit_pairs}
+        qubit_roles_map[qp.name] = QubitRoles.resolve(qp)
+    node.namespace["qubit_roles_map"] = qubit_roles_map
 
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_averages
@@ -139,13 +137,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state_mg_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
             state_me_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
             state_mf_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
-            state_sq_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+            state_sg_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+            state_se_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+            state_sf_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the qubits
             for qp in multiplexed_qubit_pairs.values():
-                mq = moving_qubit_map[qp.name]
-                sq = stationary_qubit_map[qp.name]
+                qubit_role = qubit_roles_map[qp.name]; mq, sq = qubit_role.moving, qubit_role.stationary
                 node.machine.initialize_qpu(target=mq)
                 node.machine.initialize_qpu(target=sq)
             # Loop for averaging
@@ -160,8 +159,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Loop over the initial state of the control qubit
                             with for_(*from_array(moving_initial, [0, 1])):
                                 for ii, qp in multiplexed_qubit_pairs.items():
-                                    mq = moving_qubit_map[qp.name]
-                                    sq = stationary_qubit_map[qp.name]
+                                    qubit_role = qubit_roles_map[qp.name]; mq, sq = qubit_role.moving, qubit_role.stationary
                                     # Reset the qubits
                                     mq.reset(node.parameters.reset_type, node.parameters.simulate)
                                     sq.reset(node.parameters.reset_type, node.parameters.simulate)
@@ -188,10 +186,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     qp.align()
 
                                     if node.parameters.use_state_discrimination:
-                                        # measure both qubits
+                                        # measure g/e/f populations for both qubits
                                         mq.readout_state_gef(state_mq[ii])
-                                        sq.readout_state(state_sq[ii])
-                                        # save each state outcome to its corresponding stream
+                                        sq.readout_state_gef(state_sq[ii])
                                         with switch_(state_mq[ii]):
                                             with case_(0):
                                                 wait(4)
@@ -208,7 +205,22 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                                 save(0, state_mg_st[ii])
                                                 save(0, state_me_st[ii])
                                                 save(1, state_mf_st[ii])
-                                        save(state_sq[ii], state_sq_st[ii])
+                                        with switch_(state_sq[ii]):
+                                            with case_(0):
+                                                wait(4)
+                                                save(1, state_sg_st[ii])
+                                                save(0, state_se_st[ii])
+                                                save(0, state_sf_st[ii])
+                                            with case_(1):
+                                                wait(4)
+                                                save(0, state_sg_st[ii])
+                                                save(1, state_se_st[ii])
+                                                save(0, state_sf_st[ii])
+                                            with default_():
+                                                wait(4)
+                                                save(0, state_sg_st[ii])
+                                                save(0, state_se_st[ii])
+                                                save(1, state_sf_st[ii])
                                     else:
                                         mq.resonator.measure("readout", qua_vars=(I_m[ii], Q_m[ii]))
                                         sq.resonator.measure("readout", qua_vars=(I_s[ii], Q_s[ii]))
@@ -230,9 +242,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     state_mf_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).buffer(
                         num_operations
                     ).average().save(f"f_state_moving{i + 1}")
-                    state_sq_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).buffer(
+                    state_sg_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).buffer(
                         num_operations
-                    ).average().save(f"state_stationary{i + 1}")
+                    ).average().save(f"g_state_stationary{i + 1}")
+                    state_se_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).buffer(
+                        num_operations
+                    ).average().save(f"e_state_stationary{i + 1}")
+                    state_sf_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).buffer(
+                        num_operations
+                    ).average().save(f"f_state_stationary{i + 1}")
                 else:
                     I_m_st[i].buffer(2).buffer(len(frames)).buffer(len(amplitudes)).buffer(
                         num_operations
@@ -284,8 +302,13 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-    # Register the raw dataset
+    # Register the raw dataset and role data needed for reproducible re-analysis
     node.results["ds_raw"] = dataset
+    qubit_roles_map = node.namespace["qubit_roles_map"]
+    node.results["qubit_roles"] = {
+        name: {field: getattr(role, field).name for field in role._fields}
+        for name, role in qubit_roles_map.items()
+    }
 
 
 # %% {Load_data}
@@ -298,6 +321,10 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     # Get the active qubit pairs from the loaded node parameters
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+    node.namespace["qubit_roles_map"] = {
+        name: QubitRoles(**{field: node.machine.qubits[qname] for field, qname in roles.items()})
+        for name, roles in node.results["qubit_roles"].items()
+    }
 
 
 # %% {Analyse_data}
@@ -322,13 +349,13 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
     ds_fit = node.results["ds_fit"]
 
-    fig_phase = plot_raw_data_with_fit(ds_fit, qubit_pairs)
+    fig_phase = plot_raw_data_with_fit(ds_fit, qubit_pairs, qubit_roles_map=node.namespace.get("qubit_roles_map"))
     plt.show()
 
     node.results["phase_figure"] = fig_phase
 
     if "g_state_moving" in ds_fit.data_vars:
-        fig_populations = plot_moving_qubit_populations(ds_fit, qubit_pairs)
+        fig_populations = plot_leakage_qubit_populations(ds_fit, qubit_pairs, qubit_roles_map=node.namespace.get("qubit_roles_map"))
         plt.show()
         node.results["populations_figure"] = fig_populations
     else:
