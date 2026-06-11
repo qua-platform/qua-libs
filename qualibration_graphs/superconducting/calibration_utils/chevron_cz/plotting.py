@@ -6,7 +6,6 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from qualibration_libs.plotting import grid_iter
 
-from calibration_utils.cz_iswap_flux_bootstrap.parameters import get_moving_qubit, get_stationary_qubit
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
 
 
@@ -15,6 +14,7 @@ def plot_raw_data_with_fit(
     qubit_pairs: list,
     fits: xr.Dataset,
     qubit_role: Literal["stationary", "moving"] = "stationary",
+    qubit_roles_map: Optional[dict] = None,
 ) -> Figure:
     """Plot the chevron 2D map for every qubit pair on a chip-topology grid.
 
@@ -45,7 +45,8 @@ def plot_raw_data_with_fit(
             fit_data = fits.sel(qubit_pair=qp_name) if fits is not None else None
         except (KeyError, ValueError):
             fit_data = None
-        plot_individual_qubit_chevron(ax, ds, qp_name, qubit_role, fit_data, qp_map.get(qp_name))
+        qubit_role_obj = qubit_roles_map.get(qp_name) if qubit_roles_map else None
+        plot_individual_qubit_chevron(ax, ds, qp_name, qubit_role, fit_data, qp_map.get(qp_name), qubit_role_obj=qubit_role_obj)
 
     grid.fig.suptitle(f"CZ Chevron — {qubit_role} qubit")
     grid.fig.tight_layout()
@@ -59,6 +60,7 @@ def plot_individual_qubit_chevron(
     qubit_role: Literal["stationary", "moving"],
     fit: Optional[xr.Dataset] = None,
     qp=None,
+    qubit_role_obj=None,
 ):
     """Plot the chevron 2D map for one qubit pair and one qubit role.
 
@@ -97,8 +99,8 @@ def plot_individual_qubit_chevron(
         except (ValueError, TypeError, AttributeError, KeyError):
             pass
 
-    if qp is not None:
-        qb_name = get_moving_qubit(qp).name if qubit_role == "moving" else get_stationary_qubit(qp).name
+    if qubit_role_obj is not None:
+        qb_name = qubit_role_obj.moving.name if qubit_role == "moving" else qubit_role_obj.stationary.name
         ax.set_title(f"{qp_name}\n{qubit_role}: {qb_name}")
     else:
         ax.set_title(qp_name)

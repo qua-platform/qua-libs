@@ -1,11 +1,11 @@
 from .analysis import fit_raw_data, log_fitted_results, process_raw_dataset
-from .parameters import Parameters, baked_waveform, estimate_cz_flux_amplitude, get_moving_qubit, get_stationary_qubit, verify_moving_qubit
+from .parameters import Parameters, baked_waveform, estimate_cz_flux_amplitude
 from .plotting import plot_individual_qubit_chevron, plot_raw_data_with_fit
+from calibration_utils.cz_iswap_flux_bootstrap.parameters import QubitRoles, verify_moving_qubit
 
 __all__ = [
     "Parameters",
-    "get_moving_qubit",
-    "get_stationary_qubit",
+    "QubitRoles",
     "verify_moving_qubit",
     "process_raw_dataset",
     "fit_raw_data",

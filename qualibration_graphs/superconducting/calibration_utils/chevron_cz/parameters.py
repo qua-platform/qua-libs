@@ -1,13 +1,12 @@
-import logging
+from types import SimpleNamespace
 from typing import Callable, ClassVar, Optional
 
-import numpy as np
 from qualang_tools.bakery import baking
 from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
 
-from calibration_utils.cz_iswap_flux_bootstrap.parameters import get_moving_qubit, get_stationary_qubit, verify_moving_qubit
+from calibration_utils.cz_iswap_flux_bootstrap.parameters import estimate_qubit_flux_shift
 
 class NodeSpecificParameters(RunnableParameters):
     """Parameters for the CZ chevron calibration (node 31).
@@ -53,79 +52,18 @@ class Parameters(
 
 
 
+
 def estimate_cz_flux_amplitude(
     parameters: NodeSpecificParameters,
     qp,
     log_callable: Optional[Callable[[str], None]] = None,
 ) -> float:
-    """Return the CZ flux-pulse base amplitude (V) for the moving qubit.
+    """Estimate the CZ (11→02) flux-pulse base amplitude for the moving qubit.
 
-    When ``parameters.use_saved_detuning`` is True the value stored on
-    ``qubit_pair.detuning`` is used directly (this is written by node 30 and
-    equals the optimal qubit flux amplitude).  When False the amplitude is
-    computed analytically from the 11-02 detuning using the qubit frequencies
-    and ``freq_vs_flux_01_quad_term``.
-
-    This function is intentionally independent of node 30: it works for both
-    tunable-coupler and fixed-coupler architectures.
-
-    Parameters
-    ----------
-    parameters : NodeSpecificParameters
-        Node parameters (reads ``use_saved_detuning``).
-    qp :
-        Qubit-pair QUAM object.
-    log_callable : callable, optional
-        Logging function; defaults to module logger.
-
-    Returns
-    -------
-    float
-        Positive flux amplitude in volts.
-
-    Raises
-    ------
-    ValueError
-        If a saved value is requested but absent, or if the analytic estimate
-        cannot be computed (e.g. wrong signs in qubit parameters).
+    Thin wrapper around :func:`estimate_qubit_flux_shift` pinned to the CZ interaction.
     """
-    if log_callable is None:
-        log_callable = logging.getLogger(__name__).info
-
-    if parameters.use_saved_detuning:
-        if qp.detuning is None:
-            raise ValueError(
-                f"Pair {qp.name}: qubit_pair.detuning is unset. "
-                "Set use_saved_detuning=False to compute analytically."
-            )
-        centre = abs(float(qp.detuning))
-        source = "from qubit_pair.detuning"
-    else:
-        qb = get_moving_qubit(qp)
-        other = get_stationary_qubit(qp)
-        quad = qb.freq_vs_flux_01_quad_term
-        if quad == 0:
-            raise ValueError(
-                f"Pair {qp.name}: moving qubit '{qb.name}' has freq_vs_flux_01_quad_term=0. "
-                "Run 09a_ramsey_vs_flux first, or set qubit_pair.detuning and use_saved_detuning=True."
-            )
-        # Detuning from the 11-02 crossing: f_moving - (f_other + α_other)
-        detuning_hz = qb.xy.RF_frequency - other.xy.RF_frequency + other.anharmonicity
-        ratio = -detuning_hz / quad
-        if ratio < 0:
-            raise ValueError(
-                f"Pair {qp.name}: cannot compute CZ flux amplitude — sqrt argument is negative "
-                f"(detuning={detuning_hz:.0f} Hz, freq_vs_flux_01_quad_term={quad:.3e}). "
-                "Check qubit frequencies, anharmonicity, and freq_vs_flux_01_quad_term sign, "
-                "or set use_saved_detuning=True if node 30 has already run."
-            )
-        centre = float(np.sqrt(ratio))
-        source = f"calculated from 11-02 detuning ({detuning_hz/1e6:.1f} MHz)"
-        if qp.detuning is not None:
-            source += f", ignoring qubit_pair.detuning={qp.detuning:.6f} V"
-
-    log_callable(f"Pair {qp.name}: CZ flux amplitude = {centre:.6f} V ({source})")
-    return centre
+    cz_params = SimpleNamespace(use_saved_detuning=parameters.use_saved_detuning, cz_or_iswap="cz")
+    return estimate_qubit_flux_shift(cz_params, qp, log_callable)
 
 
 def baked_waveform(qubit, baked_config, base_level: float = 0.5, max_samples: int = 16):

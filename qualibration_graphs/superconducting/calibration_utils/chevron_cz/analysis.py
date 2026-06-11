@@ -8,8 +8,6 @@ from qualibrate import QualibrationNode
 from qualibration_libs.analysis.fitting import fit_oscillation_decay_exp
 from scipy.optimize import curve_fit
 
-from calibration_utils.chevron_cz.parameters import get_moving_qubit
-
 
 def rabi_chevron_model(ft, J, f0, a, offset):
     """Rabi-Chevron population model for the CZ |11⟩↔|02⟩ two-level system.
@@ -246,7 +244,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
         Dataset with the additional coordinates described above.
     """
     def detuning(qp, amp):
-        return -((amp * node.namespace["pulse_amplitudes"][qp.name]) ** 2) * get_moving_qubit(qp).freq_vs_flux_01_quad_term
+        return -((amp * node.namespace["pulse_amplitudes"][qp.name]) ** 2) * node.namespace["qubit_roles_map"][qp.name].moving.freq_vs_flux_01_quad_term
 
     def abs_amp(qp, amp):
         return amp * node.namespace["pulse_amplitudes"][qp.name]
@@ -264,7 +262,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
         {
             "quad_term_moving": (
                 ["qubit_pair"],
-                np.array([get_moving_qubit(qp).freq_vs_flux_01_quad_term for qp in qubit_pairs]),
+                np.array([node.namespace["qubit_roles_map"][qp.name].moving.freq_vs_flux_01_quad_term for qp in qubit_pairs]),
             )
         }
     )
