@@ -107,11 +107,6 @@ def create_qua_program(
         node.parameters.qubit_flux_span / 2,
         node.parameters.qubit_flux_step,
     )
-    fluxes_qp = {}
-    for qp in qubit_pairs:
-        est_flux_shift = estimate_qubit_flux_shift(node.parameters, qp, log_callable=node.log)
-        fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
-    node.namespace["fluxes_qp"] = fluxes_qp
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -120,16 +115,24 @@ def create_qua_program(
         "qubit_flux": xr.DataArray(fluxes_qubit, attrs={"long_name": "qubit flux", "units": "V"}),
     }
 
-    # Verify qp.moving_qubit against recalculation and precompute roles for QUA program loops.
-    # Logs a warning and corrects qp.moving_qubit in-memory if they disagree; state is saved
-    # at the end of the node.
+    # Reconcile moving qubit label / Z-line routing, then estimate flux sweep centre per pair.
     qubit_roles_map = {}
+    fluxes_qp = {}
     for qp in qubit_pairs:
-        verify_moving_qubit(qp, node.parameters.cz_or_iswap, log_callable=node.log)
+        verify_moving_qubit(
+            qp,
+            node.parameters.cz_or_iswap,
+            node.parameters.operation,
+            repair_routing=True,
+            log_callable=node.log,
+        )
         qubit_roles_map[qp.name] = QubitRoles.resolve(qp, node.parameters.cz_or_iswap)
         if "coupler_qubit_crosstalk" not in qp.extras:
             node.log(f"Pair {qp.name}: no crosstalk compensation configured")
+        est_flux_shift = estimate_qubit_flux_shift(node.parameters, qp, log_callable=node.log)
+        fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
     node.namespace["qubit_roles_map"] = qubit_roles_map
+    node.namespace["fluxes_qp"] = fluxes_qp
 
     with program() as node.namespace["qua_program"]:
         flux_coupler = declare(fixed)

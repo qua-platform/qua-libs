@@ -160,14 +160,26 @@ class QubitRoles(NamedTuple):
 def verify_moving_qubit(
     qp,
     gate_type: Literal["cz", "iswap"] = "cz",
+    operation: str = "cz_unipolar",
+    repair_routing: bool = False,
     log_callable: Optional[Callable[[str], None]] = None,
 ) -> None:
-    """Verify that qp.moving_qubit matches the physics-based calculation; update in-place if not.
+    """Verify and reconcile ``qp.moving_qubit``, then ``macros[operation]`` flux Z-line routing.
 
-    Recalculates the moving qubit from qubit frequencies and anharmonicity, then compares
-    it to the ``moving_qubit`` field stored on the QUAM qubit-pair object. If they disagree,
-    logs a warning, updates ``qp.moving_qubit`` in memory, and relies on the caller's state save
-    to persist the correction to state json.
+    Recalculates the moving qubit from qubit frequencies and anharmonicity via
+    :func:`QubitRoles.resolve`, updates ``qp.moving_qubit`` on the pair if needed, then
+    checks that ``macros[operation].flux_pulse_qubit`` is registered on that qubit's Z
+    channel. ``CZGate.apply()`` reads ``qp.moving_qubit`` to pick the Z line, so the
+    label is corrected before pulse routing is verified or repaired.
+
+    Flux routing is verified using ``flux_pulse_qubit.id`` as the Z-line operation name
+    (the same name passed to ``moving_qubit.z.play(...)`` at runtime). If the pulse is
+    missing from the moving qubit or present only on the stationary qubit's Z line,
+    raises :class:`ValueError` unless ``repair_routing=True``.
+
+    With ``repair_routing=True``, a new Z-line entry is created on the moving qubit and wired
+    to ``macros[operation].flux_pulse_qubit`` (same pattern as ``populate_quam``); any existing
+    entry on the stationary Z line is left unchanged.
 
     Parameters
     ----------
@@ -176,9 +188,21 @@ def verify_moving_qubit(
     gate_type:
         ``"cz"`` (default) or ``"iswap"`` — selects the physics rule used by
         :func:`QubitRoles.resolve`.
+    operation:
+        Pair macro to verify (e.g. ``"cz_unipolar"``), matching ``node.parameters.operation``.
+    repair_routing:
+        If True, add the flux pulse on the moving Z line instead of raising.
     log_callable:
         Callable that accepts a single string and emits it to the node's output
         (e.g. ``node.log``). Defaults to ``logging.getLogger(__name__).info``.
+
+    Raises
+    ------
+    ValueError
+        If ``operation`` is not in ``qp.macros``, if its flux pulse is not on the moving
+        qubit's Z line (and ``repair_routing`` is False), if the moving qubit has no Z
+        channel, or if ``qp.moving_qubit`` is set to a value other than ``"control"`` or
+        ``"target"``.
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
@@ -195,10 +219,11 @@ def verify_moving_qubit(
         f"δ={delta_mhz:.1f} MHz, α_high={alpha_mhz:.1f} MHz"
     )
 
-    stored = getattr(qp, "moving_qubit", None)
-    stored_mq = qp.qubit_control if stored == "control" else qp.qubit_target
-    stored_sq = qp.qubit_target if stored == "control" else qp.qubit_control
+    if operation not in qp.macros:
+        raise ValueError(f"Pair {qp.name}: macro '{operation}' not found.")
 
+    stored = getattr(qp, "moving_qubit", None)
+    label_updated = False
     if stored is None:
         log_callable(
             f"WARNING Pair {qp.name}: qp.moving_qubit is not set. "
@@ -206,18 +231,78 @@ def verify_moving_qubit(
             f"from recalculation ({gate_type} gate). [{physics_ctx}]"
         )
         qp.moving_qubit = computed_label
+        label_updated = True
+    elif stored not in ("control", "target"):
+        raise ValueError(
+            f"Pair {qp.name}: qp.moving_qubit={stored!r} is invalid; expected 'control' or 'target'. "
+            f"[{physics_ctx}]"
+        )
     elif stored != computed_label:
+        stored_mq = qp.qubit_control if stored == "control" else qp.qubit_target
+        stored_sq = qp.qubit_target if stored == "control" else qp.qubit_control
         log_callable(
             f"WARNING Pair {qp.name}: moving={stored_mq.name}, stationary={stored_sq.name} "
             f"disagrees with recalculation: moving={roles.moving.name}, stationary={roles.stationary.name} "
-            f"for {gate_type} gate — updating. "
-            f"State will be persisted at the end of the node. [{physics_ctx}]"
+            f"for {gate_type} gate — updating qp.moving_qubit to '{computed_label}'. [{physics_ctx}]"
         )
         qp.moving_qubit = computed_label
-    else:
+        label_updated = True
+
+    moving_qubit = qp.qubit_control if qp.moving_qubit == "control" else qp.qubit_target
+    stationary_qubit = qp.qubit_target if qp.moving_qubit == "control" else qp.qubit_control
+    macro = qp.macros[operation]
+    flux_pulse = macro.flux_pulse_qubit
+    pulse_name = flux_pulse.id
+
+    moving_z = getattr(moving_qubit, "z", None)
+    stationary_z = getattr(stationary_qubit, "z", None)
+    on_moving = moving_z is not None and pulse_name in moving_z.operations
+    on_stationary = stationary_z is not None and pulse_name in stationary_z.operations
+    if not on_moving:
+        if moving_z is None:
+            raise ValueError(
+                f"Pair {qp.name}: moving qubit {moving_qubit.name} has no Z channel."
+            )
+        if repair_routing:
+            ref = flux_pulse.get_reference()
+            init = {
+                attr: getattr(flux_pulse, attr)
+                for attr in ("length", "amplitude", "flat_length", "sigma")
+                if hasattr(flux_pulse, attr) and isinstance(getattr(flux_pulse, attr), (int, float))
+            }
+            if flux_pulse.id is not None:
+                init["id"] = flux_pulse.id
+            moving_z.operations[pulse_name] = type(flux_pulse)(**init)
+            z_pulse = moving_z.operations[pulse_name]
+            for attr in ("length", "amplitude", "flat_length", "digital_marker", "axis_angle"):
+                if hasattr(flux_pulse, attr):
+                    setattr(z_pulse, attr, f"{ref}/{attr}")
+            if on_stationary:
+                log_callable(
+                    f"WARNING Pair {qp.name}: added macro '{operation}' flux pulse '{pulse_name}' "
+                    f"to {moving_qubit.name} Z line (wired to macro; copy still on "
+                    f"{stationary_qubit.name})."
+                )
+            else:
+                log_callable(
+                    f"WARNING Pair {qp.name}: added macro '{operation}' flux pulse '{pulse_name}' "
+                    f"to {moving_qubit.name} Z line (wired to macro)."
+                )
+        elif on_stationary:
+            raise ValueError(
+                f"Pair {qp.name}: macro '{operation}' flux pulse '{pulse_name}' is on stationary qubit "
+                f"{stationary_qubit.name} Z line but moving qubit is {moving_qubit.name}. "
+                f"Re-run populate_quam or set repair_routing=True."
+            )
+        else:
+            raise ValueError(
+                f"Pair {qp.name}: macro '{operation}' flux pulse '{pulse_name}' not found on moving qubit "
+                f"{moving_qubit.name} Z line. Re-run populate_quam or set repair_routing=True."
+            )
+    elif not label_updated:
         log_callable(
-            f"Pair {qp.name}: moving={roles.moving.name}, stationary={roles.stationary.name}. "
-            f"Consistent with recalculation ({gate_type} gate). [{physics_ctx}]"
+            f"Pair {qp.name}: moving={moving_qubit.name}, stationary={stationary_qubit.name}. "
+            f"Label and flux-pulse routing consistent with recalculation ({gate_type} gate)."
         )
 
 
