@@ -5,17 +5,33 @@ from typing import Dict, Tuple
 import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
-from qualibration_libs.analysis.fitting import fit_oscillation_decay_exp, oscillation_decay_exp
-from qualibration_libs.data import convert_IQ_to_V
+from qualibration_libs.analysis.fitting import fit_oscillation_decay_exp
 from scipy.optimize import curve_fit
-
-from quam.components.quantum_components import qubit
 
 
 def rabi_chevron_model(ft, J, f0, a, offset):
-    """Model the Rabi chevron response for a driven two-level (or effective two-qubit CZ) system."""
+    """Rabi-Chevron population model for the CZ |11⟩↔|20⟩ two-level system.
+
+    Parameters:
+    -----------
+    ft : tuple
+        Tuple ``(f, t)`` where ``f`` is the detuning array (Hz) and ``t`` is the
+        pulse duration array (s).
+    J : float
+        Coupling strength (Hz). The gate time at resonance is ``1/(2J)``.
+    f0 : float
+        Resonance detuning (Hz) at which the chevron is centred.
+    a : float
+        Amplitude scaling factor.
+    offset : float
+        Vertical offset of the population signal.
+
+    Returns:
+    --------
+    np.ndarray
+        Ravelled 1-D array of predicted population values.
+    """
     f, t = ft
-    J = J
     det = (f - f0) / 2
     # g = offset+a * np.sin(2*np.pi*np.sqrt(J**2 + (w-w0)**2) * t)**2*np.exp(-tau*np.abs((w-w0)))
     g = offset + a * (J**2) / (J**2 + det**2) * np.sin(2 * np.pi * np.sqrt(J**2 + det**2) * t) ** 2
@@ -24,11 +40,27 @@ def rabi_chevron_model(ft, J, f0, a, offset):
 
 
 def fit_rabi_chevron(ds_qp, init_length, init_detuning):
-    """Fit a Rabi chevron dataset to extract coupling (J), resonance frequency (f0), amplitude, and offset."""
-    if hasattr(ds_qp, "state_target"):
-        data = ds_qp.state_target
+    """Fit the Rabi-Chevron data for one qubit pair using ``rabi_chevron_model``.
+
+    Parameters:
+    -----------
+    ds_qp : xr.Dataset
+        Single-pair dataset containing ``state_stationary`` or ``I_stationary``,
+        with ``detuning`` and ``time`` coordinates.
+    init_length : float
+        Initial guess for the gate length (ns), used to seed ``J = 1e9/init_length``.
+    init_detuning : array-like
+        Initial guess for the resonance detuning ``f0`` (Hz).
+
+    Returns:
+    --------
+    tuple[float, float, float, float]
+        ``(J, f0, a, offset)`` fit parameters, or ``(nan, nan, nan, nan)`` on failure.
+    """
+    if hasattr(ds_qp, "state_stationary"):
+        data = ds_qp.state_stationary
     else:
-        data = ds_qp.I_target
+        data = ds_qp.I_stationary
 
     try:
         da_target = data
@@ -45,32 +77,46 @@ def fit_rabi_chevron(ds_qp, init_length, init_detuning):
         a = popt[2]
         offset = popt[3]
         return J, f0, a, offset
-    except Exception as e:
-        # Return NaN values if fitting fails
+    except Exception:
         return float("nan"), float("nan"), float("nan"), float("nan")
 
 
 @dataclass
 class FitParameters:
-    """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
+    """Fit results for a single qubit pair from the CZ chevron calibration.
+
+    Attributes:
+    -----------
+    success : bool
+        True if the fit converged and the extracted parameters are physically valid.
+    J : float
+        Fitted coupling strength in Hz. The CZ gate time at resonance is ``1/(2J)``.
+    f0 : float
+        Fitted resonance detuning in Hz (centre of the chevron).
+    cz_len : int
+        Optimal CZ gate duration in nanoseconds, derived from ``1/(2J) * 1e9``.
+    cz_amp : float
+        Optimal CZ flux pulse amplitude in volts, derived from ``sqrt(-f0/quad_term)``.
+    """
 
     success: bool
-    J: float  # Rabi frequency
-    f0: float  # Frequency at which the Rabi oscillation is maximum
-    cz_len: int  # Length of the CZ gate in nanoseconds
-    cz_amp: float  # Amplitude of the CZ gate in volts
+    J: float
+    f0: float
+    cz_len: int
+    cz_amp: float
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
     """
-    Logs the node-specific fitted results for all qubits from the fit xarray Dataset.
+    Log the CZ calibration fit results for all qubit pairs.
 
     Parameters:
     -----------
-    ds : xr.Dataset
-        Dataset containing the fitted results for all qubits.
+    fit_results : dict
+        Dictionary mapping qubit pair names to ``FitParameters`` instances or plain
+        dicts (as returned by ``dataclasses.asdict``).
     log_callable : callable, optional
-        Callable for logging the fitted results. If None, a default logger is used.
+        Logging function. Defaults to the module logger at INFO level.
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
@@ -105,11 +151,34 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 
 def fit_chevron_cz(ds, dim):
+    """Fit the Rabi-Chevron pattern for every qubit pair using a groupby-apply loop.
+
+    For each pair the routine:
+    1. Finds the amplitude with the largest oscillation contrast as an initial guess.
+    2. Fits a decaying oscillation to estimate the initial gate time.
+    3. Calls ``fit_rabi_chevron`` with these seeds to obtain ``(J, f0, a, offset)``.
+
+    Parameters:
+    -----------
+    ds : xr.Dataset
+        Processed dataset with ``qubit_pair``, ``amplitude``, ``time``,
+        ``detuning``, ``amp_full``, and ``quad_term_moving`` coordinates.
+    dim : str
+        Dimension name to group by (``"qubit_pair"``).
+
+    Returns:
+    --------
+    xr.Dataset
+        Dataset with a ``fit_vals`` dimension containing ``[J, f0, a, offset]``
+        per qubit pair.
+    """
+
     def fit_routine(ds_qp):
-        if hasattr(ds_qp, "state_target"):
-            data = ds_qp.state_target
+        """Fit one qubit pair's chevron and return ``[J, f0, a, offset]`` as a DataArray."""
+        if hasattr(ds_qp, "state_stationary"):
+            data = ds_qp.state_stationary
         else:
-            data = ds_qp.I_target
+            data = ds_qp.I_stationary
         try:
             # ds_qp is a Dataset for a single qubit_pair
             amp_guess = data.max("time") - data.min("time")
@@ -125,7 +194,7 @@ def fit_chevron_cz(ds, dim):
                 flux_time = 50  # default 50 ns
 
             amplitudes = flux_amp
-            detunings = -(flux_amp**2) * ds_qp.quad_term_control
+            detunings = -(flux_amp**2) * ds_qp.quad_term_moving
             lengths = flux_time - flux_time % 4 + 4
 
             t = ds_qp.time * 1e-9
@@ -139,14 +208,13 @@ def fit_chevron_cz(ds, dim):
                 return xr.DataArray([float("nan"), float("nan"), float("nan"), float("nan")], dims=["fit_vals"])
 
             detunings = f0
-            amplitudes = np.sqrt(-detunings / ds_qp.quad_term_control)
+            amplitudes = np.sqrt(-detunings / ds_qp.quad_term_moving)
             flux_time = int(1 / (2 * J) * 1e9)
             lengths = flux_time - flux_time % 4 + 4
 
             # Return as DataArray for stacking
             return xr.DataArray([J, f0, a, offset], dims=["fit_vals"])
-        except Exception as e:
-            # Return NaN values if any step fails
+        except Exception:
             return xr.DataArray([float("nan"), float("nan"), float("nan"), float("nan")], dims=["fit_vals"])
 
     # Use groupby-apply pattern
@@ -156,11 +224,32 @@ def fit_chevron_cz(ds, dim):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    if not node.parameters.use_state_discrimination:
-        ds = convert_IQ_to_V(ds, qubit_pairs=node.namespace["qubit_pairs"], IQ_list=["I_control", "Q_control"])
+    """Add physical coordinates to the raw dataset.
+
+    Computes and assigns:
+    - ``detuning`` — flux-induced frequency shift of the moving qubit (Hz).
+    - ``amp_full`` — absolute flux pulse amplitude in volts.
+    - ``quad_term_moving`` — ``freq_vs_flux_01_quad_term`` of the moving qubit, stored
+      per pair for use in the fitting step.
+
+    Parameters:
+    -----------
+    ds : xr.Dataset
+        Raw dataset as returned by the QUA data fetcher.
+    node : QualibrationNode
+        Calibration node providing ``pulse_amplitudes`` and qubit pair objects.
+
+    Returns:
+    --------
+    xr.Dataset
+        Dataset with the additional coordinates described above.
+    """
 
     def detuning(qp, amp):
-        return -((amp * node.namespace["pulse_amplitudes"][qp.name]) ** 2) * qp.qubit_control.freq_vs_flux_01_quad_term
+        return (
+            -((amp * node.namespace["pulse_amplitudes"][qp.name]) ** 2)
+            * node.namespace["qubit_roles_map"][qp.name].moving.freq_vs_flux_01_quad_term
+        )
 
     def abs_amp(qp, amp):
         return amp * node.namespace["pulse_amplitudes"][qp.name]
@@ -176,9 +265,11 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
     ds = ds.assign_coords(
         {
-            "quad_term_control": (
+            "quad_term_moving": (
                 ["qubit_pair"],
-                np.array([qp.qubit_control.freq_vs_flux_01_quad_term for qp in qubit_pairs]),
+                np.array(
+                    [node.namespace["qubit_roles_map"][qp.name].moving.freq_vs_flux_01_quad_term for qp in qubit_pairs]
+                ),
             )
         }
     )
@@ -188,19 +279,19 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
-    Fit the qubit frequency and FWHM for each qubit in the dataset.
+    Fit the Rabi-Chevron pattern for each qubit pair and extract CZ gate parameters.
 
     Parameters:
     -----------
     ds : xr.Dataset
         Dataset containing the raw data.
-    node_parameters : Parameters
-        Parameters related to the node, including whether state discrimination is used.
+    node : QualibrationNode
+        The calibration node containing parameters and qubit pairs.
 
     Returns:
     --------
-    xr.Dataset
-        Dataset containing the fit results.
+    Tuple[xr.Dataset, dict[str, FitParameters]]
+        Dataset containing the fit results and dictionary of fit parameters for each qubit pair.
     """
 
     ds_fit_res = fit_chevron_cz(ds, "qubit_pair")
@@ -213,7 +304,27 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
-    """Add metadata to the dataset and fit results."""
+    """Derive ``cz_len``, ``cz_amp``, and success flags from raw fit values.
+
+    For each qubit pair, converts the fitted ``J`` and ``f0`` into physically
+    meaningful gate parameters and validates them against the swept ranges.
+    Assigns ``cz_len`` and ``cz_amp`` as coordinates on the dataset.
+
+    Parameters:
+    -----------
+    fit : xr.Dataset
+        Dataset containing a ``fit`` DataArray with ``fit_vals`` dimension
+        (``J``, ``f0``, ``a``, ``offset``) and ``quad_term_moving``, ``amp_full``
+        coordinates.
+    node : QualibrationNode
+        Unused; retained for API consistency with other ``_extract_*`` helpers.
+
+    Returns:
+    --------
+    Tuple[xr.Dataset, dict[str, FitParameters]]
+        Updated dataset with ``cz_len`` and ``cz_amp`` coordinates, and a
+        dictionary of ``FitParameters`` keyed by qubit pair name.
+    """
 
     # Populate the FitParameters class with fitted values
     fit_results = {}
@@ -230,7 +341,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             else:
                 try:
                     cz_len_val = int(1 / (2 * J_val) * 1e9)
-                    cz_amp_val = np.sqrt(-f0_val / fit.quad_term_control.sel(qubit_pair=qp).values.item())
+                    cz_amp_val = np.sqrt(-f0_val / fit.quad_term_moving.sel(qubit_pair=qp).values.item())
 
                     # Determine success based on reasonable parameter ranges
                     amp_min = fit.amp_full.sel(qubit_pair=qp).min().item()
@@ -253,8 +364,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
                 cz_len=cz_len_val,
                 cz_amp=cz_amp_val,
             )
-        except Exception as e:
-            # If any step fails, mark as failed
+        except Exception:
             fit_results[qp] = FitParameters(
                 success=False,
                 J=float("nan"),
@@ -269,5 +379,4 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             "cz_amp": ("qubit_pair", [fit_results[qp].cz_amp for qp in fit.qubit_pair.values]),
         }
     )
-    return fit, fit_results
     return fit, fit_results
