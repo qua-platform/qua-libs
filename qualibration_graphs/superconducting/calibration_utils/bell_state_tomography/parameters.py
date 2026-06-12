@@ -17,9 +17,7 @@ def require_bell_tomography_prerequisites(qubit_pairs: Iterable, operation: str)
     for qp in qubit_pairs:
         if operation not in qp.macros:
             available = sorted(qp.macros.keys())
-            raise ValueError(
-                f"Qubit pair {qp.name!r} has no macro {operation!r}. Available macros: {available}"
-            )
+            raise ValueError(f"Qubit pair {qp.name!r} has no macro {operation!r}. Available macros: {available}")
         if qp.confusion is None:
             raise ValueError(
                 f"Qubit pair {qp.name!r} has no readout confusion matrix. "
@@ -27,8 +25,7 @@ def require_bell_tomography_prerequisites(qubit_pairs: Iterable, operation: str)
             )
         if not is_confusion_matrix_valid(np.asarray(qp.confusion)):
             raise ValueError(
-                f"Qubit pair {qp.name!r} has an invalid confusion matrix. "
-                "Re-run node 35_two_qubit_confusion_matrix."
+                f"Qubit pair {qp.name!r} has an invalid confusion matrix. " "Re-run node 35_two_qubit_confusion_matrix."
             )
 
 

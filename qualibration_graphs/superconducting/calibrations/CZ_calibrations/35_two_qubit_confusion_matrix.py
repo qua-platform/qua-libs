@@ -51,7 +51,7 @@ node = QualibrationNode[Parameters, Quam](
     name="35_two_qubit_confusion_matrix",
     description=description,
     parameters=Parameters(),
-    machine = Quam.load(),
+    machine=Quam.load(),
 )
 
 
@@ -60,6 +60,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
     # node.parameters.qubit_pairs = ["q1_q2"]
     pass
+
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)

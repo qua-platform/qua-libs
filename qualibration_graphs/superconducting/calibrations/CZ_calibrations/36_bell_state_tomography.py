@@ -78,7 +78,7 @@ node = QualibrationNode[Parameters, Quam](
     name="36_bell_state_tomography",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/bell_state_tomography/parameters.py
-    machine = Quam.load(), # Instantiate the QUAM class from the state file
+    machine=Quam.load(),  # Instantiate the QUAM class from the state file
 )
 
 
@@ -89,7 +89,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
     # node.parameters.qubit_pairs = ["q1-q2"]
     pass
-
 
 
 # %% {Create_QUA_program}

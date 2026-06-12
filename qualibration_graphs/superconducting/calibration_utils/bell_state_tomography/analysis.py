@@ -11,7 +11,6 @@ from scipy.linalg import sqrtm
 
 from .parameters import require_bell_tomography_prerequisites
 
-
 # Pauli matrices for two-qubit tomography (0=I, 1=X, 2=Y, 3=Z)
 _PAULI_0 = np.array([[1, 0], [0, 1]])
 _PAULI_X = np.array([[0, 1], [1, 0]])
