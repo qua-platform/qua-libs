@@ -15,6 +15,7 @@ def plot_raw_data_with_fit(
     ds: xr.Dataset,
     qubit_pairs: list,
     fits: Optional[Dict] = None,
+    qubit_roles_map: Optional[Dict] = None,
     analysis_debug: bool = False,
     cz_or_iswap: str = "cz",
 ) -> Dict[str, Figure]:
@@ -40,13 +41,13 @@ def plot_raw_data_with_fit(
     Returns
     -------
     dict[str, Figure]
-        At least ``"target"`` and ``"control"``; optionally ``"contrast_debug"``.
+        At least ``"stationary"`` and ``"moving"``; optionally ``"contrast_debug"``.
     """
     pair_by_name = {qp.name: qp for qp in qubit_pairs}
     grid_names, pair_names = grid_pair_names(qubit_pairs)
     figures: Dict[str, Figure] = {}
 
-    for state_type in ("target", "control"):
+    for state_type in ("stationary", "moving"):
         grid = QubitPairGrid(grid_names, pair_names)
         for ax, qubit in grid_iter(grid):
             qp_name = qubit["qubit"]
@@ -58,6 +59,7 @@ def plot_raw_data_with_fit(
                 fit_data,
                 data_var=state_type,
                 qubit_pair_obj=pair_by_name.get(qp_name),
+                qubit_role=qubit_roles_map.get(qp_name) if qubit_roles_map else None,
                 cz_or_iswap=cz_or_iswap,
             )
 
@@ -76,8 +78,9 @@ def plot_individual_data_with_fit(
     ds: xr.Dataset,
     qubit: dict[str, str],
     fit: Optional[Dict] = None,
-    data_var: str = "target",
+    data_var: str = "stationary",
     qubit_pair_obj=None,
+    qubit_role=None,
     cz_or_iswap: str = "cz",
 ):
     """Plot one qubit-pair 2D heatmap; optional fit and machine-state markers.
@@ -93,7 +96,7 @@ def plot_individual_data_with_fit(
     fit : dict, optional
         Fit result dict for this pair (from ``fit_results``).
     data_var : str
-        ``"target"`` or ``"control"`` readout to display.
+        ``"stationary"`` or ``"moving"`` readout to display.
     qubit_pair_obj : optional
         QUAM pair object; used to draw the current ``decouple_offset`` for reference.
     cz_or_iswap : str
@@ -101,16 +104,16 @@ def plot_individual_data_with_fit(
     """
     qubit_pair = qubit["qubit"]
 
-    if data_var == "control":
-        if "state_control" in ds:
-            data = ds.state_control.sel(qubit_pair=qubit_pair)
+    if data_var == "moving":
+        if "state_moving" in ds:
+            data = ds.state_moving.sel(qubit_pair=qubit_pair)
         else:
-            data = ds.I_control.sel(qubit_pair=qubit_pair)
+            data = ds.I_moving.sel(qubit_pair=qubit_pair)
     else:
-        if "state_target" in ds:
-            data = ds.state_target.sel(qubit_pair=qubit_pair)
+        if "state_stationary" in ds:
+            data = ds.state_stationary.sel(qubit_pair=qubit_pair)
         else:
-            data = ds.I_target.sel(qubit_pair=qubit_pair)
+            data = ds.I_stationary.sel(qubit_pair=qubit_pair)
 
     data.assign_coords(
         {
@@ -172,7 +175,11 @@ def plot_individual_data_with_fit(
             )
             has_legend = True
 
-    ax.set_title(f"{qubit_pair} ({data_var})")
+    if qubit_role is not None:
+        qb = qubit_role.moving if data_var == "moving" else qubit_role.stationary
+        ax.set_title(f"{qubit_pair} \n {data_var} qubit ({qb.name})")
+    else:
+        ax.set_title(f"{qubit_pair} ({data_var})")
 
     if has_legend:
         ax.legend(fontsize=7, loc="upper right")

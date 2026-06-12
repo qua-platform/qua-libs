@@ -12,6 +12,8 @@ from calibration_utils.cz_iswap_flux_bootstrap import (
     estimate_qubit_flux_shift,
     fit_raw_data,
     log_fitted_results,
+    QubitRoles,
+    verify_moving_qubit,
     plot_raw_data_with_fit,
     process_raw_dataset,
 )
@@ -38,15 +40,15 @@ Method
 ------
 2D sweep of coupler flux (relative to `coupler.decouple_offset`) and moving-qubit flux
 (centred via `estimate_qubit_flux_shift`). At each point: prepare |11⟩ (CZ) or |10⟩ (iSWAP),
-play ``macros[operation]`` with scaled flux amplitudes, measure control and target
+play ``macros[operation]`` with scaled flux amplitudes, measure both qubits
 (state discrimination or IQ).
 
 Prerequisites
 -------------
 - Tunable coupler pair with ``macros[operation]`` defined in QUAM.
-- CZ: GEF readout on control; iSWAP: standard state readout on both qubits.
+- CZ: GEF readout on both qubits; iSWAP: standard state readout on both qubits.
 - Moving qubit `freq_vs_flux_01_quad_term` (09a_ramsey_vs_flux); partner anharmonicity for CZ estimate.
-- Coupler sweep spans the idle plateau and the first interaction fringe.
+- Coupler sweep spans should be wide enough to cover the idle plateau and the first interaction fringe.
 
 State update
 ------------
@@ -118,10 +120,16 @@ def create_qua_program(
         "qubit_flux": xr.DataArray(fluxes_qubit, attrs={"long_name": "qubit flux", "units": "V"}),
     }
 
+    # Verify qp.moving_qubit against recalculation and precompute roles for QUA program loops.
+    # Logs a warning and corrects qp.moving_qubit in-memory if they disagree; state is saved
+    # at the end of the node.
+    qubit_roles_map = {}
     for qp in qubit_pairs:
-        node.log(f"Pair {qp.name}: control={qp.qubit_control.name}, target={qp.qubit_target.name}")
+        verify_moving_qubit(qp, node.parameters.cz_or_iswap, log_callable=node.log)
+        qubit_roles_map[qp.name] = QubitRoles.resolve(qp, node.parameters.cz_or_iswap)
         if "coupler_qubit_crosstalk" not in qp.extras:
-            node.log(f"No crosstalk compensation for {qp.name}")
+            node.log(f"Pair {qp.name}: no crosstalk compensation configured")
+    node.namespace["qubit_roles_map"] = qubit_roles_map
 
     with program() as node.namespace["qua_program"]:
         flux_coupler = declare(fixed)
@@ -131,22 +139,26 @@ def create_qua_program(
         if node.parameters.use_state_discrimination:
             n = declare(int)
             n_st = declare_output_stream()
-            state_c = [declare(int) for _ in range(num_qubit_pairs)]
-            state_t = [declare(int) for _ in range(num_qubit_pairs)]
-            state_c_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
-            state_t_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+            state_mq = [declare(int) for _ in range(num_qubit_pairs)]
+            state_sq = [declare(int) for _ in range(num_qubit_pairs)]
+            state_mq_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+            state_sq_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
         else:
-            I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
-            I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
+            I_m, I_m_st, Q_m, Q_m_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
+            I_s, I_s_st, Q_s, Q_s_st, _, _ = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the QPU for pairs in this batch
             for qp in multiplexed_qubit_pairs.values():
-                node.machine.initialize_qpu(target=qp.qubit_control)
-                node.machine.initialize_qpu(target=qp.qubit_target)
+                qubit_role = qubit_roles_map[qp.name]
+                mq, sq = qubit_role.moving, qubit_role.stationary
+                node.machine.initialize_qpu(target=mq)
+                node.machine.initialize_qpu(target=sq)
             align()
 
             for ii, qp in multiplexed_qubit_pairs.items():
+                qubit_role = qubit_roles_map[qp.name]
+                mq, sq = qubit_role.moving, qubit_role.stationary
                 has_crosstalk = "coupler_qubit_crosstalk" in qp.extras
                 crosstalk = qp.extras["coupler_qubit_crosstalk"] if has_crosstalk else 0.0
                 wait(1000)
@@ -156,8 +168,8 @@ def create_qua_program(
                     with for_(*from_array(flux_coupler, fluxes_coupler)):
                         with for_(*from_array(flux_qubit, fluxes_qp[qp.name])):
                             # Qubit initialization
-                            qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
-                            qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
+                            mq.reset(node.parameters.reset_type, node.parameters.simulate)
+                            sq.reset(node.parameters.reset_type, node.parameters.simulate)
                             align()
 
                             # Flux pulse amplitudes (with optional coupler-qubit crosstalk compensation)
@@ -168,9 +180,9 @@ def create_qua_program(
                             qp.align()
 
                             # State preparation
-                            qp.qubit_control.xy.play("x180")
+                            mq.xy.play("x180")
                             if node.parameters.cz_or_iswap == "cz":
-                                qp.qubit_target.xy.play("x180")
+                                sq.xy.play("x180")
                             align()
                             # Coupler and qubit flux pulses
                             qp.macros[operation].apply(
@@ -184,37 +196,37 @@ def create_qua_program(
                             # Qubit readout
                             if node.parameters.use_state_discrimination:
                                 if node.parameters.cz_or_iswap == "cz":
-                                    qp.qubit_control.readout_state_gef(state_c[ii])
-                                    qp.qubit_target.readout_state_gef(state_t[ii])
+                                    mq.readout_state_gef(state_mq[ii])
+                                    sq.readout_state_gef(state_sq[ii])
                                 else:
-                                    qp.qubit_control.readout_state(state_c[ii])
-                                    qp.qubit_target.readout_state(state_t[ii])
-                                save(state_c[ii], state_c_st[ii])
-                                save(state_t[ii], state_t_st[ii])
+                                    mq.readout_state(state_mq[ii])
+                                    sq.readout_state(state_sq[ii])
+                                save(state_mq[ii], state_mq_st[ii])
+                                save(state_sq[ii], state_sq_st[ii])
                             else:
-                                qp.qubit_control.resonator.measure("readout", qua_vars=(I_c[ii], Q_c[ii]))
-                                qp.qubit_target.resonator.measure("readout", qua_vars=(I_t[ii], Q_t[ii]))
-                                save(I_c[ii], I_c_st[ii])
-                                save(Q_c[ii], Q_c_st[ii])
-                                save(I_t[ii], I_t_st[ii])
-                                save(Q_t[ii], Q_t_st[ii])
+                                mq.resonator.measure("readout", qua_vars=(I_m[ii], Q_m[ii]))
+                                sq.resonator.measure("readout", qua_vars=(I_s[ii], Q_s[ii]))
+                                save(I_m[ii], I_m_st[ii])
+                                save(Q_m[ii], Q_m_st[ii])
+                                save(I_s[ii], I_s_st[ii])
+                                save(Q_s[ii], Q_s_st[ii])
             align()
 
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubit_pairs):
                 if node.parameters.use_state_discrimination:
-                    state_c_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(
-                        f"state_control{i}"
+                    state_mq_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(
+                        f"state_moving{i}"
                     )
-                    state_t_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(
-                        f"state_target{i}"
+                    state_sq_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(
+                        f"state_stationary{i}"
                     )
                 else:
-                    I_c_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"I_control{i}")
-                    Q_c_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"Q_control{i}")
-                    I_t_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"I_target{i}")
-                    Q_t_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"Q_target{i}")
+                    I_m_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"I_moving{i}")
+                    Q_m_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"Q_moving{i}")
+                    I_s_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"I_stationary{i}")
+                    Q_s_st[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"Q_stationary{i}")
 
 
 # %% {Simulate}
@@ -256,8 +268,13 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-    # Register the raw dataset
+    # Register the raw dataset and the sweep/role data needed for reproducible re-analysis
     node.results["ds_raw"] = dataset
+    node.results["fluxes_qp"] = node.namespace["fluxes_qp"]
+    qubit_roles_map = node.namespace["qubit_roles_map"]
+    node.results["qubit_roles"] = {
+        name: {field: getattr(role, field).name for field in role._fields} for name, role in qubit_roles_map.items()
+    }
 
 
 # %% {Load_historical_data}
@@ -269,16 +286,11 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
-    fluxes_qubit = np.arange(
-        -node.parameters.qubit_flux_span / 2,
-        node.parameters.qubit_flux_span / 2,
-        node.parameters.qubit_flux_step,
-    )
-    fluxes_qp = {}
-    for qp in node.namespace["qubit_pairs"]:
-        est_flux_shift = estimate_qubit_flux_shift(node.parameters, qp, log_callable=node.log)
-        fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
-    node.namespace["fluxes_qp"] = fluxes_qp
+    node.namespace["fluxes_qp"] = {name: np.array(arr) for name, arr in node.results["fluxes_qp"].items()}
+    node.namespace["qubit_roles_map"] = {
+        name: QubitRoles(**{field: node.machine.qubits[qname] for field, qname in roles.items()})
+        for name, roles in node.results["qubit_roles"].items()
+    }
 
 
 # %% {Analyse_data}
@@ -309,13 +321,14 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results["ds_raw"],
         node.namespace["qubit_pairs"],
         node.results["fit_results"],
+        qubit_roles_map=node.namespace["qubit_roles_map"],
         analysis_debug=node.namespace.get("analysis_debug", node.parameters.analysis_debug),
         cz_or_iswap=node.parameters.cz_or_iswap,
     )
     plt.show()
     node.results["figures"] = {
-        "target": figs["target"],
-        "control": figs["control"],
+        "stationary": figs["stationary"],
+        "moving": figs["moving"],
     }
     if "contrast_debug" in figs:
         node.results["figures"]["contrast_debug"] = figs["contrast_debug"]
