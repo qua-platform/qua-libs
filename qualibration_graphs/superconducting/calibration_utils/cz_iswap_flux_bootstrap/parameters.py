@@ -260,9 +260,7 @@ def verify_moving_qubit(
     on_stationary = stationary_z is not None and pulse_name in stationary_z.operations
     if not on_moving:
         if moving_z is None:
-            raise ValueError(
-                f"Pair {qp.name}: moving qubit {moving_qubit.name} has no Z channel."
-            )
+            raise ValueError(f"Pair {qp.name}: moving qubit {moving_qubit.name} has no Z channel.")
         if repair_routing:
             ref = flux_pulse.get_reference()
             init = {
