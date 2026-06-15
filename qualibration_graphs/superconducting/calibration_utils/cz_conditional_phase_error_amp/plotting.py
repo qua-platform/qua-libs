@@ -174,7 +174,12 @@ def plot_individual_leakage_qubit_populations(
             .sel(amp=fr.optimal_amplitude, method="nearest")
             .mean(dim="frame")
         )
-        data_f = ds_fit[f"f_state_{leakage_key}"].sel(qubit_pair=qp_name, control_axis=1).sel(amp=fr.optimal_amplitude, method="nearest").mean(dim="frame")
+        data_f = (
+            ds_fit[f"f_state_{leakage_key}"]
+            .sel(qubit_pair=qp_name, control_axis=1)
+            .sel(amp=fr.optimal_amplitude, method="nearest")
+            .mean(dim="frame")
+        )
         ax.plot(n_ops, data_g, label="g", color="steelblue")
         ax.plot(n_ops, data_e, label="e", color="tomato")
         ax.plot(n_ops, data_f, label="f (leakage)", color="seagreen")
