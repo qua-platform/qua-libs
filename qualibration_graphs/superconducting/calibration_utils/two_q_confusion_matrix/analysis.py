@@ -48,7 +48,10 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
 
 
 def is_confusion_matrix_valid(conf: np.ndarray, col_sum_tol: float = 0.05) -> bool:
-    """Return True if ``conf`` is a finite 4x4 matrix with column sums near unity."""
+    """Return True if ``conf`` is a finite 4x4 matrix with column sums near unity.
+
+    Expects ``conf[measured, prepared]``: each column (fixed prepared state) sums to ~1.
+    """
     conf = np.asarray(conf)
     if conf.shape != (4, 4) or not np.all(np.isfinite(conf)):
         return False
@@ -65,7 +68,9 @@ def compute_confusion_matrices(
     Compute 4x4 confusion matrices from the measurement dataset.
 
     Counts joint readout outcomes for each prepared control/target state and
-    normalizes by ``num_shots``: rows = prepared state (|00⟩, |01⟩, |10⟩, |11⟩), columns = measured state.
+    normalizes by ``num_shots``. The returned matrix is ``conf[measured, prepared]``:
+    row index = measured |00⟩,|01⟩,|10⟩,|11⟩ (``state = control*2 + target``);
+    column index = prepared state in the same order.
 
     Parameters
     ----------
@@ -79,7 +84,7 @@ def compute_confusion_matrices(
     Returns
     -------
     dict[str, np.ndarray]
-        Mapping from qubit pair name to 4x4 confusion matrix.
+        Mapping from qubit pair name to 4x4 confusion matrix ``conf[measured, prepared]``.
 
     Raises
     ------

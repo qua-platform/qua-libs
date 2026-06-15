@@ -22,8 +22,8 @@ def plot_confusion_matrices(
     Parameters
     ----------
     confusions : dict[str, np.ndarray]
-        Mapping from qubit pair name to 4x4 confusion matrix
-        (rows = measured state, cols = prepared state).
+        Mapping from qubit pair name to 4x4 confusion matrix stored as
+        ``conf[measured, prepared]`` (display uses the transpose).
     qubit_pairs : list
         Qubit pair objects used for grid placement.
     node : optional
@@ -50,21 +50,25 @@ def plot_individual_confusion_matrix(
     qp_name: str,
     node=None,
 ) -> None:
-    """Plot one qubit-pair 4x4 confusion matrix."""
+    """Plot one qubit-pair 4x4 confusion matrix.
+
+    Stored matrices are ``conf[measured, prepared]``; the heatmap shows
+    ``conf.T[prepared, measured]`` with prepared on the y-axis and measured on the x-axis.
+    """
     if conf is None:
         ax.text(0.5, 0.5, "No confusion data", ha="center", va="center", transform=ax.transAxes)
         ax.set_title(qp_name)
         return
 
-    conf = np.asarray(conf)
-    ax.pcolormesh(_STATE_LABELS, _STATE_LABELS, conf)
-    for i in range(4):
-        for j in range(4):
-            color = "k" if i == j else "w"
+    display = np.asarray(conf).T  # [prepared, measured] for plotting
+    ax.pcolormesh(_STATE_LABELS, _STATE_LABELS, display)
+    for prep in range(4):
+        for meas in range(4):
+            color = "k" if prep == meas else "w"
             ax.text(
-                i,
-                j,
-                f"{100 * conf[i, j]:.1f}%",
+                meas,
+                prep,
+                f"{100 * display[prep, meas]:.1f}%",
                 ha="center",
                 va="center",
                 color=color,
