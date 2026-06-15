@@ -299,11 +299,11 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit = xr.merge([ds, ds_fit_res.rename("fit")])
 
     # Extract the relevant fitted parameters
-    fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
+    fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit)
     return fit_data, fit_results
 
 
-def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
+def _extract_relevant_fit_parameters(fit: xr.Dataset):
     """Derive ``cz_len``, ``cz_amp``, and success flags from raw fit values.
 
     For each qubit pair, converts the fitted ``J`` and ``f0`` into physically
@@ -316,8 +316,6 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
         Dataset containing a ``fit`` DataArray with ``fit_vals`` dimension
         (``J``, ``f0``, ``a``, ``offset``) and ``quad_term_moving``, ``amp_full``
         coordinates.
-    node : QualibrationNode
-        Unused; retained for API consistency with other ``_extract_*`` helpers.
 
     Returns:
     --------
