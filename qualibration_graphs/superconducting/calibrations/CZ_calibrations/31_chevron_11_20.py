@@ -97,7 +97,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # qp.moving_qubit in-memory if they disagree; state is persisted at the end of the node.
     qubit_roles_map = {}
     for qp in qubit_pairs:
-        verify_moving_qubit(qp, log_callable=node.log)
+        verify_moving_qubit(
+            qubit_pair=qp,
+            operation=node.parameters.operation,
+            repair_routing=True,
+            log_callable=node.log,
+        )
         qubit_roles_map[qp.name] = QubitRoles.resolve(qp)
     node.namespace["qubit_roles_map"] = qubit_roles_map
 
