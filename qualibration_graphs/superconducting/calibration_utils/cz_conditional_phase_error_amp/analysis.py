@@ -1,5 +1,5 @@
 import logging
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Dict, Tuple
 
 import numpy as np
@@ -7,29 +7,25 @@ import xarray as xr
 from qualibrate import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation, oscillation
 from scipy.ndimage import gaussian_filter1d
-from scipy.optimize import curve_fit
+
+from calibration_utils.cz_conditional_phase.analysis import fix_oscillation_phi_2pi
 
 
 @dataclass
 class FitResults:
-    """Stores the relevant CZ conditional phase experiment fit parameters for a single qubit pair"""
+    """Fit results for a single qubit pair from the CZ conditional phase (error amplification) calibration.
+
+    Attributes:
+    -----------
+    optimal_amplitude : float
+        Flux pulse amplitude (V) at which the conditional phase equals π, selected
+        by minimising the trimmed-mean phase distance across all repetition counts.
+    success : bool
+        True if a finite optimal amplitude was found within the swept range.
+    """
 
     optimal_amplitude: float
     success: bool
-
-
-def fix_oscillation_phi_2pi(fit_data):
-    """Extract and fix the phase parameter from oscillation fit data."""
-    # Extract the phase parameter from the fit results
-    phase = fit_data.sel(fit_vals="phi")
-    # Normalize phase to [0, 1] range (representing 0 to 2π)
-    phase = (phase / (2 * np.pi)) % 1
-    return phase
-
-
-def tanh_fit(x, a, b, c, d):
-    """Tanh fitting function for phase difference vs amplitude."""
-    return a * np.tanh(b * x + c) + d
 
 
 def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
@@ -84,7 +80,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
     def detuning(qp, amp):
         amplitude_squared = (amp * qp.macros[operation].flux_pulse_qubit.amplitude) ** 2
-        return -amplitude_squared * qp.qubit_control.freq_vs_flux_01_quad_term
+        return -amplitude_squared * node.namespace["qubit_roles_map"][qp.name].moving.freq_vs_flux_01_quad_term
 
     ds = ds.assign_coords({"amp_full": (["qubit_pair", "amp"], np.array([abs_amp(qp, ds.amp) for qp in qubit_pairs]))})
     ds = ds.assign_coords({"detuning": (["qubit_pair", "amp"], np.array([detuning(qp, ds.amp) for qp in qubit_pairs]))})
@@ -93,33 +89,70 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitResults]]:
-    """Fit oscillations and derive optimal amplitude per qubit pair.
+    """
+    Fit frame-rotation oscillations and extract the optimal CZ amplitude per qubit pair.
 
-    Returns dataset with added data variables:
-      - fitted, phase_diff (per number_of_operations) from oscillation fits
-      - optimal_amplitude (per amp dimension collapsed)
-      - success (bool)
-    Also returns dict of FitResults referenced by qubit pair name.
+    Parameters:
+    -----------
+    ds : xr.Dataset
+        Processed dataset (output of ``process_raw_dataset``) containing
+        ``state_stationary`` or ``I_stationary``, ``frame``, ``amp_full``,
+        ``number_of_operations``, and ``control_axis`` dimensions.
+    node : QualibrationNode
+        Calibration node (used by ``_extract_relevant_parameters``).
+
+    Returns:
+    --------
+    Tuple[xr.Dataset, Dict[str, FitResults]]
+        Dataset with ``phase_diff``, ``fitted``, ``optimal_amplitude``, and
+        ``success`` added, and a dictionary of ``FitResults`` keyed by qubit pair name.
     """
     ds_fit = ds.groupby("qubit_pair").apply(fit_routine)
+    # Extract the relevant fitted parameters
+    ds_fit, fit_results = _extract_relevant_parameters(ds_fit, node)
+    return ds_fit, fit_results
 
-    # Derive optimal amplitude per qubit pair using robust column cost over number_of_operations.
+
+def _extract_relevant_parameters(
+    ds_fit: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, Dict[str, FitResults]]:
+    """
+    Derive the optimal CZ amplitude from the error-amplified phase-diff and build FitResults.
+
+    For each qubit pair the ``phase_diff`` 2D array (number_of_operations × amplitude) is
+    passed to ``_fit_full_amp``, which selects the amplitude column that minimises the
+    trimmed-mean circular distance to 0.5 (π) across all repetition counts.
+
+    Parameters:
+    -----------
+    ds_fit : xr.Dataset
+        Dataset produced by ``fit_routine`` containing ``phase_diff``
+        (dims: ``number_of_operations``, ``amp``) and ``amp_full`` coordinates.
+    node : QualibrationNode
+        Unused; retained for API consistency.
+
+    Returns:
+    --------
+    Tuple[xr.Dataset, Dict[str, FitResults]]
+        Dataset with ``optimal_amplitude``, ``optimal_index``, and ``success``
+        coordinates added, and a dictionary of ``FitResults`` keyed by qubit pair name.
+    """
+    qp_names = ds_fit.qubit_pair.values
     opt_amps = []
     opt_idxs = []
     successes = []
-    qp_names = ds_fit.qubit_pair.values
+
     for qp in qp_names:
         sub = ds_fit.sel(qubit_pair=qp)
-        # phase_diff dims: number_of_operations, amp (no frame after fitting)
         if "phase_diff" not in sub:
             opt_amps.append(np.nan)
+            opt_idxs.append(np.nan)
             successes.append(False)
             continue
-        phase = sub.phase_diff  # already reduced over frame by fit_routine
+        phase = sub.phase_diff
         try:
             amp_coord = sub.amp_full if "amp_full" in sub.coords else sub.amp
             X = amp_coord.values
-            # Ensure (ny, nx) ordering (number_of_operations, amp)
             Z = phase.transpose("number_of_operations", "amp").values
             x_star = _fit_full_amp(X, Z)
             idx = int(np.argmin(np.abs(X - x_star)))
@@ -133,11 +166,13 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
 
     ds_fit = ds_fit.assign_coords({"optimal_amplitude": ("qubit_pair", np.array(opt_amps))})
     ds_fit["optimal_amplitude"] = ds_fit["optimal_amplitude"].astype(float)
+    ds_fit["optimal_amplitude"].attrs = {"long_name": "optimal CZ amplitude", "units": "a.u."}
     ds_fit = ds_fit.assign_coords({"optimal_index": ("qubit_pair", np.array(opt_idxs))})
     ds_fit["optimal_index"] = ds_fit["optimal_index"].astype(int)
     ds_fit = ds_fit.assign_coords({"success": ("qubit_pair", np.array(successes, dtype=bool))})
+    if "phase_diff" in ds_fit.data_vars:
+        ds_fit.phase_diff.attrs = {"long_name": "phase difference", "units": "2π"}
 
-    # Build FitResults dict
     fit_results: Dict[str, FitResults] = {}
     for qp, amp, succ in zip(qp_names, opt_amps, successes):
         fit_results[str(qp)] = FitResults(optimal_amplitude=float(amp), success=bool(succ))
@@ -146,16 +181,27 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
 
 
 def fit_routine(da):
-    """Fit oscillations per number_of_operations and aggregate results.
+    """Fit frame-rotation oscillations for every repetition count and aggregate.
 
-    For each number_of_operations value:
-        - Fit oscillation of the selected signal.
-        - Store fitted oscillatory curve.
-        - Compute and store phase difference between control_axis 0 and 1 (normalized 0..1 for 0..2π).
-    Returns the original dataset with two new data variables: 'fitted' and 'phase_diff'.
+    For each ``number_of_operations`` value:
+    - Fits a sinusoidal oscillation over the ``frame`` axis for both moving-qubit
+      states (``control_axis`` 0 and 1).
+    - Stores the fitted oscillatory curve.
+    - Computes the conditional phase difference (normalised to [0, 1) for 0 to 2π).
+
+    Parameters:
+    -----------
+    da : xr.Dataset
+        Single-pair dataset with ``e_state_stationary`` or ``I_stationary``, ``frame``,
+        ``number_of_operations``, ``amp_full``, and ``control_axis`` dimensions.
+
+    Returns:
+    --------
+    xr.Dataset
+        Input dataset extended with ``fitted`` and ``phase_diff`` data variables.
     """
 
-    data_var = "state_target" if "state_target" in da else "I_target"
+    data_var = "e_state_stationary" if "e_state_stationary" in da else "I_stationary"
     nops_vals = da.number_of_operations.values
 
     fitted_list = []
@@ -216,12 +262,34 @@ def _circ_dist_to_half(Z):
 
 
 def _fit_full_amp(X, Z, row_mask=None, trim=0.2, smooth_rows_sigma=0.6, smooth_cols_sigma=1.0):
-    """Robustly select single amplitude minimizing distance of phase to 0.5 across repetitions.
+    """Robustly select the single amplitude that minimises the phase distance to 0.5 (π).
 
-    Parameters mirror the exploratory implementation embedded previously in node file.
-    X: (nx,) amplitude array
-    Z: (ny, nx) phase_diff array in [0,1)
-    Returns best amplitude.
+    Applies optional Gaussian smoothing along the repetition axis, trims outlier rows
+    via a trimmed mean, then finds the amplitude column with the smallest mean circular
+    distance to 0.5.  Sub-pixel refinement via parabolic interpolation is applied when
+    the optimum is not on a boundary.
+
+    Parameters:
+    -----------
+    X : np.ndarray
+        1D array of amplitude values, shape (nx,).
+    Z : np.ndarray
+        2D phase-diff array in [0, 1), shape (ny, nx) where ny = number_of_operations.
+    row_mask : np.ndarray or None
+        Boolean mask selecting which rows (repetitions) to include.
+        If None, all rows are used.
+    trim : float
+        Fraction of rows to trim from each end of the sorted cost distribution (default 0.2).
+    smooth_rows_sigma : float
+        Gaussian smoothing sigma along the repetition axis before trimming (default 0.6).
+    smooth_cols_sigma : float
+        Gaussian smoothing sigma along the amplitude axis after trimming (default 1.0).
+
+    Returns:
+    --------
+    float
+        Best-estimate amplitude value (may be sub-pixel interpolated).  Returns ``np.nan``
+        if no rows survive masking/trimming.
     """
     Zw = Z.copy()
     if smooth_rows_sigma and smooth_rows_sigma > 0:
@@ -249,45 +317,3 @@ def _fit_full_amp(X, Z, row_mask=None, trim=0.2, smooth_rows_sigma=0.6, smooth_c
             delta = 0.5 * (y1 - y3) / denom
             j_star = j0 + np.clip(delta, -0.5, 0.5)
     return float(np.interp(j_star, np.arange(len(X)), X))
-
-
-def _extract_relevant_parameters(
-    ds_fit: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, Dict[str, FitResults]]:
-    """
-    Extract relevant fit parameters and create FitResults for each qubit pair.
-
-    Parameters:
-    -----------
-    ds_fit : xr.Dataset
-        Dataset containing the fit results from fit_routine.
-    node : QualibrationNode
-        The calibration node containing parameters and qubit pairs.
-
-    Returns:
-    --------
-    Tuple[xr.Dataset, Dict[str, FitResults]]
-        Dataset with additional metadata and dictionary of FitResults for each qubit pair.
-    """
-    qubit_pairs = node.namespace["qubit_pairs"]
-
-    # Add metadata attributes to the dataset
-    if "optimal_amplitude" in ds_fit.data_vars:
-        ds_fit.optimal_amplitude.attrs = {"long_name": "optimal CZ amplitude", "units": "a.u."}
-    if "phase_diff" in ds_fit.data_vars:
-        ds_fit.phase_diff.attrs = {"long_name": "phase difference", "units": "2π"}
-    if "fitted_curve" in ds_fit.data_vars:
-        ds_fit.fitted_curve.attrs = {"long_name": "fitted tanh curve", "units": "2π"}
-
-    # Create FitResults for each qubit pair
-    fit_results = {}
-    for qp in qubit_pairs:
-        qp_name = qp.name
-        qp_data = ds_fit.sel(qubit_pair=qp_name)
-
-        fit_results[qp_name] = FitResults(
-            optimal_amplitude=float(qp_data.optimal_amplitude.values),
-            success=bool(qp_data.success.values),
-        )
-
-    return ds_fit, fit_results

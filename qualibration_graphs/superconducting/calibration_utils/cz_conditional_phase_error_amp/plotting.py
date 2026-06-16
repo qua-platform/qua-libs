@@ -1,57 +1,78 @@
-from typing import Dict
+from typing import Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.cz_conditional_phase_error_amp.analysis import FitResults
-from qualibration_libs.core import BatchableList
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from qualibration_libs.plotting import grid_iter
+
+from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
 
 
 def plot_raw_data_with_fit(
-    fit_results: xr.Dataset,
-    qubit_pairs: BatchableList,
-    node=None,
-) -> plt.Figure:
-    """Plot phase difference as 2D heatmap (number_of_operations vs amplitude) with optimal amplitude line.
+    ds_fit: xr.Dataset,
+    qubit_pairs: list,
+    qubit_roles_map: Optional[dict] = None,
+) -> Figure:
+    """Plot phase-diff heatmap (# operations × amplitude) for every pair on a chip-topology grid.
 
-    For each qubit pair we display:
-      - pcolormesh of phase_diff (dims: number_of_operations x amp)
-      - vertical line at optimal_amplitude
-      - horizontal dashed line at phase=0.5 reference (shown via colorbar context)
-      - secondary x-axis with detuning (MHz)
+    Parameters
+    ----------
+    ds_fit : xr.Dataset
+        Fit dataset containing ``phase_diff``, ``optimal_amplitude``.
+    qubit_pairs : list
+        Qubit pair objects used for grid placement.
+
+    Returns
+    -------
+    Figure
+        Matplotlib figure with one heatmap panel per pair.
     """
-    n_pairs = len(qubit_pairs)
-    cols = min(4, n_pairs)
-    rows = (n_pairs + cols - 1) // cols
-    fig, axes = plt.subplots(2 * rows, cols, figsize=(4 * cols, 3.5 * rows * 2), squeeze=False)
-    axes = axes.flatten()
+    grid_names, pair_names = grid_pair_names(qubit_pairs)
+    grid = QubitPairGrid(grid_names, pair_names)
 
-    for i, qp in enumerate(qubit_pairs):
-        # Main plot (top)
-        ax_main = axes[2 * i]
-        qp_name = qp.name
-        fr = fit_results.sel(qubit_pair=qp_name)
+    for ax, qubit in grid_iter(grid):
+        qp_name = qubit["qubit"]
+        qubit_role_obj = qubit_roles_map.get(qp_name) if qubit_roles_map else None
+        plot_individual_data_with_fit(ax, ds_fit, qp_name, qubit_role_obj=qubit_role_obj)
 
-        phase = fr.phase_diff  # dims: number_of_operations, amp
-        # Coordinates
-        amps = (fr.amp_full if "amp_full" in fr.coords else fr.amp).values
-        n_ops = fr.number_of_operations.values if "number_of_operations" in phase.dims else np.arange(phase.sizes[0])
+    grid.fig.suptitle("CZ conditional phase error amplification - phase difference")
+    grid.fig.tight_layout()
+    return grid.fig
 
-        # Create mesh
-        X, Y = np.meshgrid(amps, n_ops)
-        pcm = ax_main.pcolormesh(
-            X,
-            Y,
-            phase.values,
-            cmap="twilight_shifted",
-            shading="auto",
-            vmin=0.0,
-            vmax=1.0,
-        )
-        ax_main.axvline(fr.optimal_amplitude.item(), color="lime", lw=2, label="optimal")
 
-        # Secondary x-axis: detuning (MHz)
-        quad = qp.qubit_control.freq_vs_flux_01_quad_term
+def plot_individual_data_with_fit(
+    ax: Axes,
+    ds_fit: xr.Dataset,
+    qp_name: str,
+    qubit_role_obj=None,
+):
+    """Plot phase-diff heatmap for one qubit pair.
+
+    Parameters
+    ----------
+    ax : Axes
+        Axis to draw on.
+    ds_fit : xr.Dataset
+        Fit dataset containing ``phase_diff`` and ``optimal_amplitude``.
+    qp_name : str
+        Qubit pair name used to select data.
+    qubit_role_obj : optional
+        Resolved ``QubitRoles`` for this pair; used for the secondary detuning axis.
+    """
+    fr = ds_fit.sel(qubit_pair=qp_name)
+    phase = fr.phase_diff  # dims: number_of_operations, amp
+
+    amps = (fr.amp_full if "amp_full" in fr.coords else fr.amp).values
+    n_ops = fr.number_of_operations.values if "number_of_operations" in phase.dims else np.arange(phase.sizes[0])
+
+    X, Y = np.meshgrid(amps, n_ops)
+    pcm = ax.pcolormesh(X, Y, phase.values, cmap="twilight_shifted", shading="auto", vmin=0.0, vmax=1.0)
+    ax.axvline(fr.optimal_amplitude.item(), color="lime", lw=2, label="optimal")
+    ax.legend(loc="upper right", fontsize=8)
+
+    if qubit_role_obj is not None:
+        quad = qubit_role_obj.moving.freq_vs_flux_01_quad_term
 
         def amp_to_detuning_MHz(a):
             return -(a**2) * quad / 1e6
@@ -59,48 +80,112 @@ def plot_raw_data_with_fit(
         def detuning_MHz_to_amp(d):
             return np.sqrt(np.maximum(0, -d * 1e6 / quad))
 
-        secax = ax_main.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
+        secax = ax.secondary_xaxis("top", functions=(amp_to_detuning_MHz, detuning_MHz_to_amp))
         secax.set_xlabel("Detuning (MHz)")
 
-        ax_main.set_title(qp_name)
-        ax_main.set_xlabel("Amplitude (V)")
-        ax_main.set_ylabel("# CZ operations")
-        ax_main.legend(loc="upper right", fontsize=8)
-        cbar = fig.colorbar(pcm, ax=ax_main, shrink=0.85)
-        cbar.set_label("Phase diff (2π units)")
+    ax.figure.colorbar(pcm, ax=ax, shrink=0.85).set_label("Phase diff (2π units)")
+    ax.set_title(qp_name)
+    ax.set_xlabel("Amplitude (V)")
+    ax.set_ylabel("# CZ operations")
 
-        # New: Add subplot below with state_control plot
-        ax_sub = axes[2 * i + 1]
 
-        try:
-            data_g = (
-                fit_results.g_state_control.sel(qubit_pair=qp_name, control_axis=1)
-                .sel(amp=fr.optimal_amplitude, method="nearest")
-                .mean(dim="frame")
-            )
-            data_e = (
-                fit_results.e_state_control.sel(qubit_pair=qp_name, control_axis=1)
-                .sel(amp=fr.optimal_amplitude, method="nearest")
-                .mean(dim="frame")
-            )
-            data_f = (
-                fit_results.f_state_control.sel(qubit_pair=qp_name, control_axis=1)
-                .sel(amp=fr.optimal_amplitude, method="nearest")
-                .mean(dim="frame")
-            )
-            ax_sub.plot(n_ops, data_g, label="g", color="blue")
-            ax_sub.plot(n_ops, data_f, label="f", color="green")
-            ax_sub.set_ylabel("Control qubit state fractions")
-            ax_sub.set_xlabel("# CZ operations")
-            ax_sub.legend()
+def plot_leakage_qubit_populations(
+    ds_fit: xr.Dataset,
+    qubit_pairs: list,
+    qubit_roles_map: Optional[dict] = None,
+) -> Figure:
+    """Plot leakage-qubit g/f populations vs # operations for every pair on a chip-topology grid.
 
-        except Exception as e:
-            ax_sub.text(0.5, 0.5, f"Plot failed: {e}", ha="center", va="center")
+    Populations are shown at the optimal amplitude for each pair. The leakage qubit
+    (always the higher-frequency qubit) is determined via ``QubitRoles.resolve``
+    and the correct set of streams (``_moving`` or ``_stationary``) is selected.
 
-    # Hide unused axes
-    for j in range(2 * n_pairs, len(axes)):
-        axes[j].axis("off")
+    Parameters
+    ----------
+    ds_fit : xr.Dataset
+        Fit dataset containing ``g/e/f_state_moving``, ``g/e/f_state_stationary``,
+        ``optimal_amplitude``.
+    qubit_pairs : list
+        Qubit pair objects used for grid placement.
 
-    fig.suptitle("CZ conditional phase error amplification")
-    fig.tight_layout(rect=(0, 0, 1, 0.97))
-    return fig
+    Returns
+    -------
+    Figure
+        Matplotlib figure with one population panel per pair.
+    """
+    grid_names, pair_names = grid_pair_names(qubit_pairs)
+    grid = QubitPairGrid(grid_names, pair_names)
+
+    for ax, qubit in grid_iter(grid):
+        qp_name = qubit["qubit"]
+        qubit_role_obj = qubit_roles_map.get(qp_name) if qubit_roles_map else None
+        plot_individual_leakage_qubit_populations(ax, ds_fit, qp_name, qubit_role_obj=qubit_role_obj)
+
+    grid.fig.suptitle("CZ conditional phase error amplification — leakage qubit populations")
+    grid.fig.tight_layout()
+    return grid.fig
+
+
+def plot_individual_leakage_qubit_populations(
+    ax: Axes,
+    ds_fit: xr.Dataset,
+    qp_name: str,
+    qubit_role_obj=None,
+):
+    """Plot leakage-qubit g/f populations vs # operations for one pair at its optimal amplitude.
+
+    Selects ``g/f_state_moving`` or ``g/f_state_stationary`` depending on which
+    qubit is the leakage qubit (the higher-frequency qubit).
+
+    Parameters
+    ----------
+    ax : Axes
+        Axis to draw on.
+    ds_fit : xr.Dataset
+        Fit dataset containing ``g/e/f_state_moving``, ``g/e/f_state_stationary``,
+        and ``optimal_amplitude``.
+    qp_name : str
+        Qubit pair name used to select data.
+    qubit_role_obj : optional
+        Resolved ``QubitRoles`` for this pair; selects leakage populations and plot labels.
+    """
+    fr = ds_fit.sel(qubit_pair=qp_name)
+    n_ops = fr.number_of_operations.values if "number_of_operations" in fr.dims else None
+
+    roles = qubit_role_obj
+    lq = roles.leakage if roles is not None else None
+    mq = roles.moving if roles is not None else None
+    leakage_key = "moving" if (roles is not None and roles.leakage is roles.moving) else "stationary"
+
+    try:
+        data_g = (
+            ds_fit[f"g_state_{leakage_key}"]
+            .sel(qubit_pair=qp_name, control_axis=1)
+            .sel(amp=fr.optimal_amplitude, method="nearest")
+            .mean(dim="frame")
+        )
+        data_e = (
+            ds_fit[f"e_state_{leakage_key}"]
+            .sel(qubit_pair=qp_name, control_axis=1)
+            .sel(amp=fr.optimal_amplitude, method="nearest")
+            .mean(dim="frame")
+        )
+        data_f = (
+            ds_fit[f"f_state_{leakage_key}"]
+            .sel(qubit_pair=qp_name, control_axis=1)
+            .sel(amp=fr.optimal_amplitude, method="nearest")
+            .mean(dim="frame")
+        )
+        ax.plot(n_ops, data_g, label="g", color="steelblue")
+        ax.plot(n_ops, data_e, label="e", color="tomato")
+        ax.plot(n_ops, data_f, label="f (leakage)", color="seagreen")
+        ax.legend(fontsize=8)
+    except Exception as e:
+        ax.text(0.5, 0.5, f"Plot failed:\n{e}", ha="center", va="center", transform=ax.transAxes, fontsize=8)
+
+    if lq is not None and mq is not None:
+        ax.set_title(f"{qp_name} \n leakage qubit: {lq.name}")
+    else:
+        ax.set_title(qp_name)
+    ax.set_xlabel("# CZ operations")
+    ax.set_ylabel("Leakage qubit state fractions")
