@@ -31,11 +31,10 @@ def plot_raw_data_with_fit(
     grid_names, pair_names = grid_pair_names(qubit_pairs)
     grid = QubitPairGrid(grid_names, pair_names)
 
-    qp_map = {qp.name: qp for qp in qubit_pairs}
     for ax, qubit in grid_iter(grid):
         qp_name = qubit["qubit"]
         qubit_role_obj = qubit_roles_map.get(qp_name) if qubit_roles_map else None
-        plot_individual_data_with_fit(ax, ds_fit, qp_name, qp_map[qp_name], qubit_role_obj=qubit_role_obj)
+        plot_individual_data_with_fit(ax, ds_fit, qp_name, qubit_role_obj=qubit_role_obj)
 
     grid.fig.suptitle("CZ conditional phase error amplification - phase difference")
     grid.fig.tight_layout()
@@ -46,7 +45,6 @@ def plot_individual_data_with_fit(
     ax: Axes,
     ds_fit: xr.Dataset,
     qp_name: str,
-    qp,
     qubit_role_obj=None,
 ):
     """Plot phase-diff heatmap for one qubit pair.
@@ -59,8 +57,8 @@ def plot_individual_data_with_fit(
         Fit dataset containing ``phase_diff`` and ``optimal_amplitude``.
     qp_name : str
         Qubit pair name used to select data.
-    qp : qubit pair object
-        Used to compute the secondary detuning axis via the moving qubit.
+    qubit_role_obj : optional
+        Resolved ``QubitRoles`` for this pair; used for the secondary detuning axis.
     """
     fr = ds_fit.sel(qubit_pair=qp_name)
     phase = fr.phase_diff  # dims: number_of_operations, amp
@@ -118,11 +116,10 @@ def plot_leakage_qubit_populations(
     grid_names, pair_names = grid_pair_names(qubit_pairs)
     grid = QubitPairGrid(grid_names, pair_names)
 
-    qp_map = {qp.name: qp for qp in qubit_pairs}
     for ax, qubit in grid_iter(grid):
         qp_name = qubit["qubit"]
         qubit_role_obj = qubit_roles_map.get(qp_name) if qubit_roles_map else None
-        plot_individual_leakage_qubit_populations(ax, ds_fit, qp_name, qp_map[qp_name], qubit_role_obj=qubit_role_obj)
+        plot_individual_leakage_qubit_populations(ax, ds_fit, qp_name, qubit_role_obj=qubit_role_obj)
 
     grid.fig.suptitle("CZ conditional phase error amplification — leakage qubit populations")
     grid.fig.tight_layout()
@@ -133,7 +130,6 @@ def plot_individual_leakage_qubit_populations(
     ax: Axes,
     ds_fit: xr.Dataset,
     qp_name: str,
-    qp,
     qubit_role_obj=None,
 ):
     """Plot leakage-qubit g/f populations vs # operations for one pair at its optimal amplitude.
@@ -150,8 +146,8 @@ def plot_individual_leakage_qubit_populations(
         and ``optimal_amplitude``.
     qp_name : str
         Qubit pair name used to select data.
-    qp : qubit pair object
-        Used to resolve qubit roles and label the plot.
+    qubit_role_obj : optional
+        Resolved ``QubitRoles`` for this pair; selects leakage populations and plot labels.
     """
     fr = ds_fit.sel(qubit_pair=qp_name)
     n_ops = fr.number_of_operations.values if "number_of_operations" in fr.dims else None
