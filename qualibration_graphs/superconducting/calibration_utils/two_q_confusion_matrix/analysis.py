@@ -13,8 +13,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """
     Process the raw dataset for confusion matrix analysis.
 
-    If the dataset has per-pair variables (state1, state2, ...), ensures
-    a unified 'state' variable. Otherwise returns the dataset as-is.
+    If the dataset has state_control and state_target only, derives state = state_control * 2 + state_target.
 
     Parameters
     ----------
@@ -31,19 +30,9 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     if "state" in ds.data_vars:
         return ds
 
-    pair_dim = "qubit_pair" if "qubit_pair" in ds.dims else "qubit"
-    state_vars = [v for v in ds.data_vars if v.startswith("state") and v != "state_control" and v != "state_target"]
-    if state_vars:
+    if "state_control" in ds.data_vars and "state_target" in ds.data_vars:
+        return ds.assign(state=ds.state_control * 2 + ds.state_target)
 
-        def sort_key(name):
-            try:
-                return int(name.replace("state", ""))
-            except ValueError:
-                return 0
-
-        state_vars = sorted(state_vars, key=sort_key)
-        state_list = [ds[v] for v in state_vars]
-        ds = ds.assign(state=xr.concat(state_list, dim=pair_dim))
     return ds
 
 

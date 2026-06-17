@@ -24,11 +24,13 @@ class FitResults:
     """Stores the relevant Bell state tomography experiment fit parameters for a single qubit pair."""
 
     fidelity: float
+    """State fidelity with respect to the ideal Bell state"""
     purity: float
+    """Purity of the reconstructed density matrix, Tr(ρ²)"""
     success: bool
+    """Whether the tomography analysis completed successfully"""
 
-
-def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
+def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None)-> None:
     """
     Logs the node-specific fitted results for all qubit pairs.
 
@@ -61,7 +63,6 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     Process the raw dataset to ensure it has a 'state' variable suitable for tomography.
 
     If the dataset has state_control and state_target only, derives state = state_control * 2 + state_target.
-    If the dataset has per-pair variables (state1, state2, ...), concatenates into state with qubit_pair dimension.
 
     Parameters:
     -----------
@@ -78,26 +79,8 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     if "state" in ds.data_vars:
         return ds
 
-    # Handle state_control and state_target -> derive state
-    pair_dim = "qubit_pair" if "qubit_pair" in ds.dims else "qubit"
     if "state_control" in ds.data_vars and "state_target" in ds.data_vars:
-        ds = ds.assign(state=ds.state_control * 2 + ds.state_target)
-        return ds
-
-    # Handle per-pair variables state1, state2, ...
-    state_vars = [v for v in ds.data_vars if v.startswith("state") and v != "state_control" and v != "state_target"]
-    if state_vars:
-        # Sort by number: state1, state2, ...
-        def sort_key(name):
-            try:
-                return int(name.replace("state", ""))
-            except ValueError:
-                return 0
-
-        state_vars = sorted(state_vars, key=sort_key)
-        state_list = [ds[v] for v in state_vars]
-        ds = ds.assign(state=xr.concat(state_list, dim=pair_dim))
-        return ds
+        return ds.assign(state=ds.state_control * 2 + ds.state_target)
 
     return ds
 
