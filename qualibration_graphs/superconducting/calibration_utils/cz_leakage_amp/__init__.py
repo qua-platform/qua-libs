@@ -1,4 +1,4 @@
-"""CZ conditional phase error amplification calibration utilities."""
+"""CZ leakage amplification calibration utilities."""
 
 from .analysis import FitResults, fit_raw_data, log_fitted_results, process_raw_dataset
 from .parameters import Parameters

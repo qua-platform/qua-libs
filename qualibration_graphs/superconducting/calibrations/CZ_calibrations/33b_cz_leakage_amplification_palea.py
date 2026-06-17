@@ -66,9 +66,9 @@ State update:
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
     name="33b_cz_leakage_amplification_palea",  # Name should be unique
-    description=description, # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
+    description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters: calibration_utils/cz_leakage_amp/parameters.py
-    machine=Quam.load(), # Instantiate the QUAM class from the state file
+    machine=Quam.load(),  # Instantiate the QUAM class from the state file
 )
 
 
@@ -78,6 +78,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
     pass
+
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
@@ -118,7 +119,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
 
     num_operations = node.parameters.number_of_operations
     # Register the sweep axes to be added to the dataset when fetching data
-    
+
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "number_of_operations": xr.DataArray(
@@ -140,7 +141,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
         state_high_q_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
         state_low_q_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
         state_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
-
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the qubits
@@ -179,14 +179,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
                                 high_q.xy.update_frequency(
                                     high_q.xy.intermediate_frequency - high_q.anharmonicity,
                                 )
-                                high_q.xy.play("EF_x180") # high freq qubit is the leakage qubit
+                                high_q.xy.play("EF_x180")  # high freq qubit is the leakage qubit
                                 low_q.xy.play("x180")
                                 high_q.xy.update_frequency(high_q.xy.intermediate_frequency)
                                 # Apply CZ virtual-Z phases after DD, mapped by qubit frequency.
                                 frame_rotation_2pi(phase_high, high_q.xy.name)
                                 wait(4)
                             qp.align()
-                            
+
                             # measure both qubits
                             high_q.readout_state_gef(state_high_q[ii])
                             low_q.readout_state_gef(state_low_q[ii])
@@ -204,12 +204,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubit_pairs):
-                state_high_q_st[i].buffer(len(amplitudes)).buffer(len(np.arange(2, num_operations + 1, 2))).average().save(
-                    f"state_high_q{i + 1}"
-                )
-                state_low_q_st[i].buffer(len(amplitudes)).buffer(len(np.arange(2, num_operations + 1, 2))).average().save(
-                    f"state_low_q{i + 1}"
-                )
+                state_high_q_st[i].buffer(len(amplitudes)).buffer(
+                    len(np.arange(2, num_operations + 1, 2))
+                ).average().save(f"state_high_q{i + 1}")
+                state_low_q_st[i].buffer(len(amplitudes)).buffer(
+                    len(np.arange(2, num_operations + 1, 2))
+                ).average().save(f"state_low_q{i + 1}")
                 state_st[i].buffer(len(amplitudes)).buffer(len(np.arange(2, num_operations + 1, 2))).average().save(
                     f"state{i + 1}"
                 )

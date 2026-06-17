@@ -58,7 +58,7 @@ State update:
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
     name="33a_cz_leakage_amplification",  # Name should be unique
-    description=description,
+    description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters: calibration_utils/cz_leakage_amp/parameters.py
     machine=Quam.load(),  # Instantiate the QUAM class from the state file
 )
@@ -70,14 +70,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
     # node.parameters.qubit_pairs = ["q1-q2"]
-    node.parameters.qubit_pairs = ["coupler_q4_q5"]
-    node.parameters.operation = "cz_unipolar"
-    node.parameters.use_state_discrimination = True
-    node.parameters.reset_type = "active"
-    node.parameters.amp_range = 0.05
-    node.parameters.amp_step = 0.0005
-    node.parameters.num_shots = 100
-    node.parameters.number_of_operations = 40
     pass
 
 
