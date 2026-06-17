@@ -10,7 +10,7 @@ Iteration over the resulting grid is done with the existing
 """
 
 import re
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -56,6 +56,8 @@ class QubitPairGrid:
         Pair name strings (used as ``qubit`` coordinate labels).
     size : int
         Size of each subplot in inches.
+    projection : str, optional
+        Matplotlib subplot projection (e.g. ``"3d"`` for 3D axes).
     """
 
     @staticmethod
@@ -65,7 +67,13 @@ class QubitPairGrid:
     def _list_clean(self, list_input_string):
         return [self._clean_up(s) for s in list_input_string]
 
-    def __init__(self, grid_names: list[str], qubit_pair_names: list[str], size: int = 4):
+    def __init__(
+        self,
+        grid_names: list[str],
+        qubit_pair_names: list[str],
+        size: int = 4,
+        projection: Optional[str] = None,
+    ):
         qubit_indices = [
             (
                 tuple(map(int, self._list_clean(gp.split("-")[0].split(",")))),
@@ -94,7 +102,13 @@ class QubitPairGrid:
             max(grid_col_idxs) - min_grid_col + 1,
         )
 
-        figure, all_axes = plt.subplots(*shape, figsize=(shape[1] * size, shape[0] * size), squeeze=False)
+        subplot_kw = {"projection": projection} if projection is not None else {}
+        figure, all_axes = plt.subplots(
+            *shape,
+            figsize=(shape[1] * size, shape[0] * size),
+            squeeze=False,
+            subplot_kw=subplot_kw,
+        )
 
         axes_grid = all_axes.reshape(shape)
 
