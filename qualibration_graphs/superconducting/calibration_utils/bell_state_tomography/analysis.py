@@ -30,7 +30,8 @@ class FitResults:
     success: bool
     """Whether the tomography analysis completed successfully"""
 
-def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None)-> None:
+
+def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None) -> None:
     """
     Logs the node-specific fitted results for all qubit pairs.
 
