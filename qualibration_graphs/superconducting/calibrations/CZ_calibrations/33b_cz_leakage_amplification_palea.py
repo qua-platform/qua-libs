@@ -66,8 +66,9 @@ State update:
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
     name="33b_cz_leakage_amplification_palea",  # Name should be unique
-    description=description,
+    description=description, # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters: calibration_utils/cz_leakage_amp/parameters.py
+    machine=Quam.load(), # Instantiate the QUAM class from the state file
 )
 
 
@@ -77,11 +78,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
     pass
-
-
-# Instantiate the QUAM class from the state file
-node.machine = Quam.load()
-
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
@@ -96,22 +92,33 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
 
+    operation = node.parameters.operation
+
     # Verify qp.moving_qubit against recalculation and precompute roles for QUA program loops.
     # Logs a warning and corrects qp.moving_qubit in-memory if they disagree; state is persisted
     # at the end of the node.
     qubit_roles_map = {}
+    cz_phase_shifts_map = {}
     for qp in qubit_pairs:
-        verify_moving_qubit(qp, operation=node.parameters.operation, repair_routing=True, log_callable=node.log)
-        qubit_roles_map[qp.name] = QubitRoles.resolve(qp)
+        verify_moving_qubit(qp, operation=operation, log_callable=node.log)
+        roles = QubitRoles.resolve(qp)
+        qubit_roles_map[qp.name] = roles
+        cz_macro = qp.macros[operation]
+        # CZGate applies phase_shift_control / phase_shift_target on control / target;
+        # map each to high_q / low_q by frequency.
+        if roles.high is qp.qubit_control:
+            cz_phase_shifts_map[qp.name] = (cz_macro.phase_shift_control, cz_macro.phase_shift_target)
+        else:
+            cz_phase_shifts_map[qp.name] = (cz_macro.phase_shift_target, cz_macro.phase_shift_control)
     node.namespace["qubit_roles_map"] = qubit_roles_map
 
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_shots
     amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
 
-    operation = node.parameters.operation
     num_operations = node.parameters.number_of_operations
     # Register the sweep axes to be added to the dataset when fetching data
+    
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "number_of_operations": xr.DataArray(
@@ -128,19 +135,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
         n_op = declare(int)  # number of CZ operations
         count = declare(int)  # loop counter
         n_st = declare_output_stream()
-        state_mq = [declare(int) for _ in range(num_qubit_pairs)]
-        state_sq = [declare(int) for _ in range(num_qubit_pairs)]
-        state_mq_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
-        state_sq_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
-        state_ms_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+        state_high_q = [declare(int) for _ in range(num_qubit_pairs)]
+        state_low_q = [declare(int) for _ in range(num_qubit_pairs)]
+        state_high_q_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+        state_low_q_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+        state_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             # Initialize the qubits
             for qp in multiplexed_qubit_pairs.values():
                 qubit_role = qubit_roles_map[qp.name]
-                mq, sq = qubit_role.moving, qubit_role.stationary
-                node.machine.initialize_qpu(target=mq)
-                node.machine.initialize_qpu(target=sq)
+                high_q, low_q = qubit_role.high, qubit_role.low
+                node.machine.initialize_qpu(target=high_q)
+                node.machine.initialize_qpu(target=low_q)
             # Loop for averaging
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
@@ -150,59 +158,60 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
                     with for_(*from_array(amp, amplitudes)):
                         for ii, qp in multiplexed_qubit_pairs.items():
                             qubit_role = qubit_roles_map[qp.name]
-                            mq, sq = qubit_role.moving, qubit_role.stationary
-                            lq, oq = qubit_role.leakage, qubit_role.low
+                            high_q, low_q = qubit_role.high, qubit_role.low
+                            phase_high, _ = cz_phase_shifts_map[qp.name]
                             # Reset the qubits
-                            mq.reset(node.parameters.reset_type, node.parameters.simulate)
-                            sq.reset(node.parameters.reset_type, node.parameters.simulate)
+                            high_q.reset(node.parameters.reset_type, node.parameters.simulate)
+                            low_q.reset(node.parameters.reset_type, node.parameters.simulate)
                             qp.align()
-                            # Reset the frames of both qubits
-                            reset_frame(sq.xy.name)
-                            reset_frame(mq.xy.name)
                             # setting both qubits to the initial state
-                            mq.xy.play("x180")
-                            sq.xy.play("x180")
+                            high_q.xy.play("x180")
+                            low_q.xy.play("x180")
                             qp.align()
                             # Loop over the number of CZ operations
                             with for_(count, 0, count < n_op, count + 1):
                                 # play the CZ gate
                                 qp.macros[operation].apply(amplitude_scale_coupler=amp)
+                                #  Undo CZ virtual-Z phase shift before DD, mapped by qubit frequency.
+                                frame_rotation_2pi(-phase_high, high_q.xy.name)
                                 # play the PALEA Dynamical decoupling sequence:
                                 # EF (e-f) pi on the leakage qubit (|11⟩↔|20⟩), g-e pi on the low qubit.
-                                lq.xy.update_frequency(
-                                    lq.xy.intermediate_frequency - lq.anharmonicity,
-                                    keep_phase=True,
+                                high_q.xy.update_frequency(
+                                    high_q.xy.intermediate_frequency - high_q.anharmonicity,
                                 )
-                                lq.xy.play("EF_x180")
-                                lq.xy.update_frequency(lq.xy.intermediate_frequency, keep_phase=True)
-                                oq.xy.play("x180")
-                            qp.align()
-
-                            # measure both qubits
-                            mq.readout_state_gef(state_mq[ii])
-                            sq.readout_state_gef(state_sq[ii])
-
-                            with if_((state_mq[ii] == 1) & (state_sq[ii] == 1)):
+                                high_q.xy.play("EF_x180") # high freq qubit is the leakage qubit
+                                low_q.xy.play("x180")
+                                high_q.xy.update_frequency(high_q.xy.intermediate_frequency)
+                                # Apply CZ virtual-Z phases after DD, mapped by qubit frequency.
+                                frame_rotation_2pi(phase_high, high_q.xy.name)
                                 wait(4)
-                                save(1, state_ms_st[ii])
+                            qp.align()
+                            
+                            # measure both qubits
+                            high_q.readout_state_gef(state_high_q[ii])
+                            low_q.readout_state_gef(state_low_q[ii])
+
+                            with if_((state_high_q[ii] == 1) & (state_low_q[ii] == 1)):
+                                wait(4)
+                                save(1, state_st[ii])
                             with else_():
                                 wait(4)
-                                save(0, state_ms_st[ii])
+                                save(0, state_st[ii])
 
-                            save(state_mq[ii], state_mq_st[ii])
-                            save(state_sq[ii], state_sq_st[ii])
+                            save(state_high_q[ii], state_high_q_st[ii])
+                            save(state_low_q[ii], state_low_q_st[ii])
                         align()
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubit_pairs):
-                state_mq_st[i].buffer(len(amplitudes)).buffer(len(np.arange(2, num_operations + 1, 2))).average().save(
-                    f"state_moving{i + 1}"
+                state_high_q_st[i].buffer(len(amplitudes)).buffer(len(np.arange(2, num_operations + 1, 2))).average().save(
+                    f"state_high_q{i + 1}"
                 )
-                state_sq_st[i].buffer(len(amplitudes)).buffer(len(np.arange(2, num_operations + 1, 2))).average().save(
-                    f"state_stationary{i + 1}"
+                state_low_q_st[i].buffer(len(amplitudes)).buffer(len(np.arange(2, num_operations + 1, 2))).average().save(
+                    f"state_low_q{i + 1}"
                 )
-                state_ms_st[i].buffer(len(amplitudes)).buffer(len(np.arange(2, num_operations + 1, 2))).average().save(
-                    f"state_moving_stationary{i + 1}"
+                state_st[i].buffer(len(amplitudes)).buffer(len(np.arange(2, num_operations + 1, 2))).average().save(
+                    f"state{i + 1}"
                 )
 
 
@@ -289,8 +298,10 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     figures = plot_raw_data_with_fit(node.results["ds_fit"], qubit_pairs)
     for fig in figures.values():
         plt.show()
-    node.results["leakage_raw_figure"] = figures["raw"]
-    node.results["leakage_mean_figure"] = figures["mean"]
+    node.results["figures"] = {
+        "leakage_raw": figures["raw"],
+        "leakage_mean": figures["mean"],
+    }
 
 
 # %% {Update_state}
