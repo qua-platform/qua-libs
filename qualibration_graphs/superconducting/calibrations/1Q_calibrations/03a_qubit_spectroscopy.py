@@ -40,6 +40,7 @@ from quam_config import Quam
 
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../.."))
 
 
@@ -113,7 +114,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "detuning": xr.DataArray(
-            dfs, attrs={"long_name": "readout frequency", "units": "Hz"},
+            dfs,
+            attrs={"long_name": "readout frequency", "units": "Hz"},
         ),
     }
 
@@ -130,10 +132,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(n, n_st)
                 with for_(*from_array(df, dfs)):
                     for i, qubit in multiplexed_qubits.items():
-                        duration = (
-                            operation_len if operation_len is not None
-                            else qubit.xy.operations[operation].length
-                        )
+                        duration = operation_len if operation_len is not None else qubit.xy.operations[operation].length
                         qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
                         qubit.xy.play(
                             operation,
@@ -163,7 +162,10 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters,
+        qmm,
+        config,
+        node.namespace["qua_program"],
+        node.parameters,
     )
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
@@ -217,7 +219,9 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Per-qubit panel with fit overlay + values box + FAILED indicator."""
     fig_raw_fit = plot_raw_data_with_fit(
-        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"],
+        node.results["ds_raw"],
+        node.namespace["qubits"],
+        node.results["ds_fit"],
     )
     plt.show()
     node.results["figures"] = {"amplitude": fig_raw_fit}

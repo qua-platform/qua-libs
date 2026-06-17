@@ -89,18 +89,21 @@ def _format_values_box(fit: xr.Dataset, update_pulses: bool) -> str:
     return "\n".join(lines)
 
 
-def plot_raw_data_with_fit(
-    ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset
-) -> Figure:
+def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset) -> Figure:
     """Per-qubit rotated-I vs detuning panel with Lorentzian fit overlay + values box."""
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     update_pulses = _detect_update_pulses_flag(fits)
     for ax, qubit in grid_iter(grid):
         plot_individual_data_with_fit(
-            ax, ds, qubit, fits.sel(qubit=qubit["qubit"]), update_pulses,
+            ax,
+            ds,
+            qubit,
+            fits.sel(qubit=qubit["qubit"]),
+            update_pulses,
         )
     grid.fig.suptitle(
-        "Qubit spectroscopy (rotated I + Lorentzian fit)", fontsize=_FS_SUPTITLE,
+        "Qubit spectroscopy (rotated I + Lorentzian fit)",
+        fontsize=_FS_SUPTITLE,
     )
     _setup_grid_figure(grid)
     return grid.fig
@@ -152,9 +155,7 @@ def plot_individual_data_with_fit(
     if popt is not None and not np.any(np.isnan(popt)):
         f0_rel = float(fit_q.f0.values) if "f0" in fit_q else float(popt[0])
         fwhm = float(fit_q.fwhm.values) if "fwhm" in fit_q else float(popt[1])
-        if "fit_window_half_hz" in fit_q and np.isfinite(
-            float(fit_q.fit_window_half_hz.values)
-        ):
+        if "fit_window_half_hz" in fit_q and np.isfinite(float(fit_q.fit_window_half_hz.values)):
             window_half = float(fit_q.fit_window_half_hz.values)
         else:
             window_half = max(4.0 * fwhm, 10e6)
@@ -162,36 +163,55 @@ def plot_individual_data_with_fit(
         if mask.sum() >= 4:
             fit_curve_mv = lorentzian_peak_linbg(detuning_hz[mask], *popt) / u.mV
             ax.plot(
-                full_freq_hz[mask] / u.GHz, fit_curve_mv,
-                "r--", linewidth=1.5, label="Lorentzian fit",
+                full_freq_hz[mask] / u.GHz,
+                fit_curve_mv,
+                "r--",
+                linewidth=1.5,
+                label="Lorentzian fit",
             )
         # f₀ marker
         f0_hz = float(fit_q.res_freq.values)
         ax.axvline(
-            f0_hz / u.GHz, color="red", linestyle=":", linewidth=1.0, alpha=0.7,
+            f0_hz / u.GHz,
+            color="red",
+            linestyle=":",
+            linewidth=1.0,
+            alpha=0.7,
         )
         ax.legend(fontsize=_FS_LEGEND, loc="upper left")
 
     # Title (with FAILED suffix if appropriate)
     title = qubit_name + ("  (FAILED)" if not success else "")
-    ax.set_title(title, loc="center", fontsize=_FS_TITLE, pad=_TITLE_PAD,
-                 color=("crimson" if not success else "black"))
+    ax.set_title(title, loc="center", fontsize=_FS_TITLE, pad=_TITLE_PAD, color=("crimson" if not success else "black"))
 
     # Values box anchored upper-right; red border on failure.
     if popt is not None and not np.any(np.isnan(popt)):
         text = _format_values_box(fit_q, update_pulses)
         edge = "crimson" if not success else "gray"
         ax.text(
-            0.98, 0.98, text,
-            transform=ax.transAxes, ha="right", va="top",
-            fontsize=_FS_BOX, family="monospace",
+            0.98,
+            0.98,
+            text,
+            transform=ax.transAxes,
+            ha="right",
+            va="top",
+            fontsize=_FS_BOX,
+            family="monospace",
             bbox=dict(
-                facecolor="white", alpha=0.88, edgecolor=edge, linewidth=1.5,
+                facecolor="white",
+                alpha=0.88,
+                edgecolor=edge,
+                linewidth=1.5,
             ),
         )
     else:
         ax.text(
-            0.5, 0.5, "NO FIT",
-            transform=ax.transAxes, ha="center", va="center",
-            fontsize=_FS_LABEL, color="gray",
+            0.5,
+            0.5,
+            "NO FIT",
+            transform=ax.transAxes,
+            ha="center",
+            va="center",
+            fontsize=_FS_LABEL,
+            color="gray",
         )

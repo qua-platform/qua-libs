@@ -30,6 +30,7 @@ from quam_config.instrument_limits import instrument_limits
 # Fit model
 # ---------------------------------------------------------------------------
 
+
 def lorentzian_peak_linbg(f, f0, fwhm, amp, bg0, bg1):
     """Lorentzian peak (positive amp) with linear background.
 
@@ -45,6 +46,7 @@ def lorentzian_peak_linbg(f, f0, fwhm, amp, bg0, bg1):
 # ---------------------------------------------------------------------------
 # Peak finder
 # ---------------------------------------------------------------------------
+
 
 def find_best_peak(smoothed, raw_residual_std, edge_fraction=0.04, prominence_factor=3.0):
     """Return (peak_idx, is_edge_only) for the highest inner local peak.
@@ -67,6 +69,7 @@ def find_best_peak(smoothed, raw_residual_std, edge_fraction=0.04, prominence_fa
 # ---------------------------------------------------------------------------
 # Main fitter
 # ---------------------------------------------------------------------------
+
 
 def fit_qubit_peak(
     freqs,
@@ -107,9 +110,17 @@ def fit_qubit_peak(
     """
     nan5 = np.full(5, np.nan)
     result = dict(
-        f0=np.nan, fwhm=np.nan, amp=np.nan, bg0=np.nan, bg1=np.nan,
-        r2=np.nan, contrast=np.nan, popt=nan5.copy(),
-        success=False, edge_peak=False, peak_idx=-1,
+        f0=np.nan,
+        fwhm=np.nan,
+        amp=np.nan,
+        bg0=np.nan,
+        bg1=np.nan,
+        r2=np.nan,
+        contrast=np.nan,
+        popt=nan5.copy(),
+        success=False,
+        edge_peak=False,
+        peak_idx=-1,
         fit_window_half_hz=np.nan,
     )
 
@@ -136,7 +147,9 @@ def fit_qubit_peak(
 
     # 2. Find best inner peak above the noise floor
     peak_idx, is_edge = find_best_peak(
-        smoothed, residual_std, edge_fraction=edge_fraction,
+        smoothed,
+        residual_std,
+        edge_fraction=edge_fraction,
     )
     result["peak_idx"] = peak_idx
     result["edge_peak"] = is_edge
@@ -188,8 +201,12 @@ def fit_qubit_peak(
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             popt1, _ = curve_fit(
-                lorentzian_peak_linbg, f_win, s_win,
-                p0=p0, bounds=bounds, maxfev=10000,
+                lorentzian_peak_linbg,
+                f_win,
+                s_win,
+                p0=p0,
+                bounds=bounds,
+                maxfev=10000,
             )
     except Exception:
         return result
@@ -211,7 +228,9 @@ def fit_qubit_peak(
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             popt, _ = curve_fit(
-                lorentzian_peak_linbg, f_win, s_win,
+                lorentzian_peak_linbg,
+                f_win,
+                s_win,
                 p0=list(popt1),
                 bounds=(
                     [f_win.min(), fwhm_min, 0.0, -np.inf, -np.inf],
@@ -247,10 +266,15 @@ def fit_qubit_peak(
     )
 
     result.update(
-        f0=float(f0_fit), fwhm=float(fwhm_fit), amp=float(amp_fit),
-        bg0=float(bg0_fit), bg1=float(bg1_fit),
-        r2=float(r2), contrast=float(contrast),
-        popt=np.array(popt, dtype=float), success=bool(success),
+        f0=float(f0_fit),
+        fwhm=float(fwhm_fit),
+        amp=float(amp_fit),
+        bg0=float(bg0_fit),
+        bg1=float(bg1_fit),
+        r2=float(r2),
+        contrast=float(contrast),
+        popt=np.array(popt, dtype=float),
+        success=bool(success),
     )
     return result
 
@@ -259,16 +283,17 @@ def fit_qubit_peak(
 # FitParameters dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FitParameters:
     """Stores the fitted qubit-spectroscopy parameters for a single qubit."""
 
-    frequency: float       # absolute RF frequency of the qubit
-    relative_freq: float   # peak position in the detuning frame
+    frequency: float  # absolute RF frequency of the qubit
+    relative_freq: float  # peak position in the detuning frame
     fwhm: float
     r2: float
     contrast: float
-    iw_angle: float        # final integration weight angle = prev + delta (rad)
+    iw_angle: float  # final integration weight angle = prev + delta (rad)
     saturation_amp: float
     x180_amp: float
     success: bool
@@ -277,6 +302,7 @@ class FitParameters:
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
+
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
     """Log the fitted results for all qubits."""
@@ -300,13 +326,12 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 # Dataset processing
 # ---------------------------------------------------------------------------
 
+
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     """Convert IQ to V, add amplitude/phase, attach full-frequency coordinate."""
     ds = convert_IQ_to_V(ds, node.namespace["qubits"])
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
-    full_freq = np.array(
-        [ds.detuning.values + q.xy.RF_frequency for q in node.namespace["qubits"]]
-    )
+    full_freq = np.array([ds.detuning.values + q.xy.RF_frequency for q in node.namespace["qubits"]])
     ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     return ds
@@ -316,9 +341,8 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 # fit_raw_data
 # ---------------------------------------------------------------------------
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
     """Fit a Lorentzian peak per qubit on the rotated I-quadrature.
 
     Per qubit:
@@ -333,29 +357,30 @@ def fit_raw_data(
     limits = [instrument_limits(q.xy) for q in qubits]
 
     # --- Per-qubit IQ rotation (per legacy analysis.py:91-99) ---
-    shifts = np.abs(
-        (ds.IQ_abs - ds.IQ_abs.mean(dim="detuning"))
-    ).idxmax(dim="detuning")
+    shifts = np.abs((ds.IQ_abs - ds.IQ_abs.mean(dim="detuning"))).idxmax(dim="detuning")
     rotation_angle = np.arctan2(
         ds.sel(detuning=shifts).Q - ds.Q.mean(dim="detuning"),
         ds.sel(detuning=shifts).I - ds.I.mean(dim="detuning"),
     )
     ds_fit = ds.assign({"iw_angle_delta": rotation_angle})
-    ds_fit = ds_fit.assign(
-        {"I_rot": ds_fit.I * np.cos(rotation_angle) + ds_fit.Q * np.sin(rotation_angle)}
-    )
+    ds_fit = ds_fit.assign({"I_rot": ds_fit.I * np.cos(rotation_angle) + ds_fit.Q * np.sin(rotation_angle)})
 
     # --- Per-qubit Lorentzian peak fit on I_rot vs detuning ---
     qubit_names = [q.name for q in qubits]
     f0_list, fwhm_list, amp_list, bg0_list, bg1_list = [], [], [], [], []
     r2_list, contrast_list, success_list, popt_list, fit_half_list = (
-        [], [], [], [], [],
+        [],
+        [],
+        [],
+        [],
+        [],
     )
     for q in qubits:
         det_q = ds_fit.detuning.values
         sig_q = ds_fit.sel(qubit=q.name).I_rot.values
         res = fit_qubit_peak(
-            det_q, sig_q,
+            det_q,
+            sig_q,
             max_fwhm_mhz=node.parameters.max_fwhm_mhz,
             r2_threshold=node.parameters.r2_threshold,
             min_contrast=node.parameters.min_contrast,
@@ -379,33 +404,23 @@ def fit_raw_data(
     full_freq = np.array([q.xy.RF_frequency for q in qubits])
     res_freq = f0_arr + full_freq
 
-    prev_angles = np.array(
-        [q.resonator.operations["readout"].integration_weights_angle for q in qubits]
-    )
+    prev_angles = np.array([q.resonator.operations["readout"].integration_weights_angle for q in qubits])
     iw_angle_final = (prev_angles + rotation_angle.values) % (2 * np.pi)
 
     used_amp = np.array(
-        [
-            q.xy.operations["saturation"].amplitude * node.parameters.operation_amplitude_factor
-            for q in qubits
-        ]
+        [q.xy.operations["saturation"].amplitude * node.parameters.operation_amplitude_factor for q in qubits]
     )
     # Treat target_peak_width as the desired FWHM (matches the new fwhm semantics).
     with np.errstate(divide="ignore", invalid="ignore"):
         factor_cw = node.parameters.target_peak_width / fwhm_arr
         sat_amp = factor_cw * used_amp / node.parameters.operation_amplitude_factor
-        x180_length = np.array(
-            [q.xy.operations["x180"].length * 1e-9 for q in qubits]
-        )
+        x180_length = np.array([q.xy.operations["x180"].length * 1e-9 for q in qubits])
         factor_x180 = np.pi / (fwhm_arr * x180_length)
         x180_amp = factor_x180 * used_amp
 
     # Tighten success further by the bound checks the legacy node used.
     sat_amp_in_bounds = np.array(
-        [
-            (not np.isnan(sat_amp[i])) and abs(sat_amp[i]) < limits[i].max_wf_amplitude
-            for i in range(len(qubits))
-        ]
+        [(not np.isnan(sat_amp[i])) and abs(sat_amp[i]) < limits[i].max_wf_amplitude for i in range(len(qubits))]
     )
     success_arr = np.array(success_list) & sat_amp_in_bounds
 
@@ -413,32 +428,48 @@ def fit_raw_data(
     ds_fit = ds_fit.assign(
         {
             "f0": xr.DataArray(
-                f0_arr, coords={"qubit": qubit_names}, dims="qubit",
+                f0_arr,
+                coords={"qubit": qubit_names},
+                dims="qubit",
                 attrs={"long_name": "qubit detuning at peak", "units": "Hz"},
             ),
             "res_freq": xr.DataArray(
-                res_freq, coords={"qubit": qubit_names}, dims="qubit",
+                res_freq,
+                coords={"qubit": qubit_names},
+                dims="qubit",
                 attrs={"long_name": "absolute qubit RF frequency", "units": "Hz"},
             ),
             "fwhm": xr.DataArray(
-                fwhm_arr, coords={"qubit": qubit_names}, dims="qubit",
+                fwhm_arr,
+                coords={"qubit": qubit_names},
+                dims="qubit",
                 attrs={"long_name": "peak FWHM", "units": "Hz"},
             ),
             "amplitude": xr.DataArray(
-                np.array(amp_list), coords={"qubit": qubit_names}, dims="qubit",
+                np.array(amp_list),
+                coords={"qubit": qubit_names},
+                dims="qubit",
             ),
             "bg0": xr.DataArray(
-                np.array(bg0_list), coords={"qubit": qubit_names}, dims="qubit",
+                np.array(bg0_list),
+                coords={"qubit": qubit_names},
+                dims="qubit",
             ),
             "bg1": xr.DataArray(
-                np.array(bg1_list), coords={"qubit": qubit_names}, dims="qubit",
+                np.array(bg1_list),
+                coords={"qubit": qubit_names},
+                dims="qubit",
             ),
             "r2": xr.DataArray(
-                np.array(r2_list), coords={"qubit": qubit_names}, dims="qubit",
+                np.array(r2_list),
+                coords={"qubit": qubit_names},
+                dims="qubit",
                 attrs={"long_name": "R²"},
             ),
             "contrast": xr.DataArray(
-                np.array(contrast_list), coords={"qubit": qubit_names}, dims="qubit",
+                np.array(contrast_list),
+                coords={"qubit": qubit_names},
+                dims="qubit",
                 attrs={"long_name": "contrast = amp / |baseline|"},
             ),
             "popt": xr.DataArray(
@@ -448,23 +479,33 @@ def fit_raw_data(
                 attrs={"long_name": "fit parameters [f0, fwhm, amp, bg0, bg1]"},
             ),
             "fit_window_half_hz": xr.DataArray(
-                np.array(fit_half_list), coords={"qubit": qubit_names}, dims="qubit",
+                np.array(fit_half_list),
+                coords={"qubit": qubit_names},
+                dims="qubit",
                 attrs={"long_name": "half-width of the refit window", "units": "Hz"},
             ),
             "iw_angle": xr.DataArray(
-                iw_angle_final, coords={"qubit": qubit_names}, dims="qubit",
+                iw_angle_final,
+                coords={"qubit": qubit_names},
+                dims="qubit",
                 attrs={"long_name": "integration-weight angle", "units": "rad"},
             ),
             "saturation_amplitude": xr.DataArray(
-                sat_amp, coords={"qubit": qubit_names}, dims="qubit",
+                sat_amp,
+                coords={"qubit": qubit_names},
+                dims="qubit",
                 attrs={"units": "V"},
             ),
             "x180_amplitude": xr.DataArray(
-                x180_amp, coords={"qubit": qubit_names}, dims="qubit",
+                x180_amp,
+                coords={"qubit": qubit_names},
+                dims="qubit",
                 attrs={"units": "V"},
             ),
             "success": xr.DataArray(
-                success_arr, coords={"qubit": qubit_names}, dims="qubit",
+                success_arr,
+                coords={"qubit": qubit_names},
+                dims="qubit",
             ),
         }
     )
