@@ -63,12 +63,12 @@ def plot_individual_raw_data_with_fit(
     """Plot one qubit-pair leakage-amplification heatmap."""
     fr = ds_fit.sel(qubit_pair=qp_name)
 
-    if "state_moving_stationary" not in fr:
+    if "state" not in fr:
         ax.text(0.5, 0.5, "No leakage data", ha="center", va="center", transform=ax.transAxes)
         ax.set_title(qp_name)
         return
 
-    data = fr.state_moving_stationary  # dims: amp, number_of_operations (or number_of_operations, amp)
+    data = fr.state
     coupler_flux_mV = 1e3 * (fr.amp_full if "amp_full" in fr.coords else fr.amp).values
     n_ops = (
         fr.number_of_operations.values
@@ -110,12 +110,12 @@ def plot_individual_mean_data_with_fit(
     """Plot one qubit-pair mean P(11) trace."""
     fr = ds_fit.sel(qubit_pair=qp_name)
 
-    if "mean_state_moving_stationary" not in fr:
+    if "mean_state" not in fr:
         ax.text(0.5, 0.5, "No mean P(11) data", ha="center", va="center", transform=ax.transAxes)
         ax.set_title(qp_name)
         return
 
-    mean_arr = fr.mean_state_moving_stationary
+    mean_arr = fr.mean_state
     coupler_flux_mV = 1e3 * (fr.amp_full if "amp_full" in fr.coords else fr.amp).values
     success = "success" in fr.coords and bool(fr.success) and np.isfinite(float(fr.optimal_amplitude))
 
