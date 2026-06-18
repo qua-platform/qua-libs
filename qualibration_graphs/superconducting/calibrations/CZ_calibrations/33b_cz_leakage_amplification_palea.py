@@ -19,6 +19,7 @@ from quam_config import Quam
 
 from calibration_utils.cz_leakage_amp import (
     Parameters,
+    build_palea_qm_config,
     fit_raw_data,
     log_fitted_results,
     QubitRoles,
@@ -113,6 +114,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
             cz_phase_shifts_map[qp.name] = (cz_macro.phase_shift_target, cz_macro.phase_shift_control)
     node.namespace["qubit_roles_map"] = qubit_roles_map
 
+    qm_config, ef_element_names = build_palea_qm_config(node.machine, qubit_pairs, qubit_roles_map)
+    node.namespace["qm_config"] = qm_config
+    node.namespace["ef_element_names"] = ef_element_names
+
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_shots
     amplitudes = np.arange(1 - node.parameters.amp_range, 1 + node.parameters.amp_range, node.parameters.amp_step)
@@ -172,21 +177,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
                             with for_(count, 0, count < n_op, count + 1):
                                 # play the CZ gate
                                 qp.macros[operation].apply(amplitude_scale_coupler=amp)
-                                #  Undo CZ virtual-Z phase shift before DD, mapped by qubit frequency.
-                                frame_rotation_2pi(-phase_high, high_q.xy.name)
+                                align(ef_element_names[high_q.name], high_q.xy.name)
                                 # play the PALEA Dynamical decoupling sequence:
                                 # EF (e-f) pi on the leakage qubit (|11⟩↔|20⟩), g-e pi on the low qubit.
-                                high_q.xy.update_frequency(
-                                    high_q.xy.intermediate_frequency - high_q.anharmonicity,
-                                )
-                                high_q.xy.play("EF_x180")  # high freq qubit is the leakage qubit
+                                play("EF_x180", ef_element_names[high_q.name])
                                 low_q.xy.play("x180")
-                                high_q.xy.update_frequency(high_q.xy.intermediate_frequency)
-                                # Apply CZ virtual-Z phases after DD, mapped by qubit frequency.
-                                frame_rotation_2pi(phase_high, high_q.xy.name)
-                                wait(4)
-                            qp.align()
 
+                            qp.align()
                             # measure both qubits
                             high_q.readout_state_gef(state_high_q[ii])
                             low_q.readout_state_gef(state_low_q[ii])
@@ -221,8 +218,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
     qmm = node.machine.connect()
-    # Get the config from the machine
-    config = node.machine.generate_config()
+    config = node.namespace["qm_config"]
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
@@ -235,8 +231,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset."""
     # Connect to the QOP
     qmm = node.machine.connect()
-    # Get the config from the machine
-    config = node.machine.generate_config()
+    config = node.namespace["qm_config"]
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
