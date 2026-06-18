@@ -120,9 +120,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
         n = declare(int)
         n_op = declare(int)
         count = declare(int)
-        n_st = declare_stream()
+        n_st = declare_output_stream()
         state_t = [declare(int) for _ in range(num_qubit_pairs)]
-        state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
+        state_t_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             for qp in multiplexed_qubit_pairs.values():
