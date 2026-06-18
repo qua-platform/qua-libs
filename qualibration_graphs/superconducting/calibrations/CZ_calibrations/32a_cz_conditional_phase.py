@@ -73,10 +73,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.amp_range = 0.06
-    node.parameters.reset_type = "active"
-    node.parameters.operation = "cz_unipolar"
-    node.parameters.qubit_pairs = ["coupler_q4_q5"]
     pass
 
 
