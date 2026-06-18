@@ -179,8 +179,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                                 if node.parameters.use_state_discrimination:
                                     # measure g/e/f populations for both qubits
-                                    mq.readout_state_gef(state_mq[ii], pulse_name="readout")
-                                    sq.readout_state_gef(state_sq[ii], pulse_name="readout")
+                                    mq.readout_state_gef(state_mq[ii])
+                                    sq.readout_state_gef(state_sq[ii])
                                     with switch_(state_mq[ii]):
                                         with case_(0):
                                             wait(4)
