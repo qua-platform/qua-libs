@@ -1,5 +1,6 @@
 # %% {Imports}
-from qualibrate import QualibrationNode, NodeParameters
+from qualibrate import QualibrationNode
+from qualibrate.core.parameters import NodeParameters
 from quam_config import Quam
 
 description = """

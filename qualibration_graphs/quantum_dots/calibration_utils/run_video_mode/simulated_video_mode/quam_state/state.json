@@ -1293,6 +1293,6 @@
     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.demo_files.demo_quam_ld.DemoQuamLD",
     "__package_versions__": {
         "quam": "0.6.0",
-        "quam_builder": "0.4.0"
+        "quam_builder": "0.2.0"
     }
 }

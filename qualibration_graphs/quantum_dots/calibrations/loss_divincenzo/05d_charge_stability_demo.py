@@ -430,3 +430,5 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save the node results and state."""
     node.save()
+    if node.parameters.dc_control:
+        node.machine.dacs["main"]["driver"].close()

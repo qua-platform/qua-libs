@@ -10,8 +10,8 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
-from qualibrate import NodeParameters, QualibrationNode
-from qualibrate.core.parameters import RunnableParameters
+from qualibrate import QualibrationNode
+from qualibrate.core.parameters import NodeParameters, RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 from quam_config import Quam
 from calibration_utils.common_utils.experiment import QubitPairExperimentNodeParameters, get_qubits
