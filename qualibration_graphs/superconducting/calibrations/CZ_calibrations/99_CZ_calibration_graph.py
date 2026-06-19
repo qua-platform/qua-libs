@@ -24,7 +24,7 @@ g = QualibrationGraph(
         "conditional_phase_error_amp": library.nodes["32b_cz_conditional_phase_error_amp"].copy(
             name="conditional_phase_error_amp"
         ),
-        "phase_compensation": library.nodes["33_cz_phase_compensation"].copy(name="phase_compensation"),
+        "phase_compensation": library.nodes["34_cz_phase_compensation"].copy(name="phase_compensation"),
     },
     connectivity=[
         ("chevron", "conditional_phase"),
