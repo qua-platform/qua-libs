@@ -42,7 +42,7 @@ State update:
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="35a_cz_phase_compensation_error_amp",
+    name="33b_cz_phase_compensation_error_amp",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),
@@ -65,7 +65,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
     num_qubit_pairs = len(qubit_pairs)
 
     n_avg = node.parameters.num_shots
-    frames = np.arange(-0.1, 0.1, 0.2 / node.parameters.num_frames)
+    frames = np.arange(-node.parameters.frame_range / 2, node.parameters.frame_range / 2, node.parameters.num_frames)
     num_operations = node.parameters.number_of_operations
     cz_operation = node.parameters.operation
 
@@ -232,12 +232,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             old_phase_control = qp.macros[cz_operation].phase_shift_control
             old_phase_target = qp.macros[cz_operation].phase_shift_target
-            fitted_control_phase = float(
-                node.results["ds_fit"].sel(qubit_pair=qp.name).fitted_control_phase.values
-            )
-            fitted_target_phase = float(
-                node.results["ds_fit"].sel(qubit_pair=qp.name).fitted_target_phase.values
-            )
+            fitted_control_phase = float(node.results["ds_fit"].sel(qubit_pair=qp.name).fitted_control_phase.values)
+            fitted_target_phase = float(node.results["ds_fit"].sel(qubit_pair=qp.name).fitted_target_phase.values)
 
             qp.macros[cz_operation].phase_shift_control = (old_phase_control + fitted_control_phase) % 1
             qp.macros[cz_operation].phase_shift_target = (old_phase_target + fitted_target_phase) % 1
@@ -248,5 +244,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save node results and state updates."""
     node.save()
+
 
 # %%

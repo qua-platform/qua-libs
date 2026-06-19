@@ -14,6 +14,8 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 100
     """Number of shots to perform. Default is 100."""
+    frame_range: float = 0.1
+    """Range of frame rotation to sweep. Default is 0.1."""
     num_frames: int = 17
     """Number of phase frames to sweep. Default is 17."""
     number_of_operations: int = 8
