@@ -46,7 +46,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="33_cz_phase_compensation",  # Name should be unique
+    name="33a_cz_phase_compensation",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
     machine=Quam.load(),
@@ -153,7 +153,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     qp.qubit_target.resonator.measure("readout", qua_vars=(I_t[ii], Q_t[ii]))
                                     save(I_t[ii], I_t_st[ii])
                                     save(Q_t[ii], Q_t_st[ii])
-
+        align()
         with stream_processing():
             n_st.save("n")
             for ii in range(num_qubit_pairs):
