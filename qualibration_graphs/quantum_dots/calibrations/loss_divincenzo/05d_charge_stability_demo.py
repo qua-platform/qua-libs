@@ -98,7 +98,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load("/Users/kalidu_laptop/demo_for_yasu/qua-libs/qualibration_graphs/quantum_dots/calibration_utils/run_video_mode/simulated_video_mode/quam_state")
+node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
