@@ -1,6 +1,6 @@
 from qua_dashboards.virtual_gates import virtual_layer_adder
 from qualibrate import NodeParameters
-from qualibrate.parameters import RunnableParameters
+from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 from calibration_utils.run_video_mode.video_mode_specific_parameters import VideoModeCommonParameters
 

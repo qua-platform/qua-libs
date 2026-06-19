@@ -80,14 +80,14 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.num_shots = 2
 
     # node.parameters.virtual_gate_set_id = "main_qpu"
-    # node.parameters.x_axis_name = "virtual_dot_1"
-    # node.parameters.y_axis_name = "virtual_dot_2"
-    # node.parameters.sensor_names = ["virtual_sensor_1", "virtual_sensor_2"]
-    # node.parameters.dc_control = True
+    node.parameters.x_axis_name = "virtual_dot_1"
+    node.parameters.y_axis_name = "virtual_dot_2"
+    node.parameters.sensor_names = ["virtual_sensor_1"]
+    node.parameters.dc_control = True
     # node.parameters.result_type = "I"
     # node.parameters.num_shots = 100
     # node.parameters.simulate = True
-    # node.parameters.use_validation = True
+    node.parameters.use_validation = True
     # node.parameters.run_in_video_mode = False
     # node.parameters.video_mode_port = 8050
 
@@ -98,7 +98,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load()
+node.machine = Quam.load("/Users/kalidu_laptop/demo_for_yasu/qua-libs/qualibration_graphs/quantum_dots/calibration_utils/run_video_mode/simulated_video_mode/quam_state")
 
 
 # %% {Create_QUA_program}
