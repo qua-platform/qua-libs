@@ -53,9 +53,7 @@ def add_palea_ef_elements(config: dict, high_qubits: Iterable) -> Dict[str, str]
         try:
             ef_x180_pulse = xy_element["operations"]["EF_x180"]
         except KeyError as exc:
-            raise ValueError(
-                f"Qubit {qubit.name} is missing EF_x180 on {xy_name}; calibrate EF gates first."
-            ) from exc
+            raise ValueError(f"Qubit {qubit.name} is missing EF_x180 on {xy_name}; calibrate EF gates first.") from exc
 
         ef_element = copy.deepcopy(xy_element)
         ef_element["intermediate_frequency"] = qubit.xy.intermediate_frequency - qubit.anharmonicity
