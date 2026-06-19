@@ -153,7 +153,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     qp.qubit_target.resonator.measure("readout", qua_vars=(I_t[ii], Q_t[ii]))
                                     save(I_t[ii], I_t_st[ii])
                                     save(Q_t[ii], Q_t_st[ii])
-
+        align()
         with stream_processing():
             n_st.save("n")
             for ii in range(num_qubit_pairs):

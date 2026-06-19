@@ -34,7 +34,7 @@ For each selected qubit pair:
 1. Prepare either control or target qubit in a Ramsey-like sequence.
 2. Apply a train of CZ macros (1..N repetitions).
 3. Sweep a final virtual frame rotation and fit the Ramsey oscillation phase per repetition count.
-4. Fit phase vs number of operations with a line; the slope gives the per-CZ local phase.
+4. Average the signal over repetitions and fit a sinc model to locate the optimal compensation frame.
 
 State update:
     - qp.macros[operation].phase_shift_control
@@ -65,7 +65,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
     num_qubit_pairs = len(qubit_pairs)
 
     n_avg = node.parameters.num_shots
-    frames = np.arange(-node.parameters.frame_range / 2, node.parameters.frame_range / 2, node.parameters.num_frames)
+    frames = np.linspace(-node.parameters.frame_range / 2, node.parameters.frame_range / 2, node.parameters.num_frames)
     num_operations = node.parameters.number_of_operations
     cz_operation = node.parameters.operation
 
@@ -223,7 +223,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update local-Z compensation with the fitted phase from the max-mean method."""
+    """Update local-Z compensation with the fitted phase from the sinc fit."""
     cz_operation = node.parameters.operation
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
