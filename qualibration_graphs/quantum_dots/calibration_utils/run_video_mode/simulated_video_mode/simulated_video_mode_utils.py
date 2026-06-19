@@ -45,7 +45,7 @@ def get_simulated_video_mode_dc_set(
         )
         return None
 
-    machine.connect_to_external_source(external_qdac=True)
+    machine.connect_to_external_source()
     return dc_set
 
 
@@ -136,8 +136,7 @@ def launch_video_mode(
 
     qmm = machine.connect()
 
-    data_acquirer = SimulationDataAcquirerOPXOutput(
-        qmm=qmm,
+    data_acquirer = SimulationDataAcquirer(
         machine=machine,
         gate_set=virtual_gate_set,  # Replace with your GateSet instance
         x_mode=x_mode,

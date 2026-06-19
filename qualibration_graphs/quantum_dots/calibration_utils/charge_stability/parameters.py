@@ -12,11 +12,11 @@ class NodeSpecificParameters(RunnableParameters):
     """Number of averages to perform. Default is 100."""
     scan_pattern: Literal["raster", "switch_raster"] = "switch_raster"
     """The scanning pattern."""
-    sensor_names: List[str] = None
+    sensor_names: List[str] = "virtual_sensor_1"
     """List of sensor dot names to measure in your measurement."""
-    x_axis_name: str = None
+    x_axis_name: str = "virtual_dot_1"
     """The name of the swept element in the X axis."""
-    y_axis_name: str = None
+    y_axis_name: str = "virtual_dot_2"
     """The name of the swept element in the Y axis."""
     x_points: int = 101
     """Number of measurement points in the X axis."""
@@ -38,6 +38,7 @@ class NodeSpecificParameters(RunnableParameters):
     """A deliberate delay time after the hold_duration and before the resonator measurement."""
     use_validation: bool = True
     """Whether to use validation with simulated data."""
+    dc_control: bool = True
 
 
 class Parameters(

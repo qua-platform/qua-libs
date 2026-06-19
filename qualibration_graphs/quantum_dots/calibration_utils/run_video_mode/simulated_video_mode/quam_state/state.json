@@ -22,9 +22,10 @@
             },
             "attenuation": 10,
             "current_external_voltage": -0.0048056,
-            "qdac_spec": {
+            "dac_spec": {
+                "output_port": 1,
                 "qdac_output_port": 1,
-                "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
+                "__class__": "quam_builder.architecture.quantum_dots.components.dac_spec.QdacSpec"
             },
             "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
         },
@@ -50,9 +51,10 @@
             },
             "attenuation": 10,
             "current_external_voltage": -0.0047219,
-            "qdac_spec": {
+            "dac_spec": {
+                "output_port": 2,
                 "qdac_output_port": 2,
-                "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
+                "__class__": "quam_builder.architecture.quantum_dots.components.dac_spec.QdacSpec"
             },
             "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.VoltageGate"
         },
@@ -78,16 +80,23 @@
             },
             "attenuation": 10,
             "current_external_voltage": -0.0047641,
-            "qdac_spec": {
+            "dac_spec": {
+                "output_port": 3,
                 "qdac_output_port": 3,
-                "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
+                "__class__": "quam_builder.architecture.quantum_dots.components.dac_spec.QdacSpec"
             },
             "readout": {
                 "operations": {
                     "readout": {
-                        "length": 2000,
+                        "length": 1000,
                         "id": "readout",
                         "amplitude": 0.1,
+                        "__class__": "quam.components.pulses.SquareReadoutPulse"
+                    },
+                    "readout_qd_pair_1_2": {
+                        "length": 5000,
+                        "id": "readout_qd_pair_1_2",
+                        "amplitude": 0.15,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     }
                 },
@@ -131,9 +140,10 @@
             },
             "attenuation": 10,
             "current_external_voltage": -0.0047641,
-            "qdac_spec": {
+            "dac_spec": {
+                "output_port": 4,
                 "qdac_output_port": 4,
-                "__class__": "quam_builder.architecture.quantum_dots.components.voltage_gate.QdacSpec"
+                "__class__": "quam_builder.architecture.quantum_dots.components.dac_spec.QdacSpec"
             },
             "readout": {
                 "operations": {
@@ -167,85 +177,29 @@
         "main_qpu": {
             "id": "main_qpu",
             "macros": {
-                "virtual_dot_1_empty": {
-                    "duration": 500,
-                    "voltages": {
-                        "virtual_dot_1": -0.1
-                    },
-                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
-                },
-                "virtual_dot_1_initialize": {
-                    "duration": 500,
-                    "voltages": {
-                        "virtual_dot_1": 0.05
-                    },
-                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
-                },
                 "virtual_dot_1_measure": {
-                    "duration": 16,
+                    "duration": 524,
                     "voltages": {
                         "virtual_dot_1": -0.05
                     },
                     "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
                 },
-                "virtual_dot_2_empty": {
-                    "duration": 500,
-                    "voltages": {
-                        "virtual_dot_2": -0.1
-                    },
-                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
-                },
-                "virtual_dot_2_initialize": {
-                    "duration": 500,
-                    "voltages": {
-                        "virtual_dot_2": 0.05
-                    },
-                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
-                },
                 "virtual_dot_2_measure": {
-                    "duration": 16,
+                    "duration": 524,
                     "voltages": {
                         "virtual_dot_2": -0.05
                     },
                     "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
                 },
-                "Q1_empty": {
-                    "duration": 500,
-                    "voltages": {
-                        "virtual_dot_1": -0.1
-                    },
-                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
-                },
-                "Q1_initialize": {
-                    "duration": 500,
-                    "voltages": {
-                        "virtual_dot_1": 0.05
-                    },
-                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
-                },
                 "Q1_measure": {
-                    "duration": 16,
+                    "duration": 524,
                     "voltages": {
                         "virtual_dot_1": -0.05
                     },
                     "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
                 },
-                "Q2_empty": {
-                    "duration": 500,
-                    "voltages": {
-                        "virtual_dot_2": -0.1
-                    },
-                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
-                },
-                "Q2_initialize": {
-                    "duration": 500,
-                    "voltages": {
-                        "virtual_dot_2": 0.05
-                    },
-                    "__class__": "quam_builder.architecture.quantum_dots.components.gate_set.VoltageTuningPoint"
-                },
                 "Q2_measure": {
-                    "duration": 16,
+                    "duration": 524,
                     "voltages": {
                         "virtual_dot_2": -0.05
                     },
@@ -300,9 +254,71 @@
                         ]
                     ],
                     "__class__": "quam_builder.architecture.quantum_dots.components.virtual_gate_set.VirtualizationLayer"
+                },
+                {
+                    "id": "quantum_dot_pair_detuning_matrix",
+                    "source_gates": [
+                        "qd_pair_1_2_epsilon"
+                    ],
+                    "target_gates": [
+                        "virtual_dot_1",
+                        "virtual_dot_2"
+                    ],
+                    "matrix": [
+                        [
+                            1.0,
+                            -1.0
+                        ]
+                    ],
+                    "use_pseudoinverse": true,
+                    "__class__": "quam_builder.architecture.quantum_dots.components.virtual_gate_set.VirtualizationLayer"
                 }
             ],
             "allow_rectangular_matrices": true,
+            "_influence_map": {
+                "plunger_1": [
+                    "plunger_1"
+                ],
+                "plunger_2": [
+                    "plunger_2"
+                ],
+                "sensor_DC_1": [
+                    "sensor_DC_1"
+                ],
+                "sensor_DC_2": [
+                    "sensor_DC_2"
+                ],
+                "virtual_dot_1": [
+                    "plunger_1",
+                    "plunger_2",
+                    "sensor_DC_1",
+                    "sensor_DC_2"
+                ],
+                "virtual_dot_2": [
+                    "plunger_1",
+                    "plunger_2",
+                    "sensor_DC_1",
+                    "sensor_DC_2"
+                ],
+                "virtual_sensor_1": [
+                    "plunger_1",
+                    "plunger_2",
+                    "sensor_DC_1",
+                    "sensor_DC_2"
+                ],
+                "virtual_sensor_2": [
+                    "plunger_1",
+                    "plunger_2",
+                    "sensor_DC_1",
+                    "sensor_DC_2"
+                ],
+                "qd_pair_1_2_epsilon": [
+                    "plunger_1",
+                    "plunger_2",
+                    "sensor_DC_1",
+                    "sensor_DC_2"
+                ]
+            },
             "__class__": "quam_builder.architecture.quantum_dots.components.virtual_gate_set.VirtualGateSet"
         }
     },
@@ -390,15 +406,10 @@
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
                 },
                 "initialize": {
-                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_1_initialize",
-                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
-                },
-                "measure": {
-                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.MeasureStateMacro"
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.InitializeStateMacro"
                 },
                 "empty": {
-                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_1_empty",
-                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.EmptyStateMacro"
                 }
             },
             "physical_channel": "#/physical_channels/plunger_1",
@@ -414,15 +425,10 @@
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
                 },
                 "initialize": {
-                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_2_initialize",
-                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
-                },
-                "measure": {
-                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.MeasureStateMacro"
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.InitializeStateMacro"
                 },
                 "empty": {
-                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/virtual_dot_2_empty",
-                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.EmptyStateMacro"
                 }
             },
             "physical_channel": "#/physical_channels/plunger_2",
@@ -442,11 +448,11 @@
                 "initialize": {
                     "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.InitializeStateMacro"
                 },
-                "measure": {
-                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.MeasureStateMacro"
-                },
                 "empty": {
                     "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.EmptyStateMacro"
+                },
+                "measure": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.state_macros.MeasurePSBPairMacro"
                 }
             },
             "quantum_dots": [
@@ -515,15 +521,13 @@
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
                 },
                 "initialize": {
-                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q1_initialize",
-                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.Initialize1QMacro"
                 },
                 "measure": {
                     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.MeasureMacro"
                 },
                 "empty": {
-                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q1_empty",
-                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.Empty1QMacro"
                 },
                 "xy_drive": {
                     "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.XYDriveMacro"
@@ -578,6 +582,9 @@
                 "z90": {
                     "theta": 90.0,
                     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
+                },
+                "z_neg90": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.ZNeg90Macro"
                 },
                 "I": {
                     "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.IdentityMacro"
@@ -630,30 +637,263 @@
                         "amplitude": -0.1,
                         "sigma": 16.666666666666668,
                         "__class__": "quam.components.pulses.GaussianPulse"
+                    },
+                    "gaussian_x90": {
+                        "length": 1000,
+                        "id": "gaussian_x90",
+                        "amplitude": 0.25,
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "gaussian_x180": {
+                        "length": 1000,
+                        "id": "gaussian_x180",
+                        "amplitude": 0.5,
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "gaussian_x_neg90": {
+                        "length": "#../gaussian_x90/length",
+                        "id": "gaussian_x_neg90",
+                        "amplitude": "#../gaussian_x90/amplitude",
+                        "sigma": "#../gaussian_x90/sigma",
+                        "axis_angle": 3.141592653589793,
+                        "sigma_ratio": "#../gaussian_x90/sigma_ratio",
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "gaussian_y180": {
+                        "length": "#../gaussian_x180/length",
+                        "id": "gaussian_y180",
+                        "amplitude": "#../gaussian_x180/amplitude",
+                        "sigma": "#../gaussian_x180/sigma",
+                        "axis_angle": 1.5707963267948966,
+                        "sigma_ratio": "#../gaussian_x180/sigma_ratio",
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "gaussian_y90": {
+                        "length": "#../gaussian_x90/length",
+                        "id": "gaussian_y90",
+                        "amplitude": "#../gaussian_x90/amplitude",
+                        "sigma": "#../gaussian_x90/sigma",
+                        "axis_angle": 1.5707963267948966,
+                        "sigma_ratio": "#../gaussian_x90/sigma_ratio",
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "gaussian_y_neg90": {
+                        "length": "#../gaussian_x90/length",
+                        "id": "gaussian_y_neg90",
+                        "amplitude": "#../gaussian_x90/amplitude",
+                        "sigma": "#../gaussian_x90/sigma",
+                        "axis_angle": -1.5707963267948966,
+                        "sigma_ratio": "#../gaussian_x90/sigma_ratio",
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "square_x90": {
+                        "id": "square_x90",
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableSquarePulse"
+                    },
+                    "square_x180": {
+                        "id": "square_x180",
+                        "amplitude": 0.5,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableSquarePulse"
+                    },
+                    "square_x_neg90": {
+                        "length": "#../square_x90/length",
+                        "id": "square_x_neg90",
+                        "amplitude": "#../square_x90/amplitude",
+                        "axis_angle": 3.141592653589793,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableSquarePulse"
+                    },
+                    "square_y180": {
+                        "length": "#../square_x180/length",
+                        "id": "square_y180",
+                        "amplitude": "#../square_x180/amplitude",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableSquarePulse"
+                    },
+                    "square_y90": {
+                        "length": "#../square_x90/length",
+                        "id": "square_y90",
+                        "amplitude": "#../square_x90/amplitude",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableSquarePulse"
+                    },
+                    "square_y_neg90": {
+                        "length": "#../square_x90/length",
+                        "id": "square_y_neg90",
+                        "amplitude": "#../square_x90/amplitude",
+                        "axis_angle": -1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableSquarePulse"
+                    },
+                    "kaiser_x90": {
+                        "id": "kaiser_x90",
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableKaiserPulse"
+                    },
+                    "kaiser_x180": {
+                        "id": "kaiser_x180",
+                        "amplitude": 0.5,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableKaiserPulse"
+                    },
+                    "kaiser_x_neg90": {
+                        "length": "#../kaiser_x90/length",
+                        "id": "kaiser_x_neg90",
+                        "amplitude": "#../kaiser_x90/amplitude",
+                        "axis_angle": 3.141592653589793,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableKaiserPulse"
+                    },
+                    "kaiser_y180": {
+                        "length": "#../kaiser_x180/length",
+                        "id": "kaiser_y180",
+                        "amplitude": "#../kaiser_x180/amplitude",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableKaiserPulse"
+                    },
+                    "kaiser_y90": {
+                        "length": "#../kaiser_x90/length",
+                        "id": "kaiser_y90",
+                        "amplitude": "#../kaiser_x90/amplitude",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableKaiserPulse"
+                    },
+                    "kaiser_y_neg90": {
+                        "length": "#../kaiser_x90/length",
+                        "id": "kaiser_y_neg90",
+                        "amplitude": "#../kaiser_x90/amplitude",
+                        "axis_angle": -1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableKaiserPulse"
+                    },
+                    "hermite_x90": {
+                        "id": "hermite_x90",
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableHermitePulse"
+                    },
+                    "hermite_x180": {
+                        "id": "hermite_x180",
+                        "amplitude": 0.5,
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableHermitePulse"
+                    },
+                    "hermite_x_neg90": {
+                        "length": "#../hermite_x90/length",
+                        "id": "hermite_x_neg90",
+                        "amplitude": "#../hermite_x90/amplitude",
+                        "sigma_ratio": "#../hermite_x90/sigma_ratio",
+                        "hermite_coeff": "#../hermite_x90/hermite_coeff",
+                        "axis_angle": 3.141592653589793,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableHermitePulse"
+                    },
+                    "hermite_y180": {
+                        "length": "#../hermite_x180/length",
+                        "id": "hermite_y180",
+                        "amplitude": "#../hermite_x180/amplitude",
+                        "sigma_ratio": "#../hermite_x180/sigma_ratio",
+                        "hermite_coeff": "#../hermite_x180/hermite_coeff",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableHermitePulse"
+                    },
+                    "hermite_y90": {
+                        "length": "#../hermite_x90/length",
+                        "id": "hermite_y90",
+                        "amplitude": "#../hermite_x90/amplitude",
+                        "sigma_ratio": "#../hermite_x90/sigma_ratio",
+                        "hermite_coeff": "#../hermite_x90/hermite_coeff",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableHermitePulse"
+                    },
+                    "hermite_y_neg90": {
+                        "length": "#../hermite_x90/length",
+                        "id": "hermite_y_neg90",
+                        "amplitude": "#../hermite_x90/amplitude",
+                        "sigma_ratio": "#../hermite_x90/sigma_ratio",
+                        "hermite_coeff": "#../hermite_x90/hermite_coeff",
+                        "axis_angle": -1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableHermitePulse"
+                    },
+                    "drag_x90": {
+                        "id": "drag_x90",
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableDragPulse"
+                    },
+                    "drag_x180": {
+                        "id": "drag_x180",
+                        "amplitude": 0.5,
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableDragPulse"
+                    },
+                    "drag_x_neg90": {
+                        "length": "#../drag_x90/length",
+                        "id": "drag_x_neg90",
+                        "amplitude": "#../drag_x90/amplitude",
+                        "sigma_ratio": "#../drag_x90/sigma_ratio",
+                        "drag_coefficient": "#../drag_x90/drag_coefficient",
+                        "axis_angle": 3.141592653589793,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableDragPulse"
+                    },
+                    "drag_y180": {
+                        "length": "#../drag_x180/length",
+                        "id": "drag_y180",
+                        "amplitude": "#../drag_x180/amplitude",
+                        "sigma_ratio": "#../drag_x180/sigma_ratio",
+                        "drag_coefficient": "#../drag_x180/drag_coefficient",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableDragPulse"
+                    },
+                    "drag_y90": {
+                        "length": "#../drag_x90/length",
+                        "id": "drag_y90",
+                        "amplitude": "#../drag_x90/amplitude",
+                        "sigma_ratio": "#../drag_x90/sigma_ratio",
+                        "drag_coefficient": "#../drag_x90/drag_coefficient",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableDragPulse"
+                    },
+                    "drag_y_neg90": {
+                        "length": "#../drag_x90/length",
+                        "id": "drag_y_neg90",
+                        "amplitude": "#../drag_x90/amplitude",
+                        "sigma_ratio": "#../drag_x90/sigma_ratio",
+                        "drag_coefficient": "#../drag_x90/drag_coefficient",
+                        "axis_angle": -1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableDragPulse"
+                    },
+                    "cz": {
+                        "length": 1000,
+                        "id": "cz",
+                        "amplitude": 0.25,
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "crot": {
+                        "length": 1000,
+                        "id": "crot",
+                        "amplitude": 0.25,
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
                     }
                 },
                 "id": "Q1_xy",
-                "intermediate_frequency": 100000000,
-                "opx_output_I": {
+                "intermediate_frequency": 100000000.0,
+                "opx_output": {
                     "controller_id": "con1",
-                    "fem_id": 6,
+                    "fem_id": 1,
                     "port_id": 1,
-                    "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                    "band": 1,
+                    "upconverter_frequency": 2000000000.0,
+                    "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
                 },
-                "opx_output_Q": {
-                    "controller_id": "con1",
-                    "fem_id": 6,
-                    "port_id": 2,
-                    "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
-                },
-                "frequency_converter_up": {
-                    "local_oscillator": {
-                        "frequency": 0,
-                        "__class__": "quam.components.hardware.LocalOscillator"
-                    },
-                    "__class__": "quam.components.hardware.FrequencyConverter"
-                },
-                "__class__": "quam_builder.architecture.quantum_dots.components.xy_drive.XYDriveIQ"
+                "__class__": "quam_builder.architecture.quantum_dots.components.xy_drive.XYDriveMW"
             },
             "preferred_readout_quantum_dot": "virtual_dot_2",
             "__class__": "quam_builder.architecture.quantum_dots.qubit.ld_qubit.LDQubit"
@@ -668,15 +908,13 @@
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
                 },
                 "initialize": {
-                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q2_initialize",
-                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.Initialize1QMacro"
                 },
                 "measure": {
                     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.MeasureMacro"
                 },
                 "empty": {
-                    "point_ref": "#/virtual_gate_sets/main_qpu/macros/Q2_empty",
-                    "__class__": "quam_builder.tools.macros.point_macros.StepPointMacro"
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.Empty1QMacro"
                 },
                 "xy_drive": {
                     "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.XYDriveMacro"
@@ -732,6 +970,9 @@
                     "theta": 90.0,
                     "__class__": "calibration_utils.run_video_mode.simulated_video_mode.quam_macros.ZGateMacro"
                 },
+                "z_neg90": {
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.ZNeg90Macro"
+                },
                 "I": {
                     "__class__": "quam_builder.architecture.quantum_dots.operations.default_macros.single_qubit_macros.IdentityMacro"
                 },
@@ -783,30 +1024,263 @@
                         "amplitude": -0.1,
                         "sigma": 16.666666666666668,
                         "__class__": "quam.components.pulses.GaussianPulse"
+                    },
+                    "gaussian_x90": {
+                        "length": 1000,
+                        "id": "gaussian_x90",
+                        "amplitude": 0.25,
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "gaussian_x180": {
+                        "length": 1000,
+                        "id": "gaussian_x180",
+                        "amplitude": 0.5,
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "gaussian_x_neg90": {
+                        "length": "#../gaussian_x90/length",
+                        "id": "gaussian_x_neg90",
+                        "amplitude": "#../gaussian_x90/amplitude",
+                        "sigma": "#../gaussian_x90/sigma",
+                        "axis_angle": 3.141592653589793,
+                        "sigma_ratio": "#../gaussian_x90/sigma_ratio",
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "gaussian_y180": {
+                        "length": "#../gaussian_x180/length",
+                        "id": "gaussian_y180",
+                        "amplitude": "#../gaussian_x180/amplitude",
+                        "sigma": "#../gaussian_x180/sigma",
+                        "axis_angle": 1.5707963267948966,
+                        "sigma_ratio": "#../gaussian_x180/sigma_ratio",
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "gaussian_y90": {
+                        "length": "#../gaussian_x90/length",
+                        "id": "gaussian_y90",
+                        "amplitude": "#../gaussian_x90/amplitude",
+                        "sigma": "#../gaussian_x90/sigma",
+                        "axis_angle": 1.5707963267948966,
+                        "sigma_ratio": "#../gaussian_x90/sigma_ratio",
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "gaussian_y_neg90": {
+                        "length": "#../gaussian_x90/length",
+                        "id": "gaussian_y_neg90",
+                        "amplitude": "#../gaussian_x90/amplitude",
+                        "sigma": "#../gaussian_x90/sigma",
+                        "axis_angle": -1.5707963267948966,
+                        "sigma_ratio": "#../gaussian_x90/sigma_ratio",
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "square_x90": {
+                        "id": "square_x90",
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableSquarePulse"
+                    },
+                    "square_x180": {
+                        "id": "square_x180",
+                        "amplitude": 0.5,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableSquarePulse"
+                    },
+                    "square_x_neg90": {
+                        "length": "#../square_x90/length",
+                        "id": "square_x_neg90",
+                        "amplitude": "#../square_x90/amplitude",
+                        "axis_angle": 3.141592653589793,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableSquarePulse"
+                    },
+                    "square_y180": {
+                        "length": "#../square_x180/length",
+                        "id": "square_y180",
+                        "amplitude": "#../square_x180/amplitude",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableSquarePulse"
+                    },
+                    "square_y90": {
+                        "length": "#../square_x90/length",
+                        "id": "square_y90",
+                        "amplitude": "#../square_x90/amplitude",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableSquarePulse"
+                    },
+                    "square_y_neg90": {
+                        "length": "#../square_x90/length",
+                        "id": "square_y_neg90",
+                        "amplitude": "#../square_x90/amplitude",
+                        "axis_angle": -1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableSquarePulse"
+                    },
+                    "kaiser_x90": {
+                        "id": "kaiser_x90",
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableKaiserPulse"
+                    },
+                    "kaiser_x180": {
+                        "id": "kaiser_x180",
+                        "amplitude": 0.5,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableKaiserPulse"
+                    },
+                    "kaiser_x_neg90": {
+                        "length": "#../kaiser_x90/length",
+                        "id": "kaiser_x_neg90",
+                        "amplitude": "#../kaiser_x90/amplitude",
+                        "axis_angle": 3.141592653589793,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableKaiserPulse"
+                    },
+                    "kaiser_y180": {
+                        "length": "#../kaiser_x180/length",
+                        "id": "kaiser_y180",
+                        "amplitude": "#../kaiser_x180/amplitude",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableKaiserPulse"
+                    },
+                    "kaiser_y90": {
+                        "length": "#../kaiser_x90/length",
+                        "id": "kaiser_y90",
+                        "amplitude": "#../kaiser_x90/amplitude",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableKaiserPulse"
+                    },
+                    "kaiser_y_neg90": {
+                        "length": "#../kaiser_x90/length",
+                        "id": "kaiser_y_neg90",
+                        "amplitude": "#../kaiser_x90/amplitude",
+                        "axis_angle": -1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableKaiserPulse"
+                    },
+                    "hermite_x90": {
+                        "id": "hermite_x90",
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableHermitePulse"
+                    },
+                    "hermite_x180": {
+                        "id": "hermite_x180",
+                        "amplitude": 0.5,
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableHermitePulse"
+                    },
+                    "hermite_x_neg90": {
+                        "length": "#../hermite_x90/length",
+                        "id": "hermite_x_neg90",
+                        "amplitude": "#../hermite_x90/amplitude",
+                        "sigma_ratio": "#../hermite_x90/sigma_ratio",
+                        "hermite_coeff": "#../hermite_x90/hermite_coeff",
+                        "axis_angle": 3.141592653589793,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableHermitePulse"
+                    },
+                    "hermite_y180": {
+                        "length": "#../hermite_x180/length",
+                        "id": "hermite_y180",
+                        "amplitude": "#../hermite_x180/amplitude",
+                        "sigma_ratio": "#../hermite_x180/sigma_ratio",
+                        "hermite_coeff": "#../hermite_x180/hermite_coeff",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableHermitePulse"
+                    },
+                    "hermite_y90": {
+                        "length": "#../hermite_x90/length",
+                        "id": "hermite_y90",
+                        "amplitude": "#../hermite_x90/amplitude",
+                        "sigma_ratio": "#../hermite_x90/sigma_ratio",
+                        "hermite_coeff": "#../hermite_x90/hermite_coeff",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableHermitePulse"
+                    },
+                    "hermite_y_neg90": {
+                        "length": "#../hermite_x90/length",
+                        "id": "hermite_y_neg90",
+                        "amplitude": "#../hermite_x90/amplitude",
+                        "sigma_ratio": "#../hermite_x90/sigma_ratio",
+                        "hermite_coeff": "#../hermite_x90/hermite_coeff",
+                        "axis_angle": -1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableHermitePulse"
+                    },
+                    "drag_x90": {
+                        "id": "drag_x90",
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableDragPulse"
+                    },
+                    "drag_x180": {
+                        "id": "drag_x180",
+                        "amplitude": 0.5,
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableDragPulse"
+                    },
+                    "drag_x_neg90": {
+                        "length": "#../drag_x90/length",
+                        "id": "drag_x_neg90",
+                        "amplitude": "#../drag_x90/amplitude",
+                        "sigma_ratio": "#../drag_x90/sigma_ratio",
+                        "drag_coefficient": "#../drag_x90/drag_coefficient",
+                        "axis_angle": 3.141592653589793,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableDragPulse"
+                    },
+                    "drag_y180": {
+                        "length": "#../drag_x180/length",
+                        "id": "drag_y180",
+                        "amplitude": "#../drag_x180/amplitude",
+                        "sigma_ratio": "#../drag_x180/sigma_ratio",
+                        "drag_coefficient": "#../drag_x180/drag_coefficient",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableDragPulse"
+                    },
+                    "drag_y90": {
+                        "length": "#../drag_x90/length",
+                        "id": "drag_y90",
+                        "amplitude": "#../drag_x90/amplitude",
+                        "sigma_ratio": "#../drag_x90/sigma_ratio",
+                        "drag_coefficient": "#../drag_x90/drag_coefficient",
+                        "axis_angle": 1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableDragPulse"
+                    },
+                    "drag_y_neg90": {
+                        "length": "#../drag_x90/length",
+                        "id": "drag_y_neg90",
+                        "amplitude": "#../drag_x90/amplitude",
+                        "sigma_ratio": "#../drag_x90/sigma_ratio",
+                        "drag_coefficient": "#../drag_x90/drag_coefficient",
+                        "axis_angle": -1.5707963267948966,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableDragPulse"
+                    },
+                    "cz": {
+                        "length": 1000,
+                        "id": "cz",
+                        "amplitude": 0.25,
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
+                    },
+                    "crot": {
+                        "length": 1000,
+                        "id": "crot",
+                        "amplitude": 0.25,
+                        "sigma": 166.66666666666666,
+                        "axis_angle": 0.0,
+                        "__class__": "quam_builder.architecture.quantum_dots.components.pulses.ScalableGaussianPulse"
                     }
                 },
                 "id": "Q2_xy",
-                "intermediate_frequency": 100000000,
-                "opx_output_I": {
+                "intermediate_frequency": 100000000.0,
+                "opx_output": {
                     "controller_id": "con1",
-                    "fem_id": 6,
+                    "fem_id": 1,
                     "port_id": 3,
-                    "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
+                    "band": 1,
+                    "upconverter_frequency": 2000000000.0,
+                    "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
                 },
-                "opx_output_Q": {
-                    "controller_id": "con1",
-                    "fem_id": 6,
-                    "port_id": 4,
-                    "__class__": "quam.components.ports.analog_outputs.LFFEMAnalogOutputPort"
-                },
-                "frequency_converter_up": {
-                    "local_oscillator": {
-                        "frequency": 0,
-                        "__class__": "quam.components.hardware.LocalOscillator"
-                    },
-                    "__class__": "quam.components.hardware.FrequencyConverter"
-                },
-                "__class__": "quam_builder.architecture.quantum_dots.components.xy_drive.XYDriveIQ"
+                "__class__": "quam_builder.architecture.quantum_dots.components.xy_drive.XYDriveMW"
             },
             "preferred_readout_quantum_dot": "virtual_dot_1",
             "__class__": "quam_builder.architecture.quantum_dots.qubit.ld_qubit.LDQubit"
@@ -816,5 +1290,9 @@
         "Q1",
         "Q2"
     ],
-    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.demo_files.demo_quam_ld.DemoQuamLD"
+    "__class__": "calibration_utils.run_video_mode.simulated_video_mode.demo_files.demo_quam_ld.DemoQuamLD",
+    "__package_versions__": {
+        "quam": "0.6.0",
+        "quam_builder": "0.4.0"
+    }
 }

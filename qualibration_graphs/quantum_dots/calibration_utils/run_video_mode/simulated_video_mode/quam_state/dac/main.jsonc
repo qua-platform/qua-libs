@@ -1,0 +1,11 @@
+{
+  "driver_module": "qcodes_contrib_drivers.drivers.QDevil.QDAC2",
+  "driver_class": "QDac2",
+  "connection": {
+    "visalib": "@py",
+    "address": "TCPIP::172.16.33.101::5025::SOCKET"
+  },
+  "channel_method": "channel",
+  "accessor": "dc_constant_V",
+  "is_qdac": true
+}

@@ -5,11 +5,11 @@ from __future__ import annotations
 from quam.components import pulses
 from quam.components.channels import StickyChannelAddon
 from quam.components.hardware import FrequencyConverter, LocalOscillator
-from quam.components.ports import LFFEMAnalogInputPort, LFFEMAnalogOutputPort
+from quam.components.ports import LFFEMAnalogInputPort, LFFEMAnalogOutputPort, MWFEMAnalogOutputPort
 from quam_builder.architecture.quantum_dots.components import VoltageGate
 from quam_builder.architecture.quantum_dots.components.readout_resonator import ReadoutResonatorSingle
 from quam_builder.architecture.quantum_dots.components.voltage_gate import QdacSpec
-from quam_builder.architecture.quantum_dots.components.xy_drive import XYDriveIQ
+from quam_builder.architecture.quantum_dots.components.xy_drive import XYDriveMW
 
 # from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam
 from calibration_utils.run_video_mode.simulated_video_mode.demo_files.demo_quam_ld import (
@@ -25,30 +25,22 @@ from calibration_utils.run_video_mode.simulated_video_mode.quam_macros import (
 )
 
 
-def _create_xy_drives(controller: str, xy_fem_slot: int) -> dict[int, XYDriveIQ]:
+def _create_xy_drives(controller: str, xy_fem_slot: int) -> dict[int, XYDriveMW]:
     pulse_length_ns = 100
     pulse_sigma_ns = pulse_length_ns / 6
     x180_amplitude = 0.2
     x90_amplitude = x180_amplitude / 2
 
-    xy_drives: dict[int, XYDriveIQ] = {}
+    xy_drives: dict[int, XYDriveMW] = {}
     for qubit_index, (port_i, port_q) in {1: (1, 2), 2: (3, 4)}.items():
-        xy_drive = XYDriveIQ(
+        xy_drive = XYDriveMW(
             id=f"Q{qubit_index}_xy",
-            opx_output_I=LFFEMAnalogOutputPort(
+            opx_output=MWFEMAnalogOutputPort(
                 controller_id=controller,
                 fem_id=xy_fem_slot,
                 port_id=port_i,
-                output_mode="direct",
-            ),
-            opx_output_Q=LFFEMAnalogOutputPort(
-                controller_id=controller,
-                fem_id=xy_fem_slot,
-                port_id=port_q,
-                output_mode="direct",
-            ),
-            frequency_converter_up=FrequencyConverter(
-                local_oscillator=LocalOscillator(frequency=0),
+                band = 1, 
+                upconverter_frequency = 2e9,
             ),
             intermediate_frequency=100e6,
         )
@@ -84,32 +76,13 @@ def _create_xy_drives(controller: str, xy_fem_slot: int) -> dict[int, XYDriveIQ]
 
 def _register_charge_stability_points(machine: LossDiVincenzoQuam) -> None:
     quantum_dot_1 = machine.quantum_dots["virtual_dot_1"]
-    quantum_dot_1.add_point_with_step_macro(
-        "empty",
-        voltages={"virtual_dot_1": -0.1},
-        duration=500,
-    )
-    quantum_dot_1.add_point_with_step_macro(
-        "initialize",
-        voltages={"virtual_dot_1": 0.05},
-        duration=500,
-    )
     quantum_dot_1.add_point(
         "measure",
         voltages={"virtual_dot_1": -0.05},
     )
 
     quantum_dot_2 = machine.quantum_dots["virtual_dot_2"]
-    quantum_dot_2.add_point_with_step_macro(
-        "empty",
-        voltages={"virtual_dot_2": -0.1},
-        duration=500,
-    )
-    quantum_dot_2.add_point_with_step_macro(
-        "initialize",
-        voltages={"virtual_dot_2": 0.05},
-        duration=500,
-    )
+
     quantum_dot_2.add_point(
         "measure",
         voltages={"virtual_dot_2": -0.05},
@@ -128,7 +101,7 @@ def _register_qubit_readout_topology(machine: LossDiVincenzoQuam) -> None:
     )
 
 
-def _register_qubits(machine: LossDiVincenzoQuam, xy_drives: dict[int, XYDriveIQ]) -> list[LDQubit]:
+def _register_qubits(machine: LossDiVincenzoQuam, xy_drives: dict[int, XYDriveMW]) -> list[LDQubit]:
     pulse_duration_cc = 25
     qubit_configs = [
         ("Q1", "virtual_dot_1", "virtual_dot_2", 1),
@@ -146,16 +119,6 @@ def _register_qubits(machine: LossDiVincenzoQuam, xy_drives: dict[int, XYDriveIQ
         qubit = machine.qubits[qubit_name]
         qubit.id = qubit_name
 
-        qubit.add_point_with_step_macro(
-            "empty",
-            voltages={quantum_dot_id: -0.1},
-            duration=500,
-        )
-        qubit.add_point_with_step_macro(
-            "initialize",
-            voltages={quantum_dot_id: 0.05},
-            duration=500,
-        )
         qubit.add_point(
             "measure",
             voltages={quantum_dot_id: -0.05},
@@ -217,7 +180,7 @@ def create_minimal_quam(
 
     controller = "con1"
     lf_fem_slot = 5
-    xy_fem_slot = 6
+    xy_fem_slot = 1
 
     plunger_1 = VoltageGate(
         id="plunger_1",
@@ -230,7 +193,7 @@ def create_minimal_quam(
         sticky=StickyChannelAddon(duration=1000, digital=False),
         attenuation=10,
         current_external_voltage=-0.0048056,
-        qdac_spec=QdacSpec(qdac_output_port=1),
+        dac_spec=QdacSpec(qdac_output_port=1),
     )
     plunger_2 = VoltageGate(
         id="plunger_2",
@@ -243,7 +206,7 @@ def create_minimal_quam(
         sticky=StickyChannelAddon(duration=1000, digital=False),
         attenuation=10,
         current_external_voltage=-0.0047219,
-        qdac_spec=QdacSpec(qdac_output_port=2),
+        dac_spec=QdacSpec(qdac_output_port=2),
     )
     sensor_dc_1 = VoltageGate(
         id="sensor_DC_1",
@@ -256,7 +219,7 @@ def create_minimal_quam(
         sticky=StickyChannelAddon(duration=1000, digital=False),
         attenuation=10,
         current_external_voltage=-0.0047641,
-        qdac_spec=QdacSpec(qdac_output_port=3),
+        dac_spec=QdacSpec(qdac_output_port=3),
     )
     sensor_dc_2 = VoltageGate(
         id="sensor_DC_2",
@@ -269,7 +232,7 @@ def create_minimal_quam(
         sticky=StickyChannelAddon(duration=1000, digital=False),
         attenuation=10,
         current_external_voltage=-0.0047641,
-        qdac_spec=QdacSpec(qdac_output_port=4),
+        dac_spec=QdacSpec(qdac_output_port=4),
     )
 
     readout_resonator_1 = ReadoutResonatorSingle(
@@ -338,7 +301,23 @@ def create_minimal_quam(
     )
     if create_dc_set:
         machine.network["qdac_ip"] = qdac_ip
-        machine.connect_to_external_source(external_qdac=True)
+        qdac_name = "main"
+        machine.set_dac_config(
+            {
+                qdac_name: {
+                    "driver_module": "qcodes_contrib_drivers.drivers.QDevil.QDAC2",
+                    "driver_class": "QDac2",
+                    "connection": {
+                        "visalib": "@py",
+                        "address": f"TCPIP::{qdac_ip}::5025::SOCKET",
+                    },
+                    "channel_method": "channel",
+                    "accessor": "dc_constant_V",
+                    "is_qdac": True,
+                }
+            }
+        )
+        machine.connect_to_external_source()
         machine.create_virtual_dc_set("main_qpu")
 
     machine.register_channel_elements(
