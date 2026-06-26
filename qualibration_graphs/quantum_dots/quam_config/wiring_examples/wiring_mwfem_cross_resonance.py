@@ -42,7 +42,9 @@ connectivity = Connectivity()
 for i in range(8):
     connectivity.add_resonator_line(
         qubits=qubits[i],
-        constraints=mw_fem_spec(con=1, slot=rr_slots[i], in_port=rr_in_ports[i], out_port=rr_out_ports[i]),
+        constraints=mw_fem_spec(
+            con=1, slot=rr_slots[i], in_port=rr_in_ports[i], out_port=rr_out_ports[i]
+        ),
     )
     connectivity.add_qubit_drive_lines(
         qubits=qubits[i],
@@ -75,9 +77,9 @@ plt.show(block=True)
 user_input = input("Do you want to save the updated QUAM? (y/n)")
 if user_input.lower() == "y":
     machine = Quam()
-    # Build the wiring (wiring.json) and initiate the QUAM
+    # Build the wiring (wiring_old.json) and initiate the QUAM
     build_quam_wiring(connectivity, host_ip, cluster_name, machine)
 
-    # Reload QUAM, build the QUAM object and save the state as state.json
+    # Reload QUAM, build the QUAM object and save the state as state_old.json
     machine = Quam.load()
     build_quam(machine)

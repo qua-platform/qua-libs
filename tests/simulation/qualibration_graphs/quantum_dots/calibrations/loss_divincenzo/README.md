@@ -50,7 +50,7 @@ RUN_SIM_TESTS=1 pytest tests/simulation/qualibration_graphs/quantum_dots/calibra
 Run a single node:
 
 ```bash
-RUN_SIM_TESTS=1 pytest tests/simulation/qualibration_graphs/quantum_dots/calibrations/loss_divincenzo/test_09b_time_rabi_chevron_parity_diff_sim.py -v
+RUN_SIM_TESTS=1 pytest tests/simulation/qualibration_graphs/quantum_dots/calibrations/loss_divincenzo/test_10b_time_rabi_chevron_sim.py -v
 ```
 
 ## 5) Artifacts

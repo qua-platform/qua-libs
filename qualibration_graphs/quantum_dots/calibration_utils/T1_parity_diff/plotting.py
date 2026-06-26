@@ -1,8 +1,8 @@
-"""Plotting for the T₁ parity-difference relaxation analysis.
+"""Plotting for the T₁ relaxation analysis (joint-outcome / conditional signals).
 
 Produces a single-panel figure per qubit showing:
 
-* Parity-difference data vs idle time τ (scatter + line).
+* Selected analysis signal vs idle time τ (scatter + line).
 * Exponential-decay fit overlaid.
 * Extracted T₁ and amplitude annotated in the title.
 """
@@ -15,11 +15,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 
-def _get_qubit_names_from_ds(ds: xr.Dataset) -> List[str]:
-    """Extract qubit names from ``pdiff_<name>`` data-variable keys."""
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_") and not v.endswith("_fit")]
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
+
+def _get_qubit_names_from_ds(
+    ds: xr.Dataset,
+    qubits: List[Any],
+    analysis_signal: str,
+) -> List[str]:
+    return get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
 
 def plot_raw_data_with_fit(
@@ -27,13 +35,14 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
+    analysis_signal: str = "E_p2_given_p1_0",
 ) -> "plt.Figure":
     """Plot T₁ decay with exponential fit for each qubit.
 
     Parameters
     ----------
     ds : xr.Dataset
-        Raw dataset with ``pdiff_<qubit>`` and ``tau`` coordinate.
+        Dataset with ``{analysis_signal}_{qubit}`` and ``tau`` coordinate.
     ds_fit : xr.Dataset or None
         Unused — kept for API consistency with other plotting modules.
     qubits : list
@@ -42,7 +51,7 @@ def plot_raw_data_with_fit(
         Qubit name → fit-result dict as returned by
         :func:`~.analysis.fit_raw_data`.
     """
-    qubit_names = _get_qubit_names_from_ds(ds)
+    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
@@ -74,17 +83,17 @@ def plot_raw_data_with_fit(
         offset = fr.get("offset", np.nan)
         success = fr.get("success", False)
 
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var in ds.data_vars:
-            pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
+        signal_var = f"{analysis_signal}_{qname}"
+        if signal_var in ds.data_vars:
+            y_trace = np.asarray(ds[signal_var].values, dtype=float)
         else:
-            pdiff = np.full_like(tau_ns, np.nan)
+            y_trace = np.full_like(tau_ns, np.nan)
 
         # Data
-        ax.plot(tau_display, pdiff, "-", color="C0", lw=0.8, alpha=0.7)
+        ax.plot(tau_display, y_trace, "-", color="C0", lw=0.8, alpha=0.7)
         ax.scatter(
             tau_display,
-            pdiff,
+            y_trace,
             c="C0",
             s=8,
             alpha=0.5,
@@ -105,7 +114,7 @@ def plot_raw_data_with_fit(
             )
 
         ax.set_xlabel(f"Idle time ({tau_unit})")
-        ax.set_ylabel("Parity difference")
+        ax.set_ylabel(analysis_signal)
         ax.set_ylim(-0.05, 1.05)
 
         # Title with fit parameters
@@ -124,6 +133,9 @@ def plot_raw_data_with_fit(
         ax.set_title(title, fontsize=10)
         ax.legend(loc="upper right", fontsize=8)
 
-    fig.suptitle("T₁ relaxation — exponential decay fit", fontsize=12)
+    fig.suptitle(
+        f"T₁ relaxation — exponential decay fit ({analysis_signal})",
+        fontsize=12,
+    )
     fig.tight_layout()
     return fig

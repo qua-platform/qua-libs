@@ -212,7 +212,9 @@ def fit_shifted_lorentzian_bayesian_cp(
     )
 
     if not result.segment_intercepts:
-        raise RuntimeError("BCP fit produced no segment intercepts — unable to determine v0.")
+        raise RuntimeError(
+            "BCP fit produced no segment intercepts — unable to determine v0."
+        )
     v0_effective = result.segment_intercepts[0]
 
     return {
@@ -254,9 +256,16 @@ def _extract_axes(
         sensor_coord_name = sensor_axis_name
         device_coord_name = device_axis_name
 
-    missing = [coord for coord in (sensor_coord_name, device_coord_name) if coord not in data.coords]
+    missing = [
+        coord
+        for coord in (sensor_coord_name, device_coord_name)
+        if coord not in data.coords
+    ]
     if missing:
-        raise KeyError(f"Missing coordinate(s) {missing} in dataset. " f"Available coords: {list(data.coords)}")
+        raise KeyError(
+            f"Missing coordinate(s) {missing} in dataset. "
+            f"Available coords: {list(data.coords)}"
+        )
 
     v_sensor = data.coords[sensor_coord_name].values
     v_device = data.coords[device_coord_name].values
@@ -332,7 +341,9 @@ def extract_sensor_compensation_coefficients(
     kwargs = dict(fit_kwargs or {})
 
     if method == "bayesian_cp":
-        fit_result = fit_shifted_lorentzian_bayesian_cp(v_sensor, v_device, signal, **kwargs)
+        fit_result = fit_shifted_lorentzian_bayesian_cp(
+            v_sensor, v_device, signal, **kwargs
+        )
     elif method == "global":
         fit_result = fit_shifted_lorentzian(v_sensor, v_device, signal, **kwargs)
     else:

@@ -128,7 +128,11 @@ def fit_model(
     if priors is None:
         priors = {}
 
-    init = init_to_value(values={k: jnp.asarray(v) for k, v in init_vals.items()}) if init_vals else init_to_median()
+    init = (
+        init_to_value(values={k: jnp.asarray(v) for k, v in init_vals.items()})
+        if init_vals
+        else init_to_median()
+    )
 
     model = model_fn(priors)
     kernel = NUTS_cls(

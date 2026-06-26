@@ -1,6 +1,7 @@
-"""T₁ relaxation-time analysis from parity-difference decay.
+"""T₁ relaxation-time analysis from conditional readout statistics.
 
-This module fits an exponential decay to the parity-difference signal
+This module fits an exponential decay to the selected analysis signal
+(``E_p2_given_p1_0`` or ``E_p2_given_p1_1`` from joint-outcome streams)
 measured after a π–idle–measure sequence:
 
 .. math::
@@ -38,6 +39,7 @@ import xarray as xr
 from scipy.optimize import differential_evolution
 
 from qualibrate.core import QualibrationNode
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 
 _logger = logging.getLogger(__name__)
 
@@ -54,7 +56,7 @@ class FitParameters:
     T1 : float
         Relaxation time T₁ (ns).
     amplitude : float
-        Decay amplitude A (parity-difference units).
+        Decay amplitude A (conditional-probability units).
     offset : float
         Asymptotic baseline offset.
     decay_rate : float
@@ -74,7 +76,7 @@ class FitParameters:
 
 
 def _fit_single_qubit(
-    pdiff: np.ndarray,
+    y_signal: np.ndarray,
     tau_ns: np.ndarray,
 ) -> Dict[str, Any]:
     r"""Fit an exponential decay to a single qubit's T₁ data.
@@ -84,8 +86,8 @@ def _fit_single_qubit(
 
     Parameters
     ----------
-    pdiff : 1-D array (n_tau,)
-        Parity-difference values.
+    y_signal : 1-D array (n_tau,)
+        Analysis trace (conditional expectation vs τ).
     tau_ns : 1-D array (n_tau,)
         Idle-time values in nanoseconds.
 
@@ -95,7 +97,7 @@ def _fit_single_qubit(
         ``T1`` (ns), ``amplitude``, ``offset``, ``decay_rate`` (1/ns),
         ``fitted_curve``, ``success``.
     """
-    y = np.asarray(pdiff, dtype=float)
+    y = np.asarray(y_signal, dtype=float)
     t = np.asarray(tau_ns, dtype=float)
     n = len(t)
     t_span = float(t[-1] - t[0]) if n > 1 else 1.0
@@ -147,7 +149,9 @@ def _fit_single_qubit(
         result["offset"] = offset
         result["decay_rate"] = decay_rate
         result["fitted_curve"] = fitted_curve
-        result["success"] = np.isfinite(t1_best) and t1_best > 0 and abs(amplitude) > 1e-6
+        result["success"] = bool(
+            np.isfinite(t1_best) and t1_best > 0 and abs(amplitude) > 1e-6
+        )
 
         _logger.debug(
             "T1 fit: T1=%.1f ns, A=%.4f, offset=%.4f, γ=%.6f 1/ns",
@@ -171,15 +175,17 @@ def fit_raw_data(
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit T₁ exponential decay for each qubit.
 
-    Expects a 1-D dataset with coordinate ``tau`` (ns) and data
-    variables ``pdiff_<qubit>`` of shape ``(n_tau,)``.
+    Expects a 1-D dataset with coordinate ``tau`` (ns), joint streams
+    ``p0_p0_<qubit>``, …, and processed variables
+    ``E_p2_given_p1_0_<qubit>`` / ``E_p2_given_p1_1_<qubit>`` (from
+    :func:`~calibration_utils.common_utils.parity_streams.process_joint_streams`).
 
     Parameters
     ----------
     ds : xr.Dataset
-        Raw measurement data.
+        Raw measurement data (after joint-stream processing).
     node : QualibrationNode
-        Calibration node (provides qubit list).
+        Calibration node (provides qubit list and ``analysis_signal``).
 
     Returns
     -------
@@ -191,16 +197,18 @@ def fit_raw_data(
     qubits = node.namespace["qubits"]
     tau_ns = np.asarray(ds.tau.values, dtype=float)
 
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
-    qubit_names = [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
-    if not qubit_names:
-        qubit_names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    qubit_names = get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
     fit_results: Dict[str, Dict[str, Any]] = {}
 
     for qname in qubit_names:
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var not in ds.data_vars:
+        signal_var = f"{analysis_signal}_{qname}"
+        if signal_var not in ds.data_vars:
             fp = FitParameters(
                 T1=np.nan,
                 amplitude=0.0,
@@ -211,8 +219,8 @@ def fit_raw_data(
             fit_results[qname] = asdict(fp)
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
-        raw = _fit_single_qubit(pdiff, tau_ns)
+        trace = np.asarray(ds[signal_var].values, dtype=float)
+        raw = _fit_single_qubit(trace, tau_ns)
 
         fp = FitParameters(
             T1=raw["T1"],

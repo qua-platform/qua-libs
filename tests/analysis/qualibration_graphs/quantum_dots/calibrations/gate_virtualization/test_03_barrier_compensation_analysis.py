@@ -34,14 +34,19 @@ def _load_module(module_path: Path, module_name: str):
 REPO_ROOT = _repo_root(Path(__file__).resolve())
 QD_ROOT = REPO_ROOT / "qualibration_graphs" / "quantum_dots"
 TEST_QD_ROOT = REPO_ROOT / "tests" / "analysis" / "qualibration_graphs" / "quantum_dots"
-ARTIFACTS_DIR = REPO_ROOT / "tests" / "analysis" / "artifacts" / "03_barrier_compensation"
+ARTIFACTS_DIR = (
+    REPO_ROOT / "tests" / "analysis" / "artifacts" / "03_barrier_compensation"
+)
 
 _analysis_mod = _load_module(
     QD_ROOT / "calibration_utils" / "gate_virtualization" / "analysis.py",
     "gate_virtualization_analysis_e2e_test",
 )
 _barrier_mod = _load_module(
-    QD_ROOT / "calibration_utils" / "gate_virtualization" / "barrier_compensation_analysis.py",
+    QD_ROOT
+    / "calibration_utils"
+    / "gate_virtualization"
+    / "barrier_compensation_analysis.py",
     "gate_virtualization_barrier_analysis_e2e_test",
 )
 _plotting_mod = _load_module(
@@ -49,20 +54,31 @@ _plotting_mod = _load_module(
     "gate_virtualization_plotting_e2e_test",
 )
 _simulator_mod = _load_module(
-    TEST_QD_ROOT / "calibration_utils" / "gate_virtualization" / "hybrid_barrier_virtualization_simulator.py",
+    TEST_QD_ROOT
+    / "calibration_utils"
+    / "gate_virtualization"
+    / "hybrid_barrier_virtualization_simulator.py",
     "gate_virtualization_hybrid_simulator_e2e_test",
 )
 
 HybridBarrierSimulationConfig = _simulator_mod.HybridBarrierSimulationConfig
-HybridBarrierVirtualizationSimulator = _simulator_mod.HybridBarrierVirtualizationSimulator
+HybridBarrierVirtualizationSimulator = (
+    _simulator_mod.HybridBarrierVirtualizationSimulator
+)
 process_raw_dataset = _analysis_mod.process_raw_dataset
 assemble_slope_matrix = _barrier_mod.assemble_slope_matrix
-calibrate_stepwise_barrier_virtualization = _barrier_mod.calibrate_stepwise_barrier_virtualization
-extract_barrier_compensation_coefficients = _barrier_mod.extract_barrier_compensation_coefficients
+calibrate_stepwise_barrier_virtualization = (
+    _barrier_mod.calibrate_stepwise_barrier_virtualization
+)
+extract_barrier_compensation_coefficients = (
+    _barrier_mod.extract_barrier_compensation_coefficients
+)
 evaluate_slope_fit_acceptance = _barrier_mod.evaluate_slope_fit_acceptance
 plot_barrier_transform_history = _plotting_mod.plot_barrier_transform_history
 plot_barrier_pair_diagnostics = _plotting_mod.plot_barrier_pair_diagnostics
-plot_target_barrier_coupling_summary = _plotting_mod.plot_target_barrier_coupling_summary
+plot_target_barrier_coupling_summary = (
+    _plotting_mod.plot_target_barrier_coupling_summary
+)
 plot_virtual_gate_matrix = _plotting_mod.plot_virtual_gate_matrix
 
 
@@ -173,7 +189,9 @@ def test_03_barrier_compensation_hybrid_analysis_and_plotting_artifacts():
         use_qarray_background=True,
     )
     simulator = HybridBarrierVirtualizationSimulator(sim_cfg)
-    ds_raw_all, truth = simulator.generate_campaign_from_pair_resolution(pair_resolution)
+    ds_raw_all, truth = simulator.generate_campaign_from_pair_resolution(
+        pair_resolution
+    )
     assert len(ds_raw_all) == 9
 
     node_stub = SimpleNamespace(parameters=SimpleNamespace())
@@ -200,7 +218,9 @@ def test_03_barrier_compensation_hybrid_analysis_and_plotting_artifacts():
 
         assert fit["success"], f"Fit failed for {pair_key}: {fit}"
         if target == drive:
-            assert fit["accepted"], f"Self-term sensitivity gate failed for {pair_key}: {quality}"
+            assert fit[
+                "accepted"
+            ], f"Self-term sensitivity gate failed for {pair_key}: {quality}"
         assert fit["n_points"] >= 5
         assert np.isfinite(fit["coefficient"])
         assert np.isfinite(fit["fit_quality"])
@@ -210,7 +230,10 @@ def test_03_barrier_compensation_hybrid_analysis_and_plotting_artifacts():
     assert np.all(np.isfinite(slope_matrix_raw))
 
     slope_matrix_truth = np.array(
-        [[truth[f"{target}_vs_{drive}"]["dt_dB_at_zero"] for drive in barrier_names] for target in barrier_names],
+        [
+            [truth[f"{target}_vs_{drive}"]["dt_dB_at_zero"] for drive in barrier_names]
+            for target in barrier_names
+        ],
         dtype=float,
     )
     assert np.all(np.isfinite(np.diag(slope_matrix_raw)))
@@ -229,7 +252,9 @@ def test_03_barrier_compensation_hybrid_analysis_and_plotting_artifacts():
         max_refinement_rounds=3,
         min_abs_self_slope=1e-6,
     )
-    final_transform = np.asarray(stepwise_result["barrier_transform_final"], dtype=float)
+    final_transform = np.asarray(
+        stepwise_result["barrier_transform_final"], dtype=float
+    )
     assert np.allclose(np.diag(final_transform), 1.0, atol=1e-12)
     assert stepwise_result["barrier_transform_history"][-1]["label"] == "B†"
     assert np.isfinite(stepwise_result["max_residual_crosstalk"])
@@ -247,7 +272,11 @@ def test_03_barrier_compensation_hybrid_analysis_and_plotting_artifacts():
         target_label="barrier_23",
         title="Representative Slope Extraction",
     )
-    target_fit_map = {k: v for k, v in fit_results.items() if str(v.get("target_barrier", "")) == "barrier_23"}
+    target_fit_map = {
+        k: v
+        for k, v in fit_results.items()
+        if str(v.get("target_barrier", "")) == "barrier_23"
+    }
     fig_target = plot_target_barrier_coupling_summary(
         target_barrier="barrier_23",
         fit_results_by_pair=target_fit_map,

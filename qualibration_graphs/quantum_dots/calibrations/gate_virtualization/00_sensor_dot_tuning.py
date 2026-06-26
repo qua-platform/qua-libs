@@ -63,7 +63,10 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.run_in_video_mode
+)
 def create_qua_program(node: QualibrationNode[SensorDotTuningParameters, Quam]):
     """Create a 1D sensor gate sweep QUA program for each sensor."""
     node.namespace["sensors"] = sensors = get_sensors(node)
@@ -100,7 +103,9 @@ def create_qua_program(node: QualibrationNode[SensorDotTuningParameters, Quam]):
         if not node.parameters.from_qdac:
             with program() as qua_prog:
                 seq = node.machine.voltage_sequences[vgs_id]
-                I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
+                I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
+                    num_IQ_pairs=num_sensors
+                )
                 x = declare(fixed)
                 for multiplexed_sensors in sensors.batch():
                     align()
@@ -113,7 +118,9 @@ def create_qua_program(node: QualibrationNode[SensorDotTuningParameters, Quam]):
                                 ramp_duration=node.parameters.ramp_duration,
                             )
                             if node.parameters.pre_measurement_delay > 0:
-                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
+                                seq.step_to_voltages(
+                                    {}, duration=node.parameters.pre_measurement_delay
+                                )
                             align()
                             for i, sensor in multiplexed_sensors.items():
                                 rr = sensor.readout_resonator
@@ -132,7 +139,9 @@ def create_qua_program(node: QualibrationNode[SensorDotTuningParameters, Quam]):
 
             scan_mode = ScanMode.from_name(node.parameters.scan_pattern)
             node.machine.connect_to_external_source(external_qdac=True)
-            dc_list = node.machine.qdac.channel(gate_obj.physical_channel.qdac_spec.qdac_output_port).dc_list(
+            dc_list = node.machine.qdac.channel(
+                gate_obj.physical_channel.qdac_spec.qdac_output_port
+            ).dc_list(
                 voltages=scan_mode.get_outer_loop(v_sweep),
                 dwell_s=10e-6,
                 stepped=True,
@@ -141,7 +150,9 @@ def create_qua_program(node: QualibrationNode[SensorDotTuningParameters, Quam]):
 
             with program() as qua_prog:
                 seq = node.machine.voltage_sequences[vgs_id]
-                I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
+                I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
+                    num_IQ_pairs=num_sensors
+                )
                 trig_counter = declare(int)
                 for multiplexed_sensors in sensors.batch():
                     align()
@@ -153,7 +164,9 @@ def create_qua_program(node: QualibrationNode[SensorDotTuningParameters, Quam]):
                             trig_counter < int(len(v_sweep)),
                             trig_counter + 1,
                         ):
-                            gate_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
+                            gate_obj.physical_channel.qdac_spec.opx_trigger_out.play(
+                                "trigger"
+                            )
                             wait(node.parameters.post_trigger_wait_ns // 4)
                             align()
                             for i, sensor in multiplexed_sensors.items():
@@ -177,13 +190,17 @@ def create_qua_program(node: QualibrationNode[SensorDotTuningParameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[SensorDotTuningParameters, Quam]):
     """Simulate the first QUA program for sanity-checking."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     first_key = next(iter(node.namespace["programs"]))
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["programs"][first_key], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["programs"][first_key], node.parameters
+    )
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
@@ -193,7 +210,9 @@ def simulate_qua_program(node: QualibrationNode[SensorDotTuningParameters, Quam]
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.simulate
+    or node.parameters.run_in_video_mode
 )
 def execute_qua_program(node: QualibrationNode[SensorDotTuningParameters, Quam]):
     """Execute sensor gate sweeps and store raw data."""
@@ -203,7 +222,9 @@ def execute_qua_program(node: QualibrationNode[SensorDotTuningParameters, Quam])
     for gate_name, qua_prog in node.namespace["programs"].items():
         with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
             job = qm.execute(qua_prog)
-            data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes_all"][gate_name])
+            data_fetcher = XarrayDataFetcher(
+                job, node.namespace["sweep_axes_all"][gate_name]
+            )
             for dataset in data_fetcher:
                 progress_counter(
                     data_fetcher.get("n", 0),
@@ -265,7 +286,13 @@ def plot_data(node: QualibrationNode[SensorDotTuningParameters, Quam]):
                 linewidth=1.5,
                 label="Lorentzian fit",
             )
-            ax.axvline(fr.x0 * 1e3, color="blue", linestyle="--", alpha=0.6, label=f"x0 = {fr.x0 * 1e3:.2f} mV")
+            ax.axvline(
+                fr.x0 * 1e3,
+                color="blue",
+                linestyle="--",
+                alpha=0.6,
+                label=f"x0 = {fr.x0 * 1e3:.2f} mV",
+            )
             ax.axvline(
                 fr.optimal_voltage * 1e3,
                 color="green",

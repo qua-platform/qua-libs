@@ -1,8 +1,8 @@
-"""Plotting for the two-τ Ramsey detuning-sweep parity-difference analysis.
+"""Plotting for the two-τ Ramsey detuning-sweep conditional-readout analysis.
 
 Produces a two-row figure per qubit:
 
-1. **Top** — short-τ trace: parity-difference vs detuning with the
+1. **Top** — short-τ trace: analysis signal vs detuning with the
    per-trace cosine fit overlaid, resonance marker, and fitted
    frequency annotated.
 2. **Bottom** — long-τ trace: same, showing the faster oscillations
@@ -17,11 +17,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 
-def _get_qubit_names_from_ds(ds: xr.Dataset) -> List[str]:
-    """Extract qubit names from ``pdiff_<name>`` data-variable keys."""
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_") and not v.endswith("_fit")]
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
+
+def _get_qubit_names_from_ds(
+    ds: xr.Dataset,
+    qubits: List[Any],
+    analysis_signal: str,
+) -> List[str]:
+    return get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
 
 def plot_raw_data_with_fit(
@@ -29,6 +37,7 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
+    analysis_signal: str = "E_p2_given_p1_0",
 ) -> "plt.Figure":
     """Plot two-τ Ramsey detuning-sweep analysis for each qubit.
 
@@ -38,7 +47,7 @@ def plot_raw_data_with_fit(
     Parameters
     ----------
     ds : xr.Dataset
-        Raw dataset with ``pdiff_<qubit>``, ``detuning``, and ``tau``
+        Raw dataset with ``{analysis_signal}_<qubit>``, ``detuning``, and ``tau``
         coordinates.
     ds_fit : xr.Dataset or None
         Unused — kept for API consistency with 10a/10c plotting.
@@ -47,8 +56,10 @@ def plot_raw_data_with_fit(
     fit_results : dict
         Qubit name → fit-result dict as returned by
         :func:`~.analysis.fit_raw_data`.
+    analysis_signal : str
+        Data variable prefix for the plotted signal (same as ``node.parameters.analysis_signal``).
     """
-    qubit_names = _get_qubit_names_from_ds(ds)
+    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
@@ -59,42 +70,45 @@ def plot_raw_data_with_fit(
     n_tau = len(tau_ns)
     n_qubits = len(qubit_names)
 
-    nrows = n_qubits * n_tau
     fig, axes = plt.subplots(
-        nrows,
-        1,
-        figsize=(10, 3.5 * nrows),
+        n_qubits,
+        n_tau,
+        figsize=(7 * n_tau, 4 * n_qubits),
         squeeze=False,
     )
 
     data_colors = ["C0", "C2"]
     fit_colors = ["C1", "C3"]
 
-    row = 0
     for qi, qname in enumerate(qubit_names):
         fr = fit_results.get(qname, {})
         diag = fr.get("_diag", {})
         fitted_curves = diag.get("fitted_curves")
         trace_fits = diag.get("_traces", [])
         freq_offset = fr.get("freq_offset", np.nan)
-        contrast = fr.get("contrast", np.nan)
         t2_star = fr.get("t2_star", np.nan)
         gamma = fr.get("decay_rate", np.nan)
         success = fr.get("success", False)
 
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var in ds.data_vars:
-            pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
+        signal_var = f"{analysis_signal}_{qname}"
+        if signal_var in ds.data_vars:
+            sig_da = ds[signal_var]
+            if "tau" in sig_da.dims and "detuning" in sig_da.dims:
+                signal_2d = sig_da.transpose("tau", "detuning").values.astype(float)
+            else:
+                signal_2d = np.asarray(sig_da.values, dtype=float)
+                if signal_2d.shape == (len(detuning_hz), n_tau):
+                    signal_2d = signal_2d.T
         else:
-            pdiff = np.full((n_tau, len(detuning_hz)), np.nan)
+            signal_2d = np.full((n_tau, len(detuning_hz)), np.nan)
 
         for ti in range(n_tau):
-            ax = axes[row, 0]
+            ax = axes[qi, ti]
             tau_label = f"τ = {tau_ns[ti]:.0f} ns"
             c = data_colors[ti % len(data_colors)]
             fc = fit_colors[ti % len(fit_colors)]
 
-            trace = pdiff[ti] if pdiff.ndim == 2 else pdiff
+            trace = signal_2d[ti] if signal_2d.ndim == 2 else signal_2d
             ax.plot(detuning_mhz, trace, "-", color=c, lw=0.8, alpha=0.7)
             ax.scatter(
                 detuning_mhz,
@@ -106,7 +120,6 @@ def plot_raw_data_with_fit(
                 label="Data",
             )
 
-            # Per-trace fit curve
             if fitted_curves is not None:
                 fit_trace = fitted_curves[ti]
                 ax.plot(
@@ -119,7 +132,6 @@ def plot_raw_data_with_fit(
                     label="Cosine fit",
                 )
 
-            # Resonance marker
             if success and np.isfinite(freq_offset):
                 ax.axvline(
                     freq_offset * 1e-6,
@@ -130,10 +142,9 @@ def plot_raw_data_with_fit(
                 )
 
             ax.set_xlabel("Detuning (MHz)")
-            ax.set_ylabel("Parity difference")
+            ax.set_ylabel(analysis_signal)
             ax.set_ylim(-0.05, 1.05)
 
-            # Title with per-trace info
             tf = trace_fits[ti] if ti < len(trace_fits) else {}
             a_i = tf.get("amplitude", np.nan)
             f_i = tf.get("osc_freq", np.nan)
@@ -148,7 +159,6 @@ def plot_raw_data_with_fit(
                 title += f", δ₀_i={d0_i * 1e-6:.3f} MHz"
             ax.set_title(title, fontsize=9)
             ax.legend(loc="upper right", fontsize=7)
-            row += 1
 
     # Super-title with joint results
     suptitle = "Ramsey detuning sweep — independent fits + joint extraction"

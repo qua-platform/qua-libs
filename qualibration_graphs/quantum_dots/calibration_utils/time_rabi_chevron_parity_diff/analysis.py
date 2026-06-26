@@ -16,6 +16,7 @@ import xarray as xr
 
 from qualibrate.core import QualibrationNode
 
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 from calibration_utils.time_rabi_chevron_parity_diff.init_utils import (
     _estimate_f_res_and_omega_from_chevron,
 )
@@ -65,7 +66,9 @@ def _fft_analyse_single_qubit(
     f_min, f_max = float(freqs_hz.min()), float(freqs_hz.max())
 
     try:
-        f_res, omega, gamma = _estimate_f_res_and_omega_from_chevron(pdiff, freqs_hz, durations_ns, nominal_freq_hz)
+        f_res, omega, gamma = _estimate_f_res_and_omega_from_chevron(
+            pdiff, freqs_hz, durations_ns, nominal_freq_hz
+        )
     except Exception as exc:
         _logger.warning("FFT analysis failed: %s", exc)
         return {
@@ -77,7 +80,7 @@ def _fft_analyse_single_qubit(
         }, np.full_like(pdiff, np.nan)
 
     t_pi = np.pi / omega if omega > 1e-12 else np.nan
-    success = f_min <= f_res <= f_max and np.isfinite(t_pi) and np.isfinite(f_res)
+    success = bool(f_min <= f_res <= f_max and np.isfinite(t_pi) and np.isfinite(f_res))
 
     return {
         "optimal_frequency": float(f_res),
@@ -98,21 +101,17 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     return ds
 
 
-def _get_qubit_names_for_fit(ds: xr.Dataset, qubits: list) -> list[str]:
-    """Resolve qubit names that match ds data vars (pdiff_{name})."""
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
-    if not pdiff_vars:
-        return []
-    # Use names from ds (pdiff_Q1 -> Q1) so fit_results keys match the dataset
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
-
-
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit f_res and t_π per qubit. Returns (ds_fit, fit_results)."""
     qubits = node.namespace["qubits"]
-    qubit_names = _get_qubit_names_for_fit(ds, qubits)
-    if not qubit_names:
-        qubit_names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    qubit_names = get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
     qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
     if not qubits_by_name and qubit_names:
         qubits_by_name = dict(zip(qubit_names, list(qubits)[: len(qubit_names)]))
@@ -123,8 +122,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
 
     for qname in qubit_names:
         qubit = qubits_by_name.get(qname)
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var not in ds.data_vars:
+        signal_var = f"{analysis_signal}_{qname}"
+        if signal_var not in ds.data_vars:
             nominal = (
                 float(np.asarray(ds.detuning).mean())
                 if qubit is None
@@ -140,13 +139,21 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             fit_results[qname] = asdict(fp)
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
-        freqs_hz = _get_drive_frequencies_hz(ds, qubit) if qubit else np.asarray(ds.detuning.values, dtype=float)
+        signal_2d = np.asarray(ds[signal_var].values, dtype=float)
+        freqs_hz = (
+            _get_drive_frequencies_hz(ds, qubit)
+            if qubit
+            else np.asarray(ds.detuning.values, dtype=float)
+        )
         nominal_freq = (
-            getattr(qubit.xy, "intermediate_frequency", float(freqs_hz.mean())) if qubit else float(freqs_hz.mean())
+            getattr(qubit.xy, "intermediate_frequency", float(freqs_hz.mean()))
+            if qubit
+            else float(freqs_hz.mean())
         )
 
-        result, fit_surface = _fft_analyse_single_qubit(pdiff, freqs_hz, durations_ns, nominal_freq)
+        result, fit_surface = _fft_analyse_single_qubit(
+            signal_2d, freqs_hz, durations_ns, nominal_freq
+        )
 
         fp = FitParameters(
             optimal_frequency=result["optimal_frequency"],
@@ -156,7 +163,10 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             success=result["success"],
         )
         fit_results[qname] = asdict(fp)
-        fit_arrays[f"pdiff_{qname}_fit"] = (["detuning", "pulse_duration"], fit_surface)
+        fit_arrays[f"{analysis_signal}_{qname}_fit"] = (
+            ["detuning", "pulse_duration"],
+            fit_surface,
+        )
 
     ds_fit = ds.assign(**fit_arrays)
     return ds_fit, fit_results

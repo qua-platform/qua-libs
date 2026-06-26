@@ -22,13 +22,15 @@ analytically via ``np.linalg.lstsq``.  This reduces the search from 3-D to
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from typing import Any, Dict
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, Tuple
 
 import numpy as np
 from scipy.optimize import differential_evolution
 
 import xarray as xr
+from qualibrate.core import QualibrationNode
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +63,7 @@ class FitParameters:
 
 def _fit_single_qubit(
     tau_ns: np.ndarray,
-    pdiff: np.ndarray,
+    y_signal: np.ndarray,
 ) -> dict[str, Any]:
     """Fit P(τ) = offset + A·exp(−2τ / T₂_echo) using profiled DE.
 
@@ -69,67 +71,81 @@ def _fit_single_qubit(
     ----------
     tau_ns : 1-D array
         Per-arm idle times in nanoseconds.
-    pdiff : 1-D array
-        Parity-difference signal (same length as *tau_ns*).
+    y_signal : 1-D array
+        Conditional readout signal (same length as *tau_ns*).
 
     Returns
     -------
     dict
         Keys: ``T2_echo``, ``amplitude``, ``offset``, ``decay_rate``,
-        ``fitted_curve``, ``success``.
+        ``fitted_curve``, ``signal``, ``success``.
     """
-    tau = tau_ns.astype(np.float64)
-    y = pdiff.astype(np.float64)
+    tau_all = tau_ns.astype(np.float64)
+    y_all = y_signal.astype(np.float64)
 
-    t_span = float(tau.max() - tau.min())
+    mask = np.isfinite(y_all) & np.isfinite(tau_all)
+    tau = tau_all[mask]
+    y = y_all[mask]
+
+    result: dict[str, Any] = {
+        "T2_echo": np.nan,
+        "amplitude": 0.0,
+        "offset": np.nan,
+        "decay_rate": np.nan,
+        "fitted_curve": np.full_like(y_all, np.nan),
+        "signal": y_all.copy(),
+        "success": False,
+    }
+
+    t_span = float(tau.max() - tau.min()) if len(tau) > 1 else 0.0
     if t_span <= 0 or len(tau) < 4:
-        return dict(FitParameters().__dict__, fitted_curve=np.full_like(y, np.nan))
+        return result
 
-    # DE bounds for T2_echo: [tau_step .. 10× sweep range]
     t2_lo = max(float(np.min(np.diff(np.sort(tau)))), 1.0)
     t2_hi = 10.0 * t_span
 
     def _cost(params: np.ndarray) -> float:
         (t2,) = params
-        basis = np.column_stack([np.ones_like(tau), np.exp(-2.0 * tau / t2)])
+        exponent = np.clip(-2.0 * tau / t2, -700, 0)
+        basis = np.column_stack([np.ones_like(tau), np.exp(exponent)])
         coeffs, *_ = np.linalg.lstsq(basis, y, rcond=None)
-        residuals = y - basis @ coeffs
-        return float(np.sum(residuals**2))
+        ss = float(np.sum((y - basis @ coeffs) ** 2))
+        return ss if np.isfinite(ss) else 1e30
 
-    result = differential_evolution(
-        _cost,
-        bounds=[(t2_lo, t2_hi)],
-        seed=42,
-        tol=1e-10,
-        atol=1e-10,
-        maxiter=2000,
-        polish=True,
-    )
+    try:
+        de_result = differential_evolution(
+            _cost,
+            bounds=[(t2_lo, t2_hi)],
+            seed=42,
+            tol=1e-10,
+            atol=1e-10,
+            maxiter=2000,
+            polish=True,
+        )
+        t2_best = float(de_result.x[0])
 
-    t2_best = float(result.x[0])
+        exponent = np.clip(-2.0 * tau / t2_best, -700, 0)
+        basis = np.column_stack([np.ones_like(tau), np.exp(exponent)])
+        coeffs, *_ = np.linalg.lstsq(basis, y, rcond=None)
+        offset_best = float(coeffs[0])
+        amp_best = float(coeffs[1])
 
-    # Recover linear parameters at the optimum
-    basis = np.column_stack([np.ones_like(tau), np.exp(-2.0 * tau / t2_best)])
-    coeffs, *_ = np.linalg.lstsq(basis, y, rcond=None)
-    offset_best = float(coeffs[0])
-    amp_best = float(coeffs[1])
-    fitted_curve = basis @ coeffs
+        result["T2_echo"] = t2_best
+        result["amplitude"] = amp_best
+        result["offset"] = offset_best
+        result["decay_rate"] = 2.0 / t2_best if t2_best > 0 else 0.0
+        result["fitted_curve"] = basis @ coeffs
+        result["success"] = bool(
+            de_result.success
+            and np.isfinite(t2_best)
+            and t2_best > 0
+            and np.isfinite(amp_best)
+            and abs(amp_best) > 1e-6
+        )
+    except Exception:
+        logger.warning("Hahn echo T2 fit failed", exc_info=True)
 
-    # Sanity: T2 should be positive and finite, amplitude should be non-zero
-    success = bool(
-        result.success and np.isfinite(t2_best) and t2_best > 0 and np.isfinite(amp_best) and abs(amp_best) > 1e-6
-    )
-
-    decay_rate = 2.0 / t2_best if t2_best > 0 else 0.0
-
-    return {
-        "T2_echo": t2_best,
-        "amplitude": amp_best,
-        "offset": offset_best,
-        "decay_rate": decay_rate,
-        "fitted_curve": fitted_curve,
-        "success": success,
-    }
+    return result
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -138,45 +154,92 @@ def _fit_single_qubit(
 
 
 def fit_raw_data(
-    ds_raw: xr.Dataset,
-    qubits: list[Any],
-) -> dict[str, dict[str, Any]]:
+    ds: xr.Dataset,
+    node: QualibrationNode,
+) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Run the Hahn echo exponential-decay fit for every qubit.
+
+    Expects joint-outcome streams processed by
+    :func:`~calibration_utils.common_utils.parity_streams.process_joint_streams`,
+    so the analysis uses ``{analysis_signal}_{qubit}`` (default
+    ``E_p2_given_p1_0_<qubit>``) of shape ``(n_tau,)`` with coordinate
+    ``tau`` (idle time in ns).
 
     Parameters
     ----------
-    ds_raw : xr.Dataset
-        Raw dataset with coordinates ``tau`` (ns) and data variables
-        ``pdiff_<qubit_name>``.
-    qubits : list
-        Qubit objects (each must have a ``.name`` attribute).
+    ds : xr.Dataset
+        Raw measurement data (after joint-stream processing).
+    node : QualibrationNode
+        Calibration node (provides qubit list and ``analysis_signal``).
 
     Returns
     -------
-    dict
-        ``{qubit_name: {T2_echo, amplitude, offset, decay_rate,
-        fitted_curve, success}}``.
+    (ds_fit, fit_results) : tuple
+        *ds_fit* is a copy of the input dataset.  *fit_results* maps
+        qubit name → dict of :class:`FitParameters` fields plus ``_diag``
+        with per-trace data for plotting.
     """
-    tau_ns = ds_raw.coords["tau"].values.astype(np.float64)
-    results: Dict[str, dict[str, Any]] = {}
+    qubits = node.namespace["qubits"]
+    tau_ns = np.asarray(ds.tau.values, dtype=float)
 
-    for qubit in qubits:
-        qname = qubit.name
-        var_name = f"pdiff_{qname}"
-        if var_name not in ds_raw.data_vars:
-            logger.warning("No pdiff variable for qubit %s — skipping.", qname)
-            results[qname] = dict(FitParameters().__dict__, fitted_curve=np.array([]))
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    qubit_names = get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
+
+    fit_results: Dict[str, Dict[str, Any]] = {}
+
+    for qname in qubit_names:
+        signal_var = f"{analysis_signal}_{qname}"
+        if signal_var not in ds.data_vars:
+            logger.warning("No analysis signal for qubit %s — skipping.", qname)
+            fp = FitParameters(
+                T2_echo=float("nan"),
+                amplitude=0.0,
+                offset=float("nan"),
+                decay_rate=float("nan"),
+                success=False,
+            )
+            fit_results[qname] = asdict(fp)
             continue
 
-        pdiff = ds_raw[var_name].values.astype(np.float64)
-        results[qname] = _fit_single_qubit(tau_ns, pdiff)
+        signal_1d = np.asarray(ds[signal_var].values, dtype=float)
+        if signal_1d.ndim != 1:
+            logger.warning(
+                "Expected 1-D shape (n_tau,) for %s, got %s — skipping.",
+                signal_var,
+                getattr(signal_1d, "shape", None),
+            )
+            fp = FitParameters(
+                T2_echo=float("nan"),
+                amplitude=0.0,
+                offset=float("nan"),
+                decay_rate=float("nan"),
+                success=False,
+            )
+            fit_results[qname] = asdict(fp)
+            continue
 
-    return results
+        result = _fit_single_qubit(tau_ns, signal_1d)
+        fp = FitParameters(
+            T2_echo=result["T2_echo"],
+            amplitude=result["amplitude"],
+            offset=result["offset"],
+            decay_rate=result["decay_rate"],
+            success=result["success"],
+        )
+        fit_results[qname] = asdict(fp)
+        fit_results[qname]["_diag"] = result
+
+    ds_fit = ds.copy()
+    return ds_fit, fit_results
 
 
 def log_fitted_results(
     fit_results: dict[str, dict[str, Any]],
-    node_logger: Any | None = None,
+    log_callable: Any | None = None,
 ) -> None:
     """Log fitted Hahn echo results for all qubits.
 
@@ -184,10 +247,10 @@ def log_fitted_results(
     ----------
     fit_results : dict
         Output of :func:`fit_raw_data`.
-    node_logger : callable, optional
+    log_callable : callable, optional
         Logging function (e.g. ``node.log``).  Falls back to module logger.
     """
-    _log = node_logger or logger.info
+    _log = log_callable or logger.info
     for qname, r in sorted(fit_results.items()):
         status = "OK" if r["success"] else "FAILED"
         msg = (

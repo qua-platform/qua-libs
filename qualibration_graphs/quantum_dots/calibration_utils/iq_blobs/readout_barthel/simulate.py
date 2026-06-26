@@ -16,7 +16,9 @@ class SimulationParams:
     T1: float = 2.0  # Relaxation time from T→S during measurement
 
 
-def _sample_truncated_exponential(rng: Generator, low: float, high: float, lam: float, size: int) -> np.ndarray:
+def _sample_truncated_exponential(
+    rng: Generator, low: float, high: float, lam: float, size: int
+) -> np.ndarray:
     """Sample from a truncated exponential on [low, high] with density ∝ exp(-lam*(x-low)).
     Equivalent to inverse-CDF sampling on a bounded interval.
     """
@@ -31,7 +33,9 @@ def _sample_truncated_exponential(rng: Generator, low: float, high: float, lam: 
 
 
 def simulate_readout(
-    params: SimulationParams, rng: Optional[Generator] = None, return_labels: bool = False
+    params: SimulationParams,
+    rng: Optional[Generator] = None,
+    return_labels: bool = False,
 ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
     """Simulate single-shot readout voltages according to Barthel-style model.
 
@@ -47,14 +51,22 @@ def simulate_readout(
         rng = default_rng()
 
     n = params.n_samples
-    V_S, V_T, s, tau_M, T1 = params.V_S_rf, params.V_T_rf, params.sigma, params.tau_M, params.T1
+    V_S, V_T, s, tau_M, T1 = (
+        params.V_S_rf,
+        params.V_T_rf,
+        params.sigma,
+        params.tau_M,
+        params.T1,
+    )
     dV = V_T - V_S
     if dV <= 0:
         raise ValueError("Require V_T_rf > V_S_rf for a meaningful model.")
     lam = tau_M / (T1 * dV)  # matches the exponential factor in the notes
 
     # Prepare initial states
-    labels = rng.uniform(size=n) < params.p_triplet  # True means initial T, False means S
+    labels = (
+        rng.uniform(size=n) < params.p_triplet
+    )  # True means initial T, False means S
     x = np.empty(n, dtype=float)
 
     # Singlets
@@ -75,7 +87,9 @@ def simulate_readout(
 
         # Decay-in-flight: ideal voltage from truncated exponential over [V_S, V_T], then Gaussian noise
         if idx_T_de.size > 0:
-            U = _sample_truncated_exponential(rng, low=V_S, high=V_T, lam=lam, size=idx_T_de.size)
+            U = _sample_truncated_exponential(
+                rng, low=V_S, high=V_T, lam=lam, size=idx_T_de.size
+            )
             x[idx_T_de] = rng.normal(loc=U, scale=s, size=idx_T_de.size)
 
     if return_labels:
@@ -118,7 +132,9 @@ def _chol_from_sigmas(sigma_I: float, sigma_Q: float, rho: float) -> np.ndarray:
     return np.linalg.cholesky(cov)
 
 
-def _sample_trunc_exp_time(rng: Generator, tau_M: float, T1: float, size: int) -> np.ndarray:
+def _sample_trunc_exp_time(
+    rng: Generator, tau_M: float, T1: float, size: int
+) -> np.ndarray:
     """Sample decay times t in [0, tau_M) from an exponential with rate 1/T1 truncated at tau_M,
     i.e. conditional on at least one decay before tau_M."""
     if T1 <= 0:
@@ -129,7 +145,11 @@ def _sample_trunc_exp_time(rng: Generator, tau_M: float, T1: float, size: int) -
     return -T1 * np.log(1.0 - u * Z)
 
 
-def simulate_readout_iq(params: SimulationParamsIQ, rng: Optional[Generator] = None, return_labels: bool = False):
+def simulate_readout_iq(
+    params: SimulationParamsIQ,
+    rng: Optional[Generator] = None,
+    return_labels: bool = False,
+):
     """Simulate I/Q single-shot readouts for a two-state system with T→S decay during readout.
 
     Model:

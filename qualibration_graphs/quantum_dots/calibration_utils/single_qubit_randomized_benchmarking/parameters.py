@@ -13,7 +13,10 @@ import numpy as np
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.common_utils.experiment import QubitsExperimentNodeParameters
+from calibration_utils.common_utils.experiment import (
+    HeraldedInitializeParameters,
+    QubitsExperimentNodeParameters,
+)
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -73,6 +76,8 @@ class Parameters(
         assert (
             self.max_circuit_depth / self.delta_clifford
         ).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
-        depths_arr = np.arange(0, self.max_circuit_depth + 0.1, self.delta_clifford, dtype=int)
+        depths_arr = np.arange(
+            0, self.max_circuit_depth + 0.1, self.delta_clifford, dtype=int
+        )
         depths_arr[0] = 1
         return depths_arr

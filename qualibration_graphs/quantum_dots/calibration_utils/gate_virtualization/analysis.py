@@ -78,19 +78,24 @@ def process_raw_dataset(ds_raw: xr.Dataset, node=None) -> xr.Dataset:
 
 def _resolve_virtual_gate_set(node, virtual_gate_set_id: str | None = None):
     """Resolve the active VirtualGateSet from a node and optional explicit id."""
-    requested_id = virtual_gate_set_id or getattr(node.parameters, "virtual_gate_set_id", None)
+    requested_id = virtual_gate_set_id or getattr(
+        node.parameters, "virtual_gate_set_id", None
+    )
     virtual_gate_sets = getattr(node.machine, "virtual_gate_sets", {})
     if requested_id:
         if requested_id not in virtual_gate_sets:
             raise KeyError(
-                f"VirtualGateSet '{requested_id}' not found. " f"Available: {list(virtual_gate_sets.keys())}"
+                f"VirtualGateSet '{requested_id}' not found. "
+                f"Available: {list(virtual_gate_sets.keys())}"
             )
         return virtual_gate_sets[requested_id]
 
     if len(virtual_gate_sets) == 1:
         return next(iter(virtual_gate_sets.values()))
 
-    raise ValueError("virtual_gate_set_id is required when multiple VirtualGateSets exist.")
+    raise ValueError(
+        "virtual_gate_set_id is required when multiple VirtualGateSets exist."
+    )
 
 
 def _resolve_layer(vgs, layer_id: str | None = None):
@@ -120,13 +125,17 @@ def _indices_from_gate_names(
     row_indices = []
     for row in row_names:
         if row not in source_gates:
-            raise KeyError(f"Row gate '{row}' not present in layer source_gates: {list(source_gates)}")
+            raise KeyError(
+                f"Row gate '{row}' not present in layer source_gates: {list(source_gates)}"
+            )
         row_indices.append(source_gates.index(row))
 
     col_indices = []
     for col in col_names:
         if col not in target_gates:
-            raise KeyError(f"Column gate '{col}' not present in layer target_gates: {list(target_gates)}")
+            raise KeyError(
+                f"Column gate '{col}' not present in layer target_gates: {list(target_gates)}"
+            )
         col_indices.append(target_gates.index(col))
 
     return row_indices, col_indices
@@ -162,7 +171,9 @@ def update_compensation_submatrix(
     arr = np.asarray(values, dtype=float)
     expected_shape = (len(row_names), len(col_names))
     if arr.shape != expected_shape:
-        raise ValueError(f"Submatrix shape mismatch. Expected {expected_shape}, got {arr.shape}.")
+        raise ValueError(
+            f"Submatrix shape mismatch. Expected {expected_shape}, got {arr.shape}."
+        )
 
     vgs = _resolve_virtual_gate_set(node)
     active_layer_id = layer_id or getattr(node.parameters, "matrix_layer_id", None)

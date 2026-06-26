@@ -150,7 +150,9 @@ def decay_inflight_integral(y, mu_S, mu_T, sigma, T1, tauM, eps=1e-12):
 
     # Compute integral using completing the square method:
     # Result involves difference of error functions at boundaries
-    exp_b2_over_4a = jnp.exp(jnp.clip((b * b) / (4.0 * a_clipped), a_min=-EXP_CAP, a_max=EXP_CAP))
+    exp_b2_over_4a = jnp.exp(
+        jnp.clip((b * b) / (4.0 * a_clipped), a_min=-EXP_CAP, a_max=EXP_CAP)
+    )
     F_tau = exp_b2_over_4a * _safe_erf((2.0 * a * tauM - b) / (2.0 * sqrt_a))
     F_0 = exp_b2_over_4a * _safe_erf((-b) / (2.0 * sqrt_a))
     integral_general = pref * (jnp.sqrt(jnp.pi) / (2.0 * sqrt_a)) * (F_tau - F_0)
@@ -237,15 +239,23 @@ def triplet_cdf_analytic(v, mu_S, mu_T, sigma, T1, tauM):
     eps = 1e-14
 
     # Special case: c ≈ 0 (when μ_T ≈ μ_S, no drift during decay)
-    I1_smallc = (jnp.exp(a * tauM) - 1.0) * (1.0 / a) * (2.0 * (0.5 * (1.0 + _safe_erf(d))) - 1.0)
+    I1_smallc = (
+        (jnp.exp(a * tauM) - 1.0)
+        * (1.0 / a)
+        * (2.0 * (0.5 * (1.0 + _safe_erf(d))) - 1.0)
+    )
 
     # General case: analytic integral using error functions and exponentials
     # This formula comes from integrating exp(-t/T₁) * Φ((v - μ_S - kt) / σ) over t
-    expo = jnp.exp(jnp.clip(a * (a - 4.0 * c * d) / (4.0 * c * c), a_min=-EXP_CAP, a_max=EXP_CAP))
+    expo = jnp.exp(
+        jnp.clip(a * (a - 4.0 * c * d) / (4.0 * c * c), a_min=-EXP_CAP, a_max=EXP_CAP)
+    )
     inv_2c = a / (2.0 * c)
     term1 = expo * _safe_erf(inv_2c - c * tauM - d)
     term2 = expo * _safe_erf(inv_2c - d)
-    term3 = jnp.exp(jnp.clip(a * tauM, a_min=-EXP_CAP, a_max=EXP_CAP)) * _safe_erf(c * tauM + d)
+    term3 = jnp.exp(jnp.clip(a * tauM, a_min=-EXP_CAP, a_max=EXP_CAP)) * _safe_erf(
+        c * tauM + d
+    )
     term4 = _safe_erf(d)
     I1_gen = (term1 - term2 + term3 - term4) / (a + 0.0)
 

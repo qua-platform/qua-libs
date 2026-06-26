@@ -1,12 +1,21 @@
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
-from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters, IdleTimeNodeParameters
+from qualibration_libs.parameters import (
+    CommonNodeParameters,
+    QubitsExperimentNodeParameters,
+    IdleTimeNodeParameters,
+)
+
+from calibration_utils.common_utils.experiment import (
+    HeraldedInitializeParameters,
+    ParityDiffAnalysisParameters,
+)
 
 
 class NodeSpecificParameters(RunnableParameters):
-    """Parameters for Ramsey 10a."""
+    """Parameters for Ramsey 11a."""
 
-    num_shots: int = 100
+    num_shots: int = 300
     """Number of averages to perform. Default is 100."""
 
 
@@ -16,10 +25,11 @@ class RamseyParameters(
     IdleTimeNodeParameters,
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
+    ParityDiffAnalysisParameters,
 ):
-    """Parameter set for 10a_ramsey_parity_diff."""
+    """Parameter set for 11a_ramsey."""
 
-    frequency_detuning_in_mhz: float = 1.0
+    frequency_detuning_in_mhz: float = 0.25
     """Frequency detuning in MHz. Default is 1.0 MHz."""
 
 
@@ -28,8 +38,9 @@ class RamseyDetuningParameters(
     CommonNodeParameters,
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
+    ParityDiffAnalysisParameters,
 ):
-    """Parameter set for 10b_ramsey_detuning_parity_diff."""
+    """Parameter set for 11b_ramsey_detuning."""
 
     detuning_span_in_mhz: float = 5.0
     """Frequency detuning span. Default 5MHz."""
@@ -47,8 +58,9 @@ class RamseyChevronParameters(
     IdleTimeNodeParameters,
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
+    ParityDiffAnalysisParameters,
 ):
-    """Parameter set for 10b_ramsey_detuning_parity_diff."""
+    """Parameter set for 11c_ramsey_chevron (and related Ramsey chevron nodes)."""
 
     detuning_span_in_mhz: float = 5.0
     """Frequency detuning span. Default 5MHz."""

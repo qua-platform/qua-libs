@@ -80,7 +80,9 @@ def _fit_gaussian_1d(y: jnp.ndarray) -> Tuple[float, float]:
     return mu, sd
 
 
-def _kmeans_1d_two_clusters(y: jnp.ndarray, iters: int = 30) -> Tuple[jnp.ndarray, jnp.ndarray]:
+def _kmeans_1d_two_clusters(
+    y: jnp.ndarray, iters: int = 30
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """
     Cluster 1D data into two groups using k-means.
 
@@ -102,7 +104,9 @@ def _kmeans_1d_two_clusters(y: jnp.ndarray, iters: int = 30) -> Tuple[jnp.ndarra
 
 
 @partial(jax.jit, static_argnums=(1,))
-def _kmeans_1d_two_clusters_compiled(y: jnp.ndarray, iters: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
+def _kmeans_1d_two_clusters_compiled(
+    y: jnp.ndarray, iters: int
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """JIT-compiled helper performing the 1D two-cluster k-means iterations."""
     dtype = y.dtype
     initial_centers = jnp.quantile(y, jnp.array([0.3, 0.7], dtype=dtype))
@@ -141,7 +145,9 @@ def _kmeans_1d_two_clusters_compiled(y: jnp.ndarray, iters: int) -> Tuple[jnp.nd
 
     centers, _ = jax.lax.fori_loop(0, iters, body, (initial_centers, jnp.array(False)))
 
-    def cluster_std(mask: jnp.ndarray, center: jnp.ndarray, fallback: jnp.ndarray) -> jnp.ndarray:
+    def cluster_std(
+        mask: jnp.ndarray, center: jnp.ndarray, fallback: jnp.ndarray
+    ) -> jnp.ndarray:
         count = mask.sum()
         weight = mask.astype(dtype)
         residual = (y - center) ** 2
@@ -218,7 +224,9 @@ def _calibrate_from_single_state(
 
     # Priors for μS, μT with ordering; use delta scale ~ std of their separation
     mu_S_loc = mu_known if which == "S" else mu_other
-    mu_T_loc = mu_other if which == "S" else mu_known  # only used when enforce_order=False
+    mu_T_loc = (
+        mu_other if which == "S" else mu_known
+    )  # only used when enforce_order=False
     mu_S_scale = max(prior_strength * (sd_known if which == "S" else sd_other), 1e-3)
     mu_T_scale = max(prior_strength * (sd_other if which == "S" else sd_known), 1e-3)
     delta_scale = max(prior_strength * abs(mu_T_loc - mu_S_loc), 1e-3)
@@ -360,7 +368,9 @@ class Barthel1DFromIQ:
 
         """
         priors = priors if priors is not None else cls.default_priors()
-        mcmc_config = mcmc_config if mcmc_config is not None else cls.default_mcmc_config()
+        mcmc_config = (
+            mcmc_config if mcmc_config is not None else cls.default_mcmc_config()
+        )
 
         y, proj, priors, calib_result = cls._project_and_calibrate(
             X,
@@ -372,8 +382,12 @@ class Barthel1DFromIQ:
             sigma_scale_default=sigma_scale_default,
         )
 
-        y_fit, normalizer = cls._normalize_coordinate(y, normalize=normalize, norm_method=norm_method)
-        cls._apply_normalizer_to_priors(priors, normalizer, sigma_scale_default=sigma_scale_default)
+        y_fit, normalizer = cls._normalize_coordinate(
+            y, normalize=normalize, norm_method=norm_method
+        )
+        cls._apply_normalizer_to_priors(
+            priors, normalizer, sigma_scale_default=sigma_scale_default
+        )
 
         model_factory = cls._build_model_factory(fix_tau_M=fix_tau_M)
         mcmc, samples, summary = fit_model(model_factory, y_fit, priors, mcmc_config)
@@ -440,8 +454,15 @@ class Barthel1DFromIQ:
         if "mu_T_scale" in priors:
             priors["mu_T_scale"] /= scale
         if "delta_scale" in priors:
-            priors["delta_scale"] /= scale
-        priors["sigma_scale"] = priors.get("sigma_scale", sigma_scale_default) / scale
+            # Floor at 0.05 normalized units to prevent degenerate HalfNormal priors
+            # when blobs are close together or physical scale is large.
+            priors["delta_scale"] = max(priors["delta_scale"] / scale, 0.05)
+        # sigma_scale: divide only when calibration-derived (physical units);
+        # the uncalibrated default is already a normalized-unit value.
+        if "sigma_scale" in priors:
+            priors["sigma_scale"] = max(priors["sigma_scale"] / scale, 0.05)
+        else:
+            priors["sigma_scale"] = sigma_scale_default
         return priors
 
     @staticmethod
@@ -451,4 +472,6 @@ class Barthel1DFromIQ:
     ) -> Callable[[Dict[str, Any]], Any]:
         """Create a Barthel model factory for the analytic 1D model."""
         tau_M_value = float(fix_tau_M)
-        return lambda p: build_barthel_model_1d_analytic(p, fix_tau_M=tau_M_value, enforce_order=True)
+        return lambda p: build_barthel_model_1d_analytic(
+            p, fix_tau_M=tau_M_value, enforce_order=True
+        )

@@ -40,7 +40,7 @@ def save_simulated_video_mode_quam(
 
 def main() -> None:
     output_path = save_simulated_video_mode_quam()
-    print(output_path / "state.json")
+    print(output_path / "state_old.json")
 
 
 if __name__ == "__main__":

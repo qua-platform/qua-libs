@@ -70,13 +70,17 @@ class TestShiftedLorentzian2D:
     def test_model_shape(self):
         v_s = np.linspace(-1, 1, 50)
         v_d = np.linspace(-0.5, 0.5, 30)
-        z = shifted_lorentzian_2d(v_s, v_d, A=1.0, v0=0.0, alpha=0.1, gamma=0.2, offset=0.0)
+        z = shifted_lorentzian_2d(
+            v_s, v_d, A=1.0, v0=0.0, alpha=0.1, gamma=0.2, offset=0.0
+        )
         assert z.shape == (30, 50)
 
     def test_peak_position_at_zero_device(self):
         v_s = np.linspace(-2, 2, 500)
         v_d = np.array([0.0])
-        z = shifted_lorentzian_2d(v_s, v_d, A=1.0, v0=0.3, alpha=0.1, gamma=0.1, offset=0.0)
+        z = shifted_lorentzian_2d(
+            v_s, v_d, A=1.0, v0=0.3, alpha=0.1, gamma=0.1, offset=0.0
+        )
         peak_idx = np.argmax(z[0])
         assert abs(v_s[peak_idx] - 0.3) < (v_s[1] - v_s[0])
 
@@ -86,7 +90,9 @@ class TestShiftedLorentzian2D:
         v0 = 0.0
         for vd_val in [-1.0, 0.0, 1.0, 2.0]:
             v_d = np.array([vd_val])
-            z = shifted_lorentzian_2d(v_s, v_d, A=1.0, v0=v0, alpha=alpha, gamma=0.2, offset=0.0)
+            z = shifted_lorentzian_2d(
+                v_s, v_d, A=1.0, v0=v0, alpha=alpha, gamma=0.2, offset=0.0
+            )
             expected_peak = v0 + alpha * vd_val
             peak_idx = np.argmax(z[0])
             assert abs(v_s[peak_idx] - expected_peak) < (v_s[1] - v_s[0]) * 2
@@ -114,7 +120,9 @@ class TestFitShiftedLorentzian:
         v_s = np.linspace(-3, 3, 200)
         v_d = np.linspace(-1, 1, 120)
         true_alpha = 0.15
-        signal = shifted_lorentzian_2d(v_s, v_d, A=2.0, v0=0.5, alpha=true_alpha, gamma=0.4, offset=1.0)
+        signal = shifted_lorentzian_2d(
+            v_s, v_d, A=2.0, v0=0.5, alpha=true_alpha, gamma=0.4, offset=1.0
+        )
         noise = rng.normal(0, 0.05, size=signal.shape)
         signal_noisy = signal + noise
 
@@ -157,7 +165,9 @@ def _qarray_available() -> bool:
     try:
         from qarray import DotArray
 
-        m = DotArray(Cdd=[[0.1]], Cgd=[[0.1]], algorithm="default", implementation="jax")
+        m = DotArray(
+            Cdd=[[0.1]], Cgd=[[0.1]], algorithm="default", implementation="jax"
+        )
         m.ground_state_open(np.array([[0.0], [0.1]]))
         return True
     except Exception:
@@ -165,7 +175,9 @@ def _qarray_available() -> bool:
 
 
 @pytest.mark.analysis
-@pytest.mark.skipif(not _qarray_available(), reason="qarray/JAX not functional in this environment")
+@pytest.mark.skipif(
+    not _qarray_available(), reason="qarray/JAX not functional in this environment"
+)
 class TestSensorCompensationE2E:
     """End-to-end: qarray simulation -> inject ds_raw_all -> node analyse_data."""
 
@@ -213,7 +225,8 @@ class TestSensorCompensationE2E:
         sensor_row = layer.source_gates.index(SENSOR_GATE)
         device_col = layer.source_gates.index(DEVICE_GATE_1)
         assert layer.matrix[sensor_row][device_col] == pytest.approx(alpha), (
-            f"Expected matrix[{sensor_row}][{device_col}] = {alpha}, " f"got {layer.matrix[sensor_row][device_col]}"
+            f"Expected matrix[{sensor_row}][{device_col}] = {alpha}, "
+            f"got {layer.matrix[sensor_row][device_col]}"
         )
 
     def test_node_analysis_two_pairs(self, dot_model, analysis_runner):
@@ -262,7 +275,9 @@ class TestSensorCompensationE2E:
             _, device_gate = pair_key.split("_vs_")
             assert fit["device_gate_name"] == device_gate
             device_col = layer.source_gates.index(device_gate)
-            assert layer.matrix[sensor_row][device_col] == pytest.approx(fit["coefficient"])
+            assert layer.matrix[sensor_row][device_col] == pytest.approx(
+                fit["coefficient"]
+            )
 
     def test_plot_fit_diagnostic(self, dot_model, analysis_runner):
         """node plot_data produces a 3-panel diagnostic figure (data / fit / residual)."""
@@ -332,17 +347,23 @@ class TestSensorCompensationE2E:
         extent = [v_s[0], v_s[-1], v_d[0], v_d[-1]]
 
         fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-        axes[0].imshow(amp_orig, extent=extent, origin="lower", aspect="auto", cmap="hot")
+        axes[0].imshow(
+            amp_orig, extent=extent, origin="lower", aspect="auto", cmap="hot"
+        )
         axes[0].set_title(f"Original (α={alpha:.4f})")
         axes[0].set_xlabel("Sensor gate (V)")
         axes[0].set_ylabel("Device gate (V)")
-        axes[1].imshow(amp_comp, extent=extent, origin="lower", aspect="auto", cmap="hot")
+        axes[1].imshow(
+            amp_comp, extent=extent, origin="lower", aspect="auto", cmap="hot"
+        )
         axes[1].set_title("Compensated (virtual device gate)")
         axes[1].set_xlabel("Sensor gate (V)")
         axes[1].set_ylabel("Virtual device gate (V)")
         plt.tight_layout()
 
-        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "01_sensor_compensation"
+        artifacts_dir = (
+            Path(__file__).resolve().parents[4] / "artifacts" / "01_sensor_compensation"
+        )
         artifacts_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(artifacts_dir / "compensation_comparison.png", dpi=150)
         plt.close(fig)
@@ -374,14 +395,20 @@ class TestSensorCompensationE2E:
         )
 
         alphas = {
-            0: node.results["fit_results"][f"{SENSOR_GATE}_vs_{DEVICE_GATE_1}"]["coefficient"],
-            1: node.results["fit_results"][f"{SENSOR_GATE}_vs_{DEVICE_GATE_2}"]["coefficient"],
+            0: node.results["fit_results"][f"{SENSOR_GATE}_vs_{DEVICE_GATE_1}"][
+                "coefficient"
+            ],
+            1: node.results["fit_results"][f"{SENSOR_GATE}_vs_{DEVICE_GATE_2}"][
+                "coefficient"
+            ],
         }
         for pair_key, fit in node.results["fit_results"].items():
             fp = fit["fit_params"]
             n_cp = fp.get("n_changepoints", 0)
             alpha_std = fp.get("alpha_std", float("nan"))
-            print(f"  {pair_key}: α={fit['coefficient']:.6f} ± {alpha_std:.6f}  ({n_cp} CPs)")
+            print(
+                f"  {pair_key}: α={fit['coefficient']:.6f} ± {alpha_std:.6f}  ({n_cp} CPs)"
+            )
 
         # Find sensor operating point
         sensor_sweep_mV = np.linspace(
@@ -428,7 +455,11 @@ class TestSensorCompensationE2E:
         fig, axes = plt.subplots(1, 2, figsize=(10, 4.5))
         for ax, data, title in [
             (axes[0], amp_uncomp, "Physical (no sensor comp)"),
-            (axes[1], amp_comp, f"Sensor-compensated (α₁={alphas[0]:.4f}, α₂={alphas[1]:.4f})"),
+            (
+                axes[1],
+                amp_comp,
+                f"Sensor-compensated (α₁={alphas[0]:.4f}, α₂={alphas[1]:.4f})",
+            ),
         ]:
             ax.imshow(data, extent=extent, origin="lower", aspect="auto", cmap="hot")
             ax.set_title(title, fontsize=9)
@@ -437,7 +468,9 @@ class TestSensorCompensationE2E:
         fig.suptitle("Plunger Sweep: Effect of Sensor Compensation", fontweight="bold")
         fig.tight_layout(rect=[0, 0, 1, 0.95])
 
-        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "01_sensor_compensation"
+        artifacts_dir = (
+            Path(__file__).resolve().parents[4] / "artifacts" / "01_sensor_compensation"
+        )
         artifacts_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(artifacts_dir / "plunger_sweep_comparison.png", dpi=150)
         plt.close(fig)
@@ -445,7 +478,9 @@ class TestSensorCompensationE2E:
 
 
 @pytest.mark.analysis
-@pytest.mark.skipif(not _qarray_available(), reason="qarray/JAX not functional in this environment")
+@pytest.mark.skipif(
+    not _qarray_available(), reason="qarray/JAX not functional in this environment"
+)
 class TestSensorDotCouplingEffect:
     """Demonstrate how sensor-gate → device-dot capacitive coupling tilts
     charge transitions and degrades the sensor compensation fit.
@@ -546,12 +581,24 @@ class TestSensorDotCouplingEffect:
 
         for col, coupling in enumerate(self.COUPLING_STRENGTHS):
             r = results_by_coupling[coupling]
-            extent = [r["v_sensor"][0], r["v_sensor"][-1], r["v_device"][0], r["v_device"][-1]]
+            extent = [
+                r["v_sensor"][0],
+                r["v_sensor"][-1],
+                r["v_device"][0],
+                r["v_device"][-1],
+            ]
 
             ax_scan = axes[0, col]
-            ax_scan.imshow(r["amplitude_2d"], extent=extent, origin="lower", aspect="auto", cmap="hot")
+            ax_scan.imshow(
+                r["amplitude_2d"],
+                extent=extent,
+                origin="lower",
+                aspect="auto",
+                cmap="hot",
+            )
             ax_scan.set_title(
-                f"Cgd(sensor→dot) = {coupling:.3f}\n" f"α = {r['alpha']:.6f}  (CPs: {r['n_changepoints']})",
+                f"Cgd(sensor→dot) = {coupling:.3f}\n"
+                f"α = {r['alpha']:.6f}  (CPs: {r['n_changepoints']})",
                 fontsize=9,
             )
             ax_scan.set_xlabel("Sensor gate (V)")
@@ -571,7 +618,9 @@ class TestSensorDotCouplingEffect:
             amp_comp = ds_comp_proc["amplitude"].isel(sensors=0).values
 
             ax_comp = axes[1, col]
-            ax_comp.imshow(amp_comp, extent=extent, origin="lower", aspect="auto", cmap="hot")
+            ax_comp.imshow(
+                amp_comp, extent=extent, origin="lower", aspect="auto", cmap="hot"
+            )
             ax_comp.set_title(
                 f"After compensation (α = {r['alpha']:.6f})",
                 fontsize=9,
@@ -587,7 +636,9 @@ class TestSensorDotCouplingEffect:
         )
         fig.tight_layout(rect=[0, 0, 1, 0.93])
 
-        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "01_sensor_coupling"
+        artifacts_dir = (
+            Path(__file__).resolve().parents[4] / "artifacts" / "01_sensor_coupling"
+        )
         artifacts_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(artifacts_dir / "coupling_effect_comparison.png", dpi=150)
         plt.close(fig)
@@ -595,7 +646,9 @@ class TestSensorDotCouplingEffect:
 
         # Print summary table
         print("\n=== Sensor-Dot Coupling Effect Summary ===")
-        print(f"{'Cgd':>8s} {'alpha':>12s} {'alpha_std':>12s} {'CPs':>5s} {'success':>8s}")
+        print(
+            f"{'Cgd':>8s} {'alpha':>12s} {'alpha_std':>12s} {'CPs':>5s} {'success':>8s}"
+        )
         for coupling in self.COUPLING_STRENGTHS:
             r = results_by_coupling[coupling]
             print(

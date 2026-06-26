@@ -175,7 +175,9 @@ def _segment_log_marginal(
     a segment is to be homogeneous (no changepoints) under the prior assumptions.
     """
     # Compute posterior hyperparameters
-    mu_n, kappa_n, alpha_n, beta_n = _posterior_from_suff(n, s1, s2, mu0, kappa0, alpha0, beta0)
+    mu_n, kappa_n, alpha_n, beta_n = _posterior_from_suff(
+        n, s1, s2, mu0, kappa0, alpha0, beta0
+    )
 
     # Compute log marginal likelihood using closed-form Student-t formula
     log_marginal = (
@@ -391,7 +393,9 @@ class BayesianCP(BayesianMCMCBase):
         # Geometric prior: P(length = n) = h * (1-h)^(n-1)
         # where h = hazard rate
         n_vec = jnp.arange(1, T + 1)  # Possible segment lengths
-        log_duration_prior = jnp.log(self.hazard) + (n_vec - 1) * jnp.log1p(-self.hazard)
+        log_duration_prior = jnp.log(self.hazard) + (n_vec - 1) * jnp.log1p(
+            -self.hazard
+        )
 
         # -----------------------------------------------------------------
         # Step 4: Build log-likelihood matrix L[s, t] for all segments
@@ -420,7 +424,13 @@ class BayesianCP(BayesianMCMCBase):
 
         # Compute log marginal likelihood for each segment
         segment_log_likelihood = _segment_log_marginal(
-            n_safe, s1_segment, s2_segment, self.mu0, self.kappa0, self.alpha0, self.beta0
+            n_safe,
+            s1_segment,
+            s2_segment,
+            self.mu0,
+            self.kappa0,
+            self.alpha0,
+            self.beta0,
         )
 
         # Apply temperature to likelihood (not duration prior)
@@ -429,7 +439,9 @@ class BayesianCP(BayesianMCMCBase):
 
         # Combine likelihood with duration prior
         # Note: n_safe - 1 gives index into log_duration_prior (0-indexed)
-        segment_log_likelihood = segment_log_likelihood + jnp.take(log_duration_prior, n_safe - 1)
+        segment_log_likelihood = segment_log_likelihood + jnp.take(
+            log_duration_prior, n_safe - 1
+        )
 
         # Mask invalid segments with -inf (will be ignored in logsumexp)
         L = jnp.where(valid_segments, segment_log_likelihood, -jnp.inf)

@@ -33,7 +33,9 @@ def _load_module(name: str, filepath: Path):
     return mod
 
 
-_analysis_mod = _load_module("_sd_analysis", _GATE_VIRT_UTILS / "sensor_dot_analysis.py")
+_analysis_mod = _load_module(
+    "_sd_analysis", _GATE_VIRT_UTILS / "sensor_dot_analysis.py"
+)
 fit_lorentzian = _analysis_mod.fit_lorentzian
 lorentzian = _analysis_mod.lorentzian
 optimal_operating_point = _analysis_mod.optimal_operating_point
@@ -50,14 +52,18 @@ def _qarray_available() -> bool:
     try:
         from qarray import DotArray
 
-        m = DotArray(Cdd=[[0.1]], Cgd=[[0.1]], algorithm="default", implementation="jax")
+        m = DotArray(
+            Cdd=[[0.1]], Cgd=[[0.1]], algorithm="default", implementation="jax"
+        )
         m.ground_state_open(np.array([[0.0], [0.1]]))
         return True
     except Exception:
         return False
 
 
-def _simulate_sensor_sweep(model, v_sensor_mV: np.ndarray, sensor_gate_idx: int = 6) -> xr.Dataset:
+def _simulate_sensor_sweep(
+    model, v_sensor_mV: np.ndarray, sensor_gate_idx: int = 6
+) -> xr.Dataset:
     """1D sweep of the sensor gate — all other gates at zero."""
     n_gates = sensor_gate_idx + 1
     voltage_array = np.zeros((len(v_sensor_mV), n_gates))
@@ -136,12 +142,20 @@ class TestSensorDotTuning:
         result = fit_lorentzian(v_V, signal, side="right")
 
         v_fit = np.linspace(v_V[0], v_V[-1], 500)
-        y_fit = lorentzian(v_fit, result.x0, result.gamma, result.amplitude, result.offset)
+        y_fit = lorentzian(
+            v_fit, result.x0, result.gamma, result.amplitude, result.offset
+        )
 
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(v_V * 1e3, signal, "k.", markersize=3, label="Simulated data")
         ax.plot(v_fit * 1e3, y_fit, "r-", linewidth=1.5, label="Lorentzian fit")
-        ax.axvline(result.x0 * 1e3, color="blue", linestyle="--", alpha=0.6, label=f"x0 = {result.x0 * 1e3:.2f} mV")
+        ax.axvline(
+            result.x0 * 1e3,
+            color="blue",
+            linestyle="--",
+            alpha=0.6,
+            label=f"x0 = {result.x0 * 1e3:.2f} mV",
+        )
         ax.axvline(
             result.optimal_voltage * 1e3,
             color="green",
@@ -154,7 +168,9 @@ class TestSensorDotTuning:
         ax.legend(fontsize=8)
         plt.tight_layout()
 
-        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "00_sensor_dot_tuning"
+        artifacts_dir = (
+            Path(__file__).resolve().parents[4] / "artifacts" / "00_sensor_dot_tuning"
+        )
         artifacts_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(artifacts_dir / "sensor_sweep.png", dpi=150)
         plt.close(fig)

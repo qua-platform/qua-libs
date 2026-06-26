@@ -6,7 +6,9 @@ from qua_dashboards.video_mode.inner_loop_actions.simulators import QarraySimula
 try:
     from qarray import ChargeSensedDotArray
 except:
-    raise ImportError("qarray is not installed. Please install it using `pip install qarray`.")
+    raise ImportError(
+        "qarray is not installed. Please install it using `pip install qarray`."
+    )
 
 
 DEFAULT_SIMULATED_VIDEO_MODE_BASE_POINT = {
@@ -63,16 +65,34 @@ class SimulatedVideoModeQarraySimulator(QarraySimulator):
             allow_extra_entries=True,
         )
 
-        base_vec = np.array([float(base_phys.get(gate_name, 0.0)) for gate_name in self.qarray_gate_order])
-        dx_vec = np.array([float(delta_x.get(gate_name, 0.0)) for gate_name in self.qarray_gate_order])
-        dy_vec = np.array([float(delta_y.get(gate_name, 0.0)) for gate_name in self.qarray_gate_order])
+        base_vec = np.array(
+            [
+                float(base_phys.get(gate_name, 0.0))
+                for gate_name in self.qarray_gate_order
+            ]
+        )
+        dx_vec = np.array(
+            [float(delta_x.get(gate_name, 0.0)) for gate_name in self.qarray_gate_order]
+        )
+        dy_vec = np.array(
+            [float(delta_y.get(gate_name, 0.0)) for gate_name in self.qarray_gate_order]
+        )
 
         X, Y = np.meshgrid(x_vals, y_vals)
-        grids = base_vec[None, None, :] + X[:, :, None] * dx_vec[None, None, :] + Y[:, :, None] * dy_vec[None, None, :]
+        grids = (
+            base_vec[None, None, :]
+            + X[:, :, None] * dx_vec[None, None, :]
+            + Y[:, :, None] * dy_vec[None, None, :]
+        )
         return [grids[:, :, i] for i in range(len(self.qarray_gate_order))]
 
 
-def setup_simulation(base_point: Dict[str, float], gate_set, dc_set=None, sensor_gate_names: List[str] = None):
+def setup_simulation(
+    base_point: Dict[str, float],
+    gate_set,
+    dc_set=None,
+    sensor_gate_names: List[str] = None,
+):
     Cdd = [
         [0.12, 0.08],
         [0.08, 0.13],

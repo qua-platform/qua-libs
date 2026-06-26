@@ -162,13 +162,23 @@ if __name__ == "__main__":
     fig.set_size_inches(10, 5)
 
     # Plot charge stability diagram
-    axes[0].imshow(z, extent=[vx_min, vx_max, vy_min, vy_max], origin="lower", aspect="auto", cmap="hot")
+    axes[0].imshow(
+        z,
+        extent=[vx_min, vx_max, vy_min, vy_max],
+        origin="lower",
+        aspect="auto",
+        cmap="hot",
+    )
     axes[0].set_xlabel("$Vx$")
     axes[0].set_ylabel("$Vy$")
     axes[0].set_title("$z$")
 
     # Plot charge state changes
     axes[1].imshow(
-        charge_state_changes(n), extent=[vx_min, vx_max, vy_min, vy_max], origin="lower", aspect="auto", cmap="hot"
+        charge_state_changes(n),
+        extent=[vx_min, vx_max, vy_min, vy_max],
+        origin="lower",
+        aspect="auto",
+        cmap="hot",
     )
     plt.show()

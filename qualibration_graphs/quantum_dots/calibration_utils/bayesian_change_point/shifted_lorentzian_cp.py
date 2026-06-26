@@ -159,7 +159,9 @@ def fit_robust_sensor_compensation(
     cp_indices_local = _merge_nearby_cps(cp_indices_local, min_gap=3)
 
     full_indices = np.where(interior)[0]
-    cp_indices = [int(full_indices[i]) for i in cp_indices_local if i < len(full_indices)]
+    cp_indices = [
+        int(full_indices[i]) for i in cp_indices_local if i < len(full_indices)
+    ]
 
     # Step 5: per-segment intercepts + alpha uncertainty via least-squares
     alpha, alpha_std, intercepts = _fit_piecewise_linear(
@@ -272,7 +274,11 @@ def _fit_piecewise_linear(
         coeffs, _, _, _ = np.linalg.lstsq(X, peak_pos, rcond=None)
 
     if not np.all(np.isfinite(coeffs)):
-        alpha_rough = float((peak_pos[-1] - peak_pos[0]) / (v_d[-1] - v_d[0])) if abs(v_d[-1] - v_d[0]) > 1e-15 else 0.0
+        alpha_rough = (
+            float((peak_pos[-1] - peak_pos[0]) / (v_d[-1] - v_d[0]))
+            if abs(v_d[-1] - v_d[0]) > 1e-15
+            else 0.0
+        )
         return alpha_rough, float("nan"), [float(np.mean(peak_pos))]
 
     alpha = float(coeffs[0])

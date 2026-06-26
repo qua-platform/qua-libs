@@ -83,13 +83,19 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     probs = probs.assign_coords(outcome=("outcome", labels))
 
     probs_00 = probs.sel(outcome="00")
-    probs_00 = probs_00.rename({"shots": "average", "sequence": "repeat", "depths": "circuit_depth"})
+    probs_00 = probs_00.rename(
+        {"shots": "average", "sequence": "repeat", "depths": "circuit_depth"}
+    )
     probs_00 = probs_00.transpose("qubit_pair", "repeat", "circuit_depth", "average")
 
     probs_00 = probs_00.astype(int)
 
-    ds_transposed = ds.rename({"shots": "average", "sequence": "repeat", "depths": "circuit_depth"})
-    ds_transposed = ds_transposed.transpose("qubit_pair", "repeat", "circuit_depth", "average")
+    ds_transposed = ds.rename(
+        {"shots": "average", "sequence": "repeat", "depths": "circuit_depth"}
+    )
+    ds_transposed = ds_transposed.transpose(
+        "qubit_pair", "repeat", "circuit_depth", "average"
+    )
 
     return ds_transposed
 

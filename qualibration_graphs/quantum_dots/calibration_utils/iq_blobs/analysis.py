@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Optional, List, Any
 import numpy as np
 import xarray as xr
 import jax.numpy as jnp
@@ -13,6 +13,7 @@ from qualibration_libs.data import convert_IQ_to_V
 from .readout_barthel.utils import Barthel1DMetricCurves
 from .readout_barthel.calibrate import Barthel1DFromIQ
 from .readout_barthel.classify import classify_iq_with_pca_threshold
+from .readout_barthel.fit import MCMCConfig
 
 # Enable 64-bit precision for JAX
 jax_config.update("jax_enable_x64", True)
@@ -221,10 +222,18 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         # Calculate confusion matrix using Barthel threshold
         # Classify the data using the optimal threshold
         labels_ground, _ = classify_iq_with_pca_threshold(
-            jnp.array(X_ground), proj, v_rf_norm, normalizer=normalizer, return_margin=True
+            jnp.array(X_ground),
+            proj,
+            v_rf_norm,
+            normalizer=normalizer,
+            return_margin=True,
         )
         labels_excited, _ = classify_iq_with_pca_threshold(
-            jnp.array(X_excited), proj, v_rf_norm, normalizer=normalizer, return_margin=True
+            jnp.array(X_excited),
+            proj,
+            v_rf_norm,
+            normalizer=normalizer,
+            return_margin=True,
         )
 
         # Convert JAX arrays to numpy for counting
@@ -248,7 +257,11 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         ee_list.append(ee)
 
         # Pre-compute density curves for plotting using analytic functions
-        from .readout_barthel.analytic import _norm_pdf, triplet_pdf_analytic, decay_inflight_integral
+        from .readout_barthel.analytic import (
+            _norm_pdf,
+            triplet_pdf_analytic,
+            decay_inflight_integral,
+        )
 
         # Normalize the PCA projected data for density calculation
         y_norm = normalizer.transform(y)
@@ -383,3 +396,208 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
         for q in fit.qubit.values
     }
     return fit, fit_results
+
+
+def fit_barthel_mixed_iq(
+    ds: xr.Dataset,
+    node: QualibrationNode,
+    *,
+    fix_tau_M: float = 1.0,
+    mcmc_config: Optional[MCMCConfig] = None,
+) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+    """Fit the Barthel 1D readout model to **unlabeled** mixed I/Q shots (e.g. PSB random loading).
+
+    For each entry in ``node.namespace["qubit_pairs"]``, stacks ``I``, ``Q`` from ``ds`` (all shots),
+    runs :meth:`~readout_barthel.calibrate.Barthel1DFromIQ.fit` without calibration (``calib=None``,
+    ``orient="auto"``), evaluates optimal threshold and analytic mixture densities (same path as
+    :func:`fit_raw_data` but without separate S/T preparation datasets).
+
+    ``ds`` must contain variables ``I`` and ``Q`` with dimension ``qubit_pair`` (and optional extra
+    dims such as ``n_runs`` / a singleton sweep, which are flattened).
+
+    Returns
+    -------
+    ds_fit
+        Per-``qubit_pair`` arrays for plotting (``y_pca``, Barthel densities, thresholds) and scalars
+        compatible with :func:`log_fitted_results` / state updates that use ``iw_angle``,
+        ``I_threshold``, ``readout_fidelity``.
+    fit_results
+        :class:`FitParameters` per pair; ``confusion_matrix`` is ``NaN`` when states are not
+        separately prepared.
+    """
+    from .readout_barthel.analytic import (
+        _norm_pdf,
+        decay_inflight_integral,
+    )
+
+    qubit_pairs: List[Any] = list(node.namespace["qubit_pairs"])
+    pair_names = [qp.name for qp in qubit_pairs]
+
+    angles: List[float] = []
+    ge_thresholds: List[float] = []
+    norm_ge_thresholds: List[float] = []
+    I_thresholds: List[float] = []
+    y_pca_list: List[np.ndarray] = []
+    grid_values_list: List[np.ndarray] = []
+    total_density_list: List[np.ndarray] = []
+    S_density_list: List[np.ndarray] = []
+    T_no_density_list: List[np.ndarray] = []
+    T_dec_density_list: List[np.ndarray] = []
+    weights_list: List[List[float]] = []
+    readout_fidelity_list: List[float] = []
+    irot_scale_list: List[float] = []
+    irot_offset_list: List[float] = []
+
+    cfg = mcmc_config if mcmc_config is not None else MCMCConfig(progress_bar=False)
+
+    for qp in qubit_pairs:
+        I = np.asarray(ds.I.sel(qubit_pair=qp.name).values, dtype=np.float64).ravel()
+        Q = np.asarray(ds.Q.sel(qubit_pair=qp.name).values, dtype=np.float64).ravel()
+        m = np.isfinite(I) & np.isfinite(Q)
+        I, Q = I[m], Q[m]
+        if I.size < 8:
+            raise ValueError(
+                f"Need at least 8 finite I/Q shots for Barthel fit (pair {qp.name!r} has {I.size})."
+            )
+        X = jnp.asarray(np.column_stack([I, Q]), dtype=float)
+
+        y, proj, normalizer, _mcmc, samples, _, _calib = Barthel1DFromIQ.fit(
+            X,
+            priors=None,
+            mcmc_config=cfg,
+            fix_tau_M=float(fix_tau_M),
+            calib=None,
+            orient="auto",
+        )
+
+        proj_dir = proj.pc1 * proj.sign
+        angle = jnp.arctan2(proj_dir[1], proj_dir[0])
+        angles.append(float(angle))
+
+        rotation_matrix = jnp.array(
+            [[jnp.cos(angle), jnp.sin(angle)], [-jnp.sin(angle), jnp.cos(angle)]]
+        )
+        proj_rotated_mean = jnp.asarray(proj.mean) @ rotation_matrix.T
+
+        irot_scale_list.append(float(normalizer.scale))
+        irot_offset_list.append(float(normalizer.loc) + float(proj_rotated_mean[0]))
+
+        fidelity_res = Barthel1DMetricCurves.summarize_metric(
+            samples,
+            tauM_fixed=float(fix_tau_M),
+            use_ppd=True,
+            draws=64,
+            metric="fidelity",
+            return_aligned_curve=True,
+        )
+
+        v_rf_norm = float(fidelity_res["vrf_opt_aligned"])
+        v_rf_phys = float(normalizer.inverse(v_rf_norm))
+        ge_thresholds.append(v_rf_phys)
+        norm_ge_thresholds.append(v_rf_norm)
+        I_thresholds.append(float(v_rf_phys + float(proj_rotated_mean[0])))
+        readout_fidelity_list.append(100.0 * float(fidelity_res["fidelity_opt"]))
+
+        y_norm = np.asarray(normalizer.transform(y), dtype=float)
+        y_pca_list.append(y_norm)
+        rng_norm = np.ptp(y_norm) or 1.0
+        xs_norm = np.linspace(
+            float(y_norm.min()) - 0.1 * rng_norm,
+            float(y_norm.max()) + 0.1 * rng_norm,
+            800,
+        )
+
+        mu_S = float(np.asarray(samples["mu_S"]).mean())
+        mu_T = float(np.asarray(samples["mu_T"]).mean())
+        sigma = float(np.asarray(samples["sigma"]).mean())
+        pT_m = float(np.asarray(samples["pT"]).mean())
+        T1_m = float(np.asarray(samples["T1"]).mean())
+        tauM_m = float(fix_tau_M)
+
+        xs_jax = jnp.asarray(xs_norm)
+        S_comp = (1 - pT_m) * _norm_pdf(xs_jax, mu_S, sigma)
+        p_no = float(jnp.exp(-tauM_m / T1_m)) if T1_m > 0 else 0.0
+        T_no_comp = pT_m * p_no * _norm_pdf(xs_jax, mu_T, sigma)
+        T_dec_comp = (
+            pT_m
+            * (1.0 / T1_m)
+            * decay_inflight_integral(xs_jax, mu_S, mu_T, sigma, T1_m, tauM_m)
+        )
+        total = S_comp + T_no_comp + T_dec_comp
+        w_S = 1 - pT_m
+        w_T_no = pT_m * p_no
+        w_T_dec = pT_m * (1.0 - p_no)
+
+        grid_values_list.append(xs_norm)
+        total_density_list.append(np.asarray(total))
+        S_density_list.append(np.asarray(S_comp))
+        T_no_density_list.append(np.asarray(T_no_comp))
+        T_dec_density_list.append(np.asarray(T_dec_comp))
+        weights_list.append([w_S, w_T_no, w_T_dec])
+
+    n_samples = max(len(a) for a in y_pca_list)
+    y_pca_pad = np.full((len(pair_names), n_samples), np.nan, dtype=float)
+    for i, arr in enumerate(y_pca_list):
+        y_pca_pad[i, : arr.size] = arr
+
+    dens_stack = np.stack(grid_values_list, axis=0)
+    n_grid = dens_stack.shape[1]
+
+    ds_fit = xr.Dataset(
+        coords={
+            "qubit_pair": pair_names,
+            "n_samples": np.arange(n_samples),
+            "grid_pts": np.arange(n_grid),
+            "weight_component": ["w_S", "w_T_no", "w_T_dec"],
+        },
+        data_vars={
+            "iw_angle": ("qubit_pair", np.asarray(angles, dtype=float)),
+            "ge_threshold": ("qubit_pair", np.asarray(ge_thresholds, dtype=float)),
+            "norm_ge_threshold": ("qubit_pair", np.asarray(norm_ge_thresholds, dtype=float)),
+            "I_threshold": ("qubit_pair", np.asarray(I_thresholds, dtype=float)),
+            "readout_fidelity": ("qubit_pair", np.asarray(readout_fidelity_list, dtype=float)),
+            "irot_scale": ("qubit_pair", np.asarray(irot_scale_list, dtype=float)),
+            "irot_offset": ("qubit_pair", np.asarray(irot_offset_list, dtype=float)),
+            "y_pca": (["qubit_pair", "n_samples"], y_pca_pad),
+            "density_grid": (["qubit_pair", "grid_pts"], dens_stack),
+            "density_total": (["qubit_pair", "grid_pts"], np.stack(total_density_list, axis=0)),
+            "density_S": (["qubit_pair", "grid_pts"], np.stack(S_density_list, axis=0)),
+            "density_T_no": (["qubit_pair", "grid_pts"], np.stack(T_no_density_list, axis=0)),
+            "density_T_dec": (["qubit_pair", "grid_pts"], np.stack(T_dec_density_list, axis=0)),
+            "weights": (
+                ["qubit_pair", "weight_component"],
+                np.asarray(weights_list, dtype=float),
+            ),
+        },
+    )
+
+    nan_success = (
+        np.isnan(ds_fit.iw_angle.values)
+        | np.isnan(ds_fit.ge_threshold.values)
+        | np.isnan(ds_fit.I_threshold.values)
+        | np.isnan(ds_fit.readout_fidelity.values)
+    )
+    ds_fit = ds_fit.assign(
+        {
+            "success": xr.DataArray(
+                ~nan_success,
+                dims="qubit_pair",
+                coords={"qubit_pair": pair_names},
+            )
+        }
+    )
+
+    nan_cm = float("nan")
+    fit_results: Dict[str, FitParameters] = {}
+    for i, name in enumerate(pair_names):
+        ok = bool(ds_fit.success.values[i])
+        fit_results[name] = FitParameters(
+            iw_angle=float(ds_fit.iw_angle.values[i]),
+            ge_threshold=float(ds_fit.ge_threshold.values[i]),
+            I_threshold=float(ds_fit.I_threshold.values[i]),
+            readout_fidelity=float(ds_fit.readout_fidelity.values[i]),
+            confusion_matrix=[[nan_cm, nan_cm], [nan_cm, nan_cm]],
+            success=ok,
+        )
+
+    return ds_fit, fit_results

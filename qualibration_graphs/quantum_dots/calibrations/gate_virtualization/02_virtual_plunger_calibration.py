@@ -72,7 +72,10 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.run_in_video_mode
+)
 def create_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     """Create 2D scan QUA programs for each plunger-device pair."""
     from calibration_utils.gate_virtualization.scan_utils import create_2d_scan_program
@@ -83,7 +86,8 @@ def create_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     mapping = p.plunger_device_mapping
     if mapping is None:
         raise ValueError(
-            "plunger_device_mapping must be provided. " "Automatic generation from the machine is not yet implemented."
+            "plunger_device_mapping must be provided. "
+            "Automatic generation from the machine is not yet implemented."
         )
 
     programs = {}
@@ -111,13 +115,17 @@ def create_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     """Simulate the first QUA program for sanity-checking."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     first_key = next(iter(node.namespace["programs"]))
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["programs"][first_key], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["programs"][first_key], node.parameters
+    )
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
@@ -127,7 +135,9 @@ def simulate_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam])
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.simulate
+    or node.parameters.run_in_video_mode
 )
 def execute_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     """Execute all plunger pair scans sequentially and store raw data."""
@@ -137,7 +147,9 @@ def execute_qua_program(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     for pair_key, qua_prog in node.namespace["programs"].items():
         with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
             job = qm.execute(qua_prog)
-            data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes_all"][pair_key])
+            data_fetcher = XarrayDataFetcher(
+                job, node.namespace["sweep_axes_all"][pair_key]
+            )
             for dataset in data_fetcher:
                 progress_counter(
                     data_fetcher.get("n", 0),
@@ -166,7 +178,12 @@ def analyse_data(node: QualibrationNode[VirtualPlungerParameters, Quam]):
     for pair_key, ds_raw in node.results["ds_raw_all"].items():
         ds = process_raw_dataset(ds_raw, node)
         plunger_gate_name, device_gate_name = pair_key.split("_vs_", maxsplit=1)
-        is_asymmetric = bool(plunger_set and not (plunger_gate_name in plunger_set and device_gate_name in plunger_set))
+        is_asymmetric = bool(
+            plunger_set
+            and not (
+                plunger_gate_name in plunger_set and device_gate_name in plunger_set
+            )
+        )
         fit_results[pair_key] = extract_virtual_plunger_coefficients(
             ds,
             plunger_gate_name=plunger_gate_name,
@@ -229,30 +246,42 @@ def update_state(
     """
     if "fit_results" not in node.results:
         raise RuntimeError(
-            "update_state called but 'fit_results' not found in node.results. " "Run analyse_data before update_state."
+            "update_state called but 'fit_results' not found in node.results. "
+            "Run analyse_data before update_state."
         )
 
     plunger_set = set(node.parameters.plunger_gates or [])
 
     for pair_key, fit_res in node.results["fit_results"].items():
         plunger_gate, device_gate = pair_key.split("_vs_", maxsplit=1)
-        is_asymmetric = bool(plunger_set and not (plunger_gate in plunger_set and device_gate in plunger_set))
+        is_asymmetric = bool(
+            plunger_set
+            and not (plunger_gate in plunger_set and device_gate in plunger_set)
+        )
 
         if fit_res is None:
             if is_asymmetric:
-                warnings.warn(f"Skipping asymmetric pair '{pair_key}': analysis returned None.")
+                warnings.warn(
+                    f"Skipping asymmetric pair '{pair_key}': analysis returned None."
+                )
                 continue
-            raise RuntimeError(f"fit_results['{pair_key}'] is None — analysis failed for this pair.")
+            raise RuntimeError(
+                f"fit_results['{pair_key}'] is None — analysis failed for this pair."
+            )
         fit_params = fit_res.get("fit_params", {})
         if not fit_params.get("success", False):
             reason = fit_params.get("reason", "unknown")
             if is_asymmetric:
                 warnings.warn(f"Skipping asymmetric pair '{pair_key}': {reason}")
                 continue
-            raise RuntimeError(f"Analysis for pair '{pair_key}' was not successful: {reason}")
+            raise RuntimeError(
+                f"Analysis for pair '{pair_key}' was not successful: {reason}"
+            )
         M = fit_res["T_matrix"]
         if M is None:
-            raise RuntimeError(f"T_matrix is None for pair '{pair_key}' despite success=True.")
+            raise RuntimeError(
+                f"T_matrix is None for pair '{pair_key}' despite success=True."
+            )
 
         vgs = None
         for candidate in node.machine.virtual_gate_sets.values():
@@ -262,7 +291,8 @@ def update_state(
                 break
         if vgs is None:
             raise ValueError(
-                f"Could not find a VirtualGateSet containing both " f"'{plunger_gate}' and '{device_gate}'."
+                f"Could not find a VirtualGateSet containing both "
+                f"'{plunger_gate}' and '{device_gate}'."
             )
 
         source_gates = vgs.layers[0].source_gates
@@ -271,7 +301,9 @@ def update_state(
 
         delta = np.asarray(M, dtype=float)
         if delta.shape != (2, 2):
-            raise ValueError(f"Expected a 2x2 T_matrix for '{pair_key}', got shape {delta.shape}.")
+            raise ValueError(
+                f"Expected a 2x2 T_matrix for '{pair_key}', got shape {delta.shape}."
+            )
 
         layer = vgs.layers[0]
         target = "both" if vgs.id in node.machine.virtual_dc_sets else "opx"

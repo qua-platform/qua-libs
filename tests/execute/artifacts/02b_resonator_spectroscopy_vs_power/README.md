@@ -28,10 +28,10 @@ or to play the experiment sequentially for each qubit (False). Default is False.
 | `use_state_discrimination` | `False` | Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated
 quadratures 'I' and 'Q'. Default is False. |
 | `reset_wait_time` | `5000` | The wait time for qubit reset. |
-| `num_shots` | `1` | Number of averages to perform. Default is 100. |
+| `num_shots` | `10` | Number of averages to perform. Default is 100. |
 | `sensor_names` | `None` | The list of sensor dot names to be included in the measurement.  |
-| `frequency_span_in_mhz` | `4.0` | Span of frequencies to sweep in MHz. Default is 15 MHz. |
-| `frequency_step_in_mhz` | `2.0` | Step size for frequency sweep in MHz. Default is 0.1 MHz. |
+| `frequency_span_in_mhz` | `40.0` | Span of frequencies to sweep in MHz. Default is 15 MHz. |
+| `frequency_step_in_mhz` | `5.0` | Step size for frequency sweep in MHz. Default is 0.1 MHz. |
 | `min_power_dbm` | `-50` | Minimum power level in dBm. Default is -50 dBm. |
 | `max_power_dbm` | `-25` | Maximum power level in dBm. Default is -25 dBm. |
 | `num_power_points` | `100` | Number of points of the readout power axis. Default is 100. |
@@ -41,6 +41,7 @@ quadratures 'I' and 'Q'. Default is False. |
 | `moving_average_filter_window_num_points` | `10` | Size of the moving average filter window (number of points). Default is 5. |
 | `buffer_from_crossing_threshold_in_dbm` | `1` | Buffer from the crossing threshold in dBm - the optimal readout power will be set to be this number in Db below
 the threshold. Default is 1 dBm. |
+| `use_simulated_data` | `False` | Whether to generate simulated data instead of measuring via the OPX. Default False. |
 | `simulate` | `False` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
 | `simulation_duration_ns` | `40000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
 | `use_waveform_report` | `True` | Whether to use the interactive waveform report in simulation. Default is True. |
@@ -62,14 +63,22 @@ the threshold. Default is 1 dBm. |
 | `frequency_shift` | `nan` |
 | `optimal_power` | `-51.0` |
 
+### virtual_sensor_2
+| Parameter | Value |
+|-----------|-------|
+| `success` | `False` |
+| `resonator_frequency` | `nan` |
+| `frequency_shift` | `nan` |
+| `optimal_power` | `-51.0` |
+
 
 ## Metadata
 
 | Key | Value |
 |-----|-------|
-| Timestamp | 2026-04-17T03:10:51 UTC |
+| Timestamp | 2026-04-29T00:43:27 UTC |
 | Node | 02b_resonator_spectroscopy_vs_power |
-| Duration | 4.4s |
+| Duration | 5.0s |
 | Status | completed |
 
 ---

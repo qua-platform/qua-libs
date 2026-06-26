@@ -26,7 +26,9 @@ class LorentzianFitResult(NamedTuple):
     optimal_voltage: float
 
 
-def lorentzian(x: np.ndarray, x0: float, gamma: float, amplitude: float, offset: float) -> np.ndarray:
+def lorentzian(
+    x: np.ndarray, x0: float, gamma: float, amplitude: float, offset: float
+) -> np.ndarray:
     """Lorentzian peak with free amplitude and offset.
 
     L(x) = amplitude * (γ/2)² / ((x − x0)² + (γ/2)²) + offset

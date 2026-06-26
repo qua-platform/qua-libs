@@ -22,7 +22,9 @@ import numpy as np
 try:
     from skimage.morphology import skeletonize
 except ImportError as exc:  # pragma: no cover - dependency guard
-    raise ImportError("scikit-image is required for skeletonization. Install with `pip install scikit-image`.") from exc
+    raise ImportError(
+        "scikit-image is required for skeletonization. Install with `pip install scikit-image`."
+    ) from exc
 
 
 _NEIGHBORS: Tuple[Tuple[int, int], ...] = (
@@ -65,7 +67,11 @@ def skeletonize_mask(binary_mask: np.ndarray) -> np.ndarray:
 
 def _pixel_graph(
     skeleton: np.ndarray,
-) -> Tuple[Dict[Tuple[int, int], List[Tuple[int, int]]], List[Tuple[int, int]], List[Tuple[int, int]]]:
+) -> Tuple[
+    Dict[Tuple[int, int], List[Tuple[int, int]]],
+    List[Tuple[int, int]],
+    List[Tuple[int, int]],
+]:
     """
     Build adjacency graph from a skeleton.
 
@@ -104,7 +110,9 @@ def _extract_branches(
     visited_edges = set()
     branches: List[np.ndarray] = []
 
-    def _edge_key(a: Tuple[int, int], b: Tuple[int, int]) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    def _edge_key(
+        a: Tuple[int, int], b: Tuple[int, int]
+    ) -> Tuple[Tuple[int, int], Tuple[int, int]]:
         return tuple(sorted([a, b]))
 
     for start in starts:
@@ -155,7 +163,9 @@ def _rdp_indices(points: np.ndarray, epsilon: float) -> List[int]:
 
         start = points[start_idx]
         end = points[end_idx]
-        dists = np.array([_perp_dist(points[i], start, end) for i in range(start_idx + 1, end_idx)])
+        dists = np.array(
+            [_perp_dist(points[i], start, end) for i in range(start_idx + 1, end_idx)]
+        )
 
         if len(dists) == 0:
             return [start_idx, end_idx]
@@ -175,7 +185,9 @@ def _rdp_indices(points: np.ndarray, epsilon: float) -> List[int]:
     return sorted(dict.fromkeys(keep))
 
 
-def _split_branch(branch: np.ndarray, epsilon: float, min_points: int) -> List[np.ndarray]:
+def _split_branch(
+    branch: np.ndarray, epsilon: float, min_points: int
+) -> List[np.ndarray]:
     """Split a branch at kinks found by RDP and return the sub-polylines."""
     if len(branch) < max(3, min_points):
         return []
@@ -212,7 +224,9 @@ def _orthogonal_fit(points: np.ndarray) -> SegmentFit:
     end = centroid + proj_max * direction
 
     slope = np.inf if abs(direction[0]) < 1e-9 else direction[1] / direction[0]
-    intercept = np.nan if not np.isfinite(slope) else float(centroid[1] - slope * centroid[0])
+    intercept = (
+        np.nan if not np.isfinite(slope) else float(centroid[1] - slope * centroid[0])
+    )
 
     return SegmentFit(
         points=pts,
@@ -294,19 +308,28 @@ def analyze_edge_map(
     skel = skeletonize_mask(binary)
 
     adjacency, endpoints, junctions = _pixel_graph(skel)
-    branches = [b for b in _extract_branches(adjacency, endpoints, junctions) if len(b) >= min_branch_points]
+    branches = [
+        b
+        for b in _extract_branches(adjacency, endpoints, junctions)
+        if len(b) >= min_branch_points
+    ]
 
     segment_points: List[np.ndarray] = []
     for branch in branches:
         segment_points.extend(_split_branch(branch, rdp_epsilon, min_segment_points))
 
-    segments = [_orthogonal_fit(seg) for seg in segment_points if len(seg) >= min_segment_points]
+    segments = [
+        _orthogonal_fit(seg) for seg in segment_points if len(seg) >= min_segment_points
+    ]
 
     intersections: List[np.ndarray] = []
     for i in range(len(segments)):
         for j in range(i + 1, len(segments)):
             pt = _segment_intersection(
-                segments[i], segments[j], parallel_tol=parallel_tol, on_segment_tol=on_segment_tol
+                segments[i],
+                segments[j],
+                parallel_tol=parallel_tol,
+                on_segment_tol=on_segment_tol,
             )
             if pt is not None:
                 intersections.append(pt)
@@ -345,7 +368,9 @@ def _plot_results(
     ax0 = axes[0]
     im0 = ax0.imshow(background, origin="lower", cmap="magma")
     fig.colorbar(im0, ax=ax0, fraction=0.046, pad=0.04, label="sensor")
-    ax0.imshow(np.ma.masked_where(binary == 0, binary), cmap="Reds", alpha=0.4, origin="lower")
+    ax0.imshow(
+        np.ma.masked_where(binary == 0, binary), cmap="Reds", alpha=0.4, origin="lower"
+    )
     ax0.set_title("Edge threshold + skeleton")
     ax0.set_xlabel("col (V2)")
     ax0.set_ylabel("row (V1)")
@@ -353,7 +378,12 @@ def _plot_results(
     # skeleton + branches + fits
     ax1 = axes[1]
     ax1.imshow(background, origin="lower", cmap="gray", alpha=0.35)
-    ax1.imshow(np.ma.masked_where(skeleton == 0, skeleton), cmap="Blues", alpha=0.5, origin="lower")
+    ax1.imshow(
+        np.ma.masked_where(skeleton == 0, skeleton),
+        cmap="Blues",
+        alpha=0.5,
+        origin="lower",
+    )
 
     colors = plt.cm.tab10(np.linspace(0, 1, max(len(branches), 1)))
     for idx, branch in enumerate(branches):
@@ -362,11 +392,26 @@ def _plot_results(
         ax1.plot(cc, rc, ".", color=colors[idx % len(colors)], ms=2, alpha=0.8)
 
     for seg in segments:
-        ax1.plot([seg.start[1], seg.end[1]], [seg.start[0], seg.end[0]], "-", color="orange", lw=2)
+        ax1.plot(
+            [seg.start[1], seg.end[1]],
+            [seg.start[0], seg.end[0]],
+            "-",
+            color="orange",
+            lw=2,
+        )
 
     if intersections:
         pts = np.vstack(intersections)
-        ax1.scatter(pts[:, 1], pts[:, 0], marker="*", s=120, c="gold", edgecolor="k", zorder=5, label="triple points")
+        ax1.scatter(
+            pts[:, 1],
+            pts[:, 0],
+            marker="*",
+            s=120,
+            c="gold",
+            edgecolor="k",
+            zorder=5,
+            label="triple points",
+        )
 
     ax1.set_title("Fitted segments + intersections")
     ax1.set_xlabel("col (V2)")

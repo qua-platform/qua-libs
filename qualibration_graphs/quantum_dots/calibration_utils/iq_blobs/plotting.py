@@ -69,7 +69,9 @@ def plot_iq_blobs(ds: xr.Dataset, qubits: List[Any], fits: xr.Dataset):
     return fig
 
 
-def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_iq_blobs(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots individual quantum dot pair data on a given axis with optional fit.
 
@@ -89,7 +91,15 @@ def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fi
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    ax.plot(1e3 * fit.Ig_rot, 1e3 * fit.Qg_rot, ".", alpha=0.6, label="Singlet", markersize=3, color="C0")
+    ax.plot(
+        1e3 * fit.Ig_rot,
+        1e3 * fit.Qg_rot,
+        ".",
+        alpha=0.6,
+        label="Singlet",
+        markersize=3,
+        color="C0",
+    )
     ax.plot(
         1e3 * fit.Ie_rot,
         1e3 * fit.Qe_rot,
@@ -171,7 +181,9 @@ def plot_histograms(ds: xr.Dataset, qubits: List[Any], fits: xr.Dataset):
     return fig
 
 
-def plot_individual_histograms(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_histograms(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots individual quantum dot pair data on a given axis with optional fit.
 
@@ -290,7 +302,9 @@ def plot_confusion_matrices(ds: xr.Dataset, qubits: List[Any], fits: xr.Dataset)
     return fig
 
 
-def plot_individual_confusion_matrix(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_confusion_matrix(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots individual quantum dot pair data on a given axis with optional fit.
 
@@ -310,7 +324,9 @@ def plot_individual_confusion_matrix(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    confusion = np.array([[float(fit.gg), float(fit.ge)], [float(fit.eg), float(fit.ee)]])
+    confusion = np.array(
+        [[float(fit.gg), float(fit.ge)], [float(fit.eg), float(fit.ee)]]
+    )
     ax.imshow(confusion)
     ax.set_xticks([0, 1])
     ax.set_yticks([0, 1])
@@ -377,7 +393,9 @@ def plot_visibility_curves(ds: xr.Dataset, qubits: List[Any], fits: xr.Dataset):
     return fig
 
 
-def plot_individual_visibility_curve(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_visibility_curve(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots fidelity and visibility curves on the same axes, highlighting their optima.
 
@@ -416,7 +434,12 @@ def plot_individual_visibility_curve(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
     # Mark optimal points
     ax.axvline(fidelity_opt_vrf, color="C0", ls="--", lw=1)
     ax.plot(
-        fidelity_opt_vrf, fidelity_opt, "o", color="C0", ms=6, label=f"F*: {fidelity_opt:.3f} @ {fidelity_opt_vrf:.3f}"
+        fidelity_opt_vrf,
+        fidelity_opt,
+        "o",
+        color="C0",
+        ms=6,
+        label=f"F*: {fidelity_opt:.3f} @ {fidelity_opt_vrf:.3f}",
     )
 
     ax.axvline(visibility_opt_vrf, color="C1", ls="--", lw=1)

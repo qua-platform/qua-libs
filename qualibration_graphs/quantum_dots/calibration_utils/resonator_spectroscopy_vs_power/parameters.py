@@ -32,6 +32,8 @@ class NodeSpecificParameters(RunnableParameters):
     buffer_from_crossing_threshold_in_dbm: int = 1
     """Buffer from the crossing threshold in dBm - the optimal readout power will be set to be this number in Db below
     the threshold. Default is 1 dBm."""
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 
 
 class Parameters(

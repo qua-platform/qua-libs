@@ -90,9 +90,9 @@ defaults to False. Set True only if you explicitly prepare S and T. |
 
 | Key | Value |
 |-----|-------|
-| Timestamp | 2026-04-17T03:11:03 UTC |
+| Timestamp | 2026-04-29T00:43:43 UTC |
 | Node | 06a_PSB_search_opx_sweep_detuning |
-| Duration | 11.1s |
+| Duration | 15.4s |
 | Status | completed |
 
 ---

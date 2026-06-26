@@ -8,16 +8,19 @@ from typing import ClassVar, Literal
 
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
-from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
+from qualibration_libs.parameters import (
+    CommonNodeParameters,
+    QubitPairExperimentNodeParameters,
+)
 
 
 class NodeSpecificParameters(RunnableParameters):
     """Node-specific parameters for two-qubit RB experiments."""
 
     num_shots: int = 100
-    """Number of averages to perform. Default is 50."""
-    operation: Literal["cz_flattop", "cz_unipolar", "cz_bipolar"] = "cz_unipolar"
-    """Type of CZ operation to perform. Options: 'cz_flattop', 'cz_unipolar', 'cz_bipolar'. Default: 'cz_unipolar'."""
+    """Number of averages to perform. Default is 100."""
+    operation: Literal["cz"] = "cz"
+    """Type of CZ operation to perform. Currently only one option: 'cz'."""
     use_state_discrimination: bool = True
     """Whether to use state discrimination for readout. Default is True."""
     circuit_lengths: list[int] = [1, 4, 16, 32, 64]
@@ -28,7 +31,9 @@ class NodeSpecificParameters(RunnableParameters):
     """Random seed for circuit generation to ensure reproducibility. Default is 0."""
     use_input_stream: bool = False
     """Whether to use input streams for circuit execution. Default is False."""
-    reset_type: Literal["active", "thermal"] = "active"
+    reset_type: Literal["active", "thermal"] = "thermal"
+    """Whether to use simulated data. Default is False."""
+    use_simulated_data: bool = False
 
 
 class Parameters(

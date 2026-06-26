@@ -66,7 +66,10 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.run_in_video_mode
+)
 def create_qua_program(node: QualibrationNode[SensorCompensationParameters, Quam]):
     """Create 2D scan QUA programs for each sensor-device pair."""
     node.namespace["sensors"] = sensors = get_sensors(node)
@@ -74,7 +77,8 @@ def create_qua_program(node: QualibrationNode[SensorCompensationParameters, Quam
     mapping = node.parameters.sensor_device_mapping
     if mapping is None:
         raise ValueError(
-            "sensor_device_mapping must be provided. " "Automatic generation from the machine is not yet implemented."
+            "sensor_device_mapping must be provided. "
+            "Automatic generation from the machine is not yet implemented."
         )
 
     # Build a program for each (sensor_gate, device_gate) pair
@@ -120,13 +124,17 @@ def create_qua_program(node: QualibrationNode[SensorCompensationParameters, Quam
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[SensorCompensationParameters, Quam]):
     """Simulate the first QUA program for sanity-checking."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     first_key = next(iter(node.namespace["programs"]))
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["programs"][first_key], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["programs"][first_key], node.parameters
+    )
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
@@ -136,7 +144,9 @@ def simulate_qua_program(node: QualibrationNode[SensorCompensationParameters, Qu
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.simulate
+    or node.parameters.run_in_video_mode
 )
 def execute_qua_program(node: QualibrationNode[SensorCompensationParameters, Quam]):
     """Execute all sensor-device pair scans sequentially and store raw data."""
@@ -147,7 +157,9 @@ def execute_qua_program(node: QualibrationNode[SensorCompensationParameters, Qua
     for pair_key, qua_prog in node.namespace["programs"].items():
         with qm_session(qmm, config, timeout=p.timeout) as qm:
             job = qm.execute(qua_prog)
-            data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes_all"][pair_key])
+            data_fetcher = XarrayDataFetcher(
+                job, node.namespace["sweep_axes_all"][pair_key]
+            )
             for dataset in data_fetcher:
                 progress_counter(
                     data_fetcher.get("n", 0),
@@ -192,7 +204,10 @@ def analyse_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
 def plot_data(node: QualibrationNode[SensorCompensationParameters, Quam]):
     """Plot all 2D scans in a single multi-row figure (one row per pair)."""
     fit_results = node.results.get("fit_results", {})
-    datasets = {pair_key: process_raw_dataset(ds_raw) for pair_key, ds_raw in node.results["ds_raw_all"].items()}
+    datasets = {
+        pair_key: process_raw_dataset(ds_raw)
+        for pair_key, ds_raw in node.results["ds_raw_all"].items()
+    }
     fig = plot_sensor_compensation_all_pairs(datasets, fit_results)
     node.results["figures"] = {"sensor_compensation": fig}
 
@@ -215,7 +230,8 @@ def update_state(
     """
     if "fit_results" not in node.results:
         raise RuntimeError(
-            "update_state called but 'fit_results' not found in node.results. " "Run analyse_data before update_state."
+            "update_state called but 'fit_results' not found in node.results. "
+            "Run analyse_data before update_state."
         )
 
     for pair_key, fit_res in node.results["fit_results"].items():
@@ -231,7 +247,8 @@ def update_state(
                 break
         if vgs is None:
             raise ValueError(
-                f"Could not find a VirtualGateSet containing both " f"'{sensor_gate}' and '{device_gate}'."
+                f"Could not find a VirtualGateSet containing both "
+                f"'{sensor_gate}' and '{device_gate}'."
             )
 
         # Read current entry and compute the updated value (add-residual).

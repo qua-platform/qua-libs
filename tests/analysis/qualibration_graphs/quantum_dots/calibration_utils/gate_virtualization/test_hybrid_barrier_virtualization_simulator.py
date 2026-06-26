@@ -33,7 +33,10 @@ REPO_ROOT = _repo_root(Path(__file__).resolve())
 TEST_QD_ROOT = REPO_ROOT / "tests" / "analysis" / "qualibration_graphs" / "quantum_dots"
 
 _sim_mod = _load_module(
-    TEST_QD_ROOT / "calibration_utils" / "gate_virtualization" / "hybrid_barrier_virtualization_simulator.py",
+    TEST_QD_ROOT
+    / "calibration_utils"
+    / "gate_virtualization"
+    / "hybrid_barrier_virtualization_simulator.py",
     "gate_virtualization_hybrid_simulator_unit_test",
 )
 
@@ -125,7 +128,9 @@ def test_pair_scan_uses_eq2_tunnel_and_paper_signal_model() -> None:
     assert np.allclose(ds["tunnel_truth"].values, expected_tunnel, atol=1e-12)
 
     for row, drive_value in enumerate(drive):
-        center = cfg.detuning_center + cfg.detuning_center_drive_factor * float(drive_value)
+        center = cfg.detuning_center + cfg.detuning_center_drive_factor * float(
+            drive_value
+        )
         transition = finite_temperature_excess_charge(
             detuning,
             tunnel_coupling=expected_tunnel[row],
@@ -136,11 +141,19 @@ def test_pair_scan_uses_eq2_tunnel_and_paper_signal_model() -> None:
         expected_signal = (
             cfg.paper_signal_v0
             + cfg.paper_signal_delta_v * transition
-            + (cfg.paper_signal_s0 + (cfg.paper_signal_s1 - cfg.paper_signal_s0) * transition) * detuning_centered
+            + (
+                cfg.paper_signal_s0
+                + (cfg.paper_signal_s1 - cfg.paper_signal_s0) * transition
+            )
+            * detuning_centered
         )
-        assert np.allclose(ds["amplitude_truth"].values[row], expected_signal, atol=1e-12)
+        assert np.allclose(
+            ds["amplitude_truth"].values[row], expected_signal, atol=1e-12
+        )
 
-    expected_t_at_zero = cfg.base_tunnel_couplings[i] * np.exp(float(np.dot(gamma_row, offsets)))
+    expected_t_at_zero = cfg.base_tunnel_couplings[i] * np.exp(
+        float(np.dot(gamma_row, offsets))
+    )
     expected_slope = float(gamma_row[j]) * expected_t_at_zero
     assert np.isclose(float(truth["dt_dB_at_zero"]), expected_slope, atol=1e-12)
     assert float(truth["uses_paper_signal_model"]) == 1.0

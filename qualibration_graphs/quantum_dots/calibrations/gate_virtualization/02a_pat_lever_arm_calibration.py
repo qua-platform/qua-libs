@@ -44,7 +44,9 @@ def custom_param(node: QualibrationNode[PATLeverArmParameters, Quam]):
 node.machine = Quam.load()
 
 
-def _build_dot_pair_mapping(node: QualibrationNode[PATLeverArmParameters, Quam]) -> Dict[str, float]:
+def _build_dot_pair_mapping(
+    node: QualibrationNode[PATLeverArmParameters, Quam]
+) -> Dict[str, float]:
     """Return dot-pair lever arms, with conservative fallback."""
     supplied = node.parameters.pat_lever_arm_mapping or {}
     default = float(node.parameters.default_lever_arm)
@@ -61,7 +63,9 @@ def _build_barrier_mapping(
     """Map barrier names to lever arms using target-barrier -> dot-pair mapping."""
     out: Dict[str, float] = {}
     for barrier_name, dot_pair_name in barrier_dot_pair_mapping.items():
-        out[str(barrier_name)] = float(dot_pair_lever_arms.get(str(dot_pair_name), default))
+        out[str(barrier_name)] = float(
+            dot_pair_lever_arms.get(str(dot_pair_name), default)
+        )
     return out
 
 
@@ -72,21 +76,31 @@ def create_qua_program(node: QualibrationNode[PATLeverArmParameters, Quam]):
     dot_pair_lever_arms = _build_dot_pair_mapping(node)
     barrier_dot_pair_mapping = node.parameters.barrier_dot_pair_mapping or {}
     node.namespace["dot_pair_lever_arms"] = dot_pair_lever_arms
-    node.namespace["barrier_dot_pair_mapping"] = {str(k): str(v) for k, v in barrier_dot_pair_mapping.items()}
+    node.namespace["barrier_dot_pair_mapping"] = {
+        str(k): str(v) for k, v in barrier_dot_pair_mapping.items()
+    }
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[PATLeverArmParameters, Quam]):
     """Placeholder simulation action for PAT node."""
-    node.log("PAT simulation is not implemented yet; using provided mapping/fallback values.")
+    node.log(
+        "PAT simulation is not implemented yet; using provided mapping/fallback values."
+    )
 
 
 # %% {Execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+)
 def execute_qua_program(node: QualibrationNode[PATLeverArmParameters, Quam]):
     """Placeholder execute action for PAT node."""
-    node.log("PAT execute is not implemented yet; using provided mapping/fallback values.")
+    node.log(
+        "PAT execute is not implemented yet; using provided mapping/fallback values."
+    )
 
 
 # %% {Load_historical_data}
@@ -102,7 +116,9 @@ def load_data(node: QualibrationNode[PATLeverArmParameters, Quam]):
 @node.run_action(skip_if=False)
 def analyse_data(node: QualibrationNode[PATLeverArmParameters, Quam]):
     """Build and store dot-pair and barrier lever-arm mappings."""
-    dot_pair_lever_arms = node.namespace.get("dot_pair_lever_arms") or _build_dot_pair_mapping(node)
+    dot_pair_lever_arms = node.namespace.get(
+        "dot_pair_lever_arms"
+    ) or _build_dot_pair_mapping(node)
     barrier_dot_pair_mapping = node.namespace.get("barrier_dot_pair_mapping") or (
         node.parameters.barrier_dot_pair_mapping or {}
     )

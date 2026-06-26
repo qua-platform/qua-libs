@@ -1,91 +1,115 @@
 """Plotting utilities for the Hahn echo T₂ measurement.
 
-Generates a multi-row figure (one row per qubit) showing:
-  - Raw parity-difference data vs per-arm idle time τ.
+Generates a single-panel figure per qubit showing:
+  - Raw conditional readout vs per-arm idle time τ.
   - Fitted exponential decay  P(τ) = offset + A·exp(−2τ / T₂_echo).
-  - Annotated T₂_echo, amplitude, and offset in each panel title.
+  - Annotated T₂_echo, amplitude, and offset in the panel title.
 
 Time axes are displayed in µs when the sweep range exceeds 5 µs.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, List
 
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
+
+
+def _get_qubit_names_from_ds(
+    ds: xr.Dataset,
+    qubits: List[Any],
+    analysis_signal: str,
+) -> List[str]:
+    return get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
+
 
 def plot_raw_data_with_fit(
-    ds_raw: xr.Dataset,
-    fit_results: dict[str, dict[str, Any]],
-    qubits: list[Any],
+    ds: xr.Dataset,
+    ds_fit: xr.Dataset | None,
+    qubits: List[Any],
+    fit_results: dict,
+    analysis_signal: str = "E_p2_given_p1_0",
 ) -> plt.Figure:
     """Create a multi-panel Hahn echo figure (one row per qubit).
 
     Parameters
     ----------
-    ds_raw : xr.Dataset
-        Raw dataset with ``tau`` coordinate (ns) and ``pdiff_<qubit>`` vars.
+    ds : xr.Dataset
+        Raw dataset with ``tau`` (ns) and joint-stream / analysis vars.
+    ds_fit : xr.Dataset or None
+        Unused — kept for API consistency with other parity-diff nodes.
+    qubits : list
+        Qubit objects (used for layout; qubit names are taken from the dataset).
     fit_results : dict
         Output of :func:`~.analysis.fit_raw_data`.
-    qubits : list
-        Qubit objects (each must have a ``.name`` attribute).
+    analysis_signal : str
+        Which conditional expectation to plot (must match processing).
 
     Returns
     -------
     matplotlib.figure.Figure
     """
-    n_qubits = len(qubits)
-    fig, axes = plt.subplots(
-        n_qubits,
-        1,
-        figsize=(8, 3.5 * n_qubits),
-        squeeze=False,
-    )
+    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
+    if not qubit_names:
+        fig, _ = plt.subplots(figsize=(6, 4))
+        return fig
 
-    tau_ns = ds_raw.coords["tau"].values.astype(np.float64)
-    use_us = float(tau_ns.max()) > 5_000.0
-    tau_plot = tau_ns / 1e3 if use_us else tau_ns
-    time_unit = "µs" if use_us else "ns"
+    tau_ns = np.asarray(ds.tau.values, dtype=float)
 
-    for idx, qubit in enumerate(qubits):
-        ax = axes[idx, 0]
-        qname = qubit.name
-        var_name = f"pdiff_{qname}"
+    n = len(qubit_names)
+    fig, axes = plt.subplots(n, 1, figsize=(8, 3.5 * n), squeeze=False)
 
-        if var_name not in ds_raw.data_vars:
-            ax.set_title(f"{qname} — no data")
-            continue
+    for i, qname in enumerate(qubit_names):
+        ax = axes[i, 0]
+        fr = fit_results.get(qname, {})
+        diag = fr.get("_diag", {})
 
-        pdiff = ds_raw[var_name].values.astype(np.float64)
-        r = fit_results.get(qname, {})
+        y = diag.get("signal")
+        fitted = diag.get("fitted_curve")
 
-        # Raw data
-        ax.plot(tau_plot, pdiff, "o", ms=3, alpha=0.5, label="data")
+        tau_plot = tau_ns.astype(float)
+        use_us = float(tau_plot.max()) > 5_000.0
+        x_plot = tau_plot / 1e3 if use_us else tau_plot
+        time_unit = "µs" if use_us else "ns"
 
-        # Fitted curve
-        fitted = r.get("fitted_curve")
-        if fitted is not None and len(fitted) == len(tau_plot):
-            ax.plot(tau_plot, fitted, "-", lw=2, color="C1", label="fit")
+        if y is not None:
+            ax.plot(x_plot, y, "b-", lw=0.8, alpha=0.7)
+            ax.scatter(x_plot, y, c="b", s=8, alpha=0.5, zorder=3, label="Data")
 
-        # Annotation
-        t2 = r.get("T2_echo", float("nan"))
-        amp = r.get("amplitude", float("nan"))
-        off = r.get("offset", float("nan"))
-        status = "OK" if r.get("success") else "FAIL"
+            if fitted is not None and len(fitted) == len(y):
+                ax.plot(
+                    x_plot, fitted, "-", lw=2, color="C1", alpha=0.9, label="Exp. fit"
+                )
+        else:
+            ax.text(0.5, 0.5, "No fit data", transform=ax.transAxes, ha="center")
+
+        ax.set_xlabel(f"Per-arm idle time τ ({time_unit})")
+        ax.set_ylabel(analysis_signal)
+        ax.set_ylim(-0.05, 1.05)
+        ax.legend(loc="best", fontsize=8)
+
+        t2 = fr.get("T2_echo", float("nan"))
+        amp = fr.get("amplitude", float("nan"))
+        off = fr.get("offset", float("nan"))
+        status = "OK" if fr.get("success") else "FAIL"
 
         if use_us and np.isfinite(t2):
             t2_str = f"T₂_echo = {t2 / 1e3:.2f} µs"
         else:
             t2_str = f"T₂_echo = {t2:.1f} ns"
 
-        ax.set_title(f"{qname}  [{status}]  {t2_str},  A = {amp:.4f},  offset = {off:.4f}")
-        ax.set_xlabel(f"Per-arm idle time τ ({time_unit})")
-        ax.set_ylabel("Parity difference")
-        ax.legend(loc="best", fontsize=8)
+        ax.set_title(
+            f"{qname}\n[{status}] {t2_str},  A = {amp:.4f},  offset = {off:.4f}"
+        )
 
-    fig.suptitle("Hahn Echo T₂ Measurement", fontsize=13, fontweight="bold")
+    fig.suptitle(f"Hahn Echo T₂ ({analysis_signal})", fontsize=13, fontweight="bold")
     fig.tight_layout()
     return fig

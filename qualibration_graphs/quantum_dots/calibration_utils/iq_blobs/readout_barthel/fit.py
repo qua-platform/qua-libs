@@ -99,7 +99,9 @@ def fit_model(
         priors = {}
 
     # Choose initialization strategy
-    init = init_to_value(values=init_vals) if init_vals is not None else init_to_median()
+    init = (
+        init_to_value(values=init_vals) if init_vals is not None else init_to_median()
+    )
 
     # Build NUTS kernel with the model
     kernel = NUTS(

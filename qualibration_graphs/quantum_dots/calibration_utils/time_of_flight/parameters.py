@@ -16,6 +16,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Readout length in nanoseconds. Default is 1µs."""
     sensor_names: Optional[list[str]] = None
     """List of sensor names. Default is None."""
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 
 
 class Parameters(

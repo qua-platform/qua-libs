@@ -309,8 +309,12 @@ if __name__ == "__main__":
     print(f"Swept {n_exchange}×{n_exchange} = {n_exchange**2} parameter combinations")
 
     # Reshape and plot
-    expectations_exchange_2d = np.asarray(expectations_exchange_flat.real).reshape(n_exchange, n_exchange)
-    print(f"⟨Z₀⟩ range: [{expectations_exchange_2d.min():.3f}, {expectations_exchange_2d.max():.3f}]")
+    expectations_exchange_2d = np.asarray(expectations_exchange_flat.real).reshape(
+        n_exchange, n_exchange
+    )
+    print(
+        f"⟨Z₀⟩ range: [{expectations_exchange_2d.min():.3f}, {expectations_exchange_2d.max():.3f}]"
+    )
 
     plt.figure()
     plt.imshow(

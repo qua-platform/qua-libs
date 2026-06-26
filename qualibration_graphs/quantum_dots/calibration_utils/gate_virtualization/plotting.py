@@ -54,7 +54,16 @@ def _plot_sensor_row(
 
     if fp is None:
         for ax in axes[1:]:
-            ax.text(0.5, 0.5, "NO FIT DATA", ha="center", va="center", fontsize=14, color="red", transform=ax.transAxes)
+            ax.text(
+                0.5,
+                0.5,
+                "NO FIT DATA",
+                ha="center",
+                va="center",
+                fontsize=14,
+                color="red",
+                transform=ax.transAxes,
+            )
             ax.set_axis_off()
         return
 
@@ -325,7 +334,9 @@ def plot_virtual_plunger_diagnostic(
 
     fig, axes = plt.subplots(1, 3, figsize=(16, 5))
 
-    im0 = axes[0].imshow(amplitude, extent=extent, origin="lower", aspect="auto", cmap="hot")
+    im0 = axes[0].imshow(
+        amplitude, extent=extent, origin="lower", aspect="auto", cmap="hot"
+    )
     axes[0].set_title(f"Amplitude\n{pair_key}")
     axes[0].set_xlabel("x_volts (V)")
     axes[0].set_ylabel("y_volts (V)")
@@ -337,19 +348,30 @@ def plot_virtual_plunger_diagnostic(
         fig.colorbar(im1, ax=axes[1], shrink=0.85)
         axes[1].set_title("Edge Map (BayesianCP)")
     else:
-        axes[1].text(0.5, 0.5, "No edge map", ha="center", va="center", transform=axes[1].transAxes)
+        axes[1].text(
+            0.5,
+            0.5,
+            "No edge map",
+            ha="center",
+            va="center",
+            transform=axes[1].transAxes,
+        )
         axes[1].set_title("Edge Map")
     axes[1].set_xlabel("x index")
     axes[1].set_ylabel("y index")
 
-    im2 = axes[2].imshow(amplitude, extent=extent, origin="lower", aspect="auto", cmap="hot")
+    im2 = axes[2].imshow(
+        amplitude, extent=extent, origin="lower", aspect="auto", cmap="hot"
+    )
     fig.colorbar(im2, ax=axes[2], shrink=0.85)
     axes[2].set_xlabel("x_volts (V)")
     axes[2].set_ylabel("y_volts (V)")
 
     if fit_results is not None:
         for seg in fit_results.get("segments", []):
-            x_s, x_e, y_s, y_e = _segment_to_voltage_coords(seg, x_values, y_values, ny, nx)
+            x_s, x_e, y_s, y_e = _segment_to_voltage_coords(
+                seg, x_values, y_values, ny, nx
+            )
             axes[2].plot([x_s, x_e], [y_s, y_e], "c-", linewidth=1.5, alpha=0.8)
 
         for pt in fit_results.get("intersections", []):
@@ -370,9 +392,13 @@ def plot_virtual_plunger_diagnostic(
         M = fit_results.get("T_matrix")
         title_lines = ["Segments + triple points"]
         if theta1 is not None and theta2 is not None:
-            title_lines.append(f"θ1={np.degrees(theta1):.1f}°, θ2={np.degrees(theta2):.1f}°")
+            title_lines.append(
+                f"θ1={np.degrees(theta1):.1f}°, θ2={np.degrees(theta2):.1f}°"
+            )
         if M is not None:
-            title_lines.append(f"M=[[{M[0,0]:.3f}, {M[0,1]:.3f}], [{M[1,0]:.3f}, {M[1,1]:.3f}]]")
+            title_lines.append(
+                f"M=[[{M[0,0]:.3f}, {M[0,1]:.3f}], [{M[1,0]:.3f}, {M[1,1]:.3f}]]"
+            )
         axes[2].set_title("\n".join(title_lines))
     else:
         axes[2].set_title("Segments + triple points")
@@ -426,8 +452,13 @@ def plot_tunnel_slope_fit(
         y_line = slope * x_line + intercept
         ax.plot(x_line, y_line, "r--", label="linear fit")
 
-    r2 = fit_results.get("fit_quality", fit_results.get("slope_fit_fit_quality", np.nan))
-    ax.set_title((title or "Tunnel Coupling Slope Fit") + (f" | R^2={r2:.3f}" if np.isfinite(r2) else ""))
+    r2 = fit_results.get(
+        "fit_quality", fit_results.get("slope_fit_fit_quality", np.nan)
+    )
+    ax.set_title(
+        (title or "Tunnel Coupling Slope Fit")
+        + (f" | R^2={r2:.3f}" if np.isfinite(r2) else "")
+    )
     ax.set_xlabel(x_label)
     ax.set_ylabel("tunnel coupling (arb.)")
     ax.grid(alpha=0.25)
@@ -436,7 +467,9 @@ def plot_tunnel_slope_fit(
     return fig
 
 
-def _sample_successful_point_fits(point_fits: Sequence[Dict[str, Any]], max_traces: int = 5) -> List[Dict[str, Any]]:
+def _sample_successful_point_fits(
+    point_fits: Sequence[Dict[str, Any]], max_traces: int = 5
+) -> List[Dict[str, Any]]:
     """Pick up to ``max_traces`` successful point fits uniformly across drive values."""
     successful = [fit for fit in point_fits if bool(fit.get("success", False))]
     if len(successful) <= max_traces:
@@ -452,7 +485,9 @@ def plot_detuning_fit_family(
 ) -> Figure:
     """Plot measured detuning traces and model fits for selected drive points."""
     fig, ax = plt.subplots(figsize=(6.2, 4.4))
-    sampled_fits = _sample_successful_point_fits(fit_results.get("point_fits", []), max_traces=max_traces)
+    sampled_fits = _sample_successful_point_fits(
+        fit_results.get("point_fits", []), max_traces=max_traces
+    )
     if len(sampled_fits) == 0:
         ax.set_title(title or "Detuning Traces (No Valid Fits)")
         ax.text(0.5, 0.5, "No successful detuning fits", ha="center", va="center")
@@ -495,7 +530,9 @@ def plot_barrier_pair_diagnostics(
     gs = fig.add_gridspec(1, 2, width_ratios=[1.15, 1.0], wspace=0.26)
 
     ax_left = fig.add_subplot(gs[0, 0])
-    sampled_fits = _sample_successful_point_fits(fit_results.get("point_fits", []), max_traces=5)
+    sampled_fits = _sample_successful_point_fits(
+        fit_results.get("point_fits", []), max_traces=5
+    )
     for fit in sampled_fits:
         detuning = np.asarray(fit.get("detuning", []), dtype=float)
         signal = np.asarray(fit.get("signal", []), dtype=float)
@@ -503,7 +540,9 @@ def plot_barrier_pair_diagnostics(
         drive_value = float(fit.get("drive_value", np.nan))
         t_val = float(fit.get("tunnel_coupling", np.nan))
         label = (
-            f"{1e3 * drive_value:.2f} mV, t={t_val:.3g}" if np.isfinite(drive_value) and np.isfinite(t_val) else "trace"
+            f"{1e3 * drive_value:.2f} mV, t={t_val:.3g}"
+            if np.isfinite(drive_value) and np.isfinite(t_val)
+            else "trace"
         )
         ax_left.plot(detuning, signal, "o", ms=2.5, alpha=0.72, label=label)
         if detuning.size == signal_fit.size and detuning.size > 0:
@@ -549,7 +588,10 @@ def plot_target_barrier_coupling_summary(
     """Overlay extracted tunnel-coupling-vs-drive curves for one target barrier."""
     fig, ax = plt.subplots(figsize=(6.6, 4.6))
     plotted_any = False
-    for _, fit in sorted(fit_results_by_pair.items(), key=lambda item: str(item[1].get("drive_barrier", ""))):
+    for _, fit in sorted(
+        fit_results_by_pair.items(),
+        key=lambda item: str(item[1].get("drive_barrier", "")),
+    ):
         drive_name = str(fit.get("drive_barrier", "drive"))
         x_vals = np.asarray(fit.get("drive_values", []), dtype=float)
         y_vals = np.asarray(fit.get("tunnel_couplings", []), dtype=float)
@@ -558,14 +600,30 @@ def plot_target_barrier_coupling_summary(
             continue
 
         plotted_any = True
-        ax.plot(1e3 * x_vals[valid], y_vals[valid], "o", ms=4, alpha=0.9, label=f"{drive_name} (data)")
+        ax.plot(
+            1e3 * x_vals[valid],
+            y_vals[valid],
+            "o",
+            ms=4,
+            alpha=0.9,
+            label=f"{drive_name} (data)",
+        )
 
         slope = float(fit.get("coefficient", np.nan))
         intercept = float(fit.get("slope_fit_intercept", np.nan))
         if np.isfinite(slope) and np.isfinite(intercept):
-            x_line = np.linspace(np.nanmin(x_vals[valid]), np.nanmax(x_vals[valid]), 200)
+            x_line = np.linspace(
+                np.nanmin(x_vals[valid]), np.nanmax(x_vals[valid]), 200
+            )
             y_line = slope * x_line + intercept
-            ax.plot(1e3 * x_line, y_line, "--", lw=1.5, alpha=0.95, label=f"{drive_name} (fit)")
+            ax.plot(
+                1e3 * x_line,
+                y_line,
+                "--",
+                lw=1.5,
+                alpha=0.95,
+                label=f"{drive_name} (fit)",
+            )
 
     ax.set_title(title or f"{target_barrier}: extracted tunnel coupling vs drive")
     ax.set_xlabel("Drive barrier voltage (mV)")
@@ -574,7 +632,14 @@ def plot_target_barrier_coupling_summary(
     if plotted_any:
         ax.legend(loc="best", fontsize=8, ncol=1)
     else:
-        ax.text(0.5, 0.5, "No valid fit data", ha="center", va="center", transform=ax.transAxes)
+        ax.text(
+            0.5,
+            0.5,
+            "No valid fit data",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+        )
     fig.tight_layout()
     return fig
 

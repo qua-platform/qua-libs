@@ -59,7 +59,9 @@ class RBResult:  # pylint: disable=too-many-instance-attributes
         plt.figure()
         for i, circuit_depth in enumerate(self.circuit_depths, start=1):
             ax = plt.subplot(n_rows, n_cols, i)
-            self.data.state.sel(circuit_depth=circuit_depth).plot.hist(ax=ax, xticks=range(4))
+            self.data.state.sel(circuit_depth=circuit_depth).plot.hist(
+                ax=ax, xticks=range(4)
+            )
         plt.tight_layout()
 
     def plot(self):
@@ -88,16 +90,24 @@ class RBResult:  # pylint: disable=too-many-instance-attributes
         self.epc = 1 - self.fidelity
 
         # Calculate additional metrics if constants are provided
-        if self.average_layers_per_clifford is not None and self.average_gates_per_2q_layer is not None:
+        if (
+            self.average_layers_per_clifford is not None
+            and self.average_gates_per_2q_layer is not None
+        ):
             self.error_per_2q_layer = (1 - fidelity) / self.average_layers_per_clifford
-            self.error_per_gate = self.error_per_2q_layer / self.average_gates_per_2q_layer
+            self.error_per_gate = (
+                self.error_per_2q_layer / self.average_gates_per_2q_layer
+            )
             self.average_gate_fidelity = 1 - self.error_per_gate
 
         # std of average
         # pylint: disable=use-implicit-booleaness-not-comparison-to-zero
-        error_bars = ((self.data.state == 0).stack(combined=("average", "repeat")).std(dim="combined").data) / np.sqrt(
-            self.num_repeats * self.num_averages
-        )
+        error_bars = (
+            (self.data.state == 0)
+            .stack(combined=("average", "repeat"))
+            .std(dim="combined")
+            .data
+        ) / np.sqrt(self.num_repeats * self.num_averages)
 
         # Check if fitted curve is within error bars of experimental data
         experimental_data = self.get_decay_curve()
@@ -115,7 +125,9 @@ class RBResult:  # pylint: disable=too-many-instance-attributes
             )
             self.fit_success = False
         else:
-            print(f"Fit validation passed: Maximum deviation is {max_deviation:.2f} sigma.")
+            print(
+                f"Fit validation passed: Maximum deviation is {max_deviation:.2f} sigma."
+            )
             self.fit_success = True
 
         fig = plt.figure()
@@ -130,7 +142,9 @@ class RBResult:  # pylint: disable=too-many-instance-attributes
             label="Experimental Data",
         )
 
-        circuit_depths_smooth_axis = np.linspace(self.circuit_depths[0], self.circuit_depths[-1], 100)
+        circuit_depths_smooth_axis = np.linspace(
+            self.circuit_depths[0], self.circuit_depths[-1], 100
+        )
         plt.plot(
             circuit_depths_smooth_axis,
             rb_decay_curve(np.array(circuit_depths_smooth_axis), A, alpha, B),
@@ -203,12 +217,18 @@ class RBResult:  # pylint: disable=too-many-instance-attributes
             color="r",
             linewidth=1,
         )
-        plt.axhline(0.25, color="grey", linestyle="--", linewidth=2, label="2Q mixed-state")
+        plt.axhline(
+            0.25, color="grey", linestyle="--", linewidth=2, label="2Q mixed-state"
+        )
 
         plt.xlabel("Circuit Depth")
         plt.ylabel(r"Probability to recover to a given state")
         plt.title("2Q State Distribution vs. Circuit Depth")
-        plt.legend(framealpha=0, title=r"2Q State $\mathbf{|q_cq_t\rangle}$", title_fontproperties={"weight": "bold"})
+        plt.legend(
+            framealpha=0,
+            title=r"2Q State $\mathbf{|q_cq_t\rangle}$",
+            title_fontproperties={"weight": "bold"},
+        )
         plt.show()
 
     def fit_exponential(self):
@@ -223,7 +243,13 @@ class RBResult:  # pylint: disable=too-many-instance-attributes
         """
         decay_curve = self.get_decay_curve()
 
-        popt, _ = curve_fit(rb_decay_curve, self.circuit_depths, decay_curve, p0=[0.75, 0.9, 0.25], maxfev=10000)
+        popt, _ = curve_fit(
+            rb_decay_curve,
+            self.circuit_depths,
+            decay_curve,
+            p0=[0.75, 0.9, 0.25],
+            maxfev=10000,
+        )
         A, alpha, B = popt
 
         self.alpha = alpha

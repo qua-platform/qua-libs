@@ -7,7 +7,7 @@ from qm.qua import *
 
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from qualang_tools.results import progress_counter
+from calibration_utils.common_utils.experiment import progress_counter_with_log
 from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
@@ -16,6 +16,7 @@ from calibration_utils.hello_qua import Parameters
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
+from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.experiment import get_dots, get_sensors
 
 description = """
@@ -23,7 +24,9 @@ description = """
 """
 
 
-node = QualibrationNode[Parameters, Quam](name="00_hello_qua", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](
+    name="00_hello_qua", description=description, parameters=Parameters()
+)
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -38,7 +41,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load()
+node.machine = Quam.load(filepath_or_dict=DEFAULT_QUAM_STATE_DIR)
 
 
 # %% {Create_QUA_program}
@@ -69,7 +72,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     if node.parameters.dc_control:
         node.machine.connect_to_external_source(external_qdac=True)
-        node.machine.virtual_dc_sets[vgs_id].set_voltages({qd.name: v_center for qd in quantum_dots})
+        node.machine.virtual_dc_sets[vgs_id].set_voltages(
+            {qd.name: v_center for qd in quantum_dots}
+        )
         voltages = np.linspace(-v_span / 2, +v_span / 2, n_points)
     else:
         voltages = np.linspace(v_center - v_span / 2, v_center + v_span / 2, n_points)
@@ -83,7 +88,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
 
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
+            num_IQ_pairs=num_sensors
+        )
         v = declare(fixed)
 
         # Average on outermost
@@ -92,7 +99,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             # Perform loop for each QD
             for j, dot in enumerate(quantum_dots):
                 with for_(*from_array(v, voltages)):
-                    dot.go_to_voltages({dot.name: v}, duration=node.parameters.dwell_time)
+                    dot.go_to_voltages(
+                        {dot.name: v}, duration=node.parameters.dwell_time
+                    )
                     align()
                     # Measure each batch, multiplexed by sensors
                     for multiplexed_sensors in sensors.batch():
@@ -107,17 +116,23 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Save data
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
-                dot.voltage_sequence.apply_compensation_pulse()
+                dot.voltage_sequence.ramp_to_zero()
 
         with stream_processing():
             n_st.save("n")
             for i in range(num_sensors):
-                I_st[i].buffer(len(voltages)).buffer(len(quantum_dots)).average().save(f"I{i}")
-                Q_st[i].buffer(len(voltages)).buffer(len(quantum_dots)).average().save(f"Q{i}")
+                I_st[i].buffer(len(voltages)).buffer(len(quantum_dots)).average().save(
+                    f"I{i}"
+                )
+                Q_st[i].buffer(len(voltages)).buffer(len(quantum_dots)).average().save(
+                    f"Q{i}"
+                )
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -125,13 +140,21 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["qua_program"], node.parameters
+    )
     # Store the figure, waveform report and simulated samples
-    node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
+    node.results["simulation"] = {
+        "figure": fig,
+        "wf_report": wf_report,
+        "samples": samples,
+    }
 
 
 # %% {Execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -145,10 +168,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter(
+            progress_counter_with_log(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
+                node=node
             )
         # Display the execution report to expose possible runtime errors
         print(job.execution_report())
@@ -189,7 +213,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
     node.results["figures"] = {}
     for qd in quantum_dots:
-        fig, axes = plt.subplots(1, len(sensors), figsize=(5 * len(sensors), 4), squeeze=False)
+        fig, axes = plt.subplots(
+            1, len(sensors), figsize=(5 * len(sensors), 4), squeeze=False
+        )
         fig.suptitle(qd.name)
         for i, sensor in enumerate(sensors):
             dot_sensor_data = ds_raw.sel(sensors=sensor.name, quantum_dots=qd.name)
@@ -202,6 +228,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
             ax.legend()
         fig.tight_layout()
         node.results["figures"][qd.name] = fig
+    annotate_node_figures(node)
     plt.show()
 
 

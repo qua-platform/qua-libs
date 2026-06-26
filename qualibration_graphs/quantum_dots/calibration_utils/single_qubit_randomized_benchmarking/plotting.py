@@ -15,6 +15,27 @@ import numpy as np
 import xarray as xr
 
 
+def _get_qubit_state_data(ds_raw: xr.Dataset, qname: str) -> np.ndarray | None:
+    """Extract per-qubit state data, handling both naming conventions.
+
+    The ``XarrayDataFetcher`` regex groups ``state_q1``, ``state_q2`` into a
+    single ``state_q`` variable stacked along the ``qubit`` dimension.  This
+    helper checks for a per-qubit variable first, then falls back to a stacked
+    variable with a ``qubit`` dimension.
+    """
+    var_name = f"state_{qname}"
+    if var_name in ds_raw.data_vars:
+        return ds_raw[var_name].values
+    for candidate in ds_raw.data_vars:
+        da = ds_raw[candidate]
+        if candidate.startswith("state") and "qubit" in da.dims:
+            try:
+                return da.sel(qubit=qname).values
+            except (KeyError, ValueError):
+                continue
+    return None
+
+
 def plot_raw_data_with_fit(
     ds_raw: xr.Dataset,
     fit_results: dict[str, dict[str, Any]],
@@ -49,13 +70,11 @@ def plot_raw_data_with_fit(
     for idx, qubit in enumerate(qubits):
         ax = axes[idx, 0]
         qname = qubit.name
-        var_name = f"state_{qname}"
 
-        if var_name not in ds_raw.data_vars:
+        state_data = _get_qubit_state_data(ds_raw, qname)
+        if state_data is None:
             ax.set_title(f"{qname} — no data")
             continue
-
-        state_data = ds_raw[var_name].values  # [num_circuits, num_depths]
         survival_prob = np.mean(state_data, axis=0)
         n_circuits = state_data.shape[0]
 
@@ -87,7 +106,7 @@ def plot_raw_data_with_fit(
             ax.plot(x_smooth, y_smooth, "-", lw=2, color="C1", label="fit")
 
         # Annotation
-        fidelity = r.get("gate_fidelity", float("nan"))
+        fidelity = r.get("native_gate_fidelity", float("nan"))
         epc = r.get("error_per_clifford", float("nan"))
         alpha_val = r.get("alpha", float("nan"))
         status = "OK" if r.get("success") else "FAIL"
@@ -96,7 +115,7 @@ def plot_raw_data_with_fit(
             0.95,
             0.95,
             (
-                f"Clifford fidelity: {fidelity * 100:.2f}%\n"
+                f"Native fidelity: {fidelity * 100:.2f}%\n"
                 f"Error/Clifford: {epc * 100:.3f}%\n"
                 f"α = {alpha_val:.5f}"
             ),
@@ -110,7 +129,7 @@ def plot_raw_data_with_fit(
         ax.set_title(f"{qname}  [{status}]")
         ax.set_xlabel("Number of Cliffords")
         ax.set_ylabel("Survival probability")
-        ax.set_ylim([-0.05, 1.05])
+        # ax.set_ylim([-0.05, 1.05])
         ax.legend(loc="lower left", fontsize=8)
         ax.grid(True, alpha=0.3)
 

@@ -1,7 +1,8 @@
-from typing import Optional, List
+from typing import List, Literal, Optional
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
+from calibration_utils.common_utils.experiment import HeraldedInitializeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -17,6 +18,9 @@ class NodeSpecificParameters(RunnableParameters):
     """List of quantum dot pair names."""
     ramp_duration: int = 40
     """Ramp duration to ramp to the measurement point."""
+    initialization_macro: Literal["empty", "initialize"] = "empty"
+    """Which dot-pair macro runs for the preparation step (formerly ``dot_pair.initialize()``).
+    Both ``empty`` and ``initialize`` must exist on ``dot_pair.macros``."""
 
 
 class Parameters(

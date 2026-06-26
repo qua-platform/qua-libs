@@ -12,4 +12,6 @@ def find_repo_root(start: Path) -> Path:
         if (current / "tests").is_dir() and (current / "qualibration_graphs").is_dir():
             return current
         current = current.parent
-    raise FileNotFoundError("Could not locate repo root containing tests/ and qualibration_graphs/.")
+    raise FileNotFoundError(
+        "Could not locate repo root containing tests/ and qualibration_graphs/."
+    )

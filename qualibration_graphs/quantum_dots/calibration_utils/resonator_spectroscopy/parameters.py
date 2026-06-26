@@ -2,7 +2,9 @@ from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from calibration_utils.common_utils.experiment import BaseExperimentNodeParameters
 from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.run_video_mode.video_mode_specific_parameters import VideoModeCommonParameters
+from calibration_utils.run_video_mode.video_mode_specific_parameters import (
+    VideoModeCommonParameters,
+)
 
 from typing import List, Optional
 
@@ -16,6 +18,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Step size for frequency sweep in MHz. Default is 0.1 MHz."""
     sensor_names: Optional[List[str]] = None
     """The list of sensor dot names to be included in the measurement. """
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 
 
 class Parameters(

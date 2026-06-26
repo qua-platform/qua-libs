@@ -51,7 +51,12 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     # Add the amplitude and phase to the raw dataset
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
     # Add the RF frequency as a coordinate of the raw dataset
-    full_freq = np.array([ds.detuning + s.readout_resonator.intermediate_frequency for s in node.namespace["sensors"]])
+    full_freq = np.array(
+        [
+            ds.detuning + s.readout_resonator.intermediate_frequency
+            for s in node.namespace["sensors"]
+        ]
+    )
     ds = ds.assign_coords(full_freq=(["sensor", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     # Normalize the IQ_abs with respect to the amplitude axis
@@ -59,7 +64,9 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the T1 relaxation time for each sensor according to ``a * np.exp(t * decay) + offset``.
 
@@ -80,8 +87,12 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     # Generate 1D dataset tracking the minimum IQ value, as a proxy for resonator frequency
     ds_fit["rr_min_response"] = ds.IQ_abs_norm.idxmin(dim="detuning")
     # Calculate the derivative along the power axis
-    ds_fit["rr_min_response_diff"] = ds_fit.rr_min_response.differentiate(coord="power").dropna("power")
-    ds_fit["rr_min_response_filtered"] = ds_fit.rr_min_response.where(np.abs(ds_fit["rr_min_response_diff"]) < 1e6)
+    ds_fit["rr_min_response_diff"] = ds_fit.rr_min_response.differentiate(
+        coord="power"
+    ).dropna("power")
+    ds_fit["rr_min_response_filtered"] = ds_fit.rr_min_response.where(
+        np.abs(ds_fit["rr_min_response_diff"]) < 1e6
+    )
     # Calculate the moving average of the derivative
     ds_fit["rr_min_response_avg"] = (
         ds_fit.rr_min_response_filtered.rolling(
@@ -95,18 +106,27 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit["rr_min_response_avg"].data = ds_fit["rr_min_response_avg"].data.copy()
     # Apply a filter to scale down the initial noisy values in the moving average if needed
     for j in range(node.parameters.moving_average_filter_window_num_points):
-        ds_fit.rr_min_response_avg.isel(power=j).data /= node.parameters.moving_average_filter_window_num_points - j
+        ds_fit.rr_min_response_avg.isel(power=j).data /= (
+            node.parameters.moving_average_filter_window_num_points - j
+        )
     # Find the first position where the moving average crosses below the threshold
-    ds_fit["below_threshold"] = ds_fit.rr_min_response_avg < node.parameters.derivative_crossing_threshold_in_hz_per_dbm
+    ds_fit["below_threshold"] = (
+        ds_fit.rr_min_response_avg
+        < node.parameters.derivative_crossing_threshold_in_hz_per_dbm
+    )
     # Get the first occurrence below the derivative threshold
     optimal_power = ds_fit.below_threshold.idxmax(dim="power")
-    optimal_power -= node.parameters.buffer_from_crossing_threshold_in_dbm
+    optimal_power = (
+        optimal_power - node.parameters.buffer_from_crossing_threshold_in_dbm
+    )
     ds_fit = ds_fit.assign_coords({"optimal_power": (["sensor"], optimal_power.data)})
 
     # Define a function to fit the resonator line at the optimal power for each qubit
     def _select_optimal_power(ds, sensor):
         return peaks_dips(
-            ds.sel(power=ds["optimal_power"].sel(sensor=sensor).data, method="nearest").sel(sensor=sensor).IQ_abs,
+            ds.sel(power=ds["optimal_power"].sel(sensor=sensor).data, method="nearest")
+            .sel(sensor=sensor)
+            .IQ_abs,
             "detuning",
         )
 
@@ -125,12 +145,16 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the fit dataset and fit result dictionary."""
 
     # Get the fitted resonator frequency
-    full_freq = np.array([s.readout_resonator.intermediate_frequency for s in node.namespace["sensors"]])
+    full_freq = np.array(
+        [s.readout_resonator.intermediate_frequency for s in node.namespace["sensors"]]
+    )
     res_freq = fit.freq_shift + full_freq
     fit = fit.assign_coords(res_freq=("sensor", res_freq.data))
     fit.res_freq.attrs = {"long_name": "resonator frequency", "units": "Hz"}
     # Assess whether the fit was successful or not
-    freq_success = np.abs(fit.freq_shift.data) < node.parameters.frequency_span_in_mhz * 1e6
+    freq_success = (
+        np.abs(fit.freq_shift.data) < node.parameters.frequency_span_in_mhz * 1e6
+    )
     nan_success = np.isnan(fit.freq_shift.data) | np.isnan(fit.optimal_power.data)
     success_criteria = freq_success & ~nan_success
     fit = fit.assign_coords(success=("sensor", success_criteria))

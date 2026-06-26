@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import List, Literal, Optional
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
@@ -17,6 +17,9 @@ class NodeSpecificParameters(RunnableParameters):
     """Ramp duration step. Must be an integer multiple of 4."""
     quantum_dot_pair_names: Optional[List[str]] = None
     """List of quantum dot pair names."""
+    initialization_macro: Literal["empty", "initialize"] = "empty"
+    """Which dot-pair macro runs for the preparation step (formerly ``dot_pair.initialize()``).
+    Both ``empty`` and ``initialize`` must exist on ``dot_pair.macros``."""
 
 
 class Parameters(

@@ -8,7 +8,9 @@ description = """
         RUN VIDEO MODE.
 """
 
-node = QualibrationNode[Parameters, Quam](name="00_run_video_mode", description=description, parameters=Parameters())
+node = QualibrationNode[Parameters, Quam](
+    name="00_run_video_mode", description=description, parameters=Parameters()
+)
 
 node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 
@@ -19,7 +21,9 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     machine = node.machine
     readout_pulses = [
         sensor.readout_resonator.operations["readout"]
-        for sensor in [node.machine.sensor_dots[sensor] for sensor in node.parameters.sensor_names]
+        for sensor in [
+            node.machine.sensor_dots[sensor] for sensor in node.parameters.sensor_names
+        ]
     ]
 
     x_axis_name = node.parameters.x_axis_name

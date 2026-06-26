@@ -17,6 +17,7 @@ import xarray as xr
 from scipy.optimize import curve_fit
 
 from qualibrate.core import QualibrationNode
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 
 _logger = logging.getLogger(__name__)
 
@@ -84,7 +85,9 @@ def _fit_peak_to_fft(
 # ── Damped-sinusoid model ────────────────────────────────────────────────────
 
 
-def _damped_sinusoid(t: np.ndarray, offset: float, amp: float, freq: float, gamma: float, phi: float) -> np.ndarray:
+def _damped_sinusoid(
+    t: np.ndarray, offset: float, amp: float, freq: float, gamma: float, phi: float
+) -> np.ndarray:
     """offset + amp * exp(-gamma * t) * cos(2π * freq * t + phi)."""
     return offset + amp * np.exp(-gamma * t) * np.cos(2.0 * np.pi * freq * t + phi)
 
@@ -139,7 +142,11 @@ def _fit_damped_sinusoid(
 
     # Reject if frequency uncertainty is too large relative to frequency
     if perr[2] > 0.5 * abs(freq_fit):
-        _logger.debug("Damped sinusoid fit rejected: freq uncertainty %.4e > 50%% of freq %.4e", perr[2], freq_fit)
+        _logger.debug(
+            "Damped sinusoid fit rejected: freq uncertainty %.4e > 50%% of freq %.4e",
+            perr[2],
+            freq_fit,
+        )
         return None
 
     fitted_curve = _damped_sinusoid(t, *popt)
@@ -172,7 +179,7 @@ class FitParameters:
 
 
 def _fft_analyse_single_qubit(
-    pdiff_1d: np.ndarray,
+    trace_1d: np.ndarray,
     durations_ns: np.ndarray,
 ) -> Dict[str, Any]:
     """Analyse one qubit's 1D Rabi trace: FFT seed → damped sinusoid fit.
@@ -186,16 +193,20 @@ def _fft_analyse_single_qubit(
     if dt_ns <= 0:
         dt_ns = 1.0
 
-    trace = np.asarray(pdiff_1d, dtype=float)
+    trace = np.asarray(trace_1d, dtype=float)
     trace_centered = trace - np.mean(trace)
 
     freqs_fft = np.fft.rfftfreq(n_dur, dt_ns)
     magnitude = np.abs(np.fft.rfft(trace_centered))
 
     # ── Step 1: FFT peak detection (seed) ────────────────────────────────
-    mu, amp, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian")
+    mu, amp, peak_curve = _fit_peak_to_fft(
+        freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian"
+    )
     if mu is None:
-        mu, amp, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian")
+        mu, amp, peak_curve = _fit_peak_to_fft(
+            freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian"
+        )
 
     if mu is None or mu < 1e-6:
         return {
@@ -244,7 +255,8 @@ def _fft_analyse_single_qubit(
         t_pi = 1.0 / (2.0 * f_rabi)  # ns
         gamma = sinusoid_result["gamma"]  # 1/ns (direct from envelope)
         _logger.debug(
-            "1D Rabi damped-sinusoid fit: f = %.5f cycles/ns, Ω = %.5f rad/ns, " "t_π = %.1f ns, γ = %.6f /ns",
+            "1D Rabi damped-sinusoid fit: f = %.5f cycles/ns, Ω = %.5f rad/ns, "
+            "t_π = %.1f ns, γ = %.6f /ns",
             f_rabi,
             omega,
             t_pi,
@@ -257,14 +269,15 @@ def _fft_analyse_single_qubit(
         t_pi = 1.0 / (2.0 * f_rabi)
         gamma = gamma_seed
         _logger.debug(
-            "1D Rabi FFT fallback: f = %.5f cycles/ns, Ω = %.5f rad/ns, " "t_π = %.1f ns, γ = %.6f /ns",
+            "1D Rabi FFT fallback: f = %.5f cycles/ns, Ω = %.5f rad/ns, "
+            "t_π = %.1f ns, γ = %.6f /ns",
             f_rabi,
             omega,
             t_pi,
             gamma,
         )
 
-    success = np.isfinite(t_pi) and t_pi > 0
+    success = bool(np.isfinite(t_pi) and t_pi > 0)
 
     return {
         "optimal_duration": float(t_pi),
@@ -287,20 +300,20 @@ def fit_raw_data(
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit t_π per qubit from 1D time-Rabi data.  Returns ``(ds_fit, fit_results)``."""
     qubits = node.namespace["qubits"]
-    # Resolve qubit names from dataset
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
-    qubit_names = [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
-    if not qubit_names:
-        qubit_names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    qubit_names = get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
     durations_ns = np.asarray(ds.pulse_duration.values, dtype=float)
 
     fit_results: Dict[str, Dict[str, Any]] = {}
-    fit_arrays: Dict[str, Any] = {}
 
     for qname in qubit_names:
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var not in ds.data_vars:
+        signal_var = f"{analysis_signal}_{qname}"
+        if signal_var not in ds.data_vars:
             fp = FitParameters(
                 optimal_duration=np.nan,
                 rabi_frequency=np.nan,
@@ -310,8 +323,8 @@ def fit_raw_data(
             fit_results[qname] = asdict(fp)
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
-        result = _fft_analyse_single_qubit(pdiff, durations_ns)
+        trace = np.asarray(ds[signal_var].values, dtype=float)
+        result = _fft_analyse_single_qubit(trace, durations_ns)
 
         fp = FitParameters(
             optimal_duration=result["optimal_duration"],

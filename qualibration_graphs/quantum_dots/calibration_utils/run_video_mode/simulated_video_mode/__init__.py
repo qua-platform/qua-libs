@@ -9,7 +9,10 @@ from .generate_quam_state import (
     save_simulated_video_mode_quam,
 )
 from .quam_factory import create_minimal_quam
-from .simulated_video_mode_utils import create_video_mode, get_simulated_video_mode_dc_set
+from .simulated_video_mode_utils import (
+    create_video_mode,
+    get_simulated_video_mode_dc_set,
+)
 
 __all__ = [
     "SIMULATED_VIDEO_MODE_QUAM_PATH",

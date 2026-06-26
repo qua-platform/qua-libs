@@ -43,6 +43,7 @@ import xarray as xr
 from scipy.optimize import differential_evolution
 
 from qualibrate.core import QualibrationNode
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 
 _logger = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ def _damped_cosine(
 
 
 def _fit_single_trace(
-    pdiff: np.ndarray,
+    signal: np.ndarray,
     tau_ns: np.ndarray,
     detuning_hz: float,
 ) -> Dict[str, Any]:
@@ -94,8 +95,8 @@ def _fit_single_trace(
 
     Parameters
     ----------
-    pdiff : 1-D array (n_tau,)
-        Parity-difference values.
+    signal : 1-D array (n_tau,)
+        Analysis signal values (e.g. conditional readout expectation).
     tau_ns : 1-D array (n_tau,)
         Idle-time values in nanoseconds.
     detuning_hz : float
@@ -108,28 +109,18 @@ def _fit_single_trace(
         ``ramsey_freq`` (Hz), ``decay_rate`` (1/ns), ``t2_star`` (ns),
         ``success`` (bool), and diagnostic arrays for plotting.
     """
-    y = np.asarray(pdiff, dtype=float)
+    y = np.asarray(signal, dtype=float)
     t = np.asarray(tau_ns, dtype=float) - tau_ns[0]
     t_span = float(t[-1]) if len(t) > 1 else 1.0
 
     offset0 = float(np.mean(y))
     amp0 = float(np.ptp(y)) / 2.0
 
-    # Frequency seed from nominal detuning
-    freq_seed = abs(detuning_hz) * 1e-9
+    # Frequency estimate from nominal detuning (Hz → cycles/ns)
+    freq_est = abs(detuning_hz) * 1e-9
 
-    # Refine from FFT
-    n = len(t)
-    dt = float(t[1] - t[0]) if n > 1 else 1.0
-    fft_mag = np.abs(np.fft.rfft(y - offset0))
-    fft_freqs = np.fft.rfftfreq(n, dt)
-    fft_mag[0] = 0.0
-    fft_peak_idx = int(np.argmax(fft_mag))
-    freq_fft = float(fft_freqs[fft_peak_idx]) if fft_peak_idx > 0 else freq_seed
-    freq_est = freq_fft if freq_fft > 1e-7 else max(freq_seed, 1e-7)
-
-    freq_lo = max(1e-7, freq_est * 0.2)
-    freq_hi = max(freq_est * 5.0, 0.05)
+    freq_lo = freq_est * 0.5
+    freq_hi = freq_est * 2.0
 
     de_bounds = [
         (float(np.min(y)) - amp0, float(np.max(y)) + amp0),
@@ -146,7 +137,7 @@ def _fit_single_trace(
         "success": False,
         "fitted_curve": None,
         "tau_shifted": t,
-        "pdiff": y,
+        "signal": y,
     }
 
     try:
@@ -172,9 +163,11 @@ def _fit_single_trace(
         result["decay_rate"] = gamma_fit
         result["t2_star"] = t2
         result["fitted_curve"] = _damped_cosine(t, *popt)
-        result["success"] = np.isfinite(t2) and t2 > 0
+        result["success"] = bool(np.isfinite(t2) and t2 > 0)
     except Exception:
-        _logger.debug("Single-trace fit failed for detuning %.3f MHz", detuning_hz * 1e-6)
+        _logger.debug(
+            "Single-trace fit failed for detuning %.3f MHz", detuning_hz * 1e-6
+        )
 
     return result
 
@@ -215,7 +208,7 @@ class FitParameters:
 
 
 def _analyse_single_qubit(
-    pdiff: np.ndarray,
+    signal_2d: np.ndarray,
     tau_ns: np.ndarray,
     detuning_hz: np.ndarray,
 ) -> Dict[str, Any]:
@@ -227,8 +220,8 @@ def _analyse_single_qubit(
 
     Parameters
     ----------
-    pdiff : 2-D array (2, n_tau)
-        Parity-difference data for [+δ, −δ] detunings.
+    signal_2d : 2-D array (2, n_tau)
+        Analysis signal for [+δ, −δ] detunings (same layout as former ``pdiff``).
     tau_ns : 1-D array (n_tau,)
         Idle-time values in nanoseconds.
     detuning_hz : 1-D array (2,)
@@ -242,8 +235,8 @@ def _analyse_single_qubit(
         and ``_diag`` with per-trace diagnostic data.
     """
     # +δ trace (first row) and −δ trace (second row)
-    fit_plus = _fit_single_trace(pdiff[0, :], tau_ns, float(detuning_hz[0]))
-    fit_minus = _fit_single_trace(pdiff[1, :], tau_ns, float(detuning_hz[1]))
+    fit_plus = _fit_single_trace(signal_2d[0, :], tau_ns, float(detuning_hz[0]))
+    fit_minus = _fit_single_trace(signal_2d[1, :], tau_ns, float(detuning_hz[1]))
 
     f_plus = fit_plus["ramsey_freq"]
     f_minus = fit_minus["ramsey_freq"]
@@ -296,16 +289,18 @@ def fit_raw_data(
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit Ramsey frequency and T₂* for each qubit using ±δ triangulation.
 
-    Expects a 2-D dataset with coordinates ``detuning`` (2 values:
-    [+δ, −δ] in Hz) and ``tau`` (idle time in ns), with data variables
-    ``pdiff_<qubit>`` of shape (2, n_tau).
+    Expects joint-outcome streams processed by
+    :func:`~calibration_utils.common_utils.parity_streams.process_joint_streams`,
+    so the analysis uses ``{analysis_signal}_{qubit}`` (default
+    ``E_p2_given_p1_0_<qubit>``) of shape (2, n_tau), with coordinates
+    ``detuning`` (2 values: [+δ, −δ] in Hz) and ``tau`` (idle time in ns).
 
     Parameters
     ----------
     ds : xr.Dataset
         Raw measurement data.
     node : QualibrationNode
-        Calibration node (provides qubit list).
+        Calibration node (provides qubit list and ``analysis_signal``).
 
     Returns
     -------
@@ -317,18 +312,20 @@ def fit_raw_data(
     qubits = node.namespace["qubits"]
     detuning_hz = np.asarray(ds.detuning.values, dtype=float)
 
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
-    qubit_names = [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
-    if not qubit_names:
-        qubit_names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    qubit_names = get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
     tau_ns = np.asarray(ds.tau.values, dtype=float)
 
     fit_results: Dict[str, Dict[str, Any]] = {}
 
     for qname in qubit_names:
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var not in ds.data_vars:
+        signal_var = f"{analysis_signal}_{qname}"
+        if signal_var not in ds.data_vars:
             fp = FitParameters(
                 freq_offset=0.0,
                 t2_star=np.nan,
@@ -340,8 +337,8 @@ def fit_raw_data(
             fit_results[qname] = asdict(fp)
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
-        result = _analyse_single_qubit(pdiff, tau_ns, detuning_hz)
+        signal_2d = np.asarray(ds[signal_var].values, dtype=float)
+        result = _analyse_single_qubit(signal_2d, tau_ns, detuning_hz)
 
         fp = FitParameters(
             freq_offset=result["freq_offset"],

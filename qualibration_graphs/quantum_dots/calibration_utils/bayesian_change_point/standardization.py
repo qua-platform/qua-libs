@@ -74,7 +74,9 @@ class Standardization:
     # --------------------------------------------------------------------- #
     # Transformations
     # --------------------------------------------------------------------- #
-    def standardize(self, x: jnp.ndarray, y: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    def standardize(
+        self, x: jnp.ndarray, y: jnp.ndarray
+    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         xp = (x - self.x_mu) / self._safe_scale(self.x_std)
         yp = (y - self.y_mu) / self._safe_scale(self.y_std)
         return xp, yp
@@ -88,7 +90,9 @@ class Standardization:
         b1p: jnp.ndarray,
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         slope = self.y_std * b1p / self._safe_scale(self.x_std)
-        intercept = self.y_mu + self.y_std * (b0p - b1p * self.x_mu / self._safe_scale(self.x_std))
+        intercept = self.y_mu + self.y_std * (
+            b0p - b1p * self.x_mu / self._safe_scale(self.x_std)
+        )
         return intercept, slope
 
     def unstandardize_peak(
@@ -120,7 +124,9 @@ class Standardization:
         }
 
 
-def _location_scale(values: jnp.ndarray, method: str) -> Tuple[jnp.ndarray, jnp.ndarray]:
+def _location_scale(
+    values: jnp.ndarray, method: str
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     if method == "identity":
         return jnp.array(0.0), jnp.array(1.0)
     if method == "robust":
@@ -134,7 +140,9 @@ def _location_scale(values: jnp.ndarray, method: str) -> Tuple[jnp.ndarray, jnp.
     raise ValueError(f"Unknown standardization method: {method}")
 
 
-def _safe_to_serializable(value: Union[float, jnp.ndarray]) -> Union[float, jnp.ndarray, list]:
+def _safe_to_serializable(
+    value: Union[float, jnp.ndarray]
+) -> Union[float, jnp.ndarray, list]:
     """
     Convert standardization statistics to Python scalars or lists when possible
     without forcing evaluation of traced JAX values.

@@ -145,7 +145,10 @@ class LorentzMixtureFitter(BayesianMCMCBase):
             "k_params": int(best["k_params"]),
             "posterior_peak_means": posterior_peak_means,
         }
-        self._candidates = [{k: c[k] for k in ("type", "K", "bic", "loglik_max", "k_params")} for c in candidates]
+        self._candidates = [
+            {k: c[k] for k in ("type", "K", "bic", "loglik_max", "k_params")}
+            for c in candidates
+        ]
         self._samples_best = samples_best
 
         posterior_mean, posterior_std = self.posterior_predictive_stats(x)
@@ -181,7 +184,9 @@ class LorentzMixtureFitter(BayesianMCMCBase):
         Deterministic mean prediction in original units using posterior medians.
         """
         assert (
-            self.best is not None and self._samples_best is not None and self.std is not None
+            self.best is not None
+            and self._samples_best is not None
+            and self.std is not None
         ), "Call fit() before predict()."
 
         params = self._points_unstd(self._samples_best)
@@ -193,7 +198,9 @@ class LorentzMixtureFitter(BayesianMCMCBase):
             y = y + a / (1.0 + ((x_new - x0) / g) ** 2)
         return y
 
-    def posterior_predictive_stats(self, x_new: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
+    def posterior_predictive_stats(
+        self, x_new: jnp.ndarray
+    ) -> tuple[jnp.ndarray, jnp.ndarray]:
         """
         Compute posterior predictive mean and standard deviation for `x_new`.
 
@@ -202,7 +209,9 @@ class LorentzMixtureFitter(BayesianMCMCBase):
         observation noise implied by the posterior samples.
         """
         assert (
-            self.best is not None and self._samples_best is not None and self.std is not None
+            self.best is not None
+            and self._samples_best is not None
+            and self.std is not None
         ), "Call fit() before posterior_predictive_stats()."
 
         x_new = jnp.asarray(x_new)
@@ -220,7 +229,9 @@ class LorentzMixtureFitter(BayesianMCMCBase):
                 samples["x0"],
                 samples["gamma"],
             )
-            kernels = 1.0 / (1.0 + ((x_new[None, None, :] - x0_u[:, :, None]) / g_u[:, :, None]) ** 2)
+            kernels = 1.0 / (
+                1.0 + ((x_new[None, None, :] - x0_u[:, :, None]) / g_u[:, :, None]) ** 2
+            )
             mu = mu + jnp.sum(a_u[:, :, None] * kernels, axis=1)
 
         # Posterior predictive mean
@@ -265,7 +276,9 @@ class LorentzMixtureFitter(BayesianMCMCBase):
         # use log-mean-exp for numerical stability
         def logmeanexp(v, axis=0):
             m = jnp.max(v, axis=axis, keepdims=True)
-            return (m + jnp.log(jnp.mean(jnp.exp(v - m), axis=axis, keepdims=True))).squeeze(axis)
+            return (
+                m + jnp.log(jnp.mean(jnp.exp(v - m), axis=axis, keepdims=True))
+            ).squeeze(axis)
 
         lppd = jnp.sum(logmeanexp(ll, axis=0))
         # effective number of parameters
@@ -300,17 +313,30 @@ class LorentzMixtureFitter(BayesianMCMCBase):
 
             # ===== shared (hierarchical) priors for amplitudes & widths =====
             # Draw these ONCE (shared across peaks) -> encourages similarity.
-            amp_loc = numpyro.sample("amp_loc", dist.HalfNormal(1.0))  # typical amplitude scale
-            amp_sd = numpyro.sample("amp_sd", dist.HalfNormal(0.3))  # small sd -> tight similarity
+            amp_loc = numpyro.sample(
+                "amp_loc", dist.HalfNormal(1.0)
+            )  # typical amplitude scale
+            amp_sd = numpyro.sample(
+                "amp_sd", dist.HalfNormal(0.3)
+            )  # small sd -> tight similarity
 
-            width_loc = numpyro.sample("width_loc", dist.HalfNormal(0.5))  # typical width scale
-            width_sd = numpyro.sample("width_sd", dist.HalfNormal(0.2))  # small sd -> tight similarity
+            width_loc = numpyro.sample(
+                "width_loc", dist.HalfNormal(0.5)
+            )  # typical width scale
+            width_sd = numpyro.sample(
+                "width_sd", dist.HalfNormal(0.2)
+            )  # small sd -> tight similarity
 
             eps = 1e-8
             with numpyro.plate("peaks", K):
                 # positive, partially pooled amplitudes and widths
-                a = numpyro.sample("a", dist.LogNormal(jnp.log(jnp.maximum(amp_loc, eps)), amp_sd))
-                g = numpyro.sample("gamma", dist.LogNormal(jnp.log(jnp.maximum(width_loc, eps)), width_sd))
+                a = numpyro.sample(
+                    "a", dist.LogNormal(jnp.log(jnp.maximum(amp_loc, eps)), amp_sd)
+                )
+                g = numpyro.sample(
+                    "gamma",
+                    dist.LogNormal(jnp.log(jnp.maximum(width_loc, eps)), width_sd),
+                )
 
             # ----- centers: allow outside the window but prefer interior -----
             xmid = 0.5 * (jnp.min(xp) + jnp.max(xp))
@@ -318,7 +344,9 @@ class LorentzMixtureFitter(BayesianMCMCBase):
             low = jnp.min(xp) - 3.0 * xrng
             high = jnp.max(xp) + 3.0 * xrng
             with numpyro.plate("peaks_x0", K):
-                x0 = numpyro.sample("x0", dist.TruncatedNormal(xmid, xrng, low=low, high=high))
+                x0 = numpyro.sample(
+                    "x0", dist.TruncatedNormal(xmid, xrng, low=low, high=high)
+                )
 
             # ===== soft repulsion between nearby centers (prevents splitting) =====
             if K > 1:
@@ -333,7 +361,9 @@ class LorentzMixtureFitter(BayesianMCMCBase):
 
                 # amplitude-weighted repulsion: big peaks repel more than tiny ones
                 w = a / (jnp.mean(a) + 1e-12)  # scale-free weights
-                penalty_matrix = (w[:, None] * w[None, :]) * jnp.exp(-((d / (rho * gbar)) ** 2))
+                penalty_matrix = (w[:, None] * w[None, :]) * jnp.exp(
+                    -((d / (rho * gbar)) ** 2)
+                )
 
                 # only i<j terms (upper triangle), avoid self terms
                 iu = jnp.triu_indices(K, k=1)
@@ -358,7 +388,9 @@ class LorentzMixtureFitter(BayesianMCMCBase):
         ll_sum = jnp.sum(ll, axis=-1)
         return float(jnp.max(ll_sum))
 
-    def _compute_peak_probability(self, x: jnp.ndarray, samples: Dict[str, jnp.ndarray]):
+    def _compute_peak_probability(
+        self, x: jnp.ndarray, samples: Dict[str, jnp.ndarray]
+    ):
         x = jnp.asarray(x)
         if samples is None or "a" not in samples:
             return jnp.zeros_like(x)
@@ -366,10 +398,14 @@ class LorentzMixtureFitter(BayesianMCMCBase):
         std = self.std
         assert std is not None
 
-        a_u, x0_u, g_u = std.unstandardize_peak(samples["a"], samples["x0"], samples["gamma"])
+        a_u, x0_u, g_u = std.unstandardize_peak(
+            samples["a"], samples["x0"], samples["gamma"]
+        )
 
         # Evaluate each posterior draw on the original x-grid
-        kernels = 1.0 / (1.0 + ((x[None, None, :] - x0_u[:, :, None]) / g_u[:, :, None]) ** 2)
+        kernels = 1.0 / (
+            1.0 + ((x[None, None, :] - x0_u[:, :, None]) / g_u[:, :, None]) ** 2
+        )
         weighted = a_u[:, :, None] * kernels
         density = jnp.sum(weighted, axis=1)  # (num_draws, n_x)
         density_sum = jnp.sum(density, axis=-1, keepdims=True)
@@ -395,7 +431,11 @@ class LorentzMixtureFitter(BayesianMCMCBase):
         b0p = samples["b0"]
         b1p = samples["b1"]
         sigp = samples["sigma"]
-        idx = jnp.linspace(0, b0p.shape[0] - 1, min(300, b0p.shape[0])).round().astype(int)
+        idx = (
+            jnp.linspace(0, b0p.shape[0] - 1, min(300, b0p.shape[0]))
+            .round()
+            .astype(int)
+        )
         inter, slope = std.unstandardize_linear(b0p[idx], b1p[idx])
         out = {
             "intercept": qdict(inter),
@@ -494,7 +534,9 @@ def fit_lorentzians_bic(
     }
 
 
-def predict_in_original_units(x_new: jnp.ndarray, fit_result: Dict[str, Any]) -> jnp.ndarray:
+def predict_in_original_units(
+    x_new: jnp.ndarray, fit_result: Dict[str, Any]
+) -> jnp.ndarray:
     """
     Deterministic mean prediction using point estimates stored in `fit_result`.
     """
@@ -511,7 +553,12 @@ if __name__ == "__main__":
 
     rng = np.random.default_rng(1)
     x = np.linspace(-5, 5, 400)
-    y_true = 0.7 - 0.05 * x + 1.8 / (1 + ((x - (-1.0)) / 0.6) ** 2) + 0.9 / (1 + ((x - 1.8) / 0.4) ** 2)
+    y_true = (
+        0.7
+        - 0.05 * x
+        + 1.8 / (1 + ((x - (-1.0)) / 0.6) ** 2)
+        + 0.9 / (1 + ((x - 1.8) / 0.4) ** 2)
+    )
     y = y_true + 0.08 * rng.normal(size=x.size)
 
     fitter = LorentzMixtureFitter(max_components=3, rng_seed=42)
@@ -540,7 +587,9 @@ if __name__ == "__main__":
             label=f"peak @ {pk['center']:.2f}",
         )
 
-    plt.title(f"Best model: {details['best_model']['type']} (K={details['best_model']['K']})")
+    plt.title(
+        f"Best model: {details['best_model']['type']} (K={details['best_model']['K']})"
+    )
     plt.xlabel("x")
     plt.ylabel("y")
     plt.legend()

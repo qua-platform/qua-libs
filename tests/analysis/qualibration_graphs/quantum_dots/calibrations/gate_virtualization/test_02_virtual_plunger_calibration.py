@@ -22,6 +22,7 @@ from .conftest import (
     _patch_action_manager_register_only,
     _reimport_node_to_register_actions,
     apply_param_overrides,
+    apply_sensor_noise,
     simulate_plunger_plunger_scan,
     simulate_sensor_sweep,
     sweep_voltages_mV,
@@ -64,7 +65,9 @@ def _qarray_available() -> bool:
     try:
         from qarray import DotArray
 
-        model = DotArray(Cdd=[[0.1]], Cgd=[[0.1]], algorithm="default", implementation="jax")
+        model = DotArray(
+            Cdd=[[0.1]], Cgd=[[0.1]], algorithm="default", implementation="jax"
+        )
         model.ground_state_open(np.array([[0.0], [0.1]]))
         return True
     except Exception:
@@ -193,14 +196,18 @@ def test_update_state_asymmetric_for_non_plunger_pairs(minimal_quam_factory):
     updated = np.asarray(layer.matrix, dtype=float)
 
     # barrier→plunger entry should be updated (additive)
-    assert updated[plunger_idx, barrier_idx] == pytest.approx(old[plunger_idx, barrier_idx] + M_barrier[0, 1])
+    assert updated[plunger_idx, barrier_idx] == pytest.approx(
+        old[plunger_idx, barrier_idx] + M_barrier[0, 1]
+    )
     # plunger→barrier entry should NOT be updated (asymmetric)
     assert updated[barrier_idx, plunger_idx] == pytest.approx(
         old[barrier_idx, plunger_idx]
     ), "Barrier row should not be modified by plunger-barrier pair"
 
     # sensor→plunger entry should be updated (additive)
-    assert updated[plunger_idx, sensor_idx] == pytest.approx(old[plunger_idx, sensor_idx] + M_sensor[0, 1])
+    assert updated[plunger_idx, sensor_idx] == pytest.approx(
+        old[plunger_idx, sensor_idx] + M_sensor[0, 1]
+    )
     # plunger→sensor entry should NOT be updated (asymmetric)
     assert updated[sensor_idx, plunger_idx] == pytest.approx(
         old[sensor_idx, plunger_idx]
@@ -208,7 +215,9 @@ def test_update_state_asymmetric_for_non_plunger_pairs(minimal_quam_factory):
 
 
 @pytest.mark.analysis
-@pytest.mark.skipif(not _qarray_available(), reason="qarray/JAX not functional in this environment")
+@pytest.mark.skipif(
+    not _qarray_available(), reason="qarray/JAX not functional in this environment"
+)
 class TestVirtualPlungerE2E:
     """End-to-end: qarray simulation -> node analyse_data/plot_data actions."""
 
@@ -269,9 +278,13 @@ class TestVirtualPlungerE2E:
         T = fit["T_matrix"]
         assert T is not None
         assert T.shape == (2, 2)
-        assert abs(np.linalg.det(T)) > 1e-6, f"T matrix is singular: det={np.linalg.det(T)}"
+        assert (
+            abs(np.linalg.det(T)) > 1e-6
+        ), f"T matrix is singular: det={np.linalg.det(T)}"
 
-        assert pair_key in node.results.get("figures", {}), "plot_data did not produce a figure"
+        assert pair_key in node.results.get(
+            "figures", {}
+        ), "plot_data did not produce a figure"
 
     def test_plot_charge_stability(self, dot_model):
         """Generate charge-stability diagrams with and without sensor compensation."""
@@ -298,7 +311,9 @@ class TestVirtualPlungerE2E:
             sensor_compensation=SENSOR_COMP,
         )
 
-        amp_uncomp = np.hypot(ds_raw_uncomp["I"].values[0], ds_raw_uncomp["Q"].values[0])
+        amp_uncomp = np.hypot(
+            ds_raw_uncomp["I"].values[0], ds_raw_uncomp["Q"].values[0]
+        )
         amp_comp = np.hypot(ds_raw_comp["I"].values[0], ds_raw_comp["Q"].values[0])
 
         v_x = ds_raw_comp.coords["x_volts"].values
@@ -306,20 +321,33 @@ class TestVirtualPlungerE2E:
         extent = [v_x[0], v_x[-1], v_y[0], v_y[-1]]
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-        axes[0].imshow(amp_uncomp, extent=extent, origin="lower", aspect="auto", cmap="hot")
+        axes[0].imshow(
+            amp_uncomp, extent=extent, origin="lower", aspect="auto", cmap="hot"
+        )
+        axes[0].set_xlim(v_x[0], v_x[-1])
+        axes[0].set_ylim(v_y[0], v_y[-1])
         axes[0].set_title("Without sensor compensation")
         axes[0].set_xlabel("Plunger 1 (V)")
         axes[0].set_ylabel("Plunger 2 (V)")
 
-        axes[1].imshow(amp_comp, extent=extent, origin="lower", aspect="auto", cmap="hot")
+        axes[1].imshow(
+            amp_comp, extent=extent, origin="lower", aspect="auto", cmap="hot"
+        )
+        axes[1].set_xlim(v_x[0], v_x[-1])
+        axes[1].set_ylim(v_y[0], v_y[-1])
         axes[1].set_title("With sensor compensation")
         axes[1].set_xlabel("Plunger 1 (V)")
         axes[1].set_ylabel("Plunger 2 (V)")
 
         plt.tight_layout()
-        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "02_virtual_plunger_qarray"
+        artifacts_dir = (
+            Path(__file__).resolve().parents[4]
+            / "artifacts"
+            / "02_virtual_plunger_qarray"
+        )
         artifacts_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(artifacts_dir / "charge_stability.png", dpi=150)
+        fig.savefig(artifacts_dir / "charge_stability.svg")
         plt.close(fig)
         assert (artifacts_dir / "charge_stability.png").exists()
 
@@ -328,9 +356,11 @@ class TestVirtualPlungerE2E:
         import xarray as xr
 
         # 1. Run node analysis on the physical (pre-virtualized) scan
-        node_phys, pair_key, ds_raw, v_px, v_py, sensor_opt_mV = self._run_node_pipeline(
-            dot_model,
-            analysis_runner,
+        node_phys, pair_key, ds_raw, v_px, v_py, sensor_opt_mV = (
+            self._run_node_pipeline(
+                dot_model,
+                analysis_runner,
+            )
         )
 
         fit = node_phys.results["fit_results"][pair_key]
@@ -339,14 +369,17 @@ class TestVirtualPlungerE2E:
         assert M is not None
 
         # Save the physical transition analysis figure
-        artifacts_dir = Path(__file__).resolve().parents[4] / "artifacts" / "02_virtual_plunger_qarray"
+        artifacts_dir = (
+            Path(__file__).resolve().parents[4]
+            / "artifacts"
+            / "02_virtual_plunger_qarray"
+        )
         artifacts_dir.mkdir(parents=True, exist_ok=True)
         if pair_key in node_phys.results.get("figures", {}):
-            node_phys.results["figures"][pair_key].savefig(
-                artifacts_dir / "transition_analysis_physical.png",
-                dpi=150,
-            )
-            plt.close(node_phys.results["figures"][pair_key])
+            fig_phys = node_phys.results["figures"][pair_key]
+            fig_phys.savefig(artifacts_dir / "transition_analysis_physical.png", dpi=150)
+            fig_phys.savefig(artifacts_dir / "transition_analysis_physical.svg")
+            plt.close(fig_phys)
 
         # 2. Build the virtualized scan dataset
         # M is virtual→physical; apply it directly to virtual sweep coordinates
@@ -362,11 +395,14 @@ class TestVirtualPlungerE2E:
         voltage_array[:, 0] = phys_flat[0]
         voltage_array[:, 1] = phys_flat[1]
         voltage_array[:, 6] = (
-            sensor_opt_mV + alpha_x * (phys_flat[0] - phys_cx[0]) + alpha_y * (phys_flat[1] - phys_cx[1])
+            sensor_opt_mV
+            + alpha_x * (phys_flat[0] - phys_cx[0])
+            + alpha_y * (phys_flat[1] - phys_cx[1])
         )
 
         z, _ = dot_model.charge_sensor_open(-voltage_array)
-        virt_signal = z.squeeze().reshape(len(v_py), len(v_px))
+        virt_signal = np.asarray(z).squeeze().reshape(len(v_py), len(v_px))
+        virt_signal = apply_sensor_noise(virt_signal)
 
         v_x_V = v_px * 1e-3
         v_y_V = v_py * 1e-3
@@ -375,12 +411,20 @@ class TestVirtualPlungerE2E:
                 "I": xr.DataArray(
                     virt_signal[np.newaxis, :, :],
                     dims=["sensors", "y_volts", "x_volts"],
-                    coords={"sensors": ["sensor_1"], "x_volts": v_x_V, "y_volts": v_y_V},
+                    coords={
+                        "sensors": ["sensor_1"],
+                        "x_volts": v_x_V,
+                        "y_volts": v_y_V,
+                    },
                 ),
                 "Q": xr.DataArray(
                     np.zeros_like(virt_signal)[np.newaxis, :, :],
                     dims=["sensors", "y_volts", "x_volts"],
-                    coords={"sensors": ["sensor_1"], "x_volts": v_x_V, "y_volts": v_y_V},
+                    coords={
+                        "sensors": ["sensor_1"],
+                        "x_volts": v_x_V,
+                        "y_volts": v_y_V,
+                    },
                 ),
             }
         )
@@ -396,30 +440,39 @@ class TestVirtualPlungerE2E:
 
         # Save the virtualized transition analysis figure
         if virt_pair_key in node_virt.results.get("figures", {}):
-            node_virt.results["figures"][virt_pair_key].savefig(
-                artifacts_dir / "transition_analysis_virtual.png",
-                dpi=150,
-            )
-            plt.close(node_virt.results["figures"][virt_pair_key])
+            fig_virt = node_virt.results["figures"][virt_pair_key]
+            fig_virt.savefig(artifacts_dir / "transition_analysis_virtual.png", dpi=150)
+            fig_virt.savefig(artifacts_dir / "transition_analysis_virtual.svg")
+            plt.close(fig_virt)
 
         # 4. Side-by-side comparison plot
         raw_amplitude = np.hypot(ds_raw["I"].values[0], ds_raw["Q"].values[0])
         extent = [v_x_V[0], v_x_V[-1], v_y_V[0], v_y_V[-1]]
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-        axes[0].imshow(raw_amplitude, extent=extent, origin="lower", aspect="auto", cmap="hot")
+        axes[0].imshow(
+            raw_amplitude, extent=extent, origin="lower", aspect="auto", cmap="hot"
+        )
+        axes[0].set_xlim(v_x_V[0], v_x_V[-1])
+        axes[0].set_ylim(v_y_V[0], v_y_V[-1])
         axes[0].set_title("Physical plunger gates (sensor-compensated)")
         axes[0].set_xlabel("Plunger 1 (V)")
         axes[0].set_ylabel("Plunger 2 (V)")
 
-        axes[1].imshow(virt_signal, extent=extent, origin="lower", aspect="auto", cmap="hot")
+        axes[1].imshow(
+            virt_signal, extent=extent, origin="lower", aspect="auto", cmap="hot"
+        )
+        axes[1].set_xlim(v_x_V[0], v_x_V[-1])
+        axes[1].set_ylim(v_y_V[0], v_y_V[-1])
         axes[1].set_title(
-            "Virtual gates (plunger-virtualized)\n" f"M=[[{M[0,0]:.3f}, {M[0,1]:.3f}], [{M[1,0]:.3f}, {M[1,1]:.3f}]]"
+            "Virtual gates (plunger-virtualized)\n"
+            f"M=[[{M[0,0]:.3f}, {M[0,1]:.3f}], [{M[1,0]:.3f}, {M[1,1]:.3f}]]"
         )
         axes[1].set_xlabel("Virtual gate 1 (V)")
         axes[1].set_ylabel("Virtual gate 2 (V)")
 
         plt.tight_layout()
         fig.savefig(artifacts_dir / "virtual_gate_sweep.png", dpi=150)
+        fig.savefig(artifacts_dir / "virtual_gate_sweep.svg")
         plt.close(fig)
         assert (artifacts_dir / "virtual_gate_sweep.png").exists()

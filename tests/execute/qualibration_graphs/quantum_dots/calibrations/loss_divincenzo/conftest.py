@@ -2,8 +2,13 @@
 
 Runs each node with ``simulate=False`` on a real QM cluster, then collects
 figures, fit results, and state updates into a comprehensive README report.
-Uses the same wiring-based QuAM factory (``create_ld_quam``) and shared
-helpers from ``shared_fixtures``.
+
+Uses on-disk QUAM state from :mod:`tests.quam_test_machine`. Each run calls
+:func:`tests.quam_test_machine.regenerate_state_directory`, which rebuilds from
+:func:`~tests.quam_test_machine.build_machine`, applies
+:func:`~tests.quam_test_machine.update_machine`, saves (overwriting existing JSON),
+then reloads from disk for the execute pipeline. Shared helpers come from
+``shared_fixtures``.
 """
 
 from __future__ import annotations
@@ -17,6 +22,9 @@ from unittest.mock import patch
 
 import pytest
 
+_REPO_ROOT = Path(__file__).resolve().parents[6]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 CURRENT_DIR = Path(__file__).resolve().parent
 EXECUTE_ROOT = CURRENT_DIR.parents[3]
@@ -27,7 +35,12 @@ if str(EXECUTE_ROOT) not in sys.path:
     sys.path.insert(0, str(EXECUTE_ROOT))
 
 # ── Shared helpers ─────────────────────────────────────────────────────
-_SHARED_DIR = Path(__file__).resolve().parents[5] / "qualibration_graphs" / "quantum_dots" / "calibrations"
+_SHARED_DIR = (
+    Path(__file__).resolve().parents[5]
+    / "qualibration_graphs"
+    / "quantum_dots"
+    / "calibrations"
+)
 if str(_SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(_SHARED_DIR))
 
@@ -44,7 +57,40 @@ from shared_fixtures import (  # noqa: E402
     save_execute_figures,
     setup_test_cache,
 )
-from quam_factory import create_ld_quam  # noqa: E402
+from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam
+
+from tests.quam_test_machine import regenerate_state_directory  # noqa: E402
+
+# ── Patch qm_session to close other QMs on open ──────────────────────
+# In test environments we are the sole user, so always grab the hardware
+# immediately instead of polling/waiting for other sessions to release.
+import logging
+from contextlib import contextmanager
+
+import qualang_tools.multi_user as _mu_pkg
+import qualang_tools.multi_user.multi_user_tools as _mu_mod
+
+
+@contextmanager
+def _qm_session_close_others(qmm, config, timeout=100):
+    """Like ``qm_session`` but with ``close_other_machines=True``."""
+    qm_log = logging.getLogger("qm.api.frontend_api")
+    qm_log.info("Opening QM (close_other_machines=True)")
+    qm = qmm.open_qm(config, close_other_machines=True)
+    try:
+        yield qm
+    except KeyboardInterrupt:
+        pass
+    finally:
+        qm_log.info("Closing QM")
+        qm.close()
+
+
+# Patch both the implementation module and the public package so that
+# ``from qualang_tools.multi_user import qm_session`` in node files
+# picks up the patched version at import time.
+_mu_mod.qm_session = _qm_session_close_others
+_mu_pkg.qm_session = _qm_session_close_others
 
 # ── Cache setup ────────────────────────────────────────────────────────
 _cache_base = EXECUTE_ROOT / ".pytest_cache"
@@ -53,7 +99,13 @@ patch_qualibrate_logger(_cache_base)
 
 # ── Paths and defaults ─────────────────────────────────────────────────
 
-CALIBRATION_LIBRARY_ROOT = REPO_ROOT / "qualibration_graphs" / "quantum_dots" / "calibrations" / "loss_divincenzo"
+CALIBRATION_LIBRARY_ROOT = (
+    REPO_ROOT
+    / "qualibration_graphs"
+    / "quantum_dots"
+    / "calibrations"
+    / "loss_divincenzo"
+)
 ARTIFACTS_BASE = EXECUTE_ROOT / "artifacts"
 
 DEFAULT_SMALL_SWEEP_PARAMS: Dict[str, Any] = {
@@ -62,12 +114,17 @@ DEFAULT_SMALL_SWEEP_PARAMS: Dict[str, Any] = {
     "min_wait_time_in_ns": 16,
     "max_wait_time_in_ns": 1_024,
     "time_step_in_ns": 500,
-    "frequency_span_in_mhz": 4,
-    "frequency_step_in_mhz": 2,
-    "gap_wait_time_in_ns": 1056,
+    "frequency_span_in_mhz": 40,
+    "frequency_step_in_mhz": 5,
     "simulation_duration_ns": 40_000,
-    "timeout": 120,
+    "timeout": 500,
 }
+
+
+def _regenerate_quam_machine() -> LossDiVincenzoQuam:
+    """Rebuild QUAM JSON, ``update_machine``, save (overwrite), load from disk."""
+    loaded, _cfg = regenerate_state_directory()
+    return loaded
 
 
 # ── Fixtures ───────────────────────────────────────────────────────────
@@ -75,10 +132,10 @@ DEFAULT_SMALL_SWEEP_PARAMS: Dict[str, Any] = {
 
 @pytest.fixture
 def minimal_quam_factory():
-    """Factory fixture returning a ``LossDiVincenzoQuam`` with default macros."""
+    """Factory fixture returning a fresh ``LossDiVincenzoQuam`` from disk."""
 
     def _factory():
-        return create_ld_quam()
+        return _regenerate_quam_machine()
 
     return _factory
 
@@ -175,7 +232,9 @@ def execute_runner(minimal_quam_factory, markdown_generator):
             details = getattr(run_error_info, "details", "") or ""
             for line in details.splitlines():
                 stripped = line.strip().lstrip("- ")
-                if stripped and not stripped.startswith(("Completed", "Skipped", "Failed", "Source")):
+                if stripped and not stripped.startswith(
+                    ("Completed", "Skipped", "Failed", "Source")
+                ):
                     if "Completed actions" in details and line.strip().startswith("- "):
                         completed_actions.append(stripped)
             failed_action = getattr(run_error_info, "details_headline", "")
@@ -239,5 +298,7 @@ def pytest_configure(config):
 
 def pytest_collection_modifyitems(config, items):
     for item in items:
-        if "tests/execute/" in str(item.fspath) and not item.get_closest_marker("execute"):
+        if "tests/execute/" in str(item.fspath) and not item.get_closest_marker(
+            "execute"
+        ):
             item.add_marker(pytest.mark.execute)

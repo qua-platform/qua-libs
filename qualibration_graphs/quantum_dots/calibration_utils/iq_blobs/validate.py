@@ -106,8 +106,16 @@ def simulate_quantum_dot_readout_data(
 
             # Add small variations to blob positions (10%)
             mu_S_var = (
-                mu_S[0] + 0.1 * mu_S[0] * (np.random.rand() - 0.5) if mu_S[0] != 0 else 0.0,
-                mu_S[1] + 0.1 * mu_S[1] * (np.random.rand() - 0.5) if mu_S[1] != 0 else 0.0,
+                (
+                    mu_S[0] + 0.1 * mu_S[0] * (np.random.rand() - 0.5)
+                    if mu_S[0] != 0
+                    else 0.0
+                ),
+                (
+                    mu_S[1] + 0.1 * mu_S[1] * (np.random.rand() - 0.5)
+                    if mu_S[1] != 0
+                    else 0.0
+                ),
             )
             mu_T_var = (
                 mu_T[0] + 0.1 * mu_T[0] * (np.random.rand() - 0.5),

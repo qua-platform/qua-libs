@@ -47,7 +47,9 @@ def _ensure_video_mode_parameters_stub() -> None:
         from qualibrate.core.parameters import RunnableParameters
 
         package_mod = types.ModuleType("calibration_utils.run_video_mode")
-        params_mod = types.ModuleType("calibration_utils.run_video_mode.video_mode_specific_parameters")
+        params_mod = types.ModuleType(
+            "calibration_utils.run_video_mode.video_mode_specific_parameters"
+        )
 
         class VideoModeCommonParameters(RunnableParameters):
             """Minimal stub used only for analysis tests."""
@@ -55,7 +57,9 @@ def _ensure_video_mode_parameters_stub() -> None:
         params_mod.VideoModeCommonParameters = VideoModeCommonParameters
         package_mod.video_mode_specific_parameters = params_mod
         sys.modules["calibration_utils.run_video_mode"] = package_mod
-        sys.modules["calibration_utils.run_video_mode.video_mode_specific_parameters"] = params_mod
+        sys.modules[
+            "calibration_utils.run_video_mode.video_mode_specific_parameters"
+        ] = params_mod
 
 
 def _build_resonator_ds_raw() -> xr.Dataset:
@@ -70,7 +74,9 @@ def _build_resonator_ds_raw() -> xr.Dataset:
 
     # Mild baseline tilt and quadrature component for realistic IQ traces.
     i_trace = baseline - dip + 0.01 * (detuning / np.max(np.abs(detuning)))
-    q_trace = 0.02 * np.sin(2.0 * np.pi * (detuning - detuning.min()) / (detuning.ptp()))
+    q_trace = 0.02 * np.sin(
+        2.0 * np.pi * (detuning - detuning.min()) / (np.ptp(detuning))
+    )
 
     return xr.Dataset(
         data_vars={
@@ -106,9 +112,13 @@ def test_02a_resonator_spectroscopy_analysis_and_plot_actions(analysis_runner):
         },
     )
 
-    assert "IQ_abs" in node.results["ds_raw"], "Analysis preprocessing should add IQ_abs."
+    assert (
+        "IQ_abs" in node.results["ds_raw"]
+    ), "Analysis preprocessing should add IQ_abs."
     assert "phase" in node.results["ds_raw"], "Analysis preprocessing should add phase."
-    assert "full_freq" in node.results["ds_raw"].coords, "Processed data should include full_freq coordinate."
+    assert (
+        "full_freq" in node.results["ds_raw"].coords
+    ), "Processed data should include full_freq coordinate."
 
     assert "ds_fit" in node.results
     assert "fit_results" in node.results
@@ -117,24 +127,34 @@ def test_02a_resonator_spectroscopy_analysis_and_plot_actions(analysis_runner):
     fit = node.results["fit_results"][SENSOR_NAME]
     assert fit["success"], f"Resonator fit should succeed, got: {fit}"
 
-    fitted_detuning = float(node.results["ds_fit"].sel(sensors=SENSOR_NAME).position.values)
+    fitted_detuning = float(
+        node.results["ds_fit"].sel(sensors=SENSOR_NAME).position.values
+    )
     assert (
         abs(fitted_detuning - DETUNING_CENTER_HZ) < 0.8e6
     ), f"Expected dip near {DETUNING_CENTER_HZ:.0f} Hz, got {fitted_detuning:.0f} Hz"
 
     fwhm = float(fit["fwhm"])
-    assert np.isfinite(fwhm) and fwhm > 0.0, f"Expected positive finite FWHM, got {fwhm}"
+    assert (
+        np.isfinite(fwhm) and fwhm > 0.0
+    ), f"Expected positive finite FWHM, got {fwhm}"
 
     figures = node.results.get("figures")
-    assert isinstance(figures, dict), "plot_data should store figures under node.results['figures']."
-    assert {"phase", "amplitude"}.issubset(figures.keys()), "plot_data should create phase and amplitude figures."
+    assert isinstance(
+        figures, dict
+    ), "plot_data should store figures under node.results['figures']."
+    assert {"phase", "amplitude"}.issubset(
+        figures.keys()
+    ), "plot_data should create phase and amplitude figures."
     assert isinstance(figures["phase"], Figure)
     assert isinstance(figures["amplitude"], Figure)
     assert len(figures["phase"].axes) > 0
     assert len(figures["amplitude"].axes) > 0
 
     # update_state should set the sensor IF to the fitted resonance frequency.
-    updated_if = float(node.machine.sensor_dots[SENSOR_NAME].readout_resonator.intermediate_frequency)
+    updated_if = float(
+        node.machine.sensor_dots[SENSOR_NAME].readout_resonator.intermediate_frequency
+    )
     assert np.isclose(
         updated_if, fit["frequency"], rtol=0.0, atol=1e-3
     ), f"Expected state IF update to {fit['frequency']}, got {updated_if}"

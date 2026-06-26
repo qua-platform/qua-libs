@@ -22,7 +22,12 @@ as module-level variables at the top of this file.
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+
 from qualang_tools.wirer import Connectivity, Instruments, allocate_wiring
 
 from qualang_tools.wirer.wirer.wirer import ChannelSpec
@@ -43,6 +48,31 @@ from quam_builder.builder.quantum_dots import (
 # ``tests/.qm_cluster_config.json`` (not tracked by git).
 # Copy ``.qm_cluster_config.json.example`` and fill in your values.
 
+_WIRING_STATE_DIR = Path(tempfile.mkdtemp(prefix="quam_factory_"))
+"""Temp directory for build_quam_wiring's machine.save() call.
+
+Avoids hitting the global ~/.qualibrate/config.toml path resolution.
+"""
+
+os.environ.setdefault("QUAM_STATE_PATH", str(_WIRING_STATE_DIR))
+
+
+def _fake_get_quam_config():
+    return SimpleNamespace(
+        state_path=str(_WIRING_STATE_DIR),
+        raise_error_missing_reference=False,
+    )
+
+
+_quam_config_patches = [
+    patch("quam.config.resolvers.get_quam_config", _fake_get_quam_config),
+    patch("quam.config.get_quam_config", _fake_get_quam_config),
+    patch("quam.core.quam_classes.get_quam_config", _fake_get_quam_config),
+    patch("quam.serialisation.json.get_quam_config", _fake_get_quam_config),
+]
+for _p in _quam_config_patches:
+    _p.start()
+
 
 def _find_repo_root(start: Path) -> Path:
     current = start
@@ -54,7 +84,11 @@ def _find_repo_root(start: Path) -> Path:
 
 
 def _load_cluster_config() -> tuple[str, str]:
-    config_path = _find_repo_root(Path(__file__).resolve().parent) / "tests" / ".qm_cluster_config.json"
+    config_path = (
+        _find_repo_root(Path(__file__).resolve().parent)
+        / "tests"
+        / ".qm_cluster_config.json"
+    )
     if not config_path.exists():
         raise FileNotFoundError(
             f"Cluster config not found at {config_path}. "
@@ -69,24 +103,32 @@ HOST_IP, CLUSTER_NAME = _load_cluster_config()
 CONTROLLER_ID: int = 1
 """Controller number passed to ``Instruments.add_*_fem(controller=...)``."""
 
-MW_FEM_SLOT: int = 4
+MW_FEM_SLOT: int = 1
 """MW-FEM slot for qubit XY drive lines (Stage 2 only)."""
 
-LF_FEM_SLOT: int = 1
+LF_FEM_SLOT: int = 5
 """LF-FEM slot for plungers 1-2, sensor 1, and resonator 1."""
 
-LF_FEM_DELAY_NS: int = 155
+LF_FEM_DELAY_NS: int = 161  # 161
 """Delay (ns) applied to all LF-FEM analog output ports to compensate for MW-FEM path skew."""
 
 MW_FEM_DELAY_NS: int = 0
-"""Delay (ns) applied to all MW-FEM output ports."""
+"""Delay (ns) applied to all MW-FEM output ports (Band 2: 161 ns)."""
 
-DEFAULT_LARMOR_FREQUENCY: float = 5.1e9
-"""Nominal qubit Larmor (RF) frequency in Hz.
+DEFAULT_LARMOR_FREQUENCIES: dict[str, float] = {
+    "q1": 5.1e9,
+    "q2": 5.3e9,
+}
+"""Per-qubit Larmor (RF) frequencies in Hz.
 
-The MW-FEM upconverter is at 5 GHz, so this gives IF = 100 MHz —
+Different g-factors give distinct Larmor frequencies in the same
+magnetic field, enabling frequency-selective single-qubit addressing.
+The MW-FEM upconverter is at 5 GHz, so IFs of 100–300 MHz are
 well within the MW-FEM NCO limit of ±500 MHz.
 """
+
+DEFAULT_LARMOR_FREQUENCY: float = 5.1e9
+"""Fallback Larmor frequency for qubits not in DEFAULT_LARMOR_FREQUENCIES."""
 
 # ── Quantum-dot topology ───────────────────────────────────────────────
 
@@ -139,7 +181,9 @@ def create_qd_quam() -> BaseQuamQD:
     allocate_wiring(connectivity, instruments)
 
     machine = BaseQuamQD()
-    machine = build_quam_wiring(connectivity, HOST_IP, CLUSTER_NAME, machine)
+    machine = build_quam_wiring(
+        connectivity, HOST_IP, CLUSTER_NAME, machine, path=_WIRING_STATE_DIR
+    )
     machine = build_base_quam(machine, connect_qdac=False, save=False)
     return machine
 
@@ -180,7 +224,9 @@ def create_ld_quam():
 
     allocate_wiring(connectivity, instruments)
 
-    machine = build_quam_wiring(connectivity, HOST_IP, CLUSTER_NAME, base_machine)
+    machine = build_quam_wiring(
+        connectivity, HOST_IP, CLUSTER_NAME, base_machine, path=_WIRING_STATE_DIR
+    )
     machine = build_loss_divincenzo_quam(
         machine,
         qubit_pair_sensor_map=QUBIT_PAIR_SENSOR_MAP,
@@ -194,7 +240,6 @@ def create_ld_quam():
         qubit.id = key
 
     _set_default_larmor_frequencies(machine)
-    _define_default_detuning_axes(machine)
     _override_default_pulse_lengths(machine)
     _add_default_voltage_points(machine)
     _apply_port_delays(machine)
@@ -202,14 +247,18 @@ def create_ld_quam():
 
 
 def _set_default_larmor_frequencies(machine) -> None:
-    """Set a nominal Larmor frequency on each qubit so the MW-FEM IF resolves.
+    """Set per-qubit Larmor frequencies reflecting distinct g-factors.
 
     XYDriveMW.RF_frequency refs qubit.larmor_frequency; without a numeric
     value the reference string leaks into the QM config as a non-number.
+    Qubits in ``DEFAULT_LARMOR_FREQUENCIES`` get their specific value;
+    others fall back to ``DEFAULT_LARMOR_FREQUENCY``.
     """
-    for qubit in machine.qubits.values():
+    for key, qubit in machine.qubits.items():
         if getattr(qubit, "larmor_frequency", None) is None:
-            qubit.larmor_frequency = DEFAULT_LARMOR_FREQUENCY
+            qubit.larmor_frequency = DEFAULT_LARMOR_FREQUENCIES.get(
+                key, DEFAULT_LARMOR_FREQUENCY
+            )
 
 
 def _apply_port_delays(machine) -> None:
@@ -245,22 +294,6 @@ def _override_default_pulse_lengths(machine) -> None:
                 rr.operations["readout"].amplitude = 0.025
 
 
-def _define_default_detuning_axes(machine) -> None:
-    """Materialize a simple detuning axis for each registered dot pair."""
-    for qdp in machine.quantum_dot_pairs.values():
-        gate_set = qdp.voltage_sequence.gate_set
-        if qdp.detuning_axis_name in getattr(gate_set, "valid_channel_names", []):
-            continue
-        qdp.define_detuning_axis(
-            matrix=[[1.0, -1.0]],
-            detuning_axis_name=qdp.detuning_axis_name,
-            set_dc_virtual_axis=False,
-        )
-
-    for gate_set_id in machine.virtual_gate_sets:
-        machine.reset_voltage_sequence(gate_set_id)
-
-
 def _add_default_voltage_points(machine) -> None:
     """Register canonical voltage tuning points consumed by state macros.
 
@@ -274,8 +307,8 @@ def _add_default_voltage_points(machine) -> None:
     for qubit in machine.qubits.values():
         dot_id = qubit.quantum_dot.id
         qubit.add_point(VoltagePointName.INITIALIZE, {dot_id: 0.075}, duration=248)
-        qubit.add_point(VoltagePointName.MEASURE, {dot_id: 0.05}, duration=248)
-        qubit.add_point(VoltagePointName.EMPTY, {dot_id: -0.05}, duration=524)
+        qubit.add_point(VoltagePointName.MEASURE, {dot_id: -0.05}, duration=248)
+        qubit.add_point(VoltagePointName.EMPTY, {dot_id: -0.1}, duration=524)
         qubit.add_point(VoltagePointName.EXCHANGE, {dot_id: 0.025}, duration=248)
         qubit.macros[VoltagePointName.INITIALIZE].ramp_duration = 16
 
@@ -284,10 +317,26 @@ def _add_default_voltage_points(machine) -> None:
     for qdp in machine.quantum_dot_pairs.values():
         dot_ids = [d.id for d in qdp.quantum_dots]
         barrier_id = qdp.barrier_gate.id
-        qdp.add_point(VoltagePointName.INITIALIZE, {**{did: 0.075 for did in dot_ids}, barrier_id: 0.0}, duration=248)
-        qdp.add_point(VoltagePointName.MEASURE, {**{did: 0.05 for did in dot_ids}, barrier_id: 0.0}, duration=248)
-        qdp.add_point(VoltagePointName.EMPTY, {**{did: -0.05 for did in dot_ids}, barrier_id: 0.0}, duration=524)
-        qdp.add_point(VoltagePointName.EXCHANGE, {**{did: 0.025 for did in dot_ids}, barrier_id: 0.0}, duration=248)
+        qdp.add_point(
+            VoltagePointName.INITIALIZE,
+            {**{did: 0.075 for did in dot_ids}, barrier_id: 0.0},
+            duration=248,
+        )
+        qdp.add_point(
+            VoltagePointName.MEASURE,
+            {**{did: -0.05 for did in dot_ids}, barrier_id: 0.0},
+            duration=248,
+        )
+        qdp.add_point(
+            VoltagePointName.EMPTY,
+            {**{did: -0.1 for did in dot_ids}, barrier_id: 0.0},
+            duration=524,
+        )
+        qdp.add_point(
+            VoltagePointName.EXCHANGE,
+            {**{did: 0.025 for did in dot_ids}, barrier_id: 0.05},
+            duration=248,
+        )
 
     # Register the same canonical points on qubit pairs (LDQubitPair).
     # Qubit pairs have a different id (e.g. "q1_q2") than their underlying
@@ -297,10 +346,32 @@ def _add_default_voltage_points(machine) -> None:
         qdp = qp.quantum_dot_pair
         dot_ids = [d.id for d in qdp.quantum_dots]
         barrier_id = qdp.barrier_gate.id
-        qp.add_point(VoltagePointName.INITIALIZE, {**{did: 0.075 for did in dot_ids}, barrier_id: 0.0}, duration=248)
-        qp.add_point(VoltagePointName.MEASURE, {**{did: 0.05 for did in dot_ids}, barrier_id: 0.0}, duration=248)
-        qp.add_point(VoltagePointName.EMPTY, {**{did: -0.05 for did in dot_ids}, barrier_id: 0.0}, duration=524)
-        qp.add_point(VoltagePointName.EXCHANGE, {**{did: 0.025 for did in dot_ids}, barrier_id: 0.0}, duration=248)
+        qp.add_point(
+            VoltagePointName.INITIALIZE,
+            {**{did: 0.075 for did in dot_ids}, barrier_id: 0.0},
+            duration=248,
+        )
+        qp.add_point(
+            VoltagePointName.MEASURE,
+            {**{did: -0.05 for did in dot_ids}, barrier_id: 0.0},
+            duration=248,
+        )
+        qp.add_point(
+            VoltagePointName.EMPTY,
+            {**{did: -0.1 for did in dot_ids}, barrier_id: 0.0},
+            duration=524,
+        )
+        qp.add_point(
+            VoltagePointName.EXCHANGE,
+            {**{did: 0.025 for did in dot_ids}, barrier_id: 0.0},
+            duration=248,
+        )
+        qp.add_point(
+            "CZ",
+            {**{did: 0.075 for did in dot_ids}, barrier_id: 0.2},
+            duration=248,
+        )
+        qp.macros["cz"].wait_duration = 200
 
     # Populate default readout thresholds / projectors on sensor dots so
     # the SensorDotMeasureMacro can perform state discrimination.
@@ -310,4 +381,6 @@ def _add_default_voltage_points(machine) -> None:
 
     for qubit in machine.qubits.values():
         qubit.macros[VoltagePointName.MEASURE].hold_duration = 248
-        qubit.macros[SingleQubitMacroName.XY_DRIVE].reference_pulse_name = DrivePulseName.GAUSSIAN
+        qubit.macros[SingleQubitMacroName.XY_DRIVE].pulse_family = (
+            DrivePulseName.GAUSSIAN.value
+        )

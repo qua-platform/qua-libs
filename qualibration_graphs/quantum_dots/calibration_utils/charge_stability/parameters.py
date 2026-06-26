@@ -2,46 +2,56 @@ from qua_dashboards.virtual_gates import virtual_layer_adder
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.run_video_mode.video_mode_specific_parameters import VideoModeCommonParameters
+from calibration_utils.run_video_mode.video_mode_specific_parameters import (
+    VideoModeCommonParameters,
+)
 
 from typing import List, Literal, Dict, Union, Callable, Optional
 
 
 class NodeSpecificParameters(RunnableParameters):
-    num_shots: int = 100
+    num_shots: int = 10
     """Number of averages to perform. Default is 100."""
-    scan_pattern: Literal["raster", "switch_raster"] = "switch_raster"
+    scan_pattern: Literal["raster", "switch_raster", "spiral"] = "switch_raster"
     """The scanning pattern."""
-    sensor_names: List[str] = None
+    sensor_names: List[str] = ["virtual_sensor_1"]
     """List of sensor dot names to measure in your measurement."""
-    x_axis_name: str = None
+    x_axis_name: str = "virtual_dot_1_virtual_dot_2_pair"
     """The name of the swept element in the X axis."""
-    y_axis_name: str = None
+    y_axis_name: str = "virtual_dot_2_virtual_dot_3_pair"
     """The name of the swept element in the Y axis."""
+    x_points: int = 121
+    """Number of measurement points in the X axis."""
+    y_points: int = 121
+    """Number of measurement points in the Y axis."""
+    x_span: float = 1
+    """The X axis span in volts"""
+    y_span: float = 1
+    """The Y axis span in volts"""
+    ramp_duration: int = 100
+    """The ramp duration to each pixel. Set to zero for a step."""
+    hold_duration: int = 100
+    """Dwell time on each point in nanoseconds. If using the QDAC, this must be slow enough."""
+    per_line_compensation: bool = True
+    """Whether to send a compensation pulse at the end of each scan line."""
+    max_compensation_voltage: float = 0.05
+    """The maximum voltage for the compensation pulse."""
     x_center: Optional[float] = None
     """The center of the X axis sweep. If dc_control = True, then this will be applied to the external source. Else, it will be applied by the OPX."""
     y_center: Optional[float] = None
     """The center of the Y axis sweep. If dc_control = True, then this will be applied to the external source. Else, it will be applied by the OPX."""
-    x_points: int = 101
-    """Number of measurement points in the X axis."""
-    y_points: int = 101
-    """Number of measurement points in the Y axis."""
-    x_span: float = 0.05
-    """The X axis span in volts"""
-    y_span: float = 0.05
-    """The Y axis span in volts"""
-    per_line_compensation: bool = True
-    """Whether to send a compensation pulse at the end of each scan line."""
+    plot_points: bool = False
+    """Plots the existing points saved in the VirtualGateSet. Default True."""
     perform_edge_analysis: bool = False
     """Whether to perform edge analysis on the data."""
-    ramp_duration: int = 100
-    """The ramp duration to each pixel. Set to zero for a step."""
-    hold_duration: int = 1000
-    """Dwell time on each point in nanoseconds. If using the QDAC, this must be slow enough."""
     pre_measurement_delay: int = 0
     """A deliberate delay time after the hold_duration and before the resonator measurement."""
+    per_line_wait: int = 0
+    """Wait time at the start of each line, in order to allow the electrostatics to settle."""
     use_validation: bool = True
     """Whether to use validation with simulated data."""
+    spiral_use_precomputed_scan: bool = False
+    """Use the legacy precomputed spiral lookup lists (default False). Set True to force list-based spiral generation."""
 
 
 class Parameters(
@@ -86,14 +96,26 @@ import numpy as np
 OPXParameters = Parameters
 # OPXQDACParameters = Parameters
 
+def get_axis_names(node): 
+    """In the case that x_axis_name or y_axis_name is None, assign the first and second elements of QDs."""
+    quantum_dots = list(node.machine.quantum_dots.keys())
+    x_axis_name = node.parameters.x_axis_name
+    y_axis_name = node.parameters.y_axis_name
+
+    if node.parameters.x_axis_name is None:
+        x_axis_name = quantum_dots[0]
+    
+    if node.parameters.y_axis_name is None: 
+        y_axis_name = quantum_dots[1]
+    return x_axis_name, y_axis_name
 
 def get_voltage_arrays(node):
     """Extract the X and Y voltage arrays from a given node."""
     x_span, x_center, x_points = node.parameters.x_span, 0, node.parameters.x_points
     y_span, y_center, y_points = node.parameters.y_span, 0, node.parameters.y_points
-    x_volts, y_volts = np.linspace(x_center - x_span / 2, x_center + x_span / 2, x_points), np.linspace(
-        y_center - y_span / 2, y_center + y_span / 2, y_points
-    )
+    x_volts, y_volts = np.linspace(
+        x_center - x_span / 2, x_center + x_span / 2, x_points
+    ), np.linspace(y_center - y_span / 2, y_center + y_span / 2, y_points)
     return x_volts, y_volts
 
 
@@ -148,10 +170,14 @@ def prepare_dc_lists(
                 trigger = trig
                 break
     if trigger is None:
-        raise ValueError(f"No trigger found for the physical outputs associated with the axis {axis_name}")
+        raise ValueError(
+            f"No trigger found for the physical outputs associated with the axis {axis_name}"
+        )
 
     for name, voltages in physical_dc_lists.items():
-        dc_list = node.machine.qdac.channel(virtual_dc_set.channels[name].qdac_spec.qdac_output_port).dc_list(
+        dc_list = node.machine.qdac.channel(
+            virtual_dc_set.channels[name].qdac_spec.qdac_output_port
+        ).dc_list(
             voltages=voltages,
             dwell_s=node.parameters.qdac_dwell_time_us / 1e6,
             stepped=True,

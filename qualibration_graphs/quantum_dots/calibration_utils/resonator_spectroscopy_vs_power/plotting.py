@@ -33,7 +33,9 @@ def plot_raw_data_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Da
     - Each subplot contains the raw data and the fitted curve.
     """
     num_sensors = len(sensors)
-    fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
+    fig, axes = plt.subplots(
+        1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False
+    )
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
@@ -48,7 +50,9 @@ def plot_raw_data_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Da
     return fig
 
 
-def plot_individual_raw_data_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_id: str, fit: xr.Dataset = None):
+def plot_individual_raw_data_with_fit(
+    ax: Axes, sensor_data: xr.Dataset, sensor_id: str, fit: xr.Dataset = None
+):
     """
     Plots individual sensor data on a given axis with optional fit.
 
@@ -70,7 +74,9 @@ def plot_individual_raw_data_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_
     ax.set_ylabel("Power (dBm)")
 
     ax2 = ax.twiny()
-    sensor_data.assign_coords(detuning_MHz=sensor_data.detuning / u.MHz).IQ_abs_norm.plot(
+    sensor_data.assign_coords(
+        detuning_MHz=sensor_data.detuning / u.MHz
+    ).IQ_abs_norm.plot(
         ax=ax2, add_colorbar=False, x="detuning_MHz", y="power", robust=True
     )
     ax2.set_xlabel("Detuning [MHz]")
@@ -81,6 +87,8 @@ def plot_individual_raw_data_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_
         try:
             if bool(fit.success):
                 ax2.axhline(y=float(fit.optimal_power), color="g", linestyle="-")
-                ax2.axvline(x=float(fit.freq_shift) * 1e-6, color="blue", linestyle="--")
+                ax2.axvline(
+                    x=float(fit.freq_shift) * 1e-6, color="blue", linestyle="--"
+                )
         except Exception:
             pass

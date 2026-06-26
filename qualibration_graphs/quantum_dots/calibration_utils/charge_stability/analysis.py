@@ -56,11 +56,23 @@ class FitParameters:
         return {
             "cp": np.asarray(self.cp).tolist() if self.cp is not None else [],
             "cp2": np.asarray(self.cp2).tolist() if self.cp2 is not None else [],
-            "mean_cp": np.asarray(self.mean_cp).tolist() if self.mean_cp is not None else [],
-            "edge_binary": np.asarray(self.edge_binary).tolist() if self.edge_binary is not None else [],
-            "skeleton": np.asarray(self.skeleton).tolist() if self.skeleton is not None else [],
+            "mean_cp": (
+                np.asarray(self.mean_cp).tolist() if self.mean_cp is not None else []
+            ),
+            "edge_binary": (
+                np.asarray(self.edge_binary).tolist()
+                if self.edge_binary is not None
+                else []
+            ),
+            "skeleton": (
+                np.asarray(self.skeleton).tolist() if self.skeleton is not None else []
+            ),
             "segments": [serialize_segment(s) for s in (self.segments or [])],
-            "intersections": np.asarray(self.intersections).tolist() if self.intersections is not None else [],
+            "intersections": (
+                np.asarray(self.intersections).tolist()
+                if self.intersections is not None
+                else []
+            ),
             "edge_threshold": float(self.edge_threshold),
             "success": self.success,
         }
@@ -82,7 +94,12 @@ def peak_mask(cp, window=5, threshold=0.0):
 
     # local max within window
     local_max = lax.reduce_window(
-        x, -jnp.inf, lax.max, window_dimensions=(w,), window_strides=(1,), padding=((pad, pad),)  # "same"
+        x,
+        -jnp.inf,
+        lax.max,
+        window_dimensions=(w,),
+        window_strides=(1,),
+        padding=((pad, pad),),  # "same"
     )
 
     # mark points that are the unique (or leftmost in a tie) local max and over threshold
@@ -114,8 +131,12 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
         s_sensor = f"Results for sensor {q}: "
-        num_segments = f"\tLine segments fitted: {len(fit_results[q].get('segments', []))}\n"
-        num_intersections = f"\tIntersections found: {len(fit_results[q].get('intersections', []))}\n"
+        num_segments = (
+            f"\tLine segments fitted: {len(fit_results[q].get('segments', []))}\n"
+        )
+        num_intersections = (
+            f"\tIntersections found: {len(fit_results[q].get('intersections', []))}\n"
+        )
         if fit_results[q]["success"]:
             s_sensor += " SUCCESS!\n"
         else:
@@ -152,7 +173,9 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Perform charge stability analysis for each sensor in the dataset.
 
@@ -186,12 +209,17 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit = ds_fit.assign_coords(success=("sensors", success_list))
 
     # Set node outcomes
-    node.outcomes = {sensor.id: "successful" if fit_results[sensor.id].success else "fail" for sensor in sensors}
+    node.outcomes = {
+        sensor.id: "successful" if fit_results[sensor.id].success else "fail"
+        for sensor in sensors
+    }
 
     return ds_fit, fit_results
 
 
-def fit_individual_raw_data(data: xr.Dataset, sensor_id: str, node: QualibrationNode) -> FitParameters:
+def fit_individual_raw_data(
+    data: xr.Dataset, sensor_id: str, node: QualibrationNode
+) -> FitParameters:
     """
     Perform charge stability analysis for a single sensor.
 
@@ -209,8 +237,11 @@ def fit_individual_raw_data(data: xr.Dataset, sensor_id: str, node: Qualibration
     FitParameters
         The fitted parameters including peak locations and gap shoulder results.
     """
-    # Extract amplitude from I and Q
+    # Extract amplitude from I and Q, sorted by physical voltage coordinates so
+    # that change-point detection runs on spatially ordered data regardless of
+    # the scan pattern used (e.g. SwitchRasterScan stores rows in interleaved order).
     amplitude = np.sqrt(data.I**2 + data.Q**2)
+    amplitude = amplitude.sortby("x_volts").sortby("y_volts")
     zs = amplitude.values
 
     # Bayesian change point detection
@@ -235,7 +266,11 @@ def fit_individual_raw_data(data: xr.Dataset, sensor_id: str, node: Qualibration
         show=False,
     )
 
-    intersections = np.vstack(edge_analysis["intersections"]) if edge_analysis["intersections"] else np.empty((0, 2))
+    intersections = (
+        np.vstack(edge_analysis["intersections"])
+        if edge_analysis["intersections"]
+        else np.empty((0, 2))
+    )
 
     success = len(edge_analysis["segments"]) > 0
 

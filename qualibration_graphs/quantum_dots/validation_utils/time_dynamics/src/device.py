@@ -77,9 +77,14 @@ class QuantumDeviceBase:
         tuple[dq.QArray, dq.QArray]
             Tuple of (X_j, Y_j) operators acting on qubit `which`
         """
-        return (embed_single_qubit_op(dq.sigmax(), which, self.n), embed_single_qubit_op(dq.sigmay(), which, self.n))
+        return (
+            embed_single_qubit_op(dq.sigmax(), which, self.n),
+            embed_single_qubit_op(dq.sigmay(), which, self.n),
+        )
 
-    def _effective_drive_phase_evolution(self, which: int, drive_freq: jnp.ndarray | None):
+    def _effective_drive_phase_evolution(
+        self, which: int, drive_freq: jnp.ndarray | None
+    ):
         """
         Return phase evolution function g(t) = exp(i * ω_eff * t).
 
@@ -107,7 +112,9 @@ class QuantumDeviceBase:
         return g
 
     # ---- fixed composition logic (reused by all children) ----
-    def hamiltonian_with_pulses(self, pulses: Sequence[tuple[int, GaussianPulse]]) -> dq.TimeQArray:
+    def hamiltonian_with_pulses(
+        self, pulses: Sequence[tuple[int, GaussianPulse]]
+    ) -> dq.TimeQArray:
         """
         Build time-dependent Hamiltonian with single-qubit drive pulses.
 
@@ -131,7 +138,9 @@ class QuantumDeviceBase:
 
         for which, pulse in pulses:
             s_base = pulse.timecallable()  # complex envelope
-            wobble = self._effective_drive_phase_evolution(which, getattr(pulse, "drive_freq", None))
+            wobble = self._effective_drive_phase_evolution(
+                which, getattr(pulse, "drive_freq", None)
+            )
 
             def s_re(t):
                 val = s_base(t) * wobble(t)
@@ -181,7 +190,9 @@ class QuantumDeviceBase:
         # --- single-qubit drives ---
         for which, pulse in drives:
             s_base = pulse.timecallable()
-            wobble = self._effective_drive_phase_evolution(which, getattr(pulse, "drive_freq", None))
+            wobble = self._effective_drive_phase_evolution(
+                which, getattr(pulse, "drive_freq", None)
+            )
 
             def s_re(t):
                 return jnp.real(s_base(t) * wobble(t))
@@ -222,7 +233,9 @@ class QuantumDeviceBase:
         NotImplementedError
             If not overridden in a subclass
         """
-        raise NotImplementedError("Subclass must implement _jump_operators for master equation")
+        raise NotImplementedError(
+            "Subclass must implement _jump_operators for master equation"
+        )
 
 
 # ===================================
@@ -287,19 +300,29 @@ class TwoSpinDevice(QuantumDeviceBase):
                 for j, (w, wref) in enumerate(zip(self.omega, self.ref_omega)):
                     delta = w - wref
                     if delta != 0.0:
-                        H = H + 0.5 * delta * embed_single_qubit_op(dq.sigmaz(), j, self.n)
+                        H = H + 0.5 * delta * embed_single_qubit_op(
+                            dq.sigmaz(), j, self.n
+                        )
 
         # Two-qubit coupling terms
         if self.n >= 2:
             if self.Jxx != 0.0:
-                H = H + 0.25 * self.Jxx * kron_n([dq.sigmax(), dq.sigmax()] + [dq.eye(2)] * (self.n - 2))
+                H = H + 0.25 * self.Jxx * kron_n(
+                    [dq.sigmax(), dq.sigmax()] + [dq.eye(2)] * (self.n - 2)
+                )
             if self.Jyy != 0.0:
-                H = H + 0.25 * self.Jyy * kron_n([dq.sigmay(), dq.sigmay()] + [dq.eye(2)] * (self.n - 2))
+                H = H + 0.25 * self.Jyy * kron_n(
+                    [dq.sigmay(), dq.sigmay()] + [dq.eye(2)] * (self.n - 2)
+                )
             if self.Jzz != 0.0:
-                H = H + 0.25 * self.Jzz * kron_n([dq.sigmaz(), dq.sigmaz()] + [dq.eye(2)] * (self.n - 2))
+                H = H + 0.25 * self.Jzz * kron_n(
+                    [dq.sigmaz(), dq.sigmaz()] + [dq.eye(2)] * (self.n - 2)
+                )
         return H
 
-    def _effective_drive_phase_evolution(self, which: int, drive_freq: jnp.ndarray | None):
+    def _effective_drive_phase_evolution(
+        self, which: int, drive_freq: jnp.ndarray | None
+    ):
         """
         Compute frame-dependent phase evolution for drives.
 

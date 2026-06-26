@@ -26,8 +26,9 @@ from calibration_utils.single_qubit_randomized_benchmarking.parameters import Pa
 
 from .conftest import (
     DEFAULT_DRIVE_AMP_GHZ,
-    _VIRTUAL_QPU_AVAILABLE,
     LossDiVincenzoDevice,
+    _VIRTUAL_QPU_AVAILABLE,
+    single_qubit_ld_params,
 )
 from .conftest import create_ld_quam as create_minimal_quam
 
@@ -37,7 +38,6 @@ try:
     from virtual_qpu.pulse import GaussianIQPulse
     from virtual_qpu.schedule import Schedule
     from virtual_qpu.dynamics import simulate as _vqpu_simulate
-    from quantum_dots.params import LossDiVincenzoParams, MU_B_OVER_H
 except ImportError:
     pass  # gracefully skipped below when _VIRTUAL_QPU_AVAILABLE is False
 
@@ -46,9 +46,9 @@ except ImportError:
 # =============================================================================
 
 NODE_NAME = "14_single_qubit_randomized_benchmarking"
-MAX_CIRCUIT_DEPTH = 16  # log-scale → depths [2, 4, 8, 16]
-NUM_CIRCUITS = 2
-NUM_SHOTS = 50
+MAX_CIRCUIT_DEPTH = 56  # log-scale → depths [2, 4, 8, 16]
+NUM_CIRCUITS = 20
+NUM_SHOTS = 500
 RNG_SEED = 99
 
 # Coherence times (ns) for the two synthetic qubits
@@ -79,19 +79,8 @@ _VIRTUAL_Z_PHASES: dict[str, float] = {
 
 
 def _make_single_qubit_device(t1: float, t2: float) -> "LossDiVincenzoDevice":
-    """Create a 1-qubit LossDiVincenzoDevice with the given T1/T2 (ns)."""
-    params = LossDiVincenzoParams(
-        n_qubits=1,
-        g_factors=[2.0],
-        magnetic_field=10.0 / (2.0 * MU_B_OVER_H),  # f_qubit ≈ 10 GHz
-        exchange_models=[],
-        ref_freqs=None,
-        frame="rot",
-        use_rwa=True,
-        t1=[t1],
-        t2=[t2],
-    )
-    return LossDiVincenzoDevice(params=params)
+    """Create a 1-qubit device with qubit-0 Zeeman settings and given T1/T2 (ns)."""
+    return LossDiVincenzoDevice(params=single_qubit_ld_params(t1, t2))
 
 
 # =============================================================================
@@ -219,7 +208,9 @@ def _generate_rb_ds(
                 gate_duration,
                 gate_sigma,
             )
-            state_data[ci, di] = rng.binomial(num_shots, np.clip(p0, 0.0, 1.0)) / num_shots
+            state_data[ci, di] = (
+                rng.binomial(num_shots, np.clip(p0, 0.0, 1.0)) / num_shots
+            )
 
     return xr.Dataset(
         {state_var: xr.DataArray(state_data, dims=["circuit", "depth"])},
@@ -233,7 +224,9 @@ def _generate_rb_ds(
 
 
 @pytest.mark.analysis
-def test_14_single_qubit_rb_virtual_qpu_analysis(rabi_chevron_calibration, analysis_runner):
+def test_14_single_qubit_rb_virtual_qpu_analysis(
+    calibrated_pi_half_amp, analysis_runner
+):
     """RB via virtual_qpu full pulse-schedule Lindblad simulation.
 
     Verifies that the qubit with shorter coherence times (lower T1/T2) produces
@@ -242,11 +235,15 @@ def test_14_single_qubit_rb_virtual_qpu_analysis(rabi_chevron_calibration, analy
     if not _VIRTUAL_QPU_AVAILABLE:
         pytest.skip("virtual_qpu (dynamiqs) not installed — skipping Lindblad RB test")
 
-    # 1. Pulse parameters from the rabi chevron calibration
-    amp_pi = DEFAULT_DRIVE_AMP_GHZ
-    gate_duration = rabi_chevron_calibration["optimal_duration"]
+    from .conftest import DEFAULT_PULSE_DURATION_NS
+
+    # Use the precisely calibrated pi amplitude (from power-Rabi) and the
+    # device's exact qubit frequency to minimise coherent gate errors.
+    device_ref = _make_single_qubit_device(T1_HIGH, T2_HIGH)
+    amp_pi = 2.0 * calibrated_pi_half_amp
+    gate_duration = DEFAULT_PULSE_DURATION_NS
     gate_sigma = gate_duration / 5
-    qubit_freq_ghz = rabi_chevron_calibration["optimal_frequency"] * 1e-9
+    qubit_freq_ghz = device_ref.params.qubit_freqs[0]
 
     # 2. Resolve QuAM qubit names (q1 → virtual_dot_1, q2 → virtual_dot_2)
     machine = create_minimal_quam()
@@ -303,7 +300,9 @@ def test_14_single_qubit_rb_virtual_qpu_analysis(rabi_chevron_calibration, analy
     # High-coherence qubit should survive better at long depths
     mean_a = ds_raw[f"state_{qubit_name_1}"].mean("circuit").values
     mean_b = ds_raw[f"state_{qubit_name_2}"].mean("circuit").values
-    assert mean_a[-1] > mean_b[-1], "High-coherence qubit should have higher mean survival at max depth"
+    assert (
+        mean_a[-1] > mean_b[-1]
+    ), "High-coherence qubit should have higher mean survival at max depth"
 
     # 7. Run analysis pipeline on both qubits simultaneously
     node = analysis_runner(

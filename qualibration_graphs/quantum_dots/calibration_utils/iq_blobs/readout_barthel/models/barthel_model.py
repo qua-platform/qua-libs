@@ -168,11 +168,12 @@ def build_barthel_model_1d_analytic(
         n_T = pT * triplet_pdf_analytic(y, mu_S, mu_T, sigma_used, T1, tauM)
         n_tot = n_S + n_T
 
-        # Robust log-likelihood computation (numerically stable for float32)
-        # Clip to avoid log(0) and handle NaN/Inf gracefully
-        n_tot = jnp.where(jnp.isfinite(n_tot) & (n_tot > 0.0), n_tot, 0.0)
-        log_n_tot = jnp.log(jnp.clip(n_tot, a_min=1e-300))
-        log_n_tot = jnp.where(jnp.isfinite(log_n_tot), log_n_tot, -1e30)
+        # Robust log-likelihood: replace non-positive/non-finite n_tot with a
+        # float32-safe floor (1e-37 > float32 min normal ~1.175e-38) BEFORE
+        # taking log.  Using clip(1e-300) silently underflows to 0 in float32,
+        # causing log(0)=-inf whose VJP computes 0/0=NaN and breaks NUTS init.
+        n_tot_safe = jnp.where(jnp.isfinite(n_tot) & (n_tot > 0.0), n_tot, 1e-37)
+        log_n_tot = jnp.log(n_tot_safe)
 
         # Add log-likelihood factor to the model (replaces `obs` parameter)
         numpyro.factor("obs_loglik", jnp.sum(log_n_tot))

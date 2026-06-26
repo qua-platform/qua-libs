@@ -9,7 +9,9 @@ from quam_builder.architecture.quantum_dots.components import SensorDot
 u = unit(coerce_to_integer=True)
 
 
-def plot_single_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Dataset):
+def plot_single_run_with_fit(
+    ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Dataset
+):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given sensors.
 
@@ -33,7 +35,9 @@ def plot_single_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.
     - Each subplot contains the raw data and the fitted curve.
     """
     num_sensors = len(sensors)
-    fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
+    fig, axes = plt.subplots(
+        1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False
+    )
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
@@ -46,7 +50,9 @@ def plot_single_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.
     return fig
 
 
-def plot_averaged_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Dataset):
+def plot_averaged_run_with_fit(
+    ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Dataset
+):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given sensors.
 
@@ -70,7 +76,9 @@ def plot_averaged_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: x
     - Each subplot contains the raw data and the fitted curve.
     """
     num_sensors = len(sensors)
-    fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
+    fig, axes = plt.subplots(
+        1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False
+    )
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
@@ -83,7 +91,9 @@ def plot_averaged_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: x
     return fig
 
 
-def plot_individual_single_run_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_name: str, fit: xr.Dataset = None):
+def plot_individual_single_run_with_fit(
+    ax: Axes, sensor_data: xr.Dataset, sensor_name: str, fit: xr.Dataset = None
+):
     """
     Plots individual sensor data on a given axis with optional fit.
 
@@ -102,8 +112,12 @@ def plot_individual_single_run_with_fit(ax: Axes, sensor_data: xr.Dataset, senso
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    sensor_data.loc[sensor_name].adc_single_runI.plot(ax=ax, x="readout_time", label="I", color="b")
-    sensor_data.loc[sensor_name].adc_single_runQ.plot(ax=ax, x="readout_time", label="Q", color="r")
+    sensor_data.loc[sensor_name].adc_single_runI.plot(
+        ax=ax, x="readout_time", label="I", color="b"
+    )
+    sensor_data.loc[sensor_name].adc_single_runQ.plot(
+        ax=ax, x="readout_time", label="Q", color="r"
+    )
     ax.axvline(fit.delay, color="k", linestyle="--", label="TOF")
     # ax.axhline(ds.loc[sensor].offsets_I, color="b", linestyle="--")
     # ax.axhline(ds.loc[sensor].offsets_Q, color="r", linestyle="--")
@@ -120,7 +134,9 @@ def plot_individual_single_run_with_fit(ax: Axes, sensor_data: xr.Dataset, senso
     ax.set_title(sensor_name["sensor"])
 
 
-def plot_individual_averaged_run_with_fit(ax: Axes, ds: xr.Dataset, sensor: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_averaged_run_with_fit(
+    ax: Axes, ds: xr.Dataset, sensor: dict[str, str], fit: xr.Dataset = None
+):
     """
     Plots individual sensor data on a given axis with optional fit.
 

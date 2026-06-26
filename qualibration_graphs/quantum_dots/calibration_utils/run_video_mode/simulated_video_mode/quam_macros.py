@@ -29,9 +29,13 @@ class XGateMacro(QuamMacro):
         amplitude_scale = kwargs.get("amplitude_scale", self.amplitude_scale)
 
         if parent_qubit.xy is None:
-            raise ValueError("Cannot apply X gate: xy is not configured on parent qubit.")
+            raise ValueError(
+                "Cannot apply X gate: xy is not configured on parent qubit."
+            )
         if duration is None or amplitude_scale is None:
-            raise ValueError("Cannot apply X gate: missing duration or amplitude scale.")
+            raise ValueError(
+                "Cannot apply X gate: missing duration or amplitude scale."
+            )
 
         parent_qubit.xy.play(
             self.pulse_name,
@@ -59,9 +63,13 @@ class YGateMacro(QuamMacro):
         amplitude_scale = kwargs.get("amplitude_scale", self.amplitude_scale)
 
         if parent_qubit.xy is None:
-            raise ValueError("Cannot apply Y gate: xy is not configured on parent qubit.")
+            raise ValueError(
+                "Cannot apply Y gate: xy is not configured on parent qubit."
+            )
         if duration is None or amplitude_scale is None:
-            raise ValueError("Cannot apply Y gate: missing duration or amplitude scale.")
+            raise ValueError(
+                "Cannot apply Y gate: missing duration or amplitude scale."
+            )
 
         frame_rotation_2pi(0.25, parent_qubit.xy.name)
         parent_qubit.xy.play(
@@ -83,7 +91,9 @@ class ZGateMacro(QuamMacro):
         del kwargs
         parent_qubit = self.parent.parent
         if parent_qubit.xy is None:
-            raise ValueError("Cannot apply Z gate: xy is not configured on parent qubit.")
+            raise ValueError(
+                "Cannot apply Z gate: xy is not configured on parent qubit."
+            )
 
         angle = theta if theta is not None else self.theta
         frame_rotation_2pi(angle / 360.0, parent_qubit.xy.name)
@@ -97,29 +107,42 @@ class MeasureMacro(QuamMacro):
     readout_duration: int = 2000
 
     def _get_qubit_pair(self, parent_qubit):
-        preferred_readout_dot = getattr(parent_qubit, "preferred_readout_quantum_dot", None)
+        preferred_readout_dot = getattr(
+            parent_qubit, "preferred_readout_quantum_dot", None
+        )
 
         for pair_id, pair in parent_qubit.machine.quantum_dot_pairs.items():
             dot_ids = {dot.id for dot in pair.quantum_dots}
             if parent_qubit.quantum_dot.id not in dot_ids:
                 continue
-            if preferred_readout_dot is not None and preferred_readout_dot not in dot_ids:
+            if (
+                preferred_readout_dot is not None
+                and preferred_readout_dot not in dot_ids
+            ):
                 continue
             if pair.sensor_dots:
                 return pair_id, pair
 
-        raise ValueError("Cannot measure: no suitable quantum dot pair with sensor readout was found.")
+        raise ValueError(
+            "Cannot measure: no suitable quantum dot pair with sensor readout was found."
+        )
 
     def _validate(self, parent_qubit) -> None:
         if parent_qubit.quantum_dot is None:
-            raise ValueError("Cannot measure: quantum_dot is not configured on parent qubit.")
+            raise ValueError(
+                "Cannot measure: quantum_dot is not configured on parent qubit."
+            )
         _, pair = self._get_qubit_pair(parent_qubit)
         if not pair.sensor_dots:
-            raise ValueError("Cannot measure: no sensor dots configured on the quantum dot pair.")
+            raise ValueError(
+                "Cannot measure: no sensor dots configured on the quantum dot pair."
+            )
 
         sensor_dot = pair.sensor_dots[0]
         if sensor_dot.readout_resonator is None:
-            raise ValueError("Cannot measure: readout resonator is not configured on the sensor dot.")
+            raise ValueError(
+                "Cannot measure: readout resonator is not configured on the sensor dot."
+            )
 
     def apply(self, *args, **kwargs) -> QuaVariableBool:
         del args

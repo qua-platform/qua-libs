@@ -60,6 +60,7 @@ import xarray as xr
 from scipy.optimize import differential_evolution
 
 from qualibrate.core import QualibrationNode
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 
 _logger = logging.getLogger(__name__)
 
@@ -197,8 +198,8 @@ def _fit_single_trace(
         result["bg"] = float(bg)
         result["C"] = float(C)
         result["S"] = float(S)
-        result["fitted_curve"] = A_mat @ coeffs
-        result["success"] = np.isfinite(delta0) and amplitude > 1e-6
+        result["fitted_curve"] = (A_mat @ coeffs).tolist()
+        result["success"] = bool(np.isfinite(delta0) and amplitude > 1e-6)
 
         _logger.debug(
             "Per-trace fit: f=%.4e Hz⁻¹, A=%.4f, δ₀=%.3f MHz",
@@ -216,7 +217,7 @@ def _fit_single_trace(
 
 
 def _analyse_single_qubit(
-    pdiff_2d: np.ndarray,
+    signal_2d: np.ndarray,
     detuning_hz: np.ndarray,
     tau_ns: np.ndarray,
 ) -> Dict[str, Any]:
@@ -229,8 +230,8 @@ def _analyse_single_qubit(
 
     Parameters
     ----------
-    pdiff_2d : 2-D array (n_tau, n_det)
-        Parity-difference data for each idle time.
+    signal_2d : 2-D array (n_tau, n_det)
+        Conditional expectation data for each idle time.
     detuning_hz : 1-D array (n_det,)
         Detuning values in Hz.
     tau_ns : 1-D array (n_tau,)
@@ -243,7 +244,7 @@ def _analyse_single_qubit(
         ``t2_star`` (ns), ``success`` (bool), and ``_traces`` with
         per-trace fit diagnostics.
     """
-    y = np.asarray(pdiff_2d, dtype=float)
+    y = np.asarray(signal_2d, dtype=float)
     delta = np.asarray(detuning_hz, dtype=float)
     taus = np.asarray(tau_ns, dtype=float)
     n_tau = len(taus)
@@ -270,7 +271,7 @@ def _analyse_single_qubit(
     if not all_success:
         _logger.debug("Not all per-trace fits succeeded")
         # Collect fitted curves even from partial success
-        result["fitted_curves"] = np.array([tf["fitted_curve"] for tf in trace_fits])
+        result["fitted_curves"] = [tf["fitted_curve"] for tf in trace_fits]
         return result
 
     # ── Stage 2: Joint extraction ────────────────────────────────────
@@ -303,11 +304,12 @@ def _analyse_single_qubit(
     result["contrast"] = contrast
     result["decay_rate"] = float(gamma) if np.isfinite(gamma) else np.nan
     result["t2_star"] = float(t2) if np.isfinite(t2) else np.nan
-    result["fitted_curves"] = np.array([tf["fitted_curve"] for tf in trace_fits])
+    result["fitted_curves"] = [tf["fitted_curve"] for tf in trace_fits]
     result["success"] = np.isfinite(freq_offset) and contrast > 1e-6
 
     _logger.debug(
-        "Joint extraction: δ₀=%.3f MHz (short=%.3f, long=%.3f), " "A_short=%.4f, A_long=%.4f, γ=%.5f 1/ns, T2*=%.1f ns",
+        "Joint extraction: δ₀=%.3f MHz (short=%.3f, long=%.3f), "
+        "A_short=%.4f, A_long=%.4f, γ=%.5f 1/ns, T2*=%.1f ns",
         freq_offset * 1e-6,
         delta0s[0] * 1e-6,
         delta0s[-1] * 1e-6,
@@ -329,16 +331,18 @@ def fit_raw_data(
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit resonance detuning via independent per-trace DE + joint extraction.
 
-    Expects a 2-D dataset with coordinates ``tau`` (ns) and
-    ``detuning`` (Hz), with data variables ``pdiff_<qubit>`` of
-    shape ``(n_tau, n_det)``.
+    Expects joint-outcome streams processed by
+    :func:`~calibration_utils.common_utils.parity_streams.process_joint_streams`,
+    so the analysis uses ``{analysis_signal}_{qubit}`` (default
+    ``E_p2_given_p1_0_<qubit>``) of shape ``(n_tau, n_det)``, with
+    coordinates ``tau`` (ns) and ``detuning`` (Hz).
 
     Parameters
     ----------
     ds : xr.Dataset
         Raw measurement data.
     node : QualibrationNode
-        Calibration node (provides qubit list).
+        Calibration node (provides qubit list and ``analysis_signal``).
 
     Returns
     -------
@@ -350,17 +354,21 @@ def fit_raw_data(
     qubits = node.namespace["qubits"]
     detuning_hz = np.asarray(ds.detuning.values, dtype=float)
     tau_ns = np.asarray(ds.tau.values, dtype=float)
+    n_tau = len(tau_ns)
+    n_det = len(detuning_hz)
 
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
-    qubit_names = [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
-    if not qubit_names:
-        qubit_names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    qubit_names = get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
     fit_results: Dict[str, Dict[str, Any]] = {}
 
     for qname in qubit_names:
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var not in ds.data_vars:
+        signal_var = f"{analysis_signal}_{qname}"
+        if signal_var not in ds.data_vars:
             fp = FitParameters(
                 freq_offset=0.0,
                 contrast=0.0,
@@ -371,8 +379,15 @@ def fit_raw_data(
             fit_results[qname] = asdict(fp)
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
-        raw = _analyse_single_qubit(pdiff, detuning_hz, tau_ns)
+        signal_da = ds[signal_var]
+        if "tau" in signal_da.dims and "detuning" in signal_da.dims:
+            signal_2d = signal_da.transpose("tau", "detuning").values.astype(float)
+        else:
+            signal_2d = np.asarray(signal_da.values, dtype=float)
+            if signal_2d.shape == (n_det, n_tau):
+                signal_2d = signal_2d.T
+
+        raw = _analyse_single_qubit(signal_2d, detuning_hz, tau_ns)
 
         fp = FitParameters(
             freq_offset=raw["freq_offset"],

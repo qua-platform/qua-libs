@@ -65,11 +65,51 @@ NATIVE_GATE_MAP: dict[str, int] = {
 
 NUM_CLIFFORDS = 24
 
+_PHYSICAL_GATES: frozenset[str] = frozenset(
+    {"x90", "x180", "xm90", "y90", "y180", "ym90"}
+)
+
+
+def avg_physical_gates_per_clifford(sequences: list[list[str]]) -> float:
+    """Average number of physical (non-Z) gates per Clifford in *sequences*."""
+    total = sum(
+        sum(1 for g in seq if g in _PHYSICAL_GATES) for seq in sequences
+    )
+    return total / len(sequences)
+
+
 # ---------------------------------------------------------------------------
 # Decomposition table
 # ---------------------------------------------------------------------------
 # Maps each Clifford index to its native-gate pulse sequence (chronological).
 # Every Clifford decomposes into at most 1 physical pulse + 0-1 virtual Z.
+
+_ALTERNATIVE_DECOMPOSITION_SEQUENCES: list[list[str]] = [
+    [],                          # 0:  I
+    ["x180", "ym90"],            # 1:  H
+    ["xm90", "y90", "x90"],      # 2:  S
+    ["xm90", "ym90"],            # 3:  SH
+    ["y90", "xm90"],             # 4:  HS
+    ["y180", "x180"],            # 5:  Z
+    ["x90"],                     # 6:  X90
+    ["ym90"],                    # 7:  Ym90
+    ["xm90"],                    # 8:  Xm90
+    ["y90"],                     # 9:  Y90
+    ["xm90", "ym90", "x90"],     # 10: S†
+    ["y90", "x90"],              # 11: X90·S
+    ["x180"],                    # 12: X
+    ["x90", "ym90"],             # 13: Ym90·S
+    ["ym90", "xm90"],            # 14: Xm90·S
+    ["xm90", "y90"],             # 15: Y90·S
+    ["y180", "x90"],             # 16: X90·Z
+    ["x90", "y90", "x90"],       # 17: X·S
+    ["xm90", "y90", "xm90"],     # 18: X·S†
+    ["y180", "xm90"],            # 19: Xm90·Z
+    ["x180", "y90"],             # 20: Y90·Z
+    ["x90", "y90"],              # 21: Y90·S†
+    ["ym90", "x90"],             # 22: X90·S†
+    ["y180"],                    # 23: Y
+]
 
 _DECOMPOSITION_SEQUENCES: list[list[str]] = [
     [],  # 0:  I
@@ -98,6 +138,7 @@ _DECOMPOSITION_SEQUENCES: list[list[str]] = [
     ["y180"],  # 23: Y
 ]
 
+decomposition_type = _ALTERNATIVE_DECOMPOSITION_SEQUENCES
 # ---------------------------------------------------------------------------
 # Inverse table
 # ---------------------------------------------------------------------------
@@ -200,7 +241,7 @@ def build_single_qubit_clifford_tables() -> dict[str, list[int] | int]:
     decomp_offsets: list[int] = []
     decomp_lengths: list[int] = []
 
-    for seq in _DECOMPOSITION_SEQUENCES:
+    for seq in decomposition_type:
         decomp_offsets.append(len(decomp_flat))
         gate_ints = [NATIVE_GATE_MAP[g] for g in seq]
         decomp_lengths.append(len(gate_ints))
@@ -242,4 +283,4 @@ def invert(i: int) -> int:
 
 def decomposition(i: int) -> list[str]:
     """Return the native-gate pulse sequence for Clifford i."""
-    return list(_DECOMPOSITION_SEQUENCES[i])
+    return list(decomposition_type[i])

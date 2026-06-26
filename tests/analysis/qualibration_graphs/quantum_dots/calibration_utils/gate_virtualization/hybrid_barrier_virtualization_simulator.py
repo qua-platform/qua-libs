@@ -94,10 +94,16 @@ class HybridBarrierVirtualizationSimulator:
         self.config = self._validate_config(config)
         self.barrier_names = list(self.config.barrier_names)
         self._index = {name: idx for idx, name in enumerate(self.barrier_names)}
-        self._effective_gamma = self._build_effective_gamma_matrix(self.config.barrier_exponent_matrix)
-        self._qarray_model = self._build_qarray_model() if self.config.use_qarray_background else None
+        self._effective_gamma = self._build_effective_gamma_matrix(
+            self.config.barrier_exponent_matrix
+        )
+        self._qarray_model = (
+            self._build_qarray_model() if self.config.use_qarray_background else None
+        )
 
-    def _validate_config(self, config: HybridBarrierSimulationConfig) -> HybridBarrierSimulationConfig:
+    def _validate_config(
+        self, config: HybridBarrierSimulationConfig
+    ) -> HybridBarrierSimulationConfig:
         names = list(config.barrier_names)
         n = len(names)
         if n == 0:
@@ -105,11 +111,15 @@ class HybridBarrierVirtualizationSimulator:
 
         gamma = np.asarray(config.barrier_exponent_matrix, dtype=float)
         if gamma.shape != (n, n):
-            raise ValueError(f"barrier_exponent_matrix must have shape {(n, n)}, got {gamma.shape}.")
+            raise ValueError(
+                f"barrier_exponent_matrix must have shape {(n, n)}, got {gamma.shape}."
+            )
 
         t0 = np.asarray(config.base_tunnel_couplings, dtype=float)
         if t0.shape != (n,):
-            raise ValueError(f"base_tunnel_couplings must have shape {(n,)}, got {t0.shape}.")
+            raise ValueError(
+                f"base_tunnel_couplings must have shape {(n,)}, got {t0.shape}."
+            )
         if np.any(t0 <= 0.0):
             raise ValueError("base_tunnel_couplings must be strictly positive.")
 
@@ -127,7 +137,9 @@ class HybridBarrierVirtualizationSimulator:
         if y.size < 21:
             raise ValueError("detuning_values must contain at least 21 points.")
         if offsets.shape != (n,):
-            raise ValueError(f"barrier_dc_offsets must have shape {(n,)}, got {offsets.shape}.")
+            raise ValueError(
+                f"barrier_dc_offsets must have shape {(n,)}, got {offsets.shape}."
+            )
 
         config.barrier_exponent_matrix = gamma
         config.base_tunnel_couplings = t0
@@ -226,7 +238,9 @@ class HybridBarrierVirtualizationSimulator:
         for target_barrier, drive_barriers in barrier_compensation_mapping.items():
             for drive_barrier in drive_barriers:
                 pair_key = f"{target_barrier}_vs_{drive_barrier}"
-                ds_pair, pair_truth = self.generate_pair_scan(target_barrier, drive_barrier)
+                ds_pair, pair_truth = self.generate_pair_scan(
+                    target_barrier, drive_barrier
+                )
                 ds_raw_all[pair_key] = ds_pair
                 truth[pair_key] = pair_truth
         return ds_raw_all, truth
@@ -248,7 +262,9 @@ class HybridBarrierVirtualizationSimulator:
             mapping[target] = drives
         return self.generate_campaign(mapping)
 
-    def generate_pair_scan(self, target_barrier: str, drive_barrier: str) -> Tuple[xr.Dataset, Dict[str, float]]:
+    def generate_pair_scan(
+        self, target_barrier: str, drive_barrier: str
+    ) -> Tuple[xr.Dataset, Dict[str, float]]:
         """Generate one synthetic 2D scan for a target-drive barrier pair."""
         if target_barrier not in self._index:
             raise KeyError(f"Unknown target barrier '{target_barrier}'.")
@@ -281,7 +297,10 @@ class HybridBarrierVirtualizationSimulator:
 
         primary_signal = np.empty((x.size, y.size), dtype=float)
         for row, drive in enumerate(x):
-            center = self.config.detuning_center + self.config.detuning_center_drive_factor * float(drive)
+            center = (
+                self.config.detuning_center
+                + self.config.detuning_center_drive_factor * float(drive)
+            )
             transition = finite_temperature_excess_charge(
                 y,
                 tunnel_coupling=tunnel_vs_drive[row],
@@ -294,9 +313,15 @@ class HybridBarrierVirtualizationSimulator:
                 delta_v = float(self.config.paper_signal_delta_v)
                 s0 = float(self.config.paper_signal_s0)
                 s1 = float(self.config.paper_signal_s1)
-                primary_signal[row, :] = v0 + delta_v * transition + (s0 + (s1 - s0) * transition) * detuning_centered
+                primary_signal[row, :] = (
+                    v0
+                    + delta_v * transition
+                    + (s0 + (s1 - s0) * transition) * detuning_centered
+                )
             else:
-                primary_signal[row, :] = self.config.signal_offset + self.config.signal_scale * transition
+                primary_signal[row, :] = (
+                    self.config.signal_offset + self.config.signal_scale * transition
+                )
 
         qarray_bg = self._qarray_background(x, y, drive_idx=j, target_idx=i)
         analytic_bg = self._analytic_background(x, y, drive_idx=j, target_idx=i)
@@ -324,8 +349,12 @@ class HybridBarrierVirtualizationSimulator:
                 "tunnel_truth": (("x_volts",), tunnel_vs_drive),
             },
             coords={
-                "x_volts": xr.DataArray(x, dims="x_volts", attrs={"long_name": drive_barrier, "units": "V"}),
-                "y_volts": xr.DataArray(y, dims="y_volts", attrs={"long_name": target_barrier, "units": "V"}),
+                "x_volts": xr.DataArray(
+                    x, dims="x_volts", attrs={"long_name": drive_barrier, "units": "V"}
+                ),
+                "y_volts": xr.DataArray(
+                    y, dims="y_volts", attrs={"long_name": target_barrier, "units": "V"}
+                ),
             },
             attrs={
                 "target_barrier": target_barrier,
@@ -345,7 +374,9 @@ class HybridBarrierVirtualizationSimulator:
         }
         return ds, truth
 
-    def _qarray_background(self, drive_values, detuning_values, drive_idx: int, target_idx: int) -> np.ndarray:
+    def _qarray_background(
+        self, drive_values, detuning_values, drive_idx: int, target_idx: int
+    ) -> np.ndarray:
         if self._qarray_model is None:
             return np.zeros((drive_values.size, detuning_values.size), dtype=float)
 
@@ -377,7 +408,9 @@ class HybridBarrierVirtualizationSimulator:
             return np.zeros((drive_values.size, detuning_values.size), dtype=float)
 
     @staticmethod
-    def _analytic_background(drive_values, detuning_values, drive_idx: int, target_idx: int) -> np.ndarray:
+    def _analytic_background(
+        drive_values, detuning_values, drive_idx: int, target_idx: int
+    ) -> np.ndarray:
         x = np.asarray(drive_values, dtype=float)
         y = np.asarray(detuning_values, dtype=float)
         x_norm = (x - np.mean(x)) / max(float(np.ptp(x)), 1e-12)
@@ -389,6 +422,8 @@ class HybridBarrierVirtualizationSimulator:
         return _normalize_map(wave * envelope + gradient)
 
     def _pair_seed(self, target_barrier: str, drive_barrier: str) -> int:
-        token = f"{self.config.random_seed}:{target_barrier}:{drive_barrier}".encode("utf-8")
+        token = f"{self.config.random_seed}:{target_barrier}:{drive_barrier}".encode(
+            "utf-8"
+        )
         digest = hashlib.sha256(token).digest()[:8]
         return int.from_bytes(digest, "little", signed=False)

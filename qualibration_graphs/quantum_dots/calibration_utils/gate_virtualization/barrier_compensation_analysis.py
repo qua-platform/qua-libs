@@ -23,7 +23,9 @@ def _pair_dot_ids(pair_obj: Any) -> Tuple[str, str]:
     """Return the 2 quantum-dot ids for a pair-like object."""
     dots = getattr(pair_obj, "quantum_dots", None)
     if dots is None or len(dots) != 2:
-        raise ValueError(f"Pair '{getattr(pair_obj, 'id', pair_obj)}' must contain exactly 2 quantum dots.")
+        raise ValueError(
+            f"Pair '{getattr(pair_obj, 'id', pair_obj)}' must contain exactly 2 quantum dots."
+        )
 
     ids: List[str] = []
     for dot in dots:
@@ -92,7 +94,9 @@ def resolve_pair_calibration_topology(
     quantum_dot_pairs = dict(getattr(machine, "quantum_dot_pairs", {}))
     qubit_pairs = dict(getattr(machine, "qubit_pairs", {}))
     if not quantum_dot_pairs:
-        raise ValueError("Machine has no quantum_dot_pairs; cannot derive barrier topology.")
+        raise ValueError(
+            "Machine has no quantum_dot_pairs; cannot derive barrier topology."
+        )
 
     pair_resolution: List[Dict[str, Any]] = []
     barrier_order: List[str] = []
@@ -108,9 +112,13 @@ def resolve_pair_calibration_topology(
             qubit_pair = qubit_pairs[input_name]
             target_pair = getattr(qubit_pair, "quantum_dot_pair", None)
             if target_pair is None:
-                raise ValueError(f"qubit_pair '{input_name}' has no quantum_dot_pair reference.")
+                raise ValueError(
+                    f"qubit_pair '{input_name}' has no quantum_dot_pair reference."
+                )
         else:
-            raise KeyError(f"Pair '{input_name}' not found in machine.quantum_dot_pairs or machine.qubit_pairs.")
+            raise KeyError(
+                f"Pair '{input_name}' not found in machine.quantum_dot_pairs or machine.qubit_pairs."
+            )
 
         target_pair_id = str(getattr(target_pair, "id", input_name))
         target_barrier = _pair_barrier_id(target_pair)
@@ -118,11 +126,15 @@ def resolve_pair_calibration_topology(
             raise ValueError(f"Target pair '{target_pair_id}' has no barrier_gate.")
 
         if not callable(getattr(target_pair, "ramp_to_detuning", None)):
-            raise ValueError(f"Target pair '{target_pair_id}' has no callable ramp_to_detuning method.")
+            raise ValueError(
+                f"Target pair '{target_pair_id}' has no callable ramp_to_detuning method."
+            )
 
         detuning_axis_name = str(getattr(target_pair, "detuning_axis_name", ""))
         if detuning_axis_name == "":
-            raise ValueError(f"Target pair '{target_pair_id}' has empty detuning_axis_name.")
+            raise ValueError(
+                f"Target pair '{target_pair_id}' has empty detuning_axis_name."
+            )
 
         dot_ids = _pair_dot_ids(target_pair)
         target_gate_set_id = _pair_gate_set_id(target_pair)
@@ -130,7 +142,8 @@ def resolve_pair_calibration_topology(
         if target_barrier in target_barrier_to_pair_id:
             existing_pair = target_barrier_to_pair_id[target_barrier]
             raise ValueError(
-                f"Duplicate target barrier '{target_barrier}' for pairs " f"'{existing_pair}' and '{target_pair_id}'."
+                f"Duplicate target barrier '{target_barrier}' for pairs "
+                f"'{existing_pair}' and '{target_pair_id}'."
             )
         target_barrier_to_pair_id[target_barrier] = target_pair_id
 
@@ -163,7 +176,9 @@ def resolve_pair_calibration_topology(
             neighbor_barriers.append(other_barrier)
 
         drive_barriers = [target_barrier]
-        drive_barriers.extend(sorted({b for b in neighbor_barriers if b != target_barrier}))
+        drive_barriers.extend(
+            sorted({b for b in neighbor_barriers if b != target_barrier})
+        )
 
         drive_non_barriers: List[str] = []
         if include_non_barrier_drives:
@@ -171,13 +186,21 @@ def resolve_pair_calibration_topology(
                 drive_non_barriers = [str(g) for g in non_barrier_drive_gates]
             else:
                 for dot_id in dot_ids:
-                    vname = f"virtual_{dot_id}" if not dot_id.startswith("virtual_") else dot_id
+                    vname = (
+                        f"virtual_{dot_id}"
+                        if not dot_id.startswith("virtual_")
+                        else dot_id
+                    )
                     if vname not in drive_non_barriers:
                         drive_non_barriers.append(vname)
                 sensor_dots = list(getattr(target_pair, "sensor_dots", []) or [])
                 for sd in sensor_dots:
                     sd_id = str(getattr(sd, "id", sd))
-                    vname = f"virtual_{sd_id}" if not sd_id.startswith("virtual_") else sd_id
+                    vname = (
+                        f"virtual_{sd_id}"
+                        if not sd_id.startswith("virtual_")
+                        else sd_id
+                    )
                     if vname not in drive_non_barriers:
                         drive_non_barriers.append(vname)
 
@@ -263,7 +286,9 @@ def _model_rss_for_tunnel(
     thermal_energy: float,
     center: float,
 ) -> float:
-    base = finite_temperature_excess_charge(detuning, tunnel_coupling, thermal_energy, center)
+    base = finite_temperature_excess_charge(
+        detuning, tunnel_coupling, thermal_energy, center
+    )
     _, _, rss = _solve_paper_signal_model(signal, base, detuning - center)
     return float(rss)
 
@@ -291,7 +316,9 @@ def _refine_two_level_fit_locally(
     center_max = float(np.max(x) + 0.2 * span)
 
     log_t = float(np.log(np.clip(float(best["tunnel_coupling"]), t_floor, t_ceiling)))
-    log_kbt = float(np.log(np.clip(float(best["thermal_energy"]), kbt_floor, kbt_ceiling)))
+    log_kbt = float(
+        np.log(np.clip(float(best["thermal_energy"]), kbt_floor, kbt_ceiling))
+    )
     center = float(np.clip(float(best["center"]), center_min, center_max))
 
     step_log_t = 0.45
@@ -334,8 +361,12 @@ def _refine_two_level_fit_locally(
             break
 
         best_local = trial_best
-        log_t = float(np.log(np.clip(float(best_local["tunnel_coupling"]), t_floor, t_ceiling)))
-        log_kbt = float(np.log(np.clip(float(best_local["thermal_energy"]), kbt_floor, kbt_ceiling)))
+        log_t = float(
+            np.log(np.clip(float(best_local["tunnel_coupling"]), t_floor, t_ceiling))
+        )
+        log_kbt = float(
+            np.log(np.clip(float(best_local["thermal_energy"]), kbt_floor, kbt_ceiling))
+        )
         center = float(np.clip(float(best_local["center"]), center_min, center_max))
 
         step_log_t *= 0.45
@@ -418,7 +449,11 @@ def fit_finite_temperature_two_level(
 
     tunnel_grid = np.geomspace(t_min, t_max, num=max(n_tunnel, 8))
     thermal_grid = np.geomspace(kbt_min, kbt_max, num=max(n_thermal, 8))
-    center_grid = np.linspace(center_seed - center_half_span, center_seed + center_half_span, num=max(n_center, 9))
+    center_grid = np.linspace(
+        center_seed - center_half_span,
+        center_seed + center_half_span,
+        num=max(n_center, 9),
+    )
 
     best: Dict[str, Any] | None = None
     for t in tunnel_grid:
@@ -519,16 +554,21 @@ def extract_tunnel_coupling_vs_drive(
     if drive_axis not in ds.coords:
         raise KeyError(f"Drive axis '{drive_axis}' not found in dataset coordinates.")
     if detuning_axis not in ds.coords:
-        raise KeyError(f"Detuning axis '{detuning_axis}' not found in dataset coordinates.")
+        raise KeyError(
+            f"Detuning axis '{detuning_axis}' not found in dataset coordinates."
+        )
 
     signal = _select_signal_dataarray(ds)
     if drive_axis not in signal.dims or detuning_axis not in signal.dims:
         raise ValueError(
-            f"Signal dims {signal.dims} do not include required axes " f"'{drive_axis}' and '{detuning_axis}'."
+            f"Signal dims {signal.dims} do not include required axes "
+            f"'{drive_axis}' and '{detuning_axis}'."
         )
 
     drive_values = np.asarray(ds.coords[drive_axis].values, dtype=float)
-    detuning_values = np.asarray(ds.coords[detuning_axis].values, dtype=float) * float(detuning_scale)
+    detuning_values = np.asarray(ds.coords[detuning_axis].values, dtype=float) * float(
+        detuning_scale
+    )
 
     drive_idx = signal.get_axis_num(drive_axis)
     detuning_idx = signal.get_axis_num(detuning_axis)
@@ -622,7 +662,9 @@ def fit_barrier_cross_talk(
         compensation_axis,
         detuning_scale=detuning_scale,
     )
-    slope_fit = fit_linear_slope(tunnel_curve["drive_values"], tunnel_curve["tunnel_couplings"])
+    slope_fit = fit_linear_slope(
+        tunnel_curve["drive_values"], tunnel_curve["tunnel_couplings"]
+    )
 
     result = {
         "barrier_axis": barrier_axis,
@@ -666,13 +708,29 @@ def evaluate_slope_fit_acceptance(
     tunnel_sigmas = np.asarray(fit_result.get("tunnel_sigmas", []), dtype=float)
     valid_tunnel = np.isfinite(tunnel_values)
 
-    tunnel_span = float(np.nanmax(tunnel_values) - np.nanmin(tunnel_values)) if np.any(valid_tunnel) else float("nan")
-    median_sigma = float(np.nanmedian(tunnel_sigmas)) if np.any(np.isfinite(tunnel_sigmas)) else float("nan")
-    required_span = float(min_tunnel_span_sigma) * median_sigma if np.isfinite(median_sigma) else float("nan")
+    tunnel_span = (
+        float(np.nanmax(tunnel_values) - np.nanmin(tunnel_values))
+        if np.any(valid_tunnel)
+        else float("nan")
+    )
+    median_sigma = (
+        float(np.nanmedian(tunnel_sigmas))
+        if np.any(np.isfinite(tunnel_sigmas))
+        else float("nan")
+    )
+    required_span = (
+        float(min_tunnel_span_sigma) * median_sigma
+        if np.isfinite(median_sigma)
+        else float("nan")
+    )
 
     r2_ok = bool(np.isfinite(fit_r2) and fit_r2 >= float(min_pair_fit_r2))
     snr_ok = bool(np.isfinite(slope_snr) and slope_snr >= float(min_slope_snr))
-    span_ok = bool(np.isfinite(tunnel_span) and np.isfinite(required_span) and tunnel_span >= required_span)
+    span_ok = bool(
+        np.isfinite(tunnel_span)
+        and np.isfinite(required_span)
+        and tunnel_span >= required_span
+    )
 
     reasons: List[str] = []
     if not r2_ok:
@@ -705,7 +763,9 @@ def extract_barrier_compensation_coefficients(
 ) -> Dict[str, float]:
     """Extract barrier compensation coefficients from one 2D scan."""
     barrier_axis = barrier_gate_name if barrier_gate_name in ds.coords else "x_volts"
-    compensation_axis = compensation_gate_name if compensation_gate_name in ds.coords else "y_volts"
+    compensation_axis = (
+        compensation_gate_name if compensation_gate_name in ds.coords else "y_volts"
+    )
     return fit_barrier_cross_talk(
         ds,
         barrier_axis,
@@ -766,7 +826,9 @@ def assemble_slope_matrix(
     return matrix
 
 
-def row_normalize_with_unit_diagonal(matrix: np.ndarray, min_abs_diag: float = 1e-12) -> np.ndarray:
+def row_normalize_with_unit_diagonal(
+    matrix: np.ndarray, min_abs_diag: float = 1e-12
+) -> np.ndarray:
     """Normalize each row so diagonal elements are exactly 1."""
     out = np.asarray(matrix, dtype=float).copy()
     n = out.shape[0]
@@ -800,7 +862,9 @@ def compute_residual_crosstalk_ratios(
         for col in range(n):
             if col == row:
                 continue
-            ratio = abs(float(m[row, col] / diag)) if np.isfinite(m[row, col]) else np.inf
+            ratio = (
+                abs(float(m[row, col] / diag)) if np.isfinite(m[row, col]) else np.inf
+            )
             row_ratios[barrier_names[col]] = ratio
             all_ratios.append(ratio)
         per_barrier[row_name] = row_ratios
@@ -852,14 +916,18 @@ def calibrate_stepwise_barrier_virtualization(
         for row_idx in order_idx:
             diag = m_eff[row_idx, row_idx]
             if not np.isfinite(diag) or abs(diag) < min_abs_self_slope:
-                raise ValueError(f"Invalid self slope for barrier '{barrier_names[row_idx]}': {diag}")
+                raise ValueError(
+                    f"Invalid self slope for barrier '{barrier_names[row_idx]}': {diag}"
+                )
 
             d_step = np.eye(n, dtype=float)
             d_step[row_idx, :] = m_eff[row_idx, :] / diag
             d_step[row_idx, row_idx] = 1.0
 
             c_transform = d_step @ c_transform
-            c_transform = row_normalize_with_unit_diagonal(c_transform, min_abs_diag=min_abs_self_slope)
+            c_transform = row_normalize_with_unit_diagonal(
+                c_transform, min_abs_diag=min_abs_self_slope
+            )
 
             step_counter += 1
             c_inv_step = np.linalg.pinv(c_transform)

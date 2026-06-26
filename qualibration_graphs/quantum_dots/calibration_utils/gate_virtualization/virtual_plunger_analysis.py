@@ -44,7 +44,11 @@ except (ImportError, SystemError):
         from pathlib import Path as _Path
 
         _ela_name = "_edge_line_analysis_direct"
-        _ela_path = _Path(__file__).resolve().parent.parent / "charge_stability" / "edge_line_analysis.py"
+        _ela_path = (
+            _Path(__file__).resolve().parent.parent
+            / "charge_stability"
+            / "edge_line_analysis.py"
+        )
         if not _ela_path.exists():
             raise ImportError(f"edge_line_analysis.py not found at {_ela_path}")
         _spec = spec_from_file_location(_ela_name, _ela_path)
@@ -183,7 +187,10 @@ def _extract_primary_angles(
 
         for idx in np.argsort(weights_arr)[::-1]:
             candidate = float(angles_arr[idx])
-            if all(_angular_distance(candidate, existing) > min_sep for existing in primary_angles):
+            if all(
+                _angular_distance(candidate, existing) > min_sep
+                for existing in primary_angles
+            ):
                 primary_angles.append(candidate)
             if len(primary_angles) >= n_angles:
                 break

@@ -73,7 +73,9 @@ def custom_param(node: QualibrationNode[BarrierCompensationParameters, Quam]):
 node.machine = Quam.load()
 
 
-def _get_active_virtual_gate_set_id(node: QualibrationNode[BarrierCompensationParameters, Quam]) -> str:
+def _get_active_virtual_gate_set_id(
+    node: QualibrationNode[BarrierCompensationParameters, Quam]
+) -> str:
     vgs_id = getattr(node.parameters, "virtual_gate_set_id", None)
     if vgs_id:
         return str(vgs_id)
@@ -82,7 +84,9 @@ def _get_active_virtual_gate_set_id(node: QualibrationNode[BarrierCompensationPa
     if len(virtual_gate_sets) == 1:
         return str(next(iter(virtual_gate_sets.keys())))
 
-    raise ValueError("virtual_gate_set_id must be set when multiple VirtualGateSets exist.")
+    raise ValueError(
+        "virtual_gate_set_id must be set when multiple VirtualGateSets exist."
+    )
 
 
 def _resolve_target_lever_arm(
@@ -172,7 +176,9 @@ def _create_pair_detuning_program(
     """Create one QUA program for a target-pair detuning campaign."""
     sensor_dots = list(getattr(target_pair, "sensor_dots", []) or [])
     if len(sensor_dots) == 0:
-        raise ValueError(f"Target pair '{target_pair.id}' has no sensor_dots for readout.")
+        raise ValueError(
+            f"Target pair '{target_pair.id}' has no sensor_dots for readout."
+        )
 
     sensor = sensor_dots[0]
     rr = sensor.readout_resonator
@@ -181,7 +187,11 @@ def _create_pair_detuning_program(
     has_empty = callable(getattr(target_pair, "empty", None))
     has_initialize = callable(getattr(target_pair, "initialize", None))
 
-    static_bias = {name: float(value) for name, value in static_barrier_centers.items() if name != drive_barrier}
+    static_bias = {
+        name: float(value)
+        for name, value in static_barrier_centers.items()
+        if name != drive_barrier
+    }
 
     with program() as qua_prog:
         n = declare(int)
@@ -219,7 +229,9 @@ def _create_pair_detuning_program(
                     )
 
                     if node.parameters.pre_measurement_delay > 0:
-                        seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
+                        seq.step_to_voltages(
+                            {}, duration=node.parameters.pre_measurement_delay
+                        )
 
                     align()
                     rr.measure("readout", qua_vars=(I, Q))
@@ -234,8 +246,12 @@ def _create_pair_detuning_program(
 
         with stream_processing():
             n_st.save("n")
-            I_st.buffer(len(detuning_values)).buffer(len(drive_values)).average().save("I")
-            Q_st.buffer(len(detuning_values)).buffer(len(drive_values)).average().save("Q")
+            I_st.buffer(len(detuning_values)).buffer(len(drive_values)).average().save(
+                "I"
+            )
+            Q_st.buffer(len(detuning_values)).buffer(len(drive_values)).average().save(
+                "Q"
+            )
 
     sweep_axes = {
         "drive_volts": xr.DataArray(
@@ -244,14 +260,20 @@ def _create_pair_detuning_program(
         ),
         "detuning_volts": xr.DataArray(
             detuning_values,
-            attrs={"long_name": f"{target_pair.detuning_axis_name} voltage", "units": "V"},
+            attrs={
+                "long_name": f"{target_pair.detuning_axis_name} voltage",
+                "units": "V",
+            },
         ),
     }
     return qua_prog, sweep_axes
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.run_in_video_mode)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.run_in_video_mode
+)
 def create_qua_program(node: QualibrationNode[BarrierCompensationParameters, Quam]):
     """Create pair-driven barrier-vs-detuning scan programs."""
     pair_names = node.parameters.pair_names or []
@@ -286,7 +308,9 @@ def create_qua_program(node: QualibrationNode[BarrierCompensationParameters, Qua
 
         detuning_axis_name = str(resolved["detuning_axis_name"])
         if not callable(getattr(target_pair, "ramp_to_detuning", None)):
-            raise ValueError(f"Pair '{target_pair_id}' does not support ramp_to_detuning.")
+            raise ValueError(
+                f"Pair '{target_pair_id}' does not support ramp_to_detuning."
+            )
 
         for drive_barrier in list(resolved["drive_barriers"]):
             drive_center = _resolve_barrier_center(node, drive_barrier, active_vgs_id)
@@ -333,7 +357,9 @@ def create_qua_program(node: QualibrationNode[BarrierCompensationParameters, Qua
             nb_points = int(node.parameters.non_barrier_drive_points)
             drive_center = 0.0
             detuning_center = _resolve_detuning_center(node, target_pair_id)
-            drive_values = drive_center + np.linspace(-0.5 * nb_span_v, 0.5 * nb_span_v, nb_points)
+            drive_values = drive_center + np.linspace(
+                -0.5 * nb_span_v, 0.5 * nb_span_v, nb_points
+            )
             detuning_values = detuning_center + np.linspace(
                 float(node.parameters.detuning_min),
                 float(node.parameters.detuning_max),
@@ -381,7 +407,9 @@ def create_qua_program(node: QualibrationNode[BarrierCompensationParameters, Qua
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(
     node: QualibrationNode[BarrierCompensationParameters, Quam],
 ):
@@ -389,7 +417,9 @@ def simulate_qua_program(
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     first_key = next(iter(node.namespace["programs"]))
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["programs"][first_key], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["programs"][first_key], node.parameters
+    )
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
@@ -399,7 +429,9 @@ def simulate_qua_program(
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.simulate
+    or node.parameters.run_in_video_mode
 )
 def execute_qua_program(
     node: QualibrationNode[BarrierCompensationParameters, Quam],
@@ -411,7 +443,9 @@ def execute_qua_program(
     for pair_key, qua_prog in node.namespace["programs"].items():
         with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
             job = qm.execute(qua_prog)
-            data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes_all"][pair_key])
+            data_fetcher = XarrayDataFetcher(
+                job, node.namespace["sweep_axes_all"][pair_key]
+            )
             for dataset in data_fetcher:
                 progress_counter(
                     data_fetcher.get("n", 0),
@@ -437,7 +471,9 @@ def analyse_data(node: QualibrationNode[BarrierCompensationParameters, Quam]):
     """Run barrier-barrier analysis and build the stepwise transform."""
     ds_raw_all = node.results.get("ds_raw_all", {})
     if not ds_raw_all:
-        raise ValueError("No raw datasets available. Expected node.results['ds_raw_all'].")
+        raise ValueError(
+            "No raw datasets available. Expected node.results['ds_raw_all']."
+        )
 
     pair_metadata = node.namespace.get("pair_metadata", {})
     barrier_order = list(node.namespace.get("barrier_order", []))
@@ -504,12 +540,17 @@ def analyse_data(node: QualibrationNode[BarrierCompensationParameters, Quam]):
     for target_barrier in barrier_order:
         self_fit = None
         for pair_key, fit in barrier_fit_results.items():
-            if fit.get("target_barrier") == target_barrier and fit.get("drive_barrier") == target_barrier:
+            if (
+                fit.get("target_barrier") == target_barrier
+                and fit.get("drive_barrier") == target_barrier
+            ):
                 self_fit = (pair_key, fit)
                 break
 
         if self_fit is None:
-            raise ValueError(f"Missing self-slope fit for target barrier '{target_barrier}'.")
+            raise ValueError(
+                f"Missing self-slope fit for target barrier '{target_barrier}'."
+            )
 
         pair_key, fit = self_fit
         if not bool(fit.get("accepted", False)):
@@ -522,7 +563,8 @@ def analyse_data(node: QualibrationNode[BarrierCompensationParameters, Quam]):
     slope_matrix_raw = assemble_slope_matrix(barrier_fit_results, barrier_order)
     if np.any(np.isnan(np.diag(slope_matrix_raw))):
         raise ValueError(
-            "Missing self-slope rows in slope_matrix_raw. " "Ensure each target barrier has an accepted self fit."
+            "Missing self-slope rows in slope_matrix_raw. "
+            "Ensure each target barrier has an accepted self fit."
         )
 
     calibration_order = node.parameters.calibration_order or barrier_order
@@ -547,7 +589,11 @@ def analyse_data(node: QualibrationNode[BarrierCompensationParameters, Quam]):
             drive_gate = str(fit["drive_barrier"])
             self_slope = barrier_self_slopes.get(target_barrier, float("nan"))
             nb_slope = float(fit.get("coefficient", float("nan")))
-            beta = nb_slope / self_slope if np.isfinite(self_slope) and abs(self_slope) > 1e-15 else float("nan")
+            beta = (
+                nb_slope / self_slope
+                if np.isfinite(self_slope) and abs(self_slope) > 1e-15
+                else float("nan")
+            )
             fit["beta"] = beta
             non_barrier_betas.setdefault(target_barrier, {})[drive_gate] = beta
 
@@ -569,7 +615,9 @@ def analyse_data(node: QualibrationNode[BarrierCompensationParameters, Quam]):
     node.results["lever_arms_used"] = used_lever_arms
 
     if node.parameters.target_tunnel_couplings is not None:
-        node.results["target_tunnel_couplings"] = dict(node.parameters.target_tunnel_couplings)
+        node.results["target_tunnel_couplings"] = dict(
+            node.parameters.target_tunnel_couplings
+        )
 
 
 # %% {Plot_data}
@@ -587,7 +635,9 @@ def plot_data(node: QualibrationNode[BarrierCompensationParameters, Quam]):
         drive = fit.get("drive_barrier", "drive")
 
         x_axis = fit.get("barrier_axis", fit.get("drive_axis", "drive_volts"))
-        y_axis = fit.get("compensation_axis", fit.get("detuning_axis", "detuning_volts"))
+        y_axis = fit.get(
+            "compensation_axis", fit.get("detuning_axis", "detuning_volts")
+        )
 
         figures[f"scan_{pair_key}"] = plot_2d_scan(
             ds,
@@ -633,7 +683,9 @@ def plot_data(node: QualibrationNode[BarrierCompensationParameters, Quam]):
 
     node.results["figures"] = figures
     if figures:
-        node.results["figure"] = figures.get("barrier_transform_final") or next(iter(figures.values()))
+        node.results["figure"] = figures.get("barrier_transform_final") or next(
+            iter(figures.values())
+        )
 
 
 # %% {Update_virtual_gate_matrix}
@@ -681,7 +733,11 @@ def update_virtual_gate_matrix(
     layer = _resolve_layer(vgs, node.parameters.matrix_layer_id)
     v2p = dict(zip(layer.source_gates, layer.target_gates))
 
-    context = node.record_state_updates() if hasattr(node, "record_state_updates") else nullcontext()
+    context = (
+        node.record_state_updates()
+        if hasattr(node, "record_state_updates")
+        else nullcontext()
+    )
     with context:
         barrier_col_names = [v2p[b] for b in barrier_order]
         update_meta = update_compensation_submatrix(
@@ -697,11 +753,15 @@ def update_virtual_gate_matrix(
         for target_barrier, gate_betas in non_barrier_betas.items():
             for drive_gate, beta in gate_betas.items():
                 if not np.isfinite(beta):
-                    raise RuntimeError(f"Non-finite beta for {target_barrier} vs {drive_gate}: {beta}")
+                    raise RuntimeError(
+                        f"Non-finite beta for {target_barrier} vs {drive_gate}: {beta}"
+                    )
                 barrier_row_idx = list(layer.source_gates).index(target_barrier)
                 physical_col = v2p.get(drive_gate, drive_gate)
                 col_idx = list(layer.target_gates).index(physical_col)
-                current_val = float(np.asarray(layer.matrix, dtype=float)[barrier_row_idx, col_idx])
+                current_val = float(
+                    np.asarray(layer.matrix, dtype=float)[barrier_row_idx, col_idx]
+                )
                 update_compensation_submatrix(
                     node=node,
                     row_names=[target_barrier],

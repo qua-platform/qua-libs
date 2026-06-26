@@ -43,7 +43,9 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         log_callable(s_qubit + s_detuning)
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, RamseyDetuningFitParameters]]:
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, Dict[str, RamseyDetuningFitParameters]]:
     """
     Fit the frequency offset from parity difference oscillations as a function of detuning.
 
@@ -84,7 +86,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             # where the qubit is maximally driven (resonance condition)
             # The center of the oscillation pattern gives the detuning correction
             detuning_values = ds.detuning.values
-            fitted_curve = oscillation(detuning_values, fitted_a, fitted_freq, fitted_phi, fitted_offset_pos)
+            fitted_curve = oscillation(
+                detuning_values, fitted_a, fitted_freq, fitted_phi, fitted_offset_pos
+            )
 
             # Find the detuning value at the peak of pdiff
             peak_idx = np.argmax(fitted_curve)
@@ -106,6 +110,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
                 success=False,
             )
 
-    node.outcomes = {qubit.name: ("successful" if fit_results[qubit.name].success else "failed") for qubit in qubits}
+    node.outcomes = {
+        qubit.name: ("successful" if fit_results[qubit.name].success else "failed")
+        for qubit in qubits
+    }
 
     return ds_fit, fit_results

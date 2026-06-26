@@ -31,7 +31,7 @@ This directory contains QUAlibration nodes and utilities for quantum dots. We we
 
 Run a single simulation test:
 ```bash
-uv run pytest tests/simulation/qualibration_graphs/quantum_dots/calibrations/loss_divincenzo/test_09b_time_rabi_chevron_parity_diff_sim.py -vv -s -rs
+uv run pytest tests/simulation/qualibration_graphs/quantum_dots/calibrations/loss_divincenzo/test_10b_time_rabi_chevron_sim.py -vv -s -rs
 ```
 
 Prerequisites:

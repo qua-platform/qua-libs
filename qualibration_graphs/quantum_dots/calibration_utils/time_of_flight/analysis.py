@@ -51,7 +51,9 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the sensor frequency and FWHM for each sensor in the dataset.
 
@@ -72,9 +74,14 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     ds_fit["filtered_adc"] = xr.apply_ufunc(_filter_adc_signal, ds_fit.adc_abs)
     # Detect the pulse arrival times
     ds_fit["threshold"] = (
-        ds_fit["filtered_adc"][:, 100:].mean("readout_time") + ds_fit["filtered_adc"][:, :-100].mean("readout_time")
+        ds_fit["filtered_adc"][:, 100:].mean("readout_time")
+        + ds_fit["filtered_adc"][:, :-100].mean("readout_time")
     ) / 2
-    ds_fit["delay"] = (ds_fit["filtered_adc"] > ds_fit["threshold"]).where(True).idxmax("readout_time")
+    ds_fit["delay"] = (
+        (ds_fit["filtered_adc"] > ds_fit["threshold"])
+        .where(True)
+        .idxmax("readout_time")
+    )
     ds_fit["delay"] = np.round(ds_fit["delay"] / 4) * 4
     ds_fit.delay.attrs = {"long_name": "TOF to add", "units": "ns"}
     # Get the controller of each sensor
@@ -83,22 +90,34 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
             "con": (
                 ["sensor"],
                 [
-                    node.machine.sensor_dots[s.name].readout_resonator.opx_input.controller_id
+                    node.machine.sensor_dots[
+                        s.name
+                    ].readout_resonator.opx_input.controller_id
                     for s in node.namespace["sensors"]
                 ],
             )
         }
     )
 
-    ds_fit = ds_fit.assign_coords({"offset_combined": (ds_fit.adc.mean(dim="readout_time"))})
+    ds_fit = ds_fit.assign_coords(
+        {"offset_combined": (ds_fit.adc.mean(dim="readout_time"))}
+    )
     mean_offset = {}
     for con in np.unique(ds_fit.con.values):
-        mean_offset[con] = ds_fit.where(ds_fit.con == con).offset_combined.mean(dim="sensor").values
+        mean_offset[con] = (
+            ds_fit.where(ds_fit.con == con).offset_combined.mean(dim="sensor").values
+        )
 
     offsets_list = []
     for s in ds_fit.sensor.values:
         offsets_list.append(mean_offset[str(ds_fit.sel(sensor=s).con.values)])
-    ds_fit = ds_fit.assign({"offset_mean": xr.DataArray(offsets_list, coords=dict(sensor=ds_fit.sensor.data))})
+    ds_fit = ds_fit.assign(
+        {
+            "offset_mean": xr.DataArray(
+                offsets_list, coords=dict(sensor=ds_fit.sensor.data)
+            )
+        }
+    )
     ds_fit.offset_mean.attrs = {"long_name": "Mean offset", "units": "V"}
     # Assess whether the fit was successful or not
     nan_success = np.isnan(ds_fit.delay.data) & np.isnan(ds_fit.offset_mean.data)
@@ -115,7 +134,10 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         )
         for s in ds_fit.sensor.values
     }
-    node.outcomes = {s: "successful" if fit_results[s].success else "fail" for s in ds_fit.sensor.values}
+    node.outcomes = {
+        s: "successful" if fit_results[s].success else "fail"
+        for s in ds_fit.sensor.values
+    }
 
     return ds_fit, fit_results
 

@@ -22,10 +22,11 @@ State update:
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `num_shots` | `1` | Number of averages to perform. Default is 100. |
-| `frequency_span_in_mhz` | `4` | Span of frequencies to sweep in MHz. Default is 30 MHz. |
-| `frequency_step_in_mhz` | `2.0` | Step size for frequency sweep in MHz. Default is 0.1 MHz. |
+| `num_shots` | `10` | Number of averages to perform. Default is 100. |
+| `frequency_span_in_mhz` | `40` | Span of frequencies to sweep in MHz. Default is 30 MHz. |
+| `frequency_step_in_mhz` | `5.0` | Step size for frequency sweep in MHz. Default is 0.1 MHz. |
 | `sensor_names` | `None` | The list of sensor dot names to be included in the measurement.  |
+| `use_simulated_data` | `False` | Whether to generate simulated data instead of measuring via the OPX. Default False. |
 | `simulate` | `False` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
 | `simulation_duration_ns` | `40000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
 | `use_waveform_report` | `True` | Whether to use the interactive waveform report in simulation. Default is True. |
@@ -52,14 +53,21 @@ quadratures 'I' and 'Q'. Default is False. |
 | `fwhm` | `nan` |
 | `success` | `False` |
 
+### virtual_sensor_2
+| Parameter | Value |
+|-----------|-------|
+| `frequency` | `nan` |
+| `fwhm` | `nan` |
+| `success` | `False` |
+
 
 ## Metadata
 
 | Key | Value |
 |-----|-------|
-| Timestamp | 2026-04-17T03:10:47 UTC |
+| Timestamp | 2026-04-29T00:43:21 UTC |
 | Node | 02a_resonator_spectroscopy |
-| Duration | 4.5s |
+| Duration | 5.1s |
 | Status | completed |
 
 ---

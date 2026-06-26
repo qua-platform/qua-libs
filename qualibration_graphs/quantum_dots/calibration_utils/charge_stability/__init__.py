@@ -4,12 +4,14 @@ from .parameters import (
     Parameters,
     get_voltage_arrays,
     prepare_dc_lists,
+    get_axis_names,
 )
 from .plotting import (
     plot_raw_amplitude,
     plot_raw_phase,
     plot_individual_raw_amplitude,
     plot_individual_raw_phase,
+    overlay_voltage_points,
     plot_change_point_overlays,
     plot_line_fit_overlays,
 )
@@ -46,6 +48,7 @@ __all__ = [
     "plot_raw_phase",
     "plot_individual_raw_amplitude",
     "plot_individual_raw_phase",
+    "overlay_voltage_points",
     "plot_change_point_overlays",
     "plot_line_fit_overlays",
     "process_raw_dataset",
@@ -58,4 +61,5 @@ __all__ = [
     "ScanMode",
     "RasterScan",
     "SwitchRasterScan",
+    "get_axis_names",
 ]

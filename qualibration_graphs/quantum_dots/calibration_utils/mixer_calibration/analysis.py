@@ -3,7 +3,9 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 
 from qualibrate.core import QualibrationNode
-from qualang_tools.octave_tools.calibration_result_plotter import CalibrationResultPlotter
+from qualang_tools.octave_tools.calibration_result_plotter import (
+    CalibrationResultPlotter,
+)
 
 
 @dataclass
@@ -55,16 +57,24 @@ def extract_relevant_fit_parameters(node: QualibrationNode):
         q: FitParameters(
             resonator=(
                 {
-                    "lo_leakage": CalibrationResultPlotter(cal_results[q]["resonator"]).get_lo_leakage_rejection(),
-                    "image_rejection": CalibrationResultPlotter(cal_results[q]["resonator"]).get_image_rejection(),
+                    "lo_leakage": CalibrationResultPlotter(
+                        cal_results[q]["resonator"]
+                    ).get_lo_leakage_rejection(),
+                    "image_rejection": CalibrationResultPlotter(
+                        cal_results[q]["resonator"]
+                    ).get_image_rejection(),
                 }
                 if node.parameters.calibrate_resonator
                 else None
             ),
             xy_drive=(
                 {
-                    "lo_leakage": CalibrationResultPlotter(cal_results[q]["xy_drive"]).get_lo_leakage_rejection(),
-                    "image_rejection": CalibrationResultPlotter(cal_results[q]["xy_drive"]).get_image_rejection(),
+                    "lo_leakage": CalibrationResultPlotter(
+                        cal_results[q]["xy_drive"]
+                    ).get_lo_leakage_rejection(),
+                    "image_rejection": CalibrationResultPlotter(
+                        cal_results[q]["xy_drive"]
+                    ).get_image_rejection(),
                 }
                 if node.parameters.calibrate_drive
                 else None

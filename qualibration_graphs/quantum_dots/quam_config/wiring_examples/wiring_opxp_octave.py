@@ -57,9 +57,9 @@ plt.show(block=True)
 user_input = input("Do you want to save the updated QUAM? (y/n)")
 if user_input.lower() == "y":
     machine = Quam()
-    # Build the wiring (wiring.json) and initiate the QUAM
+    # Build the wiring (wiring_old.json) and initiate the QUAM
     build_quam_wiring(connectivity, host_ip, cluster_name, machine)
 
-    # Reload QUAM, build the QUAM object and save the state as state.json
+    # Reload QUAM, build the QUAM object and save the state as state_old.json
     machine = Quam.load()
     build_quam(machine, calibration_db_path)

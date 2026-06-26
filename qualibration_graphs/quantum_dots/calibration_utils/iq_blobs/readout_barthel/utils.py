@@ -125,7 +125,9 @@ class Barthel1DMetricCurves:
         return 801
 
     @staticmethod
-    def _prepare_tauM(samples: Dict[str, jnp.ndarray], tauM_fixed: Optional[float]) -> jnp.ndarray:
+    def _prepare_tauM(
+        samples: Dict[str, jnp.ndarray], tauM_fixed: Optional[float]
+    ) -> jnp.ndarray:
         """
         Extract or construct τ_M values for each posterior sample.
 
@@ -212,11 +214,15 @@ class Barthel1DMetricCurves:
         @jax.jit
         def _fs_ft_curve(mu_S, mu_T, sigma, T1, tauM):
             FS_curve = _std_norm_cdf((vrf_grid - mu_S) / sigma)
-            CDF_T = jax.vmap(lambda v: triplet_cdf_analytic(v, mu_S, mu_T, sigma, T1, tauM))(vrf_grid)
+            CDF_T = jax.vmap(
+                lambda v: triplet_cdf_analytic(v, mu_S, mu_T, sigma, T1, tauM)
+            )(vrf_grid)
             FT_curve = 1.0 - CDF_T
             return FS_curve, FT_curve
 
-        FS_draws, FT_draws = jax.jit(jax.vmap(_fs_ft_curve))(mu_S_sel, mu_T_sel, sigma_sel, T1_sel, tauM_sel)
+        FS_draws, FT_draws = jax.jit(jax.vmap(_fs_ft_curve))(
+            mu_S_sel, mu_T_sel, sigma_sel, T1_sel, tauM_sel
+        )
         FS_curve = FS_draws.mean(axis=0)
         FT_curve = FT_draws.mean(axis=0)
 
@@ -242,7 +248,9 @@ class Barthel1DMetricCurves:
         return result
 
     @staticmethod
-    def _evaluate_threshold(threshold: float, draws: Dict[str, jnp.ndarray]) -> Tuple[float, float]:
+    def _evaluate_threshold(
+        threshold: float, draws: Dict[str, jnp.ndarray]
+    ) -> Tuple[float, float]:
         """
         Evaluate FS and FT at a specific threshold using posterior predictive averaging.
 

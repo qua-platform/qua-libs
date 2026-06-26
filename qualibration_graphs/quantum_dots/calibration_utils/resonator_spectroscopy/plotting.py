@@ -33,7 +33,9 @@ def plot_raw_phase(ds: xr.Dataset, sensors: List) -> Figure:
     """
     num_sensors = len(sensors)
 
-    fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
+    fig, axes = plt.subplots(
+        1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False
+    )
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
@@ -47,7 +49,9 @@ def plot_raw_phase(ds: xr.Dataset, sensors: List) -> Figure:
 
         # Create a second x-axis for detuning_MHz
         ax2 = ax.twiny()
-        ax2.plot(sensor_data.detuning / u.MHz, sensor_data.phase, "o-", markersize=2, alpha=0)
+        ax2.plot(
+            sensor_data.detuning / u.MHz, sensor_data.phase, "o-", markersize=2, alpha=0
+        )
         ax2.set_xlabel("Detuning [MHz]")
 
     fig.suptitle("Resonator spectroscopy (phase)")
@@ -55,7 +59,9 @@ def plot_raw_phase(ds: xr.Dataset, sensors: List) -> Figure:
     return fig
 
 
-def plot_raw_amplitude_with_fit(ds: xr.Dataset, sensors: List, fits: xr.Dataset = None) -> Figure:
+def plot_raw_amplitude_with_fit(
+    ds: xr.Dataset, sensors: List, fits: xr.Dataset = None
+) -> Figure:
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given sensors.
 
@@ -74,7 +80,9 @@ def plot_raw_amplitude_with_fit(ds: xr.Dataset, sensors: List, fits: xr.Dataset 
         The matplotlib figure object containing the plots.
     """
     num_sensors = len(sensors)
-    fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
+    fig, axes = plt.subplots(
+        1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False
+    )
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
@@ -88,7 +96,9 @@ def plot_raw_amplitude_with_fit(ds: xr.Dataset, sensors: List, fits: xr.Dataset 
     return fig
 
 
-def plot_individual_amplitude_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_id: str, fit: xr.Dataset = None):
+def plot_individual_amplitude_with_fit(
+    ax: Axes, sensor_data: xr.Dataset, sensor_id: str, fit: xr.Dataset = None
+):
     """
     Plots individual sensor data on a given axis with optional fit.
 
@@ -104,18 +114,32 @@ def plot_individual_amplitude_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor
         The dataset containing the fit parameters (default is None).
     """
     # Plot the amplitude data
-    ax.plot(sensor_data.full_freq / u.GHz, sensor_data.IQ_abs / u.mV, "o-", markersize=2, label="Data")
+    ax.plot(
+        sensor_data.full_freq / u.GHz,
+        sensor_data.IQ_abs / u.mV,
+        "o-",
+        markersize=2,
+        label="Data",
+    )
     ax.set_xlabel("RF frequency [GHz]")
     ax.set_ylabel(r"$R=\sqrt{I^2 + Q^2}$ [mV]")
     ax.set_title(f"Sensor: {sensor_id}")
 
     # Create a second x-axis for detuning_MHz
     ax2 = ax.twiny()
-    ax2.plot(sensor_data.detuning / u.MHz, sensor_data.IQ_abs / u.mV, "o-", markersize=2, alpha=0)
+    ax2.plot(
+        sensor_data.detuning / u.MHz,
+        sensor_data.IQ_abs / u.mV,
+        "o-",
+        markersize=2,
+        alpha=0,
+    )
     ax2.set_xlabel("Detuning [MHz]")
 
     # Plot the fitted data if available
-    if fit is not None and all(k in fit for k in ["amplitude", "position", "width", "base_line"]):
+    if fit is not None and all(
+        k in fit for k in ["amplitude", "position", "width", "base_line"]
+    ):
         fitted_data = lorentzian_dip(
             sensor_data.detuning,
             float(fit.amplitude.values),

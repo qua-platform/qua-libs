@@ -3,7 +3,11 @@
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.common_utils.experiment import QubitsExperimentNodeParameters
+from calibration_utils.common_utils.experiment import (
+    HeraldedInitializeParameters,
+    ParityDiffAnalysisParameters,
+    QubitsExperimentNodeParameters,
+)
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -28,5 +32,6 @@ class Parameters(
     CommonNodeParameters,
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
+    ParityDiffAnalysisParameters,
 ):
-    pass
+    """Parameter set for 10b_time_rabi_chevron."""

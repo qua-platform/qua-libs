@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from qualang_tools.multi_user import qm_session
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
+from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.experiment import get_sensors, get_qubits
 from calibration_utils.mixer_calibration import (
     Parameters,
@@ -35,7 +36,9 @@ node.machine = Quam.load("/Users/kalidu_laptop/.qualibrate/quam_state")
 
 
 # %% {Execute_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -91,6 +94,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     plt.show()
     # Store the generated figures
     node.results["figures"] = figs
+    annotate_node_figures(node)
 
 
 # %% {Save_results}

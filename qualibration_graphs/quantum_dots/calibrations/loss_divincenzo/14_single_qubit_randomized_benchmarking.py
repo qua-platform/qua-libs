@@ -5,19 +5,25 @@ import xarray as xr
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
-from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.single_qubit_randomized_benchmarking import (
     Parameters,
     build_single_qubit_clifford_tables,
+    avg_physical_gates_per_clifford,
+    decomposition_type,
     play_rb_gate,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from calibration_utils.common_utils.experiment import get_qubits
+from calibration_utils.common_utils.experiment import (
+    get_qubits,
+    enable_dual_drive_mw,
+    progress_counter_with_log,
+)
+from calibration_utils.common_utils.annotation import annotate_node_figures
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
@@ -48,11 +54,16 @@ Clifford gate fidelity F_avg = 1 − epc.
 Prerequisites:
     - Having calibrated the sensor dots and resonators (nodes 2a, b, 3).
     - Having calibrated initialization, operation and PSB measurement points (nodes 4, 5).
-    - Having calibrated π and π/2 pulse parameters (nodes 08a, 08b, 10a).
+    - Having calibrated π and π/2 pulse parameters (nodes 09a, 09b, 11a).
     - Native gate operations (x90, x180, -x90, y90, y180, -y90) defined on the qubit XY channel.
 
 State update:
     - The averaged single qubit gate fidelity: qubit.gate_fidelity["averaged"].
+
+TODO:
+    Fix alignment/timing consistency between FEM output channels (LF vs MW) so pulses
+    and background offsets line up across hardware and simulated RB waveforms.
+
 """
 
 
@@ -107,7 +118,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     max_random = max_depth - 1  # d-1 random Cliffords for depth d
 
     node.log(
-        f"RB config: {num_depths} depths (max {max_depth}), " f"{num_circuits} circuits, {num_shots} shots/circuit"
+        f"RB config: {num_depths} depths (max {max_depth}), "
+        f"{num_circuits} circuits, {num_shots} shots/circuit"
     )
 
     # Register sweep axes for xarray dataset
@@ -124,9 +136,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
+        enable_dual_drive_mw(node)
+
         # ── QUA variables ─────────────────────────────────────────────────
         n = declare(int)
-        n_st = declare_stream()
+        n_st = declare_output_stream()
         depth_idx = declare(int)
         circuit_idx = declare(int)
         gate_idx = declare(int)
@@ -137,8 +151,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         clifford_compose_qua = declare(int, value=clifford_tables["compose"])
         clifford_inverse_qua = declare(int, value=clifford_tables["inverse"])
         clifford_decomp_qua = declare(int, value=clifford_tables["decomp_flat"])
-        clifford_decomp_offsets_qua = declare(int, value=clifford_tables["decomp_offsets"])
-        clifford_decomp_lengths_qua = declare(int, value=clifford_tables["decomp_lengths"])
+        clifford_decomp_offsets_qua = declare(
+            int, value=clifford_tables["decomp_offsets"]
+        )
+        clifford_decomp_lengths_qua = declare(
+            int, value=clifford_tables["decomp_lengths"]
+        )
 
         # Mutable arrays for pre-computed circuit data
         circuit_array = declare(int, size=max(max_random, 1))
@@ -159,7 +177,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # Measurement variables (per qubit)
         state = declare(int)
-        state_st = {qubit.name: declare_stream() for qubit in qubits}
+        state_st = {qubit.name: declare_output_stream() for qubit in qubits}
+
+        i_st, q_st = {qubit.name: declare_output_stream() for qubit in qubits}, {qubit.name: declare_output_stream() for qubit in qubits}
 
         # RNG for on-PPU Clifford generation
         rng = Random(seed=node.parameters.seed)
@@ -193,7 +213,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         assign(circuit_array[i], rand_clifford)
                         assign(
                             total_clifford,
-                            clifford_compose_qua[rand_clifford * num_cliffords + total_clifford],
+                            clifford_compose_qua[
+                                rand_clifford * num_cliffords + total_clifford
+                            ],
                         )
 
                     # Snapshot inverse at this depth checkpoint
@@ -211,15 +233,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     with for_(n, 0, n < num_shots, n + 1):
                         # --- Reset frame ---
-                        reset_frame(qubit.xy.name)
-                        align()
 
-                        # --- Empty ---
-                        qubit.empty()
+                        reset_frame(qubit.xy.name)
                         align()
 
                         # --- Initialize ---
                         qubit.initialize()
+
                         align()
 
                         # --- Gate sequence: d-1 random Cliffords ---
@@ -249,6 +269,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     clifford_decomp_qua[decomp_offset + gate_idx],
                                 )
                                 play_rb_gate(qubit, current_gate)
+                                # align()
 
                         # --- Inverse: play recovery Clifford ---
                         assign(inverse_clifford, inverses[depth_idx])
@@ -274,18 +295,23 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                         # --- Measure ---
                         align()
+
+                        p = qubit.measure(return_iq = False)
+
+                        align()
+                        # --- Compensation ---
+                        qubit.voltage_sequence.ramp_to_zero()
+
+                        align()
+
                         assign(
                             state,
-                            Cast.to_int(qubit.measure()),
+                            Cast.to_int(p),
                         )
 
-                        # --- Compensation ---
-                        # TODO: Compensation pulse not working correctly
-                        align()
-                        # qubit.voltage_sequence.ramp_to_zero()
-                        qubit.voltage_sequence.apply_compensation_pulse()
-
                         save(state, state_st[qubit.name])
+                        # save(i_meas, i_st[qubit.name])
+                        # save(q_meas, q_st[qubit.name])
 
         # ── Stream processing ─────────────────────────────────────────
         # Buffer order matches loop nesting: circuit → depth → shot
@@ -300,15 +326,35 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     .buffer(num_circuits)
                     .save(f"state_{qubit.name}")
                 )
+                # (
+                #     i_st[qubit.name]
+                #     .buffer(num_shots)
+                #     .map(FUNCTIONS.average())
+                #     .buffer(num_depths)
+                #     .buffer(num_circuits)
+                #     .save(f"state_{qubit.name}")
+                # )
+                # (
+                #     q_st[qubit.name]
+                #     .buffer(num_shots)
+                #     .map(FUNCTIONS.average())
+                #     .buffer(num_depths)
+                #     .buffer(num_circuits)
+                #     .save(f"state_{qubit.name}")
+                # )
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["qua_program"], node.parameters
+    )
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
@@ -317,19 +363,22 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch raw data."""
-    qmm = node.machine.connect()
+    qmm = node.machine.connect(timeout = node.parameters.timeout)
     config = node.machine.generate_config()
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter(
+            progress_counter_with_log(
                 data_fetcher.get("n", 0),
                 node.parameters.num_circuits_per_length,
                 start_time=data_fetcher.t_start,
+                node=node,
             )
         node.log(job.execution_report())
     node.results["ds_raw"] = dataset
@@ -352,12 +401,15 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     ds_raw = node.results["ds_raw"]
     qubits = node.namespace["qubits"]
 
-    fit_results = fit_raw_data(ds_raw, qubits)
+    fit_results = fit_raw_data(ds_raw, qubits, avg_physical_gates_per_clifford(decomposition_type))
     node.results["fit_results"] = fit_results
 
     log_fitted_results(fit_results, node.log)
 
-    node.outcomes = {qname: ("successful" if r["success"] else "failed") for qname, r in fit_results.items()}
+    node.outcomes = {
+        qname: ("successful" if r["success"] else "failed")
+        for qname, r in fit_results.items()
+    }
 
 
 # %% {Plot_data}
@@ -370,6 +422,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
     fig = plot_raw_data_with_fit(ds_raw, fit_results, qubits)
     node.results["figure"] = fig
+    annotate_node_figures(node)
 
 
 # %% {Update_state}
@@ -380,7 +433,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            q.gate_fidelity["averaged"] = float(node.results["fit_results"][q.name]["gate_fidelity"])
+            q.gate_fidelity["averaged"] = float(
+                node.results["fit_results"][q.name]["native_gate_fidelity"]
+            )
 
 
 # %% {Save_results}

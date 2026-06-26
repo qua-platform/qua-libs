@@ -135,7 +135,9 @@ def Y(which: int, t0, pulse_class=GaussianPulse, **kwargs) -> Gate:
     return Gate("Y", which, pulse, "drive")
 
 
-def HeisenbergRampGate(which: tuple[int, int], t0, pulse_class=CouplingPulse, **kwargs) -> Gate:
+def HeisenbergRampGate(
+    which: tuple[int, int], t0, pulse_class=CouplingPulse, **kwargs
+) -> Gate:
     """
     Create a two-qubit Heisenberg coupling gate with ramp profile.
 
@@ -262,7 +264,9 @@ class Circuit:
         # Determine time points
         tsave = self.tsave
         if tsave is None:
-            tsave = build_tsave_synced_fixed_n(drives, couplings, n_points=self.n_points, pad=self.pad)
+            tsave = build_tsave_synced_fixed_n(
+                drives, couplings, n_points=self.n_points, pad=self.pad
+            )
 
         # Solve dynamics
         if solver == "se":

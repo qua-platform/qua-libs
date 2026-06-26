@@ -7,8 +7,10 @@ from quam.components.channels import StickyChannelAddon
 from quam.components.hardware import FrequencyConverter, LocalOscillator
 from quam.components.ports import LFFEMAnalogInputPort, LFFEMAnalogOutputPort
 from quam_builder.architecture.quantum_dots.components import VoltageGate
-from quam_builder.architecture.quantum_dots.components.readout_resonator import ReadoutResonatorSingle
-from quam_builder.architecture.quantum_dots.components.voltage_gate import QdacSpec
+from quam_builder.architecture.quantum_dots.components.readout_resonator import (
+    ReadoutResonatorSingle,
+)
+from quam_builder.architecture.quantum_dots.components.dac_spec import QdacSpec
 from quam_builder.architecture.quantum_dots.components.xy_drive import XYDriveIQ
 from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam
 from quam_builder.architecture.quantum_dots.qubit import LDQubit
@@ -80,12 +82,12 @@ def _create_xy_drives(controller: str, xy_fem_slot: int) -> dict[int, XYDriveIQ]
 
 def _register_charge_stability_points(machine: LossDiVincenzoQuam) -> None:
     quantum_dot_1 = machine.quantum_dots["virtual_dot_1"]
-    quantum_dot_1.add_point_with_step_macro(
+    quantum_dot_1.add_point(
         "empty",
         voltages={"virtual_dot_1": -0.1},
         duration=500,
     )
-    quantum_dot_1.add_point_with_step_macro(
+    quantum_dot_1.add_point(
         "initialize",
         voltages={"virtual_dot_1": 0.05},
         duration=500,
@@ -96,12 +98,12 @@ def _register_charge_stability_points(machine: LossDiVincenzoQuam) -> None:
     )
 
     quantum_dot_2 = machine.quantum_dots["virtual_dot_2"]
-    quantum_dot_2.add_point_with_step_macro(
+    quantum_dot_2.add_point(
         "empty",
         voltages={"virtual_dot_2": -0.1},
         duration=500,
     )
-    quantum_dot_2.add_point_with_step_macro(
+    quantum_dot_2.add_point(
         "initialize",
         voltages={"virtual_dot_2": 0.05},
         duration=500,
@@ -118,13 +120,17 @@ def _register_qubit_readout_topology(machine: LossDiVincenzoQuam) -> None:
         sensor_dot_ids=["virtual_sensor_1"],
         id="qd_pair_1_2",
     )
-    machine.sensor_dots["virtual_sensor_1"]._add_readout_params(  # pylint: disable=protected-access
+    machine.sensor_dots[
+        "virtual_sensor_1"
+    ]._add_readout_params(  # pylint: disable=protected-access
         quantum_dot_pair_id="qd_pair_1_2",
         threshold=0.0,
     )
 
 
-def _register_qubits(machine: LossDiVincenzoQuam, xy_drives: dict[int, XYDriveIQ]) -> list[LDQubit]:
+def _register_qubits(
+    machine: LossDiVincenzoQuam, xy_drives: dict[int, XYDriveIQ]
+) -> list[LDQubit]:
     pulse_duration_cc = 25
     qubit_configs = [
         ("Q1", "virtual_dot_1", "virtual_dot_2", 1),
@@ -142,12 +148,12 @@ def _register_qubits(machine: LossDiVincenzoQuam, xy_drives: dict[int, XYDriveIQ
         qubit = machine.qubits[qubit_name]
         qubit.id = qubit_name
 
-        qubit.add_point_with_step_macro(
+        qubit.add_point(
             "empty",
             voltages={quantum_dot_id: -0.1},
             duration=500,
         )
-        qubit.add_point_with_step_macro(
+        qubit.add_point(
             "initialize",
             voltages={quantum_dot_id: 0.05},
             duration=500,
@@ -219,7 +225,7 @@ def create_minimal_quam() -> LossDiVincenzoQuam:
         sticky=StickyChannelAddon(duration=1000, digital=False),
         attenuation=10,
         current_external_voltage=-0.0048056,
-        qdac_spec=QdacSpec(qdac_output_port=1),
+        dac_spec=QdacSpec(qdac_output_port=1),
     )
     plunger_2 = VoltageGate(
         id="plunger_2",
@@ -232,7 +238,7 @@ def create_minimal_quam() -> LossDiVincenzoQuam:
         sticky=StickyChannelAddon(duration=1000, digital=False),
         attenuation=10,
         current_external_voltage=-0.0047219,
-        qdac_spec=QdacSpec(qdac_output_port=2),
+        dac_spec=QdacSpec(qdac_output_port=2),
     )
     sensor_dc_1 = VoltageGate(
         id="sensor_DC_1",
@@ -245,7 +251,7 @@ def create_minimal_quam() -> LossDiVincenzoQuam:
         sticky=StickyChannelAddon(duration=1000, digital=False),
         attenuation=10,
         current_external_voltage=-0.0047641,
-        qdac_spec=QdacSpec(qdac_output_port=3),
+        dac_spec=QdacSpec(qdac_output_port=3),
     )
     sensor_dc_2 = VoltageGate(
         id="sensor_DC_2",
@@ -258,7 +264,7 @@ def create_minimal_quam() -> LossDiVincenzoQuam:
         sticky=StickyChannelAddon(duration=1000, digital=False),
         attenuation=10,
         current_external_voltage=-0.0047641,
-        qdac_spec=QdacSpec(qdac_output_port=4),
+        dac_spec=QdacSpec(qdac_output_port=4),
     )
 
     readout_resonator_1 = ReadoutResonatorSingle(

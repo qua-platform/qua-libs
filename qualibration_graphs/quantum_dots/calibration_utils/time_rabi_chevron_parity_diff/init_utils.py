@@ -128,9 +128,13 @@ def compute_fft_diagnostics(
 
         # Prefer Gaussian (natural for Gaussian pulse envelope);
         # fall back to Lorentzian (natural for exponential decay).
-        mu, amp, curve = _fit_peak_to_fft(freqs_fft, mag, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian")
+        mu, amp, curve = _fit_peak_to_fft(
+            freqs_fft, mag, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian"
+        )
         if mu is None:
-            mu, amp, curve = _fit_peak_to_fft(freqs_fft, mag, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian")
+            mu, amp, curve = _fit_peak_to_fft(
+                freqs_fft, mag, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian"
+            )
 
         peak_curve_per_slice.append(curve)
         if mu is not None and mu > 1e-6:
@@ -164,9 +168,13 @@ def compute_fft_diagnostics(
             np.array([magnitude_per_slice[i] for i in top_idxs], dtype=float),
             axis=0,
         )
-        mu_m, _, _ = _fit_peak_to_fft(freqs_fft, marginalised, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian")
+        mu_m, _, _ = _fit_peak_to_fft(
+            freqs_fft, marginalised, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian"
+        )
         if mu_m is None:
-            mu_m, _, _ = _fit_peak_to_fft(freqs_fft, marginalised, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian")
+            mu_m, _, _ = _fit_peak_to_fft(
+                freqs_fft, marginalised, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian"
+            )
         if mu_m is not None and mu_m > 1e-6:
             f_omega_est = mu_m
             omega_est = 2.0 * np.pi * f_omega_est
@@ -215,7 +223,9 @@ def compute_fft_diagnostics(
         "ridge_curve_cyc_ns": ridge_curve_cyc_ns,
         "rabi_curve": rabi_curve,
         # Backward-compatible aliases
-        "lorentzian_mean_per_slice": [float(f) if np.isfinite(f) else None for f in peak_freq_per_slice],
+        "lorentzian_mean_per_slice": [
+            float(f) if np.isfinite(f) else None for f in peak_freq_per_slice
+        ],
         "lorentzian_curve_per_slice": peak_curve_per_slice,
     }
 
@@ -279,7 +289,9 @@ def _extract_lorentzian_hwhm(
     magnitude: np.ndarray,
 ) -> float | None:
     """Fit Lorentzian to FFT magnitude and return HWHM (cycles/ns)."""
-    _, _, curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian")
+    _, _, curve = _fit_peak_to_fft(
+        freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian"
+    )
     if curve is None:
         return None
     mask = (freqs_fft >= FFT_FREQ_MIN) & (freqs_fft <= FFT_FREQ_MAX)
@@ -293,7 +305,11 @@ def _extract_lorentzian_hwhm(
             _lorentzian,
             f,
             m,
-            p0=[float(m[peak_idx]), float(f[peak_idx]), max(1e-6, (f[-1] - f[0]) / 4.0)],
+            p0=[
+                float(m[peak_idx]),
+                float(f[peak_idx]),
+                max(1e-6, (f[-1] - f[0]) / 4.0),
+            ],
             bounds=([0, FFT_FREQ_MIN, 1e-6], [np.inf, FFT_FREQ_MAX, np.inf]),
             maxfev=500,
         )

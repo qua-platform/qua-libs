@@ -13,6 +13,7 @@ from calibration_utils.time_rabi_chevron_parity_diff.init_utils import (
     FFT_FREQ_MAX,
     compute_fft_diagnostics,
 )
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 
 
 def _get_freq_axis_hz(ds: xr.Dataset, qubit: Any) -> np.ndarray:
@@ -33,6 +34,7 @@ def _plot_chevron_ax(
     subtitle: str = "",
     fit_result: dict | None = None,
     show_fit: bool = True,
+    analysis_signal: str = "E_p2_given_p1_0",
 ) -> None:
     """Plot a single chevron heatmap on the given axes."""
     detuning_mhz = (freq_hz - freq_hz.mean()) * 1e-6  # Center for readability
@@ -57,7 +59,7 @@ def _plot_chevron_ax(
     ax.set_ylabel("Drive detuning (MHz)")
     title = f"{qubit_name}" + (f" — {subtitle}" if subtitle else "")
     ax.set_title(title)
-    plt.colorbar(im, ax=ax, label="Parity diff")
+    plt.colorbar(im, ax=ax, label=analysis_signal)
 
     # optimal_duration is π-time (t_π = π/Ω). Draw lines and star at π-rotation point.
     if fit_result and show_fit and fit_result.get("success"):
@@ -92,7 +94,12 @@ def _plot_fft_2d_ax(
     mag_2d = np.array([diag["magnitude_per_slice"][i][mask] for i in range(n_freqs)])
 
     detuning_mhz = (freq_hz - freq_hz.mean()) * 1e-6
-    extent = (float(f_plot[0]), float(f_plot[-1]), float(detuning_mhz[0]), float(detuning_mhz[-1]))
+    extent = (
+        float(f_plot[0]),
+        float(f_plot[-1]),
+        float(detuning_mhz[0]),
+        float(detuning_mhz[-1]),
+    )
     im = ax.imshow(
         mag_2d,
         aspect="auto",
@@ -200,10 +207,16 @@ def _plot_fft_diagnostics_ax(
     ax_tpi.legend(loc="upper right", fontsize=8)
 
 
-def _get_qubit_names_from_ds(ds: xr.Dataset) -> List[str]:
-    """Resolve qubit names from dataset pdiff_ vars (pdiff_Q1 -> Q1)."""
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_") and not v.endswith("_fit")]
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
+def _get_qubit_names_from_ds(
+    ds: xr.Dataset,
+    qubits: List[Any],
+    analysis_signal: str,
+) -> List[str]:
+    return get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
 
 def plot_raw_data_with_fit(
@@ -211,6 +224,7 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
+    analysis_signal: str = "E_p2_given_p1_0",
 ) -> "plt.Figure":
     """Plot data | 2-D FFT | FFT diagnostics for each qubit.
 
@@ -221,13 +235,15 @@ def plot_raw_data_with_fit(
     * Column 3 — FFT at resonance (top) + t_π vs detuning (bottom)
       with Rabi fit.
     """
-    qubit_names = _get_qubit_names_from_ds(ds)
+    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
 
     qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
-    qubit_by_index = dict(zip(qubit_names, (qubits[i] for i in range(min(len(qubits), len(qubit_names))))))
+    qubit_by_index = dict(
+        zip(qubit_names, (qubits[i] for i in range(min(len(qubits), len(qubit_names)))))
+    )
     n = len(qubit_names)
 
     nrow = n
@@ -236,27 +252,53 @@ def plot_raw_data_with_fit(
 
     for i, qname in enumerate(qubit_names):
         ax_data, ax_fft2d, ax_diag_col = axes[i, 0], axes[i, 1], axes[i, 2]
-        pdiff_var = f"pdiff_{qname}"
+        signal_var = f"{analysis_signal}_{qname}"
 
-        qubit = qubits_by_name.get(qname) or qubit_by_index.get(qname) or (qubits[0] if qubits else None)
-        freq_hz = _get_freq_axis_hz(ds, qubit) if qubit else np.asarray(ds.detuning.values, dtype=float)
+        qubit = (
+            qubits_by_name.get(qname)
+            or qubit_by_index.get(qname)
+            or (qubits[0] if qubits else None)
+        )
+        freq_hz = (
+            _get_freq_axis_hz(ds, qubit)
+            if qubit
+            else np.asarray(ds.detuning.values, dtype=float)
+        )
         durations_ns = np.asarray(ds.pulse_duration.values, dtype=float)
         fr = fit_results.get(qname, {})
         f_res = fr.get("optimal_frequency") if fr.get("success") else None
 
         # Column 1: raw data chevron
-        if pdiff_var not in ds.data_vars:
-            ax_data.text(0.5, 0.5, f"No data for {qname}", transform=ax_data.transAxes, ha="center")
+        if signal_var not in ds.data_vars:
+            ax_data.text(
+                0.5,
+                0.5,
+                f"No data for {qname}",
+                transform=ax_data.transAxes,
+                ha="center",
+            )
             ax_data.set_title(f"{qname} — data")
         else:
-            pdiff = np.asarray(ds[pdiff_var].values)
-            _plot_chevron_ax(ax_data, pdiff, freq_hz, durations_ns, qname, "data", fit_result=fr, show_fit=True)
+            signal_2d = np.asarray(ds[signal_var].values)
+            _plot_chevron_ax(
+                ax_data,
+                signal_2d,
+                freq_hz,
+                durations_ns,
+                qname,
+                "data",
+                fit_result=fr,
+                show_fit=True,
+                analysis_signal=analysis_signal,
+            )
 
-        if pdiff_var in ds.data_vars:
-            pdiff = np.asarray(ds[pdiff_var].values)
+        if signal_var in ds.data_vars:
+            signal_2d = np.asarray(ds[signal_var].values)
 
             # Column 2: 2D FFT heatmap (returns diag dict for reuse)
-            diag = _plot_fft_2d_ax(ax_fft2d, pdiff, freq_hz, durations_ns, qname, f_res)
+            diag = _plot_fft_2d_ax(
+                ax_fft2d, signal_2d, freq_hz, durations_ns, qname, f_res
+            )
 
             # Column 3: FFT at resonance (top) + t_π vs detuning (bottom)
             ax_diag_col.axis("off")
@@ -265,9 +307,21 @@ def plot_raw_data_with_fit(
             ax_tpi = fig.add_subplot(gs[1])
             _plot_fft_diagnostics_ax(ax_fft, ax_tpi, diag, freq_hz, qname, f_res)
         else:
-            ax_fft2d.text(0.5, 0.5, f"No data for {qname}", transform=ax_fft2d.transAxes, ha="center")
-            ax_diag_col.text(0.5, 0.5, f"No data for {qname}", transform=ax_diag_col.transAxes, ha="center")
+            ax_fft2d.text(
+                0.5,
+                0.5,
+                f"No data for {qname}",
+                transform=ax_fft2d.transAxes,
+                ha="center",
+            )
+            ax_diag_col.text(
+                0.5,
+                0.5,
+                f"No data for {qname}",
+                transform=ax_diag_col.transAxes,
+                ha="center",
+            )
 
-    fig.suptitle("Time Rabi chevron (parity diff)")
+    fig.suptitle(f"Time Rabi chevron ({analysis_signal})")
     fig.tight_layout()
     return fig

@@ -15,11 +15,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 
-def _get_qubit_names_from_ds(ds: xr.Dataset) -> List[str]:
-    """Extract qubit names from ``pdiff_<name>`` data-variable keys."""
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_") and not v.endswith("_fit")]
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
+
+def _get_qubit_names_from_ds(
+    ds: xr.Dataset,
+    qubits: List[Any],
+    analysis_signal: str,
+) -> List[str]:
+    return get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
 
 def _plot_trace_ax(
@@ -28,6 +36,7 @@ def _plot_trace_ax(
     qubit_name: str,
     trace_fit: dict | None,
     label: str,
+    analysis_signal: str = "E_p2_given_p1_0",
     color: str = "b",
     fit_color: str = "r",
 ) -> None:
@@ -37,19 +46,21 @@ def _plot_trace_ax(
         ax.set_title(f"{qubit_name} — {label}")
         return
 
-    pdiff = trace_fit["pdiff"]
+    trace = trace_fit.get("signal", trace_fit.get("pdiff"))
     fitted = trace_fit.get("fitted_curve")
     t_shifted = trace_fit["tau_shifted"]
     t_plot = t_shifted + tau_ns[0]
 
-    ax.plot(t_plot, pdiff, f"{color}-", lw=0.8, alpha=0.7)
-    ax.scatter(t_plot, pdiff, c=color, s=8, alpha=0.5, zorder=3, label="Data")
+    ax.plot(t_plot, trace, f"{color}-", lw=0.8, alpha=0.7)
+    ax.scatter(t_plot, trace, c=color, s=8, alpha=0.5, zorder=3, label="Data")
 
     if fitted is not None:
-        ax.plot(t_plot, fitted, f"{fit_color}-", lw=1.5, alpha=0.9, label="Damped cosine")
+        ax.plot(
+            t_plot, fitted, f"{fit_color}-", lw=1.5, alpha=0.9, label="Damped cosine"
+        )
 
     ax.set_xlabel("Idle time (ns)")
-    ax.set_ylabel("Parity difference")
+    ax.set_ylabel(analysis_signal)
     ax.set_ylim(-0.05, 1.05)
 
     f_hz = trace_fit.get("ramsey_freq", np.nan)
@@ -65,6 +76,7 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
+    analysis_signal: str = "E_p2_given_p1_0",
 ) -> "plt.Figure":
     """Plot ±δ Ramsey analysis for each qubit.
 
@@ -72,7 +84,7 @@ def plot_raw_data_with_fit(
     * Column 1 — +δ trace with damped-cosine fit.
     * Column 2 — −δ trace with damped-cosine fit.
     """
-    qubit_names = _get_qubit_names_from_ds(ds)
+    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
@@ -99,6 +111,7 @@ def plot_raw_data_with_fit(
             qname,
             fit_plus,
             label=f"+δ ({det_plus_mhz:+.1f} MHz)",
+            analysis_signal=analysis_signal,
             color="b",
             fit_color="r",
         )
@@ -108,10 +121,11 @@ def plot_raw_data_with_fit(
             qname,
             fit_minus,
             label=f"−δ ({det_minus_mhz:+.1f} MHz)",
+            analysis_signal=analysis_signal,
             color="C2",
             fit_color="C3",
         )
 
-    fig.suptitle("Ramsey ±δ triangulation (parity diff)")
+    fig.suptitle(f"Ramsey ±δ triangulation ({analysis_signal})")
     fig.tight_layout()
     return fig

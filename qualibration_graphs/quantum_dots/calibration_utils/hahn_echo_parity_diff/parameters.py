@@ -1,11 +1,15 @@
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.common_utils.experiment import QubitsExperimentNodeParameters
+from calibration_utils.common_utils.experiment import (
+    HeraldedInitializeParameters,
+    ParityDiffAnalysisParameters,
+    QubitsExperimentNodeParameters,
+)
 
 
 class NodeSpecificParameters(RunnableParameters):
-    """Node-specific parameters for 12_hahn_echo_parity_diff."""
+    """Node-specific parameters for 12_hahn_echo."""
 
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
@@ -24,5 +28,6 @@ class Parameters(
     CommonNodeParameters,
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
+    ParityDiffAnalysisParameters,
 ):
-    """Parameter set for 12_hahn_echo_parity_diff."""
+    """Parameter set for 12_hahn_echo."""

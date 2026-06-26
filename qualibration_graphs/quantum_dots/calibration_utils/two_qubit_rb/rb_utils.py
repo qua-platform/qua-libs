@@ -75,9 +75,14 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
     def generate_circuits_and_transpile(self, interleaved: bool = False):
         """Generate circuits and transpile them to the basis gate set."""
         self.circuits = self.generate_circuits(interleaved)
-        self.transpiled_circuits = {l: self.transpile_per_clifford(circuits) for l, circuits in self.circuits.items()}
+        self.transpiled_circuits = {
+            l: self.transpile_per_clifford(circuits)
+            for l, circuits in self.circuits.items()
+        }
 
-    def generate_circuits_per_length(self, length: int, interleaved: bool = False) -> list[QuantumCircuit]:
+    def generate_circuits_per_length(
+        self, length: int, interleaved: bool = False
+    ) -> list[QuantumCircuit]:
         """
         Generate random Clifford circuits for a given length.
 
@@ -114,10 +119,16 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
 
                 if interleaved:
                     if not hasattr(self, "target_gate_instruction"):
-                        raise AttributeError("The attribute 'target_gate_instruction' is not defined in the class.")
+                        raise AttributeError(
+                            "The attribute 'target_gate_instruction' is not defined in the class."
+                        )
 
-                    qc.append(self.target_gate_instruction, range(self.num_qubits))  # pylint: disable=no-member
-                    cliff = Clifford(self.target_gate_instruction) @ cliff  # pylint: disable=no-member
+                    qc.append(
+                        self.target_gate_instruction, range(self.num_qubits)
+                    )  # pylint: disable=no-member
+                    cliff = (
+                        Clifford(self.target_gate_instruction) @ cliff
+                    )  # pylint: disable=no-member
 
                 clifford_product = cliff @ clifford_product  # Update the total Clifford
 
@@ -129,7 +140,9 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
 
         return circuits
 
-    def generate_circuits(self, interleaved: bool = False) -> dict[int, list[QuantumCircuit]]:
+    def generate_circuits(
+        self, interleaved: bool = False
+    ) -> dict[int, list[QuantumCircuit]]:
         """
         Generate circuits for all specified lengths.
 
@@ -146,7 +159,9 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
 
         return circuits
 
-    def transpile_per_clifford(self, circuits: list[QuantumCircuit]) -> list[QuantumCircuit]:
+    def transpile_per_clifford(
+        self, circuits: list[QuantumCircuit]
+    ) -> list[QuantumCircuit]:
         """
         Transpile circuits to the basis gate set.
 
@@ -167,7 +182,9 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
 
                 if isinstance(instruction.operation, Clifford):
                     # if optimization level is > 1 one might get fractional angles
-                    transpiled_gate = transpile(qc_per_inst, basis_gates=self.basis_gates, optimization_level=1)
+                    transpiled_gate = transpile(
+                        qc_per_inst, basis_gates=self.basis_gates, optimization_level=1
+                    )
                 else:
                     transpiled_gate = qc_per_inst.copy()
 
@@ -190,7 +207,12 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
         fidelity = self.get_fidelity(alpha)
 
         plt.figure()
-        plt.plot(self.circuit_lengths, self.get_decay_curve(data, num_averages), "o", label="Data")
+        plt.plot(
+            self.circuit_lengths,
+            self.get_decay_curve(data, num_averages),
+            "o",
+            label="Data",
+        )
         plt.plot(
             self.circuit_lengths,
             rb_decay_curve(np.array(self.circuit_lengths), A, alpha, B),
@@ -215,7 +237,13 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
         """
         decay_curve = self.get_decay_curve(data, num_averages)
 
-        popt, _ = curve_fit(rb_decay_curve, self.circuit_lengths, decay_curve, p0=[0.75, -0.1, 0.25], maxfev=10000)
+        popt, _ = curve_fit(
+            rb_decay_curve,
+            self.circuit_lengths,
+            decay_curve,
+            p0=[0.75, -0.1, 0.25],
+            maxfev=10000,
+        )
         A, alpha, B = popt
 
         return A, alpha, B
@@ -256,7 +284,7 @@ class StandardRB(RBBase):
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
-        amplification_lengths: list[int],
+        circuit_lengths: list[int],
         num_circuits_per_length: int,
         basis_gates: list[str] = ["cz", "rz", "sx", "x"],
         num_qubits: int = 2,
@@ -267,7 +295,7 @@ class StandardRB(RBBase):
         Initialize standard RB circuit generator.
 
         Args:
-            amplification_lengths: List of circuit depths to generate.
+            circuit_lengths: List of circuit depths to generate.
             num_circuits_per_length: Number of random circuits per depth.
             basis_gates: List of basis gates for transpilation.
             num_qubits: Number of qubits in the circuits.
@@ -276,7 +304,12 @@ class StandardRB(RBBase):
         """
 
         super().__init__(
-            amplification_lengths, num_circuits_per_length, basis_gates, num_qubits, reduce_to_1q_cliffords, seed
+            circuit_lengths,
+            num_circuits_per_length,
+            basis_gates,
+            num_qubits,
+            reduce_to_1q_cliffords,
+            seed,
         )
 
         self.generate_circuits_and_transpile()
@@ -288,7 +321,7 @@ class InterleavedRB(RBBase):
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         target_gate: Literal["cz", "idle_2q"],
-        amplification_lengths: list[int],
+        circuit_lengths: list[int],
         num_circuits_per_length: int,
         basis_gates: list[str] = ["cz", "rz", "sx", "x"],
         num_qubits: int = 2,
@@ -300,7 +333,7 @@ class InterleavedRB(RBBase):
 
         Args:
             target_gate: The gate to interleave between Cliffords.
-            amplification_lengths: List of circuit depths to generate.
+            circuit_lengths: List of circuit depths to generate.
             num_circuits_per_length: Number of random circuits per depth.
             basis_gates: List of basis gates for transpilation.
             num_qubits: Number of qubits in the circuits.
@@ -312,7 +345,12 @@ class InterleavedRB(RBBase):
         self.target_gate_instruction = self.target_gate_to_instruction()
 
         super().__init__(
-            amplification_lengths, num_circuits_per_length, basis_gates, num_qubits, reduce_to_1q_cliffords, seed
+            circuit_lengths,
+            num_circuits_per_length,
+            basis_gates,
+            num_qubits,
+            reduce_to_1q_cliffords,
+            seed,
         )
 
         self.generate_circuits_and_transpile(interleaved=True)

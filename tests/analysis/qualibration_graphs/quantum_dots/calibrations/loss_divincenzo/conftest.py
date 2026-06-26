@@ -11,9 +11,9 @@ shared test helpers from ``shared_fixtures``.
 
 from __future__ import annotations
 
-import os
 import sys
 import warnings
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Dict, Optional
 from unittest.mock import patch
@@ -26,7 +26,12 @@ CURRENT_DIR = Path(__file__).resolve().parent
 ANALYSIS_ROOT = CURRENT_DIR.parents[3]  # tests/analysis/
 
 # ── Shared helpers ─────────────────────────────────────────────────────
-_SHARED_DIR = Path(__file__).resolve().parents[5] / "qualibration_graphs" / "quantum_dots" / "calibrations"
+_SHARED_DIR = (
+    Path(__file__).resolve().parents[5]
+    / "qualibration_graphs"
+    / "quantum_dots"
+    / "calibrations"
+)
 if str(_SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(_SHARED_DIR))
 
@@ -45,6 +50,10 @@ from shared_fixtures import (  # noqa: E402
 )
 from quam_factory import create_ld_quam  # noqa: E402
 
+# Same-directory helper module ``virtual_ld_defaults`` (tests-only defaults).
+if str(CURRENT_DIR) not in sys.path:
+    sys.path.insert(0, str(CURRENT_DIR))
+
 # ── Cache setup ────────────────────────────────────────────────────────
 _cache_base = ANALYSIS_ROOT / ".pytest_cache"
 setup_test_cache(_cache_base)
@@ -57,77 +66,147 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 # ── Paths and defaults ─────────────────────────────────────────────────
 
-CALIBRATION_LIBRARY_ROOT = REPO_ROOT / "qualibration_graphs" / "quantum_dots" / "calibrations" / "loss_divincenzo"
+CALIBRATION_LIBRARY_ROOT = (
+    REPO_ROOT
+    / "qualibration_graphs"
+    / "quantum_dots"
+    / "calibrations"
+    / "loss_divincenzo"
+)
 ARTIFACTS_BASE = ANALYSIS_ROOT / "artifacts"
 
 QUBIT_NAMES: list[str] = ["q1", "q2", "q3", "q4"]
 QUBIT_PAIR_NAMES: list[str] = ["q1_q2"]
 ANALYSE_QUBITS: list[str] = ["q1"]
 
-# ── virtual_qpu path setup ────────────────────────────────────────────
-# Prefer the installed virtual_qpu package (from the project venv).
-# Only fall back to the local dev checkout if the package is missing.
-try:
-    import virtual_qpu as _vqpu_probe  # noqa: F811
-
-    del _vqpu_probe
-except ImportError:
-    VIRTUAL_QPU_ROOT = REPO_ROOT.parent / "virtual_qpu"
-    _vqpu_src = str(VIRTUAL_QPU_ROOT / "src")
-    _vqpu_platforms = str(VIRTUAL_QPU_ROOT / "platforms")
-    if _vqpu_src not in sys.path:
-        sys.path.insert(0, _vqpu_src)
-    if _vqpu_platforms not in sys.path:
-        sys.path.insert(0, _vqpu_platforms)
-
-# ── virtual_qpu imports (lazy) ─────────────────────────────────────────
+# ── virtual_qpu imports (``virtual-qpu`` from git in root pyproject; ``uv sync`` / ``pip install -e .``) ─
 
 import jax.numpy as jnp  # noqa: E402
 
 try:
     from virtual_qpu.dynamics import simulate as _simulate  # noqa: E402
     from virtual_qpu.operators import expval as _expval  # noqa: E402
-    from virtual_qpu.sweep import sweep as _sweep  # noqa: E402
+    from virtual_qpu._sweep import sweep as _sweep  # noqa: E402
 
     from quantum_dots.device import LossDiVincenzoDevice  # noqa: E402
-    from quantum_dots.params import (  # noqa: E402
-        ExchangeModel,
-        LossDiVincenzoParams,
-        MU_B_OVER_H,
-    )
+    from virtual_ld_defaults import default_virtual_ld_params  # noqa: E402
 
     _VIRTUAL_QPU_AVAILABLE = True
 except Exception:  # pragma: no cover — environment without virtual_qpu installed
     _simulate = _expval = _sweep = None  # type: ignore[assignment]
     LossDiVincenzoDevice = None  # type: ignore[assignment]
-    LossDiVincenzoParams = None  # type: ignore[assignment]
-    ExchangeModel = None  # type: ignore[assignment]
-    MU_B_OVER_H = None  # type: ignore[assignment]
+    default_virtual_ld_params = None  # type: ignore[assignment,misc]
     _VIRTUAL_QPU_AVAILABLE = False
 
-# ── Default device configuration ──────────────────────────────────────
+# ── Default device configuration (see ``virtual_ld_defaults.py`` beside this conftest) ─
 
 if _VIRTUAL_QPU_AVAILABLE:
-    _B_FIELD = 10.0 / (2.0 * MU_B_OVER_H)  # qubit 0 at exactly 10.0 GHz
-    DEFAULT_LD_PARAMS = LossDiVincenzoParams(
-        n_qubits=2,
-        g_factors=[2.0, 2.0 * 10.2 / 10.0],  # qubit 1 at 10.2 GHz
-        magnetic_field=_B_FIELD,
-        exchange_models=[ExchangeModel(J_0=0.005, V_ref=0.0, lever_arm=0.050)],
-        ref_freqs=None,
-        frame="rot",
-        use_rwa=True,
-    )
+    DEFAULT_LD_PARAMS = default_virtual_ld_params()
 else:
     DEFAULT_LD_PARAMS = None  # type: ignore[assignment]
 
-DEFAULT_SOLVER = "se"
-DEFAULT_NOISE_STD = 0.1
+
+def ld_params_with_decoherence(
+    t1_ns: list[float],
+    t2_ns: list[float],
+) -> Any:
+    """Two-qubit params matching ``DEFAULT_LD_PARAMS`` with Lindblad T1/T2."""
+    if DEFAULT_LD_PARAMS is None:
+        raise RuntimeError(
+            "ld_params_with_decoherence requires virtual_qpu / quantum_dots"
+        )
+    return replace(DEFAULT_LD_PARAMS, t1=t1_ns, t2=t2_ns)
+
+
+def single_qubit_ld_params(t1_ns: float, t2_ns: float) -> Any:
+    """One qubit using qubit-0 Zeeman settings from ``DEFAULT_LD_PARAMS``."""
+    if DEFAULT_LD_PARAMS is None:
+        raise RuntimeError("single_qubit_ld_params requires virtual_qpu / quantum_dots")
+    return replace(
+        DEFAULT_LD_PARAMS,
+        n_qubits=1,
+        g_factors=[DEFAULT_LD_PARAMS.g_factors[0]],
+        exchange_models=[],
+        t1=[t1_ns],
+        t2=[t2_ns],
+    )
+
+
+DEFAULT_SOLVER = "me"
+DEFAULT_NOISE_STD = 0.025
+DEFAULT_PINK_STD = 0.025
+DEFAULT_BROWN_STD = 0.025
 DEFAULT_DRIVE_AMP_GHZ = 0.008
 DEFAULT_PULSE_DURATION_NS = 100.0
 
+# Parity projector onto the odd-parity (antiparallel spin) subspace.
+# P_odd = |01⟩⟨01| + |10⟩⟨10| = (I − Z⊗Z)/2.
+# Basis order: |00⟩, |01⟩, |10⟩, |11⟩  (mode-0 ⊗ mode-1).
+# Gives 0 for (↑↑, ↓↓) and 1 for (↑↓, ↓↑), distinguishing even from odd parity.
+PARITY_PROJECTOR_4x4 = (
+    jnp.array(
+        [
+            [0.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0,  0.0, 0.0],
+            [0.0, 0.0,  1.0, 0.0],
+            [0.0, 0.0,  0.0, 0.0],
+        ],
+        dtype=jnp.complex64,
+    )
+    if _VIRTUAL_QPU_AVAILABLE
+    else None
+)
+
 
 # ── Simulation helpers ─────────────────────────────────────────────────
+
+
+def _colored_noise(
+    rng: np.random.Generator,
+    shape: tuple,
+    pink_std: float = 0.0,
+    brown_std: float = 0.0,
+) -> np.ndarray:
+    """Generate pink (1/f) and/or brown (1/f²) noise with unit-normalised std.
+
+    The noise is generated by shaping independent white noise sequences in the
+    frequency domain and transforming back.  Each color uses its own random draw
+    so the two contributions are independent.
+
+    Parameters
+    ----------
+    pink_std
+        Target standard deviation of the pink (1/f) component.
+    brown_std
+        Target standard deviation of the brown (1/f²) component.
+    """
+    n = int(np.prod(shape))
+    noise = np.zeros(n)
+
+    freqs = np.fft.rfftfreq(n)
+    freqs[0] = 1.0  # avoid DC division; DC component is zeroed after shaping
+
+    if pink_std > 0.0:
+        white = rng.standard_normal(n)
+        spectrum = np.fft.rfft(white)
+        spectrum /= np.sqrt(freqs)
+        spectrum[0] = 0.0  # remove DC offset
+        pink = np.fft.irfft(spectrum, n=n)
+        std = pink.std()
+        if std > 0.0:
+            noise += pink_std * pink / std
+
+    if brown_std > 0.0:
+        white = rng.standard_normal(n)
+        spectrum = np.fft.rfft(white)
+        spectrum /= freqs
+        spectrum[0] = 0.0
+        brown = np.fft.irfft(spectrum, n=n)
+        std = brown.std()
+        if std > 0.0:
+            noise += brown_std * brown / std
+
+    return noise.reshape(shape)
 
 
 def simulate_sweep(
@@ -137,35 +216,72 @@ def simulate_sweep(
     *,
     observable_qubit: int = 0,
     observable_state: int = 1,
+    observable_parity: bool = False,
     solver: str = DEFAULT_SOLVER,
+    solver_options: Optional[Dict[str, Any]] = None,
     noise_std: float = DEFAULT_NOISE_STD,
+    pink_std: float = DEFAULT_PINK_STD,
+    brown_std: float = DEFAULT_BROWN_STD,
     seed: int = 42,
     **sweep_axes: Any,
 ) -> np.ndarray:
-    """Run a vectorised parameter sweep and return expectation values."""
+    """Run a vectorised parameter sweep and return expectation values.
+
+    Parameters
+    ----------
+    observable_parity
+        When True, use the two-qubit parity projector P_odd = |01⟩⟨01|+|10⟩⟨10|
+        (gives 0 for ↑↑/↓↓, 1 for ↑↓/↓↑) instead of single-qubit |1⟩⟨1|.
+    solver_options
+        Forwarded as ``options=...`` to :func:`virtual_qpu.dynamics.simulate`
+        (e.g. ``{"max_steps": 1_000_000}`` for stiff exchange Hamiltonians).
+    noise_std
+        Standard deviation of additive white (Gaussian) noise.
+    pink_std
+        Standard deviation of additive pink (1/f) noise.
+    brown_std
+        Standard deviation of additive brown (1/f²) noise.
+    seed
+        Seed for the random number generator (all noise types share the same
+        seeded generator so results are reproducible).
+    """
+    import dynamiqs as _dq
+
     dim = 2
     psi0 = device.ground_state()
     jump_ops = device.collapse_operators() if solver == "me" else None
     tsave_is_callable = callable(tsave)
 
-    local_proj = jnp.zeros((dim, dim), dtype=jnp.complex64)
-    local_proj = local_proj.at[observable_state, observable_state].set(1.0)
-    observable = device.embed(local_proj, mode=observable_qubit)
+    if observable_parity:
+        observable = _dq.asqarray(PARITY_PROJECTOR_4x4)
+    else:
+        local_proj = jnp.zeros((dim, dim), dtype=jnp.complex64)
+        local_proj = local_proj.at[observable_state, observable_state].set(1.0)
+        observable = device.embed(local_proj, mode=observable_qubit)
 
     def _inner(**kwargs):
         resolved = make_schedule(**kwargs)
         H_t = device.hamiltonian(resolved)
         ts = tsave(**kwargs) if tsave_is_callable else tsave
-        sol = _simulate(H_t, psi0, ts, solver=solver, jump_ops=jump_ops)
+        sol = _simulate(
+            H_t,
+            psi0,
+            ts,
+            solver=solver,
+            jump_ops=jump_ops,
+            options=solver_options,
+        )
         return _expval(sol.states, observable)
 
     result = np.asarray(_sweep(_inner, **sweep_axes))
 
-    if noise_std > 0:
+    if noise_std > 0 or pink_std > 0 or brown_std > 0:
         rng = np.random.default_rng(seed=seed)
-        result = result + rng.normal(0, noise_std, size=result.shape)
-        result = np.clip(result, 0.0, 1.0)
-    return result
+        if noise_std > 0:
+            result = result + rng.normal(0, noise_std, size=result.shape)
+        if pink_std > 0 or brown_std > 0:
+            result = result + _colored_noise(rng, result.shape, pink_std, brown_std)
+    return np.clip(result, 0.0, 1.0)
 
 
 def build_parity_ds_raw(
@@ -193,6 +309,33 @@ def build_parity_ds_raw(
     return xr.Dataset(data_vars, coords=xr_coords, attrs={"qubit_names": qubit_names})
 
 
+def build_joint_stream_analysis_ds(
+    coords: Dict[str, tuple],
+    signal_per_qubit: Dict[str, np.ndarray],
+    analysis_signal: str = "E_p2_given_p1_0",
+    qubit_names: Optional[list[str]] = None,
+) -> xr.Dataset:
+    """Build ``ds_raw`` in joint-outcome / conditional-expectation format (post-``process_joint_streams``)."""
+    qubit_names = qubit_names or QUBIT_NAMES
+    dim_names = list(coords.keys())
+    shape = tuple(len(coords[d][0]) for d in dim_names)
+
+    data_vars: Dict[str, Any] = {}
+    for qname in qubit_names:
+        sig = signal_per_qubit.get(qname, np.zeros(shape))
+        data_vars[f"p0_p0_{qname}"] = xr.DataArray(
+            np.zeros_like(sig, dtype=float), dims=dim_names
+        )
+        data_vars[f"{analysis_signal}_{qname}"] = xr.DataArray(sig, dims=dim_names)
+
+    xr_coords = {
+        name: xr.DataArray(vals, dims=name, attrs={"long_name": long, "units": units})
+        for name, (vals, long, units) in coords.items()
+    }
+
+    return xr.Dataset(data_vars, coords=xr_coords, attrs={"qubit_names": qubit_names})
+
+
 # ── Fixtures ───────────────────────────────────────────────────────────
 
 
@@ -211,7 +354,9 @@ def ld_device():
     """A pre-configured ``LossDiVincenzoDevice`` with default parameters."""
     device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
     jump_ops = device.collapse_operators()
-    assert len(jump_ops) == 0, "Default device has no decoherence; collapse_operators should be empty"
+    assert len(jump_ops) > 0, (
+        "Default device should have dephasing/relaxation jump operators (T1/T2 set)"
+    )
     return device
 
 
@@ -250,6 +395,47 @@ def calibrated_pi_half_amp():
     pi_idx = int(np.argmax(parity))
     pi_amp = float(DEFAULT_DRIVE_AMP_GHZ * amp_prefactors[pi_idx])
     return pi_amp / 2.0
+
+
+@pytest.fixture(scope="session")
+def calibrated_target_pi_amp():
+    """Calibrate the π pulse amplitude on the target qubit (q0), same Rabi method as control.
+
+    Node ``16_geometric_cz_calibration`` uses ``qubit_target.x90()`` / ``x180()``; this
+    matches the virtual-qpu amplitude for a full π rotation on ``drive_q0``.
+    """
+    from virtual_qpu.pulse import GaussianIQPulse
+    from virtual_qpu.schedule import Schedule
+
+    device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
+    qubit_freq_ghz = device.params.qubit_freqs[0]
+
+    amp_prefactors = jnp.linspace(0.1, 3.0, 200, dtype=jnp.float32)
+
+    def make_schedule(amp):
+        sched = Schedule()
+        sched.play(
+            GaussianIQPulse(
+                duration=DEFAULT_PULSE_DURATION_NS,
+                amplitude=DEFAULT_DRIVE_AMP_GHZ * amp,
+                frequency=qubit_freq_ghz,
+                sigma=DEFAULT_PULSE_DURATION_NS / 5,
+            ),
+            channel="drive_q0",
+        )
+        return sched.resolve()
+
+    result = simulate_sweep(
+        device,
+        make_schedule,
+        tsave=jnp.array([0.0, DEFAULT_PULSE_DURATION_NS], dtype=jnp.float32),
+        observable_qubit=0,
+        noise_std=0.0,
+        amp=amp_prefactors,
+    )
+    parity = np.asarray(result[..., -1])
+    pi_idx = int(np.argmax(parity))
+    return float(DEFAULT_DRIVE_AMP_GHZ * amp_prefactors[pi_idx])
 
 
 @pytest.fixture(scope="session")
@@ -346,7 +532,9 @@ def rabi_chevron_calibration():
     durations_ns = np.asarray(durations)
     nominal_freq_hz = float(qubit_freq_ghz * 1e9)
 
-    fit_result, _ = _fft_analyse_single_qubit(pdiff, freqs_hz, durations_ns, nominal_freq_hz)
+    fit_result, _ = _fft_analyse_single_qubit(
+        pdiff, freqs_hz, durations_ns, nominal_freq_hz
+    )
     assert fit_result["success"], f"Rabi chevron calibration failed: {fit_result}"
     return fit_result
 
@@ -416,7 +604,9 @@ def markdown_generator():
             f"# {getattr(node, 'name', 'Unknown Node')}\n\n"
             f"## Description\n\n"
             f"{getattr(node, 'description', 'No description available')}\n\n"
-            f"## Parameters\n\n" + "\n".join(params_table) + f"\n{fit_section}\n{state_section}\n\n"
+            f"## Parameters\n\n"
+            + "\n".join(params_table)
+            + f"\n{fit_section}\n{state_section}\n\n"
             "## Analysis Output\n\n"
             "![Analysis simulation](simulation.png)\n\n"
             "---\n*Generated by analysis test infrastructure (virtual_qpu)*\n"
@@ -446,6 +636,7 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         ds_raw: Any,
         fig: Any = None,
         param_overrides: Optional[Dict[str, Any]] = None,
+        namespace_overrides: Optional[Dict[str, Any]] = None,
         artifacts_subdir: Optional[str] = None,
         library_root: Optional[Path] = None,
         analyse_qubits: Optional[list[str]] = None,
@@ -484,7 +675,9 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         except Exception:
             if hasattr(machine, "qubits"):
                 qubits = machine.qubits
-                node.namespace["qubits"] = list(qubits.values()) if isinstance(qubits, dict) else list(qubits)
+                node.namespace["qubits"] = (
+                    list(qubits.values()) if isinstance(qubits, dict) else list(qubits)
+                )
 
         try:
             from calibration_utils.common_utils.experiment import get_qubit_pairs
@@ -493,7 +686,9 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         except Exception:
             if hasattr(machine, "qubit_pairs"):
                 qp = machine.qubit_pairs
-                node.namespace["qubit_pairs"] = list(qp.values()) if isinstance(qp, dict) else list(qp)
+                node.namespace["qubit_pairs"] = (
+                    list(qp.values()) if isinstance(qp, dict) else list(qp)
+                )
 
         try:
             from calibration_utils.common_utils.experiment import get_sensors
@@ -502,36 +697,70 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         except Exception:
             if hasattr(machine, "sensor_dots"):
                 sensors = machine.sensor_dots
-                node.namespace["sensors"] = list(sensors.values()) if isinstance(sensors, dict) else list(sensors)
+                node.namespace["sensors"] = (
+                    list(sensors.values())
+                    if isinstance(sensors, dict)
+                    else list(sensors)
+                )
 
         filter_names = analyse_qubit_pairs or analyse_qubits
         if filter_names:
             keep_vars = []
             for q in filter_names:
-                for prefix in ("p1_", "p2_", "pdiff_"):
+                for prefix in (
+                    "p1_",
+                    "p2_",
+                    "pdiff_",
+                    "p0_p0_",
+                    "p0_p1_",
+                    "p1_p0_",
+                    "p1_p1_",
+                ):
                     v = f"{prefix}{q}"
                     if v in ds_raw.data_vars:
                         keep_vars.append(v)
+                v_single = f"p_{q}"
+                if v_single in ds_raw.data_vars:
+                    keep_vars.append(v_single)
+                for sig in ("E_p2_given_p1_0", "E_p2_given_p1_1"):
+                    for variant in ("", "_ctrl"):
+                        v = f"{sig}{variant}_{q}"
+                        if v in ds_raw.data_vars:
+                            keep_vars.append(v)
             if keep_vars:
                 ds_raw = ds_raw[[v for v in ds_raw.data_vars if v in keep_vars]]
 
         node.results["ds_raw"] = ds_raw
 
+        if namespace_overrides:
+            node.namespace.update(namespace_overrides)
+
         call_node_action(node, "analyse_data")
         call_node_action(node, "plot_data")
 
-        if "fit_results" in node.results:
+        action_manager = getattr(node, "_action_manager", None)
+        has_update_state = (
+            action_manager is not None
+            and "update_state" in getattr(action_manager, "actions", {})
+        )
+        if "fit_results" in node.results and has_update_state:
             call_node_action(node, "update_state")
 
         artifacts_dir = ARTIFACTS_BASE / (artifacts_subdir or node_name)
-        fig_to_save = node.results.get("figures", {}).get("crot_spectroscopy") or node.results.get("figure") or fig
+        fig_to_save = (
+            node.results.get("figures", {}).get("crot_spectroscopy")
+            or node.results.get("figure")
+            or fig
+        )
         if fig_to_save is not None:
             save_analysis_plot(fig_to_save, artifacts_dir, "simulation.png")
 
         markdown_generator(node, get_parameters_dict(node), artifacts_dir)
 
         if fig_to_save is not None:
-            assert (artifacts_dir / "simulation.png").exists(), "simulation.png not created"
+            assert (
+                artifacts_dir / "simulation.png"
+            ).exists(), "simulation.png not created"
         assert (artifacts_dir / "README.md").exists(), "README.md not created"
 
         return node
@@ -551,5 +780,7 @@ def pytest_configure(config):
 
 def pytest_collection_modifyitems(config, items):
     for item in items:
-        if "tests/analysis/" in str(item.fspath) and not item.get_closest_marker("analysis"):
+        if "tests/analysis/" in str(item.fspath) and not item.get_closest_marker(
+            "analysis"
+        ):
             item.add_marker(pytest.mark.analysis)

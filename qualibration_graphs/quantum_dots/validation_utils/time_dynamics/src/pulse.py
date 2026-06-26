@@ -295,7 +295,9 @@ class CouplingPulse(Pulse):
             # Ramp up from 0 to 1
             up = self._ramp(tt / jnp.maximum(self.t_ramp, 1e-30), self.shape)
             # Ramp down from 1 to 0
-            down = 1.0 - self._ramp((tt - t3) / jnp.maximum(self.t_ramp, 1e-30), self.shape)
+            down = 1.0 - self._ramp(
+                (tt - t3) / jnp.maximum(self.t_ramp, 1e-30), self.shape
+            )
 
             # Piecewise combination of three regions
             j_up = jnp.where(tt < t2, up, 0.0)

@@ -8,7 +8,10 @@ from typing import ClassVar, Literal
 
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
-from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
+from qualibration_libs.parameters import (
+    CommonNodeParameters,
+    QubitsExperimentNodeParameters,
+)
 
 
 class NodeSpecificParameters(RunnableParameters):

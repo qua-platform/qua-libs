@@ -1,0 +1,97 @@
+{
+    "wiring": {
+        "readout": {
+            "s1": {
+                "s": {
+                    "opx_output": "#/ports/analog_outputs/con1/6/3"
+                },
+                "rf": {
+                    "opx_input": "#/ports/analog_inputs/con1/6/1",
+                    "opx_output": "#/ports/analog_outputs/con1/6/5"
+                }
+            },
+            "s2": {
+                "s": {
+                    "opx_output": "#/ports/analog_outputs/con1/6/4"
+                },
+                "rf": {
+                    "opx_input": "#/ports/analog_inputs/con1/6/2",
+                    "opx_output": "#/ports/analog_outputs/con1/6/6"
+                }
+            }
+        },
+        "qubits": {
+            "q1": {
+                "xy": {
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
+                },
+                "p": {
+                    "opx_output": "#/ports/analog_outputs/con1/5/1"
+                }
+            },
+            "q2": {
+                "xy": {
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
+                },
+                "p": {
+                    "opx_output": "#/ports/analog_outputs/con1/5/2"
+                }
+            },
+            "q3": {
+                "xy": {
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
+                },
+                "p": {
+                    "opx_output": "#/ports/analog_outputs/con1/5/3"
+                }
+            },
+            "q4": {
+                "xy": {
+                    "opx_output": "#/ports/mw_outputs/con1/1/1"
+                },
+                "p": {
+                    "opx_output": "#/ports/analog_outputs/con1/5/4"
+                }
+            }
+        },
+        "qubit_pairs": {
+            "q1-2": {
+                "b": {
+                    "opx_output": "#/ports/analog_outputs/con1/5/5"
+                }
+            },
+            "q2-3": {
+                "b": {
+                    "opx_output": "#/ports/analog_outputs/con1/5/6"
+                }
+            },
+            "q3-4": {
+                "b": {
+                    "opx_output": "#/ports/analog_outputs/con1/5/7"
+                }
+            }
+        },
+        "globals": {
+            "rb1": {
+                "g": {
+                    "opx_output": "#/ports/analog_outputs/con1/5/8"
+                }
+            },
+            "rb2": {
+                "g": {
+                    "opx_output": "#/ports/analog_outputs/con1/6/1"
+                }
+            },
+            "rb3": {
+                "g": {
+                    "opx_output": "#/ports/analog_outputs/con1/6/2"
+                }
+            }
+        }
+    },
+    "network": {
+        "host": "YOUR_CLUSTER_IP",
+        "port": null,
+        "cluster_name": "YOUR_CLUSTER_NAME"
+    }
+}

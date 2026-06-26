@@ -1,10 +1,10 @@
-"""Plotting for the Ramsey chevron parity-difference analysis.
+"""Plotting for the Ramsey chevron joint-outcome / conditional-readout analysis.
 
 Produces a multi-panel figure per qubit with two columns:
 
-1. **Chevron heatmap** — 2-D parity-difference map (detuning vs idle
+1. **Chevron heatmap** — 2-D map of the analysis signal (detuning vs idle
    time) with the fitted resonance frequency overlaid.
-2. **Resonance profile** — tau-averaged parity vs detuning, showing the
+2. **Resonance profile** — tau-averaged signal vs detuning, showing the
    measured data and the analytic sum-of-cosines model fit.
 """
 
@@ -16,16 +16,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 
-def _get_qubit_names_from_ds(ds: xr.Dataset) -> List[str]:
-    """Extract qubit names from ``pdiff_<name>`` data-variable keys."""
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_") and not v.endswith("_fit")]
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
+
+def _get_qubit_names_from_ds(
+    ds: xr.Dataset,
+    qubits: List[Any],
+    analysis_signal: str,
+) -> List[str]:
+    return get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
 
 def _plot_chevron_ax(
     ax: "plt.Axes",
-    pdiff: np.ndarray,
+    signal_2d: np.ndarray,
     tau_ns: np.ndarray,
     detuning_mhz: np.ndarray,
     qubit_name: str,
@@ -35,7 +43,7 @@ def _plot_chevron_ax(
     ax.pcolormesh(
         tau_ns,
         detuning_mhz,
-        pdiff,
+        signal_2d,
         cmap="RdBu_r",
         vmin=0,
         vmax=1,
@@ -64,7 +72,7 @@ def _plot_resonance_ax(
     qubit_name: str,
     fit_result: dict | None = None,
 ) -> None:
-    """Plot mean parity vs detuning with analytic Ramsey model fit."""
+    """Plot mean parity vs detuning with detuning on the y-axis."""
     diag = (fit_result or {}).get("_diag")
     if diag is None:
         ax.text(0.5, 0.5, "No diagnostics", transform=ax.transAxes, ha="center")
@@ -74,11 +82,11 @@ def _plot_resonance_ax(
     mean_parity = diag["mean_parity"]
     mean_parity_fit = diag.get("mean_parity_fit")
 
-    ax.plot(detuning_mhz, mean_parity, "bo-", ms=3, lw=1, label="Mean parity")
+    ax.scatter(mean_parity, detuning_mhz, s=9, color="blue", alpha=0.6, label="Mean signal")
     if mean_parity_fit is not None:
         ax.plot(
-            detuning_mhz,
             mean_parity_fit,
+            detuning_mhz,
             "r-",
             lw=1.5,
             label="Analytic fit",
@@ -90,7 +98,7 @@ def _plot_resonance_ax(
         label = f"Resonance: {freq_off_mhz:.3f} MHz"
         if np.isfinite(t2):
             label += f"\nT₂* = {t2:.0f} ns"
-        ax.axvline(
+        ax.axhline(
             freq_off_mhz,
             color="lime",
             ls="--",
@@ -99,8 +107,7 @@ def _plot_resonance_ax(
             label=label,
         )
 
-    ax.set_xlabel("Detuning (MHz)")
-    ax.set_ylabel("Mean parity")
+    ax.set_xlabel("Mean signal")
     ax.set_title(f"{qubit_name} — Resonance finding")
     ax.legend(loc="upper right", fontsize=7)
 
@@ -110,30 +117,43 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
+    analysis_signal: str = "E_p2_given_p1_0",
 ) -> "plt.Figure":
     """Plot Ramsey chevron for each qubit.
 
     Layout (per qubit row):
     * Column 1 — Raw chevron heatmap with resonance marker.
-    * Column 2 — Mean parity vs detuning with model fit and T2*.
+    * Column 2 — Mean signal vs detuning with model fit and T2*.
+
+    Parameters
+    ----------
+    analysis_signal
+        Data-variable prefix for the plotted 2-D trace (same as
+        ``node.parameters.analysis_signal``).
     """
-    qubit_names = _get_qubit_names_from_ds(ds)
+    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
 
     n = len(qubit_names)
     ncol = 2
-    fig, axes = plt.subplots(n, ncol, figsize=(6 * ncol, 4 * n), squeeze=False)
+    fig, axes = plt.subplots(
+        n, ncol,
+        figsize=(9, 4 * n),
+        squeeze=False,
+        sharey="row",
+        gridspec_kw={"width_ratios": [2, 1]},
+    )
 
     for i, qname in enumerate(qubit_names):
-        pdiff_var = f"pdiff_{qname}"
+        signal_var = f"{analysis_signal}_{qname}"
         fr = fit_results.get(qname, {})
 
         tau_ns = np.asarray(ds.tau.values, dtype=float)
         detuning_mhz = np.asarray(ds.detuning.values, dtype=float) * 1e-6
 
-        if pdiff_var not in ds.data_vars:
+        if signal_var not in ds.data_vars:
             for j in range(ncol):
                 axes[i, j].text(
                     0.5,
@@ -144,11 +164,11 @@ def plot_raw_data_with_fit(
                 )
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
+        signal_2d = np.asarray(ds[signal_var].values, dtype=float)
 
-        _plot_chevron_ax(axes[i, 0], pdiff, tau_ns, detuning_mhz, qname, fr)
+        _plot_chevron_ax(axes[i, 0], signal_2d, tau_ns, detuning_mhz, qname, fr)
         _plot_resonance_ax(axes[i, 1], detuning_mhz, qname, fr)
 
-    fig.suptitle("Ramsey Chevron (parity diff)")
+    fig.suptitle("Ramsey Chevron")
     fig.tight_layout()
     return fig

@@ -1,4 +1,4 @@
-"""Plot power-Rabi parity difference: raw trace and FFT diagnostics."""
+"""Plot power-Rabi conditional expectation: raw trace and FFT diagnostics."""
 
 from __future__ import annotations
 
@@ -11,23 +11,44 @@ import xarray as xr
 from calibration_utils.power_rabi.analysis import FFT_FREQ_MIN, FFT_FREQ_MAX
 
 
-def _get_qubit_names_from_ds(ds: xr.Dataset) -> List[str]:
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_") and not v.endswith("_fit")]
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
+def _get_qubit_names_from_ds(
+    ds: xr.Dataset,
+    analysis_signal: str = "E_p2_given_p1_0",
+) -> List[str]:
+    signal_prefix = f"{analysis_signal}_"
+    signal_vars = [
+        v
+        for v in ds.data_vars
+        if v.startswith(signal_prefix) and not v.endswith("_fit")
+    ]
+    if signal_vars:
+        return [v.replace(signal_prefix, "") for v in sorted(signal_vars)]
+
+    p0_p0_vars = [v for v in ds.data_vars if v.startswith("p0_p0_")]
+    if p0_p0_vars:
+        return [v.replace("p0_p0_", "") for v in sorted(p0_p0_vars)]
+    names: List[str] = []
+    for v in sorted(ds.data_vars):
+        if v.startswith("p_") and not v.startswith(("p0_", "p1_", "pdiff_", "E_")):
+            rest = v[2:]
+            if rest:
+                names.append(rest)
+    return names
 
 
 def _plot_rabi_trace_ax(
     ax: "plt.Axes",
-    pdiff: np.ndarray,
+    trace: np.ndarray,
     amps: np.ndarray,
     qubit_name: str,
+    analysis_signal: str,
     fit_result: dict | None = None,
 ) -> None:
-    """Plot raw parity difference vs amplitude prefactor."""
-    ax.plot(amps, pdiff, "b-", lw=1, alpha=0.8)
-    ax.scatter(amps, pdiff, c="b", s=6, alpha=0.5, zorder=3)
+    """Plot raw analysis trace vs amplitude prefactor."""
+    ax.plot(amps, trace, "b-", lw=1, alpha=0.8)
+    ax.scatter(amps, trace, c="b", s=6, alpha=0.5, zorder=3)
     ax.set_xlabel("Amplitude prefactor")
-    ax.set_ylabel("Parity difference")
+    ax.set_ylabel(analysis_signal)
     ax.set_title(f"{qubit_name} — Power Rabi")
     ax.set_ylim(-0.05, 1.05)
 
@@ -38,9 +59,18 @@ def _plot_rabi_trace_ax(
         if sinusoid is not None:
             a_shifted = sinusoid["a_shifted"]
             a_plot = a_shifted + amps[0]
-            ax.plot(a_plot, sinusoid["fitted_curve"], "r-", lw=1.5, alpha=0.9, label="Damped sinusoid fit")
+            ax.plot(
+                a_plot,
+                sinusoid["fitted_curve"],
+                "r-",
+                lw=1.5,
+                alpha=0.9,
+                label="Damped sinusoid fit",
+            )
 
-        ax.axvline(a_pi, color="lime", ls="--", lw=1.5, alpha=0.9, label=f"a_pi = {a_pi:.3f}")
+        ax.axvline(
+            a_pi, color="lime", ls="--", lw=1.5, alpha=0.9, label=f"a_pi = {a_pi:.3f}"
+        )
         ax.legend(loc="upper right", fontsize=8)
 
 
@@ -75,7 +105,14 @@ def _plot_fft_ax(
     if fit_result and fit_result.get("success"):
         omega = fit_result.get("rabi_frequency", 0)
         f_rabi = omega / (2.0 * np.pi)
-        ax.axvline(f_rabi, color="lime", ls="--", lw=1, alpha=0.9, label=f"f = {f_rabi:.2f} c/u.a.")
+        ax.axvline(
+            f_rabi,
+            color="lime",
+            ls="--",
+            lw=1,
+            alpha=0.9,
+            label=f"f = {f_rabi:.2f} c/u.a.",
+        )
 
     ax.legend(loc="upper right", fontsize=8)
 
@@ -85,17 +122,25 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
+    analysis_signal: str = "E_p2_given_p1_0",
+    parity_pre_measurement: bool | None = None,
 ) -> "plt.Figure":
     """Plot power-Rabi trace and FFT for each qubit.
 
     Layout (per qubit row):
-    * Column 1 — Raw parity difference vs amplitude with a_π marker.
+    * Column 1 — Raw analysis trace vs amplitude with a_π marker.
     * Column 2 — FFT magnitude spectrum with peak fit overlay.
     """
-    qubit_names = _get_qubit_names_from_ds(ds)
+    qubit_names = _get_qubit_names_from_ds(ds, analysis_signal)
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
+
+    if parity_pre_measurement is None:
+        parity_pre_measurement = any(
+            v.startswith(f"{analysis_signal}_") or v.startswith("p0_p0_")
+            for v in ds.data_vars
+        )
 
     n = len(qubit_names)
     ncol = 2
@@ -103,21 +148,44 @@ def plot_raw_data_with_fit(
 
     for i, qname in enumerate(qubit_names):
         ax_trace, ax_fft = axes[i, 0], axes[i, 1]
-        pdiff_var = f"pdiff_{qname}"
+        if f"{analysis_signal}_{qname}" in ds.data_vars:
+            signal_var = f"{analysis_signal}_{qname}"
+            y_signal_label = analysis_signal
+        else:
+            signal_var = f"p_{qname}"
+            y_signal_label = "P(measure)"
         fr = fit_results.get(qname, {})
 
         amps = np.asarray(ds.amp_prefactor.values, dtype=float)
 
-        if pdiff_var not in ds.data_vars:
-            ax_trace.text(0.5, 0.5, f"No data for {qname}", transform=ax_trace.transAxes, ha="center")
-            ax_fft.text(0.5, 0.5, f"No data for {qname}", transform=ax_fft.transAxes, ha="center")
+        if signal_var not in ds.data_vars:
+            ax_trace.text(
+                0.5,
+                0.5,
+                f"No data for {qname}",
+                transform=ax_trace.transAxes,
+                ha="center",
+            )
+            ax_fft.text(
+                0.5,
+                0.5,
+                f"No data for {qname}",
+                transform=ax_fft.transAxes,
+                ha="center",
+            )
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
+        trace = np.asarray(ds[signal_var].values, dtype=float)
 
-        _plot_rabi_trace_ax(ax_trace, pdiff, amps, qname, fit_result=fr)
+        _plot_rabi_trace_ax(
+            ax_trace, trace, amps, qname, y_signal_label, fit_result=fr
+        )
         _plot_fft_ax(ax_fft, qname, fit_result=fr)
 
-    fig.suptitle("Power Rabi (parity diff)")
+    fig.suptitle(
+        f"Power Rabi ({analysis_signal})"
+        if parity_pre_measurement
+        else "Power Rabi (single measurement)"
+    )
     fig.tight_layout()
     return fig

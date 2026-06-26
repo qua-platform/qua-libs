@@ -45,7 +45,10 @@ def test_simulated_video_mode_base_point_resolves_virtual_offsets():
     )
 
     expected = gate_set.resolve_voltages(base_point, allow_extra_entries=True)
-    observed = {gate_name: float(grid[0, 0]) for gate_name, grid in zip(simulator.qarray_gate_order, grids)}
+    observed = {
+        gate_name: float(grid[0, 0])
+        for gate_name, grid in zip(simulator.qarray_gate_order, grids)
+    }
 
     for gate_name in simulator.qarray_gate_order:
         assert observed[gate_name] == pytest.approx(float(expected.get(gate_name, 0.0)))

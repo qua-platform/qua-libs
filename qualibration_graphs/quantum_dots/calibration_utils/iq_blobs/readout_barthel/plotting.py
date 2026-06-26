@@ -3,7 +3,16 @@ import numpy as np
 from typing import Dict, Optional, Tuple, Any
 
 
-def plot_raw_data(x, bins=100, ax=None, show=True, save=None, label="data", figsize=(6, 4), **hist_kwargs):
+def plot_raw_data(
+    x,
+    bins=100,
+    ax=None,
+    show=True,
+    save=None,
+    label="data",
+    figsize=(6, 4),
+    **hist_kwargs,
+):
     """
     Plot a histogram of the raw readout voltages.
 
@@ -118,7 +127,9 @@ def plot_fit(
         return arr.mean(axis=0)
 
     def _norm_pdf_local(x, mu, sigma):
-        return (1.0 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-((x - mu) ** 2) / (2 * sigma**2))
+        return (1.0 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(
+            -((x - mu) ** 2) / (2 * sigma**2)
+        )
 
     if posterior == "ppd_mean":
         # Average densities over posterior draws (label-invariant)
@@ -159,7 +170,8 @@ def plot_fit(
         ax.text(
             0.02,
             0.98,
-            f"weights: " + "  ".join([f"w_{k+1}={pi_mean[k]:.2f}" for k in range(n_comp)]),
+            f"weights: "
+            + "  ".join([f"w_{k+1}={pi_mean[k]:.2f}" for k in range(n_comp)]),
             transform=ax.transAxes,
             va="top",
             fontsize=9,
@@ -398,7 +410,14 @@ def plot_fit_iq(
         for k in range(len(pi)):
             width = 2.0 * ellipse_nsigma * sigma[k, 0]
             height = 2.0 * ellipse_nsigma * sigma[k, 1]
-            e = Ellipse(xy=(mu[k, 0], mu[k, 1]), width=width, height=height, angle=0.0, fill=False, lw=2)
+            e = Ellipse(
+                xy=(mu[k, 0], mu[k, 1]),
+                width=width,
+                height=height,
+                angle=0.0,
+                fill=False,
+                lw=2,
+            )
             ax.add_patch(e)
             ax.plot(mu[k, 0], mu[k, 1], marker="x", ms=8)
 
@@ -442,7 +461,9 @@ def _norm_pdf(x, mu, sigma):
     return np.exp(-0.5 * ((x - mu) / sigma) ** 2) / (np.sqrt(2 * np.pi) * sigma)
 
 
-def evaluate_barthel_density_1d_grid(xs, *, mu_S, mu_T, sigma, pT, T1, tauM, dec_nodes=48):
+def evaluate_barthel_density_1d_grid(
+    xs, *, mu_S, mu_T, sigma, pT, T1, tauM, dec_nodes=48
+):
     """
     Evaluate the 1D Barthel mixture on xs. Returns (total, comp_dict)
     comp_dict has keys: 'S', 'T_no', 'T_dec'
@@ -541,7 +562,9 @@ def plot_barthel_fit_1d(
         idx = _choose_draw_indices(S, ppd_draws)
 
         total = np.zeros_like(xs)
-        comps_sum = dict(S=np.zeros_like(xs), T_no=np.zeros_like(xs), T_dec=np.zeros_like(xs))
+        comps_sum = dict(
+            S=np.zeros_like(xs), T_no=np.zeros_like(xs), T_dec=np.zeros_like(xs)
+        )
 
         for i in idx:
             mu_S = float(np.asarray(samples["mu_S"])[i])
@@ -557,7 +580,14 @@ def plot_barthel_fit_1d(
                 tauM = float(tauM_fixed)
 
             dens_i, comps_i = evaluate_barthel_density_1d_grid(
-                xs, mu_S=mu_S, mu_T=mu_T, sigma=sigma, pT=pT, T1=T1, tauM=tauM, dec_nodes=dec_nodes
+                xs,
+                mu_S=mu_S,
+                mu_T=mu_T,
+                sigma=sigma,
+                pT=pT,
+                T1=T1,
+                tauM=tauM,
+                dec_nodes=dec_nodes,
             )
             total += dens_i
             for k in comps_sum:
@@ -597,7 +627,14 @@ def plot_barthel_fit_1d(
         tauM = float(_agg("tauM")) if "tauM" in samples else float(tauM_fixed)
 
         total, comps = evaluate_barthel_density_1d_grid(
-            xs, mu_S=mu_S, mu_T=mu_T, sigma=sigma, pT=pT, T1=T1, tauM=tauM, dec_nodes=dec_nodes
+            xs,
+            mu_S=mu_S,
+            mu_T=mu_T,
+            sigma=sigma,
+            pT=pT,
+            T1=T1,
+            tauM=tauM,
+            dec_nodes=dec_nodes,
         )
         ax.plot(xs, total, label=f"Total ({posterior})", **total_kwargs)
         ax.plot(xs, comps["S"], label="S component", **comp_kwargs)
@@ -652,10 +689,24 @@ def plot_fidelity_and_visibility_barthel_1d(
     ax.plot(vrf_v, V_curve, color=visibility_color, lw=2, label="Visibility")
 
     ax.axvline(vrf_f_opt, color=fidelity_color, ls="--", lw=1)
-    ax.plot(vrf_f_opt, F_opt, "o", color=fidelity_color, ms=6, label=f"F*: {F_opt:.3f} @ {vrf_f_opt:.3f}")
+    ax.plot(
+        vrf_f_opt,
+        F_opt,
+        "o",
+        color=fidelity_color,
+        ms=6,
+        label=f"F*: {F_opt:.3f} @ {vrf_f_opt:.3f}",
+    )
 
     ax.axvline(vrf_v_opt, color=visibility_color, ls="--", lw=1)
-    ax.plot(vrf_v_opt, V_opt, "s", color=visibility_color, ms=6, label=f"V*: {V_opt:.3f} @ {vrf_v_opt:.3f}")
+    ax.plot(
+        vrf_v_opt,
+        V_opt,
+        "s",
+        color=visibility_color,
+        ms=6,
+        label=f"V*: {V_opt:.3f} @ {vrf_v_opt:.3f}",
+    )
 
     ax.set_xlabel("Threshold voltage  $V_{rf}$")
     ax.set_ylabel("Metric value")
@@ -764,11 +815,15 @@ def plot_iq_with_pca_and_threshold(
         thr_kwargs = dict(color="C3", ls="--", lw=2)
 
     ax.plot([p1[0], p2[0]], [p1[1], p2[1]], label="PCA axis", **pca_kwargs)
-    ax.plot([q1[0], q2[0]], [q1[1], q2[1]], label=r"$V_{\rm rf}$ threshold", **thr_kwargs)
+    ax.plot(
+        [q1[0], q2[0]], [q1[1], q2[1]], label=r"$V_{\rm rf}$ threshold", **thr_kwargs
+    )
 
     if annotate:
         ax.plot(mean[0], mean[1], marker="x", ms=8, color=pca_kwargs.get("color", "C2"))
-        ax.plot(p_thr[0], p_thr[1], marker="o", ms=6, color=thr_kwargs.get("color", "C3"))
+        ax.plot(
+            p_thr[0], p_thr[1], marker="o", ms=6, color=thr_kwargs.get("color", "C3")
+        )
         ax.text(p_thr[0], p_thr[1], f"  Vrf={float(v_rf):.3f}", va="center", fontsize=9)
 
     ax.set_xlabel("I")

@@ -3,15 +3,25 @@ import time
 from werkzeug.serving import make_server
 
 from quam.core import QuamRoot
-from qua_dashboards.video_mode import VideoModeComponent, OPXDataAcquirer, SimulationDataAcquirer, scan_modes
-from qua_dashboards.video_mode.data_acquirers.simulation_data_acquirer import SimulationDataAcquirerOPXOutput
+from qua_dashboards.video_mode import (
+    VideoModeComponent,
+    OPXDataAcquirer,
+    SimulationDataAcquirer,
+    scan_modes,
+)
+from qua_dashboards.video_mode.data_acquirers.simulation_data_acquirer import (
+    SimulationDataAcquirerOPXOutput,
+)
 from qua_dashboards.voltage_control import VoltageControlComponent
 from qua_dashboards.core import build_dashboard
 from qua_dashboards.virtual_gates import VirtualLayerEditor, ui_update
 import threading
 import webbrowser
 import subprocess
-from .build_qarray_simulator import get_simulated_video_mode_base_point, setup_simulation
+from .build_qarray_simulator import (
+    get_simulated_video_mode_base_point,
+    setup_simulation,
+)
 
 
 _DASHBOARD_THREAD: Optional[threading.Thread] = None
@@ -125,11 +135,16 @@ def launch_video_mode(
             VoltageControlTabController,
         )
 
-        voltage_control_tab = VoltageControlTabController(voltage_control_component=voltage_control_component)
+        voltage_control_tab = VoltageControlTabController(
+            voltage_control_component=voltage_control_component
+        )
 
     base_point = get_simulated_video_mode_base_point()
     simulator = setup_simulation(
-        base_point, virtual_gate_set, dc_set, sensor_gate_names=["virtual_sensor_1", "virtual_sensor_2"]
+        base_point,
+        virtual_gate_set,
+        dc_set,
+        sensor_gate_names=["virtual_sensor_1", "virtual_sensor_2"],
     )
     if dc_set is not None:
         dc_set.set_voltages(base_point)
@@ -165,14 +180,20 @@ def launch_video_mode(
     if x_span is not None or x_points is not None:
         x_sweepaxis = data_acquirer.find_sweepaxis(x_axis_name, mode=x_mode)
         x_sweepaxis.span = x_span if x_span is not None else find_default(x_mode)[1]
-        x_sweepaxis.points = x_points if x_points is not None else find_default(x_mode)[0]
+        x_sweepaxis.points = (
+            x_points if x_points is not None else find_default(x_mode)[0]
+        )
 
     if y_axis_name is not None and (y_span is not None or y_points is not None):
         y_sweepaxis = data_acquirer.find_sweepaxis(y_axis_name, mode=y_mode)
         y_sweepaxis.span = y_span if y_span is not None else find_default(x_mode)[1]
-        y_sweepaxis.points = y_points if y_points is not None else find_default(x_mode)[0]
+        y_sweepaxis.points = (
+            y_points if y_points is not None else find_default(x_mode)[0]
+        )
 
-    virtual_gates_component = VirtualLayerEditor(gateset=virtual_gate_set, component_id="Virtual_Gates", dc_set=dc_set)
+    virtual_gates_component = VirtualLayerEditor(
+        gateset=virtual_gate_set, component_id="Virtual_Gates", dc_set=dc_set
+    )
 
     video_mode_component = VideoModeComponent(
         data_acquirer=data_acquirer,
@@ -199,7 +220,9 @@ def launch_video_mode(
 
     # Keep the dashboard backend alive when launched from a script.
     # A daemon thread can be killed as soon as the main process exits.
-    _DASHBOARD_THREAD = threading.Thread(target=run_server, daemon=False, name="VideoMode")
+    _DASHBOARD_THREAD = threading.Thread(
+        target=run_server, daemon=False, name="VideoMode"
+    )
     _DASHBOARD_THREAD.start()
     time.sleep(0.5)
     webbrowser.open(f"http://localhost:{port}")

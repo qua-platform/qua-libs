@@ -14,6 +14,7 @@ across the four per-suite ``conftest.py`` files:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import sys
@@ -23,7 +24,7 @@ from functools import wraps
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterator, Optional
 from unittest.mock import patch
 
 import matplotlib
@@ -42,12 +43,28 @@ def find_repo_root(start: Path) -> Path:
         if (current / "tests").is_dir() and (current / "qualibration_graphs").is_dir():
             return current
         current = current.parent
-    raise FileNotFoundError("Could not locate repo root containing tests/ and qualibration_graphs/.")
+    raise FileNotFoundError(
+        "Could not locate repo root containing tests/ and qualibration_graphs/."
+    )
 
 
 SHARED_DIR = Path(__file__).resolve().parent
 REPO_ROOT = find_repo_root(SHARED_DIR)
 CLUSTER_CONFIG_PATH = REPO_ROOT / "tests" / ".qm_cluster_config.json"
+
+_LOCAL_QD_ROOT = str(REPO_ROOT / "qualibration_graphs" / "quantum_dots")
+if _LOCAL_QD_ROOT not in sys.path:
+    sys.path.insert(0, _LOCAL_QD_ROOT)
+_local_cu_path = str(
+    REPO_ROOT / "qualibration_graphs" / "quantum_dots" / "calibration_utils"
+)
+_cu_mod = sys.modules.get("calibration_utils")
+if (
+    _cu_mod is not None
+    and hasattr(_cu_mod, "__path__")
+    and _local_cu_path not in list(_cu_mod.__path__)
+):
+    _cu_mod.__path__.insert(0, _local_cu_path)
 
 
 # ── Cache / logger helpers ─────────────────────────────────────────────
@@ -174,7 +191,9 @@ def patch_action_manager_register_only():
     Action = None
     try:
         from qualibrate.core.runnables.run_action.action import Action as _A
-        from qualibrate.core.runnables.run_action.action_manager import ActionManager as _AM
+        from qualibrate.core.runnables.run_action.action_manager import (
+            ActionManager as _AM,
+        )
 
         Action = _A
         am_classes.append(_AM)
@@ -215,7 +234,9 @@ def patch_action_manager_register_only():
 
         def __enter__(self):
             for cls in am_classes:
-                self._stack.enter_context(patch.object(cls, "register_action", _register_only))
+                self._stack.enter_context(
+                    patch.object(cls, "register_action", _register_only)
+                )
             return self
 
         def __exit__(self, *exc):
@@ -236,7 +257,10 @@ def call_node_action(node: Any, action_name: str) -> None:
             except Exception as exc:
                 warnings.warn(f"Action '{action_name}' raised: {exc}")
             return
-    pytest.fail(f"Node {getattr(node, 'name', '?')} has no registered " f"run_action '{action_name}'.")
+    pytest.fail(
+        f"Node {getattr(node, 'name', '?')} has no registered "
+        f"run_action '{action_name}'."
+    )
 
 
 # ── Parameter / metadata helpers ───────────────────────────────────────
@@ -310,6 +334,86 @@ def configure_machine_network(machine) -> bool:
     except Exception:
         return False
     return True
+
+
+# ── Cloud (SaaS) simulator helpers ────────────────────────────────────
+
+_SAAS_CREDENTIALS_CANDIDATES = [
+    REPO_ROOT / ".qm_saas_credentials.json",
+    REPO_ROOT / "quam-builder" / ".qm_saas_credentials.json",
+    Path.home() / ".qm_saas_credentials.json",
+]
+
+
+def find_saas_credentials() -> Optional[Path]:
+    """Return the first existing QM SaaS credentials file, or None."""
+    for path in _SAAS_CREDENTIALS_CANDIDATES:
+        if path.is_file():
+            return path
+    return None
+
+
+def load_saas_credentials(path: Optional[Path] = None) -> Optional[Dict[str, str]]:
+    """Load SaaS credentials from *path* or the first discovered candidate.
+
+    Returns a dict with at least ``email`` and ``password`` keys, or None.
+    """
+    creds_path = path or find_saas_credentials()
+    if creds_path is None:
+        return None
+    try:
+        data = json.loads(creds_path.read_text(encoding="utf-8"))
+        if isinstance(data, dict) and "email" in data and "password" in data:
+            return data
+    except Exception:
+        pass
+    return None
+
+
+@contextlib.contextmanager
+def cloud_simulator_qmm(credentials: Optional[Dict[str, str]] = None) -> Iterator:
+    """Context manager that yields a QMM connected to a QM SaaS cloud simulator.
+
+    Usage::
+
+        with cloud_simulator_qmm() as qmm:
+            job = qmm.simulate(config, program, SimulationConfig(duration=1000))
+            job.wait_until("Done", 300)
+            samples = job.get_simulated_samples()
+
+    Raises ``ImportError`` if ``qm_saas`` is not installed, and ``RuntimeError``
+    if no credentials file can be found.
+    """
+    try:
+        import qm_saas  # type: ignore[import-not-found]
+    except ImportError as exc:
+        raise ImportError(
+            "Cloud simulation requires the `qm_saas` package. "
+            "Install it or pass use_cloud=False to fall back to OPX simulation."
+        ) from exc
+
+    from qm import QuantumMachinesManager
+
+    creds = credentials or load_saas_credentials()
+    if creds is None:
+        raise RuntimeError(
+            "No QM SaaS credentials found. Add a .qm_saas_credentials.json file "
+            "to the repo root or pass use_cloud=False to use OPX simulation."
+        )
+
+    email = creds["email"]
+    password = creds["password"]
+    host = creds.get("host", "qm-saas.dev.quantum-machines.co")
+
+    client = qm_saas.QmSaas(email=email, password=password, host=host)
+    client.close_all()
+    with client.simulator(client.latest_version()) as instance:
+        qmm = QuantumMachinesManager(
+            host=instance.host,
+            port=instance.port,
+            connection_headers=instance.default_connection_headers,
+        )
+        yield qmm
 
 
 # ── quam_config stub ───────────────────────────────────────────────────
@@ -437,7 +541,9 @@ def make_markdown_generator_sim():
             f"# {getattr(node, 'name', 'Unknown Node')}\n\n"
             f"## Description\n\n"
             f"{getattr(node, 'description', 'No description available')}\n\n"
-            f"## Parameters\n\n" + "\n".join(params_table) + "\n\n## Simulation Output\n\n"
+            f"## Parameters\n\n"
+            + "\n".join(params_table)
+            + "\n\n## Simulation Output\n\n"
             "![Simulation](simulation.png)\n\n"
             "---\n*Generated by simulation test infrastructure*\n"
         )
@@ -465,10 +571,12 @@ def make_save_simulation_plot():
 
         simulated_samples = simulated_output
         if hasattr(simulated_output, "get_simulated_samples"):
-            simulated_output.wait_until("Done", 1000)
+            simulated_output.wait_until("Done", 480)
             simulated_samples = simulated_output.get_simulated_samples()
 
-        con_names = sorted(name for name in dir(simulated_samples) if name.startswith("con"))
+        con_names = sorted(
+            name for name in dir(simulated_samples) if name.startswith("con")
+        )
         if not con_names:
             pytest.skip("No simulated analog connections found to plot.")
 
@@ -494,6 +602,7 @@ def make_save_analysis_plot():
         artifacts_dir.mkdir(parents=True, exist_ok=True)
         output_path = artifacts_dir / filename
         fig.savefig(output_path, dpi=200)
+        fig.savefig(output_path.with_suffix(".svg"))
         plt.close(fig)
         return output_path
 
@@ -503,7 +612,9 @@ def make_save_analysis_plot():
 # ── Execute-test helpers ───────────────────────────────────────────────
 
 
-def _diff_dicts(before: Dict[str, Any], after: Dict[str, Any], prefix: str = "") -> list:
+def _diff_dicts(
+    before: Dict[str, Any], after: Dict[str, Any], prefix: str = ""
+) -> list:
     """Recursively compare two nested dicts, returning changed leaf entries.
 
     Returns a list of ``(dotted_key, before_value, after_value)`` tuples.
@@ -533,9 +644,12 @@ def save_execute_figures(node, artifacts_dir: Path) -> list:
     saved: list = []
     results = getattr(node, "results", None) or {}
 
+    snapshot_idx = getattr(node, "snapshot_idx", None)
+    prefix = f"snapshot{snapshot_idx}_" if snapshot_idx is not None else ""
+
     single_fig = results.get("figure")
     if single_fig is not None and hasattr(single_fig, "savefig"):
-        fname = "figure.png"
+        fname = f"{prefix}figure.png"
         single_fig.savefig(artifacts_dir / fname, dpi=200)
         plt.close(single_fig)
         saved.append(fname)
@@ -545,7 +659,7 @@ def save_execute_figures(node, artifacts_dir: Path) -> list:
         for name, fig in figures.items():
             if fig is not None and hasattr(fig, "savefig"):
                 safe_name = str(name).replace("/", "_").replace(" ", "_")
-                fname = f"{safe_name}.png"
+                fname = f"{prefix}{safe_name}.png"
                 fig.savefig(artifacts_dir / fname, dpi=200)
                 plt.close(fig)
                 saved.append(fname)

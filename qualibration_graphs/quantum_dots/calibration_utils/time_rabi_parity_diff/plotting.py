@@ -9,12 +9,19 @@ import numpy as np
 import xarray as xr
 
 from calibration_utils.time_rabi_parity_diff.analysis import FFT_FREQ_MIN, FFT_FREQ_MAX
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 
 
-def _get_qubit_names_from_ds(ds: xr.Dataset) -> List[str]:
-    """Resolve qubit names from dataset pdiff_ vars (pdiff_Q1 -> Q1)."""
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_") and not v.endswith("_fit")]
-    return [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
+def _get_qubit_names_from_ds(
+    ds: xr.Dataset,
+    qubits: List[Any],
+    analysis_signal: str,
+) -> List[str]:
+    return get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
 
 def _plot_rabi_trace_ax(
@@ -22,13 +29,14 @@ def _plot_rabi_trace_ax(
     pdiff: np.ndarray,
     duration_ns: np.ndarray,
     qubit_name: str,
+    analysis_signal: str,
     fit_result: dict | None = None,
 ) -> None:
-    """Plot raw parity difference vs pulse duration on the given axes."""
+    """Plot raw analysis trace vs pulse duration on the given axes."""
     ax.plot(duration_ns, pdiff, "b-", lw=1, alpha=0.8)
     ax.scatter(duration_ns, pdiff, c="b", s=6, alpha=0.5, zorder=3)
     ax.set_xlabel("Pulse duration (ns)")
-    ax.set_ylabel("Parity difference")
+    ax.set_ylabel(analysis_signal)
     ax.set_title(f"{qubit_name} — Rabi oscillation")
     ax.set_ylim(-0.05, 1.05)
 
@@ -40,9 +48,18 @@ def _plot_rabi_trace_ax(
         if sinusoid is not None:
             t_shifted = sinusoid["t_shifted"]
             t_plot = t_shifted + duration_ns[0]  # shift back to original time axis
-            ax.plot(t_plot, sinusoid["fitted_curve"], "r-", lw=1.5, alpha=0.9, label="Damped sinusoid fit")
+            ax.plot(
+                t_plot,
+                sinusoid["fitted_curve"],
+                "r-",
+                lw=1.5,
+                alpha=0.9,
+                label="Damped sinusoid fit",
+            )
 
-        ax.axvline(t_pi, color="lime", ls="--", lw=1.5, alpha=0.9, label=f"t_π = {t_pi:.0f} ns")
+        ax.axvline(
+            t_pi, color="lime", ls="--", lw=1.5, alpha=0.9, label=f"t_π = {t_pi:.0f} ns"
+        )
         ax.legend(loc="upper right", fontsize=8)
 
 
@@ -77,7 +94,14 @@ def _plot_fft_ax(
     if fit_result and fit_result.get("success"):
         omega = fit_result.get("rabi_frequency", 0)
         f_rabi_us = omega / (2.0 * np.pi) * 1e3  # rad/ns → 1/μs
-        ax.axvline(f_rabi_us, color="lime", ls="--", lw=1, alpha=0.9, label=f"f_Rabi = {f_rabi_us:.1f} /μs")
+        ax.axvline(
+            f_rabi_us,
+            color="lime",
+            ls="--",
+            lw=1,
+            alpha=0.9,
+            label=f"f_Rabi = {f_rabi_us:.1f} /μs",
+        )
 
     ax.legend(loc="upper right", fontsize=8)
 
@@ -87,14 +111,15 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
+    analysis_signal: str = "E_p2_given_p1_0",
 ) -> "plt.Figure":
     """Plot Rabi trace and FFT for each qubit.
 
     Layout (per qubit row):
-    * Column 1 — Raw parity difference vs pulse duration with t_π marker.
+    * Column 1 — Raw analysis trace vs pulse duration with t_π marker.
     * Column 2 — FFT magnitude spectrum with peak fit overlay.
     """
-    qubit_names = _get_qubit_names_from_ds(ds)
+    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
@@ -105,21 +130,35 @@ def plot_raw_data_with_fit(
 
     for i, qname in enumerate(qubit_names):
         ax_trace, ax_fft = axes[i, 0], axes[i, 1]
-        pdiff_var = f"pdiff_{qname}"
+        signal_var = f"{analysis_signal}_{qname}"
         fr = fit_results.get(qname, {})
 
         durations_ns = np.asarray(ds.pulse_duration.values, dtype=float)
 
-        if pdiff_var not in ds.data_vars:
-            ax_trace.text(0.5, 0.5, f"No data for {qname}", transform=ax_trace.transAxes, ha="center")
-            ax_fft.text(0.5, 0.5, f"No data for {qname}", transform=ax_fft.transAxes, ha="center")
+        if signal_var not in ds.data_vars:
+            ax_trace.text(
+                0.5,
+                0.5,
+                f"No data for {qname}",
+                transform=ax_trace.transAxes,
+                ha="center",
+            )
+            ax_fft.text(
+                0.5,
+                0.5,
+                f"No data for {qname}",
+                transform=ax_fft.transAxes,
+                ha="center",
+            )
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
+        trace = np.asarray(ds[signal_var].values, dtype=float)
 
-        _plot_rabi_trace_ax(ax_trace, pdiff, durations_ns, qname, fit_result=fr)
+        _plot_rabi_trace_ax(
+            ax_trace, trace, durations_ns, qname, analysis_signal, fit_result=fr
+        )
         _plot_fft_ax(ax_fft, qname, fit_result=fr)
 
-    fig.suptitle("Time Rabi (parity diff)")
+    fig.suptitle(f"Time Rabi ({analysis_signal})")
     fig.tight_layout()
     return fig

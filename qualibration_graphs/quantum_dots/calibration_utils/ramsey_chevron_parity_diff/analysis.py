@@ -34,6 +34,7 @@ import xarray as xr
 from scipy.optimize import curve_fit, differential_evolution
 
 from qualibrate.core import QualibrationNode
+from calibration_utils.common_utils.parity_streams import get_parity_item_names
 
 _logger = logging.getLogger(__name__)
 
@@ -332,7 +333,8 @@ def _analyse_single_qubit(
         mean_parity_fit = model(detuning_hz, *popt)
         is_peak = popt[0] > 0
         _logger.debug(
-            "Ramsey mean-parity fit (DE, %s): f_offset=%.3f MHz, " "gamma=%.5f 1/ns, sigma_g=%.5f 1/ns, T2*=%.1f ns",
+            "Ramsey mean-parity fit (DE, %s): f_offset=%.3f MHz, "
+            "gamma=%.5f 1/ns, sigma_g=%.5f 1/ns, T2*=%.1f ns",
             "peak" if is_peak else "dip",
             freq_offset * 1e-6,
             decay_rate,
@@ -357,7 +359,7 @@ def _analyse_single_qubit(
         t2_star,
     )
 
-    success = np.isfinite(t2_star) and t2_star > 0
+    success = bool(np.isfinite(t2_star) and t2_star > 0)
 
     return {
         "freq_offset": freq_offset,
@@ -382,16 +384,19 @@ def fit_raw_data(
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit resonance frequency offset and T2* for each qubit.
 
-    Iterates over every ``pdiff_<qubit>`` variable in the dataset and
-    runs :func:`_analyse_single_qubit` on each.
+    Expects joint-outcome streams processed by
+    :func:`~calibration_utils.common_utils.parity_streams.process_joint_streams`,
+    so the analysis uses ``{analysis_signal}_{qubit}`` (default
+    ``E_p2_given_p1_0_<qubit>``) of shape ``(n_detuning, n_tau)``.
 
     Parameters
     ----------
     ds : xr.Dataset
-        Raw measurement data with coordinates ``detuning`` (Hz) and
-        ``tau`` (ns), and data variables ``pdiff_<qubit>``.
+        Measurement data with coordinates ``detuning`` (Hz) and ``tau``
+        (ns), and conditional-expectation variables after joint-stream
+        processing.
     node : QualibrationNode
-        Calibration node (provides ``node.namespace["qubits"]``).
+        Calibration node (provides qubit list and ``analysis_signal``).
 
     Returns
     -------
@@ -401,10 +406,12 @@ def fit_raw_data(
         ``_diag`` key with diagnostic arrays for plotting.
     """
     qubits = node.namespace["qubits"]
-    pdiff_vars = [v for v in ds.data_vars if v.startswith("pdiff_")]
-    qubit_names = [v.replace("pdiff_", "") for v in sorted(pdiff_vars)]
-    if not qubit_names:
-        qubit_names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    qubit_names = get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
     detuning_hz = np.asarray(ds.detuning.values, dtype=float)
     tau_ns = np.asarray(ds.tau.values, dtype=float)
@@ -412,8 +419,8 @@ def fit_raw_data(
     fit_results: Dict[str, Dict[str, Any]] = {}
 
     for qname in qubit_names:
-        pdiff_var = f"pdiff_{qname}"
-        if pdiff_var not in ds.data_vars:
+        signal_var = f"{analysis_signal}_{qname}"
+        if signal_var not in ds.data_vars:
             fp = FitParameters(
                 freq_offset=0.0,
                 t2_star=np.nan,
@@ -424,8 +431,8 @@ def fit_raw_data(
             fit_results[qname] = asdict(fp)
             continue
 
-        pdiff = np.asarray(ds[pdiff_var].values, dtype=float)
-        result = _analyse_single_qubit(pdiff, detuning_hz, tau_ns)
+        signal_2d = np.asarray(ds[signal_var].values, dtype=float)
+        result = _analyse_single_qubit(signal_2d, detuning_hz, tau_ns)
 
         fp = FitParameters(
             freq_offset=result["freq_offset"],
