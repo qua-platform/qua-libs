@@ -47,7 +47,7 @@ where this difference crosses π (0.5 in normalised units), found by a tanh fit 
 
 Leakage populations (|g⟩, |e⟩, |f⟩) of the leakage qubit (always the higher-frequency qubit)
 are recorded and plotted for visual inspection when GEF readout is enabled; they are not used
-in the fit criterion for this node (see node 32b for error-amplified refinement).
+in the fit criterion for this node (see node 33b for error-amplified refinement).
 
 Prerequisites:
 - Calibrated single-qubit gates for both qubits in the pair.
@@ -61,7 +61,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="32a_cz_conditional_phase",  # Name should be unique
+    name="33a_cz_conditional_phase",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
     machine=Quam.load(),
