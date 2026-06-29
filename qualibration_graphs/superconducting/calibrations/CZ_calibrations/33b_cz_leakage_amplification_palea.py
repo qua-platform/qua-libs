@@ -11,7 +11,6 @@ from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualibrate import QualibrationNode
-from qualibration_libs.core import tracked_updates
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
@@ -164,7 +163,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
                         for ii, qp in multiplexed_qubit_pairs.items():
                             qubit_role = qubit_roles_map[qp.name]
                             high_q, low_q = qubit_role.high, qubit_role.low
-                            phase_high, _ = cz_phase_shifts_map[qp.name]
                             # Reset the qubits
                             high_q.reset(node.parameters.reset_type, node.parameters.simulate)
                             low_q.reset(node.parameters.reset_type, node.parameters.simulate)
@@ -316,10 +314,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
-    """Save the calibration results and revert tracked qubit pair changes."""
-    for qp in node.namespace.get("tracked_qubit_pairs", []):
-        qp.revert_changes()
-
+    """Save the calibration results."""
     node.save()
 
 
