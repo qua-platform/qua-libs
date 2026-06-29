@@ -1,4 +1,4 @@
-# **CZ gate on flux-tunable transmons: physics & calibration**
+# **Controlled-Z (CZ) gate on flux-tunable transmons: physics & calibration**
 
 This folder contains routines for the **flux-activated CZ gate** on flux-tunable transmons. The gate uses the **|11⟩ ↔ |20⟩** (state convention: |high_freq_qubit, low_freq_qubit⟩) avoided crossing; a baseband flux pulse on the moving qubit brings the pair into the interaction region.
 
@@ -27,32 +27,89 @@ Distortion calibration (**17**, **18**) applies to **both** (moving-qubit flux l
 
 ---
 
-# Physics of the CZ gate based on 11–20 Interaction
+# Physics of the CZ gate
 
-The **controlled-Z (CZ) gate** for flux tunable superconducting qubits operates via the _|11⟩ ↔ |20⟩_ avoided crossing between two transmons coupled with exchange rate **J**.
-
-### Mechanism
-
-The CZ gate is realized by pulsing the qubit frequencies to an avoided crossing at a specific operating point (Point II).
-
-<p align="center">
-   <img src="../.img/spectrum_cz.png" width="500" alt="Spectrum illustration">
-</p>
-At Point II, a useful two-qubit interaction appears in the two-excitation spectrum. This involves a large cavity-mediated avoided crossing between the computational state |11⟩ and the non-computational higher-level transmon excitation |20⟩.
-
-This avoided crossing causes a frequency shift, $\zeta/2\pi$, in the transition frequency of the |11⟩ state. A CZ gate is implemented by selecting a voltage pulse $V_R$ into Point II such that the time integral of the frequency shift satisfies:
-
-$$
-\int \zeta(t) dt = (2n+1)\pi
-$$
-
-(where _n_ is an integer). The $\zeta(t)$ frequency shift is directly determined by the waveform amplitude, shape, and duration.
-
-### Gate Condition
-
-A **π phase accumulation** on the |11⟩ state realizes an ideal CZ:
+The CZ is a two-qubit entangling gate that applies a $\pi$ phase to
+the $|11\rangle$ state and leaves the rest of the computational basis untouched:
 
 $$U_\mathrm{CZ} = \mathrm{diag}(1, 1, 1, -1).$$
+
+Equivalently, it imprints a Z on the target _conditioned_ on the control
+being $|1\rangle$. Combined with single-qubit rotations it is universal, and on
+flux-tunable transmons it is one of the native, highest-fidelity two-qubit
+gates.
+
+With the qubits coupled by an exchange interaction $J$, the Hamiltonian in
+the ordered basis {$|20\rangle$, $|11\rangle$, $|02\rangle$} is
+
+$$
+H^{(2)} =
+\begin{pmatrix}
+2\omega_H + \alpha_H & \sqrt{2}\,J & 0 \\
+\sqrt{2}\,J & \omega_H + \omega_L & \sqrt{2}\,J \\
+0 & \sqrt{2}\,gJ& 2\omega_L + \alpha_L
+\end{pmatrix}.
+$$
+
+The structure shows that $|11\rangle$ couples to **both** double-excitation
+states, $|20\rangle$ and $|02\rangle$, each through a $\sqrt{2} J$ matrix element — the $\sqrt{2}$ coming
+from the 1→2 transition of the doubly-excited transmon (the bosonic $\sqrt{2}$ of
+$a^{\dagger}$). The corner entry is zero: $|20\rangle$ and $|02\rangle$ do not couple directly, only
+through $|11\rangle$. Compare the single-excitation block,
+
+$$
+H^{(1)} =
+\begin{pmatrix}
+\omega_H & J\\
+J & \omega_L
+\end{pmatrix},
+$$
+
+whose off-diagonal is just $J$ — the double-excitation crossing is the
+stronger one, which is why it both drives the gate and sets the dominant
+leakage channel.
+
+So in the two-excitation manifold there are two candidate partners for
+$|11\rangle$ (shown in the figure below):
+
+- $|11\rangle \leftrightarrow |20\rangle$ (high-frequency qubit doubly excited)
+- $|11\rangle \leftrightarrow |02\rangle$ (low-frequency qubit doubly excited)
+
+Either realizes a CZ in principle; the choice is set by the frequency
+arrangement and which qubit is fluxed. **Here we use $|11\rangle \leftrightarrow |20\rangle$.**
+
+The single-excitation manifold {$|10\rangle, |01\rangle$} is a separate resource:
+brought to resonance ($\omega_H = \omega_L$) it exchanges excitations and realizes the
+**iSWAP family**, not a CZ. It is shown only for orientation.
+
+The resonance conditions follow from the diagonals:
+
+- $|11\rangle \leftrightarrow |20\rangle$ at $\omega_H − \omega_L = |\alpha_H|$ (CZ operating point)
+- $|11\rangle \leftrightarrow |02\rangle$ at $\omega_H - \omega_L = −|\alpha_L|$ (unused here)
+- $|10\rangle \leftrightarrow |01\rangle$ at $\omega_H - \omega_L = 0$ (iSWAP)
+
+## Mechanism
+
+A baseband flux pulse on the moving qubit sweeps the detuning $\Delta = \omega_H - \omega_L$
+toward the $|11\rangle \leftrightarrow |20\rangle$ resonance at $\Delta = |\alpha_H|$. There are two ways to spend
+the resulting interaction as a conditional phase:
+
+- **Adiabatic.** Ramp into the avoided crossing slowly enough that $|11\rangle$
+  follows the lower eigenstate without ever fully populating $|20\rangle$,
+  accumulating a dynamical phase along the way. Leakage-robust, but slower.
+- **Diabatic.** Pulse fast to (or near) resonance and let $|11\rangle$ undergo a
+  full 2π population exchange with $|20\rangle$ — out to $|20\rangle$ and back — returning
+  to $|11\rangle$ with the conditional phase banked.
+
+**This stack uses the diabatic gate.** Over the excursion, $|11\rangle$ acquires a
+phase $\zeta(t)$ relative to the single-excitation states $|01\rangle$, $|10\rangle$; the gate is
+calibrated so that
+
+$$\int \zeta(t)\, dt = (2n+1)\pi, \quad n \in \mathbb{Z},$$
+
+i.e. an _odd_ multiple of π. The residual single-qubit phases on $|01\rangle$ and
+$|10\rangle$ are removed by virtual-Z compensation (node 34), yielding the ideal
+$U_\mathrm{CZ}$ above.
 
 **Key Reference:**
 
@@ -106,36 +163,35 @@ Acquire with `update_state=False`, reload by `load_data_id`, tune fit parameters
 Coupler bias is **not** swept in the CZ calibration chain. After distortion calibration, run the chevron → conditional-phase → phase-compensation sequence. Automate with graph **99**.
 
 ```text
-17 → 18  →  31 → 32a → 32b
+17 → 18  →  31 → 33a → 33b
                     └→ 34
 ```
 
 | Order | Node    | Summary                                                                                       |
 | ----- | ------- | --------------------------------------------------------------------------------------------- |
 | 1     | **31**  | Chevron: amplitude × duration → coarse CZ duration/amplitude                                  |
-| 2     | **32a** | Fine amplitude scan → π/2 conditional-phase point                                             |
-| 3     | **32b** | CZ pulse train → error-amplified amplitude fine tune                                          |
-| 4     | **34**  | Virtual-Z phase compensation (can run after **32a**; **99** runs it in parallel with **32b**) |
+| 2     | **33a** | Fine amplitude scan → π/2 conditional-phase point                                             |
+| 3     | **33b** | CZ pulse train → error-amplified amplitude fine tune                                          |
+| 4     | **34**  | Virtual-Z phase compensation (can run after **33a**; **99** runs it in parallel with **33b**) |
 
 ---
 
 ## Tunable-coupler workflow
 
-Node **30** finds coupler **decouple (idle)** and **interaction** flux biases plus moving-qubit detuning in one 2D map (CZ or iSWAP). That replaces the coarse amplitude/duration role of chevron (**31**), so the usual path is **30 → 32a → 32b → 33a → 34** without **31**. Pulse duration and macro amplitudes come from **30** and the gate macro already in QUAM. Use **33b** (PALEA) instead of **33a** for improved leakage isolation.
+Node **30** finds coupler **decouple (idle)** and **interaction** flux biases plus moving-qubit detuning in one 2D map (CZ or iSWAP). That replaces the coarse amplitude/duration role of chevron (**31**), so the usual path is **30 → 32a → 32b → 33a → 33b → 34** without **31**. Pulse duration and macro amplitudes come from **30** and the gate macro already in QUAM. Use **32b** (PALEA) instead of **32a** for improved leakage isolation.
 
 ```text
-17 → 18  →  30 → 32a → 32b → 33a/33b
-                └→ 34
+17 → 18  →  30 → 32a → 32b → 33a → 33b → 34
 ```
 
 | Order | Node    | Summary                                                                             |
 | ----- | ------- | ----------------------------------------------------------------------------------- |
 | 1     | **30**  | 2D coupler + moving-qubit flux → `decouple_offset`, `detuning`, `macros[operation]` |
-| 2     | **32a** | Fine amplitude → π/2 conditional-phase point                                        |
-| 3     | **32b** | CZ pulse train → error-amplified amplitude fine tune                                |
-| 4     | **33a** | Coupler amplitude via \|11⟩ leakage amplification (standard)                        |
-| 4′    | **33b** | Coupler amplitude via PALEA leakage amplification (alternative to **33a**)          |
-| 5     | **34**  | Virtual-Z phase compensation                                                        |
+| 2     | **32a** | Coupler amplitude via \|11⟩ leakage amplification (standard)                        |
+| 3     | **32b** | Coupler amplitude via PALEA leakage amplification (alternative to **32a**)          |
+| 4     | **33a** | Fine amplitude → π/2 conditional-phase point                                        |
+| 5     | **33b** | CZ pulse train → error-amplified amplitude fine tune                                |
+| 6     | **34**  | Virtual-Z phase compensation                                                        |
 
 **31** remains available if you still want an explicit amplitude–duration Chevron after **30** (e.g. new macro shape or duration not set in state).
 
@@ -157,7 +213,7 @@ Run **30** manually or in a custom graph; graph **99** is for the fixed-coupler 
 
 ## Chevron — fixed coupler (optional for tunable)
 
-[(31_chevron_11_02)](./31_chevron_11_02.py)
+[(31_chevron_11_20)](./31_chevron_11_20.py)
 
 Prepare |11⟩, sweep CZ flux pulse amplitude and duration on the moving qubit. First Chevron fringe → initial duration/amplitude. **Required** on fixed-coupler pairs; **usually skipped** after **30** on tunable-coupler pairs.
 
@@ -169,11 +225,31 @@ Prepare |11⟩, sweep CZ flux pulse amplitude and duration on the moving qubit. 
 
 ---
 
+## Leakage amplification — tunable coupler only
+
+### Standard protocol
+
+[(32a_cz_leakage_amplification)](./32a_cz_leakage_amplification.py)
+
+Prepare \|11⟩, sweep **coupler flux pulse amplitude**, repeat CZ `n = 1…N`, measure P(11). Optimal amplitude maximizes mean P(11) over `n`. Requires GEF readout and `macros[operation].coupler_flux_pulse`.
+
+**Goal:** Tune `coupler_flux_pulse.amplitude` to preserve \|11⟩ under repeated CZ.
+
+### PALEA protocol
+
+[(32b_cz_leakage_amplification_palea)](./32b_cz_leakage_amplification_palea.py)
+
+Same coupler-amplitude objective as **32a**, with a dynamical-decoupling layer after each CZ (EF π on the high-frequency qubit, g–e π on the low-frequency qubit). Sweeps even `n = 2, 4, …`. See Marxer et al., [arXiv:2508.16437](https://arxiv.org/abs/2508.16437).
+
+**Goal:** Same state update as **32a** with improved leakage-error amplification.
+
+---
+
 ## Conditional phase — both workflows
 
-[(32a_cz_conditional_phase)](./32a_cz_conditional_phase.py)
+[(33a_cz_conditional_phase)](./33a_cz_conditional_phase.py)
 
-Use gate duration from **31** (fixed coupler) or from the macro in state after **30** (tunable coupler). Sweep amplitude to the **π/2 conditional-phase** point. Tomography with rotating x90 on target.
+Use gate duration from **31** (fixed coupler) or from the macro in state after **30** (tunable coupler). On tunable couplers, run after leakage calibration (**32a** or **32b**). Sweep amplitude to the **π/2 conditional-phase** point. Tomography with rotating x90 on target.
 
 <p align="center">
    <img src="../.img/conditional_phase.png" width="500" alt="Conditional phase plot">
@@ -183,7 +259,7 @@ Use gate duration from **31** (fixed coupler) or from the macro in state after *
 
 ### Error amplification
 
-[(32b_cz_conditional_phase_error_amp)](./32b_cz_conditional_phase_error_amp.py)
+[(33b_cz_conditional_phase_error_amp)](./33b_cz_conditional_phase_error_amp.py)
 
 Train of CZ pulses for finer amplitude tuning.
 
@@ -192,26 +268,6 @@ Train of CZ pulses for finer amplitude tuning.
 </p>
 
 **Goal:** Fine-tune gate amplitude.
-
----
-
-## Leakage amplification — tunable coupler only
-
-### Standard protocol
-
-[(33a_cz_leakage_amplification)](./33a_cz_leakage_amplification.py)
-
-Prepare \|11⟩, sweep **coupler flux pulse amplitude**, repeat CZ `n = 1…N`, measure P(11). Optimal amplitude maximizes mean P(11) over `n`. Requires GEF readout and `macros[operation].coupler_flux_pulse`.
-
-**Goal:** Tune `coupler_flux_pulse.amplitude` to preserve \|11⟩ under repeated CZ.
-
-### PALEA protocol
-
-[(33b_cz_leakage_amplification_palea)](./33b_cz_leakage_amplification_palea.py)
-
-Same coupler-amplitude objective as **33a**, with a dynamical-decoupling layer after each CZ (EF π on the high-frequency qubit, g–e π on the low-frequency qubit). Sweeps even `n = 2, 4, …`. See Marxer et al., [arXiv:2508.16437](https://arxiv.org/abs/2508.16437).
-
-**Goal:** Same state update as **33a** with improved leakage-error amplification.
 
 ---
 
@@ -234,13 +290,13 @@ Same coupler-amplitude objective as **33a**, with a dynamical-decoupling layer a
 | Node    | File                                                                               | Fixed coupler |                    Tunable coupler                    |
 | ------- | ---------------------------------------------------------------------------------- | :-----------: | :---------------------------------------------------: |
 | **30**  | [`30_cz_iswap_flux_bootstrap.py`](./30_cz_iswap_flux_bootstrap.py)                 |       —       |                           ✓                           |
-| **31**  | [`31_chevron_11_02.py`](./31_chevron_11_02.py)                                     |       ✓       |                       optional                        |
-| **32a** | [`32a_cz_conditional_phase.py`](./32a_cz_conditional_phase.py)                     |       ✓       |                           ✓                           |
-| **32b** | [`32b_cz_conditional_phase_error_amp.py`](./32b_cz_conditional_phase_error_amp.py) |       ✓       |                           ✓                           |
-| **33a** | [`33a_cz_leakage_amplification.py`](./33a_cz_leakage_amplification.py)             |       —       |                           ✓                           |
-| **33b** | [`33b_cz_leakage_amplification_palea.py`](./33b_cz_leakage_amplification_palea.py) |       —       |                           ✓                           |
+| **31**  | [`31_chevron_11_20.py`](./31_chevron_11_20.py)                                     |       ✓       |                       optional                        |
+| **32a** | [`32a_cz_leakage_amplification.py`](./32a_cz_leakage_amplification.py)             |       —       |                           ✓                           |
+| **32b** | [`32b_cz_leakage_amplification_palea.py`](./32b_cz_leakage_amplification_palea.py) |       —       |                           ✓                           |
+| **33a** | [`33a_cz_conditional_phase.py`](./33a_cz_conditional_phase.py)                     |       ✓       |                           ✓                           |
+| **33b** | [`33b_cz_conditional_phase_error_amp.py`](./33b_cz_conditional_phase_error_amp.py) |       ✓       |                           ✓                           |
 | **34**  | [`34_cz_phase_compensation.py`](./34_cz_phase_compensation.py)                     |       ✓       |                           ✓                           |
-| **99**  | [`99_CZ_calibration_graph.py`](./99_CZ_calibration_graph.py)                       | ✓ (31–32b–34) | — (use **30** → 32a–33a/b–34 by hand or custom graph) |
+| **99**  | [`99_CZ_calibration_graph.py`](./99_CZ_calibration_graph.py)                       | ✓ (31–33b–34) | — (use **30** → 32a–32b–33a/b–34 by hand or custom graph) |
 
 Utilities: `cz_iswap_flux_bootstrap`, `chevron_cz`, `cz_conditional_phase`, `cz_conditional_phase_error_amp`, `cz_leakage_amp`, `cz_phase_compensation` under `../calibration_utils/`.
 
@@ -250,9 +306,9 @@ Utilities: `cz_iswap_flux_bootstrap`, `chevron_cz`, `cz_conditional_phase`, `cz_
 
 [`99_CZ_calibration_graph.py`](./99_CZ_calibration_graph.py) — `CZ_Calibration_Fixed_Couplers`:
 
-- **31** → **32a** → **32b** → **34**
+- **31** → **33a** → **33b** → **34**
 
-Leakage nodes (**33a** / **33b**) are tunable-coupler only and are not included in this graph.
+Leakage nodes (**32a** / **32b**) are tunable-coupler only and are not included in this graph.
 
 ---
 

@@ -57,7 +57,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="33a_cz_leakage_amplification",  # Name should be unique
+    name="32a_cz_leakage_amplification",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters: calibration_utils/cz_leakage_amp/parameters.py
     machine=Quam.load(),  # Instantiate the QUAM class from the state file
@@ -78,7 +78,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: disable=too-many-statements
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     if not node.parameters.use_state_discrimination:
-        raise ValueError("33a_cz_leakage_amplification requires use_state_discrimination=True for P(11) analysis.")
+        raise ValueError("32a_cz_leakage_amplification requires use_state_discrimination=True for P(11) analysis.")
 
     # Get the active qubit pairs from the node and organize them by batches
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
