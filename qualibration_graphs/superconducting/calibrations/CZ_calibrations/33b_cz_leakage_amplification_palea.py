@@ -35,9 +35,9 @@ This node calibrates the CZ gate coupler pulse amplitude using the Phase-Average
 Amplification (PALEA) protocol, as described in Marxer et al., arXiv:2508.16437
 (https://arxiv.org/abs/2508.16437).
 
-PALEA is designed to coherently amplify population leakage from |11> to |02> caused by imperfect
+PALEA is designed to coherently amplify population leakage from |11> to |20> caused by imperfect
 diabatic transitions during the CZ gate, while remaining robust against other error sources such
-as ZZ over-rotation and single-qubit phase errors. Compared to standard leakage amplification,
+as ZZ over-rotation and single-qubit phase errors. Compared to standard leakage amplification (node 33a),
 PALEA achieves at least a factor-of-two reduction in leakage for the same number of gate repetitions.
 
 **Protocol:**
@@ -99,18 +99,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
     # Logs a warning and corrects qp.moving_qubit in-memory if they disagree; state is persisted
     # at the end of the node.
     qubit_roles_map = {}
-    cz_phase_shifts_map = {}
     for qp in qubit_pairs:
         verify_moving_qubit(qp, operation=operation, log_callable=node.log)
         roles = QubitRoles.resolve(qp)
         qubit_roles_map[qp.name] = roles
-        cz_macro = qp.macros[operation]
-        # CZGate applies phase_shift_control / phase_shift_target on control / target;
-        # map each to high_q / low_q by frequency.
-        if roles.high is qp.qubit_control:
-            cz_phase_shifts_map[qp.name] = (cz_macro.phase_shift_control, cz_macro.phase_shift_target)
-        else:
-            cz_phase_shifts_map[qp.name] = (cz_macro.phase_shift_target, cz_macro.phase_shift_control)
     node.namespace["qubit_roles_map"] = qubit_roles_map
 
     qm_config, ef_element_names = build_palea_qm_config(node.machine, qubit_pairs, qubit_roles_map)
@@ -177,7 +169,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
                                 qp.macros[operation].apply(amplitude_scale_coupler=amp)
                                 align(ef_element_names[high_q.name], high_q.xy.name)
                                 # play the PALEA Dynamical decoupling sequence:
-                                # EF (e-f) pi on the leakage qubit (|11⟩↔|20⟩), g-e pi on the low qubit.
+                                # EF (e-f) pi on the leakage qubit ( high-q qubit for |11⟩↔|20⟩), g-e pi on the low qubit.
                                 play("EF_x180", ef_element_names[high_q.name])
                                 low_q.xy.play("x180")
 
@@ -288,7 +280,11 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit pair grid locations."""
     qubit_pairs = node.namespace["qubit_pairs"]
 
-    figures = plot_raw_data_with_fit(node.results["ds_fit"], qubit_pairs)
+    figures = plot_raw_data_with_fit(
+        node.results["ds_fit"],
+        qubit_pairs,
+        title_prefix="CZ leakage amplification (PALEA)",
+    )
     for fig in figures.values():
         plt.show()
     node.results["figures"] = {
@@ -307,6 +303,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         fit_results = node.results["fit_results"]
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes[qp.name] == "failed":
+                node.log(f"Skipping state update for {qp.name}: fit flagged unsuccessful.")
                 continue
             qp.macros[operation].coupler_flux_pulse.amplitude = fit_results[qp.name]["optimal_amplitude"]
 

@@ -15,6 +15,7 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset,
     qubit_pairs: list,
     node=None,
+    title_prefix: str = "CZ leakage amplification",
 ) -> Dict[str, Figure]:
     """Plot CZ leakage amplification data on chip-topology grids.
 
@@ -26,6 +27,8 @@ def plot_raw_data_with_fit(
         Qubit pair objects used for grid placement.
     node : optional
         Kept for backwards-compatible call sites.
+    title_prefix : str
+        Prefix for figure suptitles (e.g. ``"CZ leakage amplification (PALEA)"``).
 
     Returns
     -------
@@ -40,7 +43,7 @@ def plot_raw_data_with_fit(
     for ax, qubit in grid_iter(raw_grid):
         qp_name = qubit["qubit"]
         plot_individual_raw_data_with_fit(ax, ds_fit, qp_name)
-    raw_grid.fig.suptitle("CZ leakage amplification - raw P(11)")
+    raw_grid.fig.suptitle(f"{title_prefix} - raw P(11)")
     raw_grid.fig.tight_layout()
     figures["raw"] = raw_grid.fig
 
@@ -48,7 +51,7 @@ def plot_raw_data_with_fit(
     for ax, qubit in grid_iter(mean_grid):
         qp_name = qubit["qubit"]
         plot_individual_mean_data_with_fit(ax, ds_fit, qp_name)
-    mean_grid.fig.suptitle("CZ leakage amplification - mean P(11)")
+    mean_grid.fig.suptitle(f"{title_prefix} - mean P(11)")
     mean_grid.fig.tight_layout()
     figures["mean"] = mean_grid.fig
 
