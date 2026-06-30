@@ -1,9 +1,13 @@
+"""Parameters for Ramsey versus flux calibration."""
+
 from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
+    """Node-specific parameters for Ramsey vs flux experiment."""
+
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
     frequency_detuning_in_mhz: float = 1.0
@@ -18,6 +22,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Span of flux values to sweep in volts. Default is 0.01 V."""
     flux_num: int = 21
     """Number of flux points to sample. Default is 21."""
+    save_load_id: bool = False
+    """Whether to save the load id. Default is False."""
 
 
 class Parameters(
@@ -26,4 +32,6 @@ class Parameters(
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
+    """Combined parameters for the Ramsey vs flux calibration node."""
+
     pass
