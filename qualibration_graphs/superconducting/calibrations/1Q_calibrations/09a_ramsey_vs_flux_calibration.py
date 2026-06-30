@@ -1,3 +1,5 @@
+"""Ramsey versus flux calibration for qubit frequency vs flux characterization."""
+
 # %% {Imports}
 from dataclasses import asdict
 
@@ -14,10 +16,12 @@ from qualibration_libs.data import XarrayDataFetcher
 from quam_config import Quam
 from calibration_utils.ramsey_versus_flux_calibration import (
     Parameters,
+    add_qubit_freq_vs_flux,
     fit_raw_data,
     log_fitted_results,
-    plot_raw_data_with_fit,
     plot_parabolas_with_fit,
+    plot_qubit_freq_vs_flux_fig,
+    plot_raw_data_with_fit,
     process_raw_dataset,
 )
 from qualibration_libs.parameters import get_qubits
@@ -60,8 +64,8 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow the user to locally set the node parameters."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1", "q3"]
     pass
 
 
@@ -130,7 +134,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qubit.xy.play("x90")
                                 qubit.xy.frame_rotation_2pi(phi)
                                 qubit.xy.wait(t + 1)
-                                qubit.z.wait(qubit.xy.operations["x90"].length * u.ns)
+                                qubit.z.wait(qubit.xy.operations["x90"].length * u.ns // 4)
                                 qubit.z.play(
                                     "const", amplitude_scale=flux / qubit.z.operations["const"].amplitude, duration=t
                                 )
@@ -170,7 +174,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    """Connect, execute QUA program, fetch raw data and store as dataset 'ds_raw'."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -208,7 +212,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """Analyse raw data -> store fitted dataset 'ds_fit' and dict 'fit_results'."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
@@ -220,6 +224,24 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
         for qubit_name, fit_result in node.results["fit_results"].items()
     }
 
+    # Compute absolute qubit RF frequency vs flux.
+    # Uses the corrected RF frequency (current value + freq_offset from the fit),
+    # which equals the value update_state will write to the state.
+    rf_hz = {}
+    for q in node.namespace["qubits"]:
+        if node.outcomes[q.name] != "successful":
+            continue
+        freq_offset = (
+            node.parameters.frequency_detuning_in_mhz * 1e6
+            - float(node.results["ds_fit"].freq_offset.sel(qubit=q.name).values) * 1e3
+        )
+        rf_hz[q.name] = q.xy.RF_frequency + freq_offset
+    node.results["ds_fit"] = add_qubit_freq_vs_flux(
+        node.results["ds_fit"],
+        rf_hz,
+        node.parameters.frequency_detuning_in_mhz,
+    )
+
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
@@ -227,11 +249,13 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
     fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     fig_parabola_fit = plot_parabolas_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_freq_vs_flux = plot_qubit_freq_vs_flux_fig(node.results["ds_fit"], node.namespace["qubits"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
         "raw_data": fig_raw_fit,
         "parabola_fit": fig_parabola_fit,
+        "qubit_freq_vs_flux": fig_freq_vs_flux,
     }
 
 
@@ -241,6 +265,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
+            if node.parameters.save_load_id:
+                node.machine.qubits[q.name].extras["ramsey_vs_flux_calibration_load_id"] = node.snapshot_idx
             if node.outcomes[q.name] == "failed":
                 continue
             flux_point = node.machine.qubits[q.name].z.flux_point
@@ -263,4 +289,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Save all node results and state updates."""
     node.save()
+
+
+# %%
