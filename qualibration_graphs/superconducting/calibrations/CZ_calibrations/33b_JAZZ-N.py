@@ -26,7 +26,6 @@ from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
-
 # %% {Initialisation}
 description = """
         JAZZ-N CZ AMPLITUDE CALIBRATION
@@ -85,8 +84,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
 
     if not node.parameters.use_state_discrimination:
         raise RuntimeError(
-            "JAZZ-N reads the target qubit |1> population and therefore requires "
-            "use_state_discrimination = True."
+            "JAZZ-N reads the target qubit |1> population and therefore requires " "use_state_discrimination = True."
         )
 
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)

@@ -60,7 +60,9 @@ def plot_raw_data_with_fit(ds_fit: xr.Dataset, qubit_pairs: BatchableList) -> pl
 
         # --- Bottom: averaged P_|00> with sinc fit ---
         if "p_avg" in fr.data_vars:
-            ax_avg.plot(amps_scale, fr["p_avg"].values, "o", ms=3, color="C0", label=r"$\langle P_{|00\rangle}\rangle_N$")
+            ax_avg.plot(
+                amps_scale, fr["p_avg"].values, "o", ms=3, color="C0", label=r"$\langle P_{|00\rangle}\rangle_N$"
+            )
         if "sinc_fit" in fr.data_vars:
             fit_vals = fr["sinc_fit"].values
             if np.any(np.isfinite(fit_vals)):
