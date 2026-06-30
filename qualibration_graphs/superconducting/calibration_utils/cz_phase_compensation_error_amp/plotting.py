@@ -30,8 +30,12 @@ def plot_raw_data_with_fit(ds_raw: xr.Dataset, qubit_pairs, ds_fit: xr.Dataset =
         if ds_fit is None or not bool(ds_fit.sel(qubit_pair=qp_name).success.values):
             for row in range(2):
                 axes[row, i].text(
-                    0.5, 0.5, "fit failed" if ds_fit else "no fit",
-                    ha="center", va="center", transform=axes[row, i].transAxes,
+                    0.5,
+                    0.5,
+                    "fit failed" if ds_fit else "no fit",
+                    ha="center",
+                    va="center",
+                    transform=axes[row, i].transAxes,
                 )
                 axes[row, i].set_title(f"{qp_name} - {'control' if row == 0 else 'target'}")
                 axes[row, i].set_xlabel("Frame rotation [2π]")

@@ -79,9 +79,7 @@ def _estimate_fwhm_around(x_values: np.ndarray, y: np.ndarray, i_max: int) -> fl
     return float(x_values[-1] - x_values[0]) / 4.0
 
 
-def _fit_sinc_peak(
-    x_values: np.ndarray, y: np.ndarray
-) -> Tuple[float, float, bool, str, Dict[str, float], np.ndarray]:
+def _fit_sinc_peak(x_values: np.ndarray, y: np.ndarray) -> Tuple[float, float, bool, str, Dict[str, float], np.ndarray]:
     """Fit a sinc model to a 1D curve and return the peak position."""
     if len(x_values) != len(y) or len(x_values) == 0:
         return float("nan"), float("nan"), False, "none", {}, np.full_like(x_values, np.nan, dtype=float)
@@ -196,9 +194,7 @@ def _get_signals(qp_data: xr.Dataset):
     return signal_control, signal_target
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, Dict[str, FitResults]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitResults]]:
     """Find optimal phase compensation by fitting a sinc model to the averaged signal."""
     frames = ds.frame.values
     fit_datasets = []
@@ -237,15 +233,9 @@ def fit_raw_data(
                     "control_mean_vs_frame": xr.DataArray(
                         control_mean_curve, dims=("frame",), coords={"frame": frames}
                     ),
-                    "target_mean_vs_frame": xr.DataArray(
-                        target_mean_curve, dims=("frame",), coords={"frame": frames}
-                    ),
-                    "control_sinc_fit": xr.DataArray(
-                        control_sinc_fit, dims=("frame",), coords={"frame": frames}
-                    ),
-                    "target_sinc_fit": xr.DataArray(
-                        target_sinc_fit, dims=("frame",), coords={"frame": frames}
-                    ),
+                    "target_mean_vs_frame": xr.DataArray(target_mean_curve, dims=("frame",), coords={"frame": frames}),
+                    "control_sinc_fit": xr.DataArray(control_sinc_fit, dims=("frame",), coords={"frame": frames}),
+                    "target_sinc_fit": xr.DataArray(target_sinc_fit, dims=("frame",), coords={"frame": frames}),
                     "fitted_control_phase": xr.DataArray(control_phase),
                     "fitted_target_phase": xr.DataArray(target_phase),
                     "control_mean_at_peak": xr.DataArray(control_peak_mean),
