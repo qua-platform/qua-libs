@@ -290,8 +290,6 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     return ds_fit, fit_results
 
 
-
-
 def add_qubit_freq_vs_flux(
     ds_fit,
     rf_frequencies_hz: dict,
@@ -305,6 +303,7 @@ def add_qubit_freq_vs_flux(
     """
     import numpy as np
     import xarray as xr
+
     artificial_ghz = artificial_detuning_mhz * 1e-3
     qubits = ds_fit.qubit.values
     n_flux = len(ds_fit.flux_bias)
@@ -312,11 +311,7 @@ def add_qubit_freq_vs_flux(
     for qi, q in enumerate(qubits):
         if q not in rf_frequencies_hz:
             continue
-        f_qubit_data[qi] = (
-            rf_frequencies_hz[q] / 1e9
-            + artificial_ghz
-            - ds_fit.unfolded_frequency.sel(qubit=q).values
-        )
+        f_qubit_data[qi] = rf_frequencies_hz[q] / 1e9 + artificial_ghz - ds_fit.unfolded_frequency.sel(qubit=q).values
     ds_fit["f_qubit_vs_flux"] = xr.DataArray(
         f_qubit_data,
         dims=["qubit", "flux_bias"],
@@ -324,6 +319,7 @@ def add_qubit_freq_vs_flux(
         attrs={"long_name": "Qubit RF frequency", "units": "GHz"},
     )
     return ds_fit
+
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""

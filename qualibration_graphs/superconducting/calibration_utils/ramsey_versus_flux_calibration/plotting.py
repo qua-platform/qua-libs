@@ -224,9 +224,13 @@ def plot_individual_qubit_freq_vs_flux(ax, ds: xr.Dataset, qubit: dict) -> None:
     if np.all(np.isnan(f_ghz)):
         ax.set_title(q_name)
         ax.text(
-            0.5, 0.5, "fitting failed",
+            0.5,
+            0.5,
+            "fitting failed",
             transform=ax.transAxes,
-            ha="center", va="center", color="red",
+            ha="center",
+            va="center",
+            color="red",
         )
         ax.set_xlabel("Flux offset (V)")
         ax.set_ylabel("RF frequency (GHz)")
@@ -243,8 +247,14 @@ def plot_individual_qubit_freq_vs_flux(ax, ds: xr.Dataset, qubit: dict) -> None:
     if valid.sum() >= 3:
         coeffs = np.polyfit(flux[valid], f_ghz[valid], 2)
         flux_smooth = np.linspace(flux[valid].min(), flux[valid].max(), 300)
-        ax.plot(flux_smooth, np.polyval(coeffs, flux_smooth),
-                color="tab:orange", linewidth=2, alpha=0.8, label="Parabola fit")
+        ax.plot(
+            flux_smooth,
+            np.polyval(coeffs, flux_smooth),
+            color="tab:orange",
+            linewidth=2,
+            alpha=0.8,
+            label="Parabola fit",
+        )
 
     # Sweet-spot vertical line
     flux_offset = float(ds.flux_offset.sel(qubit=q_name).values)
