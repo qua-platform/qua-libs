@@ -82,20 +82,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
-        "frame": xr.DataArray(frames, attrs={"long_name": "frame rotation", "units": "2π"}),
+        "frame": xr.DataArray(frames, attrs={"long_name": "virtual-Z frame", "units": "2π"}),
     }
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
         frame = declare(fixed)
         n = declare(int)
-        n_st = declare_stream()
+        n_st = declare_output_stream()
         I_c, I_c_st, Q_c, Q_c_st, n, n_st = node.machine.declare_qua_variables()
         I_t, I_t_st, Q_t, Q_t_st, _, _ = node.machine.declare_qua_variables()
         state_c = [declare(int) for _ in range(num_qubit_pairs)]
         state_t = [declare(int) for _ in range(num_qubit_pairs)]
-        state_c_st = [declare_stream() for _ in range(num_qubit_pairs)]
-        state_t_st = [declare_stream() for _ in range(num_qubit_pairs)]
+        state_c_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+        state_t_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
         extra_phase_c = declare(fixed)
         extra_phase_t = declare(fixed)
 
