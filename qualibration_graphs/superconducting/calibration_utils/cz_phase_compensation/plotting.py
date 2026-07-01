@@ -1,9 +1,45 @@
+import numpy as np
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from qualibration_libs.plotting import grid_iter
 
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
+
+
+def _mark_fitted_peak(
+    ax: Axes,
+    frames: np.ndarray,
+    fit_curve: np.ndarray,
+    fitted_phase: float,
+    color: str,
+    channel_label: str,
+) -> None:
+    """Mark the fitted-sine maximum."""
+    if not np.any(np.isfinite(fit_curve)):
+        return
+    i_max = int(np.nanargmax(fit_curve))
+    peak_frame = float(frames[i_max])
+    peak_val = float(fit_curve[i_max])
+    ax.axvline(
+        peak_frame,
+        color=color,
+        ls="--",
+        lw=1.5,
+        alpha=0.85,
+        zorder=3,
+        label=f"{channel_label} peak @ {peak_frame:.4f} (φ={fitted_phase:.4f})",
+    )
+    ax.plot(
+        peak_frame,
+        peak_val,
+        "*",
+        ms=12,
+        mew=1.2,
+        zorder=5,
+        markerfacecolor="white",
+        markeredgecolor=color,
+    )
 
 
 def plot_raw_data_with_fit(
@@ -32,7 +68,6 @@ def plot_raw_data_with_fit(
     grid_names, pair_names = grid_pair_names(qubit_pairs)
     grid = QubitPairGrid(grid_names, pair_names)
 
-    qp_map = {qp.name: qp for qp in qubit_pairs}
     for ax, qubit in grid_iter(grid):
         qp_name = qubit["qubit"]
         plot_individual_data_with_fit(ax, ds_raw, qp_name, ds_fit)
@@ -68,7 +103,7 @@ def plot_individual_data_with_fit(
     if "state_control" in ds_raw.data_vars:
         qp_data.state_control.plot(ax=ax, marker="o", linestyle="", color="blue", label="Control")
         qp_data.state_target.plot(ax=ax, marker="o", linestyle="", color="red", label="Target")
-        ax.set_ylabel("Measured State")
+        ylabel = "Measured State"
     else:
         qp_data.I_control.sel(control_target="c").plot(
             ax=ax, marker="o", linestyle="", color="blue", label="Control"
@@ -76,16 +111,38 @@ def plot_individual_data_with_fit(
         qp_data.I_target.sel(control_target="t").plot(
             ax=ax, marker="o", linestyle="", color="red", label="Target"
         )
-        ax.set_ylabel("Rotated I Quadrature (V)")
+        ylabel = "Rotated I Quadrature (V)"
 
     if ds_fit is not None:
         qp_fit = ds_fit.sel(qubit_pair=qp_name)
+        frames = qp_data.frame.values
         if bool(qp_fit.success.values):
             if "fitted_control" in ds_fit.data_vars:
-                qp_fit.fitted_control.plot(ax=ax, color="blue", alpha=0.5)
+                fit_c = np.asarray(qp_fit.fitted_control.values, dtype=float)
+                ax.plot(frames, fit_c, color="blue", alpha=0.5)
+                if "fitted_control_phase" in ds_fit.data_vars:
+                    _mark_fitted_peak(
+                        ax,
+                        frames,
+                        fit_c,
+                        float(qp_fit.fitted_control_phase.values),
+                        "blue",
+                        "Control",
+                    )
             if "fitted_target" in ds_fit.data_vars:
-                qp_fit.fitted_target.plot(ax=ax, color="red", alpha=0.5)
+                fit_t = np.asarray(qp_fit.fitted_target.values, dtype=float)
+                ax.plot(frames, fit_t, color="red", alpha=0.5)
+                if "fitted_target_phase" in ds_fit.data_vars:
+                    _mark_fitted_peak(
+                        ax,
+                        frames,
+                        fit_t,
+                        float(qp_fit.fitted_target_phase.values),
+                        "red",
+                        "Target",
+                    )
 
     ax.set_title(qp_name)
-    ax.set_xlabel(r"x90 frame rotation [$\mathrm{rad}/2\pi$]")
+    ax.set_xlabel(r"Virtual-Z frame [$2\pi$]")
+    ax.set_ylabel(ylabel)
     ax.legend(fontsize=8)
