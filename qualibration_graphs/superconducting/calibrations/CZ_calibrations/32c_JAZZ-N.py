@@ -9,11 +9,13 @@ import numpy as np
 import xarray as xr
 from calibration_utils.cz_jazz_n import (
     Parameters,
+    QubitRoles,
     coerce_to_4k_plus_1,
     fit_raw_data,
     log_fitted_results,
     plot_raw_data_with_fit,
     process_raw_dataset,
+    verify_moving_qubit,
 )
 from qm.qua import *
 from qualang_tools.loops import from_array
@@ -32,12 +34,12 @@ description = """
 This node calibrates the CZ-pulse amplitude using the JAZZ-N protocol
 (arXiv:2402.18926v3, Appendix I.1, Fig. 13(a)). The pulse sequence is
 
-    x90(target) -- CZ -- [X_pi(control) & X_pi(target) -- CZ] x N -- x90(target) -- measure(target)
+    x90(stationary) -- CZ -- [X_pi(moving) & X_pi(stationary) -- CZ] x N -- x90(stationary) -- measure(stationary)
 
 where N = 4k + 1 (k = 0, 1, 2, ...). With the X_pi refocusing pulses on both
-qubits, the target |1> population evolves as
+qubits, the stationary |1> population evolves as
 
-    P_|1>(target) = (1 - cos((2k+1) * theta_CZ)) / 2,
+    P_|1>(stationary) = (1 - cos((2k+1) * theta_CZ)) / 2,
 
 independently of any virtual-Z (single-qubit) phase shifts inside the CZ
 macro. The optimal CZ amplitude is the value where theta_CZ = pi, i.e. where
@@ -49,9 +51,19 @@ The Z-pulse is supplied by the full CZGate macro selected via the
 macro provides (cz_unipolar, cz_flattop, cz_bipolar, cz_flattop_erf, cz_SNZ)
 can be calibrated.
 
+JAZZ-N is a precision fine-tuning upgrade over 32b. The X_pi refocusing
+pulses echo out ordinary single-qubit phase (residual detuning, AC-Stark
+shifts) accumulated over the sequence, so the extracted phase is purely
+theta_CZ = theta_11 - theta_10 - theta_01 + theta_00, immune to control's
+frequency calibration. This also means control's |0> and |1> conditions
+don't need to be prepared and measured as two separate calibration runs --
+the echo sweeps control through both states within a single sequence and
+cancels the state-independent part automatically, making the experiment
+faster than the naive conditioned-tomography approach.
+
 Prerequisites:
     - Calibrated single-qubit gates (x90, x180) for both qubits in the pair.
-    - Calibrated, state-discriminating readout for the target qubit.
+    - Calibrated, state-discriminating readout for the stationary qubit.
     - An initial estimate of the CZ amplitude (e.g. from 32a_cz_conditional_phase
       or 32b_cz_conditional_phase_error_amp).
 
@@ -60,7 +72,7 @@ State update:
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="33b_JAZZ_N",
+    name="32c_JAZZ_N",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),
@@ -84,11 +96,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
 
     if not node.parameters.use_state_discrimination:
         raise RuntimeError(
-            "JAZZ-N reads the target qubit |1> population and therefore requires " "use_state_discrimination = True."
+            "JAZZ-N reads the stationary qubit |1> population and therefore requires "
+            "use_state_discrimination = True."
         )
 
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
+
+    qubit_roles_map = {}
+    for qp in qubit_pairs:
+        verify_moving_qubit(qp, operation=node.parameters.operation, log_callable=node.log)
+        qubit_roles_map[qp.name] = QubitRoles.resolve(qp)
+    node.namespace["qubit_roles_map"] = qubit_roles_map
 
     # Coerce N_min / N_max to the nearest 4k + 1 (>= 1) and warn if changed.
     n_min_req = int(node.parameters.N_min)
@@ -119,27 +138,31 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
         n_op = declare(int)
         count = declare(int)
         n_st = declare_output_stream()
-        state_t = [declare(int) for _ in range(num_qubit_pairs)]
-        state_t_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
+        state_sq = [declare(int) for _ in range(num_qubit_pairs)]
+        state_sq_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
 
         for multiplexed_qubit_pairs in qubit_pairs.batch():
             for qp in multiplexed_qubit_pairs.values():
-                node.machine.initialize_qpu(target=qp.qubit_control)
-                node.machine.initialize_qpu(target=qp.qubit_target)
+                qubit_role = qubit_roles_map[qp.name]
+                mq, sq = qubit_role.moving, qubit_role.stationary
+                node.machine.initialize_qpu(target=mq)
+                node.machine.initialize_qpu(target=sq)
 
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(n_op, int(n_min), n_op <= int(n_max), n_op + 4):
                     with for_(*from_array(amp, amplitudes)):
                         for ii, qp in multiplexed_qubit_pairs.items():
-                            qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
-                            qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
+                            qubit_role = qubit_roles_map[qp.name]
+                            mq, sq = qubit_role.moving, qubit_role.stationary
+                            mq.reset(node.parameters.reset_type, node.parameters.simulate)
+                            sq.reset(node.parameters.reset_type, node.parameters.simulate)
                             qp.align()
-                            reset_frame(qp.qubit_target.xy.name)
-                            reset_frame(qp.qubit_control.xy.name)
+                            reset_frame(sq.xy.name)
+                            reset_frame(mq.xy.name)
 
-                            # Initial pi/2 on target (Q2 role); control (Q1 role) stays in |0>.
-                            qp.qubit_target.xy.play("x90")
+                            # Initial pi/2 on stationary; moving stays in |0>.
+                            sq.xy.play("x90")
                             qp.align()
 
                             # First CZ (the "Z" preceding the (pi-Z)^N pattern).
@@ -148,24 +171,24 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
                             # N echoes interleaved with N more CZs: [X_pi X_pi, CZ] x N.
                             with for_(count, 0, count < n_op, count + 1):
                                 qp.align()
-                                qp.qubit_control.xy.play("x180")
-                                qp.qubit_target.xy.play("x180")
+                                mq.xy.play("x180")
+                                sq.xy.play("x180")
                                 qp.align()
                                 qp.macros[operation].apply(amplitude_scale_qubit=amp)
 
                             qp.align()
-                            qp.qubit_target.xy.play("x90")
+                            sq.xy.play("x90")
                             qp.align()
 
-                            qp.qubit_target.readout_state(state_t[ii])
-                            save(state_t[ii], state_t_st[ii])
+                            sq.readout_state(state_sq[ii])
+                            save(state_sq[ii], state_sq_st[ii])
 
             align()
 
         with stream_processing():
             n_st.save("n")
             for ii in range(num_qubit_pairs):
-                state_t_st[ii].buffer(len(amplitudes)).buffer(len(n_values)).average().save(f"state_target{ii + 1}")
+                state_sq_st[ii].buffer(len(amplitudes)).buffer(len(n_values)).average().save(f"state_stationary{ii + 1}")
 
 
 # %% {Simulate}
@@ -195,6 +218,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         node.log(job.execution_report())
     node.results["ds_raw"] = dataset
+    qubit_roles_map = node.namespace["qubit_roles_map"]
+    node.results["qubit_roles"] = {
+        name: {field: getattr(role, field).name for field in role._fields} for name, role in qubit_roles_map.items()
+    }
 
 
 # %% {Load_data}
@@ -205,6 +232,15 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+    if "qubit_roles" in node.results:
+        node.namespace["qubit_roles_map"] = {
+            name: QubitRoles(**{field: node.machine.qubits[qname] for field, qname in roles.items()})
+            for name, roles in node.results["qubit_roles"].items()
+        }
+    else:
+        node.namespace["qubit_roles_map"] = {
+            qp.name: QubitRoles.resolve(qp) for qp in node.namespace["qubit_pairs"]
+        }
 
 
 # %% {Analyse_data}
@@ -224,10 +260,14 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the JAZZ-N P_|1> map and the fitted optimal amplitude for each qubit pair."""
-    fig = plot_raw_data_with_fit(node.results["ds_fit"], node.namespace["qubit_pairs"])
-    plt.show()
-    node.results["figures"] = {"jazz_n_amplitude": fig}
+    """Plot the raw and fitted data in a specific figure whose shape is given by qubit pair grid locations."""
+    figures = plot_raw_data_with_fit(node.results["ds_fit"], node.namespace["qubit_pairs"])
+    for fig in figures.values():
+        plt.show()
+    node.results["figures"] = {
+        "jazz_n_map": figures["map"],
+        "jazz_n_avg": figures["avg"],
+    }
 
 
 # %% {Update_state}
