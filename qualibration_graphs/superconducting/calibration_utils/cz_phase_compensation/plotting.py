@@ -105,12 +105,8 @@ def plot_individual_data_with_fit(
         qp_data.state_target.plot(ax=ax, marker="o", linestyle="", color="red", label="Target")
         ylabel = "Measured State"
     else:
-        qp_data.I_control.sel(control_target="c").plot(
-            ax=ax, marker="o", linestyle="", color="blue", label="Control"
-        )
-        qp_data.I_target.sel(control_target="t").plot(
-            ax=ax, marker="o", linestyle="", color="red", label="Target"
-        )
+        qp_data.I_control.sel(control_target="c").plot(ax=ax, marker="o", linestyle="", color="blue", label="Control")
+        qp_data.I_target.sel(control_target="t").plot(ax=ax, marker="o", linestyle="", color="red", label="Target")
         ylabel = "Rotated I Quadrature (V)"
 
     if ds_fit is not None:
