@@ -1,7 +1,7 @@
 """Parameters module for the JAZZ-N CZ amplitude calibration.
 
 The JAZZ-N protocol (Appendix I.1, Fig. 13(a) of arXiv:2402.18926v3) measures
-P_|1> of the target qubit after a refocused train of CZ gates. The number of
+P_|1> of the stationary qubit after a refocused train of CZ gates. The number of
 X_pi echo pulses N must satisfy N = 4k + 1 (k = 0, 1, 2, ...), which gives a
 clean (2k+1)*theta_CZ phase accumulation that peaks at theta_CZ = pi.
 """
@@ -31,7 +31,7 @@ class NodeSpecificParameters(RunnableParameters):
     operation: Literal["cz_flattop", "cz_unipolar", "cz_bipolar", "cz_flattop_erf", "cz_SNZ"] = "cz_unipolar"
     """Name of the CZGate macro to drive in place of the bare Z pulse. Default is 'cz_unipolar'."""
     use_state_discrimination: bool = True
-    """JAZZ-N reads P_|1> of the target qubit, which requires state discrimination. Setting this to False raises."""
+    """JAZZ-N reads P_|1> of the stationary qubit, which requires state discrimination. Setting this to False raises."""
 
 
 class Parameters(

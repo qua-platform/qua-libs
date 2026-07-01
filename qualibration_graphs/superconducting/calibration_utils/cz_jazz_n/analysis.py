@@ -1,6 +1,6 @@
 """Analysis module for the JAZZ-N CZ amplitude calibration.
 
-The protocol measures the target qubit's |1> population as a function of the
+The protocol measures the stationary qubit's |1> population as a function of the
 CZ-pulse amplitude scale, for several echo repetitions N = 4k + 1. Ignoring
 decoherence, equation (36) of arXiv:2402.18926v3 predicts:
 
@@ -150,7 +150,7 @@ def _fit_one_pair(
     amp_values : (n_amp,) amplitude-scale values (centred at 1.0).
     n_values : (n_N,) echo counts N (sorted ascending; not used by the fit but
         retained to keep the call signature consistent with the previous version).
-    p_curve : (n_N, n_amp) target P_|1> values.
+    p_curve : (n_N, n_amp) stationary P_|1> values.
 
     Returns
     -------
@@ -231,7 +231,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     """Fit the JAZZ-N data per qubit pair.
 
     The dataset is augmented with three new data variables (per qubit pair, on
-    the amp axis): ``p_avg`` (mean over N of the target |1> population) and
+    the amp axis): ``p_avg`` (mean over N of the stationary |1> population) and
     ``sinc_fit`` (the fitted sinc model evaluated on the amp grid), plus
     ``optimal_amplitude`` / ``optimal_amplitude_scale`` / ``success`` /
     ``fit_method`` as coordinates.
@@ -239,9 +239,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     qubit_pairs = node.namespace["qubit_pairs"]
     operation = node.parameters.operation
 
-    data_var = "state_target" if "state_target" in ds else None
-    if data_var is None:
-        raise RuntimeError("JAZZ-N analysis requires 'state_target' in the dataset (state discrimination).")
+    if "state_stationary" not in ds:
+        raise RuntimeError("JAZZ-N analysis requires 'state_stationary' in the dataset (state discrimination).")
 
     amp_values = ds.amp.values
     n_values = ds.N.values
@@ -257,7 +256,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
 
     for qp_name in qp_names:
         qp = next(qp for qp in qubit_pairs if qp.name == qp_name)
-        p = ds[data_var].sel(qubit_pair=qp_name).transpose("N", "amp").values
+        p = ds.state_stationary.sel(qubit_pair=qp_name).transpose("N", "amp").values
         amp_scale, success, method, params, p_avg, fit_curve = _fit_one_pair(
             amp_values, np.asarray(n_values), np.asarray(p)
         )
