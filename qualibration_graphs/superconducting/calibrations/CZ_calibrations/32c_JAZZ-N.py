@@ -188,7 +188,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
         with stream_processing():
             n_st.save("n")
             for ii in range(num_qubit_pairs):
-                state_sq_st[ii].buffer(len(amplitudes)).buffer(len(n_values)).average().save(f"state_stationary{ii + 1}")
+                state_sq_st[ii].buffer(len(amplitudes)).buffer(len(n_values)).average().save(
+                    f"state_stationary{ii + 1}"
+                )
 
 
 # %% {Simulate}
@@ -238,9 +240,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
             for name, roles in node.results["qubit_roles"].items()
         }
     else:
-        node.namespace["qubit_roles_map"] = {
-            qp.name: QubitRoles.resolve(qp) for qp in node.namespace["qubit_pairs"]
-        }
+        node.namespace["qubit_roles_map"] = {qp.name: QubitRoles.resolve(qp) for qp in node.namespace["qubit_pairs"]}
 
 
 # %% {Analyse_data}

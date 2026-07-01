@@ -28,7 +28,6 @@ from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
-
 # %% {Initialisation}
 description = """
         JAZZ2-N CZ AMPLITUDE CALIBRATION
@@ -272,9 +271,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
             for name, roles in node.results["qubit_roles"].items()
         }
     else:
-        node.namespace["qubit_roles_map"] = {
-            qp.name: QubitRoles.resolve(qp) for qp in node.namespace["qubit_pairs"]
-        }
+        node.namespace["qubit_roles_map"] = {qp.name: QubitRoles.resolve(qp) for qp in node.namespace["qubit_pairs"]}
 
 
 # %% {Analyse_data}

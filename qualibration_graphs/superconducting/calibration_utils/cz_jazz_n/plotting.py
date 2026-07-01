@@ -49,7 +49,7 @@ def plot_raw_data_with_fit(
     for ax, qubit in grid_iter(map_grid):
         qp_name = qubit["qubit"]
         plot_individual_map_with_fit(ax, ds_fit, qp_name)
-    map_grid.fig.suptitle(fr"{title_prefix} — $P_{{|1\rangle}}$ vs $N$ and amplitude")
+    map_grid.fig.suptitle(rf"{title_prefix} — $P_{{|1\rangle}}$ vs $N$ and amplitude")
     map_grid.fig.tight_layout()
     figures["map"] = map_grid.fig
 
@@ -57,7 +57,7 @@ def plot_raw_data_with_fit(
     for ax, qubit in grid_iter(avg_grid):
         qp_name = qubit["qubit"]
         plot_individual_avg_with_fit(ax, ds_fit, qp_name)
-    avg_grid.fig.suptitle(fr"{title_prefix} — averaged $\langle P_{{|1\rangle}}\rangle_N$ and sinc fit")
+    avg_grid.fig.suptitle(rf"{title_prefix} — averaged $\langle P_{{|1\rangle}}\rangle_N$ and sinc fit")
     avg_grid.fig.tight_layout()
     figures["avg"] = avg_grid.fig
 
