@@ -42,7 +42,7 @@ State update:
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="33b_cz_phase_compensation_error_amp",
+    name="34b_cz_phase_compensation_error_amp",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),
