@@ -27,7 +27,7 @@ description = """
 CZ PHASE COMPENSATION WITH ERROR AMPLIFICATION
 
 This node calibrates residual single-qubit (local Z) phase shifts induced by the CZ macro.
-Compared to the standard phase-compensation node, it repeats the CZ operation a variable
+Compared to **34a_cz_phase_compensation**, it repeats the CZ operation a variable
 number of times to amplify phase errors before tomography.
 
 For each selected qubit pair:
