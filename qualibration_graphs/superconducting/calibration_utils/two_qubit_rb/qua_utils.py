@@ -22,6 +22,143 @@ from quam_config import Quam
 # undefined behavior under switch_case(..., unsafe=True).
 INPUT_STREAM_PAD_VALUE = 65
 
+# OPX QUA variable budget is ~16000; leave headroom for streams, counters, sub_lens, etc.
+OPX_QUA_VARIABLE_BUDGET = 16000
+
+
+def compute_rb_circuit_memory_stats(
+    circuits_as_ints: list[list[int]],
+    circuit_depths: list[int],
+    num_circuits_per_depth: int,
+) -> dict:
+    """Summarize encoded RB circuit sizes for memory validation and logging.
+
+    The ints come from ``create_qua_program`` in nodes 37a/37b: each circuit is
+    ``process_circuit_to_integers(layerize_quantum_circuit(qc)) + [66]``, i.e. one
+    integer per transpiled parallel gate layer plus a trailing readout marker.
+
+    ``circuits_as_ints`` is depth-major: all sequences for depth[0], then depth[1], ...
+
+    Returns:
+        Dict with keys ``num_circuits``, ``total_ints``, ``max_circuit_ints``,
+        ``max_circuit_depth``, and ``per_depth`` (list of per-depth dicts).
+    """
+    expected = len(circuit_depths) * num_circuits_per_depth
+    if len(circuits_as_ints) != expected:
+        raise ValueError(
+            "circuits_as_ints length does not match circuit_depths x num_circuits_per_depth: "
+            f"got {len(circuits_as_ints)} circuits, expected {expected}."
+        )
+
+    lengths = [len(circuit) for circuit in circuits_as_ints]
+    max_idx = int(np.argmax(lengths))
+    max_depth_idx = max_idx // num_circuits_per_depth
+
+    per_depth = []
+    for depth_idx, depth in enumerate(circuit_depths):
+        start = depth_idx * num_circuits_per_depth
+        end = start + num_circuits_per_depth
+        depth_lengths = lengths[start:end]
+        per_depth.append(
+            {
+                "depth": depth,
+                "num_circuits": len(depth_lengths),
+                "min_ints": min(depth_lengths),
+                "max_ints": max(depth_lengths),
+                "mean_ints": float(np.mean(depth_lengths)),
+            }
+        )
+
+    return {
+        "num_circuits": len(circuits_as_ints),
+        "total_ints": sum(lengths),
+        "max_circuit_ints": lengths[max_idx],
+        "max_circuit_depth": circuit_depths[max_depth_idx],
+        "per_depth": per_depth,
+    }
+
+
+def format_per_depth_memory_summary(per_depth: list[dict]) -> str:
+    """Format per-depth int-count stats for logs and error messages."""
+    lines = ["Per depth (ints per circuit: min–max, mean):"]
+    for entry in per_depth:
+        lines.append(
+            f"  depth={entry['depth']}: {entry['num_circuits']} circuits, "
+            f"{entry['min_ints']}–{entry['max_ints']} ints "
+            f"(mean {entry['mean_ints']:.1f})"
+        )
+    return "\n".join(lines)
+
+
+def format_per_depth_chunk_summary(
+    chunks_per_depth: list[list[list[int]]],
+    circuit_depths: list[int],
+) -> str:
+    """Format per-depth input-stream sub-chunk sizes for logs."""
+    lines = ["Per depth input-stream sub-chunks (ints per sub-chunk):"]
+    total_sub_chunks = 0
+    for depth, sub_chunks in zip(circuit_depths, chunks_per_depth):
+        chunk_lengths = [len(sc) for sc in sub_chunks]
+        total_sub_chunks += len(sub_chunks)
+        if len(chunk_lengths) == 1:
+            sizes = str(chunk_lengths[0])
+        else:
+            sizes = " + ".join(str(n) for n in chunk_lengths)
+        lines.append(
+            f"  depth={depth}: {len(sub_chunks)} sub-chunk(s), "
+            f"{sizes} ints (depth total {sum(chunk_lengths)})"
+        )
+    lines.append(f"  → {total_sub_chunks} sub-chunk(s) total (one host push per sub-chunk per pair)")
+    return "\n".join(lines)
+
+
+def log_rb_circuit_memory_stats(
+    stats: dict,
+    *,
+    use_input_stream: bool,
+    max_chunk_ints: int,
+    declared_size: int | None = None,
+    chunks_per_depth: list[list[list[int]]] | None = None,
+    circuit_depths: list[int] | None = None,
+    verbose: bool = False,
+    log_callable=print,
+) -> None:
+    """Log a one-line summary; optional per-depth breakdown when ``verbose``."""
+    stream_extra = ""
+    if use_input_stream and declared_size is not None:
+        stream_extra = f", input_stream declared_size={declared_size}"
+    log_callable(
+        "RB circuit memory: "
+        f"{stats['num_circuits']} circuits, "
+        f"{stats['total_ints']} total ints, "
+        f"largest circuit {stats['max_circuit_ints']} ints "
+        f"(depth={stats['max_circuit_depth']} Cliffords), "
+        f"use_input_stream={use_input_stream}, "
+        f"budget={max_chunk_ints}"
+        f"{stream_extra}"
+    )
+    if not verbose:
+        return
+    log_callable(format_per_depth_memory_summary(stats["per_depth"]))
+    if use_input_stream and chunks_per_depth is not None and circuit_depths is not None:
+        log_callable(format_per_depth_chunk_summary(chunks_per_depth, circuit_depths))
+
+
+def validate_without_inputstream_path(stats: dict, max_chunk_ints: int) -> None:
+    """Fail fast before QUA compile when the non-input-stream declare array would exceed budget."""
+    total = stats["total_ints"]
+    if total <= max_chunk_ints:
+        return
+    raise ValueError(
+        "Flattened RB sequence exceeds the OPX QUA variable budget for the "
+        f"non-input-stream path: {total} ints in "
+        f"declare(int, value=job_sequence), limit is max_chunk_ints={max_chunk_ints} "
+        f"(OPX budget ~{OPX_QUA_VARIABLE_BUDGET}). "
+        "Enable use_input_stream=True, reduce circuit_depths, or reduce "
+        "num_circuits_per_depth.\n"
+        f"{format_per_depth_memory_summary(stats['per_depth'])}"
+    )
+
 
 def split_list_by_integer_count(lst: list, max_count: int) -> list[list]:
     """
@@ -42,6 +179,7 @@ def build_single_depth_chunks(
     circuit_depths: list[int],
     num_circuits_per_depth: int,
     max_chunk_ints: int,
+    per_depth: list[dict] | None = None,
 ) -> tuple[list[list[list[int]]], int]:
     """Pack circuits into per-depth sub-chunks for the input-stream QUA path.
 
@@ -86,6 +224,10 @@ def build_single_depth_chunks(
 
     chunks_per_depth: list[list[list[int]]] = []
     declared_size = 0
+    if per_depth is None:
+        per_depth = compute_rb_circuit_memory_stats(
+            circuits_as_ints, circuit_depths, num_circuits_per_depth
+        )["per_depth"]
 
     for depth_idx, depth in enumerate(circuit_depths):
         start = depth_idx * num_circuits_per_depth
@@ -102,7 +244,8 @@ def build_single_depth_chunks(
                     f"Cliffords, circuit_index={circ_idx}, circuit_ints={len(circuit)}, "
                     f"max_chunk_ints={max_chunk_ints}. Reduce depth, raise "
                     "max_chunk_ints (must stay < 16000), or reduce "
-                    "num_circuits_per_depth."
+                    f"num_circuits_per_depth.\n"
+                    f"{format_per_depth_memory_summary(per_depth)}"
                 )
             if len(current_chunk) + len(circuit) > max_chunk_ints:
                 sub_chunks.append(current_chunk)
@@ -424,13 +567,35 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
         self.machine = machine
         self.qubit_pairs = qubit_pairs
 
+        circuit_depths = list(self.node.parameters.circuit_depths)
+        num_circuits_per_depth = self.node.parameters.num_circuits_per_depth
+        max_chunk_ints = self.node.parameters.max_chunk_ints
+        memory_stats = compute_rb_circuit_memory_stats(
+            circuits_as_ints, circuit_depths, num_circuits_per_depth
+        )
+
+        self.declared_size = None
         if self.node.parameters.use_input_stream:
             self.chunks_per_depth, self.declared_size = build_single_depth_chunks(
                 circuits_as_ints=self.circuits_as_ints,
-                circuit_depths=list(self.node.parameters.circuit_depths),
-                num_circuits_per_depth=self.node.parameters.num_circuits_per_depth,
-                max_chunk_ints=self.node.parameters.max_chunk_ints,
+                circuit_depths=circuit_depths,
+                num_circuits_per_depth=num_circuits_per_depth,
+                max_chunk_ints=max_chunk_ints,
+                per_depth=memory_stats["per_depth"],
             )
+        else:
+            validate_without_inputstream_path(memory_stats, max_chunk_ints)
+
+        log_rb_circuit_memory_stats(
+            memory_stats,
+            use_input_stream=self.node.parameters.use_input_stream,
+            max_chunk_ints=max_chunk_ints,
+            declared_size=self.declared_size,
+            chunks_per_depth=self.chunks_per_depth if self.node.parameters.use_input_stream else None,
+            circuit_depths=circuit_depths if self.node.parameters.use_input_stream else None,
+            verbose=self.node.parameters.verbose_memory_log,
+            log_callable=self.node.log,
+        )
 
     def _get_qua_program_with_input_stream(self):
         # Flatten chunks_per_depth into a single ordered list of sub-chunks.
@@ -474,13 +639,11 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 # Align the two elements to play the sequence after qubit initialization
                 align()
 
-                # Loop order: shot outer, sub_chunk inner. Measurement order
-                # = (pair, shot, depth, circuit_in_depth) -> matches the
-                # stream_processing buffer reshape below exactly, because
-                # sub_chunks are flattened depth-major.
-                with for_(n, 0, n < self.node.parameters.num_shots, n + 1):
-                    with for_(j, 0, j < n_sub_chunks, j + 1):
-                        advance_input_stream(sequence)
+                # Chunk outer, shot inner: advance once per sub-chunk, replay all
+                # shots from the buffered chunk (no per-shot re-push on the host).
+                with for_(j, 0, j < n_sub_chunks, j + 1):
+                    advance_input_stream(sequence)
+                    with for_(n, 0, n < self.node.parameters.num_shots, n + 1):
                         with for_(i, 0, i < sub_lens[j], i + 1):
                             play_gate(
                                 sequence[i],
@@ -492,8 +655,8 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                                 self.node.parameters.reset_type,
                                 self.node.parameters.operation,
                             )
-
-                    save(n, n_st)
+                        with if_(j + 1 == n_sub_chunks):
+                            save(n, n_st)
 
             with stream_processing():
                 n_st.save("n")
@@ -508,9 +671,8 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
         ``self.declared_size`` ints with :data:`INPUT_STREAM_PAD_VALUE`.
 
         This is the canonical "what to push, in what order, for one pass over
-        the QUA program's sub-chunks" representation. Both the local
-        ``push_all_chunks`` and the cloud sync_hook iterate over this list
-        ``num_pairs * num_shots`` times.
+        the QUA program's sub-chunks" representation. ``push_all_chunks``
+        iterates over this list once per qubit pair.
         """
         declared = self.declared_size
         return [
@@ -522,10 +684,9 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
     def push_all_chunks(self, job) -> None:
         """Push every input-stream chunk in the order the QUA program consumes them.
 
-        Order mirrors the ``_get_qua_program_with_input_stream`` advance order:
-        ``for pair: for shot: for sub_chunk: advance``. Because the input
-        stream is a FIFO consumed across all qubit pairs in the same job, the
-        same chunks are pushed once per qubit pair.
+        Order mirrors ``_get_qua_program_with_input_stream``:
+        ``for pair: for sub_chunk: advance``. Shots replay each chunk on the
+        OPX without additional host pushes.
 
         Each push is padded out to ``self.declared_size`` ints with
         :data:`INPUT_STREAM_PAD_VALUE`. Padding bytes are never executed by the
@@ -541,79 +702,10 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 "the QUA program does not declare an input stream."
             )
 
-        num_shots = self.node.parameters.num_shots
         padded = self._padded_chunks()
         for _ in self.qubit_pairs:
-            for _ in range(num_shots):
-                for chunk in padded:
-                    job.push_to_input_stream("sequence", chunk)
-
-    def write_sync_hook(self, sync_hook_dir: "Path") -> "Path":
-        """Write a self-contained ``sync_hook.py`` into ``sync_hook_dir``.
-
-        The sync hook is consumed by ``IQCC_Cloud.execute(..., options={
-        "sync_hook": <path>})`` and is *executed on the cloud server*. The
-        cloud uploads only the single ``sync_hook.py`` file, so all of the
-        data the hook needs to push (the padded sub-chunks and the
-        ``num_pairs`` / ``num_shots`` counters) must be embedded directly
-        in the file as Python literals. No sibling files.
-
-        Layout of the emitted file:
-
-        - ``STREAM_NAME``: the QUA input-stream name (``"sequence"``).
-        - ``NUM_PAIRS``: ``len(self.qubit_pairs)``.
-        - ``NUM_SHOTS``: ``self.node.parameters.num_shots``.
-        - ``PADDED_CHUNKS``: list of ``self._padded_chunks()``, with each
-          sub-chunk on its own line for readability.
-        - Push loop: ``for _ in range(NUM_PAIRS): for _ in range(NUM_SHOTS):
-          for chunk in PADDED_CHUNKS: job.push_to_input_stream(...)``.
-
-        Args:
-            sync_hook_dir: A directory (must already exist) where
-                ``sync_hook.py`` will be written.
-
-        Returns:
-            The absolute path to the generated ``sync_hook.py``.
-        """
-        from pathlib import Path
-
-        if not self.node.parameters.use_input_stream:
-            raise RuntimeError(
-                "write_sync_hook called but use_input_stream is False; the "
-                "QUA program does not declare an input stream."
-            )
-
-        sync_hook_dir = Path(sync_hook_dir)
-        if not sync_hook_dir.is_dir():
-            raise FileNotFoundError(f"sync_hook_dir does not exist: {sync_hook_dir}")
-
-        padded_chunks = self._padded_chunks()
-        # Format the chunks as one per line so the generated file remains
-        # diff-readable; each chunk itself is a single-line list literal.
-        chunks_body = ",\n    ".join(repr(c) for c in padded_chunks)
-
-        sync_hook_src = (
-            "from iqcc_cloud_client.runtime import get_qm_job\n"
-            "\n"
-            'STREAM_NAME = "sequence"\n'
-            f"NUM_PAIRS = {len(self.qubit_pairs)}\n"
-            f"NUM_SHOTS = {self.node.parameters.num_shots}\n"
-            "\n"
-            f"PADDED_CHUNKS = [\n    {chunks_body},\n]\n"
-            "\n"
-            "print('Sync hook started')\n"
-            "\n"
-            "job = get_qm_job()\n"
-            "for _ in range(NUM_PAIRS):\n"
-            "    for _ in range(NUM_SHOTS):\n"
-            "        for chunk in PADDED_CHUNKS:\n"
-            "            job.push_to_input_stream(STREAM_NAME, chunk)\n"
-            "print('Sync hook completed')\n"
-        )
-
-        sync_hook_path = sync_hook_dir / "sync_hook.py"
-        sync_hook_path.write_text(sync_hook_src)
-        return sync_hook_path
+            for chunk in padded:
+                job.push_to_input_stream("sequence", chunk)
 
     def _get_qua_program_without_input_stream(self):
 
