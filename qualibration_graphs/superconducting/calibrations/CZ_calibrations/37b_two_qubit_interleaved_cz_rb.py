@@ -161,6 +161,13 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        # Feed the input-stream queue upfront: pushes every chunk in the order
+        # the QUA program will consume them (pair-major, then shot, then depth,
+        # then sub-chunk). The OPX queue is in DDR, so this does not contend
+        # with the 16000 QUA variable budget; pushes themselves are thin gRPC
+        # calls and complete in well under a second for typical envelopes.
+        if node.parameters.use_input_stream:
+            node.namespace["qua_program_handler"].push_all_chunks(job)
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:

@@ -71,8 +71,6 @@ node = QualibrationNode[Parameters, Quam](
     machine = Quam.load(), # Instantiate the QUAM class from the state file
 )
 
-# instrument_calibration_node(node)
-
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
@@ -165,21 +163,28 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        # The job is stored in the node namespace to be reused in the fetching_data run_action
-        node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-        # Display the progress bar
-        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
-        for dataset in data_fetcher:
-            progress_counter(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-            )
-        # Display the execution report to expose possible runtime errors
-        node.log(job.execution_report())
-    # Register the raw dataset and the sweep/role data needed for reproducible re-analysis
+            # The job is stored in the node namespace to be reused in the fetching_data run_action
+            node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+            # Feed the input-stream queue upfront: pushes every chunk in the order
+            # the QUA program will consume them (pair-major, then shot, then depth,
+            # then sub-chunk). The OPX queue is in DDR, so this does not contend
+            # with the 16000 QUA variable budget; pushes themselves are thin gRPC
+            # calls and complete in well under a second for typical envelopes.
+            if node.parameters.use_input_stream:
+                node.namespace["qua_program_handler"].push_all_chunks(job)
+            # Display the progress bar
+            data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+            for dataset in data_fetcher:
+                progress_counter(
+                    data_fetcher["n"],
+                    node.parameters.num_shots,
+                    start_time=data_fetcher.t_start,
+                )
+            # Display the execution report to expose possible runtime errors
+            node.log(job.execution_report())
+    # Register the raw dataset
     node.results["ds_raw"] = dataset
 
 
