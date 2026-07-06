@@ -50,6 +50,7 @@ def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode | None = None) -> xr.Dataset:
     return ds
 
+
 def rb_decay_curve(x, A, alpha, B):
     """Exponential decay model for RB survival probability."""
     return A * alpha**x + B
