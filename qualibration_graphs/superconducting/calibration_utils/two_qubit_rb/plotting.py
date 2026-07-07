@@ -20,6 +20,7 @@ def plot_raw_data_with_fit(
     *,
     interleaved: bool = False,
     title_prefix: str = "2Q Randomized Benchmarking",
+    use_input_stream: bool | None = None,
 ) -> Dict[str, Figure]:
     """Plot RB survival curves on a chip-topology grid, one panel per qubit pair."""
     grid_names, pair_names = grid_pair_names(qubit_pairs)
@@ -28,6 +29,10 @@ def plot_raw_data_with_fit(
     for ax, qubit in grid_iter(grid):
         qp_name = qubit["qubit"]
         plot_individual_data_with_fit(ax, ds_fit, qp_name, interleaved=interleaved)
+
+    if use_input_stream is not None:
+        stream_label = "(with input stream)" if use_input_stream else "(without input stream)"
+        title_prefix = f"{title_prefix}\n{stream_label}"
 
     grid.fig.suptitle(title_prefix)
     grid.fig.tight_layout()
