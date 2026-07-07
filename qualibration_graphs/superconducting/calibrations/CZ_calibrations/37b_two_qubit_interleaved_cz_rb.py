@@ -20,14 +20,16 @@ from calibration_utils.two_qubit_rb import (
     InterleavedRB,
     Parameters,
     QuaProgramHandler,
+    build_sweep_axes,
     cache_key,
+    circuit_to_layer_ints,
     fit_raw_data,
-    layerize_quantum_circuit,
     log_fitted_results,
     plot_raw_data_with_fit,
-    process_circuit_to_integers,
     process_raw_dataset,
     save,
+    log_depth_summary,
+    summarize_transpiled_depth,
     try_load,
 )
 
@@ -90,12 +92,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
 
-    node.namespace["sweep_axes"] = {
-        "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
-        "shots": xr.DataArray(np.arange(node.parameters.num_shots)),
-        "circuit_depth": xr.DataArray(np.array(node.parameters.circuit_depths)),
-        "sequence": xr.DataArray(np.arange(node.parameters.num_circuits_per_depth)),
-    }
+    node.namespace["sweep_axes"] = build_sweep_axes(
+        qubit_pairs,
+        node.parameters.num_shots,
+        node.parameters.circuit_depths,
+        node.parameters.num_circuits_per_depth,
+        use_input_stream=node.parameters.use_input_stream,
+    )
 
     key = cache_key(
         node.parameters.seed,
@@ -109,6 +112,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     if cached is not None:
         circuits_as_ints = cached["circuits_as_ints"]
         node.log(f"Loaded {len(circuits_as_ints)} cached interleaved RB circuits (key {key[:12]})")
+        if "depth_summaries" in cached:
+            for summary in cached["depth_summaries"]:
+                log_depth_summary(summary, log_callable=node.log)
     else:
         interleaved_RB = InterleavedRB(
             target_gate="cz",
@@ -120,14 +126,16 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         transpiled_circuits = interleaved_RB.transpiled_circuits
         transpiled_circuits_as_ints = {}
+        depth_summaries = []
         total_circuits = sum(len(c) for c in transpiled_circuits.values())
         with tqdm(total=total_circuits, desc="Encoding RB circuits to ints", unit="circ") as pbar:
             for l, circuits in transpiled_circuits.items():
                 encoded = []
                 for qc in circuits:
-                    encoded.append(process_circuit_to_integers(layerize_quantum_circuit(qc)))
+                    encoded.append(circuit_to_layer_ints(qc))
                     pbar.update(1)
                 transpiled_circuits_as_ints[l] = encoded
+                depth_summaries.append(summarize_transpiled_depth(l, circuits, log_callable=node.log))
 
         circuits_as_ints = []
         for circuits_per_len in transpiled_circuits_as_ints.values():
@@ -135,7 +143,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 circuit_with_measurement = circuit + [66]  # readout
                 circuits_as_ints.append(circuit_with_measurement)
 
-        save(cache_dir, key, {"circuits_as_ints": circuits_as_ints})
+        save(cache_dir, key, {"circuits_as_ints": circuits_as_ints, "depth_summaries": depth_summaries})
         node.log(f"Computed and cached {len(circuits_as_ints)} interleaved RB circuits (key {key[:12]})")
 
     num_pairs = len(qubit_pairs)
@@ -161,11 +169,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-        # Feed the input-stream queue upfront: pushes every chunk in the order
-        # the QUA program will consume them (pair-major, then shot, then depth,
-        # then sub-chunk). The OPX queue is in DDR, so this does not contend
-        # with the 16000 QUA variable budget; pushes themselves are thin gRPC
-        # calls and complete in well under a second for typical envelopes.
+        # Feed the input-stream queue upfront: pair-major, then sub-chunk
+        # (one host push per advance; shots replay each chunk on the OPX).
         if node.parameters.use_input_stream:
             node.namespace["qua_program_handler"].push_all_chunks(job)
         # Display the progress bar
@@ -230,6 +235,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         qubit_pairs,
         interleaved=True,
         title_prefix="2Q Interleaved CZ Randomized Benchmarking",
+        use_input_stream=node.parameters.use_input_stream,
     )
     for fig in figures.values():
         plt.show()

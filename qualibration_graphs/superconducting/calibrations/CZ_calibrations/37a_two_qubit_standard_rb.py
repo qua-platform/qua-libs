@@ -20,14 +20,16 @@ from calibration_utils.two_qubit_rb import (
     Parameters,
     QuaProgramHandler,
     StandardRB,
+    build_sweep_axes,
     cache_key,
+    circuit_to_layer_ints,
     fit_raw_data,
-    layerize_quantum_circuit,
     log_fitted_results,
     plot_raw_data_with_fit,
-    process_circuit_to_integers,
     process_raw_dataset,
     save,
+    log_depth_summary,
+    summarize_transpiled_depth,
     try_load,
 )
 
@@ -86,70 +88,77 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
 
-    node.namespace["sweep_axes"] = {
-        "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
-        "shots": xr.DataArray(np.arange(node.parameters.num_shots)),
-        "circuit_depth": xr.DataArray(np.array(node.parameters.circuit_depths)),
-        "sequence": xr.DataArray(np.arange(node.parameters.num_circuits_per_depth)),
-    }
+    node.namespace["sweep_axes"] = build_sweep_axes(
+        qubit_pairs,
+        node.parameters.num_shots,
+        node.parameters.circuit_depths,
+        node.parameters.num_circuits_per_depth,
+        use_input_stream=node.parameters.use_input_stream,
+    )
 
-    key = cache_key(node.parameters.seed, node.parameters.circuit_depths, node.parameters.num_circuits_per_depth)
+    key = cache_key(node.parameters.seed, node.parameters.circuit_depths, node.parameters.num_circuits_per_depth) # key to cache the RB circuits
     cache_dir = Path(__file__).resolve().parents[2] / ".rb_cache"
-    cached = try_load(cache_dir, key)
+    cached = try_load(cache_dir, key) # try to load the cached RB circuits
 
-    if cached is not None:
+    if cached is not None: # if the cached RB circuits are found, load them
         circuits_as_ints = cached["circuits_as_ints"]
         node.namespace["average_layers_per_clifford"] = cached["average_layers_per_clifford"]
         node.log(f"Loaded {len(circuits_as_ints)} cached RB circuits (key {key[:12]})")
+        if "depth_summaries" in cached:
+            for summary in cached["depth_summaries"]:
+                log_depth_summary(summary, log_callable=node.log)
     else:
-        standard_RB = StandardRB(
+        standard_RB = StandardRB( # if the cached RB circuits are not found, generate them
             amplification_lengths=node.parameters.circuit_depths,
             num_circuits_per_length=node.parameters.num_circuits_per_depth,
             num_qubits=2,
             seed=node.parameters.seed,
         )
 
-        transpiled_circuits = standard_RB.transpiled_circuits
+        transpiled_circuits = standard_RB.transpiled_circuits # transpile the circuits
         transpiled_circuits_as_ints = {}
-        total_circuits = sum(len(c) for c in transpiled_circuits.values())
+        depth_summaries = [] # summarize the transpiled circuits and save them to the cached dictionary
+        total_circuits = sum(len(c) for c in transpiled_circuits.values()) # count the total number of circuits
         with tqdm(total=total_circuits, desc="Encoding RB circuits to ints", unit="circ") as pbar:
             for l, circuits in transpiled_circuits.items():
-                encoded = []
+                encoded = [] # encode the circuits to integers
                 for qc in circuits:
-                    encoded.append(process_circuit_to_integers(layerize_quantum_circuit(qc)))
+                    encoded.append(circuit_to_layer_ints(qc))
                     pbar.update(1)
-                transpiled_circuits_as_ints[l] = encoded
+                transpiled_circuits_as_ints[l] = encoded # save the encoded circuits to the dictionary
+                depth_summaries.append(summarize_transpiled_depth(l, circuits, log_callable=node.log)) # save the depth summaries to the list
 
-        node.namespace["average_layers_per_clifford"] = np.mean(
+        node.namespace["average_layers_per_clifford"] = np.mean( # calculate the average number of layers per Clifford
             [
-                np.mean([len(circ) for circ in circuits]) / np.array(length + 1)
+                np.mean([len(circ) for circ in circuits]) / np.array(length + 1) # calculate the average number of layers per Clifford
                 for length, circuits in transpiled_circuits_as_ints.items()
                 if length > 0
-            ]
+            ] # if the length is greater than 0
         )
 
-        circuits_as_ints = []
+        circuits_as_ints = [] # encode the circuits to integers
         for circuits_per_len in transpiled_circuits_as_ints.values():
             for circuit in circuits_per_len:
-                circuit_with_measurement = circuit + [66]  # readout
+                circuit_with_measurement = circuit + [66]  # readout # add the readout to the circuit   
                 circuits_as_ints.append(circuit_with_measurement)
 
         save(
-            cache_dir,
-            key,
+            cache_dir, # save the cached dictionary to the cache directory
+            key, # save the key to the cache directory
             {
-                "circuits_as_ints": circuits_as_ints,
-                "average_layers_per_clifford": float(node.namespace["average_layers_per_clifford"]),
+                "circuits_as_ints": circuits_as_ints, # save the encoded circuits to the cached dictionary
+                "average_layers_per_clifford": float(node.namespace["average_layers_per_clifford"]), # save the average number of layers per Clifford to the cached dictionary
+                "depth_summaries": depth_summaries, # save the depth summaries to the cached dictionary
             },
-        )
-        node.log(f"Computed and cached {len(circuits_as_ints)} RB circuits (key {key[:12]})")
+        ) # save the cached dictionary to the cache directory
+        node.log(f"Computed and cached {len(circuits_as_ints)} RB circuits (key {key[:12]})") # log the number of circuits and the key
 
-    num_pairs = len(qubit_pairs)
+    num_pairs = len(qubit_pairs) # count the number of qubit pairs
 
-    qua_program_handler = QuaProgramHandler(node, num_pairs, circuits_as_ints, node.machine, qubit_pairs)
+    qua_program_handler = QuaProgramHandler(node, num_pairs, circuits_as_ints, node.machine, qubit_pairs) # create the QUA program handler
 
-    node.namespace["qua_program_handler"] = qua_program_handler
-    node.namespace["qua_program"] = qua_program_handler.get_qua_program()
+    node.namespace["qua_program_handler"] = qua_program_handler # save the QUA program handler to the node namespace
+    node.namespace["qua_program"] = qua_program_handler.get_qua_program() # save the QUA program to the node namespace
 
 
 # %% {Execute}
@@ -166,16 +175,13 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
             # The job is stored in the node namespace to be reused in the fetching_data run_action
-            node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-            # Feed the input-stream queue upfront: pushes every chunk in the order
-            # the QUA program will consume them (pair-major, then shot, then depth,
-            # then sub-chunk). The OPX queue is in DDR, so this does not contend
-            # with the 16000 QUA variable budget; pushes themselves are thin gRPC
-            # calls and complete in well under a second for typical envelopes.
+            node.namespace["job"] = job = qm.execute(node.namespace["qua_program"]) # execute the QUA program
+            # Feed the input-stream queue upfront: pair-major, then sub-chunk
+            # (one host push per advance; shots replay each chunk on the OPX).
             if node.parameters.use_input_stream:
-                node.namespace["qua_program_handler"].push_all_chunks(job)
+                node.namespace["qua_program_handler"].push_all_chunks(job) # push the chunks to the input-stream queue
             # Display the progress bar
-            data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+            data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"]) # create the data fetcher
             for dataset in data_fetcher:
                 progress_counter(
                     data_fetcher["n"],
@@ -219,7 +225,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit pair grid locations."""
     qubit_pairs = node.namespace["qubit_pairs"]
-    figures = plot_raw_data_with_fit(node.results["ds_fit"], qubit_pairs, title_prefix="2Q Standard Randomized Benchmarking")
+    figures = plot_raw_data_with_fit(
+        node.results["ds_fit"],
+        qubit_pairs,
+        title_prefix="2Q Standard Randomized Benchmarking",
+        use_input_stream=node.parameters.use_input_stream,
+    )
     for fig in figures.values():
         plt.show()
     node.results["figures"] = figures
