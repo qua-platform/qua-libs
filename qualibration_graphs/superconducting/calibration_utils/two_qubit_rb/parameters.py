@@ -40,8 +40,9 @@ class NodeSpecificParameters(RunnableParameters):
     use_input_stream=True. Must be < 16000 (the OPX QUA variable budget cap),
     with some headroom for the program's other declared variables. Default 15500."""
     verbose_memory_log: bool = False
-    """When True, log per-depth circuit int counts and input-stream sub-chunk
-    breakdown at QUA compile time (in addition to the one-line memory summary)."""
+    """Always logs per-depth transpile stats during encoding. When True, also
+    logs RB circuit memory summary plus per-depth int and input-stream sub-chunk
+    breakdown at QUA compile time."""
     reset_type: Literal["active", "thermal"] = "active"
     """Type of reset to perform. Default is active."""
     fidelity_threshold: Optional[float] = None

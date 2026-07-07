@@ -4,7 +4,8 @@ This module provides functions for converting quantum circuits to integer
 representations and processing circuit layers for RB experiments.
 """
 
-from typing import List, Union
+from collections import Counter
+from typing import Callable, List, Union
 
 import numpy as np
 from qiskit import QuantumCircuit
@@ -94,15 +95,189 @@ def process_circuit_to_integers(circuit: QuantumCircuit) -> List[int]:
     return result
 
 
-def layerize_quantum_circuit(qc: QuantumCircuit) -> QuantumCircuit:
-    """
-    Convert a quantum circuit to a layered circuit with barriers between layers.
+def _instructions_to_layer_int(instructions: QuantumCircuit) -> int:
+    """Encode one parallel gate layer as a single ``play_gate`` integer.
+
+    Each DAG layer represents gates that can execute simultaneously on the
+    two-qubit pair. This function collects the gate on each qubit (or the
+    single two-qubit gate) and packs them into one opcode consumed by
+    :func:`~calibration_utils.two_qubit_rb.qua_utils.play_gate`.
+
+    Single-qubit layers are encoded as ``g0 * 8 + g1`` where ``g0``/``g1``
+    index into :data:`SINGLE_QUBIT_GATE_MAP` (7 = idle). Two-qubit layers
+    map to :data:`TWO_QUBIT_GATE_MAP` (64 = ``cz``, 65 = ``idle_2q``).
 
     Args:
-        qc: The quantum circuit to layerize.
+        instructions: One layer of the circuit, typically a small
+            :class:`~qiskit.circuit.QuantumCircuit` from
+            :func:`~qiskit.converters.dag_to_circuit` on a single
+            :meth:`~qiskit.dagcircuit.DAGCircuit.layers` entry. Iterated
+            instruction-by-instruction like ``process_circuit_to_integers``.
 
     Returns:
-        A new quantum circuit with barriers inserted between layers.
+        Integer opcode in ``[0, 63]`` for parallel single-qubit layers, or
+        ``64``/``65`` for two-qubit layers.
+
+    Raises:
+        ValueError: If a gate is unsupported, or if a two-qubit gate appears
+            in the same layer as single-qubit gates.
+    """
+    current_layer = [[7, 7]]
+    for instruction in instructions:
+        gate_name = get_gate_name(instruction.operation)
+
+        if gate_name in ("cz", "idle_2q"):
+            if current_layer != [[7, 7]]:
+                raise ValueError(f"{gate_name} gate found with single qubit gates in the layer")
+            current_layer = [gate_name]
+        elif gate_name in SINGLE_QUBIT_GATE_MAP:
+            qubit_index = instruction.qubits[0]._index
+            current_layer[0][qubit_index] = SINGLE_QUBIT_GATE_MAP[gate_name]
+        else:
+            raise ValueError(f"Unsupported gate: {gate_name}")
+
+    return get_layer_integer(current_layer)
+
+
+def circuit_to_layer_ints(qc: QuantumCircuit) -> List[int]:
+    """Convert a transpiled 2-qubit circuit to ``play_gate`` integer opcodes.
+
+    Uses :func:`~qiskit.converters.circuit_to_dag` and
+    :meth:`~qiskit.dagcircuit.DAGCircuit.layers` to walk parallel time steps
+    in order, encoding each layer via :func:`_instructions_to_layer_int`.
+    Empty DAG layers and barrier-only layers are skipped, so this works
+    directly on circuits produced by :func:`transpile_per_clifford`
+    (which leaves barriers in place to preserve per-Clifford isolation
+    during transpilation).
+
+    Args:
+        qc: Transpiled two-qubit circuit in the RB basis gate set
+            (``sx``, ``x``, ``rz``, ``cz``), possibly containing barriers.
+
+    Returns:
+        Ordered list of layer opcodes, one per parallel timestep. Does not
+        append the readout marker (``66``); callers add that when building
+        the full sequence for the OPX.
+
+    Raises:
+        ValueError: Propagated from :func:`_instructions_to_layer_int` if any
+            layer contains unsupported (non-barrier) gates or invalid gate
+            combinations.
+    """
+    dag = circuit_to_dag(qc)
+    result = []
+    for layer in dag.layers():
+        layer_circ = dag_to_circuit(layer["graph"])
+        # Drop barrier-only layers (and any leftover empty layers).
+        non_barrier_instructions = [
+            instr for instr in layer_circ if instr.operation.name != "barrier"
+        ]
+        if not non_barrier_instructions:
+            continue
+        result.append(_instructions_to_layer_int(non_barrier_instructions))
+    return result
+
+
+def _count_transpiled_circuit_stats(qc: QuantumCircuit) -> dict:
+    """Return Clifford, 1Q, and CZ gate counts for one barriered transpiled circuit."""
+    gate_counts = Counter(instr.operation.name for instr in qc)
+    n_cliffords = gate_counts.pop("barrier", 0)
+    n_transpiled_gates = sum(gate_counts.values())
+    two_qubit_names = {"cz", "idle_2q"}
+    n_1q_gates = sum(count for name, count in gate_counts.items() if name not in two_qubit_names)
+    n_cz_gates = gate_counts.get("cz", 0)
+    return {
+        "n_cliffords": n_cliffords,
+        "n_transpiled_gates": n_transpiled_gates,
+        "n_1q_gates": n_1q_gates,
+        "n_cz_gates": n_cz_gates,
+    }
+
+
+def log_depth_summary(summary: dict, *, log_callable: Callable[[str], None] = print) -> None:
+    """Log a one-line per-depth transpile summary (e.g. from cache)."""
+    log_callable(
+        f"depth={summary['depth']}: {summary['num_circuits']} circuits, "
+        f"{summary['total_cliffords']} cliffords, {summary['total_transpiled_gates']} transpiled gates, "
+        f"avg 1Q/Clifford={summary['avg_1q_per_clifford']:.2f}, "
+        f"avg CZ/Clifford={summary['avg_cz_per_clifford']:.2f}"
+    )
+
+
+def summarize_transpiled_depth(
+    depth: int,
+    circuits: list[QuantumCircuit],
+    *,
+    log_callable: Callable[[str], None] = print,
+) -> dict:
+    """Compute, log, and return per-depth transpile stats for caching.
+
+    Args:
+        depth: RB depth (number of random Cliffords).
+        circuits: Transpiled circuits at this depth.
+        log_callable: Callable used for log output (e.g. ``node.log``).
+
+    Returns:
+        Summary dict suitable for ``log_depth_summary`` or ``depth_summaries`` cache.
+    """
+    total_cliffords = 0
+    total_transpiled_gates = 0
+    total_1q_gates = 0
+    total_cz_gates = 0
+
+    for qc in circuits:
+        stats = _count_transpiled_circuit_stats(qc)
+        total_cliffords += stats["n_cliffords"]
+        total_transpiled_gates += stats["n_transpiled_gates"]
+        total_1q_gates += stats["n_1q_gates"]
+        total_cz_gates += stats["n_cz_gates"]
+
+    avg_1q_per_clifford = total_1q_gates / total_cliffords if total_cliffords else 0.0
+    avg_cz_per_clifford = total_cz_gates / total_cliffords if total_cliffords else 0.0
+
+    summary = {
+        "depth": depth,
+        "num_circuits": len(circuits),
+        "total_cliffords": total_cliffords,
+        "total_transpiled_gates": total_transpiled_gates,
+        "total_1q_gates": total_1q_gates,
+        "total_cz_gates": total_cz_gates,
+        "avg_1q_per_clifford": avg_1q_per_clifford,
+        "avg_cz_per_clifford": avg_cz_per_clifford,
+    }
+    log_depth_summary(summary, log_callable=log_callable)
+    return summary
+
+
+def layerize_quantum_circuit(qc: QuantumCircuit) -> QuantumCircuit:
+    """Build a barrier-separated circuit that marks each parallel DAG layer.
+
+    Like :func:`circuit_to_layer_ints`, this uses
+    :func:`~qiskit.converters.circuit_to_dag` and
+    :meth:`~qiskit.dagcircuit.DAGCircuit.layers` to find which gates run in
+    parallel. Unlike :func:`circuit_to_layer_ints`, it does **not** emit
+    opcodes directly: it materializes a new :class:`~qiskit.circuit.QuantumCircuit`
+    by ``compose``-ing each layer and inserting a **barrier** after every layer.
+
+    That barrier-separated circuit is meant for
+    :func:`process_circuit_to_integers`, which walks barriers and encodes one
+    int per layer — the legacy two-step path:
+
+    .. code-block:: python
+
+        process_circuit_to_integers(layerize_quantum_circuit(qc))
+
+    **Prefer** :func:`circuit_to_layer_ints` for RB encoding (used in 37a/37b):
+    same layer boundaries and ints, but no intermediate circuit and no per-layer
+    ``compose`` (much faster at high depth).
+
+    Args:
+        qc: Transpiled two-qubit circuit in the RB basis gate set.
+
+    Returns:
+        A new circuit with the same gates, grouped into layers separated by
+        barriers. Useful for inspection/debugging or APIs that expect a
+        barrier-marked circuit (e.g. :func:`collect_gates_as_2_qubit_layers`).
     """
     dag = circuit_to_dag(qc)
     layered_qc = QuantumCircuit(qc.num_qubits)
