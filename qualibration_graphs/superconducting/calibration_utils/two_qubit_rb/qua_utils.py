@@ -33,8 +33,8 @@ def compute_rb_circuit_memory_stats(
 ) -> dict:
     """Summarize encoded RB circuit sizes for memory validation and logging.
 
-    The ints come from ``create_qua_program`` in nodes 37a/37b: each circuit is
-    ``process_circuit_to_integers(layerize_quantum_circuit(qc)) + [66]``, i.e. one
+    The ints come from ``create_qua_program`` in nodes: each circuit is
+    ``circuit_to_layer_ints(qc) + [66]``, i.e. one
     integer per transpiled parallel gate layer plus a trailing readout marker.
 
     ``circuits_as_ints`` is depth-major: all sequences for depth[0], then depth[1], ...
@@ -123,12 +123,12 @@ def log_rb_circuit_memory_stats(
     verbose: bool = False,
     log_callable=print,
 ) -> None:
-    """Log a one-line summary; optional per-depth breakdown when ``verbose``."""
+    """Log RB circuit memory summary; optional per-depth breakdown when ``verbose``."""
     stream_extra = ""
     if use_input_stream and declared_size is not None:
         stream_extra = f", input_stream declared_size={declared_size}"
     log_callable(
-        "RB circuit memory: "
+        "RB circuit OPX memory summary stats: "
         f"{stats['num_circuits']} circuits, "
         f"{stats['total_ints']} total ints, "
         f"largest circuit {stats['max_circuit_ints']} ints "
@@ -586,16 +586,17 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
         else:
             validate_without_inputstream_path(memory_stats, max_chunk_ints)
 
-        log_rb_circuit_memory_stats(
-            memory_stats,
-            use_input_stream=self.node.parameters.use_input_stream,
-            max_chunk_ints=max_chunk_ints,
-            declared_size=self.declared_size,
-            chunks_per_depth=self.chunks_per_depth if self.node.parameters.use_input_stream else None,
-            circuit_depths=circuit_depths if self.node.parameters.use_input_stream else None,
-            verbose=self.node.parameters.verbose_memory_log,
-            log_callable=self.node.log,
-        )
+        if self.node.parameters.verbose_memory_log:
+            log_rb_circuit_memory_stats(
+                memory_stats,
+                use_input_stream=self.node.parameters.use_input_stream,
+                max_chunk_ints=max_chunk_ints,
+                declared_size=self.declared_size,
+                chunks_per_depth=self.chunks_per_depth if self.node.parameters.use_input_stream else None,
+                circuit_depths=circuit_depths if self.node.parameters.use_input_stream else None,
+                verbose=True,
+                log_callable=self.node.log,
+            )
 
     def _get_qua_program_with_input_stream(self):
         # Flatten chunks_per_depth into a single ordered list of sub-chunks.
@@ -639,11 +640,11 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 # Align the two elements to play the sequence after qubit initialization
                 align()
 
-                # Chunk outer, shot inner: advance once per sub-chunk, replay all
-                # shots from the buffered chunk (no per-shot re-push on the host).
-                with for_(j, 0, j < n_sub_chunks, j + 1):
-                    advance_input_stream(sequence)
-                    with for_(n, 0, n < self.node.parameters.num_shots, n + 1):
+                # Shot outer, sub-chunk inner — same measurement order as the
+                # non-input-stream path (one full depth sweep per shot).
+                with for_(n, 0, n < self.node.parameters.num_shots, n + 1):
+                    with for_(j, 0, j < n_sub_chunks, j + 1):
+                        advance_input_stream(sequence)
                         with for_(i, 0, i < sub_lens[j], i + 1):
                             play_gate(
                                 sequence[i],
@@ -655,8 +656,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                                 self.node.parameters.reset_type,
                                 self.node.parameters.operation,
                             )
-                        with if_(j + 1 == n_sub_chunks):
-                            save(n, n_st)
+                    save(n, n_st)
 
             with stream_processing():
                 n_st.save("n")
@@ -670,9 +670,8 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
         """Return the flat depth-major list of sub-chunks, each padded to
         ``self.declared_size`` ints with :data:`INPUT_STREAM_PAD_VALUE`.
 
-        This is the canonical "what to push, in what order, for one pass over
-        the QUA program's sub-chunks" representation. ``push_all_chunks``
-        iterates over this list once per qubit pair.
+        ``push_all_chunks`` pushes this list ``num_shots`` times per qubit
+        pair so each ``advance_input_stream`` call consumes the next chunk.
         """
         declared = self.declared_size
         return [
@@ -682,16 +681,12 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
         ]
 
     def push_all_chunks(self, job) -> None:
-        """Push every input-stream chunk in the order the QUA program consumes them.
+        """Push input-stream chunks in the order the QUA program consumes them.
 
         Order mirrors ``_get_qua_program_with_input_stream``:
-        ``for pair: for sub_chunk: advance``. Shots replay each chunk on the
-        OPX without additional host pushes.
-
-        Each push is padded out to ``self.declared_size`` ints with
-        :data:`INPUT_STREAM_PAD_VALUE`. Padding bytes are never executed by the
-        OPX (the QUA inner loop is bounded by the real sub-chunk length, stored
-        in a small QUA array).
+        ``for pair: for shot: for sub_chunk: advance``. Each chunk is pushed
+        once per shot because every shot performs a fresh ``advance`` per
+        sub-chunk.
 
         Args:
             job: The running ``QmJob`` returned by ``qm.execute(...)``.
@@ -702,10 +697,12 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 "the QUA program does not declare an input stream."
             )
 
+        num_shots = self.node.parameters.num_shots
         padded = self._padded_chunks()
         for _ in self.qubit_pairs:
-            for chunk in padded:
-                job.push_to_input_stream("sequence", chunk)
+            for _ in range(num_shots):
+                for chunk in padded:
+                    job.push_to_input_stream("sequence", chunk)
 
     def _get_qua_program_without_input_stream(self):
 
