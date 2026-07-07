@@ -12,7 +12,19 @@ from scipy.optimize import curve_fit
 
 @dataclass
 class FitResults:
-    """Stores the relevant CZ conditional phase experiment fit parameters for a single qubit pair"""
+    """Fit results for a single qubit pair from the CZ phase compensation calibration.
+
+    Attributes:
+    -----------
+    control_phase_correction : float
+        Residual single-qubit phase accumulated by the control qubit during the CZ gate (in 2π units).
+        This value is subtracted from ``phase_shift_control`` in the state update.
+    target_phase_correction : float
+        Residual single-qubit phase accumulated by the target qubit during the CZ gate (in 2π units).
+        This value is subtracted from ``phase_shift_target`` in the state update.
+    success : bool
+        True if the sinusoidal fit converged for both qubits.
+    """
 
     control_phase_correction: float
     target_phase_correction: float
@@ -20,10 +32,19 @@ class FitResults:
 
 
 def fix_oscillation_phi_2pi(fit_data):
-    """Extract and fix the phase parameter from oscillation fit data."""
-    # Extract the phase parameter from the fit results
+    """Extract and normalise the oscillation phase to the [0, 1) range (representing 0 to 2π).
+
+    Parameters:
+    -----------
+    fit_data : xr.DataArray
+        Oscillation fit result with a ``fit_vals`` dimension containing ``"phi"``.
+
+    Returns:
+    --------
+    xr.DataArray
+        Phase values normalised to [0, 1).
+    """
     phase = fit_data.sel(fit_vals="phi")
-    # Normalize phase to [0, 1] range (representing 0 to 2π)
     phase = (phase / (2 * np.pi)) % 1
     return phase
 
@@ -57,8 +78,25 @@ def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
         log_callable(log_message)
 
 
-def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    # Convert IQ data into volts
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Convert raw IQ data to volts when state discrimination is not used.
+
+    Parameters:
+    -----------
+    ds : xr.Dataset
+        Raw dataset from the experiment, containing either ``I_control`` / ``Q_control`` /
+        ``I_target`` / ``Q_target`` (raw IQ) or ``state_control`` / ``state_target``
+        (state-discrimination) variables.
+    node : QualibrationNode
+        Calibration node providing ``qubit_pairs`` from its namespace (required by
+        ``convert_IQ_to_V``).
+
+    Returns:
+    --------
+    xr.Dataset
+        Dataset with IQ variables converted to volts, or unchanged if state discrimination
+        was used.
+    """
     if hasattr(ds, "I_control"):
         ds = convert_IQ_to_V(
             ds, qubit_pairs=node.namespace["qubit_pairs"], IQ_list=["I_control", "Q_control", "I_target", "Q_target"]
@@ -91,7 +129,24 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
 
 
 def fit_routine(da):
+    """Fit Ramsey frame-rotation oscillations and extract phase corrections for one qubit pair.
 
+    Fits a sinusoidal oscillation over the ``frame`` axis separately for the control qubit
+    and the target qubit.  The fitted phase of each oscillation gives the residual single-qubit
+    phase error introduced by the CZ gate.
+
+    Parameters:
+    -----------
+    da : xr.Dataset
+        Single-pair dataset with ``state_control`` / ``state_target`` (state-discrimination)
+        or ``I_control`` / ``I_target`` (raw IQ) variables, and a ``frame`` dimension.
+
+    Returns:
+    --------
+    xr.Dataset
+        Input dataset extended with ``fitted_control``, ``fitted_target``,
+        ``fitted_control_phase``, ``fitted_target_phase``, and ``success`` data variables.
+    """
     if hasattr(da, "state_target"):
         data_control = "state_control"
         data_target = "state_target"
@@ -168,21 +223,29 @@ def _extract_relevant_parameters(
     ds_fit: xr.Dataset, node: QualibrationNode
 ) -> Tuple[xr.Dataset, Dict[str, FitResults]]:
     """
-    Extract relevant fit parameters and create FitResults for each qubit pair.
+    Assign xarray metadata attributes and build the FitResults dictionary.
 
     Parameters:
     -----------
     ds_fit : xr.Dataset
-        Dataset containing the fit results from fit_routine.
+        Dataset produced by applying ``fit_routine`` per qubit pair. Must contain
+        ``fitted_control_phase``, ``fitted_target_phase``, and ``success`` data variables.
     node : QualibrationNode
-        The calibration node containing parameters and qubit pairs.
+        Calibration node providing ``qubit_pairs`` from its namespace.
 
     Returns:
     --------
     Tuple[xr.Dataset, Dict[str, FitResults]]
-        Dataset with additional metadata and dictionary of FitResults for each qubit pair.
+        Dataset with ``long_name`` / ``units`` attrs set on key variables, and a
+        dictionary of ``FitResults`` keyed by qubit pair name.
     """
     qubit_pairs = node.namespace["qubit_pairs"]
+
+    # Add metadata attributes to the dataset
+    if "fitted_control_phase" in ds_fit.data_vars:
+        ds_fit.fitted_control_phase.attrs = {"long_name": "control qubit phase correction", "units": "2π"}
+    if "fitted_target_phase" in ds_fit.data_vars:
+        ds_fit.fitted_target_phase.attrs = {"long_name": "target qubit phase correction", "units": "2π"}
 
     # Create FitResults for each qubit pair
     fit_results = {}
