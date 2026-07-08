@@ -48,6 +48,27 @@ def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode | None = None) -> xr.Dataset:
+    """Normalize raw RB dataset layout for downstream analysis.
+
+    The input-stream QUA path uses a chunk-outer, shot-inner loop so the OPX can
+    replay each pushed sub-chunk for all shots without extra host pushes. That
+    measurement order is ``(circuit_depth, shots, sequence)``, and
+    ``build_sweep_axes`` matches it at fetch time so ``XarrayDataFetcher`` can
+    reshape the raw buffers correctly.
+
+    All RB analysis (survival averaging, fitting, plotting) is written against
+    the canonical layout used by the non-input-stream path:
+    ``(shots, circuit_depth, sequence)``. This function transposes input-stream
+    datasets to that order after fetch so both execution modes share the same
+    analysis code without duplicating fit logic or slowing execution by pushing
+    one chunk per shot.
+    """
+    if node is not None and node.parameters.use_input_stream:
+        for name in ds.data_vars:
+            dims = list(ds[name].dims)
+            if {"circuit_depth", "shots", "sequence"}.issubset(dims):
+                other_dims = [d for d in dims if d not in ("circuit_depth", "shots", "sequence")]
+                ds[name] = ds[name].transpose(*other_dims, "shots", "circuit_depth", "sequence")
     return ds
 
 
