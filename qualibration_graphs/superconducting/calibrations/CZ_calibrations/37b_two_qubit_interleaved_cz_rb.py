@@ -14,6 +14,7 @@ from qualang_tools.results import progress_counter
 from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs
+from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
 from calibration_utils.two_qubit_rb import (
@@ -21,6 +22,7 @@ from calibration_utils.two_qubit_rb import (
     Parameters,
     QuaProgramHandler,
     build_sweep_axes,
+    READOUT_OPCODE,
     cache_key,
     circuit_to_layer_ints,
     fit_raw_data,
@@ -140,7 +142,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         circuits_as_ints = []
         for circuits_per_len in transpiled_circuits_as_ints.values():
             for circuit in circuits_per_len:
-                circuit_with_measurement = circuit + [66]  # readout
+                circuit_with_measurement = circuit + [READOUT_OPCODE]
                 circuits_as_ints.append(circuit_with_measurement)
 
         save(cache_dir, key, {"circuits_as_ints": circuits_as_ints, "depth_summaries": depth_summaries})
@@ -152,6 +154,16 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     node.namespace["qua_program_handler"] = qua_program_handler
     node.namespace["qua_program"] = qua_program_handler.get_qua_program()
+
+
+# %% {Simulate}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP and simulate the QUA program."""
+    qmm = node.machine.connect()
+    config = node.machine.generate_config()
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    node.results["simulation"] = {"figure": fig, "wf_report": wf_report.to_dict()}
 
 
 # %% {Execute}

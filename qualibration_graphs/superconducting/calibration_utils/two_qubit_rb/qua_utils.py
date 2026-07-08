@@ -273,8 +273,8 @@ def reset_qubits(node, control: Quam.qubit_type, target: Quam.qubit_type, therma
         target: The target qubit to reset.
         thermalization_time: Optional thermalization time (currently unused).
     """
-    control.reset(reset_type=node.parameters.reset_type)
-    target.reset(reset_type=node.parameters.reset_type)
+    control.reset(reset_type=node.parameters.reset_type, simulate=node.parameters.simulate)
+    target.reset(reset_type=node.parameters.reset_type, simulate=node.parameters.simulate)
 
 
 def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-statements
@@ -286,6 +286,7 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     state_st: "_ResultSource",
     reset_type: Literal["thermal", "active"],
     cz_operation: str = "cz_unipolar",
+    simulate: bool = False,
 ):
     """
     Play a single gate from the gate mapping based on the gate integer value.
@@ -299,6 +300,7 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         state_st: Stream to save the state measurement.
         reset_type: Type of reset to use ("thermal" or "active").
         cz_operation: Name of the CZ operation macro to use.
+        simulate: Whether resets run in simulation mode.
     """
     with switch_(gate, unsafe=True):
         
@@ -499,8 +501,8 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
             for qp in qubit_pair.values():
 
                 # reset the qubits
-                qp.qubit_control.reset(reset_type)
-                qp.qubit_target.reset(reset_type)
+                qp.qubit_control.reset(reset_type, simulate)
+                qp.qubit_target.reset(reset_type, simulate)
                 
             align()
                 
@@ -521,6 +523,7 @@ def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arg
     state_st,
     reset_type: Literal["thermal", "active"],
     cz_operation: str = "cz_unipolar",
+    simulate: bool = False,
 ):
     """
     Play a sequence of gates up to the specified depth.
@@ -535,11 +538,22 @@ def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arg
         state_st: Stream to save the state measurement.
         reset_type: Type of reset to use ("thermal" or "active").
         cz_operation: Name of the CZ operation macro to use.
+        simulate: Whether resets run in simulation mode.
     """
 
     i = declare(int)
     with for_(i, 0, i < depth, i + 1):
-        play_gate(sequence[i], qubit_pair, state, state_control, state_target, state_st, reset_type, cz_operation)
+        play_gate(
+            sequence[i],
+            qubit_pair,
+            state,
+            state_control,
+            state_target,
+            state_st,
+            reset_type,
+            cz_operation,
+            simulate,
+        )
 
 
 class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -640,8 +654,14 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 align()
 
                 for qp in multiplexed_qubit_pairs.values():
-                    qp.qubit_control.reset(reset_type=self.node.parameters.reset_type)
-                    qp.qubit_target.reset(reset_type=self.node.parameters.reset_type)
+                    qp.qubit_control.reset(
+                        reset_type=self.node.parameters.reset_type,
+                        simulate=self.node.parameters.simulate,
+                    )
+                    qp.qubit_target.reset(
+                        reset_type=self.node.parameters.reset_type,
+                        simulate=self.node.parameters.simulate,
+                    )
                 align()
 
                 # Chunk outer, shot inner — one advance per sub-chunk; shots replay
@@ -659,6 +679,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                                 state_st,
                                 self.node.parameters.reset_type,
                                 self.node.parameters.operation,
+                                self.node.parameters.simulate,
                             )
                         with if_(j == n_sub_chunks - 1):
                             save(n, n_st)
@@ -739,8 +760,14 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 with for_(n, 0, n < self.node.parameters.num_shots, n + 1):
                     # Reset the qubits
                     for qp in multiplexed_qubit_pairs.values():
-                        qp.qubit_control.reset(self.node.parameters.reset_type)
-                        qp.qubit_target.reset(self.node.parameters.reset_type)
+                        qp.qubit_control.reset(
+                            self.node.parameters.reset_type,
+                            self.node.parameters.simulate,
+                        )
+                        qp.qubit_target.reset(
+                            self.node.parameters.reset_type,
+                            self.node.parameters.simulate,
+                        )
                     align()
 
                     # Play the sequence (multiplexed pair inside the)
@@ -754,6 +781,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                         state_st,
                         self.node.parameters.reset_type,
                         self.node.parameters.operation,
+                        self.node.parameters.simulate,
                     )
 
                     save(n, n_st)

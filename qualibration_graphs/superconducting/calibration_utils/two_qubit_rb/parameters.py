@@ -47,6 +47,8 @@ class NodeSpecificParameters(RunnableParameters):
     breakdown at QUA compile time."""
     reset_type: Literal["active", "thermal"] = "active"
     """Type of reset to perform. Default is active."""
+    simulate: bool = False
+    """Simulate the waveforms on the OPX instead of executing the program. Default is False."""
     fidelity_threshold: Optional[float] = None
     """Optional gate-fidelity acceptance threshold in [0, 1]. If set, qubit pairs whose fitted
     fidelity is below this value are additionally marked as failed in node.outcomes (in
