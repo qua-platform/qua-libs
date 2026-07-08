@@ -15,12 +15,12 @@ from qualibrate import NodeParameters, QualibrationNode
 from quam_config import Quam
 
 # Padding value used to fill input-stream chunks to the declared array size.
-# 65 maps to case_(65) -> idle_2q (wait(4) on both qubits in play_gate). It is
+# 37 maps to case_(37) -> idle_2q (wait(4) on both qubits in play_gate). It is
 # defensive only: play_sequence is bounded by the actual chunk length so these
 # slots are never executed in normal operation. Picking an in-range case_ value
 # guarantees that an off-by-one would land on a known no-op rather than
 # undefined behavior under switch_case(..., unsafe=True).
-INPUT_STREAM_PAD_VALUE = 65
+INPUT_STREAM_PAD_VALUE = 37
 
 # OPX QUA variable budget is ~16000; leave headroom for streams, counters, sub_lens, etc.
 OPX_QUA_VARIABLE_BUDGET = 16000
@@ -34,7 +34,7 @@ def compute_rb_circuit_memory_stats(
     """Summarize encoded RB circuit sizes for memory validation and logging.
 
     The ints come from ``create_qua_program`` in nodes: each circuit is
-    ``circuit_to_layer_ints(qc) + [66]``, i.e. one
+    ``circuit_to_layer_ints(qc) + [READOUT_OPCODE]``, i.e. one
     integer per transpiled parallel gate layer plus a trailing readout marker.
 
     ``circuits_as_ints`` is depth-major: all sequences for depth[0], then depth[1], ...
@@ -190,7 +190,7 @@ def build_single_depth_chunks(
 
     Args:
         circuits_as_ints: Flat list of all circuits (each itself a list of ints
-            terminated by a 66 readout marker), in the same order produced by
+            terminated by a readout marker (opcode 38)), in the same order produced by
             ``create_qua_program``: depth-major, then circuit_index within depth.
         circuit_depths: Ordered list of depths (Cliffords) being benchmarked.
             Used only to slice ``circuits_as_ints`` into per-depth groups.
@@ -202,7 +202,7 @@ def build_single_depth_chunks(
     Returns:
         chunks_per_depth: ``len(circuit_depths)`` entries, one per depth. Each
             entry is a list of sub-chunks; each sub-chunk is a flat list[int]
-            of concatenated full circuits (including their trailing 66 markers)
+            of concatenated full circuits (including their trailing readout markers)
             with total length <= max_chunk_ints. No padding is applied here;
             padding to the declared input-stream size happens at push time.
         declared_size: ``max`` over all sub-chunks of their int length. This is
@@ -301,208 +301,214 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         cz_operation: Name of the CZ operation macro to use.
     """
     with switch_(gate, unsafe=True):
-
+        
         with case_(0):
-            qubit_pair.qubit_control.xy.play("x90")
-            qubit_pair.qubit_target.xy.play("x90")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.play("x90")
+                qp.qubit_target.xy.play("x90")
+                qp.align()
         with case_(1):
-            qubit_pair.qubit_control.xy.play("x90")
-            qubit_pair.qubit_target.xy.play("x180")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.play("x90")
+                qp.qubit_target.xy.play("x180")
+                qp.align()
         with case_(2):
-            qubit_pair.qubit_control.xy.play("x90")
-            qubit_pair.qubit_target.xy.play("y90")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.play("x90")
+                qp.qubit_target.xy.frame_rotation(np.pi/2)
+                qp.align()
         with case_(3):
-            qubit_pair.qubit_control.xy.play("x90")
-            qubit_pair.qubit_target.xy.play("y180")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.play("x90")
+                qp.qubit_target.xy.frame_rotation(np.pi)
+                qp.align()
         with case_(4):
-            qubit_pair.qubit_control.xy.play("x90")
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi / 2)
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.play("x90")
+                qp.qubit_target.xy.frame_rotation(3*np.pi/2)
+                qp.align()
         with case_(5):
-            qubit_pair.qubit_control.xy.play("x90")
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi)
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.play("x90")
+                qp.align()
         with case_(6):
-            qubit_pair.qubit_control.xy.play("x90")
-            qubit_pair.qubit_target.xy.frame_rotation(3 * np.pi / 2)
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.play("x180")
+                qp.qubit_target.xy.play("x90")
+                qp.align()
         with case_(7):
-            qubit_pair.qubit_control.xy.play("x90")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.play("x180")
+                qp.qubit_target.xy.play("x180")
+                qp.align()
         with case_(8):
-            qubit_pair.qubit_control.xy.play("x180")
-            qubit_pair.qubit_target.xy.play("x90")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.play("x180")
+                qp.qubit_target.xy.frame_rotation(np.pi/2)
+                qp.align()
         with case_(9):
-            qubit_pair.qubit_control.xy.play("x180")
-            qubit_pair.qubit_target.xy.play("x180")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.play("x180")
+                qp.qubit_target.xy.frame_rotation(np.pi)
+                qp.align()
         with case_(10):
-            qubit_pair.qubit_control.xy.play("x180")
-            qubit_pair.qubit_target.xy.play("y90")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.play("x180")
+                qp.qubit_target.xy.frame_rotation(3*np.pi/2)
+                qp.align()
         with case_(11):
-            qubit_pair.qubit_control.xy.play("x180")
-            qubit_pair.qubit_target.xy.play("y180")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.play("x180")
+                qp.align()
         with case_(12):
-            qubit_pair.qubit_control.xy.play("x180")
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi / 2)
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(np.pi/2)
+                qp.qubit_target.xy.play("x90")
+                qp.align()
         with case_(13):
-            qubit_pair.qubit_control.xy.play("x180")
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi)
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(np.pi/2)
+                qp.qubit_target.xy.play("x180")
+                qp.align()
         with case_(14):
-            qubit_pair.qubit_control.xy.play("x180")
-            qubit_pair.qubit_target.xy.frame_rotation(3 * np.pi / 2)
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(np.pi/2)
+                qp.qubit_target.xy.frame_rotation(np.pi/2)
+                qp.align()
         with case_(15):
-            qubit_pair.qubit_control.xy.play("x180")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(np.pi/2)
+                qp.qubit_target.xy.frame_rotation(np.pi)
+                qp.align()
         with case_(16):
-            qubit_pair.qubit_control.xy.play("y90")
-            qubit_pair.qubit_target.xy.play("x90")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(np.pi/2)
+                qp.qubit_target.xy.frame_rotation(3*np.pi/2)
+                qp.align()
         with case_(17):
-            qubit_pair.qubit_control.xy.play("y90")
-            qubit_pair.qubit_target.xy.play("x180")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(np.pi/2)
+                qp.align()
         with case_(18):
-            qubit_pair.qubit_control.xy.play("y90")
-            qubit_pair.qubit_target.xy.play("y90")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(np.pi)
+                qp.qubit_target.xy.play("x90")
+                qp.align()
         with case_(19):
-            qubit_pair.qubit_control.xy.play("y90")
-            qubit_pair.qubit_target.xy.play("y180")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(np.pi)
+                qp.qubit_target.xy.play("x180")
+                qp.align()
         with case_(20):
-            qubit_pair.qubit_control.xy.play("y90")
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi / 2)
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(np.pi)
+                qp.qubit_target.xy.frame_rotation(np.pi/2)
+                qp.align()
         with case_(21):
-            qubit_pair.qubit_control.xy.play("y90")
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi)
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(np.pi)
+                qp.qubit_target.xy.frame_rotation(np.pi)
+                qp.align()
         with case_(22):
-            qubit_pair.qubit_control.xy.play("y90")
-            qubit_pair.qubit_target.xy.frame_rotation(3 * np.pi / 2)
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(np.pi)
+                qp.qubit_target.xy.frame_rotation(3*np.pi/2)
+                qp.align()
         with case_(23):
-            qubit_pair.qubit_control.xy.play("y90")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(np.pi)
+                qp.align()
         with case_(24):
-            qubit_pair.qubit_control.xy.play("y180")
-            qubit_pair.qubit_target.xy.play("x90")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_target.xy.play("x90")
+                qp.align()
         with case_(25):
-            qubit_pair.qubit_control.xy.play("y180")
-            qubit_pair.qubit_target.xy.play("x180")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_target.xy.play("x180")
+                qp.align()
         with case_(26):
-            qubit_pair.qubit_control.xy.play("y180")
-            qubit_pair.qubit_target.xy.play("y90")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_target.xy.frame_rotation(np.pi/2)
+                qp.align()
         with case_(27):
-            qubit_pair.qubit_control.xy.play("y180")
-            qubit_pair.qubit_target.xy.play("y180")
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_target.xy.frame_rotation(np.pi)
+                qp.align()
         with case_(28):
-            qubit_pair.qubit_control.xy.play("y180")
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi / 2)
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_target.xy.frame_rotation(3*np.pi/2)
+                qp.align()
         with case_(29):
-            qubit_pair.qubit_control.xy.play("y180")
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi)
+            for qp in qubit_pair.values():
+                qp.qubit_control.xy.frame_rotation(3*np.pi/2)
+                qp.align()
         with case_(30):
-            qubit_pair.qubit_control.xy.play("y180")
-            qubit_pair.qubit_target.xy.frame_rotation(3 * np.pi / 2)
+            for qp in qubit_pair.values():
+                qp.qubit_target.xy.play("x90")
+                qp.align()
         with case_(31):
-            qubit_pair.qubit_control.xy.play("y180")
+            for qp in qubit_pair.values():
+                qp.qubit_target.xy.play("x180")
+                qp.align()
         with case_(32):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi / 2)
-            qubit_pair.qubit_target.xy.play("x90")
+            for qp in qubit_pair.values():
+                qp.qubit_target.xy.frame_rotation(np.pi/2)
+                qp.align()
         with case_(33):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi / 2)
-            qubit_pair.qubit_target.xy.play("x180")
+            for qp in qubit_pair.values():
+                qp.qubit_target.xy.frame_rotation(np.pi)
+                qp.align()
         with case_(34):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi / 2)
-            qubit_pair.qubit_target.xy.play("y90")
-        with case_(35):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi / 2)
-            qubit_pair.qubit_target.xy.play("y180")
-        with case_(36):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi / 2)
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi / 2)
-        with case_(37):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi / 2)
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi)
-        with case_(38):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi / 2)
-            qubit_pair.qubit_target.xy.frame_rotation(3 * np.pi / 2)
-        with case_(39):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi / 2)
-        with case_(40):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi)
-            qubit_pair.qubit_target.xy.play("x90")
-        with case_(41):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi)
-            qubit_pair.qubit_target.xy.play("x180")
-        with case_(42):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi)
-            qubit_pair.qubit_target.xy.play("y90")
-        with case_(43):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi)
-            qubit_pair.qubit_target.xy.play("y180")
-        with case_(44):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi)
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi / 2)
-        with case_(45):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi)
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi)
-        with case_(46):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi)
-            qubit_pair.qubit_target.xy.frame_rotation(3 * np.pi / 2)
-        with case_(47):
-            qubit_pair.qubit_control.xy.frame_rotation(np.pi)
-        with case_(48):
-            qubit_pair.qubit_control.xy.frame_rotation(3 * np.pi / 2)
-            qubit_pair.qubit_target.xy.play("x90")
-        with case_(49):
-            qubit_pair.qubit_control.xy.frame_rotation(3 * np.pi / 2)
-            qubit_pair.qubit_target.xy.play("x180")
-        with case_(50):
-            qubit_pair.qubit_control.xy.frame_rotation(3 * np.pi / 2)
-            qubit_pair.qubit_target.xy.play("y90")
-        with case_(51):
-            qubit_pair.qubit_control.xy.frame_rotation(3 * np.pi / 2)
-            qubit_pair.qubit_target.xy.play("y180")
-        with case_(52):
-            qubit_pair.qubit_control.xy.frame_rotation(3 * np.pi / 2)
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi / 2)
-        with case_(53):
-            qubit_pair.qubit_control.xy.frame_rotation(3 * np.pi / 2)
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi)
-        with case_(54):
-            qubit_pair.qubit_control.xy.frame_rotation(3 * np.pi / 2)
-            qubit_pair.qubit_target.xy.frame_rotation(3 * np.pi / 2)
-        with case_(55):
-            qubit_pair.qubit_control.xy.frame_rotation(3 * np.pi / 2)
-        with case_(56):
-            qubit_pair.qubit_target.xy.play("x90")
-        with case_(57):
-            qubit_pair.qubit_target.xy.play("x180")
-        with case_(58):
-            qubit_pair.qubit_target.xy.play("y90")
-        with case_(59):
-            qubit_pair.qubit_target.xy.play("y180")
-        with case_(60):
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi / 2)
-        with case_(61):
-            qubit_pair.qubit_target.xy.frame_rotation(np.pi)
-        with case_(62):
-            qubit_pair.qubit_target.xy.frame_rotation(3 * np.pi / 2)
-        with case_(63):
-            qubit_pair.qubit_control.wait(20)
-            qubit_pair.qubit_target.wait(20)
-        with case_(64):  # CZ
-            qubit_pair.macros[cz_operation].apply()
-        with case_(65):  # idle_2q
-            qubit_pair.qubit_control.wait(4)
-            qubit_pair.qubit_target.wait(4)
-
-        with case_(66):
-
+            for qp in qubit_pair.values():
+                qp.qubit_target.xy.frame_rotation(3*np.pi/2)
+                qp.align()
+        with case_(35): # idle gate
+            for qp in qubit_pair.values():
+                qp.qubit_control.wait(4)
+                qp.qubit_target.wait(4)
+                qp.align()
+        with case_(36): #CZ
+            for qp in qubit_pair.values():
+                qp.macros[cz_operation].apply()
+                qp.align()
+        with case_(37): # idle_2q
+            for qp in qubit_pair.values():
+                # qp.qubit_control.wait(int(1e9*(qp.qubit_control.T1/1000)) // 4)
+                # qp.qubit_target.wait(int(1e9*(qp.qubit_target.T1/1000)) // 4)
+                qp.qubit_control.wait(4)
+                qp.qubit_target.wait(4)
+                qp.align()
+        
+        with case_(38): # readout and thermalization
+            
             align()
-            qubit_pair.qubit_control.readout_state(state_control)
-            qubit_pair.qubit_target.readout_state(state_target)
+            
+            for i, qp in qubit_pair.items():
+                wait(8)
+                qp.qubit_control.readout_state(state_control)
+                qp.qubit_target.readout_state(state_target)
+                assign(state, state_control*2 + state_target)
+                save(state, state_st[i])
+            align()   
+             
+            for qp in qubit_pair.values():
 
-            assign(state, state_control * 2 + state_target)
-            save(state, state_st)
-
-            # Initialize the qubits
-            qubit_pair.qubit_control.reset(reset_type=reset_type)
-            qubit_pair.qubit_target.reset(reset_type=reset_type)
-
-            # Reset the frame of the qubits in order not to accumulate rotations
-            reset_frame(qubit_pair.qubit_control.xy.name, qubit_pair.qubit_target.xy.name)
-
+                # reset the qubits
+                qp.qubit_control.reset(reset_type)
+                qp.qubit_target.reset(reset_type)
+                
             align()
+                
+                # # Reset the frame of the qubits in order not to accumulate rotations
+                # reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
+                
+                # align()
+                # qp.qubit_control.xy.align(qp.qubit_target.xy.name, qp.qubit_control.resonator.name, qp.qubit_target.resonator.name)
 
 
 def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -554,7 +560,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
             node: The qualibration node containing experiment parameters.
             num_pairs: Number of qubit pairs in the experiment.
             circuits_as_ints: List of circuits, each a list of ints terminated
-                by a ``66`` readout marker. Order is depth-major, then
+                by a readout marker (opcode 38). Order is depth-major, then
                 circuit_index within depth (as produced by ``create_qua_program``).
             machine: The QUAM machine configuration.
             qubit_pairs: List of qubit pairs to benchmark.
@@ -612,7 +618,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
             n_st = declare_stream()
             # Replace the Python-unrolled per-sub-chunk loop with a QUA for_
             # loop so the (huge) play_gate switch_case body appears in the
-            # compiled program ONCE per qubit pair, not once per sub-chunk.
+            # compiled program ONCE per multiplex batch, not once per sub-chunk.
             # Sub-chunk lengths live in a tiny QUA array (one int per
             # sub-chunk, typically <= a few tens of entries).
             j = declare(int)
@@ -621,57 +627,56 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
 
             sequence = declare_input_stream(int, name="sequence", size=self.declared_size)
 
-            # The relevant streams
-            state_control = declare(int)
-            state_target = declare(int)
-            state = declare(int)
             state_st = [declare_stream() for _ in range(self.num_pairs)]
 
-            for qp in self.qubit_pairs:
-                self.node.machine.initialize_qpu(target=qp.qubit_control)
-                self.node.machine.initialize_qpu(target=qp.qubit_target)
+            for multiplexed_qubit_pairs in self.qubit_pairs.batch():
+                state_control = declare(int)
+                state_target = declare(int)
+                state = declare(int)
 
-            for k, qubit_pair in enumerate(self.qubit_pairs):
-
-                # Initialize the qubits
-                qubit_pair.qubit_control.reset(reset_type=self.node.parameters.reset_type)
-                qubit_pair.qubit_target.reset(reset_type=self.node.parameters.reset_type)
-
-                # Align the two elements to play the sequence after qubit initialization
+                for qp in multiplexed_qubit_pairs.values():
+                    self.node.machine.initialize_qpu(target=qp.qubit_control)
+                    self.node.machine.initialize_qpu(target=qp.qubit_target)
                 align()
 
-                # Shot outer, sub-chunk inner — same measurement order as the
-                # non-input-stream path (one full depth sweep per shot).
-                with for_(n, 0, n < self.node.parameters.num_shots, n + 1):
-                    with for_(j, 0, j < n_sub_chunks, j + 1):
-                        advance_input_stream(sequence)
+                for qp in multiplexed_qubit_pairs.values():
+                    qp.qubit_control.reset(reset_type=self.node.parameters.reset_type)
+                    qp.qubit_target.reset(reset_type=self.node.parameters.reset_type)
+                align()
+
+                # Chunk outer, shot inner — one advance per sub-chunk; shots replay
+                # the same chunk on the OPX without extra host pushes.
+                with for_(j, 0, j < n_sub_chunks, j + 1):
+                    advance_input_stream(sequence)
+                    with for_(n, 0, n < self.node.parameters.num_shots, n + 1):
                         with for_(i, 0, i < sub_lens[j], i + 1):
                             play_gate(
                                 sequence[i],
-                                qubit_pair,
+                                multiplexed_qubit_pairs,
                                 state,
                                 state_control,
                                 state_target,
-                                state_st[k],
+                                state_st,
                                 self.node.parameters.reset_type,
                                 self.node.parameters.operation,
                             )
-                    save(n, n_st)
+                        with if_(j == n_sub_chunks - 1):
+                            save(n, n_st)
 
             with stream_processing():
                 n_st.save("n")
                 for k in range(len(self.qubit_pairs)):
                     state_st[k].buffer(self.node.parameters.num_circuits_per_depth).buffer(
-                        len(self.node.parameters.circuit_depths)
-                    ).buffer(self.node.parameters.num_shots).save(f"state{k + 1}")
+                        self.node.parameters.num_shots
+                    ).buffer(len(self.node.parameters.circuit_depths)).save(f"state{k + 1}")
         return rb
 
     def _padded_chunks(self) -> list[list[int]]:
         """Return the flat depth-major list of sub-chunks, each padded to
         ``self.declared_size`` ints with :data:`INPUT_STREAM_PAD_VALUE`.
 
-        ``push_all_chunks`` pushes this list ``num_shots`` times per qubit
-        pair so each ``advance_input_stream`` call consumes the next chunk.
+        ``push_all_chunks`` pushes this list once per multiplex batch (one host
+        push per sub-chunk; shots replay each chunk on the OPX).
         """
         declared = self.declared_size
         return [
@@ -684,9 +689,8 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
         """Push input-stream chunks in the order the QUA program consumes them.
 
         Order mirrors ``_get_qua_program_with_input_stream``:
-        ``for pair: for shot: for sub_chunk: advance``. Each chunk is pushed
-        once per shot because every shot performs a fresh ``advance`` per
-        sub-chunk.
+        ``for batch: for sub_chunk: advance; for shot: replay``.
+        Each chunk is pushed once per multiplex batch; shots replay on the OPX.
 
         Args:
             job: The running ``QmJob`` returned by ``qm.execute(...)``.
@@ -697,12 +701,10 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 "the QUA program does not declare an input stream."
             )
 
-        num_shots = self.node.parameters.num_shots
         padded = self._padded_chunks()
-        for _ in self.qubit_pairs:
-            for _ in range(num_shots):
-                for chunk in padded:
-                    job.push_to_input_stream("sequence", chunk)
+        for _ in self.qubit_pairs.batch():
+            for chunk in padded:
+                job.push_to_input_stream("sequence", chunk)
 
     def _get_qua_program_without_input_stream(self):
 
@@ -717,35 +719,39 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
             job_sequence_qua = declare(int, value=job_sequence)
 
             # The relevant streams
-            state_control = declare(int)
-            state_target = declare(int)
-            state = declare(int)
             state_st = [declare_stream() for _ in range(self.num_pairs)]
 
-            # Bring the active qubits to the desired frequency point
-            for qp in self.qubit_pairs:
-                self.node.machine.initialize_qpu(target=qp.qubit_control)
-                self.node.machine.initialize_qpu(target=qp.qubit_target)
+            for multiplexed_qubit_pairs in self.qubit_pairs.batch():
+                n = declare(int)
+                state_control = declare(int)
+                state_target = declare(int)
+                state = declare(int)
+                i = declare(int)
+                
 
-            for i, qubit_pair in enumerate(self.qubit_pairs):
-
-                # Initialize the qubits
-                qubit_pair.qubit_control.reset(reset_type=self.node.parameters.reset_type)
-                qubit_pair.qubit_target.reset(reset_type=self.node.parameters.reset_type)
-
-                # Align the two elements to play the sequence after qubit initialization
+                # Bring the active qubits to the desired frequency point
+                for qp in multiplexed_qubit_pairs.values():
+                    self.node.machine.initialize_qpu(target=qp.qubit_control)
+                    self.node.machine.initialize_qpu(target=qp.qubit_target)
                 align()
 
+                # play sequences
                 with for_(n, 0, n < self.node.parameters.num_shots, n + 1):
+                    # Reset the qubits
+                    for qp in multiplexed_qubit_pairs.values():
+                        qp.qubit_control.reset(self.node.parameters.reset_type)
+                        qp.qubit_target.reset(self.node.parameters.reset_type)
+                    align()
 
+                    # Play the sequence (multiplexed pair inside the)
                     play_sequence(
                         job_sequence_qua,
                         sequence_length,
-                        qubit_pair,
+                        multiplexed_qubit_pairs,
                         state,
                         state_control,
                         state_target,
-                        state_st[i],
+                        state_st,
                         self.node.parameters.reset_type,
                         self.node.parameters.operation,
                     )

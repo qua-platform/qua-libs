@@ -8,6 +8,8 @@ including circuit lengths, number of shots, and operation types.
 
 from typing import ClassVar, Literal, Optional
 
+import numpy as np
+import xarray as xr
 from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
@@ -64,3 +66,49 @@ class Parameters(
     """Combined parameters for two-qubit randomized benchmarking experiments."""
 
     targets_name: ClassVar[str] = "qubit_pairs"
+
+
+def build_sweep_axes(
+    qubit_pairs,
+    num_shots: int,
+    circuit_depths: list[int],
+    num_circuits_per_depth: int,
+    *,
+    use_input_stream: bool,
+) -> dict[str, xr.DataArray]:
+    """Build sweep axes for :class:`~qualibration_libs.data.XarrayDataFetcher`.
+
+    The dict **key order** must match the dimension order of the raw arrays
+    produced by QUA stream processing. ``XarrayDataFetcher`` assigns fetched
+    data to coordinates in insertion order; a mismatch raises incompatible-shape
+    errors at fetch time.
+
+    **Without input stream** the QUA program loops shots on the outside and
+    plays the full flattened circuit list each shot. Stream buffers are
+    ``.buffer(sequence).buffer(circuit_depth).buffer(shots)``, so measurement
+    order is ``(shots, circuit_depth, sequence)`` and the axes are ordered
+    ``qubit_pair, shots, circuit_depth, sequence``.
+
+    **With input stream** the program advances one host-pushed sub-chunk at a
+    time and replays all shots on the OPX before the next advance (one push per
+    sub-chunk instead of per shot). That changes the save order to
+    ``(circuit_depth, shots, sequence)``, with buffers
+    ``.buffer(sequence).buffer(shots).buffer(circuit_depth)`` and axes
+    ``qubit_pair, circuit_depth, shots, sequence``.
+
+    Analysis still expects canonical ``(shots, circuit_depth, sequence)``
+    layout; ``process_raw_dataset`` transposes input-stream datasets after fetch.
+    """
+    if use_input_stream:
+        return {
+            "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
+            "circuit_depth": xr.DataArray(np.array(circuit_depths)),
+            "shots": xr.DataArray(np.arange(num_shots)),
+            "sequence": xr.DataArray(np.arange(num_circuits_per_depth)),
+        }
+    return {
+        "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
+        "shots": xr.DataArray(np.arange(num_shots)),
+        "circuit_depth": xr.DataArray(np.array(circuit_depths)),
+        "sequence": xr.DataArray(np.arange(num_circuits_per_depth)),
+    }

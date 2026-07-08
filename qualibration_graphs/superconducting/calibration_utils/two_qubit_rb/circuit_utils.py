@@ -12,11 +12,28 @@ from qiskit import QuantumCircuit
 from qiskit.converters import circuit_to_dag, dag_to_circuit
 
 # Gate to integer mapping for single qubit gates
-SINGLE_QUBIT_GATE_MAP = {"sx": 0, "x": 1, "sy": 2, "y": 3, "rz(pi/2)": 4, "rz(pi)": 5, "rz(3pi/2)": 6, "idle": 7}
+SINGLE_QUBIT_GATE_MAP = {
+
+    'sx': 0,
+    'x': 1,
+    'rz(pi/2)': 2,
+    'rz(pi)': 3,
+    'rz(3pi/2)': 4,
+    'idle': 5
+    
+}
 
 # Two-qubit gate mapping
-TWO_QUBIT_GATE_MAP = {"cz": 64, "idle_2q": 65}  # Start at 64 to avoid overlap with single-qubit combinations
+TWO_QUBIT_GATE_MAP = {
+    'cz': 36, 
+    'idle_2q': 37
+}
 
+# Opcode appended by nodes after :func:`circuit_to_layer_ints` (``play_gate`` case 38).
+READOUT_OPCODE = 38
+
+IDLE_QUBIT_GATE = SINGLE_QUBIT_GATE_MAP["idle"]
+EMPTY_LAYER = [[IDLE_QUBIT_GATE, IDLE_QUBIT_GATE]]
 
 def get_gate_name(gate) -> str:
     """Extract the gate name and parameters in a standardized format."""
@@ -44,8 +61,7 @@ def get_layer_integer(layer: Union[list[int, int], str]) -> int:
         Integer representing the layer configuration
     """
     if isinstance(layer[0], list):
-        # For single-qubit gate pairs, use a formula to generate unique integers
-        # This maps (g1, g2) to a unique integer in range [0, 63]
+        # For single-qubit gate pairs: g0 * |SINGLE_QUBIT_GATE_MAP| + g1 → [0, 35]
         return layer[0][0] * len(SINGLE_QUBIT_GATE_MAP) + layer[0][1]
     if isinstance(layer[0], str):
         return TWO_QUBIT_GATE_MAP[layer[0]]
@@ -63,21 +79,21 @@ def process_circuit_to_integers(circuit: QuantumCircuit) -> List[int]:
         List of integers representing the circuit configuration between barriers
     """
     result = []
-    current_layer = [[7, 7]]  # Initialize with idle gates for both qubits
+    current_layer = [row[:] for row in EMPTY_LAYER]
 
     for instruction in circuit:
-        if instruction.operation.name == "barrier" and current_layer != [[7, 7]]:
+        if instruction.operation.name == "barrier" and current_layer != EMPTY_LAYER:
             # Convert current layer to integer and add to result
             layer_int = get_layer_integer(current_layer)
             result.append(layer_int)
-            current_layer = [[7, 7]]  # Reset to idle gates
+            current_layer = [row[:] for row in EMPTY_LAYER]
             continue
 
         gate_name = get_gate_name(instruction.operation)
 
         if gate_name in ("cz", "idle_2q"):
             # If we have a CZ or idle_2q gate, it's a two-qubit operation
-            if current_layer != [[7, 7]]:
+            if current_layer != EMPTY_LAYER:
                 raise ValueError(f"{gate_name} gate found with single qubit gates in the layer")
             current_layer = [gate_name]
         elif gate_name in SINGLE_QUBIT_GATE_MAP:
@@ -88,7 +104,7 @@ def process_circuit_to_integers(circuit: QuantumCircuit) -> List[int]:
             raise ValueError(f"Unsupported gate: {gate_name}")
 
     # Process any remaining gates after the last barrier
-    if current_layer != [[7, 7]]:
+    if current_layer != EMPTY_LAYER:
         layer_int = get_layer_integer(current_layer)
         result.append(layer_int)
 
@@ -103,9 +119,10 @@ def _instructions_to_layer_int(instructions: QuantumCircuit) -> int:
     single two-qubit gate) and packs them into one opcode consumed by
     :func:`~calibration_utils.two_qubit_rb.qua_utils.play_gate`.
 
-    Single-qubit layers are encoded as ``g0 * 8 + g1`` where ``g0``/``g1``
-    index into :data:`SINGLE_QUBIT_GATE_MAP` (7 = idle). Two-qubit layers
-    map to :data:`TWO_QUBIT_GATE_MAP` (64 = ``cz``, 65 = ``idle_2q``).
+    Single-qubit layers are encoded as ``g0 * len(SINGLE_QUBIT_GATE_MAP) + g1``
+    where ``g0``/``g1`` index into :data:`SINGLE_QUBIT_GATE_MAP` (5 = idle).
+    Two-qubit layers map to :data:`TWO_QUBIT_GATE_MAP` (36 = ``cz``,
+    37 = ``idle_2q``).
 
     Args:
         instructions: One layer of the circuit, typically a small
@@ -115,19 +132,19 @@ def _instructions_to_layer_int(instructions: QuantumCircuit) -> int:
             instruction-by-instruction like ``process_circuit_to_integers``.
 
     Returns:
-        Integer opcode in ``[0, 63]`` for parallel single-qubit layers, or
-        ``64``/``65`` for two-qubit layers.
+        Integer opcode in ``[0, 35]`` for parallel single-qubit layers, or
+        ``36``/``37`` for two-qubit layers.
 
     Raises:
         ValueError: If a gate is unsupported, or if a two-qubit gate appears
             in the same layer as single-qubit gates.
     """
-    current_layer = [[7, 7]]
+    current_layer = [row[:] for row in EMPTY_LAYER]
     for instruction in instructions:
         gate_name = get_gate_name(instruction.operation)
 
         if gate_name in ("cz", "idle_2q"):
-            if current_layer != [[7, 7]]:
+            if current_layer != EMPTY_LAYER:
                 raise ValueError(f"{gate_name} gate found with single qubit gates in the layer")
             current_layer = [gate_name]
         elif gate_name in SINGLE_QUBIT_GATE_MAP:
@@ -156,8 +173,8 @@ def circuit_to_layer_ints(qc: QuantumCircuit) -> List[int]:
 
     Returns:
         Ordered list of layer opcodes, one per parallel timestep. Does not
-        append the readout marker (``66``); callers add that when building
-        the full sequence for the OPX.
+        append the readout marker (:data:`READOUT_OPCODE`, 38); callers add that
+        when building the full sequence for the OPX.
 
     Raises:
         ValueError: Propagated from :func:`_instructions_to_layer_int` if any
