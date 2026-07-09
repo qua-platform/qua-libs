@@ -218,7 +218,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-    log_fitted_results(fit_results, log_callable=node.log)
+    log_fitted_results(fit_results, log_callable=node.log, interleaved=True)
 
     threshold = node.parameters.fidelity_threshold
     outcomes: dict[str, str] = {}
@@ -248,6 +248,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         interleaved=True,
         title_prefix="2Q Interleaved CZ Randomized Benchmarking",
         use_input_stream=node.parameters.use_input_stream,
+        plot_style=node.parameters.rb_plot_style,
+        log_x=node.parameters.rb_plot_log_x,
     )
     for fig in figures.values():
         plt.show()

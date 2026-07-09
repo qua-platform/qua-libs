@@ -242,6 +242,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         qubit_pairs,
         title_prefix="2Q Standard Randomized Benchmarking",
         use_input_stream=node.parameters.use_input_stream,
+        plot_style=node.parameters.rb_plot_style,
+        log_x=node.parameters.rb_plot_log_x,
     )
     for fig in figures.values():
         plt.show()
