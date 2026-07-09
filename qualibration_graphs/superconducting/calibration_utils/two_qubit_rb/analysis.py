@@ -26,25 +26,44 @@ class FitResults:
     fit_amplitude: float
     fit_offset: float
     epc: float | None = None
+    epg: float | None = None
     average_gate_fidelity: float | None = None
 
 
-def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None):
+def format_error_rate(rate: float | None) -> str:
+    """Format EPC/EPG for logs and plot annotations."""
+    if rate is None or not np.isfinite(rate):
+        return "n/a"
+    if rate < 0.01:
+        return f"{rate * 1e3:.2f} × 10⁻³"
+    return f"{100 * rate:.2f}%"
+
+
+def log_fitted_results(
+    fit_results: Dict[str, FitResults],
+    log_callable=None,
+    *,
+    interleaved: bool = False,
+):
     """Log fitted RB results for all qubit pairs."""
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
 
+    fidelity_label = "CZ gate fidelity" if interleaved else "2Q Clifford fidelity"
+
     for qp_name, fit_result in fit_results.items():
         s_qubit = f"Results for qubit pair {qp_name}: "
-        s_alpha = f"\tFitted alpha: {fit_result.alpha:.6f} a.u."
-        s_fidelity = f"\tFitted fidelity: {100 * fit_result.fidelity:.6f} %"
+        s_alpha = f"\tFitted alpha: {fit_result.alpha:.6f}"
+        s_fidelity = f"\t{fidelity_label}: {100 * fit_result.fidelity:.4f} %"
+        s_epc = f"\tEPC: {format_error_rate(fit_result.epc)}"
+        s_epg = f"\tEPG: {format_error_rate(fit_result.epg)}"
 
         if fit_result.success:
             s_qubit += "SUCCESS!\n"
         else:
             s_qubit += "FAIL!\n"
 
-        log_callable(s_qubit + s_alpha + s_fidelity)
+        log_callable(s_qubit + s_alpha + "\n" + s_fidelity + "\n" + s_epc + "\n" + s_epg)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode | None = None) -> xr.Dataset:
@@ -94,6 +113,14 @@ def interleaved_gate_fidelity_from_alpha(
 def _survival_probability(ds_qp: xr.Dataset) -> xr.DataArray:
     """P(|00>) vs circuit depth, averaged over sequence and shots."""
     survival = (ds_qp.state == 0).mean(dim=["sequence", "shots"])
+    if "qubit_pair" in survival.dims:
+        survival = survival.squeeze("qubit_pair", drop=True)
+    return survival
+
+
+def _survival_per_sequence(ds_qp: xr.Dataset) -> xr.DataArray:
+    """P(|00>) per random sequence at each depth, averaged over shots."""
+    survival = (ds_qp.state == 0).mean(dim="shots")
     if "qubit_pair" in survival.dims:
         survival = survival.squeeze("qubit_pair", drop=True)
     return survival
@@ -193,6 +220,7 @@ def _try_load_standard_rb_overlay(node: QualibrationNode, qp_name: str) -> dict 
         return {
             "circuit_depth": circuit_depths,
             "survival": survival_vals,
+            "survival_per_sequence": _survival_per_sequence(std_rb_ds),
             "fitted_curve": fitted_curve,
             "alpha": alpha,
         }
@@ -207,18 +235,36 @@ def _assign_standard_rb_overlay(da: xr.Dataset, overlay: dict) -> xr.Dataset:
     survival_on_depths = np.full(len(circuit_depths), np.nan)
     fitted_on_depths = np.full(len(circuit_depths), np.nan)
     overlay_depths = overlay["circuit_depth"]
+    overlay_per_sequence = overlay.get("survival_per_sequence")
+    per_sequence_on_depths = None
+    if overlay_per_sequence is not None:
+        per_sequence_on_depths = np.full(
+            (len(circuit_depths), overlay_per_sequence.sizes["sequence"]),
+            np.nan,
+        )
 
     for idx, depth in enumerate(circuit_depths):
         match = np.where(overlay_depths == depth)[0]
         if match.size:
             survival_on_depths[idx] = overlay["survival"][match[0]]
             fitted_on_depths[idx] = overlay["fitted_curve"][match[0]]
+            if per_sequence_on_depths is not None:
+                per_sequence_on_depths[idx, :] = overlay_per_sequence.isel(
+                    circuit_depth=match[0]
+                ).values
 
-    return da.assign(
-        standard_rb_overlay_survival=("circuit_depth", survival_on_depths),
-        standard_rb_overlay_fitted=("circuit_depth", fitted_on_depths),
-        standard_rb_fit_alpha=float(overlay["alpha"]),
-    )
+    assign_kwargs = {
+        "standard_rb_overlay_survival": ("circuit_depth", survival_on_depths),
+        "standard_rb_overlay_fitted": ("circuit_depth", fitted_on_depths),
+        "standard_rb_fit_alpha": float(overlay["alpha"]),
+    }
+    if per_sequence_on_depths is not None:
+        assign_kwargs["standard_rb_overlay_survival_per_sequence"] = (
+            ["circuit_depth", "sequence"],
+            per_sequence_on_depths,
+        )
+
+    return da.assign(**assign_kwargs)
 
 
 def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
@@ -228,6 +274,7 @@ def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     qp_name = str(np.asarray(da.qubit_pair.values).item())
 
     survival = _survival_probability(da)
+    survival_per_sequence = _survival_per_sequence(da)
     stderr = _survival_stderr(da)
     circuit_depths = survival.circuit_depth.values
     survival_vals = survival.values
@@ -253,10 +300,17 @@ def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
             )
         standard_rb_alpha = float(fidelity_dict["StandardRB_alpha"])
         fidelity = interleaved_gate_fidelity_from_alpha(alpha, standard_rb_alpha)
+        epg = 1 - fidelity
+        if "StandardRB" in fidelity_dict:
+            epc = 1 - float(fidelity_dict["StandardRB"])
+        else:
+            epc = 1 - clifford_fidelity_from_alpha(standard_rb_alpha)
         average_gate_fidelity = None
     else:
         fidelity = clifford_fidelity_from_alpha(alpha)
+        epc = 1 - fidelity
         average_gate_fidelity = _average_gate_fidelity(fidelity, average_layers_per_clifford)
+        epg = (1 - average_gate_fidelity) if average_gate_fidelity is not None else np.nan
 
     fitted_curve = rb_decay_curve(circuit_depths, fit_amplitude, alpha, fit_offset)
     fitted_curve_da = xr.DataArray(
@@ -267,13 +321,15 @@ def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
 
     assign_kwargs = {
         "survival_probability": survival,
+        "survival_per_sequence": survival_per_sequence,
         "survival_stderr": stderr,
         "fitted_curve": fitted_curve_da,
         "fit_amplitude": fit_amplitude,
         "fit_alpha": alpha,
         "fit_offset": fit_offset,
         "fidelity": fidelity,
-        "epc": 1 - fidelity,
+        "epc": epc,
+        "epg": epg,
         "success": success,
     }
     if average_gate_fidelity is not None:
@@ -311,10 +367,19 @@ def _extract_relevant_parameters(
 
     if "survival_probability" in ds_fit.data_vars:
         ds_fit.survival_probability.attrs = {"long_name": "P(|00>)", "units": "a.u."}
+    if "survival_per_sequence" in ds_fit.data_vars:
+        ds_fit.survival_per_sequence.attrs = {
+            "long_name": "P(|00>) per random sequence",
+            "units": "a.u.",
+        }
     if "fitted_curve" in ds_fit.data_vars:
         ds_fit.fitted_curve.attrs = {"long_name": "exponential RB fit", "units": "a.u."}
     if "fidelity" in ds_fit.data_vars:
         ds_fit.fidelity.attrs = {"long_name": "RB fidelity", "units": "a.u."}
+    if "epc" in ds_fit.data_vars:
+        ds_fit.epc.attrs = {"long_name": "error per Clifford", "units": "a.u."}
+    if "epg" in ds_fit.data_vars:
+        ds_fit.epg.attrs = {"long_name": "error per gate", "units": "a.u."}
     if "fit_alpha" in ds_fit.data_vars:
         ds_fit.fit_alpha.attrs = {"long_name": "RB decay constant alpha", "units": "a.u."}
 
@@ -329,7 +394,8 @@ def _extract_relevant_parameters(
             success=bool(qp_data.success.values),
             fit_amplitude=float(qp_data.fit_amplitude.values),
             fit_offset=float(qp_data.fit_offset.values),
-            epc=float(qp_data.epc.values),
+            epc=float(qp_data.epc.values) if "epc" in qp_data else None,
+            epg=float(qp_data.epg.values) if "epg" in qp_data else None,
             average_gate_fidelity=(
                 float(qp_data.average_gate_fidelity.values)
                 if "average_gate_fidelity" in qp_data
