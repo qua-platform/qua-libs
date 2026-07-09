@@ -1,4 +1,50 @@
-"""Analysis utilities for two-qubit randomized benchmarking experiments."""
+"""Analysis utilities for two-qubit randomized benchmarking experiments.
+
+Flow (called from ``37a`` / ``37b`` ``analyse_data``)
+-----------------------------------------------------
+
+1. **``process_raw_dataset``** — normalize ``ds_raw`` layout. Input-stream fetches use
+   ``(circuit_depth, shots, sequence)``; this transposes to canonical
+   ``(shots, circuit_depth, sequence)`` so one analysis path serves both execution modes.
+
+2. **``fit_raw_data``** — group by ``qubit_pair`` and run ``fit_rb_routine`` per pair,
+   then build a ``FitResults`` dict for logging and node outcomes.
+
+Per qubit pair, **``fit_rb_routine``** does:
+
+3. **Survival statistics** — from classified ``state`` data, compute:
+   - mean P(|00⟩) vs depth (``survival_probability``),
+   - per-random-sequence survival (``survival_per_sequence``),
+   - SEM at each depth (``survival_stderr``).
+
+4. **Soft data checks** (``_check_survival_soft_warnings``) — log-only warnings:
+   - non-monotonic shallow vs max depth (possible SPAM/readout / low shots),
+   - very low P(|00⟩) at the shallowest depth (readout / reset / SPAM).
+
+5. **Exponential fit** — ``curve_fit`` to ``A * alpha**m + B`` vs circuit depth.
+
+6. **Fidelity extraction**
+   - **Standard RB (37a):** 2Q Clifford fidelity from ``alpha``; EPC; per-gate EPG via
+     average layers per Clifford.
+   - **Interleaved RB (37b):** CZ gate fidelity from interleaved ``alpha`` and reference
+     ``StandardRB_alpha`` in QUAM; EPG = 1 − CZ fidelity; EPC from reference Standard RB.
+
+7. **Hard validation** (``_validate_rb_fit``) — sets ``success=False`` (skips QUAM update) when:
+   - fit fails to converge,
+   - ``alpha`` or A/B coefficients are unphysical,
+   - fidelity ∉ [0, 1],
+   - interleaved ``alpha`` > reference ``StandardRB_alpha`` (CZ fidelity > 100%),
+   - fitted curve deviates > 4σ from data.
+   Reasons are stored in ``fit_issues``.
+
+8. **Interleaved overlay (37b only)** — optionally reload the reference Standard RB run
+   (``StandardRB_load_id``) and attach its survival / fit curves for plotting.
+
+Outputs: augmented ``ds_fit`` (survival, fit curve, fidelity, EPC/EPG, ``success``,
+``fit_issues``, ``fit_warnings``) and ``FitResults`` per pair. Nodes set ``outcomes``
+from ``success``; ``log_fitted_results`` prints metrics, hard failures, and warnings.
+Plotting (``plotting.py``) draws the exponential fit only when ``success`` is True.
+"""
 
 # pylint: disable=use-implicit-booleaness-not-comparison-to-zero
 
