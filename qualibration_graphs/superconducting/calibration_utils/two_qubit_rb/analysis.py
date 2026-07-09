@@ -159,9 +159,7 @@ def clifford_fidelity_from_alpha(alpha: float, n_qubits: int = 2) -> float:
     return 1 - r
 
 
-def interleaved_gate_fidelity_from_alpha(
-    alpha: float, standard_rb_alpha: float, n_qubits: int = 2
-) -> float:
+def interleaved_gate_fidelity_from_alpha(alpha: float, standard_rb_alpha: float, n_qubits: int = 2) -> float:
     """Interleaved gate fidelity using https://arxiv.org/pdf/1210.7011."""
     return 1 - ((2**n_qubits - 1) * (1 - alpha / standard_rb_alpha) / 2**n_qubits)
 
@@ -185,12 +183,7 @@ def _survival_per_sequence(ds_qp: xr.Dataset) -> xr.DataArray:
 def _survival_stderr(ds_qp: xr.Dataset) -> xr.DataArray:
     """Standard error of the mean survival probability at each circuit depth."""
     n_samples = ds_qp.sizes["sequence"] * ds_qp.sizes["shots"]
-    stderr = (
-        (ds_qp.state == 0)
-        .stack(combined=("shots", "sequence"))
-        .std(dim="combined")
-        / np.sqrt(n_samples)
-    )
+    stderr = (ds_qp.state == 0).stack(combined=("shots", "sequence")).std(dim="combined") / np.sqrt(n_samples)
     if "qubit_pair" in stderr.dims:
         stderr = stderr.squeeze("qubit_pair", drop=True)
     return stderr
@@ -228,10 +221,7 @@ def _validate_fit_parameters(fit_amplitude: float, alpha: float, fit_offset: flo
         issues.append(f"Fit offset B={fit_offset:.6f} must be >= 0.")
 
     if fit_amplitude + fit_offset > 1.0 + _FLOAT_TOLERANCE:
-        issues.append(
-            f"A + B = {fit_amplitude + fit_offset:.6f} exceeds 1 "
-            "(invalid survival-probability model)."
-        )
+        issues.append(f"A + B = {fit_amplitude + fit_offset:.6f} exceeds 1 " "(invalid survival-probability model).")
     return issues
 
 
@@ -254,9 +244,7 @@ def _validate_interleaved_alpha(alpha: float, standard_rb_alpha: float) -> list[
         return issues
 
     if standard_rb_alpha <= _FLOAT_TOLERANCE or standard_rb_alpha > 1.0 + _FLOAT_TOLERANCE:
-        issues.append(
-            f"Reference StandardRB_alpha={standard_rb_alpha:.6f} outside physical range (0, 1]."
-        )
+        issues.append(f"Reference StandardRB_alpha={standard_rb_alpha:.6f} outside physical range (0, 1].")
 
     if alpha > standard_rb_alpha + _FLOAT_TOLERANCE:
         issues.append(
@@ -381,9 +369,7 @@ def _average_gate_fidelity(
 def _try_load_standard_rb_overlay(node: QualibrationNode, qp_name: str) -> dict | None:
     """Load and fit a reference Standard RB dataset for interleaved overlay plots."""
     standard_rb_load_id = (
-        node.machine.qubit_pairs[qp_name]
-        .macros[node.parameters.operation]
-        .fidelity.get("StandardRB_load_id")
+        node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity.get("StandardRB_load_id")
     )
     if standard_rb_load_id is None:
         return None
@@ -436,9 +422,7 @@ def _assign_standard_rb_overlay(da: xr.Dataset, overlay: dict) -> xr.Dataset:
             survival_on_depths[idx] = overlay["survival"][match[0]]
             fitted_on_depths[idx] = overlay["fitted_curve"][match[0]]
             if per_sequence_on_depths is not None:
-                per_sequence_on_depths[idx, :] = overlay_per_sequence.isel(
-                    circuit_depth=match[0]
-                ).values
+                per_sequence_on_depths[idx, :] = overlay_per_sequence.isel(circuit_depth=match[0]).values
 
     assign_kwargs = {
         "standard_rb_overlay_survival": ("circuit_depth", survival_on_depths),
@@ -466,9 +450,7 @@ def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     circuit_depths = survival.circuit_depth.values
     survival_vals = survival.values
     stderr_vals = stderr.values
-    fit_warnings = tuple(
-        _check_survival_soft_warnings(circuit_depths, survival_vals, stderr_vals)
-    )
+    fit_warnings = tuple(_check_survival_soft_warnings(circuit_depths, survival_vals, stderr_vals))
 
     fit_params = _fit_survival(circuit_depths, survival_vals)
     if fit_params is None:
@@ -618,20 +600,18 @@ def _extract_relevant_parameters(
             epc=float(qp_data.epc.values) if "epc" in qp_data else None,
             epg=float(qp_data.epg.values) if "epg" in qp_data else None,
             average_gate_fidelity=(
-                float(qp_data.average_gate_fidelity.values)
-                if "average_gate_fidelity" in qp_data
-                else None
+                float(qp_data.average_gate_fidelity.values) if "average_gate_fidelity" in qp_data else None
             ),
-            fit_issues=tuple(
-                issue for issue in str(qp_data.fit_issues.values).split("\n") if issue
-            )
-            if "fit_issues" in qp_data
-            else (),
-            fit_warnings=tuple(
-                warning for warning in str(qp_data.fit_warnings.values).split("\n") if warning
-            )
-            if "fit_warnings" in qp_data
-            else (),
+            fit_issues=(
+                tuple(issue for issue in str(qp_data.fit_issues.values).split("\n") if issue)
+                if "fit_issues" in qp_data
+                else ()
+            ),
+            fit_warnings=(
+                tuple(warning for warning in str(qp_data.fit_warnings.values).split("\n") if warning)
+                if "fit_warnings" in qp_data
+                else ()
+            ),
         )
 
     return ds_fit, fit_results

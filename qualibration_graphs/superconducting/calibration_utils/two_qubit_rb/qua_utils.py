@@ -105,8 +105,7 @@ def format_per_depth_chunk_summary(
         else:
             sizes = " + ".join(str(n) for n in chunk_lengths)
         lines.append(
-            f"  depth={depth}: {len(sub_chunks)} sub-chunk(s), "
-            f"{sizes} ints (depth total {sum(chunk_lengths)})"
+            f"  depth={depth}: {len(sub_chunks)} sub-chunk(s), " f"{sizes} ints (depth total {sum(chunk_lengths)})"
         )
     lines.append(f"  → {total_sub_chunks} sub-chunk(s) total (one host push per sub-chunk per pair)")
     return "\n".join(lines)
@@ -225,9 +224,9 @@ def build_single_depth_chunks(
     chunks_per_depth: list[list[list[int]]] = []
     declared_size = 0
     if per_depth is None:
-        per_depth = compute_rb_circuit_memory_stats(
-            circuits_as_ints, circuit_depths, num_circuits_per_depth
-        )["per_depth"]
+        per_depth = compute_rb_circuit_memory_stats(circuits_as_ints, circuit_depths, num_circuits_per_depth)[
+            "per_depth"
+        ]
 
     for depth_idx, depth in enumerate(circuit_depths):
         start = depth_idx * num_circuits_per_depth
@@ -303,7 +302,7 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         simulate: Whether resets run in simulation mode.
     """
     with switch_(gate, unsafe=True):
-        
+
         with case_(0):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x90")
@@ -317,7 +316,7 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         with case_(2):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x90")
-                qp.qubit_target.xy.frame_rotation(np.pi/2)
+                qp.qubit_target.xy.frame_rotation(np.pi / 2)
                 qp.align()
         with case_(3):
             for qp in qubit_pair.values():
@@ -327,7 +326,7 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         with case_(4):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x90")
-                qp.qubit_target.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_target.xy.frame_rotation(3 * np.pi / 2)
                 qp.align()
         with case_(5):
             for qp in qubit_pair.values():
@@ -346,7 +345,7 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         with case_(8):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x180")
-                qp.qubit_target.xy.frame_rotation(np.pi/2)
+                qp.qubit_target.xy.frame_rotation(np.pi / 2)
                 qp.align()
         with case_(9):
             for qp in qubit_pair.values():
@@ -356,7 +355,7 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         with case_(10):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x180")
-                qp.qubit_target.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_target.xy.frame_rotation(3 * np.pi / 2)
                 qp.align()
         with case_(11):
             for qp in qubit_pair.values():
@@ -364,32 +363,32 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
                 qp.align()
         with case_(12):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi/2)
+                qp.qubit_control.xy.frame_rotation(np.pi / 2)
                 qp.qubit_target.xy.play("x90")
                 qp.align()
         with case_(13):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi/2)
+                qp.qubit_control.xy.frame_rotation(np.pi / 2)
                 qp.qubit_target.xy.play("x180")
                 qp.align()
         with case_(14):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi/2)
-                qp.qubit_target.xy.frame_rotation(np.pi/2)
+                qp.qubit_control.xy.frame_rotation(np.pi / 2)
+                qp.qubit_target.xy.frame_rotation(np.pi / 2)
                 qp.align()
         with case_(15):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi/2)
+                qp.qubit_control.xy.frame_rotation(np.pi / 2)
                 qp.qubit_target.xy.frame_rotation(np.pi)
                 qp.align()
         with case_(16):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi/2)
-                qp.qubit_target.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_control.xy.frame_rotation(np.pi / 2)
+                qp.qubit_target.xy.frame_rotation(3 * np.pi / 2)
                 qp.align()
         with case_(17):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi/2)
+                qp.qubit_control.xy.frame_rotation(np.pi / 2)
                 qp.align()
         with case_(18):
             for qp in qubit_pair.values():
@@ -404,7 +403,7 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         with case_(20):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.frame_rotation(np.pi)
-                qp.qubit_target.xy.frame_rotation(np.pi/2)
+                qp.qubit_target.xy.frame_rotation(np.pi / 2)
                 qp.align()
         with case_(21):
             for qp in qubit_pair.values():
@@ -414,7 +413,7 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         with case_(22):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.frame_rotation(np.pi)
-                qp.qubit_target.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_target.xy.frame_rotation(3 * np.pi / 2)
                 qp.align()
         with case_(23):
             for qp in qubit_pair.values():
@@ -422,32 +421,32 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
                 qp.align()
         with case_(24):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_control.xy.frame_rotation(3 * np.pi / 2)
                 qp.qubit_target.xy.play("x90")
                 qp.align()
         with case_(25):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_control.xy.frame_rotation(3 * np.pi / 2)
                 qp.qubit_target.xy.play("x180")
                 qp.align()
         with case_(26):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(3*np.pi/2)
-                qp.qubit_target.xy.frame_rotation(np.pi/2)
+                qp.qubit_control.xy.frame_rotation(3 * np.pi / 2)
+                qp.qubit_target.xy.frame_rotation(np.pi / 2)
                 qp.align()
         with case_(27):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_control.xy.frame_rotation(3 * np.pi / 2)
                 qp.qubit_target.xy.frame_rotation(np.pi)
                 qp.align()
         with case_(28):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(3*np.pi/2)
-                qp.qubit_target.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_control.xy.frame_rotation(3 * np.pi / 2)
+                qp.qubit_target.xy.frame_rotation(3 * np.pi / 2)
                 qp.align()
         with case_(29):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_control.xy.frame_rotation(3 * np.pi / 2)
                 qp.align()
         with case_(30):
             for qp in qubit_pair.values():
@@ -459,7 +458,7 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
                 qp.align()
         with case_(32):
             for qp in qubit_pair.values():
-                qp.qubit_target.xy.frame_rotation(np.pi/2)
+                qp.qubit_target.xy.frame_rotation(np.pi / 2)
                 qp.align()
         with case_(33):
             for qp in qubit_pair.values():
@@ -467,50 +466,50 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
                 qp.align()
         with case_(34):
             for qp in qubit_pair.values():
-                qp.qubit_target.xy.frame_rotation(3*np.pi/2)
+                qp.qubit_target.xy.frame_rotation(3 * np.pi / 2)
                 qp.align()
-        with case_(35): # idle gate
+        with case_(35):  # idle gate
             for qp in qubit_pair.values():
                 qp.qubit_control.wait(4)
                 qp.qubit_target.wait(4)
                 qp.align()
-        with case_(36): #CZ
+        with case_(36):  # CZ
             for qp in qubit_pair.values():
                 qp.macros[cz_operation].apply()
                 qp.align()
-        with case_(37): # idle_2q
+        with case_(37):  # idle_2q
             for qp in qubit_pair.values():
                 # qp.qubit_control.wait(int(1e9*(qp.qubit_control.T1/1000)) // 4)
                 # qp.qubit_target.wait(int(1e9*(qp.qubit_target.T1/1000)) // 4)
                 qp.qubit_control.wait(4)
                 qp.qubit_target.wait(4)
                 qp.align()
-        
-        with case_(38): # readout and thermalization
-            
+
+        with case_(38):  # readout and thermalization
+
             align()
-            
+
             for i, qp in qubit_pair.items():
                 wait(8)
                 qp.qubit_control.readout_state(state_control)
                 qp.qubit_target.readout_state(state_target)
-                assign(state, state_control*2 + state_target)
+                assign(state, state_control * 2 + state_target)
                 save(state, state_st[i])
-            align()   
-             
+            align()
+
             for qp in qubit_pair.values():
 
                 # reset the qubits
                 qp.qubit_control.reset(reset_type, simulate)
                 qp.qubit_target.reset(reset_type, simulate)
-                
+
             align()
-                
-                # # Reset the frame of the qubits in order not to accumulate rotations
-                # reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
-                
-                # align()
-                # qp.qubit_control.xy.align(qp.qubit_target.xy.name, qp.qubit_control.resonator.name, qp.qubit_target.resonator.name)
+
+            # # Reset the frame of the qubits in order not to accumulate rotations
+            # reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
+
+            # align()
+            # qp.qubit_control.xy.align(qp.qubit_target.xy.name, qp.qubit_control.resonator.name, qp.qubit_target.resonator.name)
 
 
 def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -590,9 +589,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
         circuit_depths = list(self.node.parameters.circuit_depths)
         num_circuits_per_depth = self.node.parameters.num_circuits_per_depth
         max_chunk_ints = self.node.parameters.max_chunk_ints
-        memory_stats = compute_rb_circuit_memory_stats(
-            circuits_as_ints, circuit_depths, num_circuits_per_depth
-        )
+        memory_stats = compute_rb_circuit_memory_stats(circuits_as_ints, circuit_depths, num_circuits_per_depth)
 
         self.declared_size = None
         if self.node.parameters.use_input_stream:
@@ -639,9 +636,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
             i = declare(int)
             sub_lens = declare(int, value=sub_chunk_lengths)
 
-            sequence = declare_input_stream(
-                "client", stream_id="sequence", dtype=int, size=self.declared_size
-            )
+            sequence = declare_input_stream("client", stream_id="sequence", dtype=int, size=self.declared_size)
 
             state_st = [declare_stream() for _ in range(self.num_pairs)]
 
@@ -750,7 +745,6 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 state_target = declare(int)
                 state = declare(int)
                 i = declare(int)
-                
 
                 # Bring the active qubits to the desired frequency point
                 for qp in multiplexed_qubit_pairs.values():

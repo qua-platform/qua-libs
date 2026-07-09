@@ -35,7 +35,6 @@ from calibration_utils.two_qubit_rb import (
     try_load,
 )
 
-
 # %% {Initialisation}
 description = """
         TWO-QUBIT INTERLEAVED CZ RANDOMIZED BENCHMARKING
@@ -73,8 +72,9 @@ node = QualibrationNode[Parameters, Quam](
     name="37b_two_qubit_interleaved_cz_rb",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
-    machine = Quam.load(), # Instantiate the QUAM class from the state file
+    machine=Quam.load(),  # Instantiate the QUAM class from the state file
 )
+
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
@@ -83,6 +83,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes."""
     # You can get type hinting in your IDE by typing node.parameters.
     pass
+
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
@@ -264,6 +265,8 @@ with node.record_state_updates():
         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["InterleavedRB_alpha"] = (
             node.results["fit_results"][qp.name]["alpha"]
         )
+
+
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):

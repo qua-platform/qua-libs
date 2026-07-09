@@ -139,11 +139,7 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
         # progress unit so the bar advances smoothly even when individual
         # depths take very different amounts of time.
         total_cliffords = self.num_circuits_per_length * sum(self.circuit_lengths)
-        pbar = (
-            tqdm(total=total_cliffords, desc="Generating RB Cliffords", unit="cliff")
-            if self.show_progress
-            else None
-        )
+        pbar = tqdm(total=total_cliffords, desc="Generating RB Cliffords", unit="cliff") if self.show_progress else None
         try:
             circuits = {}
             for length in self.circuit_lengths:
@@ -195,7 +191,7 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
             transpiled_circuits.append(transp_circ)
 
         return transpiled_circuits
-    
+
     def transpile_per_clifford_barriered(self, circuits: list[QuantumCircuit]) -> list[QuantumCircuit]:
         """Transpile all circuits at one RB depth in a single batched call (preferred).
 
@@ -227,7 +223,7 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
 
         # optimization_level=1: level > 1 can introduce unsupported fractional rz angles
         return list(transpile(barriered_circuits, basis_gates=self.basis_gates, optimization_level=1))
-    
+
     def count_num_gates(self) -> int:
         """Count the total number of gates across all transpiled circuits."""
         return sum(len(qc) for qc in flatten(self.transpiled_circuits.values()))

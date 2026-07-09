@@ -12,28 +12,17 @@ from qiskit import QuantumCircuit
 from qiskit.converters import circuit_to_dag, dag_to_circuit
 
 # Gate to integer mapping for single qubit gates
-SINGLE_QUBIT_GATE_MAP = {
-
-    'sx': 0,
-    'x': 1,
-    'rz(pi/2)': 2,
-    'rz(pi)': 3,
-    'rz(3pi/2)': 4,
-    'idle': 5
-    
-}
+SINGLE_QUBIT_GATE_MAP = {"sx": 0, "x": 1, "rz(pi/2)": 2, "rz(pi)": 3, "rz(3pi/2)": 4, "idle": 5}
 
 # Two-qubit gate mapping
-TWO_QUBIT_GATE_MAP = {
-    'cz': 36, 
-    'idle_2q': 37
-}
+TWO_QUBIT_GATE_MAP = {"cz": 36, "idle_2q": 37}
 
 # Opcode appended by nodes after :func:`circuit_to_layer_ints` (``play_gate`` case 38).
 READOUT_OPCODE = 38
 
 IDLE_QUBIT_GATE = SINGLE_QUBIT_GATE_MAP["idle"]
 EMPTY_LAYER = [[IDLE_QUBIT_GATE, IDLE_QUBIT_GATE]]
+
 
 def get_gate_name(gate) -> str:
     """Extract the gate name and parameters in a standardized format."""
@@ -186,9 +175,7 @@ def circuit_to_layer_ints(qc: QuantumCircuit) -> List[int]:
     for layer in dag.layers():
         layer_circ = dag_to_circuit(layer["graph"])
         # Drop barrier-only layers (and any leftover empty layers).
-        non_barrier_instructions = [
-            instr for instr in layer_circ if instr.operation.name != "barrier"
-        ]
+        non_barrier_instructions = [instr for instr in layer_circ if instr.operation.name != "barrier"]
         if not non_barrier_instructions:
             continue
         result.append(_instructions_to_layer_int(non_barrier_instructions))
