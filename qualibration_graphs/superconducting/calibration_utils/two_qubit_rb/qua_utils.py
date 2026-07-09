@@ -262,20 +262,6 @@ def build_single_depth_chunks(
     return chunks_per_depth, declared_size
 
 
-def reset_qubits(node, control: Quam.qubit_type, target: Quam.qubit_type, thermalization_time: float | None = None):
-    """
-    Reset both control and target qubits using the node's reset type.
-
-    Args:
-        node: The qualibration node containing reset parameters.
-        control: The control qubit to reset.
-        target: The target qubit to reset.
-        thermalization_time: Optional thermalization time (currently unused).
-    """
-    control.reset(reset_type=node.parameters.reset_type, simulate=node.parameters.simulate)
-    target.reset(reset_type=node.parameters.reset_type, simulate=node.parameters.simulate)
-
-
 def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-statements
     gate: QuaVariable,
     qubit_pair: Quam.qubit_pair_type,

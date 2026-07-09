@@ -57,49 +57,6 @@ def get_layer_integer(layer: Union[list[int, int], str]) -> int:
     raise ValueError(f"Unsupported layer : {layer[0]}")
 
 
-def process_circuit_to_integers(circuit: QuantumCircuit) -> List[int]:
-    """
-    Process a quantum circuit and return a list of integers representing the circuit.
-
-    Args:
-        circuit: A Qiskit QuantumCircuit with 2 qubits
-
-    Returns:
-        List of integers representing the circuit configuration between barriers
-    """
-    result = []
-    current_layer = [row[:] for row in EMPTY_LAYER]
-
-    for instruction in circuit:
-        if instruction.operation.name == "barrier" and current_layer != EMPTY_LAYER:
-            # Convert current layer to integer and add to result
-            layer_int = get_layer_integer(current_layer)
-            result.append(layer_int)
-            current_layer = [row[:] for row in EMPTY_LAYER]
-            continue
-
-        gate_name = get_gate_name(instruction.operation)
-
-        if gate_name in ("cz", "idle_2q"):
-            # If we have a CZ or idle_2q gate, it's a two-qubit operation
-            if current_layer != EMPTY_LAYER:
-                raise ValueError(f"{gate_name} gate found with single qubit gates in the layer")
-            current_layer = [gate_name]
-        elif gate_name in SINGLE_QUBIT_GATE_MAP:
-            # Single-qubit gate
-            qubit_index = instruction.qubits[0]._index
-            current_layer[0][qubit_index] = SINGLE_QUBIT_GATE_MAP[gate_name]
-        else:
-            raise ValueError(f"Unsupported gate: {gate_name}")
-
-    # Process any remaining gates after the last barrier
-    if current_layer != EMPTY_LAYER:
-        layer_int = get_layer_integer(current_layer)
-        result.append(layer_int)
-
-    return result
-
-
 def _instructions_to_layer_int(instructions: QuantumCircuit) -> int:
     """Encode one parallel gate layer as a single ``play_gate`` integer.
 
@@ -117,8 +74,7 @@ def _instructions_to_layer_int(instructions: QuantumCircuit) -> int:
         instructions: One layer of the circuit, typically a small
             :class:`~qiskit.circuit.QuantumCircuit` from
             :func:`~qiskit.converters.dag_to_circuit` on a single
-            :meth:`~qiskit.dagcircuit.DAGCircuit.layers` entry. Iterated
-            instruction-by-instruction like ``process_circuit_to_integers``.
+            :meth:`~qiskit.dagcircuit.DAGCircuit.layers` entry.
 
     Returns:
         Integer opcode in ``[0, 35]`` for parallel single-qubit layers, or
@@ -152,7 +108,8 @@ def circuit_to_layer_ints(qc: QuantumCircuit) -> List[int]:
     :meth:`~qiskit.dagcircuit.DAGCircuit.layers` to walk parallel time steps
     in order, encoding each layer via :func:`_instructions_to_layer_int`.
     Empty DAG layers and barrier-only layers are skipped, so this works
-    directly on circuits produced by :func:`transpile_per_clifford`
+    directly on circuits produced by
+    :meth:`~calibration_utils.two_qubit_rb.rb_utils.RBBase.transpile_per_clifford_barriered`
     (which leaves barriers in place to preserve per-Clifford isolation
     during transpilation).
 
@@ -251,74 +208,3 @@ def summarize_transpiled_depth(
     }
     log_depth_summary(summary, log_callable=log_callable)
     return summary
-
-
-def layerize_quantum_circuit(qc: QuantumCircuit) -> QuantumCircuit:
-    """Build a barrier-separated circuit that marks each parallel DAG layer.
-
-    Like :func:`circuit_to_layer_ints`, this uses
-    :func:`~qiskit.converters.circuit_to_dag` and
-    :meth:`~qiskit.dagcircuit.DAGCircuit.layers` to find which gates run in
-    parallel. Unlike :func:`circuit_to_layer_ints`, it does **not** emit
-    opcodes directly: it materializes a new :class:`~qiskit.circuit.QuantumCircuit`
-    by ``compose``-ing each layer and inserting a **barrier** after every layer.
-
-    That barrier-separated circuit is meant for
-    :func:`process_circuit_to_integers`, which walks barriers and encodes one
-    int per layer — the legacy two-step path:
-
-    .. code-block:: python
-
-        process_circuit_to_integers(layerize_quantum_circuit(qc))
-
-    **Prefer** :func:`circuit_to_layer_ints` for RB encoding (used in 37a/37b):
-    same layer boundaries and ints, but no intermediate circuit and no per-layer
-    ``compose`` (much faster at high depth).
-
-    Args:
-        qc: Transpiled two-qubit circuit in the RB basis gate set.
-
-    Returns:
-        A new circuit with the same gates, grouped into layers separated by
-        barriers. Useful for inspection/debugging or APIs that expect a
-        barrier-marked circuit (e.g. :func:`collect_gates_as_2_qubit_layers`).
-    """
-    dag = circuit_to_dag(qc)
-    layered_qc = QuantumCircuit(qc.num_qubits)
-    for layer in dag.layers():
-        layer_as_circuit = dag_to_circuit(layer["graph"])
-        layer_as_circuit.barrier()
-        layered_qc = layered_qc.compose(layer_as_circuit)
-
-    return layered_qc
-
-
-def collect_gates_as_2_qubit_layers(qc: QuantumCircuit) -> list[str]:
-    """
-    Iterates over a qiskit quantum circuit and collects the gates as strings.
-    The circuit is separated by barriers. Between each barrier, the function collects the gates as strings.
-    The name of the gate as string should be like <name>_<qubit>. Between gates place a dash.
-
-    Args:
-        qc (QuantumCircuit): The quantum circuit to iterate over.
-
-    Returns:
-        list[str]: A list of strings representing the gates in the circuit.
-    """
-    gate_strings = []
-    current_gates = []
-
-    for instruction in qc:
-        if instruction.name == "barrier":
-            if current_gates:
-                gate_strings.append("-".join(current_gates))
-                current_gates = []
-        else:
-            for qubit in instruction.qubits:
-                gate_str = f"{instruction.name}_{qubit.index}"
-                current_gates.append(gate_str)
-
-    if current_gates:
-        gate_strings.append("-".join(current_gates))
-
-    return gate_strings

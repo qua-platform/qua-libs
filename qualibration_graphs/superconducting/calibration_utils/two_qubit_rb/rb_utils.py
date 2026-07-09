@@ -10,7 +10,6 @@ import copy
 from typing import Literal
 
 import numpy as np
-from more_itertools import flatten
 from qiskit import QuantumCircuit, transpile
 from qiskit.circuit.equivalence_library import SessionEquivalenceLibrary as sel
 from qiskit.circuit.instruction import Instruction
@@ -150,58 +149,13 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
             if pbar is not None:
                 pbar.close()
 
-    def transpile_per_clifford(self, circuits: list[QuantumCircuit]) -> list[QuantumCircuit]:
-        """Transpile each Clifford instruction in isolation (legacy, slow).
-
-        For every circuit, walks each instruction, transpiles it alone in a
-        one-gate ``QuantumCircuit``, then ``compose``-s the result into an
-        accumulating circuit. That means **one ``transpile`` call per Clifford**
-        (plus recovery) per RB sequence — thousands of calls at higher depth.
-
-        **Slow:** dominates RB generation time for large depths. Not used by
-        :meth:`generate_circuits_and_transpile`; kept for comparison and
-        external callers.
-
-        Prefer :meth:`transpile_per_clifford_barriered`, which batches one
-        ``transpile`` per depth, inserts barriers so 1Q gates are not fused
-        across Clifford boundaries, and leaves barriers for
-        :func:`~calibration_utils.two_qubit_rb.circuit_utils.circuit_to_layer_ints`.
-
-        Args:
-            circuits: List of circuits at a single depth to transpile.
-
-        Returns:
-            List of transpiled circuits without per-Clifford barriers.
-        """
-
-        for qc in circuits:
-            transp_circ = QuantumCircuit(self.num_qubits)
-            for instruction in qc:
-                qc_per_inst = QuantumCircuit(len(instruction.qubits))
-                qc_per_inst.append(instruction)
-
-                if isinstance(instruction.operation, Clifford):
-                    # if optimization level is > 1 one might get fractional angles
-                    transpiled_gate = transpile(qc_per_inst, basis_gates=self.basis_gates, optimization_level=1)
-                else:
-                    transpiled_gate = qc_per_inst.copy()
-
-                transp_circ = transp_circ.compose(transpiled_gate, front=False)
-
-            transpiled_circuits.append(transp_circ)
-
-        return transpiled_circuits
-
     def transpile_per_clifford_barriered(self, circuits: list[QuantumCircuit]) -> list[QuantumCircuit]:
-        """Transpile all circuits at one RB depth in a single batched call (preferred).
+        """Transpile all circuits at one RB depth in a single batched call.
 
         Inserts a barrier after every original instruction before transpiling,
         so passes like ``Optimize1qGatesDecomposition`` cannot merge 1Q
         rotations across Clifford boundaries. One ``transpile`` call handles all
         ``num_circuits_per_length`` circuits at that depth.
-
-        Contrasts with :meth:`transpile_per_clifford`, which transpiles each
-        Clifford separately and is **much slower** at large depths.
 
         Barriers remain in the returned circuits;
         :func:`~calibration_utils.two_qubit_rb.circuit_utils.circuit_to_layer_ints`
@@ -223,10 +177,6 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
 
         # optimization_level=1: level > 1 can introduce unsupported fractional rz angles
         return list(transpile(barriered_circuits, basis_gates=self.basis_gates, optimization_level=1))
-
-    def count_num_gates(self) -> int:
-        """Count the total number of gates across all transpiled circuits."""
-        return sum(len(qc) for qc in flatten(self.transpiled_circuits.values()))
 
 
 class StandardRB(RBBase):
