@@ -57,6 +57,20 @@ class NodeSpecificParameters(RunnableParameters):
     adaptive graphs to route low-fidelity pairs to a retune subgraph via
     `connect_on_failure`. Default is None (no threshold check; only fit-failure marks a pair
     as failed)."""
+    rb_plot_style: Literal["error_bars", "per_sequence"] = "error_bars"
+    """How to display RB survival data in ``plot_data``.
+    - ``error_bars`` (default): one point per circuit depth showing the mean
+      P(|00>) averaged over all shots and random sequences, with vertical
+      error bars giving the standard error of that mean (SEM).
+    - ``per_sequence``: at each depth, plot one point per random RB sequence
+      (shot-averaged P(|00>) for that circuit) as a light scatter cloud, plus
+      the depth mean on top. Shows circuit-to-circuit spread rather than
+      uncertainty on the averaged mean. No error bars in this mode.
+    """
+    rb_plot_log_x: bool = False
+    """If True, use a logarithmic x-axis (circuit depth) in ``plot_data``.
+    Useful when ``circuit_depths`` span several orders of magnitude (e.g.
+    1, 2, 4, ..., 128). Depths must be strictly positive."""
 
 
 class Parameters(
