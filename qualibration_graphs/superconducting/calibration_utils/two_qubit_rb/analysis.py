@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Tuple
 
 import numpy as np
@@ -14,6 +14,8 @@ from qualibrate import QualibrationNode
 from scipy.optimize import curve_fit
 
 AVERAGE_GATES_PER_2Q_LAYER = 1.51
+_RESIDUAL_SIGMA_LIMIT = 4.0
+_FLOAT_TOLERANCE = 1e-9
 
 
 @dataclass
@@ -28,6 +30,7 @@ class FitResults:
     epc: float | None = None
     epg: float | None = None
     average_gate_fidelity: float | None = None
+    fit_issues: tuple[str, ...] = field(default_factory=tuple)
 
 
 def format_error_rate(rate: float | None) -> str:
@@ -64,6 +67,8 @@ def log_fitted_results(
             s_qubit += "FAIL!\n"
 
         log_callable(s_qubit + s_alpha + "\n" + s_fidelity + "\n" + s_epc + "\n" + s_epg)
+        for issue in fit_result.fit_issues:
+            log_callable(f"\t- {issue}")
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode | None = None) -> xr.Dataset:
@@ -140,43 +145,130 @@ def _survival_stderr(ds_qp: xr.Dataset) -> xr.DataArray:
     return stderr
 
 
-def _fit_survival(circuit_depths: np.ndarray, survival: np.ndarray) -> tuple[float, float, float]:
-    popt, _ = curve_fit(
-        rb_decay_curve,
-        circuit_depths,
-        survival,
-        p0=[0.75, 0.9, 0.25],
-        maxfev=10000,
-    )
+def _fit_survival(circuit_depths: np.ndarray, survival: np.ndarray) -> tuple[float, float, float] | None:
+    try:
+        popt, _ = curve_fit(
+            rb_decay_curve,
+            circuit_depths,
+            survival,
+            p0=[0.75, 0.9, 0.25],
+            maxfev=10000,
+        )
+    except (RuntimeError, ValueError, TypeError) as exc:
+        logging.getLogger(__name__).warning("RB exponential fit failed: %s", exc)
+        return None
     return float(popt[0]), float(popt[1]), float(popt[2])
 
 
-def _validate_fit(
+def _validate_fit_parameters(fit_amplitude: float, alpha: float, fit_offset: float) -> list[str]:
+    """Hard-fail checks on exponential-fit coefficients."""
+    issues: list[str] = []
+    if not all(np.isfinite(v) for v in (fit_amplitude, alpha, fit_offset)):
+        issues.append("Non-finite fit parameters (A, alpha, or B).")
+        return issues
+
+    if alpha <= _FLOAT_TOLERANCE or alpha > 1.0 + _FLOAT_TOLERANCE:
+        issues.append(f"RB decay alpha={alpha:.6f} outside physical range (0, 1].")
+
+    if fit_amplitude < -_FLOAT_TOLERANCE:
+        issues.append(f"Fit amplitude A={fit_amplitude:.6f} must be >= 0.")
+
+    if fit_offset < -_FLOAT_TOLERANCE:
+        issues.append(f"Fit offset B={fit_offset:.6f} must be >= 0.")
+
+    if fit_amplitude + fit_offset > 1.0 + _FLOAT_TOLERANCE:
+        issues.append(
+            f"A + B = {fit_amplitude + fit_offset:.6f} exceeds 1 "
+            "(invalid survival-probability model)."
+        )
+    return issues
+
+
+def _validate_fidelity_bounds(fidelity: float, *, interleaved: bool) -> list[str]:
+    """Hard-fail checks on extracted gate / Clifford fidelity."""
+    label = "CZ gate fidelity" if interleaved else "2Q Clifford fidelity"
+    issues: list[str] = []
+    if not np.isfinite(fidelity):
+        issues.append(f"{label} is non-finite.")
+    elif fidelity < -_FLOAT_TOLERANCE or fidelity > 1.0 + _FLOAT_TOLERANCE:
+        issues.append(f"{label}={100 * fidelity:.4f}% outside physical range [0, 100%].")
+    return issues
+
+
+def _validate_interleaved_alpha(alpha: float, standard_rb_alpha: float) -> list[str]:
+    """Hard-fail checks specific to interleaved RB reference comparison."""
+    issues: list[str] = []
+    if not np.isfinite(standard_rb_alpha):
+        issues.append("Reference StandardRB_alpha is non-finite.")
+        return issues
+
+    if standard_rb_alpha <= _FLOAT_TOLERANCE or standard_rb_alpha > 1.0 + _FLOAT_TOLERANCE:
+        issues.append(
+            f"Reference StandardRB_alpha={standard_rb_alpha:.6f} outside physical range (0, 1]."
+        )
+
+    if alpha > standard_rb_alpha + _FLOAT_TOLERANCE:
+        issues.append(
+            f"Interleaved alpha={alpha:.6f} exceeds reference StandardRB_alpha="
+            f"{standard_rb_alpha:.6f} (implies CZ fidelity > 100%)."
+        )
+    return issues
+
+
+def _validate_residuals(
     circuit_depths: np.ndarray,
     survival: np.ndarray,
     stderr: np.ndarray,
     fit_amplitude: float,
     alpha: float,
     fit_offset: float,
-    log_callable=None,
-) -> bool:
-    """Return True when the fitted curve lies within 4 sigma of the data."""
-    if log_callable is None:
-        log_callable = print
-
+) -> list[str]:
+    """Hard-fail when the fitted curve deviates too far from the data."""
     fitted_values = rb_decay_curve(circuit_depths, fit_amplitude, alpha, fit_offset)
-    normalized_residuals = np.abs(fitted_values - survival) / stderr
-    max_deviation = float(np.max(normalized_residuals))
+    safe_stderr = np.where(stderr > 0, stderr, np.nan)
+    normalized_residuals = np.abs(fitted_values - survival) / safe_stderr
+    if not np.isfinite(normalized_residuals).any():
+        return ["Cannot assess fit residuals (zero or missing standard errors)."]
 
-    if max_deviation > 4.0:
-        log_callable(
-            f"Warning: Fitted curve deviates up to {max_deviation:.2f} sigma "
-            "from experimental data. Consider reviewing fit quality."
+    max_deviation = float(np.nanmax(normalized_residuals))
+    if max_deviation > _RESIDUAL_SIGMA_LIMIT:
+        return [
+            f"Fitted curve deviates up to {max_deviation:.2f} sigma from experimental data "
+            f"(limit {_RESIDUAL_SIGMA_LIMIT:.0f} sigma)."
+        ]
+    return []
+
+
+def _validate_rb_fit(
+    circuit_depths: np.ndarray,
+    survival: np.ndarray,
+    stderr: np.ndarray,
+    fit_amplitude: float,
+    alpha: float,
+    fit_offset: float,
+    *,
+    interleaved: bool,
+    fidelity: float,
+    standard_rb_alpha: float | None = None,
+) -> tuple[bool, tuple[str, ...]]:
+    """Run all hard-fail RB fit validations and return success plus issue messages."""
+    issues: list[str] = []
+    issues.extend(_validate_fit_parameters(fit_amplitude, alpha, fit_offset))
+    issues.extend(_validate_fidelity_bounds(fidelity, interleaved=interleaved))
+    if interleaved and standard_rb_alpha is not None:
+        issues.extend(_validate_interleaved_alpha(alpha, standard_rb_alpha))
+    if not issues:
+        issues.extend(
+            _validate_residuals(
+                circuit_depths,
+                survival,
+                stderr,
+                fit_amplitude,
+                alpha,
+                fit_offset,
+            )
         )
-        return False
-
-    log_callable(f"Fit validation passed: Maximum deviation is {max_deviation:.2f} sigma.")
-    return True
+    return len(issues) == 0, tuple(issues)
 
 
 def _average_gate_fidelity(
@@ -278,41 +370,70 @@ def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     stderr = _survival_stderr(da)
     circuit_depths = survival.circuit_depth.values
     survival_vals = survival.values
+    stderr_vals = stderr.values
 
-    fit_amplitude, alpha, fit_offset = _fit_survival(circuit_depths, survival_vals)
-    success = _validate_fit(
-        circuit_depths,
-        survival_vals,
-        stderr.values,
-        fit_amplitude,
-        alpha,
-        fit_offset,
-        log_callable=node.log,
-    )
-
-    if interleaved:
-        fidelity_dict = node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity
-        if "StandardRB_alpha" not in fidelity_dict:
-            raise KeyError(
-                f"Qubit pair {qp_name}: missing StandardRB_alpha in "
-                f"macros[{node.parameters.operation!r}].fidelity. "
-                "Run 37a_two_qubit_standard_rb first for this operation."
-            )
-        standard_rb_alpha = float(fidelity_dict["StandardRB_alpha"])
-        fidelity = interleaved_gate_fidelity_from_alpha(alpha, standard_rb_alpha)
-        epg = 1 - fidelity
-        if "StandardRB" in fidelity_dict:
-            epc = 1 - float(fidelity_dict["StandardRB"])
-        else:
-            epc = 1 - clifford_fidelity_from_alpha(standard_rb_alpha)
+    fit_params = _fit_survival(circuit_depths, survival_vals)
+    if fit_params is None:
+        fit_amplitude = np.nan
+        alpha = np.nan
+        fit_offset = np.nan
+        fidelity = np.nan
+        epc = np.nan
+        epg = np.nan
         average_gate_fidelity = None
+        standard_rb_alpha = None
+        if interleaved:
+            fidelity_dict = node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity
+            if "StandardRB_alpha" not in fidelity_dict:
+                raise KeyError(
+                    f"Qubit pair {qp_name}: missing StandardRB_alpha in "
+                    f"macros[{node.parameters.operation!r}].fidelity. "
+                    "Run 37a_two_qubit_standard_rb first for this operation."
+                )
+            standard_rb_alpha = float(fidelity_dict["StandardRB_alpha"])
+        success, fit_issues = False, ("Exponential fit did not converge.",)
     else:
-        fidelity = clifford_fidelity_from_alpha(alpha)
-        epc = 1 - fidelity
-        average_gate_fidelity = _average_gate_fidelity(fidelity, average_layers_per_clifford)
-        epg = (1 - average_gate_fidelity) if average_gate_fidelity is not None else np.nan
+        fit_amplitude, alpha, fit_offset = fit_params
+        standard_rb_alpha = None
 
-    fitted_curve = rb_decay_curve(circuit_depths, fit_amplitude, alpha, fit_offset)
+        if interleaved:
+            fidelity_dict = node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity
+            if "StandardRB_alpha" not in fidelity_dict:
+                raise KeyError(
+                    f"Qubit pair {qp_name}: missing StandardRB_alpha in "
+                    f"macros[{node.parameters.operation!r}].fidelity. "
+                    "Run 37a_two_qubit_standard_rb first for this operation."
+                )
+            standard_rb_alpha = float(fidelity_dict["StandardRB_alpha"])
+            fidelity = interleaved_gate_fidelity_from_alpha(alpha, standard_rb_alpha)
+            epg = 1 - fidelity
+            if "StandardRB" in fidelity_dict:
+                epc = 1 - float(fidelity_dict["StandardRB"])
+            else:
+                epc = 1 - clifford_fidelity_from_alpha(standard_rb_alpha)
+            average_gate_fidelity = None
+        else:
+            fidelity = clifford_fidelity_from_alpha(alpha)
+            epc = 1 - fidelity
+            average_gate_fidelity = _average_gate_fidelity(fidelity, average_layers_per_clifford)
+            epg = (1 - average_gate_fidelity) if average_gate_fidelity is not None else np.nan
+
+        success, fit_issues = _validate_rb_fit(
+            circuit_depths,
+            survival_vals,
+            stderr_vals,
+            fit_amplitude,
+            alpha,
+            fit_offset,
+            interleaved=interleaved,
+            fidelity=fidelity,
+            standard_rb_alpha=standard_rb_alpha,
+        )
+
+    if fit_params is not None:
+        fitted_curve = rb_decay_curve(circuit_depths, fit_amplitude, alpha, fit_offset)
+    else:
+        fitted_curve = np.full_like(circuit_depths, np.nan, dtype=float)
     fitted_curve_da = xr.DataArray(
         fitted_curve,
         dims=["circuit_depth"],
@@ -331,6 +452,7 @@ def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
         "epc": epc,
         "epg": epg,
         "success": success,
+        "fit_issues": "\n".join(fit_issues),
     }
     if average_gate_fidelity is not None:
         assign_kwargs["average_gate_fidelity"] = average_gate_fidelity
@@ -401,6 +523,11 @@ def _extract_relevant_parameters(
                 if "average_gate_fidelity" in qp_data
                 else None
             ),
+            fit_issues=tuple(
+                issue for issue in str(qp_data.fit_issues.values).split("\n") if issue
+            )
+            if "fit_issues" in qp_data
+            else (),
         )
 
     return ds_fit, fit_results

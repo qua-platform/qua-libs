@@ -140,6 +140,7 @@ def plot_individual_data_with_fit(
     fr = ds_fit.sel(qubit_pair=qp_name)
     depths = np.asarray(fr.circuit_depth.values, dtype=float)
     survival = fr.survival_probability.values
+    success = bool(np.asarray(fr.success.values).item()) if "success" in fr else True
 
     if "standard_rb_overlay_survival" in fr and np.isfinite(fr.standard_rb_overlay_survival.values).any():
         overlay_survival = fr.standard_rb_overlay_survival.values
@@ -170,14 +171,16 @@ def plot_individual_data_with_fit(
                 label="StandardRB Mean",
                 zorder=3,
             )
-        ax.plot(
-            depths,
-            fr.standard_rb_overlay_fitted.values,
-            color="green",
-            linestyle="--",
-            zorder=4,
-            label=f"StandardRB Fit (alpha={float(fr.standard_rb_fit_alpha.values):.4f})",
-        )
+        overlay_fitted = fr.standard_rb_overlay_fitted.values
+        if success and np.isfinite(overlay_fitted).any():
+            ax.plot(
+                depths,
+                overlay_fitted,
+                color="green",
+                linestyle="--",
+                zorder=4,
+                label=f"StandardRB Fit (alpha={float(fr.standard_rb_fit_alpha.values):.4f})",
+            )
 
     mean_color = "C1" if interleaved else "C0"
     mean_label = "Interleaved Mean" if interleaved else "Mean"
@@ -205,39 +208,42 @@ def plot_individual_data_with_fit(
             zorder=5,
         )
 
-    smooth_depths = np.linspace(depths[0], depths[-1], 100)
-    ax.plot(
-        smooth_depths,
-        rb_decay_curve(
+    if success:
+        smooth_depths = np.linspace(depths[0], depths[-1], 100)
+        ax.plot(
             smooth_depths,
-            float(fr.fit_amplitude.values),
-            float(fr.fit_alpha.values),
-            float(fr.fit_offset.values),
-        ),
-        color="red",
-        linestyle="--",
-        zorder=6,
-        label="Exponential Fit",
-    )
+            rb_decay_curve(
+                smooth_depths,
+                float(fr.fit_amplitude.values),
+                float(fr.fit_alpha.values),
+                float(fr.fit_offset.values),
+            ),
+            color="red",
+            linestyle="--",
+            zorder=6,
+            label="Exponential Fit",
+        )
 
-    fidelity = float(fr.fidelity.values)
-    epc = float(fr.epc.values) if "epc" in fr else np.nan
-    epg = float(fr.epg.values) if "epg" in fr else np.nan
-    success = bool(fr.success.values) if "success" in fr.coords else True
-    if interleaved:
-        stats = (
-            f"CZ Fidelity = {100 * fidelity:.2f}%\n"
-            f"EPG = {format_error_rate(epg)}\n"
-            f"EPC = {format_error_rate(epc)}"
-        )
+    if success:
+        fidelity = float(fr.fidelity.values)
+        epc = float(fr.epc.values) if "epc" in fr else np.nan
+        epg = float(fr.epg.values) if "epg" in fr else np.nan
+        if interleaved:
+            stats = (
+                f"CZ Fidelity = {100 * fidelity:.2f}%\n"
+                f"EPG = {format_error_rate(epg)}\n"
+                f"EPC = {format_error_rate(epc)}"
+            )
+        else:
+            avg_gate_fid = fr.average_gate_fidelity.values if "average_gate_fidelity" in fr else np.nan
+            stats = (
+                f"2Q Clifford Fidelity = {100 * fidelity:.2f}%, "
+                f"EPC = {format_error_rate(epc)}\n"
+                f"Single 2Q Gate Fidelity = {100 * float(avg_gate_fid):.2f}%, "
+                f"EPG = {format_error_rate(epg)}"
+            )
     else:
-        avg_gate_fid = fr.average_gate_fidelity.values if "average_gate_fidelity" in fr else np.nan
-        stats = (
-            f"2Q Clifford Fidelity = {100 * fidelity:.2f}%, "
-            f"EPC = {format_error_rate(epc)}\n"
-            f"Single 2Q Gate Fidelity = {100 * float(avg_gate_fid):.2f}%, "
-            f"EPG = {format_error_rate(epg)}"
-        )
+        stats = "Fit failed — see logs for validation issues"
 
     title = f"Qubit pair: {qp_name}" if success else f"Qubit pair: {qp_name} - fit failed"
     ax.set_title(f"{title}\n{stats}", fontsize=9, linespacing=1.3, pad=10)
