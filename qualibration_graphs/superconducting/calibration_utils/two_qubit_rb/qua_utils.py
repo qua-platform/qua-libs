@@ -639,7 +639,9 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
             i = declare(int)
             sub_lens = declare(int, value=sub_chunk_lengths)
 
-            sequence = declare_input_stream(int, name="sequence", size=self.declared_size)
+            sequence = declare_input_stream(
+                "client", stream_id="sequence", dtype=int, size=self.declared_size
+            )
 
             state_st = [declare_stream() for _ in range(self.num_pairs)]
 
