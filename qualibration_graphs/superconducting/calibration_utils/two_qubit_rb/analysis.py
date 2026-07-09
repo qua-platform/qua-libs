@@ -16,6 +16,8 @@ from scipy.optimize import curve_fit
 AVERAGE_GATES_PER_2Q_LAYER = 1.51
 _RESIDUAL_SIGMA_LIMIT = 4.0
 _FLOAT_TOLERANCE = 1e-9
+_MONOTONIC_DECAY_MIN_TOLERANCE = 0.03
+_SHALLOW_SURVIVAL_THRESHOLD = 0.35
 
 
 @dataclass
@@ -31,6 +33,7 @@ class FitResults:
     epg: float | None = None
     average_gate_fidelity: float | None = None
     fit_issues: tuple[str, ...] = field(default_factory=tuple)
+    fit_warnings: tuple[str, ...] = field(default_factory=tuple)
 
 
 def format_error_rate(rate: float | None) -> str:
@@ -69,6 +72,8 @@ def log_fitted_results(
         log_callable(s_qubit + s_alpha + "\n" + s_fidelity + "\n" + s_epc + "\n" + s_epg)
         for issue in fit_result.fit_issues:
             log_callable(f"\t- {issue}")
+        for warning in fit_result.fit_warnings:
+            log_callable(f"\tWarning: {warning}")
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode | None = None) -> xr.Dataset:
@@ -239,6 +244,50 @@ def _validate_residuals(
     return []
 
 
+def _check_survival_soft_warnings(
+    circuit_depths: np.ndarray,
+    survival: np.ndarray,
+    stderr: np.ndarray,
+) -> list[str]:
+    """Soft checks on raw survival data (warnings only; do not fail the fit)."""
+    warnings: list[str] = []
+    depths = np.asarray(circuit_depths, dtype=float)
+    surv = np.asarray(survival, dtype=float)
+    err = np.asarray(stderr, dtype=float)
+
+    finite = np.isfinite(surv)
+    if not finite.any():
+        return warnings
+
+    shallow_idx = int(np.argmin(depths))
+    deep_idx = int(np.argmax(depths))
+    shallow_depth = float(depths[shallow_idx])
+    deep_depth = float(depths[deep_idx])
+    shallow_survival = float(surv[shallow_idx])
+    deep_survival = float(surv[deep_idx])
+
+    if deep_depth > shallow_depth and np.isfinite(deep_survival) and np.isfinite(shallow_survival):
+        tolerance = max(
+            float(err[shallow_idx]) if np.isfinite(err[shallow_idx]) else 0.0,
+            float(err[deep_idx]) if np.isfinite(err[deep_idx]) else 0.0,
+            _MONOTONIC_DECAY_MIN_TOLERANCE,
+        )
+        if deep_survival > shallow_survival + tolerance:
+            warnings.append(
+                f"P(|00>) at max depth {deep_depth:g} ({deep_survival:.3f}) exceeds "
+                f"shallow depth {shallow_depth:g} ({shallow_survival:.3f}) by more than "
+                f"{tolerance:.3f} — decay is not monotonic; check SPAM/readout or shot count."
+            )
+
+    if np.isfinite(shallow_survival) and shallow_survival < _SHALLOW_SURVIVAL_THRESHOLD:
+        warnings.append(
+            f"P(|00>) at depth {shallow_depth:g} is {shallow_survival:.3f} (well below 0.5) — "
+            "suggests readout, reset, or SPAM issues; fitted fidelity may be unreliable."
+        )
+
+    return warnings
+
+
 def _validate_rb_fit(
     circuit_depths: np.ndarray,
     survival: np.ndarray,
@@ -371,6 +420,9 @@ def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     circuit_depths = survival.circuit_depth.values
     survival_vals = survival.values
     stderr_vals = stderr.values
+    fit_warnings = tuple(
+        _check_survival_soft_warnings(circuit_depths, survival_vals, stderr_vals)
+    )
 
     fit_params = _fit_survival(circuit_depths, survival_vals)
     if fit_params is None:
@@ -453,6 +505,7 @@ def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
         "epg": epg,
         "success": success,
         "fit_issues": "\n".join(fit_issues),
+        "fit_warnings": "\n".join(fit_warnings),
     }
     if average_gate_fidelity is not None:
         assign_kwargs["average_gate_fidelity"] = average_gate_fidelity
@@ -527,6 +580,11 @@ def _extract_relevant_parameters(
                 issue for issue in str(qp_data.fit_issues.values).split("\n") if issue
             )
             if "fit_issues" in qp_data
+            else (),
+            fit_warnings=tuple(
+                warning for warning in str(qp_data.fit_warnings.values).split("\n") if warning
+            )
+            if "fit_warnings" in qp_data
             else (),
         )
 
