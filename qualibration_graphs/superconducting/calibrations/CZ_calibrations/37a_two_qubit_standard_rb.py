@@ -80,14 +80,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes."""
-    node.parameters.qubit_pairs = ["q3-q4"]
-    node.parameters.use_input_stream = True
-    node.parameters.circuit_depths = [5, 10, 15, 20, 30, 40, 60]
-    node.parameters.num_circuits_per_depth = 10
-    node.parameters.num_shots = 50
-    node.parameters.seed = 54
-    node.parameters.verbose_memory_log = True
-    node.parameters.simulate = False
     pass
 
 
@@ -146,7 +138,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         total_cliffords = sum(s["total_cliffords"] for s in depth_summaries)
         node.namespace["average_gates_per_clifford"] = (
-            sum(s["total_transpiled_gates"] for s in depth_summaries) / total_cliffords if total_cliffords else 0.0
+            sum(s["total_transpiled_gates"] for s in depth_summaries) / total_cliffords
+            if total_cliffords
+            else 0.0
         )
         node.namespace["avg_1q_per_clifford"] = (
             sum(s["total_1q_gates"] for s in depth_summaries) / total_cliffords if total_cliffords else 0.0
@@ -166,7 +160,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             key,  # save the key to the cache directory
             {
                 "circuits_as_ints": circuits_as_ints,  # save the encoded circuits to the cached dictionary
-                "average_gates_per_clifford": float(node.namespace["average_gates_per_clifford"]),
+                "average_gates_per_clifford": float(
+                    node.namespace["average_gates_per_clifford"]
+                ),
                 "avg_1q_per_clifford": float(node.namespace["avg_1q_per_clifford"]),
                 "avg_cz_per_clifford": float(node.namespace["avg_cz_per_clifford"]),
                 "depth_summaries": depth_summaries,  # save the depth summaries to the cached dictionary
