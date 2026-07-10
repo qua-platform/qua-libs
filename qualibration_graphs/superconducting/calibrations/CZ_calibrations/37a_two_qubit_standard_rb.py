@@ -80,6 +80,14 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes."""
+    node.parameters.qubit_pairs = ["q3-q4"]
+    node.parameters.use_input_stream = True
+    node.parameters.circuit_depths = [5, 10, 15, 20, 30, 40, 60]
+    node.parameters.num_circuits_per_depth = 10
+    node.parameters.num_shots = 50
+    node.parameters.seed = 54
+    node.parameters.verbose_memory_log = True
+    node.parameters.simulate = False
     pass
 
 
@@ -106,7 +114,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     if cached is not None:  # if the cached RB circuits are found, load them
         circuits_as_ints = cached["circuits_as_ints"]
-        node.namespace["average_layers_per_clifford"] = cached["average_layers_per_clifford"]
+        node.namespace["average_gates_per_clifford"] = cached["average_gates_per_clifford"]
+        node.namespace["avg_1q_per_clifford"] = cached["avg_1q_per_clifford"]
+        node.namespace["avg_cz_per_clifford"] = cached["avg_cz_per_clifford"]
         node.log(f"Loaded {len(circuits_as_ints)} cached RB circuits (key {key[:12]})")
         if "depth_summaries" in cached:
             for summary in cached["depth_summaries"]:
@@ -134,13 +144,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     summarize_transpiled_depth(l, circuits, log_callable=node.log)
                 )  # save the depth summaries to the list
 
-        node.namespace["average_layers_per_clifford"] = np.mean(  # calculate the average number of layers per Clifford
-            [
-                np.mean([len(circ) for circ in circuits])
-                / np.array(length + 1)  # calculate the average number of layers per Clifford
-                for length, circuits in transpiled_circuits_as_ints.items()
-                if length > 0
-            ]  # if the length is greater than 0
+        total_cliffords = sum(s["total_cliffords"] for s in depth_summaries)
+        node.namespace["average_gates_per_clifford"] = (
+            sum(s["total_transpiled_gates"] for s in depth_summaries) / total_cliffords if total_cliffords else 0.0
+        )
+        node.namespace["avg_1q_per_clifford"] = (
+            sum(s["total_1q_gates"] for s in depth_summaries) / total_cliffords if total_cliffords else 0.0
+        )
+        node.namespace["avg_cz_per_clifford"] = (
+            sum(s["total_cz_gates"] for s in depth_summaries) / total_cliffords if total_cliffords else 0.0
         )
 
         circuits_as_ints = []  # encode the circuits to integers
@@ -154,9 +166,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             key,  # save the key to the cache directory
             {
                 "circuits_as_ints": circuits_as_ints,  # save the encoded circuits to the cached dictionary
-                "average_layers_per_clifford": float(
-                    node.namespace["average_layers_per_clifford"]
-                ),  # save the average number of layers per Clifford to the cached dictionary
+                "average_gates_per_clifford": float(node.namespace["average_gates_per_clifford"]),
+                "avg_1q_per_clifford": float(node.namespace["avg_1q_per_clifford"]),
+                "avg_cz_per_clifford": float(node.namespace["avg_cz_per_clifford"]),
                 "depth_summaries": depth_summaries,  # save the depth summaries to the cached dictionary
             },
         )  # save the cached dictionary to the cache directory

@@ -24,8 +24,8 @@ Per qubit pair, **``fit_rb_routine``** does:
 5. **Exponential fit** — ``curve_fit`` to ``A * alpha**m + B`` vs circuit depth.
 
 6. **Fidelity extraction**
-   - **Standard RB (37a):** 2Q Clifford fidelity from ``alpha``; EPC; per-gate EPG via
-     average layers per Clifford.
+   - **Standard RB (37a):** 2Q Clifford fidelity from ``alpha``; EPC; per-gate EPG as
+     EPC divided by measured average native gates per Clifford from transpilation.
    - **Interleaved RB (37b):** CZ gate fidelity from interleaved ``alpha`` and reference
      ``StandardRB_alpha`` in QUAM; EPG = 1 − CZ fidelity; EPC from reference Standard RB.
 
@@ -59,7 +59,8 @@ import xarray as xr
 from qualibrate import QualibrationNode
 from scipy.optimize import curve_fit
 
-AVERAGE_GATES_PER_2Q_LAYER = 1.51
+from calibration_utils.two_qubit_rb.coherence_limit import try_coherence_limit_epg
+
 _RESIDUAL_SIGMA_LIMIT = 4.0
 _FLOAT_TOLERANCE = 1e-9
 _MONOTONIC_DECAY_MIN_TOLERANCE = 0.03
@@ -78,6 +79,16 @@ class FitResults:
     epc: float | None = None
     epg: float | None = None
     average_gate_fidelity: float | None = None
+    average_gates_per_clifford: float | None = None
+    standard_rb_alpha: float | None = None
+    epc_1q_budget: float | None = None
+    epc_cz_residual: float | None = None
+    epg_cz_implied: float | None = None
+    f_1q_control: float | None = None
+    f_1q_target: float | None = None
+    avg_1q_per_clifford: float | None = None
+    avg_cz_per_clifford: float | None = None
+    coherence_limit_epg: float | None = None
     fit_issues: tuple[str, ...] = field(default_factory=tuple)
     fit_warnings: tuple[str, ...] = field(default_factory=tuple)
 
@@ -101,25 +112,88 @@ def log_fitted_results(
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
 
-    fidelity_label = "CZ gate fidelity" if interleaved else "2Q Clifford fidelity"
-
     for qp_name, fit_result in fit_results.items():
-        s_qubit = f"Results for qubit pair {qp_name}: "
-        s_alpha = f"\tFitted alpha: {fit_result.alpha:.6f}"
-        s_fidelity = f"\t{fidelity_label}: {100 * fit_result.fidelity:.4f} %"
-        s_epc = f"\tEPC: {format_error_rate(fit_result.epc)}"
-        s_epg = f"\tEPG: {format_error_rate(fit_result.epg)}"
+        lines = [f"Results for qubit pair {qp_name}: {'SUCCESS!' if fit_result.success else 'FAIL!'}"]
 
         if fit_result.success:
-            s_qubit += "SUCCESS!\n"
-        else:
-            s_qubit += "FAIL!\n"
+            lines.append(
+                f"\tDecay model: P(m) = A * alpha^m + B "
+                f"(A = {fit_result.fit_amplitude:.6f}, alpha = {fit_result.alpha:.6f}, "
+                f"B = {fit_result.fit_offset:.6f})"
+            )
+            if interleaved:
+                clifford_fid_ref = 1 - fit_result.epc if fit_result.epc is not None else np.nan
+                lines.extend(
+                    [
+                        f"\t2Q Clifford Fidelity (Standard RB reference) = {100 * clifford_fid_ref:.2f}%",
+                        f"\tError Per Clifford (EPC) = 1 - 2Q Clifford Fidelity = "
+                        f"{format_error_rate(fit_result.epc)}",
+                        f"\tCZ gate fidelity = 1 - (d-1)/d * (1 - alpha_IRB/alpha_SRB), d = 4 = "
+                        f"{100 * fit_result.fidelity:.2f}%, "
+                        f"alpha_IRB = {fit_result.alpha:.6f}, alpha_SRB = {fit_result.standard_rb_alpha:.6f}",
+                        f"\tError Per Gate (EPG) = 1 - CZ gate fidelity = {format_error_rate(fit_result.epg)}",
+                    ]
+                )
+            else:
+                lines.extend(
+                    [
+                        f"\t2Q Clifford Fidelity = {100 * fit_result.fidelity:.2f}%",
+                        f"\tError Per Clifford (EPC): 1 - 2Q Clifford Fidelity = "
+                        f"{format_error_rate(fit_result.epc)}",
+                        f"\tError Per Gate (EPG) = EPC / N_gates_per_Clifford = "
+                        f"{format_error_rate(fit_result.epc)} / {fit_result.average_gates_per_clifford:.2f} = "
+                        f"{format_error_rate(fit_result.epg)}",
+                        f"\tAvg. Gate Fidelity (1-EPG) = {100 * fit_result.average_gate_fidelity:.2f}%",
+                    ]
+                )
 
-        log_callable(s_qubit + s_alpha + "\n" + s_fidelity + "\n" + s_epc + "\n" + s_epg)
+            if not interleaved and fit_result.epc_1q_budget is not None:
+                epc = fit_result.epc
+                epc_1q = fit_result.epc_1q_budget
+                epc_cz = fit_result.epc_cz_residual
+                lines.extend(
+                    [
+                        "",
+                        "\tError contribution analysis:",
+                        f"\t1Q RB budget: EPC_1Q = 1 - F_1Q,c^(N_1Q/2) * F_1Q,t^(N_1Q/2) = "
+                        f"{format_error_rate(epc_1q)} "
+                        f"(N_1Q = {fit_result.avg_1q_per_clifford:.2f}, "
+                        f"F_1Q,c = {100 * fit_result.f_1q_control:.2f}%, "
+                        f"F_1Q,t = {100 * fit_result.f_1q_target:.2f}%)",
+                        f"\tCZ residual: EPC_CZ = EPC - EPC_1Q = {format_error_rate(epc_cz)} "
+                        f"(N_CZ = {fit_result.avg_cz_per_clifford:.2f})",
+                        f"\tEPC contribution: 1Q = {100 * epc_1q / epc:.1f}%, "
+                        f"CZ = {100 * epc_cz / epc:.1f}%",
+                        f"\tImplied CZ EPG = 1 - (F_Clifford / F_1Q_budget)^(1/N_CZ) = "
+                        f"{format_error_rate(fit_result.epg_cz_implied)}",
+                        "\tNote: Interleaved RB (37b) measures CZ EPG directly; treat this implied value as a rough estimate only.",
+                    ]
+                )
+
+            if fit_result.coherence_limit_epg is not None:
+                lines.append(
+                    f"\tCoherence-limited EPG (T1/T2 floor) = "
+                    f"{format_error_rate(fit_result.coherence_limit_epg)}"
+                )
+                if interleaved and fit_result.epg is not None and fit_result.coherence_limit_epg > 0:
+                    ratio = fit_result.epg / fit_result.coherence_limit_epg
+                    verdict = (
+                        "Not coherence-limited (EPG exceeds T1/T2 floor)"
+                        if fit_result.epg > fit_result.coherence_limit_epg
+                        else "Coherence-limited (EPG at or below T1/T2 floor)"
+                    )
+                    lines.append(
+                        f"\t{verdict} "
+                        f"({ratio:.1f}× floor: {format_error_rate(fit_result.epg)} vs "
+                        f"{format_error_rate(fit_result.coherence_limit_epg)})"
+                    )
+
         for issue in fit_result.fit_issues:
-            log_callable(f"\t- {issue}")
+            lines.append(f"\t- {issue}")
         for warning in fit_result.fit_warnings:
-            log_callable(f"\tWarning: {warning}")
+            lines.append(f"\tWarning: {warning}")
+
+        log_callable("\n".join(lines))
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode | None = None) -> xr.Dataset:
@@ -354,18 +428,6 @@ def _validate_rb_fit(
     return len(issues) == 0, tuple(issues)
 
 
-def _average_gate_fidelity(
-    fidelity: float,
-    average_layers_per_clifford: float | None,
-    average_gates_per_2q_layer: float = AVERAGE_GATES_PER_2Q_LAYER,
-) -> float | None:
-    if average_layers_per_clifford is None:
-        return None
-    error_per_2q_layer = (1 - fidelity) / average_layers_per_clifford
-    error_per_gate = error_per_2q_layer / average_gates_per_2q_layer
-    return 1 - error_per_gate
-
-
 def _try_load_standard_rb_overlay(node: QualibrationNode, qp_name: str) -> dict | None:
     """Load and fit a reference Standard RB dataset for interleaved overlay plots."""
     standard_rb_load_id = (
@@ -441,7 +503,7 @@ def _assign_standard_rb_overlay(da: xr.Dataset, overlay: dict) -> xr.Dataset:
 def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """Fit RB survival probability vs circuit depth for one qubit pair."""
     interleaved = "interleaved" in node.name.lower()
-    average_layers_per_clifford = node.namespace.get("average_layers_per_clifford")
+    average_gates_per_clifford = node.namespace.get("average_gates_per_clifford")
     qp_name = str(np.asarray(da.qubit_pair.values).item())
 
     survival = _survival_probability(da)
@@ -495,8 +557,12 @@ def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
         else:
             fidelity = clifford_fidelity_from_alpha(alpha)
             epc = 1 - fidelity
-            average_gate_fidelity = _average_gate_fidelity(fidelity, average_layers_per_clifford)
-            epg = (1 - average_gate_fidelity) if average_gate_fidelity is not None else np.nan
+            if average_gates_per_clifford is not None and average_gates_per_clifford > 0:
+                epg = (1 - fidelity) / average_gates_per_clifford
+                average_gate_fidelity = 1 - epg
+            else:
+                epg = np.nan
+                average_gate_fidelity = None
 
         success, fit_issues = _validate_rb_fit(
             circuit_depths,
@@ -537,6 +603,10 @@ def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     }
     if average_gate_fidelity is not None:
         assign_kwargs["average_gate_fidelity"] = average_gate_fidelity
+    if not interleaved and average_gates_per_clifford is not None:
+        assign_kwargs["average_gates_per_clifford"] = average_gates_per_clifford
+    if interleaved and standard_rb_alpha is not None:
+        assign_kwargs["standard_rb_alpha"] = standard_rb_alpha
 
     da = da.assign(**assign_kwargs)
 
@@ -587,21 +657,62 @@ def _extract_relevant_parameters(
         ds_fit.fit_alpha.attrs = {"long_name": "RB decay constant alpha", "units": "a.u."}
 
     fit_results: Dict[str, FitResults] = {}
+    interleaved = "interleaved" in node.name.lower()
+    n_1q = node.namespace.get("avg_1q_per_clifford")
+    n_cz = node.namespace.get("avg_cz_per_clifford")
+    coherence_limits: list[float] = []
     for qp in qubit_pairs:
         qp_name = qp.name
         qp_data = ds_fit.sel(qubit_pair=qp_name)
+        epc = float(qp_data.epc.values) if "epc" in qp_data else None
+        fidelity = float(qp_data.fidelity.values)
+
+        epc_1q_budget = None
+        epc_cz_residual = None
+        epg_cz_implied = None
+        f_1q_control = None
+        f_1q_target = None
+        if not interleaved and epc is not None and epc > 0:
+            f_1q_control = (
+                qp.qubit_control.gate_fidelity.get("averaged") if qp.qubit_control.gate_fidelity else None
+            )
+            f_1q_target = qp.qubit_target.gate_fidelity.get("averaged") if qp.qubit_target.gate_fidelity else None
+            if f_1q_control is not None and f_1q_target is not None:
+                f_1q_budget = f_1q_control ** (n_1q / 2) * f_1q_target ** (n_1q / 2)
+                epc_1q_budget = 1 - f_1q_budget
+                epc_cz_residual = epc - epc_1q_budget
+                epg_cz_implied = 1 - (fidelity / f_1q_budget) ** (1 / n_cz)
+
+        coherence_limit_epg = try_coherence_limit_epg(qp, node.parameters.operation)
+        coherence_limits.append(coherence_limit_epg if coherence_limit_epg is not None else np.nan)
 
         fit_results[qp_name] = FitResults(
             alpha=float(qp_data.fit_alpha.values),
-            fidelity=float(qp_data.fidelity.values),
+            fidelity=fidelity,
             success=bool(qp_data.success.values),
             fit_amplitude=float(qp_data.fit_amplitude.values),
             fit_offset=float(qp_data.fit_offset.values),
-            epc=float(qp_data.epc.values) if "epc" in qp_data else None,
+            epc=epc,
             epg=float(qp_data.epg.values) if "epg" in qp_data else None,
             average_gate_fidelity=(
                 float(qp_data.average_gate_fidelity.values) if "average_gate_fidelity" in qp_data else None
             ),
+            average_gates_per_clifford=(
+                float(qp_data.average_gates_per_clifford.values)
+                if "average_gates_per_clifford" in qp_data
+                else None
+            ),
+            standard_rb_alpha=(
+                float(qp_data.standard_rb_alpha.values) if "standard_rb_alpha" in qp_data else None
+            ),
+            epc_1q_budget=epc_1q_budget,
+            epc_cz_residual=epc_cz_residual,
+            epg_cz_implied=epg_cz_implied,
+            f_1q_control=f_1q_control,
+            f_1q_target=f_1q_target,
+            avg_1q_per_clifford=n_1q,
+            avg_cz_per_clifford=n_cz,
+            coherence_limit_epg=coherence_limit_epg,
             fit_issues=(
                 tuple(issue for issue in str(qp_data.fit_issues.values).split("\n") if issue)
                 if "fit_issues" in qp_data
@@ -613,5 +724,10 @@ def _extract_relevant_parameters(
                 else ()
             ),
         )
+
+    ds_fit = ds_fit.assign(
+        coherence_limit_epg=("qubit_pair", np.asarray(coherence_limits, dtype=float))
+    )
+    ds_fit.coherence_limit_epg.attrs = {"long_name": "coherence-limited EPG", "units": "a.u."}
 
     return ds_fit, fit_results

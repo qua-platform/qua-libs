@@ -160,6 +160,7 @@ def log_depth_summary(summary: dict, *, log_callable: Callable[[str], None] = pr
     log_callable(
         f"depth={summary['depth']}: {summary['num_circuits']} circuits, "
         f"{summary['total_cliffords']} cliffords, {summary['total_transpiled_gates']} transpiled gates, "
+        f"avg gates/Clifford={summary['avg_gates_per_clifford']:.2f}, "
         f"avg 1Q/Clifford={summary['avg_1q_per_clifford']:.2f}, "
         f"avg CZ/Clifford={summary['avg_cz_per_clifford']:.2f}"
     )
@@ -195,6 +196,7 @@ def summarize_transpiled_depth(
 
     avg_1q_per_clifford = total_1q_gates / total_cliffords if total_cliffords else 0.0
     avg_cz_per_clifford = total_cz_gates / total_cliffords if total_cliffords else 0.0
+    avg_gates_per_clifford = total_transpiled_gates / total_cliffords if total_cliffords else 0.0
 
     summary = {
         "depth": depth,
@@ -203,6 +205,7 @@ def summarize_transpiled_depth(
         "total_transpiled_gates": total_transpiled_gates,
         "total_1q_gates": total_1q_gates,
         "total_cz_gates": total_cz_gates,
+        "avg_gates_per_clifford": avg_gates_per_clifford,
         "avg_1q_per_clifford": avg_1q_per_clifford,
         "avg_cz_per_clifford": avg_cz_per_clifford,
     }

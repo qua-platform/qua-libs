@@ -35,7 +35,7 @@ def _plot_per_sequence_scatter(
         y[finite],
         c=color,
         s=8,
-        alpha=0.8,
+        alpha=0.4,
         linewidths=0,
         zorder=zorder,
     )
@@ -141,6 +141,8 @@ def plot_individual_data_with_fit(
     depths = np.asarray(fr.circuit_depth.values, dtype=float)
     survival = fr.survival_probability.values
     success = bool(np.asarray(fr.success.values).item()) if "success" in fr else True
+    color = "C1" if interleaved else "C0"
+    marker = "^" if interleaved else "o"
 
     if "standard_rb_overlay_survival" in fr and np.isfinite(fr.standard_rb_overlay_survival.values).any():
         overlay_survival = fr.standard_rb_overlay_survival.values
@@ -149,15 +151,15 @@ def plot_individual_data_with_fit(
                 ax,
                 depths,
                 fr.standard_rb_overlay_survival_per_sequence.values,
-                color="0.82",
+                color="C0",
                 zorder=1,
             )
             _plot_mean_marker(
                 ax,
                 depths,
                 overlay_survival,
-                color="green",
-                marker="^",
+                color="C0",
+                marker="o",
                 label="StandardRB Mean",
                 zorder=3,
             )
@@ -166,8 +168,8 @@ def plot_individual_data_with_fit(
                 ax,
                 depths,
                 overlay_survival,
-                color="green",
-                marker="^",
+                color="C0",
+                marker="o",
                 label="StandardRB Mean",
                 zorder=3,
             )
@@ -176,22 +178,27 @@ def plot_individual_data_with_fit(
             ax.plot(
                 depths,
                 overlay_fitted,
-                color="green",
+                color="C0",
                 linestyle="--",
                 zorder=4,
                 label=f"StandardRB Fit (alpha={float(fr.standard_rb_fit_alpha.values):.4f})",
             )
 
-    mean_color = "C1" if interleaved else "C0"
     mean_label = "Interleaved Mean" if interleaved else "Mean"
     if plot_style == "per_sequence" and "survival_per_sequence" in fr:
-        _plot_per_sequence_scatter(ax, depths, fr.survival_per_sequence.values, zorder=2)
+        _plot_per_sequence_scatter(
+            ax,
+            depths,
+            fr.survival_per_sequence.values,
+            color=color,
+            zorder=2,
+        )
         _plot_mean_marker(
             ax,
             depths,
             survival,
-            color=mean_color,
-            marker="o",
+            color=color,
+            marker=marker,
             label=mean_label,
             zorder=5,
         )
@@ -202,45 +209,48 @@ def plot_individual_data_with_fit(
             depths,
             survival,
             stderr,
-            color=mean_color,
-            marker="o",
+            color=color,
+            marker=marker,
             label=mean_label,
             zorder=5,
         )
 
     if success:
         smooth_depths = np.linspace(depths[0], depths[-1], 100)
+        fit_alpha = float(fr.fit_alpha.values)
         ax.plot(
             smooth_depths,
             rb_decay_curve(
                 smooth_depths,
                 float(fr.fit_amplitude.values),
-                float(fr.fit_alpha.values),
+                fit_alpha,
                 float(fr.fit_offset.values),
             ),
-            color="red",
+            color=color,
             linestyle="--",
             zorder=6,
-            label="Exponential Fit",
+            label=f"Exponential fit (alpha = {fit_alpha:.4f})",
         )
 
     if success:
         fidelity = float(fr.fidelity.values)
         epc = float(fr.epc.values) if "epc" in fr else np.nan
-        epg = float(fr.epg.values) if "epg" in fr else np.nan
         if interleaved:
+            epg = float(fr.epg.values) if "epg" in fr else np.nan
+            coh_limit = (
+                float(fr.coherence_limit_epg.values)
+                if "coherence_limit_epg" in fr and np.isfinite(fr.coherence_limit_epg.values)
+                else np.nan
+            )
             stats = (
-                f"CZ Fidelity = {100 * fidelity:.2f}%\n"
-                f"EPG = {format_error_rate(epg)}\n"
-                f"EPC = {format_error_rate(epc)}"
+                f"CZ Gate Fidelity ($f_{{CZ}}$) = {100 * fidelity:.2f}%\n"
+                f"Error Per Gate (EPG) = $1 - f_{{CZ}}$ = {format_error_rate(epg)}\n"
+                f"EPG (coherence limit) = {format_error_rate(coh_limit)}"
             )
         else:
-            avg_gate_fid = fr.average_gate_fidelity.values if "average_gate_fidelity" in fr else np.nan
             stats = (
-                f"2Q Clifford Fidelity = {100 * fidelity:.2f}%, "
-                f"EPC = {format_error_rate(epc)}\n"
-                f"Single 2Q Gate Fidelity = {100 * float(avg_gate_fid):.2f}%, "
-                f"EPG = {format_error_rate(epg)}"
+                f"2Q Clifford Fidelity ($f_c$) = {100 * fidelity:.2f}%\n"
+                f"Error Per Clifford (EPC) = $1 - f_c$ = {format_error_rate(epc)}"
             )
     else:
         stats = "Fit failed — see logs for validation issues"
