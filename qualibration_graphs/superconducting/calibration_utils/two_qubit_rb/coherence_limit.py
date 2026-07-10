@@ -21,9 +21,7 @@ def coherence_limit(T1_list, T2_list, gatelen: float) -> float:
     T2factor = 0.0
     for i in range(2):
         T1factor += 1.0 / 15.0 * np.exp(-gatelen / T1[i])
-        T2factor += 2.0 / 15.0 * (
-            np.exp(-gatelen / T2[i]) + np.exp(-gatelen * (1.0 / T2[i] + 1.0 / T1[1 - i]))
-        )
+        T2factor += 2.0 / 15.0 * (np.exp(-gatelen / T2[i]) + np.exp(-gatelen * (1.0 / T2[i] + 1.0 / T1[1 - i])))
     T1factor += 1.0 / 15.0 * np.exp(-gatelen * np.sum(1 / T1))
     T2factor += 4.0 / 15.0 * np.exp(-gatelen * np.sum(1 / T2))
     return float(0.75 * (1.0 - T1factor - T2factor))

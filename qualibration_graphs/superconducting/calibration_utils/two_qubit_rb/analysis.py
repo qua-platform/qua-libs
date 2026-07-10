@@ -162,8 +162,7 @@ def log_fitted_results(
                         f"F_1Q,t = {100 * fit_result.f_1q_target:.2f}%)",
                         f"\tCZ residual: EPC_CZ = EPC - EPC_1Q = {format_error_rate(epc_cz)} "
                         f"(N_CZ = {fit_result.avg_cz_per_clifford:.2f})",
-                        f"\tEPC contribution: 1Q = {100 * epc_1q / epc:.1f}%, "
-                        f"CZ = {100 * epc_cz / epc:.1f}%",
+                        f"\tEPC contribution: 1Q = {100 * epc_1q / epc:.1f}%, " f"CZ = {100 * epc_cz / epc:.1f}%",
                         f"\tImplied CZ EPG = 1 - (F_Clifford / F_1Q_budget)^(1/N_CZ) = "
                         f"{format_error_rate(fit_result.epg_cz_implied)}",
                         "\tNote: Interleaved RB (37b) measures CZ EPG directly; treat this implied value as a rough estimate only.",
@@ -172,8 +171,7 @@ def log_fitted_results(
 
             if fit_result.coherence_limit_epg is not None:
                 lines.append(
-                    f"\tCoherence-limited EPG (T1/T2 floor) = "
-                    f"{format_error_rate(fit_result.coherence_limit_epg)}"
+                    f"\tCoherence-limited EPG (T1/T2 floor) = " f"{format_error_rate(fit_result.coherence_limit_epg)}"
                 )
                 if interleaved and fit_result.epg is not None and fit_result.coherence_limit_epg > 0:
                     ratio = fit_result.epg / fit_result.coherence_limit_epg
@@ -673,9 +671,7 @@ def _extract_relevant_parameters(
         f_1q_control = None
         f_1q_target = None
         if not interleaved and epc is not None and epc > 0:
-            f_1q_control = (
-                qp.qubit_control.gate_fidelity.get("averaged") if qp.qubit_control.gate_fidelity else None
-            )
+            f_1q_control = qp.qubit_control.gate_fidelity.get("averaged") if qp.qubit_control.gate_fidelity else None
             f_1q_target = qp.qubit_target.gate_fidelity.get("averaged") if qp.qubit_target.gate_fidelity else None
             if f_1q_control is not None and f_1q_target is not None:
                 f_1q_budget = f_1q_control ** (n_1q / 2) * f_1q_target ** (n_1q / 2)
@@ -698,13 +694,9 @@ def _extract_relevant_parameters(
                 float(qp_data.average_gate_fidelity.values) if "average_gate_fidelity" in qp_data else None
             ),
             average_gates_per_clifford=(
-                float(qp_data.average_gates_per_clifford.values)
-                if "average_gates_per_clifford" in qp_data
-                else None
+                float(qp_data.average_gates_per_clifford.values) if "average_gates_per_clifford" in qp_data else None
             ),
-            standard_rb_alpha=(
-                float(qp_data.standard_rb_alpha.values) if "standard_rb_alpha" in qp_data else None
-            ),
+            standard_rb_alpha=(float(qp_data.standard_rb_alpha.values) if "standard_rb_alpha" in qp_data else None),
             epc_1q_budget=epc_1q_budget,
             epc_cz_residual=epc_cz_residual,
             epg_cz_implied=epg_cz_implied,
@@ -725,9 +717,7 @@ def _extract_relevant_parameters(
             ),
         )
 
-    ds_fit = ds_fit.assign(
-        coherence_limit_epg=("qubit_pair", np.asarray(coherence_limits, dtype=float))
-    )
+    ds_fit = ds_fit.assign(coherence_limit_epg=("qubit_pair", np.asarray(coherence_limits, dtype=float)))
     ds_fit.coherence_limit_epg.attrs = {"long_name": "coherence-limited EPG", "units": "a.u."}
 
     return ds_fit, fit_results
