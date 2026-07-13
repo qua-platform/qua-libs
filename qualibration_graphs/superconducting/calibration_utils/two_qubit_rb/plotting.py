@@ -8,6 +8,7 @@ import numpy as np
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from qualibrate import QualibrationNode
 from qualibration_libs.plotting import grid_iter
 
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
@@ -89,16 +90,22 @@ def _plot_mean_marker(
 
 
 def plot_raw_data_with_fit(
-    ds_fit: xr.Dataset,
-    qubit_pairs: list,
+    node: QualibrationNode,
     *,
-    interleaved: bool = False,
     title_prefix: str = "2Q Randomized Benchmarking",
-    use_input_stream: bool | None = None,
-    plot_style: RbPlotStyle = "error_bars",
-    log_x: bool = False,
+    interleaved: bool | None = None,
 ) -> Dict[str, Figure]:
     """Plot RB survival curves on a chip-topology grid, one panel per qubit pair."""
+    if interleaved is None:
+        interleaved = "interleaved" in node.name.lower()
+
+    ds_fit = node.results["ds_fit"]
+    qubit_pairs = node.namespace["qubit_pairs"]
+    use_input_stream = node.parameters.use_input_stream
+    reset_type = node.parameters.reset_type
+    plot_style = node.parameters.rb_plot_style
+    log_x = node.parameters.rb_plot_log_x
+
     grid_names, pair_names = grid_pair_names(qubit_pairs)
     grid = QubitPairGrid(grid_names, pair_names)
 
@@ -113,11 +120,14 @@ def plot_raw_data_with_fit(
             log_x=log_x,
         )
 
+    run_notes: list[str] = []
     if use_input_stream is not None:
-        stream_label = "(with input stream)" if use_input_stream else "(without input stream)"
-        title_prefix = f"{title_prefix}\n{stream_label}"
+        run_notes.append("with input stream" if use_input_stream else "without input stream")
+    if reset_type is not None:
+        run_notes.append(f"{reset_type} reset")
 
-    grid.fig.suptitle(title_prefix)
+    suptitle = f"{title_prefix}\n({', '.join(run_notes)})" if run_notes else title_prefix
+    grid.fig.suptitle(suptitle)
     grid.fig.tight_layout()
     return {"rb": grid.fig}
 

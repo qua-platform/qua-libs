@@ -250,15 +250,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit pair grid locations."""
-    qubit_pairs = node.namespace["qubit_pairs"]
-    figures = plot_raw_data_with_fit(
-        node.results["ds_fit"],
-        qubit_pairs,
-        title_prefix="2Q Standard Randomized Benchmarking",
-        use_input_stream=node.parameters.use_input_stream,
-        plot_style=node.parameters.rb_plot_style,
-        log_x=node.parameters.rb_plot_log_x,
-    )
+    figures = plot_raw_data_with_fit(node, title_prefix="2Q Standard Randomized Benchmarking")
     for fig in figures.values():
         plt.show()
     node.results["figures"] = figures
