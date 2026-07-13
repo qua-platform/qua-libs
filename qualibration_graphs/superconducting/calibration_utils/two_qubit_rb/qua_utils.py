@@ -465,16 +465,14 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
                 qp.align()
         with case_(37):  # idle_2q
             for qp in qubit_pair.values():
-                # qp.qubit_control.wait(int(1e9*(qp.qubit_control.T1/1000)) // 4)
-                # qp.qubit_target.wait(int(1e9*(qp.qubit_target.T1/1000)) // 4)
+                # Wait for 4 cycles
                 qp.qubit_control.wait(4)
                 qp.qubit_target.wait(4)
                 qp.align()
 
         with case_(38):  # readout and thermalization
-
             align()
-
+            # Readout the qubits and save the state
             for i, qp in qubit_pair.items():
                 wait(8)
                 qp.qubit_control.readout_state(state_control)
@@ -483,19 +481,12 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
                 save(state, state_st[i])
             align()
 
+            # Reset the qubits and reset the frame to avoid accumulation of rotations
             for qp in qubit_pair.values():
-
-                # reset the qubits
                 qp.qubit_control.reset(reset_type, simulate)
                 qp.qubit_target.reset(reset_type, simulate)
-
+                reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
             align()
-
-            # # Reset the frame of the qubits in order not to accumulate rotations
-            # reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
-
-            # align()
-            # qp.qubit_control.xy.align(qp.qubit_target.xy.name, qp.qubit_control.resonator.name, qp.qubit_target.resonator.name)
 
 
 def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arguments
