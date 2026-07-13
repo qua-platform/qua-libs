@@ -185,13 +185,25 @@ def plot_individual_data_with_fit(
             )
         overlay_fitted = fr.standard_rb_overlay_fitted.values
         if success and np.isfinite(overlay_fitted).any():
+            overlay_alpha = float(fr.standard_rb_fit_alpha.values)
+            overlay_alpha_stderr = (
+                float(fr.standard_rb_fit_alpha_stderr.values)
+                if "standard_rb_fit_alpha_stderr" in fr and np.isfinite(fr.standard_rb_fit_alpha_stderr.values)
+                else None
+            )
             ax.plot(
                 depths,
                 overlay_fitted,
                 color="C0",
                 linestyle="--",
                 zorder=4,
-                label=f"StandardRB Fit (alpha={float(fr.standard_rb_fit_alpha.values):.4f})",
+                label=(
+                    f"StandardRB Fit (α = {overlay_alpha:.4f} ± {overlay_alpha_stderr:.4f})"
+                    if overlay_alpha_stderr is not None
+                    and np.isfinite(overlay_alpha_stderr)
+                    and overlay_alpha_stderr > 0
+                    else f"StandardRB Fit (α = {overlay_alpha:.4f})"
+                ),
             )
 
     mean_label = "Interleaved Mean" if interleaved else "Mean"
@@ -228,6 +240,11 @@ def plot_individual_data_with_fit(
     if success:
         smooth_depths = np.linspace(depths[0], depths[-1], 100)
         fit_alpha = float(fr.fit_alpha.values)
+        alpha_stderr = (
+            float(fr.alpha_stderr.values)
+            if "alpha_stderr" in fr and np.isfinite(fr.alpha_stderr.values)
+            else None
+        )
         ax.plot(
             smooth_depths,
             rb_decay_curve(
@@ -239,7 +256,11 @@ def plot_individual_data_with_fit(
             color=color,
             linestyle="--",
             zorder=6,
-            label=f"Exponential fit (alpha = {fit_alpha:.4f})",
+            label=(
+                f"Exponential fit (α = {fit_alpha:.4f} ± {alpha_stderr:.4f})"
+                if alpha_stderr is not None and np.isfinite(alpha_stderr) and alpha_stderr > 0
+                else f"Exponential fit (α = {fit_alpha:.4f})"
+            ),
         )
 
     if success:
