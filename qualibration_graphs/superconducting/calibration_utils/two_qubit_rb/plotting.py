@@ -12,7 +12,7 @@ from qualibrate import QualibrationNode
 from qualibration_libs.plotting import grid_iter
 
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
-from calibration_utils.two_qubit_rb.analysis import format_error_rate, rb_decay_curve
+from calibration_utils.two_qubit_rb.analysis import format_fraction_pm, rb_decay_curve
 
 RbPlotStyle = Literal["error_bars", "per_sequence"]
 
@@ -244,6 +244,11 @@ def plot_individual_data_with_fit(
 
     if success:
         fidelity = float(fr.fidelity.values)
+        fidelity_stderr = (
+            float(fr.fidelity_stderr.values)
+            if "fidelity_stderr" in fr and np.isfinite(fr.fidelity_stderr.values)
+            else np.nan
+        )
         epc = float(fr.epc.values) if "epc" in fr else np.nan
         if interleaved:
             epg = float(fr.epg.values) if "epg" in fr else np.nan
@@ -253,14 +258,17 @@ def plot_individual_data_with_fit(
                 else np.nan
             )
             stats = (
-                f"CZ Gate Fidelity ($f_{{CZ}}$) = {100 * fidelity:.2f}%\n"
-                f"Error Per Gate (EPG) = $1 - f_{{CZ}}$ = {format_error_rate(epg)}\n"
-                f"EPG (coherence limit) = {format_error_rate(coh_limit)}"
+                f"CZ Gate Fidelity ($f_{{CZ}}$) = "
+                f"{format_fraction_pm(fidelity, fidelity_stderr)}\n"
+                f"Error Per Gate (EPG) = $1 - f_{{CZ}}$ = "
+                f"{format_fraction_pm(epg, fidelity_stderr, as_error_rate=True)}\n"
+                f"EPG (coherence limit) = {format_fraction_pm(coh_limit, as_error_rate=True)}"
             )
         else:
             stats = (
-                f"2Q Clifford Fidelity ($f_c$) = {100 * fidelity:.2f}%\n"
-                f"Error Per Clifford (EPC) = $1 - f_c$ = {format_error_rate(epc)}"
+                f"2Q Clifford Fidelity ($f_c$) = {format_fraction_pm(fidelity, fidelity_stderr)}\n"
+                f"Error Per Clifford (EPC) = $1 - f_c$ = "
+                f"{format_fraction_pm(epc, fidelity_stderr, as_error_rate=True)}"
             )
     else:
         stats = "Fit failed — see logs for validation issues"
