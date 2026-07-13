@@ -26,6 +26,9 @@ Per qubit pair, **``fit_rb_routine``** does:
 6. **Fidelity extraction**
    - **Standard RB (37a):** 2Q Clifford fidelity from ``alpha``; EPC; per-gate EPG as
      EPC divided by measured average native gates per Clifford from transpilation.
+     Implied CZ EPG is inferred from Eq. (10) of supplemental material of McKay et al.
+     (https://arxiv.org/abs/1712.06550v2) using 1Q RB ``alpha`` values and
+     transpiled gate counts (use 37b for a direct CZ measurement).
    - **Interleaved RB (37b):** CZ gate fidelity from interleaved ``alpha`` and reference
      ``StandardRB_alpha`` in QUAM; EPG = 1 − CZ fidelity; EPC from reference Standard RB.
 
@@ -38,7 +41,7 @@ Per qubit pair, **``fit_rb_routine``** does:
    Reasons are stored in ``fit_issues``.
 
 8. **Interleaved overlay (37b only)** — optionally reload the reference Standard RB run
-   (``StandardRB_load_id``) and attach its survival / fit curves for plotting.
+   (``StandardRB_load_id``) and attach its saved ``ds_fit`` curves and ``alpha`` ± for plotting.
 
 Outputs: augmented ``ds_fit`` (survival, fit curve, fidelity, EPC/EPG, ``success``,
 ``fit_issues``, ``fit_warnings``) and ``FitResults`` per pair. Nodes set ``outcomes``
@@ -80,14 +83,17 @@ class FitResults:
     fidelity_stderr: float | None = None
     epc: float | None = None
     epg: float | None = None
+    epg_stderr: float | None = None
     average_gate_fidelity: float | None = None
     average_gates_per_clifford: float | None = None
     standard_rb_alpha: float | None = None
-    epc_1q_budget: float | None = None
-    epc_cz_residual: float | None = None
+    standard_rb_alpha_stderr: float | None = None
+    alpha_0: float | None = None
+    alpha_1: float | None = None
+    alpha_01_implied: float | None = None
+    alpha_01_stderr: float | None = None
     epg_cz_implied: float | None = None
-    f_1q_control: float | None = None
-    f_1q_target: float | None = None
+    epg_cz_implied_stderr: float | None = None
     avg_1q_per_clifford: float | None = None
     avg_cz_per_clifford: float | None = None
     coherence_limit_epg: float | None = None
@@ -131,29 +137,56 @@ def log_fitted_results(
         lines = [f"Results for qubit pair {qp_name}: {'SUCCESS!' if fit_result.success else 'FAIL!'}"]
 
         if fit_result.success:
+            alpha_label = "alpha_IRB" if interleaved else "alpha"
+            alpha_text = (
+                f"{fit_result.alpha:.6f} ± {fit_result.alpha_stderr:.6f}"
+                if fit_result.alpha_stderr is not None
+                and np.isfinite(fit_result.alpha_stderr)
+                and fit_result.alpha_stderr > 0
+                else f"{fit_result.alpha:.6f}"
+            )
             lines.append(
                 f"\tDecay model: P(m) = A * alpha^m + B "
-                f"(A = {fit_result.fit_amplitude:.6f}, alpha = {fit_result.alpha:.6f}, "
+                f"(A = {fit_result.fit_amplitude:.6f}, {alpha_label} = {alpha_text}, "
                 f"B = {fit_result.fit_offset:.6f})"
             )
             if interleaved:
-                clifford_fid_ref = 1 - fit_result.epc if fit_result.epc is not None else np.nan
+                alpha_srb_text = (
+                    f"{fit_result.standard_rb_alpha:.6f} ± {fit_result.standard_rb_alpha_stderr:.6f}"
+                    if fit_result.standard_rb_alpha is not None
+                    and fit_result.standard_rb_alpha_stderr is not None
+                    and np.isfinite(fit_result.standard_rb_alpha_stderr)
+                    and fit_result.standard_rb_alpha_stderr > 0
+                    else (
+                        f"{fit_result.standard_rb_alpha:.6f}"
+                        if fit_result.standard_rb_alpha is not None
+                        else "n/a"
+                    )
+                )
+                srb_fidelity = 1 - fit_result.epc if fit_result.epc is not None else np.nan
+                srb_fidelity_stderr = (
+                    _fidelity_stderr_from_alpha(fit_result.standard_rb_alpha_stderr, interleaved=False)
+                    if fit_result.standard_rb_alpha_stderr is not None
+                    and np.isfinite(fit_result.standard_rb_alpha_stderr)
+                    and fit_result.standard_rb_alpha_stderr > 0
+                    else None
+                )
                 lines.extend(
                     [
-                        f"\t2Q Clifford Fidelity (Standard RB reference) = {100 * clifford_fid_ref:.2f}%",
+                        "",
+                        "\tStandard RB reference (37a):",
+                        f"\t2Q Clifford Fidelity = "
+                        f"{format_fraction_pm(srb_fidelity, srb_fidelity_stderr)}",
                         f"\tError Per Clifford (EPC) = 1 - 2Q Clifford Fidelity = "
-                        f"{format_fraction_pm(fit_result.epc, as_error_rate=True)}",
-                        f"\tCZ gate fidelity = 1 - (d-1)/d * (1 - alpha_IRB/alpha_SRB), d = 4 = "
-                        f"{format_fraction_pm(fit_result.fidelity, fit_result.fidelity_stderr)}, "
-                        f"alpha_IRB = {fit_result.alpha:.6f}"
-                        + (
-                            f" ± {fit_result.alpha_stderr:.6f}"
-                            if fit_result.alpha_stderr is not None and np.isfinite(fit_result.alpha_stderr)
-                            else ""
-                        )
-                        + f", alpha_SRB = {fit_result.standard_rb_alpha:.6f}",
+                        f"{format_fraction_pm(fit_result.epc, srb_fidelity_stderr, as_error_rate=True)}",
+                        f"\talpha_SRB = {alpha_srb_text}",
+                        "",
+                        "\tInterleaved RB (this run):",
+                        f"\tCZ gate fidelity = 1 - (d-1)/d * (1 - alpha_IRB/alpha_SRB) = "
+                        f"{format_fraction_pm(fit_result.fidelity, fit_result.fidelity_stderr)}",
+                        f"\talpha_IRB = {alpha_text}",
                         f"\tError Per Gate (EPG) = 1 - CZ gate fidelity = "
-                        f"{format_fraction_pm(fit_result.epg, fit_result.fidelity_stderr, as_error_rate=True)}",
+                        f"{format_fraction_pm(fit_result.epg, fit_result.epg_stderr, as_error_rate=True)}",
                     ]
                 )
             else:
@@ -170,25 +203,32 @@ def log_fitted_results(
                     ]
                 )
 
-            if not interleaved and fit_result.epc_1q_budget is not None:
-                epc = fit_result.epc
-                epc_1q = fit_result.epc_1q_budget
-                epc_cz = fit_result.epc_cz_residual
+            if not interleaved and fit_result.alpha_01_implied is not None:
+                alpha_2q_text = (
+                    f"{fit_result.alpha:.6f} ± {fit_result.alpha_stderr:.6f}"
+                    if fit_result.alpha_stderr is not None
+                    and np.isfinite(fit_result.alpha_stderr)
+                    and fit_result.alpha_stderr > 0
+                    else f"{fit_result.alpha:.6f}"
+                )
+                alpha_01_text = (
+                    f"{fit_result.alpha_01_implied:.6f} ± {fit_result.alpha_01_stderr:.6f}"
+                    if fit_result.alpha_01_stderr is not None
+                    and np.isfinite(fit_result.alpha_01_stderr)
+                    and fit_result.alpha_01_stderr > 0
+                    else f"{fit_result.alpha_01_implied:.6f}"
+                )
                 lines.extend(
                     [
                         "",
-                        "\tError contribution analysis:",
-                        f"\t1Q RB budget: EPC_1Q = 1 - F_1Q,c^(N_1Q/2) * F_1Q,t^(N_1Q/2) = "
-                        f"{format_fraction_pm(epc_1q, as_error_rate=True)} "
-                        f"(N_1Q = {fit_result.avg_1q_per_clifford:.2f}, "
-                        f"F_1Q,c = {100 * fit_result.f_1q_control:.2f}%, "
-                        f"F_1Q,t = {100 * fit_result.f_1q_target:.2f}%)",
-                        f"\tCZ residual: EPC_CZ = EPC - EPC_1Q = {format_fraction_pm(epc_cz, as_error_rate=True)} "
-                        f"(N_CZ = {fit_result.avg_cz_per_clifford:.2f})",
-                        f"\tEPC contribution: 1Q = {100 * epc_1q / epc:.1f}%, " f"CZ = {100 * epc_cz / epc:.1f}%",
-                        f"\tImplied CZ EPG = 1 - (F_Clifford / F_1Q_budget)^(1/N_CZ) = "
-                        f"{format_fraction_pm(fit_result.epg_cz_implied, as_error_rate=True)}",
-                        "\tNote: Interleaved RB (37b) measures CZ EPG directly; treat this implied value as a rough estimate only.",
+                        "\tImplied CZ gate fidelity:",
+                        f"\talpha_2Q = {alpha_2q_text} (measured in this run), "
+                        f"alpha_01 = {alpha_01_text} (inferred by factoring out 1Q contributions)",
+                        f"\tImplied CZ Error Per Gate (EPG) = "
+                        f"{format_fraction_pm(fit_result.epg_cz_implied, fit_result.epg_cz_implied_stderr, as_error_rate=True)}",
+                        f"\tImplied CZ gate fidelity = 1 - EPG = "
+                        f"{format_fraction_pm(None if fit_result.epg_cz_implied is None else 1 - fit_result.epg_cz_implied, fit_result.epg_cz_implied_stderr)}",
+                        "\tNote: Interleaved RB (37b) measures CZ EPG directly.",
                     ]
                 )
 
@@ -206,7 +246,7 @@ def log_fitted_results(
                     )
                     lines.append(
                         f"\t{verdict} "
-                        f"({ratio:.1f}× floor: {format_fraction_pm(fit_result.epg, as_error_rate=True)} vs "
+                        f"({ratio:.1f}× floor: {format_fraction_pm(fit_result.epg, fit_result.epg_stderr, as_error_rate=True)} vs "
                         f"{format_fraction_pm(fit_result.coherence_limit_epg, as_error_rate=True)})"
                     )
 
@@ -253,6 +293,76 @@ def clifford_fidelity_from_alpha(alpha: float, n_qubits: int = 2) -> float:
     d = 2**n_qubits
     r = 1 - alpha - (1 - alpha) / d
     return 1 - r
+
+
+def _infer_alpha_01(
+    alpha_2q: float,
+    qubit_control,
+    qubit_target,
+    n_1: float,
+    n_2: float,
+) -> tuple[float | None, float | None, float | None]:
+    """Infer per-CZ RB decay alpha_01 by inverting Eq. (10) of McKay et al.
+
+    See https://arxiv.org/abs/1712.06550v2 (Phys. Rev. Lett. 122, 200502).
+
+    Returns ``(alpha_0, alpha_1, alpha_01)``; components are ``None`` when inputs are missing
+    or the inversion is ill-defined.
+    """
+    if n_2 <= 0 or not np.isfinite(n_1) or n_1 < 0:
+        return None, None, None
+
+    def _qubit_rb_alpha(qubit) -> float | None:
+        gf = getattr(qubit, "gate_fidelity", None) or {}
+        if "averaged" not in gf:
+            return None
+        f = float(gf["averaged"])
+        if not np.isfinite(f):
+            return None
+        # 1Q RB stores gate fidelity; McKay Eq. (10) needs alpha: f = (1 + alpha) / 2 for d = 2.
+        return 2.0 * f - 1.0
+
+    alpha_0 = _qubit_rb_alpha(qubit_control)
+    alpha_1 = _qubit_rb_alpha(qubit_target)
+    if alpha_0 is None or alpha_1 is None:
+        return alpha_0, alpha_1, None
+    if not np.isfinite(alpha_2q) or alpha_2q <= 0 or alpha_0 <= 0 or alpha_1 <= 0:
+        return alpha_0, alpha_1, None
+
+    half = n_1 / 2.0
+    a0, a1 = alpha_0**half, alpha_1**half
+    factor_1q = (a0 + a1 + 3.0 * a0 * a1) / 5.0
+    if factor_1q <= 0:
+        return alpha_0, alpha_1, None
+
+    ratio = alpha_2q / factor_1q
+    if ratio <= 0:
+        return alpha_0, alpha_1, None
+
+    return alpha_0, alpha_1, float(ratio ** (1.0 / n_2))
+
+
+def _alpha_01_stderr_from_alpha_2q(
+    alpha_01: float,
+    alpha_2q: float,
+    alpha_2q_stderr: float | None,
+    n_2: float,
+) -> float | None:
+    """Propagate fit uncertainty on ``alpha_2q`` to inferred ``alpha_01`` (1Q inputs held fixed).
+
+    For ``alpha_01 = (alpha_2q / factor_1q)^(1 / n_2)``, d(alpha_01)/d(alpha_2q) = alpha_01 / (n_2 * alpha_2q).
+    """
+    if (
+        alpha_2q_stderr is None
+        or not np.isfinite(alpha_2q_stderr)
+        or alpha_2q_stderr <= 0
+        or not np.isfinite(alpha_01)
+        or not np.isfinite(alpha_2q)
+        or alpha_2q <= 0
+        or n_2 <= 0
+    ):
+        return None
+    return alpha_01 * alpha_2q_stderr / (n_2 * alpha_2q)
 
 
 def interleaved_gate_fidelity_from_alpha(alpha: float, standard_rb_alpha: float, n_qubits: int = 2) -> float:
@@ -489,7 +599,7 @@ def _validate_rb_fit(
 
 
 def _try_load_standard_rb_overlay(node: QualibrationNode, qp_name: str) -> dict | None:
-    """Load and fit a reference Standard RB dataset for interleaved overlay plots."""
+    """Load saved 37a ``ds_fit`` for interleaved overlay plots (no refit)."""
     standard_rb_load_id = (
         node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity.get("StandardRB_load_id")
     )
@@ -504,20 +614,38 @@ def _try_load_standard_rb_overlay(node: QualibrationNode, qp_name: str) -> dict 
         base_path = get_qualibrate_config(get_qualibrate_config_path()).storage.location
         node_dir = get_node_dir_path(int(standard_rb_load_id), base_path)
         std_rb_data = read_node_data(node_dir, int(standard_rb_load_id), base_path)
-        std_rb_ds = process_raw_dataset(std_rb_data["ds_raw"].sel(qubit_pair=qp_name), node)
+        if std_rb_data is None:
+            return None
 
-        survival = _survival_probability(std_rb_ds)
-        circuit_depths = survival.circuit_depth.values
-        survival_vals = survival.values
-        fit_amplitude, alpha, fit_offset = _fit_survival(circuit_depths, survival_vals)
-        fitted_curve = rb_decay_curve(circuit_depths, fit_amplitude, alpha, fit_offset)
+        ds_fit = std_rb_data.get("ds_fit")
+        if ds_fit is None or qp_name not in ds_fit.qubit_pair.values:
+            node.log(
+                f"Could not load StandardRB overlay for {qp_name}: "
+                f"saved 37a run {standard_rb_load_id} has no ds_fit for this pair."
+            )
+            return None
+
+        fr = ds_fit.sel(qubit_pair=qp_name)
+        if "survival_probability" not in fr or "fitted_curve" not in fr or "fit_alpha" not in fr:
+            node.log(
+                f"Could not load StandardRB overlay for {qp_name}: "
+                f"saved 37a ds_fit is missing survival or fit variables."
+            )
+            return None
+
+        alpha_stderr = np.nan
+        if "alpha_stderr" in fr and np.isfinite(fr.alpha_stderr.values):
+            alpha_stderr = float(fr.alpha_stderr.values)
+
+        survival_per_sequence = fr.survival_per_sequence if "survival_per_sequence" in fr else None
 
         return {
-            "circuit_depth": circuit_depths,
-            "survival": survival_vals,
-            "survival_per_sequence": _survival_per_sequence(std_rb_ds),
-            "fitted_curve": fitted_curve,
-            "alpha": alpha,
+            "circuit_depth": np.asarray(fr.circuit_depth.values, dtype=float),
+            "survival": np.asarray(fr.survival_probability.values, dtype=float),
+            "survival_per_sequence": survival_per_sequence,
+            "fitted_curve": np.asarray(fr.fitted_curve.values, dtype=float),
+            "alpha": float(fr.fit_alpha.values),
+            "alpha_stderr": alpha_stderr,
         }
     except Exception as exc:
         node.log(f"Could not load StandardRB overlay for {qp_name}: {exc}")
@@ -550,6 +678,7 @@ def _assign_standard_rb_overlay(da: xr.Dataset, overlay: dict) -> xr.Dataset:
         "standard_rb_overlay_survival": ("circuit_depth", survival_on_depths),
         "standard_rb_overlay_fitted": ("circuit_depth", fitted_on_depths),
         "standard_rb_fit_alpha": float(overlay["alpha"]),
+        "standard_rb_fit_alpha_stderr": float(overlay.get("alpha_stderr", np.nan)),
     }
     if per_sequence_on_depths is not None:
         assign_kwargs["standard_rb_overlay_survival_per_sequence"] = (
@@ -691,6 +820,7 @@ def fit_rb_routine(da: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
                 standard_rb_overlay_survival=("circuit_depth", nan_overlay),
                 standard_rb_overlay_fitted=("circuit_depth", nan_overlay.copy()),
                 standard_rb_fit_alpha=np.nan,
+                standard_rb_fit_alpha_stderr=np.nan,
             )
 
     return da
@@ -737,20 +867,47 @@ def _extract_relevant_parameters(
         qp_data = ds_fit.sel(qubit_pair=qp_name)
         epc = float(qp_data.epc.values) if "epc" in qp_data else None
         fidelity = float(qp_data.fidelity.values)
+        fidelity_stderr = (
+            float(qp_data.fidelity_stderr.values)
+            if "fidelity_stderr" in qp_data and np.isfinite(qp_data.fidelity_stderr.values)
+            else None
+        )
+        epg_stderr = fidelity_stderr if interleaved else None
 
-        epc_1q_budget = None
-        epc_cz_residual = None
+        standard_rb_alpha = (
+            float(qp_data.standard_rb_alpha.values) if interleaved and "standard_rb_alpha" in qp_data else None
+        )
+        standard_rb_alpha_stderr = None
+        if interleaved and "standard_rb_fit_alpha_stderr" in qp_data:
+            stderr = float(qp_data.standard_rb_fit_alpha_stderr.values)
+            if np.isfinite(stderr) and stderr > 0:
+                standard_rb_alpha_stderr = stderr
+
+        alpha_0 = None
+        alpha_1 = None
+        alpha_01_implied = None
+        alpha_01_stderr = None
         epg_cz_implied = None
-        f_1q_control = None
-        f_1q_target = None
-        if not interleaved and epc is not None and epc > 0:
-            f_1q_control = qp.qubit_control.gate_fidelity.get("averaged") if qp.qubit_control.gate_fidelity else None
-            f_1q_target = qp.qubit_target.gate_fidelity.get("averaged") if qp.qubit_target.gate_fidelity else None
-            if f_1q_control is not None and f_1q_target is not None:
-                f_1q_budget = f_1q_control ** (n_1q / 2) * f_1q_target ** (n_1q / 2)
-                epc_1q_budget = 1 - f_1q_budget
-                epc_cz_residual = epc - epc_1q_budget
-                epg_cz_implied = 1 - (fidelity / f_1q_budget) ** (1 / n_cz)
+        epg_cz_implied_stderr = None
+        if not interleaved and n_1q is not None and n_cz is not None:
+            alpha_2q = float(qp_data.fit_alpha.values)
+            alpha_2q_stderr = (
+                float(qp_data.alpha_stderr.values)
+                if "alpha_stderr" in qp_data and np.isfinite(qp_data.alpha_stderr.values)
+                else None
+            )
+            alpha_0, alpha_1, alpha_01_implied = _infer_alpha_01(
+                alpha_2q,
+                qp.qubit_control,
+                qp.qubit_target,
+                n_1q,
+                n_cz,
+            )
+            if alpha_01_implied is not None:
+                alpha_01_stderr = _alpha_01_stderr_from_alpha_2q(alpha_01_implied, alpha_2q, alpha_2q_stderr, n_cz)
+                epg_cz_implied = 1.0 - clifford_fidelity_from_alpha(alpha_01_implied, n_qubits=2)
+                if alpha_01_stderr is not None:
+                    epg_cz_implied_stderr = _fidelity_stderr_from_alpha(alpha_01_stderr, interleaved=False, n_qubits=2)
 
         coherence_limit_epg = try_coherence_limit_epg(qp, node.parameters.operation)
         coherence_limits.append(coherence_limit_epg if coherence_limit_epg is not None else np.nan)
@@ -762,21 +919,24 @@ def _extract_relevant_parameters(
             fit_amplitude=float(qp_data.fit_amplitude.values),
             fit_offset=float(qp_data.fit_offset.values),
             alpha_stderr=(float(qp_data.alpha_stderr.values) if "alpha_stderr" in qp_data else None),
-            fidelity_stderr=(float(qp_data.fidelity_stderr.values) if "fidelity_stderr" in qp_data else None),
+            fidelity_stderr=fidelity_stderr,
             epc=epc,
             epg=float(qp_data.epg.values) if "epg" in qp_data else None,
+            epg_stderr=epg_stderr,
             average_gate_fidelity=(
                 float(qp_data.average_gate_fidelity.values) if "average_gate_fidelity" in qp_data else None
             ),
             average_gates_per_clifford=(
                 float(qp_data.average_gates_per_clifford.values) if "average_gates_per_clifford" in qp_data else None
             ),
-            standard_rb_alpha=(float(qp_data.standard_rb_alpha.values) if "standard_rb_alpha" in qp_data else None),
-            epc_1q_budget=epc_1q_budget,
-            epc_cz_residual=epc_cz_residual,
+            standard_rb_alpha=standard_rb_alpha,
+            standard_rb_alpha_stderr=standard_rb_alpha_stderr,
+            alpha_0=alpha_0,
+            alpha_1=alpha_1,
+            alpha_01_implied=alpha_01_implied,
+            alpha_01_stderr=alpha_01_stderr,
             epg_cz_implied=epg_cz_implied,
-            f_1q_control=f_1q_control,
-            f_1q_target=f_1q_target,
+            epg_cz_implied_stderr=epg_cz_implied_stderr,
             avg_1q_per_clifford=n_1q,
             avg_cz_per_clifford=n_cz,
             coherence_limit_epg=coherence_limit_epg,
