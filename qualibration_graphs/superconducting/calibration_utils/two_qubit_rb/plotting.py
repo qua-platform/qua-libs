@@ -242,9 +242,7 @@ def plot_individual_data_with_fit(
         smooth_depths = np.linspace(depths[0], depths[-1], 100)
         fit_alpha = float(fr.fit_alpha.values)
         alpha_stderr = (
-            float(fr.alpha_stderr.values)
-            if "alpha_stderr" in fr and np.isfinite(fr.alpha_stderr.values)
-            else None
+            float(fr.alpha_stderr.values) if "alpha_stderr" in fr and np.isfinite(fr.alpha_stderr.values) else None
         )
         ax.plot(
             smooth_depths,

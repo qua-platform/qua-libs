@@ -127,8 +127,7 @@ def _format_srb_result(qp_name: str, r: SRBFitResult) -> str:
                 f"{format_fraction_pm(r.epc, r.fidelity_stderr, as_error_rate=True)} / "
                 f"{r.average_gates_per_clifford:.2f} = "
                 f"{format_fraction_pm(r.epg, epg_stderr, as_error_rate=True)}",
-                f"\tAvg. Gate Fidelity (1-EPG) = "
-                f"{format_fraction_pm(r.average_gate_fidelity, epg_stderr)}",
+                f"\tAvg. Gate Fidelity (1-EPG) = " f"{format_fraction_pm(r.average_gate_fidelity, epg_stderr)}",
             ]
         )
         if r.implied_cz is not None and r.implied_cz.alpha_01 is not None:
@@ -160,14 +159,10 @@ def _format_irb_result(qp_name: str, r: IRBFitResult) -> str:
             f"B = {_coeff_pm(r.fit_offset, r.fit_offset_stderr)})"
         )
         alpha_srb_text = (
-            _coeff_pm(r.standard_rb_alpha, r.standard_rb_alpha_stderr)
-            if r.standard_rb_alpha is not None
-            else "n/a"
+            _coeff_pm(r.standard_rb_alpha, r.standard_rb_alpha_stderr) if r.standard_rb_alpha is not None else "n/a"
         )
         srb_fidelity = 1 - r.epc if r.epc is not None else np.nan
-        srb_fidelity_stderr = fidelity_stderr_from_alpha(
-            r.standard_rb_alpha_stderr, interleaved=False
-        )
+        srb_fidelity_stderr = fidelity_stderr_from_alpha(r.standard_rb_alpha_stderr, interleaved=False)
         lines.extend(
             [
                 "",

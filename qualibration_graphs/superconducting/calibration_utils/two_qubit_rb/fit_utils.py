@@ -315,9 +315,7 @@ def _resolve_irb_reference(
     if overlay is not None:
         alpha_stderr = overlay.get("alpha_stderr")
         stderr = (
-            float(alpha_stderr)
-            if alpha_stderr is not None and np.isfinite(alpha_stderr) and alpha_stderr > 0
-            else None
+            float(alpha_stderr) if alpha_stderr is not None and np.isfinite(alpha_stderr) and alpha_stderr > 0 else None
         )
         return float(overlay["alpha"]), stderr, overlay.get("epc_reference")
 
@@ -350,7 +348,9 @@ def _assign_standard_rb_overlay(
     per_sequence_on_depths = None
     if overlay_per_sequence is not None and n_sequence is not None:
         overlay_n_sequence = overlay_per_sequence.sizes.get("sequence")
-        if overlay_n_sequence == n_sequence: # if the number of sequences is the same, then we can use the per-sequence data
+        if (
+            overlay_n_sequence == n_sequence
+        ):  # if the number of sequences is the same, then we can use the per-sequence data
             per_sequence_on_depths = np.full((len(circuit_depths), n_sequence), np.nan)
         elif node is not None:
             node.log(
@@ -453,9 +453,7 @@ def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dat
         success, fit_issues = False, ("Exponential fit did not converge.",)
     else:
         fit_amplitude, alpha, fit_offset, alpha_stderr, amplitude_stderr, offset_stderr = fit_params
-        irb = fidelity.compute_irb_fidelity(
-            alpha, alpha_stderr, standard_rb_alpha, epc_reference=epc_reference
-        )
+        irb = fidelity.compute_irb_fidelity(alpha, alpha_stderr, standard_rb_alpha, epc_reference=epc_reference)
         success, fit_issues = _validate_rb_fit(
             circuit_depths,
             survival_vals,
