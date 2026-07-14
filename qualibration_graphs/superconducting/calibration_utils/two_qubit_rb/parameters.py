@@ -19,13 +19,13 @@ class NodeSpecificParameters(RunnableParameters):
     """Node-specific parameters for two-qubit RB experiments."""
 
     num_shots: int = 100
-    """Number of averages to perform. Default is 50."""
+    """Number of averages to perform. Default is 100."""
     operation: Literal["cz_flattop", "cz_unipolar", "cz_bipolar", "cz_flattop_erf", "cz_SNZ"] = "cz_unipolar"
     """Type of CZ operation to perform."""
     use_state_discrimination: bool = True
     """Whether to use state discrimination for readout. Default is True."""
     circuit_depths: list[int] = [1, 2, 4, 8, 16, 32, 64]
-    """Circuit lengths (number of Cliffords) to benchmark. Default is (1, 4, 16, 32, 64)."""
+    """Circuit lengths (number of Cliffords) to benchmark. Default is [1, 2, 4, 8, 16, 32, 64]."""
     num_circuits_per_depth: int = 5
     """Number of random circuits sampled per circuit length. Default is 5."""
     seed: int = 0
