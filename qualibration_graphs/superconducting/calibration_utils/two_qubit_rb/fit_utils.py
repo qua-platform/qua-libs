@@ -47,9 +47,13 @@ def _survival_per_sequence(ds_qp: xr.Dataset) -> xr.DataArray:
 
 
 def _survival_stderr(ds_qp: xr.Dataset) -> xr.DataArray:
-    """Standard error of the mean survival probability at each circuit depth."""
-    n_samples = ds_qp.sizes["sequence"] * ds_qp.sizes["shots"]
-    stderr = (ds_qp.state == 0).stack(combined=("shots", "sequence")).std(dim="combined") / np.sqrt(n_samples)
+    """Standard error of the mean survival probability at each circuit depth.
+
+    Shot-averaged survival per random sequence, then SEM across sequences only
+    (shots are repeats of the same circuit, not independent RB samples).
+    """
+    per_sequence = (ds_qp.state == 0).mean(dim="shots")
+    stderr = per_sequence.std(dim="sequence") / np.sqrt(ds_qp.sizes["sequence"])
     if "qubit_pair" in stderr.dims:
         stderr = stderr.squeeze("qubit_pair", drop=True)
     return stderr
