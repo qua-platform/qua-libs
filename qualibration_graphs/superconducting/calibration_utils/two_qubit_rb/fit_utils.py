@@ -333,16 +333,32 @@ def _resolve_irb_reference(
     return standard_rb_alpha, None, epc_reference
 
 
-def _assign_standard_rb_overlay(da: xr.Dataset, overlay: dict) -> xr.Dataset:
+def _assign_standard_rb_overlay(
+    da: xr.Dataset,
+    overlay: dict,
+    *,
+    node: QualibrationNode | None = None,
+    qp_name: str | None = None,
+) -> xr.Dataset:
     """Align a Standard RB overlay onto the interleaved dataset circuit depths."""
     circuit_depths = da.circuit_depth.values
     survival_on_depths = np.full(len(circuit_depths), np.nan)
     fitted_on_depths = np.full(len(circuit_depths), np.nan)
     overlay_depths = overlay["circuit_depth"]
     overlay_per_sequence = overlay.get("survival_per_sequence")
+    n_sequence = da.sizes.get("sequence")
     per_sequence_on_depths = None
-    if overlay_per_sequence is not None:
-        per_sequence_on_depths = np.full((len(circuit_depths), overlay_per_sequence.sizes["sequence"]), np.nan)
+    if overlay_per_sequence is not None and n_sequence is not None:
+        overlay_n_sequence = overlay_per_sequence.sizes.get("sequence")
+        if overlay_n_sequence == n_sequence: # if the number of sequences is the same, then we can use the per-sequence data
+            per_sequence_on_depths = np.full((len(circuit_depths), n_sequence), np.nan)
+        elif node is not None:
+            node.log(
+                f"Standard RB overlay"
+                f"{f' for {qp_name}' if qp_name else ''}: skipping per-sequence points "
+                f"(saved 37a num_circuits_per_depth={overlay_n_sequence} != "
+                f"current num_circuits_per_depth={n_sequence}). Depth-mean overlay kept."
+            )
 
     for idx, depth in enumerate(circuit_depths):
         match = np.where(overlay_depths == depth)[0]
@@ -477,7 +493,7 @@ def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dat
     )
 
     if overlay is not None:
-        da = _assign_standard_rb_overlay(da, overlay)
+        da = _assign_standard_rb_overlay(da, overlay, node=node, qp_name=qp_name)
     else:
         nan_overlay = np.full(len(circuit_depths), np.nan)
         da = da.assign(
