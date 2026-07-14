@@ -24,7 +24,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Type of CZ operation to perform."""
     use_state_discrimination: bool = True
     """Whether to use state discrimination for readout. Default is True."""
-    circuit_depths: list[int] = [1, 2, 4, 8, 16, 32, 64]
+    circuit_depths: list[int] = np.geomspace(1, 64, 7, dtype=int).tolist()
     """Circuit lengths (number of Cliffords) to benchmark. Default is [1, 2, 4, 8, 16, 32, 64]."""
     num_circuits_per_depth: int = 5
     """Number of random circuits sampled per circuit length. Default is 5."""
