@@ -5,8 +5,6 @@ from dataclasses import asdict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import numpy as np
-import xarray as xr
 from tqdm.auto import tqdm
 from qm.qua import *
 from qualang_tools.multi_user import qm_session
@@ -26,9 +24,10 @@ from calibration_utils.two_qubit_rb import (
     cache_key,
     circuit_to_layer_ints,
     fit_raw_data,
-    log_fitted_results,
+    log_srb_results,
     plot_raw_data_with_fit,
     process_raw_dataset,
+    RBMode,
     save,
     log_depth_summary,
     summarize_transpiled_depth,
@@ -232,15 +231,40 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Get the active qubit pairs from the loaded node parameters
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
+    ds_fit = node.results.get("ds_fit")
+    if ds_fit is not None:
+        for stat_key in ("average_gates_per_clifford", "avg_1q_per_clifford", "avg_cz_per_clifford"):
+            if stat_key in ds_fit.attrs:
+                node.namespace[stat_key] = float(ds_fit.attrs[stat_key])
+        if "average_gates_per_clifford" in ds_fit and "average_gates_per_clifford" not in node.namespace:
+            node.namespace["average_gates_per_clifford"] = float(ds_fit["average_gates_per_clifford"].values.mean())
+
+    for fit_result in (node.results.get("fit_results") or {}).values():
+        if not isinstance(fit_result, dict):
+            continue
+        avg = fit_result.get("average_gates_per_clifford")
+        if avg is not None and "average_gates_per_clifford" not in node.namespace:
+            node.namespace["average_gates_per_clifford"] = float(avg)
+
+    cache_dir = Path(__file__).resolve().parents[2] / ".rb_cache"
+    cached = try_load(
+        cache_dir,
+        cache_key(node.parameters.seed, node.parameters.circuit_depths, node.parameters.num_circuits_per_depth),
+    )
+    if cached is not None:
+        for stat_key in ("average_gates_per_clifford", "avg_1q_per_clifford", "avg_cz_per_clifford"):
+            if stat_key not in node.namespace and stat_key in cached:
+                node.namespace[stat_key] = float(cached[stat_key])
+
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse raw data, fit, log results, set outcomes and store structured fit results."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node, mode=RBMode.STANDARD)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-    log_fitted_results(fit_results, log_callable=node.log)
+    log_srb_results(fit_results, log_callable=node.log)
     node.outcomes = {
         qp_name: ("successful" if fit_result.success else "failed") for qp_name, fit_result in fit_results.items()
     }

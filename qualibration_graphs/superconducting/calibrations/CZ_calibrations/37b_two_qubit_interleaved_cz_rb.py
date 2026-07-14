@@ -5,8 +5,6 @@ from dataclasses import asdict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import numpy as np
-import xarray as xr
 from tqdm.auto import tqdm
 from qm.qua import *
 from qualang_tools.multi_user import qm_session
@@ -26,9 +24,10 @@ from calibration_utils.two_qubit_rb import (
     cache_key,
     circuit_to_layer_ints,
     fit_raw_data,
-    log_fitted_results,
+    log_irb_results,
     plot_raw_data_with_fit,
     process_raw_dataset,
+    RBMode,
     save,
     log_depth_summary,
     summarize_transpiled_depth,
@@ -214,9 +213,9 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse raw data, fit, log results, set outcomes and store structured fit results."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node, mode=RBMode.INTERLEAVED)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-    log_fitted_results(fit_results, log_callable=node.log, interleaved=True)
+    log_irb_results(fit_results, log_callable=node.log)
 
     threshold = node.parameters.fidelity_threshold
     outcomes: dict[str, str] = {}
