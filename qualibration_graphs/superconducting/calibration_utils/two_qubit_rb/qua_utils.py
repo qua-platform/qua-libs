@@ -474,7 +474,6 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
             align()
             # Readout the qubits and save the state
             for i, qp in qubit_pair.items():
-                wait(8)
                 qp.qubit_control.readout_state(state_control)
                 qp.qubit_target.readout_state(state_target)
                 assign(state, state_control * 2 + state_target)
