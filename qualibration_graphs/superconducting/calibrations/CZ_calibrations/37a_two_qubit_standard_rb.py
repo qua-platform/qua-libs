@@ -5,6 +5,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 from tqdm.auto import tqdm
 from qm.qua import *
 from qualang_tools.multi_user import qm_session
@@ -87,18 +88,29 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 
+    if node.parameters.interval_spacing == "linear":
+        circuit_depths = np.unique(
+            np.linspace(0, node.parameters.max_circuit_depth, node.parameters.num_intervals, dtype=int)
+        ).tolist()
+    else:
+        circuit_depths = np.unique(
+            np.geomspace(1, node.parameters.max_circuit_depth + 1, node.parameters.num_intervals, dtype=int) - 1
+        ).tolist()
+    node.namespace["circuit_depths"] = circuit_depths
+    node.log(f"Circuit depths: {circuit_depths}")
+
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
 
     node.namespace["sweep_axes"] = build_sweep_axes(
         qubit_pairs,
         node.parameters.num_shots,
-        node.parameters.circuit_depths,
+        circuit_depths,
         node.parameters.num_circuits_per_depth,
         use_input_stream=node.parameters.use_input_stream,
     )
 
     key = cache_key(
-        node.parameters.seed, node.parameters.circuit_depths, node.parameters.num_circuits_per_depth
+        node.parameters.seed, circuit_depths, node.parameters.num_circuits_per_depth
     )  # key to cache the RB circuits
     cache_dir = Path(__file__).resolve().parents[2] / ".rb_cache"
     cached = try_load(cache_dir, key)  # try to load the cached RB circuits
@@ -114,7 +126,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 log_depth_summary(summary, log_callable=node.log)
     else:
         standard_RB = StandardRB(  # if the cached RB circuits are not found, generate them
-            amplification_lengths=node.parameters.circuit_depths,
+            amplification_lengths=circuit_depths,
             num_circuits_per_length=node.parameters.num_circuits_per_depth,
             num_qubits=2,
             seed=node.parameters.seed,
@@ -230,6 +242,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     # Get the active qubit pairs from the loaded node parameters
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+    node.namespace["circuit_depths"] = node.results["ds_raw"].circuit_depth.values.tolist()
 
     ds_fit = node.results.get("ds_fit")
     if ds_fit is not None:
@@ -249,7 +262,11 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     cache_dir = Path(__file__).resolve().parents[2] / ".rb_cache"
     cached = try_load(
         cache_dir,
-        cache_key(node.parameters.seed, node.parameters.circuit_depths, node.parameters.num_circuits_per_depth),
+        cache_key(
+            node.parameters.seed,
+            node.namespace["circuit_depths"],
+            node.parameters.num_circuits_per_depth,
+        ),
     )
     if cached is not None:
         for stat_key in ("average_gates_per_clifford", "avg_1q_per_clifford", "avg_cz_per_clifford"):

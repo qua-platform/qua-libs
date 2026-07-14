@@ -562,7 +562,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
         self.machine = machine
         self.qubit_pairs = qubit_pairs
 
-        circuit_depths = list(self.node.parameters.circuit_depths)
+        circuit_depths = list(self.node.namespace["circuit_depths"])
         num_circuits_per_depth = self.node.parameters.num_circuits_per_depth
         max_chunk_ints = self.node.parameters.max_chunk_ints
         memory_stats = compute_rb_circuit_memory_stats(circuits_as_ints, circuit_depths, num_circuits_per_depth)
@@ -662,7 +662,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 for k in range(len(self.qubit_pairs)):
                     state_st[k].buffer(self.node.parameters.num_circuits_per_depth).buffer(
                         self.node.parameters.num_shots
-                    ).buffer(len(self.node.parameters.circuit_depths)).save(f"state{k + 1}")
+                    ).buffer(len(self.node.namespace["circuit_depths"])).save(f"state{k + 1}")
         return rb
 
     def _padded_chunks(self) -> list[list[int]]:
@@ -762,7 +762,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 n_st.save("n")
                 for i in range(len(self.qubit_pairs)):
                     state_st[i].buffer(self.node.parameters.num_circuits_per_depth).buffer(
-                        len(self.node.parameters.circuit_depths)
+                        len(self.node.namespace["circuit_depths"])
                     ).buffer(self.node.parameters.num_shots).save(f"state{i + 1}")
         return rb
 

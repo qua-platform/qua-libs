@@ -24,8 +24,13 @@ class NodeSpecificParameters(RunnableParameters):
     """Type of CZ operation to perform."""
     use_state_discrimination: bool = True
     """Whether to use state discrimination for readout. Default is True."""
-    circuit_depths: list[int] = np.geomspace(1, 64, 7, dtype=int).tolist()
-    """Circuit lengths (number of Cliffords) to benchmark. Default is [1, 2, 4, 8, 16, 32, 64]."""
+    max_circuit_depth: int = 64
+    """Maximum circuit depth (number of Cliffords). Default is 64."""
+    num_intervals: int = 7
+    """Number of depth points from 0 to ``max_circuit_depth``. Default is 7."""
+    interval_spacing: Literal["linear", "logarithmic"] = "logarithmic"
+    """Depth spacing: ``linear`` uses ``np.linspace``; ``logarithmic`` uses
+    ``np.geomspace(1, max_circuit_depth + 1, num_intervals) - 1``. Default is logarithmic."""
     num_circuits_per_depth: int = 5
     """Number of random circuits sampled per circuit length. Default is 5."""
     seed: int = 0
@@ -69,8 +74,8 @@ class NodeSpecificParameters(RunnableParameters):
     """
     rb_plot_log_x: bool = False
     """If True, use a logarithmic x-axis (circuit depth) in ``plot_data``.
-    Useful when ``circuit_depths`` span several orders of magnitude (e.g.
-    1, 2, 4, ..., 128). Depths must be strictly positive."""
+    Useful when depths span several orders of magnitude. Depth 0 (if present)
+    is omitted from the log scale."""
 
 
 class Parameters(
