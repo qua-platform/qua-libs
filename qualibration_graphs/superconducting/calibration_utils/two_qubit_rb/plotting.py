@@ -12,7 +12,8 @@ from qualibrate import QualibrationNode
 from qualibration_libs.plotting import grid_iter
 
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
-from calibration_utils.two_qubit_rb.analysis import format_fraction_pm, rb_decay_curve
+from calibration_utils.two_qubit_rb.fit_utils import rb_decay_curve
+from calibration_utils.two_qubit_rb.reporting import format_fraction_pm
 
 RbPlotStyle = Literal["error_bars", "per_sequence"]
 
