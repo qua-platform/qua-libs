@@ -122,7 +122,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     if cached is not None:
         circuits_as_ints = cached["circuits_as_ints"]
-        node.log(f"Loaded {len(circuits_as_ints)} cached interleaved RB circuits (key {key[:12]})")
+        node.log(f"Loaded {len(circuits_as_ints)} cached interleaved RB circuits")
         if "depth_summaries" in cached:
             for summary in cached["depth_summaries"]:
                 log_depth_summary(summary, log_callable=node.log)
@@ -155,7 +155,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 circuits_as_ints.append(circuit_with_measurement)
 
         save(cache_dir, key, {"circuits_as_ints": circuits_as_ints, "depth_summaries": depth_summaries})
-        node.log(f"Computed and cached {len(circuits_as_ints)} interleaved RB circuits (key {key[:12]})")
+        node.log(f"Computed and cached {len(circuits_as_ints)} interleaved RB circuits")
 
     num_pairs = len(qubit_pairs)
 
@@ -225,8 +225,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse raw data, fit, log results, set outcomes and store structured fit results."""
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node, mode=RBMode.INTERLEAVED)
+    node.results["ds_proc"] = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_proc"], node, mode=RBMode.INTERLEAVED)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_irb_results(fit_results, log_callable=node.log)
 

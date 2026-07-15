@@ -203,12 +203,18 @@ def _validate_rb_fit(
     *,
     interleaved: bool,
     fit_fidelity: float,
+    fit_fidelity_stderr: float | None = None,
     standard_rb_alpha: float | None = None,
 ) -> tuple[bool, tuple[str, ...]]:
     """Run all hard-fail RB fit validations."""
     issues: list[str] = []
     issues.extend(_validate_fit_parameters(fit_amplitude, alpha, fit_offset))
     issues.extend(fidelity.validate_fidelity_bounds(fit_fidelity, interleaved=interleaved))
+    issues.extend(
+        fidelity.validate_fidelity_uncertainty(
+            fit_fidelity, fit_fidelity_stderr, interleaved=interleaved
+        )
+    )
     if interleaved and standard_rb_alpha is not None:
         issues.extend(fidelity.validate_interleaved_alpha(alpha, standard_rb_alpha))
     if not issues:
@@ -411,6 +417,7 @@ def fit_srb_pair(da: xr.Dataset, average_gates_per_clifford: float | None) -> xr
             fit_offset,
             interleaved=False,
             fit_fidelity=srb.fidelity,
+            fit_fidelity_stderr=srb.fidelity_stderr,
         )
 
     fitted_curve_da = _fitted_curve_dataarray(circuit_depths, fit_params)
@@ -467,6 +474,7 @@ def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dat
             fit_offset,
             interleaved=True,
             fit_fidelity=irb.fidelity,
+            fit_fidelity_stderr=irb.fidelity_stderr,
             standard_rb_alpha=standard_rb_alpha,
         )
 

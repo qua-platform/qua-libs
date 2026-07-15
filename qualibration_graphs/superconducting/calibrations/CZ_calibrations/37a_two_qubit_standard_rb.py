@@ -120,7 +120,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.namespace["average_gates_per_clifford"] = cached["average_gates_per_clifford"]
         node.namespace["avg_1q_per_clifford"] = cached["avg_1q_per_clifford"]
         node.namespace["avg_cz_per_clifford"] = cached["avg_cz_per_clifford"]
-        node.log(f"Loaded {len(circuits_as_ints)} cached RB circuits (key {key[:12]})")
+        node.log(f"Loaded {len(circuits_as_ints)} cached RB circuits")
         if "depth_summaries" in cached:
             for summary in cached["depth_summaries"]:
                 log_depth_summary(summary, log_callable=node.log)
@@ -176,7 +176,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             },
         )  # save the cached dictionary to the cache directory
         node.log(
-            f"Computed and cached {len(circuits_as_ints)} RB circuits (key {key[:12]})"
+            f"Computed and cached {len(circuits_as_ints)} RB circuits"
         )  # log the number of circuits and the key
 
     num_pairs = len(qubit_pairs)  # count the number of qubit pairs
@@ -278,8 +278,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse raw data, fit, log results, set outcomes and store structured fit results."""
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node, mode=RBMode.STANDARD)
+    node.results["ds_proc"] = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_proc"], node, mode=RBMode.STANDARD)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_srb_results(fit_results, log_callable=node.log)
     node.outcomes = {

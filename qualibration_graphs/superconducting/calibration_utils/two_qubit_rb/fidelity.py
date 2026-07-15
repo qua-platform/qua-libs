@@ -137,6 +137,26 @@ def validate_fidelity_bounds(fidelity: float, *, interleaved: bool) -> list[str]
     return issues
 
 
+def validate_fidelity_uncertainty(
+    fidelity: float,
+    fidelity_stderr: float | None,
+    *,
+    interleaved: bool,
+) -> list[str]:
+    """Hard-fail when propagated fidelity uncertainty exceeds the point estimate."""
+    issues: list[str] = []
+    if fidelity_stderr is None or not np.isfinite(fidelity_stderr) or fidelity_stderr <= 0:
+        return issues
+
+    label = "CZ gate fidelity" if interleaved else "2Q Clifford fidelity"
+    if fidelity_stderr > fidelity:
+        issues.append(
+            f"{label} uncertainty ({100 * fidelity_stderr:.3f}%) exceeds "
+            f"point estimate ({100 * fidelity:.3f}%); result is not statistically significant."
+        )
+    return issues
+
+
 def validate_interleaved_alpha(alpha: float, standard_rb_alpha: float) -> list[str]:
     """Hard-fail checks specific to interleaved RB reference comparison."""
     issues: list[str] = []
