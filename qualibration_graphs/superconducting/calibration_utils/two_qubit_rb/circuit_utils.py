@@ -217,9 +217,7 @@ def summarize_transpiled_depth(
     avg_1q_per_clifford = total_1q_gates / total_cliffords if total_cliffords else 0.0
     avg_cz_per_clifford = total_cz_gates / total_cliffords if total_cliffords else 0.0
     avg_transpiled_gates_per_clifford = n_total_transpiled_gates / total_cliffords if total_cliffords else 0.0
-    avg_physical_gates_per_clifford = (
-        n_total_transpiled_physical_gates / total_cliffords if total_cliffords else 0.0
-    )
+    avg_physical_gates_per_clifford = n_total_transpiled_physical_gates / total_cliffords if total_cliffords else 0.0
 
     summary = {
         "depth": depth,
