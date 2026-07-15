@@ -210,11 +210,7 @@ def _validate_rb_fit(
     issues: list[str] = []
     issues.extend(_validate_fit_parameters(fit_amplitude, alpha, fit_offset))
     issues.extend(fidelity.validate_fidelity_bounds(fit_fidelity, interleaved=interleaved))
-    issues.extend(
-        fidelity.validate_fidelity_uncertainty(
-            fit_fidelity, fit_fidelity_stderr, interleaved=interleaved
-        )
-    )
+    issues.extend(fidelity.validate_fidelity_uncertainty(fit_fidelity, fit_fidelity_stderr, interleaved=interleaved))
     if interleaved and standard_rb_alpha is not None:
         issues.extend(fidelity.validate_interleaved_alpha(alpha, standard_rb_alpha))
     if not issues:

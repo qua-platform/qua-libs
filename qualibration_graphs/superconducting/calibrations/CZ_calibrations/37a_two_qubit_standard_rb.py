@@ -175,9 +175,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 "depth_summaries": depth_summaries,  # save the depth summaries to the cached dictionary
             },
         )  # save the cached dictionary to the cache directory
-        node.log(
-            f"Computed and cached {len(circuits_as_ints)} RB circuits"
-        )  # log the number of circuits and the key
+        node.log(f"Computed and cached {len(circuits_as_ints)} RB circuits")  # log the number of circuits and the key
 
     num_pairs = len(qubit_pairs)  # count the number of qubit pairs
 
