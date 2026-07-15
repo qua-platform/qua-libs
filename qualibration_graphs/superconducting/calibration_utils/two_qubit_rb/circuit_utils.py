@@ -139,17 +139,33 @@ def circuit_to_layer_ints(qc: QuantumCircuit) -> List[int]:
     return result
 
 
+_VIRTUAL_1Q_GATE_NAMES = frozenset({"rz"})  # virtual Z via frame_rotation in QUA
+
+
 def _count_transpiled_circuit_stats(qc: QuantumCircuit) -> dict:
-    """Return Clifford, 1Q, and CZ gate counts for one barriered transpiled circuit."""
+    """Return Clifford, 1Q, and CZ gate counts for one barriered transpiled circuit.
+
+    Returns both full transpiled gate totals (including virtual ``rz``) and physical
+    gate totals (``sx``, ``x``, ``cz`` only). Virtual Z is implemented as
+    ``frame_rotation`` in QUA and is excluded from physical counts.
+    """
     gate_counts = Counter(instr.operation.name for instr in qc)
     n_cliffords = gate_counts.pop("barrier", 0)
-    n_transpiled_gates = sum(gate_counts.values())
     two_qubit_names = {"cz", "idle_2q"}
-    n_1q_gates = sum(count for name, count in gate_counts.items() if name not in two_qubit_names)
+    n_transpiled_gates = sum(gate_counts.values())
+    n_transpiled_physical_gates = sum(
+        count for name, count in gate_counts.items() if name not in _VIRTUAL_1Q_GATE_NAMES
+    )
+    n_1q_gates = sum(
+        count
+        for name, count in gate_counts.items()
+        if name not in two_qubit_names and name not in _VIRTUAL_1Q_GATE_NAMES
+    )
     n_cz_gates = gate_counts.get("cz", 0)
     return {
         "n_cliffords": n_cliffords,
         "n_transpiled_gates": n_transpiled_gates,
+        "n_transpiled_physical_gates": n_transpiled_physical_gates,
         "n_1q_gates": n_1q_gates,
         "n_cz_gates": n_cz_gates,
     }
@@ -159,8 +175,10 @@ def log_depth_summary(summary: dict, *, log_callable: Callable[[str], None] = pr
     """Log a one-line per-depth transpile summary (e.g. from cache)."""
     log_callable(
         f"depth={summary['depth']}: {summary['num_circuits']} circuits, "
-        f"{summary['total_cliffords']} cliffords, {summary['total_transpiled_gates']} transpiled gates, "
-        f"avg gates/Clifford={summary['avg_gates_per_clifford']:.2f}, "
+        f"{summary['total_cliffords']} cliffords, "
+        f"n_total_transpiled_gates={summary['n_total_transpiled_gates']}, "
+        f"n_total_transpiled_physical_gates={summary['n_total_transpiled_physical_gates']}, "
+        f"avg physical gates/Clifford={summary['avg_physical_gates_per_clifford']:.2f}, "
         f"avg 1Q/Clifford={summary['avg_1q_per_clifford']:.2f}, "
         f"avg CZ/Clifford={summary['avg_cz_per_clifford']:.2f}"
     )
@@ -183,29 +201,36 @@ def summarize_transpiled_depth(
         Summary dict suitable for ``log_depth_summary`` or ``depth_summaries`` cache.
     """
     total_cliffords = 0
-    total_transpiled_gates = 0
+    n_total_transpiled_gates = 0
+    n_total_transpiled_physical_gates = 0
     total_1q_gates = 0
     total_cz_gates = 0
 
     for qc in circuits:
         stats = _count_transpiled_circuit_stats(qc)
         total_cliffords += stats["n_cliffords"]
-        total_transpiled_gates += stats["n_transpiled_gates"]
+        n_total_transpiled_gates += stats["n_transpiled_gates"]
+        n_total_transpiled_physical_gates += stats["n_transpiled_physical_gates"]
         total_1q_gates += stats["n_1q_gates"]
         total_cz_gates += stats["n_cz_gates"]
 
     avg_1q_per_clifford = total_1q_gates / total_cliffords if total_cliffords else 0.0
     avg_cz_per_clifford = total_cz_gates / total_cliffords if total_cliffords else 0.0
-    avg_gates_per_clifford = total_transpiled_gates / total_cliffords if total_cliffords else 0.0
+    avg_transpiled_gates_per_clifford = n_total_transpiled_gates / total_cliffords if total_cliffords else 0.0
+    avg_physical_gates_per_clifford = (
+        n_total_transpiled_physical_gates / total_cliffords if total_cliffords else 0.0
+    )
 
     summary = {
         "depth": depth,
         "num_circuits": len(circuits),
         "total_cliffords": total_cliffords,
-        "total_transpiled_gates": total_transpiled_gates,
+        "n_total_transpiled_gates": n_total_transpiled_gates,
+        "n_total_transpiled_physical_gates": n_total_transpiled_physical_gates,
         "total_1q_gates": total_1q_gates,
         "total_cz_gates": total_cz_gates,
-        "avg_gates_per_clifford": avg_gates_per_clifford,
+        "avg_transpiled_gates_per_clifford": avg_transpiled_gates_per_clifford,
+        "avg_physical_gates_per_clifford": avg_physical_gates_per_clifford,
         "avg_1q_per_clifford": avg_1q_per_clifford,
         "avg_cz_per_clifford": avg_cz_per_clifford,
     }

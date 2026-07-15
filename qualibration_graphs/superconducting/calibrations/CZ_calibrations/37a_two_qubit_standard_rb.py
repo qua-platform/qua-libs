@@ -149,7 +149,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         total_cliffords = sum(s["total_cliffords"] for s in depth_summaries)
         node.namespace["average_gates_per_clifford"] = (
-            sum(s["total_transpiled_gates"] for s in depth_summaries) / total_cliffords if total_cliffords else 0.0
+            sum(s["n_total_transpiled_physical_gates"] for s in depth_summaries) / total_cliffords
+            if total_cliffords
+            else 0.0
         )
         node.namespace["avg_1q_per_clifford"] = (
             sum(s["total_1q_gates"] for s in depth_summaries) / total_cliffords if total_cliffords else 0.0
