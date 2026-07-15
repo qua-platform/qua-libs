@@ -34,6 +34,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
     QubitPairExperimentNodeParameters,
 ):
     """Parameter set for 18a_swap_oscillations."""

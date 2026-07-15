@@ -32,6 +32,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
     QubitPairExperimentNodeParameters,
     ParityDiffAnalysisParameters,
 ):

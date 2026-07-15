@@ -12,7 +12,7 @@ from qualibrate.core import QualibrationNode
 from qualibrate.core.models.outcome import Outcome
 
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import progress_counter_with_log, enable_dual_drive_mw_pairs
+from calibration_utils.common_utils.experiment import progress_counter_with_log
 from calibration_utils.common_utils.annotation import annotate_node_figures
 from qualibration_libs.runtime import simulate_and_plot
 
@@ -149,8 +149,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw_pairs(node)
-
         n = declare(int)
         n_st = declare_output_stream()
         detuning = declare(fixed)

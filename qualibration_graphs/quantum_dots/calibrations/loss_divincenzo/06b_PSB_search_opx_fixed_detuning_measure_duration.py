@@ -175,7 +175,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for qubit_pair in qubit_pairs:
                 dot_pair = qubit_pair.quantum_dot_pair
                 readout_pulse_name = "readout" + f"_{dot_pair.name}"
-                dot_pair.macros[node.parameters.initialization_macro].apply(max_loops = 2)
+                dot_pair.macros[node.parameters.initialization_macro].apply()
 
                 dot_pair.ramp_to_point(
                     "measure",

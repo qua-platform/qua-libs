@@ -10,7 +10,7 @@ from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import get_qubit_pairs, enable_dual_drive_mw_pairs
+from calibration_utils.common_utils.experiment import get_qubit_pairs
 from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.parity_streams import (
     process_parity_streams,
@@ -72,7 +72,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.qubit_pairs = ["q1_q2"]
     node.parameters.num_shots = 2
-    # node.parameters.simulate = True
+    node.parameters.simulate = True
     pass
 
 
@@ -102,7 +102,7 @@ def _build_duration_array(qubit_pair, amplitude_array: np.ndarray) -> np.ndarray
             "Run 18a_swap_oscillations first."
         )
     t_2pi = np.polyval(model["coeffs"], amplitude_array)
-    t_cz = t_2pi / 2.0
+    t_cz = t_2pi 
     duration_array = (np.round(t_cz / 4) * 4).astype(int)
     duration_array = np.clip(duration_array, 16, None)
     return duration_array
@@ -163,8 +163,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw_pairs(node)
-
         n = declare(int)
         n_st = declare_output_stream()
 
@@ -213,8 +211,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qubit_pair.qubit_target.xy.name,
                             )
 
-                            qubit_pair.initialize()
+                            qubit_pair.initialize(
+                                target_state=node.parameters.target_state,
+                                max_loops=node.parameters.max_loops,
+                                conditional_drive=True,
+                            )
 
+                            align()
+                            qubit_pair.qubit_target.x180()
                             align()
 
                             if control_state_val == 0:
@@ -239,15 +243,19 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qubit_pair.cz(
                                     point={barrier_gate_id: amplitude},
                                     wait_duration=duration,
-                                    phase_shift_target=phase,
+                                    phase_shift_target = phase,
                                 )
                             else:
                                 qubit_pair.cz(
                                     point={barrier_gate_id: amplitude},
-                                    phase_shift_target=phase,
+                                    phase_shift_target = phase,
                                 )
 
                             align()
+
+                            # Analysis π/2 with swept phase:
+                            # rotate frame by θ, apply X90, rotate back.
+                            #frame_rotation_2pi(phase, qubit_pair.qubit_target.xy.name)
 
                             if control_state_val == 0:
                                 qubit_pair.qubit_target.x90()

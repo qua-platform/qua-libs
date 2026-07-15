@@ -12,20 +12,20 @@ from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from calibration_utils.common_utils.experiment import (
+    plot_heralded_n_loops,
     progress_counter_with_log,
 )
 from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import QubitQuam as Quam
-from calibration_utils.common_utils.experiment import get_qubits, enable_dual_drive_mw
+from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.common_utils.parity_streams import (
     declare_parity_streams,
     save_parity_measurement,
     buffer_parity_streams,
     process_parity_streams,
 )
-from qualibration_libs.core import tracked_updates
 from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.qubit_spectroscopy_parity_diff import (
     Parameters,
@@ -66,8 +66,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1"]
-    # node.parameters.num_shots = 1
+    # node.parameters.qubits = ["Q1", "Q2", "Q3", "Q4"]
     # node.parameters.simulate = True
     pass
 
@@ -104,22 +103,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span // 2, +span // 2, step)
 
-    pulse_scale = node.parameters.rotation_scale
-    node.namespace["tracked_qubits"] = []
-    for qubit in qubits:
-        with tracked_updates(qubit.xy, auto_revert=False, dont_assign_to_none=True) as q_xy:
-            pulse_name = f"{node.machine.pulse_family}_x180"
-            operations_dict = q_xy.operations
-            try:
-                pulse_obj = operations_dict[pulse_name]
-            except KeyError:
-                pulse_obj = None
-
-            if pulse_obj is not None:
-                pulse_obj.amplitude = pulse_scale * pulse_obj.amplitude
-
-            node.namespace["tracked_qubits"].append(q_xy)
-
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
@@ -129,8 +112,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw(node)
-
         df = declare(int)
         n = declare(int)
 
@@ -139,15 +120,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         i_st = {qubit.name: declare_output_stream() for qubit in qubits}
         q_st = {qubit.name: declare_output_stream() for qubit in qubits}
 
-        heralded_and_return_n_loops = getattr(node.parameters, "return_n_loops", False)
-        if heralded_and_return_n_loops:
+        if node.parameters.return_n_loops: 
             n_loops_st = {qubit.name: declare_output_stream() for qubit in qubits}
 
         n_st = declare_output_stream()
 
         for qubit in qubits:
             intermediate_frequency = qubit.xy.intermediate_frequency
-
+            qd_pair = node.machine.quantum_dot_pairs[node.machine.find_quantum_dot_pair(qubit.quantum_dot.name, qubit.preferred_readout_quantum_dot)]
+            qubit_pair = [qp for qp_name, qp in node.machine.qubit_pairs.items() if qp.quantum_dot_pair == qd_pair][0]
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(df, dfs)):
@@ -159,10 +140,25 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.empty()
                         a1 = qubit.measure()
                     
-                    n_init = qubit.initialize()
+                    n_init = qubit.initialize(
+                        return_n_loops=node.parameters.return_n_loops,
+                        target_state=node.parameters.target_state,
+                        max_loops=node.parameters.max_loops,
+                        conditional_drive=True,
+                    )
 
                     align()
                     qubit.xy.update_frequency(intermediate_frequency + df)
+                    # qubit.empty(
+                    #     measure_and_conditional_drive=True,
+                    #     state="less_than_one",
+                    #     drive_at_readout_point=True,
+                    #     amplitude_scale=1,
+                    #     ramp_duration=4000,
+                    #     buffer_duration=16,
+                    #     hold_duration=1000000,
+                    #     # drive_point={qd_pair.name: -0.36},
+                    # )
 
                     align()
                     qubit.x180()
@@ -182,7 +178,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     save_parity_measurement(node, qubit.name, p1, p2, parity_streams)
                     save(i, i_st[qubit.name])
                     save(q, q_st[qubit.name])
-                    if heralded_and_return_n_loops:
+                    if node.parameters.return_n_loops: 
                         save(n_init, n_loops_st[qubit.name])
 
             qubit.xy.update_frequency(intermediate_frequency)
@@ -194,7 +190,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 buffer_parity_streams(node, qubit.name, parity_streams, n_dfs)
                 i_st[qubit.name].buffer(n_dfs).average().save(f"I_{qubit.name}")
                 q_st[qubit.name].buffer(n_dfs).average().save(f"Q_{qubit.name}")
-                if heralded_and_return_n_loops:
+                if node.parameters.return_n_loops: 
                     n_loops_st[qubit.name].buffer(n_dfs).average().save(f"n_loops_{qubit.name}")
 
 # %% {Simulate}
@@ -325,10 +321,23 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     fig_iq.suptitle("Raw IQ signal")
     fig_iq.tight_layout()
 
+    fig_n_loops = None
+    if node.parameters.return_n_loops:
+        fig_n_loops = plot_heralded_n_loops(
+            ds_raw,
+            qubit_names,
+            item_dim="qubit",
+            sweep_key="detuning",
+            sweep_scale=1e6,
+            sweep_xlabel="Detuning [MHz]",
+        )
+
     node.results["figures"] = {
         "qubit_spectroscopy": fig_raw_fit,
         "iq_scatter": fig_iq,
     }
+    if fig_n_loops is not None:
+        node.results["figures"]["n_loops"] = fig_n_loops
     annotate_node_figures(node)
 
 
@@ -340,8 +349,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     When two peaks are found, the closest to centre updates the qubit under
     study and the second peak updates the preferred-readout qubit.
     """
-    for tracked_qubit in node.namespace.get("tracked_qubits", []):
-        tracked_qubit.revert_changes()
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":

@@ -226,10 +226,7 @@ def create_qua_program(node: QualibrationNode[PairRBParameters, Quam]):
                         align()
 
                         # --- Initialize ---
-                        qubit.initialize(
-                            qubit_name=qubit.name,
-                            conditional_drive=True,
-                        )
+                        qubit.initialize(qubit_name=qubit.name)
                         align()
 
                         # --- Gate sequence: d-1 random Cliffords ---

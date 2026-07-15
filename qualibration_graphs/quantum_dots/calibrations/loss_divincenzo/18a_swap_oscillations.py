@@ -6,14 +6,15 @@ from qm.qua import *
 
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import get_qubit_pairs, enable_dual_drive_mw_pairs, suppress_fetcher_axis_log_spam
+from calibration_utils.common_utils.experiment import get_qubit_pairs
 from calibration_utils.common_utils.annotation import annotate_node_figures
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
+from calibration_utils.common_utils.experiment import progress_counter_with_log, suppress_fetcher_axis_log_spam
+
 from calibration_utils.swap_oscillations import (
     Parameters,
     analyse_swap_oscillations,
@@ -108,8 +109,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw_pairs(node)
-
         n = declare(int)
         n_st = declare_output_stream()
 
@@ -133,7 +132,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qubit_pair.qubit_control.xy.name,
                         )
 
-                        qubit_pair.initialize()
+                        qubit_pair.initialize(
+                            target_state=node.parameters.target_state,
+                            max_loops=node.parameters.max_loops,
+                            conditional_drive=True,
+                        )
+                        align()
+
+                        qubit_pair.qubit_target.x180()
                         align()
 
                         qubit_pair.cz(
@@ -166,9 +172,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qubit_pair.qubit_control.xy.name,
                         )
 
-                        qubit_pair.initialize()
+                        qubit_pair.initialize(
+                            target_state=node.parameters.target_state,
+                            max_loops=node.parameters.max_loops,
+                            conditional_drive=True,
+                        )
                         align()
 
+                        qubit_pair.qubit_target.x180()
+                        align()
+
+                        
                         qubit_pair.cz(
                             point={
                                 qubit_pair.quantum_dot_pair.barrier_gate.id: amplitude
@@ -251,10 +265,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # dataset = xr.Dataset()
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter(
+            progress_counter_with_log(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
+                node=node
             )
         for qp in qubit_pairs:
             for role in ["control", "target"]:

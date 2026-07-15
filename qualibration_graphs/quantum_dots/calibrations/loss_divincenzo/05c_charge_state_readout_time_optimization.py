@@ -182,12 +182,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for dp in quantum_dot_pairs
         }
         n_st = declare_stream()
-        heralded_and_return_n_loops = getattr(node.parameters, "return_n_loops", False)
-        n_loops_st = (
-            {dp.name: declare_stream() for dp in quantum_dot_pairs}
-            if heralded_and_return_n_loops
-            else {}
-        )
 
         for dot_pair in quantum_dot_pairs:
             readout_pulse_name = "readout" + f"_{dot_pair.name}"
@@ -208,9 +202,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # ---------------------------------------------------------
                 # Step 2: Initialize - load electron into dots (fixed duration)
                 # ---------------------------------------------------------
-                n_init = dot_pair.initialize()
-                if heralded_and_return_n_loops:
-                    save(n_init, n_loops_st[dot_pair.name])
+                dot_pair.initialize(
+                    target_state=node.parameters.target_state,
+                    max_loops=node.parameters.max_loops,
+                    conditional_drive=True,
+                )
                 # Requires the dot pair object to have the initialize macro, in addition to the qubits
 
                 align()
@@ -283,10 +279,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         Q_st_02[dp.name][s.name].buffer(array_size).buffer(n_reps).save(
                             f"Q_02_{dp.name}_{s.name}"
                         )
-                if heralded_and_return_n_loops:
-                    n_loops_st[dp.name].buffer(n_reps).average().save(
-                        f"n_loops_{dp.name}"
-                    )
 
 
 # %% {Simulate}

@@ -17,7 +17,6 @@ from calibration_utils.xy8_parity_diff import (
 )
 from calibration_utils.common_utils.experiment import (
     get_qubits,
-    enable_dual_drive_mw,
     progress_counter_with_log,
 )
 from calibration_utils.common_utils.annotation import annotate_node_figures
@@ -110,20 +109,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw(node)
-
         t = declare(int)
         n = declare(int)
 
         p2, p1, parity_streams = declare_parity_streams(node, qubits)
 
         n_st = declare_output_stream()
-        heralded_and_return_n_loops = getattr(node.parameters, "return_n_loops", False)
-        n_loops_st = (
-            {qubit.name: declare_output_stream() for qubit in qubits}
-            if heralded_and_return_n_loops
-            else {}
-        )
 
         for qubit in qubits:
             with for_(n, 0, n < n_avg, n + 1):
@@ -136,9 +127,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.empty()
                         a1 = qubit.measure()
 
-                    n_init = qubit.initialize()
-                    if heralded_and_return_n_loops:
-                        save(n_init, n_loops_st[qubit.name])
+                    qubit.initialize(
+                        target_state=node.parameters.target_state,
+                        max_loops=node.parameters.max_loops,
+                        conditional_drive=True,
+                    )
 
                     align()
 
@@ -214,10 +207,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_tau = len(tau_values)
             for qubit in qubits:
                 buffer_parity_streams(node, qubit.name, parity_streams, n_tau)
-                if heralded_and_return_n_loops:
-                    n_loops_st[qubit.name].buffer(n_tau).average().save(
-                        f"n_loops_{qubit.name}"
-                    )
 
 
 # %% {Simulate}

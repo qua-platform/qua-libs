@@ -1,101 +1,52 @@
-[tool.poetry]
-name = "qua-libs"
-version = "0.0.0"
-description = "A collection of examples to be used with QUA language"
-authors = ["Quantum Machines <info@quantum-machines.co>"]
-license = "BSD-3-Clause"
-package-mode = false
-
-[tool.poetry.dependencies]
-python = ">=3.8,<3.12"
-qm-qua = {version = ">=1.2.0", allow-prereleases = true}
-
-[tool.poetry.dev-dependencies]
-black = "^24.3.0"
-poethepoet = "^0.10.0"
-flake8 = "^3.9.1"
-
-[tool.poetry.group.dev.dependencies]
-dynamiqs = {version = "^0.3.3", python = ">=3.10,<3.12"}
-
-[tool.black]
-line-length = 120
-#force-exclude = '''Two-Flux-Tunable-Transmons/Use Case 4 - Single- and Two-Qubit State and Process Tomography/helper_functions.py'''
-#include = '(examples)/.+\.pyi?$'
-#include = '(Quantum Control Applications)/.+\.pyi?$'
-#include = '(Tutorials)/.+\.pyi?$'
-
-[tool.poe.tasks]
-format="black examples"
-check_format="black --check ."
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
-
-# UV dependency management (new)
-[dependency-groups]
-dev = [
-    "black>=24.3.0",
-    "commitizen",
-    "pylint>=3.3.2",
-    "pytest>=8.3.5",
-    "pytest-cov>=4.1.0",
-    "pre-commit>=3.6.0",
-    "qm-qua>=1.2.5",
-    "qm-saas>=1.1.7",
-    "matplotlib>=3.10.8",
+[project]
+name = "qm-eval"
+version = "0.1.0"
+description = "Combined development environment for quam-builder and qua-libs calibration graphs"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "cma>=4.4.4",
+    "qualibrate==1.2.1",
+    "quam-builder",
+    "quantum-dots-calibrations",
+    "virtual-qpu @ git+https://github.com/qua-platform/virtual_qpu.git; python_version >= '3.11'",
 ]
 
 [tool.uv]
 prerelease = "allow"
+override-dependencies = ["numpy>=2.0.0", "jax<0.10"]
 
-[tool.uv.pip]
-prerelease = "allow"
+[tool.uv.workspace]
+members = ["quam-builder", "qualibration_graphs/quantum_dots"]
 
-# Commitizen configuration
-[tool.commitizen]
-name = "cz_conventional_commits"
-version = "0.0.0"
-tag_format = "v$version"
+[tool.uv.sources]
+quam-builder = { workspace = true }
+quantum-dots-calibrations = { workspace = true }
 
-# Pytest configuration
-[tool.pytest.ini_options]
-testpaths = ["tests", "Quantum-Control-Applications", "Tutorials"]
-python_files = "test_*.py"
-python_classes = "Test*"
-python_functions = "test_*"
-addopts = "-v --tb=short"
-filterwarnings = []
-markers = [
-    "unit: fast pure-Python unit tests",
-    "analysis: analysis/fit/graph tests over data",
-    "interop: controller API contract tests (mocked or dry-run)",
-    "simulation: cloud simulator tests (opt-in; not run in CI)",
-    "execute: full hardware execution tests (opt-in; requires QM host)",
-    "hw: hardware sanity checks (manual/nightly)",
-    "perf: performance and scaling benchmarks",
+[dependency-groups]
+dev = [
+    "ipykernel>=7.0.0a1",
+    "nbconvert",
+    "pre-commit",
+    "pylint>=3.0",
+    "astroid>=3.0",
+    "pytest>=8.3.5",
+    "pytest-cov",
+    "pytest-mock>=3.14.0",
+    "pyserial>=3.5",
+    "numpyro>=0.15.0",
+    "qarray>=1.6.0",
+    "ruff",
+    "mypy",
+    "black",
+]
+ast = [
+    "qua-qsim@git+https://github.com/qua-platform/qua-qsim.git@bare-ast-visitor",
 ]
 
-# Coverage configuration
-[tool.coverage.run]
-source = ["."]
-omit = [
-    "*/tests/*",
-    "*/test_*",
-    "*/__pycache__/*",
-    "*/conftest.py",
-    "*/.venv/*",
+[project.optional-dependencies]
+bayesian = [
+    "numpyro>=0.15.0",
 ]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
+visa = [
+    "pyvisa-py>=0.7.0",
 ]
-precision = 2
-show_missing = true

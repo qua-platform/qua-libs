@@ -8,15 +8,13 @@ from qm.qua import *
 
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import (
-    progress_counter_with_log,
-)
+from calibration_utils.common_utils.experiment import progress_counter_with_log
 from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
 
-from calibration_utils.common_utils.experiment import get_qubits, enable_dual_drive_mw
+from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.common_utils.parity_streams import (
     declare_parity_streams,
     save_parity_measurement,
@@ -95,17 +93,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw(node)
-
         # Declare QUA variables
         a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
         n = declare(int)
 
         p2, p1, parity_streams = declare_parity_streams(node, qubits, stream_fn=declare_output_stream)
-
-        heralded_and_return_n_loops = getattr(node.parameters, "return_n_loops", False)
-        if heralded_and_return_n_loops:
-            n_loops_st = {qubit.name: declare_output_stream() for qubit in qubits}
 
         n_st = declare_output_stream()
 
@@ -121,7 +113,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.empty()
                         a1 = qubit.measure()
 
-                    n_init = qubit.initialize()
+                    qubit.initialize(
+                        target_state=node.parameters.target_state,
+                        max_loops=node.parameters.max_loops,
+                        conditional_drive=True,
+                    )
 
                     align()
                     qubit.apply(operation, amplitude_scale = a)
@@ -141,8 +137,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         assign(p1, Cast.to_int(a1))
 
                     save_parity_measurement(node, qubit.name, p1, p2, parity_streams)
-                    if heralded_and_return_n_loops:
-                        save(n_init, n_loops_st[qubit.name])
             # qubit.x180.update(pi_amplitude = amplitude_set)
         # Stream processing
         with stream_processing():
@@ -152,10 +146,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             for qubit in qubits:
                 buffer_parity_streams(node, qubit.name, parity_streams, n_amps)
-                if heralded_and_return_n_loops:
-                    n_loops_st[qubit.name].buffer(n_amps).average().save(
-                        f"n_loops_{qubit.name}"
-                    )
 
 
 # %% {Simulate}
@@ -258,9 +248,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         analysis_signal=node.parameters.analysis_signal,
     )
     node.results["figure"] = fig
-    node.results["figures"] = {
-        "power_rabi": fig,
-    }
     annotate_node_figures(node)
     plt.show()
 

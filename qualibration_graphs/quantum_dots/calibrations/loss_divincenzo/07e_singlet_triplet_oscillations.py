@@ -101,8 +101,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     with program() as node.namespace["qua_program"]:
         n = declare(int)
         n_st = declare_output_stream()
-        heralded_and_return_n_loops = getattr(node.parameters, "return_n_loops", False)
-        n_loops_st = declare_output_stream() if heralded_and_return_n_loops else None
         wait_cc = declare(int)
 
         state_int = declare(int)
@@ -114,11 +112,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             save(n, n_st)
 
             with for_(*from_array(wait_cc, wait_cc_array)):
-                n_init = dot_pair.initialize(
+                dot_pair.initialize(
                     qubit_role="control",
+                    target_state=node.parameters.target_state,
+                    max_loops=node.parameters.max_loops,
+                    conditional_drive=True,
                 )
-                if heralded_and_return_n_loops:
-                    save(n_init, n_loops_st)
                 wait(wait_cc)
                 (i, q, state) = dot_pair.measure(return_iq=True)
 
@@ -135,10 +134,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state_st.buffer(len(wait_cc_array)).average().save(f"state_{qubit_pair.name}")
             i_st.buffer(len(wait_cc_array)).average().save(f"I_{qubit_pair.name}")
             q_st.buffer(len(wait_cc_array)).average().save(f"Q_{qubit_pair.name}")
-            if heralded_and_return_n_loops:
-                n_loops_st.buffer(len(wait_cc_array)).average().save(
-                    f"n_loops_{qubit_pair.name}"
-                )
 
 
 # %% {Simulate}

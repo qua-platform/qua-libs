@@ -112,12 +112,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         p1_st = {pair.name: declare_stream() for pair in dot_pair_objects}
         p2_st = {pair.name: declare_stream() for pair in dot_pair_objects}
         pdiff_st = {pair.name: declare_stream() for pair in dot_pair_objects}
-        heralded_and_return_n_loops = getattr(node.parameters, "return_n_loops", False)
-        n_loops_st = (
-            {pair.name: declare_stream() for pair in dot_pair_objects}
-            if heralded_and_return_n_loops
-            else {}
-        )
 
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
             save(n, n_st)
@@ -154,9 +148,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ---------------------------------------------------------
                     # Step 3: Initialize - load electron into dots
                     # ---------------------------------------------------------
-                    n_init = dot_pair.initialize()
-                    if heralded_and_return_n_loops:
-                        save(n_init, n_loops_st[dot_pair.name])
+                    dot_pair.initialize(
+                        target_state=node.parameters.target_state,
+                        max_loops=node.parameters.max_loops,
+                        conditional_drive=True,
+                    )
 
                     # align()
 
@@ -196,10 +192,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 p1_st[pair.name].buffer(len(detuning_array)).average().save(f"p1_{pair.name}")
                 p2_st[pair.name].buffer(len(detuning_array)).average().save(f"p2_{pair.name}")
                 pdiff_st[pair.name].buffer(len(detuning_array)).average().save(f"pdiff_{pair.name}")
-                if heralded_and_return_n_loops:
-                    n_loops_st[pair.name].buffer(len(detuning_array)).average().save(
-                        f"n_loops_{pair.name}"
-                    )
 
 
 # %% {Simulate}

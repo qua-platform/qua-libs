@@ -143,7 +143,7 @@ class QMCPhaseEnv(gym.Env):
         P_x_1 = results["circuit_2"][0]
         cz = results["circuit_3"][0]
 
-        R_swap = cz
+        R_swap = 1 - cz
 
         if self.include_quadrature:
             P_y_0 = results["circuit_4"][0]

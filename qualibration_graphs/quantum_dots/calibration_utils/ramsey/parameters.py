@@ -24,6 +24,7 @@ class RamseyParameters(
     CommonNodeParameters,
     IdleTimeNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
     ParityDiffAnalysisParameters,
 ):
@@ -37,6 +38,7 @@ class RamseyDetuningParameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
     ParityDiffAnalysisParameters,
 ):
@@ -57,6 +59,7 @@ class RamseyChevronParameters(
     CommonNodeParameters,
     IdleTimeNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
     ParityDiffAnalysisParameters,
 ):

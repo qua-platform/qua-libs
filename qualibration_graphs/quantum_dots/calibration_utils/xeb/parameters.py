@@ -55,6 +55,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
 ):
     """Unified parameters for XEB experiments (1Q and 2Q modes).

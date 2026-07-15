@@ -8,7 +8,7 @@ import xarray as xr
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log, enable_dual_drive_mw
+from calibration_utils.common_utils.experiment import progress_counter_with_log
 
 from qualibrate.core import QualibrationNode
 from qualibrate.core.models.outcome import Outcome
@@ -113,8 +113,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw(node)
-
         n = declare(int)
         n_st = declare_output_stream()
 
@@ -122,24 +120,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         Q_no_pi_st = {q.name: declare_output_stream() for q in qubits}
         I_pi_st    = {q.name: declare_output_stream() for q in qubits}
         Q_pi_st    = {q.name: declare_output_stream() for q in qubits}
-        heralded_and_return_n_loops = getattr(node.parameters, "return_n_loops", False)
-        n_loops_st = (
-            {q.name: declare_output_stream() for q in qubits}
-            if heralded_and_return_n_loops
-            else {}
-        )
 
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
             save(n, n_st)
 
             for qubit, dot_pair in qubit_dot_pairs:
                 # --- Arm 1: no pi pulse ---
-                n_init = dot_pair.initialize(
+                dot_pair.initialize(
                     qubit_name=qubit.name,
+                    target_state=node.parameters.target_state,
+                    max_loops=node.parameters.max_loops,
                     conditional_drive=True,
                 )
-                if heralded_and_return_n_loops:
-                    save(n_init, n_loops_st[qubit.name])
                 align()
                 (i_no_pi, q_no_pi, _) = dot_pair.measure(return_iq=True)
                 save(i_no_pi, I_no_pi_st[qubit.name])
@@ -150,6 +142,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # --- Arm 2: pi pulse ---
                 dot_pair.initialize(
                     qubit_name=qubit.name,
+                    target_state=node.parameters.target_state,
+                    max_loops=node.parameters.max_loops,
                     conditional_drive=True,
                 )
                 align()
@@ -168,10 +162,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 Q_no_pi_st[q.name].buffer(node.parameters.num_shots).save(f"Q_no_pi_{q.name}")
                 I_pi_st[q.name].buffer(node.parameters.num_shots).save(f"I_pi_{q.name}")
                 Q_pi_st[q.name].buffer(node.parameters.num_shots).save(f"Q_pi_{q.name}")
-                if heralded_and_return_n_loops:
-                    n_loops_st[q.name].buffer(node.parameters.num_shots).average().save(
-                        f"n_loops_{q.name}"
-                    )
 
 
 # %% {Simulate}

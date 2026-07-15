@@ -1,0 +1,1253 @@
+{
+    "metadata": {
+        "project_name": "2213-mountaingem",
+        "chip_id": "mountaingem",
+        "fridge_bay": "cloverleaf_bayB",
+        "set_temperature": "base_mK",
+        "die_id": "D19",
+        "pcb_id": "mtngem_mag_rev1",
+        "presets": {}
+    },
+    "hw_map": {
+        "P_x_2": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 24
+        },
+        "B_x_12": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 8
+        },
+        "P_x_1": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 13
+        },
+        "B_x_s1": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 23
+        },
+        "O_x_s": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 7
+        },
+        "B_x_23": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 16
+        },
+        "A_x_s": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 15
+        },
+        "C_i_sd": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 22
+        },
+        "O_y_s": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 6
+        },
+        "A_y_s": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 14
+        },
+        "B_y_s1": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 21
+        },
+        "P_y_1": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 5
+        },
+        "B_y_12": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 13
+        },
+        "C_y_s2": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 20
+        },
+        "C_y_3d": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 4
+        },
+        "MA_y_23": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 12
+        },
+        "MO_y_23": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 21
+        },
+        "B_y_34": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 5
+        },
+        "P_y_4": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 12
+        },
+        "B_y_4d": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 20
+        },
+        "A_y_d": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 4
+        },
+        "O_y_d": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 11
+        },
+        "A_x_d": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 19
+        },
+        "C_x_sd": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 3
+        },
+        "O_x_d": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 10
+        },
+        "B_x_4d": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 2
+        },
+        "P_x_4": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 9
+        },
+        "B_x_34": {
+            "instrument_name": "KDAC",
+            "address": "COM3",
+            "channel": 17
+        },
+        "P_x_3": {
+            "instrument_name": "KDAC",
+            "address": "COM4",
+            "channel": 1
+        },
+        "QRM_O1": {
+            "instrument_name": "Qblox-QRM",
+            "address": "NA",
+            "channel": "O1"
+        },
+        "QRM_O2": {
+            "instrument_name": "Qblox-QRM",
+            "address": "NA",
+            "channel": "O2"
+        },
+        "QRM_I1": {
+            "instrument_name": "Qblox-QRM",
+            "address": "NA",
+            "channel": "I1"
+        },
+        "QRM_I2": {
+            "instrument_name": "Qblox-QRM",
+            "address": "NA",
+            "channel": "I2"
+        }
+    },
+    "device_ids": [
+        "14"
+    ],
+    "parameters_of_interest": [
+        {
+            "param_name": "v_P_x_2",
+            "hw_map": "P_x_2",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "P_x_2",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_P_x_2",
+            "hw_map": "P_x_2",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "P_x_2",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_B_x_12",
+            "hw_map": "B_x_12",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_x_12",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_B_x_12",
+            "hw_map": "B_x_12",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_x_12",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_P_x_1",
+            "hw_map": "P_x_1",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "P_x_1",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_P_x_1",
+            "hw_map": "P_x_1",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "P_x_1",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_B_x_s1",
+            "hw_map": "B_x_s1",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_x_s1",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_B_x_s1",
+            "hw_map": "B_x_s1",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_x_s1",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_O_x_s",
+            "hw_map": "O_x_s",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "O_x_s",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_O_x_s",
+            "hw_map": "O_x_s",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "O_x_s",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_B_x_23",
+            "hw_map": "B_x_23",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_x_23",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_B_x_23",
+            "hw_map": "B_x_23",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_x_23",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_A_x_s",
+            "hw_map": "A_x_s",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "A_x_s",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_A_x_s",
+            "hw_map": "A_x_s",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "A_x_s",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_C_i_sd",
+            "hw_map": "C_i_sd",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "C_i_sd",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_C_i_sd",
+            "hw_map": "C_i_sd",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "C_i_sd",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_O_y_s",
+            "hw_map": "O_y_s",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "O_y_s",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_O_y_s",
+            "hw_map": "O_y_s",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "O_y_s",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_A_y_s",
+            "hw_map": "A_y_s",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "A_y_s",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_A_y_s",
+            "hw_map": "A_y_s",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "A_y_s",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_B_y_s1",
+            "hw_map": "B_y_s1",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_y_s1",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_B_y_s1",
+            "hw_map": "B_y_s1",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_y_s1",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_P_y_1",
+            "hw_map": "P_y_1",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "P_y_1",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_P_y_1",
+            "hw_map": "P_y_1",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "P_y_1",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_B_y_12",
+            "hw_map": "B_y_12",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_y_12",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_B_y_12",
+            "hw_map": "B_y_12",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_y_12",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_C_y_s2",
+            "hw_map": "C_y_s2",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "C_y_s2",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_C_y_s2",
+            "hw_map": "C_y_s2",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "C_y_s2",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_C_y_3d",
+            "hw_map": "C_y_3d",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "C_y_3d",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_C_y_3d",
+            "hw_map": "C_y_3d",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "C_y_3d",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_MA_y_23",
+            "hw_map": "MA_y_23",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "MA_y_23",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_MA_y_23",
+            "hw_map": "MA_y_23",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "MA_y_23",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_MO_y_23",
+            "hw_map": "MO_y_23",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "MO_y_23",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_MO_y_23",
+            "hw_map": "MO_y_23",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "MO_y_23",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_B_y_34",
+            "hw_map": "B_y_34",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_y_34",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_B_y_34",
+            "hw_map": "B_y_34",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_y_34",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_P_y_4",
+            "hw_map": "P_y_4",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "P_y_4",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_P_y_4",
+            "hw_map": "P_y_4",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "P_y_4",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_B_y_4d",
+            "hw_map": "B_y_4d",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_y_4d",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_B_y_4d",
+            "hw_map": "B_y_4d",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_y_4d",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_A_y_d",
+            "hw_map": "A_y_d",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "A_y_d",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_A_y_d",
+            "hw_map": "A_y_d",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "A_y_d",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_O_y_d",
+            "hw_map": "O_y_d",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "O_y_d",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_O_y_d",
+            "hw_map": "O_y_d",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "O_y_d",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_A_x_d",
+            "hw_map": "A_x_d",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "A_x_d",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_A_x_d",
+            "hw_map": "A_x_d",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "A_x_d",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_C_x_sd",
+            "hw_map": "C_x_sd",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "C_x_sd",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_C_x_sd",
+            "hw_map": "C_x_sd",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "C_x_sd",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_O_x_d",
+            "hw_map": "O_x_d",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "O_x_d",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_O_x_d",
+            "hw_map": "O_x_d",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "O_x_d",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_B_x_4d",
+            "hw_map": "B_x_4d",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_x_4d",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_B_x_4d",
+            "hw_map": "B_x_4d",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_x_4d",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_P_x_4",
+            "hw_map": "P_x_4",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "P_x_4",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_P_x_4",
+            "hw_map": "P_x_4",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "P_x_4",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_B_x_34",
+            "hw_map": "B_x_34",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_x_34",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_B_x_34",
+            "hw_map": "B_x_34",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "B_x_34",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "v_P_x_3",
+            "hw_map": "P_x_3",
+            "get_cmd": "get_voltage",
+            "set_cmd": "set_voltage",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "P_x_3",
+                "pin_low": "GND",
+                "range": "6.92",
+                "unit": "V",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "i_P_x_3",
+            "hw_map": "P_x_3",
+            "get_cmd": "get_current",
+            "metadata": {
+                "param_type": "dc_voltage",
+                "pin_high": "P_x_3",
+                "pin_low": "GND",
+                "range": "0.00000661",
+                "unit": "A",
+                "int_time_s": "variable",
+                "i_limit": "NA",
+                "i_unit": "NA",
+                "4_wire": false
+            }
+        },
+        {
+            "param_name": "read1",
+            "hw_map": "QRM_I1",
+            "metadata": {},
+            "subparameters": [
+                {
+                    "param_name": "I1",
+                    "hw_map": "QRM_I1",
+                    "metadata": {
+                        "param_type": "dc_voltage",
+                        "pin_high": "NA",
+                        "pin_low": "NA",
+                        "range": "2",
+                        "unit": "V",
+                        "int_time_s": "variable",
+                        "4_wire": false
+                    }
+                },
+                {
+                    "param_name": "Q1",
+                    "hw_map": "QRM_I1",
+                    "metadata": {
+                        "param_type": "dc_voltage",
+                        "pin_high": "NA",
+                        "pin_low": "NA",
+                        "range": "2",
+                        "unit": "V",
+                        "int_time_s": "variable",
+                        "4_wire": false
+                    }
+                }
+            ]
+        },
+        {
+            "param_name": "read2",
+            "hw_map": "QRM_I2",
+            "metadata": {},
+            "subparameters": [
+                {
+                    "param_name": "I2",
+                    "hw_map": "QRM_I2",
+                    "metadata": {
+                        "param_type": "dc_voltage",
+                        "pin_high": "NA",
+                        "pin_low": "NA",
+                        "range": "2",
+                        "unit": "V",
+                        "int_time_s": "variable",
+                        "4_wire": false
+                    }
+                },
+                {
+                    "param_name": "Q2",
+                    "hw_map": "QRM_I2",
+                    "metadata": {
+                        "param_type": "dc_voltage",
+                        "pin_high": "NA",
+                        "pin_low": "NA",
+                        "range": "2",
+                        "unit": "V",
+                        "int_time_s": "variable",
+                        "4_wire": false
+                    }
+                }
+            ]
+        },
+        {
+            "param_name": "read_all",
+            "hw_map": "QRM_I1",
+            "metadata": {},
+            "subparameters": [
+                {
+                    "param_name": "I1",
+                    "hw_map": "QRM_I1",
+                    "metadata": {
+                        "param_type": "dc_voltage",
+                        "pin_high": "NA",
+                        "pin_low": "NA",
+                        "range": "2",
+                        "unit": "V",
+                        "int_time_s": "variable",
+                        "4_wire": false
+                    }
+                },
+                {
+                    "param_name": "Q1",
+                    "hw_map": "QRM_I1",
+                    "metadata": {
+                        "param_type": "dc_voltage",
+                        "pin_high": "NA",
+                        "pin_low": "NA",
+                        "range": "2",
+                        "unit": "V",
+                        "int_time_s": "variable",
+                        "4_wire": false
+                    }
+                },
+                {
+                    "param_name": "I2",
+                    "hw_map": "QRM_I2",
+                    "metadata": {
+                        "param_type": "dc_voltage",
+                        "pin_high": "NA",
+                        "pin_low": "NA",
+                        "range": "2",
+                        "unit": "V",
+                        "int_time_s": "variable",
+                        "4_wire": false
+                    }
+                },
+                {
+                    "param_name": "Q2",
+                    "hw_map": "QRM_I2",
+                    "metadata": {
+                        "param_type": "dc_voltage",
+                        "pin_high": "NA",
+                        "pin_low": "NA",
+                        "range": "2",
+                        "unit": "V",
+                        "int_time_s": "variable",
+                        "4_wire": false
+                    }
+                }
+            ]
+        },
+        {
+            "param_name": "read1_power",
+            "hw_map": "QRM_O1",
+            "metadata": {
+                "param_type": "power",
+                "unit": "dBm"
+            }
+        },
+        {
+            "param_name": "read1_freq",
+            "hw_map": "QRM_O1",
+            "metadata": {
+                "param_type": "frequency",
+                "unit": "Hz"
+            }
+        }
+    ],
+    "presets": {}
+}

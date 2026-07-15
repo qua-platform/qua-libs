@@ -35,6 +35,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     BaseRabiSpecificParameters,
+    HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
     ParityDiffAnalysisParameters,
 ):
@@ -47,6 +48,7 @@ class ErrorAmplifiedParameters(
     NodeParameters,
     CommonNodeParameters,
     ErrorAmplifiedSpecificParameters,
+    HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
     ParityDiffAnalysisParameters,
 ):

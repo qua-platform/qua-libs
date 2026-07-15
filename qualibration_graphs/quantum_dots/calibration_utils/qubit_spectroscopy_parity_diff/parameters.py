@@ -23,13 +23,12 @@ class NodeSpecificParameters(RunnableParameters):
     """Amplitude pre-factor for the operation. Default is 1.0."""
     operation_len_in_ns: Optional[int] = None
     """Length of the operation in nanoseconds. Default is the predefined pulse length."""
-    rotation_scale: int = 1
-    """The number of pi rotations to perform. By default, this is a pi pulse. For higher integers, this will scale the amplitude as a tracked change."""
 
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
     ParityDiffAnalysisParameters,
 ):
@@ -61,6 +60,7 @@ class InitDurParameters(
     InitNodeSpecificParameters,
     NodeParameters, 
     CommonNodeParameters,
+    HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
     ParityDiffAnalysisParameters,
 ): 

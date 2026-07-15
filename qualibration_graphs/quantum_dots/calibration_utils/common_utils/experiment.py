@@ -110,11 +110,9 @@ def progress_counter_with_log(
         state["extra_fields"] = extra_fields
 
     elapsed_seconds = None if start_time is None else max(0.0, time.time() - start_time)
-    iteration_int = int(iteration)
+    completed = int(iteration) + 1
     total_int = int(total)
-    completed = max(0, iteration_int + 1)
-
-    percent_value = None if total_int <= 0 else max(0.0, min(100.0, 100.0 * completed / total_int))
+    percent_value = None if total_int <= 0 else 100.0 * completed / total_int
     state["progress_log"].append(
         {
             "timestamp": datetime.now().astimezone().isoformat(timespec="milliseconds"),
@@ -126,25 +124,8 @@ def progress_counter_with_log(
         }
     )
 
-    # if elapsed_seconds is not None:
-    #     state["qua_runtime_seconds"] = elapsed_seconds
-    #     try:
-    #         if elapsed_seconds > 0 and total_int > 0 and completed > 0:
-    #             gradient_n_per_second = completed / elapsed_seconds
-    #             projected_total_minutes = total_int / gradient_n_per_second / 60.0
-    #             projected_remaining_minutes = max(0, total_int - completed) / gradient_n_per_second / 60.0
-    #             print(
-    #                 "\rProjected measurement length: "
-    #                 f"{projected_total_minutes:.2f} min total, "
-    #                 f"{projected_remaining_minutes:.2f} min remaining "
-    #                 f"({gradient_n_per_second:.2f} N/s)",
-    #                 end="",
-    #                 flush=True,
-    #             )
-    #             if completed >= total_int:
-    #                 print()
-    #     except Exception:
-    #         pass
+    if elapsed_seconds is not None:
+        state["qua_runtime_seconds"] = elapsed_seconds
 
     _patch_node_save_for_runtime_logging(node)
 
@@ -333,53 +314,6 @@ def _get_qubits(
 
     return qubits
 
-def enable_dual_drive_mw(node: QualibrationNode, waveform_name: str = "cw"): 
-    """Run at the start of a QUA programme. If an XY drive dual output LO exists, it will enable."""
-    qubits = get_qubits(node)
-    # qubits are a BatchableList, with each Batch multiplexed. For multiplexed Batches, they share a drive line, 
-    # so we only need to run the cw from a single qubit. 
-    for qubits_batch in qubits.batch(): 
-        # qubits_batch is a dict of {int : qubit}. We only need one, so just extract the first one quick and dirty. 
-        first_qubit = list(qubits_batch.values())[0]
-        # Now we drive, and then move onto the next batch 
-        if hasattr(first_qubit.xy, "opx_output_LO"): 
-            first_qubit.xy.opx_output_LO.play(waveform_name)
-        else: 
-            print(f"Qubit {first_qubit.name} in batch of {[k.name for k in qubits_batch.values()]} uses no dual output. Not activating")
-
-def disable_dual_drive_mw(node: QualibrationNode, waveform_name: str = "cw"): 
-    """Run at the end of a QUA programme. If an XY drive dual output LO exists, it will disable."""
-    qubits = get_qubits(node)
-    # qubits are a BatchableList, with each Batch multiplexed. For multiplexed Batches, they share a drive line, 
-    # so we only need to run the cw from a single qubit. 
-    for qubits_batch in qubits.batch(): 
-        # qubits_batch is a dict of {int : qubit}. We only need one, so just extract the first one quick and dirty. 
-        first_qubit = list(qubits_batch.values())[0]
-        # Now we drive, and then move onto the next batch 
-        if hasattr(first_qubit.xy, "opx_output_LO"): 
-            first_qubit.xy.opx_output_LO.ramp_to_zero()
-        else: 
-            print(f"Qubit {first_qubit.name} in batch of {[k.name for k in qubits_batch.values()]} uses no dual output. Cannot disable.")
-
-def enable_dual_drive_mw_pairs(node: QualibrationNode, waveform_name: str = "cw"): 
-    """Run at the start of a QUA programme for qubit-pair nodes. Enables the LO on each batch's control qubit."""
-    qubit_pairs = get_qubit_pairs(node)
-    for pairs_batch in qubit_pairs.batch(): 
-        first_qubit = list(pairs_batch.values())[0].qubit_control
-        if hasattr(first_qubit.xy, "opx_output_LO"): 
-            first_qubit.xy.opx_output_LO.play(waveform_name)
-        else: 
-            print(f"Qubit {first_qubit.name} in batch of {[k.qubit_control.name for k in pairs_batch.values()]} uses no dual output. Not activating")
-
-def disable_dual_drive_mw_pairs(node: QualibrationNode, waveform_name: str = "cw"): 
-    """Run at the end of a QUA programme for qubit-pair nodes. Disables the LO on each batch's control qubit."""
-    qubit_pairs = get_qubit_pairs(node)
-    for pairs_batch in qubit_pairs.batch(): 
-        first_qubit = list(pairs_batch.values())[0].qubit_control
-        if hasattr(first_qubit.xy, "opx_output_LO"): 
-            first_qubit.xy.opx_output_LO.ramp_to_zero()
-        else: 
-            print(f"Qubit {first_qubit.name} in batch of {[k.qubit_control.name for k in pairs_batch.values()]} uses no dual output. Cannot disable.")
 
 def get_xy_reference_pulse_name(qubit: AnySpinQubit) -> str:
     """Resolve the pulse name backing the qubit's default XY macros."""
@@ -476,58 +410,6 @@ def plot_heralded_n_loops(
         ax.set_ylabel("n_loops")
         ax.set_title(f"n_loops vs {sweep_key} - {item_name}")
         ax.legend()
-
-    fig.suptitle("Heralded initialization loop count")
-    fig.tight_layout()
-    return fig
-
-
-def plot_heralded_n_loops_2d(
-    ds_raw,
-    item_names: list[str],
-    *,
-    item_dim: str,
-    x_sweep_key: str,
-    y_sweep_key: str,
-    x_sweep_scale: float = 1.0,
-    y_sweep_scale: float = 1.0,
-    x_sweep_xlabel: str = "",
-    y_sweep_ylabel: str = "",
-):
-    """Plot average heralded loop count on a 2-D sweep for each item."""
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    if not item_names:
-        return None
-
-    fig, axes = plt.subplots(1, len(item_names), figsize=(7 * len(item_names), 5), squeeze=False)
-    x_vals = ds_raw[x_sweep_key].values / x_sweep_scale
-    y_vals = ds_raw[y_sweep_key].values / y_sweep_scale
-
-    for idx, item_name in enumerate(item_names):
-        ax = axes[0, idx]
-        candidates = [
-            f"n_loops_{item_name}",
-            f"n_loops_{item_name.rstrip('0123456789')}",
-        ]
-        n_key = next((key for key in candidates if key in ds_raw), None)
-        if n_key is None:
-            continue
-
-        n_loops_da = ds_raw[n_key].sel({item_dim: item_name})
-        if (
-            hasattr(n_loops_da, "dims")
-            and y_sweep_key in n_loops_da.dims
-            and x_sweep_key in n_loops_da.dims
-        ):
-            n_loops_da = n_loops_da.transpose(y_sweep_key, x_sweep_key)
-        n_loops_vals = np.asarray(n_loops_da.values, dtype=float)
-        image = ax.pcolormesh(x_vals, y_vals, n_loops_vals, shading="auto", cmap="viridis")
-        ax.set_xlabel(x_sweep_xlabel)
-        ax.set_ylabel(y_sweep_ylabel)
-        ax.set_title(f"n_loops map - {item_name}")
-        fig.colorbar(image, ax=ax, label="n_loops")
 
     fig.suptitle("Heralded initialization loop count")
     fig.tight_layout()

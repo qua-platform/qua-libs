@@ -28,5 +28,6 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
 ):
     """Parameter set for 07e_singlet_triplet_oscillations."""

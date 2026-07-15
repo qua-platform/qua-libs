@@ -319,9 +319,7 @@ def _build_qua_program(
                     with for_(shot_idx, 0, shot_idx < num_shots, shot_idx + 1):
                         reset_frame(qubit_target.xy.name)
                         align()
-                        qubit_target.initialize(
-                            conditional_drive=True,
-                        )
+                        qubit_target.initialize()
                         align()
 
                         with for_(cliff_loop_idx, 0, cliff_loop_idx < depth, cliff_loop_idx + 1):
@@ -346,9 +344,7 @@ def _build_qua_program(
                     with for_(shot_idx, 0, shot_idx < num_shots, shot_idx + 1):
                         reset_frame(qubit_target.xy.name)
                         align()
-                        qubit_target.initialize(
-                            conditional_drive=True,
-                        )
+                        qubit_target.initialize()
                         align()
                         qubit_target.x180(amplitude_scale=amp_scale_t, duration=dur_t)
                         align()
@@ -380,9 +376,7 @@ def _build_qua_program(
                     with for_(shot_idx, 0, shot_idx < num_shots, shot_idx + 1):
                         reset_frame(qubit_control.xy.name)
                         align()
-                        qubit_control.initialize(
-                            conditional_drive=True,
-                        )
+                        qubit_control.initialize()
                         align()
 
                         with for_(cliff_loop_idx, 0, cliff_loop_idx < depth, cliff_loop_idx + 1):
@@ -407,9 +401,7 @@ def _build_qua_program(
                     with for_(shot_idx, 0, shot_idx < num_shots, shot_idx + 1):
                         reset_frame(qubit_control.xy.name)
                         align()
-                        qubit_control.initialize(
-                            conditional_drive=True,
-                        )
+                        qubit_control.initialize()
                         align()
                         qubit_control.x180(amplitude_scale=amp_scale_c, duration=dur_c)
                         align()

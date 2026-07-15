@@ -297,9 +297,7 @@ def _build_qua_program(node, qubit_pair, include_quadrature: bool):
 
                 with for_(shot_idx, 0, shot_idx < num_shots, shot_idx + 1):
                     # ─── Circuit 1: X90(target) → CZ → X90(target) → pair measure ───
-                    qubit_pair.initialize(
-                        conditional_drive=True,
-                    )
+                    qubit_pair.initialize()
                     align(qubit_target.xy.name, qubit_target.physical_channel.id)
                     qubit_target.x90()
                     align(qubit_target.xy.name, qubit_pair.quantum_dot_pair.barrier_gate.physical_channel.id)
@@ -315,9 +313,7 @@ def _build_qua_program(node, qubit_pair, include_quadrature: bool):
                     save(state_c1, state_c1_st)
 
                     # ─── Circuit 2: X90(control) → CZ → X90(control) → pair measure ───
-                    qubit_pair.initialize(
-                        conditional_drive=True,
-                    )
+                    qubit_pair.initialize()
                     align(qubit_control.xy.name, qubit_target.physical_channel.id)
                     qubit_control.x90()
                     align(qubit_control.xy.name, qubit_pair.quantum_dot_pair.barrier_gate.physical_channel.id)
@@ -333,9 +329,7 @@ def _build_qua_program(node, qubit_pair, include_quadrature: bool):
                     save(state_c2, state_c2_st)
 
                     # ─── Circuit 3: CZ → single-qubit measure on control ───
-                    qubit_pair.initialize(
-                        conditional_drive=True,
-                    )
+                    qubit_pair.initialize()
                     align(qubit_pair.quantum_dot_pair.barrier_gate.physical_channel.id, qubit_target.physical_channel.id)
                     vs.ramp_to_voltages({barrier_gate_id: neg_barrier_v}, duration=wait_dur, ramp_duration=ramp_dur, ensure_align=False)
                     vs.ramp_to_voltages({barrier_gate_id: barrier_v}, duration=wait_dur, ramp_duration=double_ramp_dur, ensure_align=False)
@@ -348,9 +342,7 @@ def _build_qua_program(node, qubit_pair, include_quadrature: bool):
 
                     if include_quadrature:
                         # ─── Circuit 4: Y90(target) → CZ → X90(target) ───
-                        qubit_pair.initialize(
-                            conditional_drive=True,
-                        )
+                        qubit_pair.initialize()
                         align(qubit_target, qubit_target.physical_channel.id)
                         qubit_target.y90()
                         align(qubit_target.xy.name, qubit_pair.quantum_dot_pair.barrier_gate.physical_channel.id)
@@ -366,9 +358,7 @@ def _build_qua_program(node, qubit_pair, include_quadrature: bool):
                         save(state_c4, state_c4_st)
 
                         # ─── Circuit 5: Y90(control) → CZ → X90(control) ───
-                        qubit_pair.initialize(
-                            conditional_drive=True,
-                        )
+                        qubit_pair.initialize()
                         align(qubit_target.physical_channel.id, qubit_control.xy.name)
                         qubit_control.y90()
                         align(qubit_control.xy.name, qubit_pair.quantum_dot_pair.barrier_gate.physical_channel.id)

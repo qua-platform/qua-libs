@@ -16,7 +16,6 @@ from quam_config import Quam
 
 from calibration_utils.common_utils.experiment import (
     get_qubits,
-    enable_dual_drive_mw,
     progress_counter_with_log,
     suppress_fetcher_axis_log_spam,
 )
@@ -91,8 +90,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     reset_operation = node.parameters.reset_operation
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw(node)
-
         n = declare(int)
         n_st = declare_output_stream()
         df = declare(int)

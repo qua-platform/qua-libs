@@ -31,6 +31,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
     QubitPairExperimentNodeParameters,
 ):
     """Parameter set for 07b_init_ramp_detuning_calibration."""

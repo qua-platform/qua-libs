@@ -20,7 +20,6 @@ from calibration_utils.single_qubit_randomized_benchmarking import (
 )
 from calibration_utils.common_utils.experiment import (
     get_qubits,
-    enable_dual_drive_mw,
     progress_counter_with_log,
 )
 from calibration_utils.common_utils.annotation import annotate_node_figures
@@ -136,8 +135,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw(node)
-
         # ── QUA variables ─────────────────────────────────────────────────
         n = declare(int)
         n_st = declare_output_stream()
@@ -238,7 +235,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
 
                         # --- Initialize ---
-                        qubit.initialize()
+                        qubit.initialize(
+                            target_state=node.parameters.target_state,
+                            max_loops=node.parameters.max_loops,
+                            conditional_drive=True,
+                        )
 
                         align()
 

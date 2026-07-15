@@ -15,7 +15,7 @@ from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import QubitQuam as Quam
-from calibration_utils.common_utils.experiment import get_qubits, enable_dual_drive_mw
+from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.common_utils.parity_streams import (
     declare_parity_streams,
     save_parity_measurement,
@@ -109,8 +109,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw(node)
-
         n = declare(int)
 
         p2, p1, parity_streams = declare_parity_streams(node, qubits)
@@ -124,12 +122,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         state_st_pulse = {qubit.name: declare_output_stream() for qubit in qubits}
 
         n_st = declare_output_stream()
-        heralded_and_return_n_loops = getattr(node.parameters, "return_n_loops", False)
-        n_loops_st = (
-            {qubit.name: declare_output_stream() for qubit in qubits}
-            if heralded_and_return_n_loops
-            else {}
-        )
 
         hold = declare(int)
         ramp = declare(int)
@@ -143,13 +135,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     with for_(*from_array(ramp, ramp_durations)): 
                     
                         # 1: Baseline, no pulse
-                        n_init = qubit.initialize(
+                        qubit.initialize(
                             hold_duration=10000,
                             ramp_duration=ramp,
+                            target_state=node.parameters.target_state,
+                            max_loops=node.parameters.max_loops,
                             conditional_drive=True,
                         )
-                        if heralded_and_return_n_loops:
-                            save(n_init, n_loops_st[qubit.name])
                         align()
                         (i_n, q_n, a2_n) = qubit.measure(return_iq=True)
                         qubit.voltage_sequence.ramp_to_zero()
@@ -163,6 +155,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.initialize(
                             hold_duration=10000,
                             ramp_duration=ramp,
+                            target_state=node.parameters.target_state,
+                            max_loops=node.parameters.max_loops,
                             conditional_drive=True,
                         )
                         align()
@@ -203,10 +197,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 state_st_pulse[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(
                     f"state_pulse_{qubit.name}"
                 )
-                if heralded_and_return_n_loops:
-                    n_loops_st[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(
-                        f"n_loops_{qubit.name}"
-                    )
 
 # %% {Simulate}
 @node.run_action(

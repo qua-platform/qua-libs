@@ -53,6 +53,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
 ):
     """Parameter set for 20a_BayesianEstimation."""

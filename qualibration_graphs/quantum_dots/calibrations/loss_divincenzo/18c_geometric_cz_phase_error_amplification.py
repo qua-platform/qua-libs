@@ -10,7 +10,7 @@ from calibration_utils.common_utils.experiment import progress_counter_with_log
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import get_qubit_pairs, enable_dual_drive_mw_pairs
+from calibration_utils.common_utils.experiment import get_qubit_pairs
 from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.parity_streams import process_parity_streams
 from qualibration_libs.runtime import simulate_and_plot
@@ -89,13 +89,13 @@ def _get_cz_exchange_amplitude(qubit_pair) -> float:
 
 
 def _get_num_cphase_gate_array(parameters: Parameters) -> np.ndarray:
-    """Build the CPhase repetition axis: 2, 4, …, max_num_cphase_gates."""
+    """Build the CPhase repetition axis: 1,2,3, 4, …, max_num_cphase_gates."""
     max_gates = parameters.max_num_cphase_gates
-    if max_gates < 2 or max_gates % 2 != 0:
-        raise ValueError(
-            f"max_num_cphase_gates must be a positive multiple of 2, got {max_gates}."
-        )
-    return np.arange(2, max_gates + 1, 2, dtype=int)
+    #if max_gates < 2 or max_gates % 2 != 0:
+        #raise ValueError(
+            #f"max_num_cphase_gates must be a positive multiple of 2, got {max_gates}."
+        #)
+    return np.arange(1, max_gates + 1, 1, dtype=int)
 
 
 # %% {Create_QUA_program}
@@ -138,8 +138,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw_pairs(node)
-
         n = declare(int)
         n_st = declare_output_stream()
 
@@ -169,7 +167,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qubit_pair.qubit_target.xy.name,
                                 qubit_pair.qubit_control.xy.name,
                             )
-                            qubit_pair.initialize()
+                            qubit_pair.initialize(
+                                target_state=node.parameters.target_state,
+                                max_loops=node.parameters.max_loops,
+                                conditional_drive=True,
+                            )
                             align()
 
                             if cond_val == 1:
@@ -184,17 +186,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             with for_(gate_idx, 0, gate_idx < gate_count, gate_idx + 1):
                                 qubit_pair.cz(
                                     point={barrier_gate_id: exchange_amplitude},
-                                    phase_shift_target=0,
+                                    phase_shift_target=phase,
                                     phase_shift_control=0,
                                 )
 
                             align()
 
-                            frame_rotation_2pi(phase, qubit_pair.qubit_target.xy.name)
+                            #frame_rotation_2pi(phase, qubit_pair.qubit_target.xy.name)
                             qubit_pair.qubit_target.x90()
                             align()
 
-                            a = qubit_pair.qubit_target.measure()
+                            a = qubit_pair.measure()
 
                             align()
 
@@ -219,7 +221,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qubit_pair.qubit_target.xy.name,
                                 qubit_pair.qubit_control.xy.name,
                             )
-                            qubit_pair.initialize()
+                            qubit_pair.initialize(
+                                target_state=node.parameters.target_state,
+                                max_loops=node.parameters.max_loops,
+                                conditional_drive=True,
+                            )
                             align()
 
                             if cond_val == 1:
@@ -235,16 +241,16 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qubit_pair.cz(
                                     point={barrier_gate_id: exchange_amplitude},
                                     phase_shift_target=0,
-                                    phase_shift_control=0,
+                                    phase_shift_control=phase,
                                 )
 
                             align()
 
-                            frame_rotation_2pi(phase, qubit_pair.qubit_control.xy.name)
+                            #frame_rotation_2pi(phase, qubit_pair.qubit_control.xy.name)
                             qubit_pair.qubit_control.x90()
                             align()
 
-                            a = qubit_pair.qubit_control.measure()
+                            a = qubit_pair.measure()
 
                             align()
 

@@ -171,7 +171,6 @@ def _build_qua_program(node, qubit_pair):
                         meas_ramp_duration=mrd_q,
                         meas_buffer_duration=mbd_q,
                         qubit_name=qubit_name,
-                        conditional_drive=True,
                     )
                     assign(state_ref, Cast.to_int(dot_pair.measure()))
                     save(state_ref, state_ref_st)
@@ -185,7 +184,7 @@ def _build_qua_program(node, qubit_pair):
                         meas_ramp_duration=mrd_q,
                         meas_buffer_duration=mbd_q,
                         qubit_name=qubit_name,
-                        conditional_drive=True,
+                        target_state = 1,
                     )
                     align()
                     qubit_pair.qubit_target.x180()
@@ -202,7 +201,7 @@ def _build_qua_program(node, qubit_pair):
                         meas_ramp_duration=mrd_q,
                         meas_buffer_duration=mbd_q,
                         qubit_name=qubit_name,
-                        conditional_drive=True,
+                        target_state = 1,
                     )
                     align()
                     qubit_pair.qubit_control.x180()

@@ -29,6 +29,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     QubitsExperimentNodeParameters,
+    HeraldedInitializeParameters,
     NodeSpecificParameters,
 ):
     pass

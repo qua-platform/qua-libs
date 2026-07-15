@@ -11,7 +11,7 @@ from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import get_qubit_pairs, enable_dual_drive_mw_pairs
+from calibration_utils.common_utils.experiment import get_qubit_pairs
 from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.parity_streams import (
     declare_parity_streams,
@@ -153,8 +153,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw_pairs(node)
-
         n = declare(int)
         n_st = declare_output_stream()
 
@@ -193,7 +191,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 drive_qubit.xy.update_frequency(intermediate_frequency)
                                 reset_frame(drive_qubit.xy.name)
 
-                                qubit_pair.initialize()
+                                qubit_pair.initialize(
+                                    qubit_role="control",
+                                    target_state=node.parameters.target_state,
+                                    max_loops=node.parameters.max_loops,
+                                    conditional_drive=True,
+                                )
 
                                 align()
 

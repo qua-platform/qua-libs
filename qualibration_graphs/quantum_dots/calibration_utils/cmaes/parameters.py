@@ -5,10 +5,7 @@ from typing import Literal
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.common_utils.experiment import (
-    HeraldedInitializeParameters,
-    QubitPairExperimentNodeParameters,
-)
+from calibration_utils.common_utils.experiment import QubitPairExperimentNodeParameters
 
 
 class CMAESParameters(RunnableParameters):

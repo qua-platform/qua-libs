@@ -31,6 +31,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
     QubitPairExperimentNodeParameters,
 ):
     """Parameter set for 07a_init_2d_calibration."""

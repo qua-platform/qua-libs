@@ -19,7 +19,7 @@ from calibration_utils.bayesian_estimation.plotting import (
     plot_pf_posterior_single_rep_all_qubits_with_map_track,
 )
 from calibration_utils.bayesian_estimation.simulation import simulate_bayesian_ramsey_dataset
-from calibration_utils.common_utils.experiment import get_qubits, enable_dual_drive_mw
+from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.common_utils.annotation import annotate_node_figures, stamp_snapshot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.runtime import simulate_and_plot
@@ -122,8 +122,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw(node)
-
         n = declare(int)
         t = declare(int)
         f_idx = declare(int)
@@ -153,7 +151,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(n, n_st)
 
                 with for_(*from_array(t, idle_times)):  # idle times here in clock cycles
-                    qubit.initialize()
+                    qubit.initialize(
+                        target_state=node.parameters.target_state,
+                        max_loops=node.parameters.max_loops,
+                        conditional_drive=True,
+                    )
                     qubit.x90()  # TODO: does this take care of track_sticky_duration?
                     qubit.wait(t)
                     qubit.voltage_sequence.track_sticky_duration(t)

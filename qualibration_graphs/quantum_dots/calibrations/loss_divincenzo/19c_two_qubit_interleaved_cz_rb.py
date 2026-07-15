@@ -37,7 +37,7 @@ from calibration_utils.two_qubit_rb.analysis import (
     log_fitted_results,
     process_raw_dataset,
 )
-from calibration_utils.two_qubit_rb.data_utils import InterleavedRBResult, RBResult, rb_decay_curve
+from calibration_utils.two_qubit_rb.data_utils import InterleavedRBResult
 from calibration_utils.two_qubit_rb.plot_utils import gate_mapping
 from calibration_utils.two_qubit_rb.rb_cache import cache_key, try_load, save
 from calibration_utils.common_utils.annotation import annotate_node_figures

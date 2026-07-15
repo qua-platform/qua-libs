@@ -18,10 +18,7 @@ from __future__ import annotations
 
 from qualibrate.core import NodeParameters
 from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.common_utils.experiment import (
-    HeraldedInitializeParameters,
-    QubitPairExperimentNodeParameters,
-)
+from calibration_utils.common_utils.experiment import QubitPairExperimentNodeParameters
 
 from .parameters import CMAESParameters
 

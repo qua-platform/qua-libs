@@ -23,7 +23,7 @@ from calibration_utils.xeb import (
     plot_state_heatmap,
     plot_purity,
 )
-from calibration_utils.common_utils.experiment import get_qubits, get_qubit_pairs, enable_dual_drive_mw
+from calibration_utils.common_utils.experiment import get_qubits, get_qubit_pairs
 from calibration_utils.common_utils.annotation import annotate_node_figures
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -134,8 +134,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     )
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw(node)
-
         s = declare(int)
         depth_idx = declare(int)
         depth_val = declare(int)
@@ -180,7 +178,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.empty()
 
                     for qubit in qubits_list:
-                        qubit.initialize()
+                        qubit.initialize(
+                            target_state=node.parameters.target_state,
+                            max_loops=node.parameters.max_loops,
+                            conditional_drive=True,
+                        )
                     align()
 
                     with for_(d, 0, d < depth_val, d + 1):

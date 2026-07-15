@@ -20,7 +20,6 @@ from calibration_utils.psb_search_sweep_detuning import (
 from calibration_utils.psb_search_fixed_detuning import plot_rotated_iq_density_at_optimum
 from calibration_utils.common_utils.experiment import (
     get_sensors,
-    enable_dual_drive_mw_pairs,
 )
 from calibration_utils.common_utils.annotation import annotate_node_figures
 from qualibration_libs.runtime import simulate_and_plot
@@ -133,8 +132,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "detuning": xr.DataArray(detuning_array, attrs={"long_name": "voltage", "units": "V"}),
     }
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw_pairs(node)
-
         n = declare(int)
         n_st = declare_output_stream()
 

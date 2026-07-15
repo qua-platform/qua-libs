@@ -451,9 +451,7 @@ def _build_qua_program(node, qubit, gates_flat, offsets, lengths, depths):
                         reset_frame(qubit.xy.name)
                         align()
                         qubit.empty()
-                        qubit.initialize(
-                            conditional_drive=True,
-                        )
+                        qubit.initialize()
                         align()
 
                         with for_(gate_idx, 0, gate_idx < seq_length, gate_idx + 1):

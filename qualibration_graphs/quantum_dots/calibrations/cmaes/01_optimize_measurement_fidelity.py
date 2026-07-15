@@ -121,9 +121,7 @@ def _build_qua_program(node, qubit_pair):
                 assign(barrier_voltage, barrier_in)
 
                 with for_(shot, 0, shot < num_shots, shot + 1):
-                    dot_pair.initialize(
-                        conditional_drive=True,
-                    )
+                    dot_pair.initialize()
 
                     dot_pair.ramp_to_voltages(
                         voltages={

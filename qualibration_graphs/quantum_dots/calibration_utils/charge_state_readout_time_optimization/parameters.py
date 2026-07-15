@@ -32,5 +32,6 @@ class Parameters(
     BaseExperimentNodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
 ):
     pass

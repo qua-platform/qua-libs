@@ -206,7 +206,6 @@ def _build_qua_program(
                         ramp_duration=rd_q,
                         hold_duration=hd_q,
                         amplitude=amp_q,
-                        conditional_drive=True,
                     )
                     assign(state_ref, Cast.to_int(dot_pair.measure()))
                     save(state_ref, state_ref_st)
@@ -218,7 +217,6 @@ def _build_qua_program(
                         ramp_duration=rd_q,
                         hold_duration=hd_q,
                         amplitude=amp_q,
-                        conditional_drive=True,
                     )
                     align()
                     qubit_pair.qubit_target.x180()
@@ -233,7 +231,6 @@ def _build_qua_program(
                         ramp_duration=rd_q,
                         hold_duration=hd_q,
                         amplitude=amp_q,
-                        conditional_drive=True,
                     )
                     align()
                     qubit_pair.qubit_control.x180()

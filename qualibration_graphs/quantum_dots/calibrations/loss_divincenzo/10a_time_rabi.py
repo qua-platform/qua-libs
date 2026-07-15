@@ -19,7 +19,7 @@ from calibration_utils.time_rabi_parity_diff import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from calibration_utils.common_utils.experiment import get_qubits, enable_dual_drive_mw
+from calibration_utils.common_utils.experiment import get_qubits
 from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.parity_streams import (
     declare_parity_streams,
@@ -101,8 +101,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        enable_dual_drive_mw(node)
-
         # Declare QUA variables
         t = declare(int)
         n = declare(int)
@@ -111,12 +109,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         p2, p1, parity_streams = declare_parity_streams(node, qubits)
 
         n_st = declare_output_stream()
-        heralded_and_return_n_loops = getattr(node.parameters, "return_n_loops", False)
-        n_loops_st = (
-            {qubit.name: declare_output_stream() for qubit in qubits}
-            if heralded_and_return_n_loops
-            else {}
-        )
 
         # Main experiment loop
         for qubit in qubits:
@@ -127,9 +119,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.empty()
                         a1 = qubit.measure()
 
-                    n_init = qubit.initialize()
-                    if heralded_and_return_n_loops:
-                        save(n_init, n_loops_st[qubit.name])
+                    qubit.initialize(
+                        target_state=node.parameters.target_state,
+                        max_loops=node.parameters.max_loops,
+                        conditional_drive=True,
+                    )
 
                     align()
                     qubit.x(duration=t)
@@ -156,10 +150,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             for qubit in qubits:
                 buffer_parity_streams(node, qubit.name, parity_streams, n_durations)
-                if heralded_and_return_n_loops:
-                    n_loops_st[qubit.name].buffer(n_durations).average().save(
-                        f"n_loops_{qubit.name}"
-                    )
 
 
 # %% {Simulate}

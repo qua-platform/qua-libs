@@ -44,6 +44,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
+    HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
 ):
     """Full parameter set for single-qubit randomized benchmarking."""
