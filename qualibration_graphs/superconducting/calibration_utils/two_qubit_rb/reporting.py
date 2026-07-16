@@ -176,8 +176,7 @@ def _format_irb_result(qp_name: str, r: IRBFitResult) -> str:
                 "\tInterleaved RB (this run):",
                 f"\tCZ_Error Per Gate (CZ_EPG) =  (d-1)/d * (1 - alpha_IRB/alpha_SRB) = "
                 f"{format_fraction_pm(r.epg, r.epg_stderr, as_error_rate=True)}",
-                f"\tCZ gate fidelity = 1 - CZ_EPG = "
-                f"{format_fraction_pm(r.fidelity, r.fidelity_stderr)}",
+                f"\tCZ gate fidelity = 1 - CZ_EPG = " f"{format_fraction_pm(r.fidelity, r.fidelity_stderr)}",
             ]
         )
         lines.extend(_format_coherence_limit(r, epg=r.epg, epg_stderr=r.epg_stderr))
