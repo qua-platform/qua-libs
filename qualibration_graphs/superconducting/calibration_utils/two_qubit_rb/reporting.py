@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from calibration_utils.two_qubit_rb.fidelity import ImpliedCZResult, fidelity_stderr_from_alpha
+from calibration_utils.two_qubit_rb.fidelity import ImpliedCZResult, compute_srb_fidelity
 
 
 @dataclass
@@ -33,7 +33,9 @@ class SRBFitResult(BaseFitResult):
     """Standard (37a) RB fit result: 2Q Clifford fidelity, EPC, EPG."""
 
     epc: float | None = None
+    epc_stderr: float | None = None
     epg: float | None = None
+    epg_stderr: float | None = None
     average_gate_fidelity: float | None = None
     average_gates_per_clifford: float | None = None
     implied_cz: ImpliedCZResult | None = None
@@ -44,6 +46,7 @@ class IRBFitResult(BaseFitResult):
     """Interleaved (37b) RB fit result: direct CZ gate fidelity vs. reference."""
 
     epc: float | None = None
+    epc_stderr: float | None = None
     epg: float | None = None
     epg_stderr: float | None = None
     standard_rb_alpha: float | None = None
@@ -111,23 +114,16 @@ def _format_srb_result(qp_name: str, r: SRBFitResult) -> str:
             f"alpha = {_coeff_pm(r.alpha, r.alpha_stderr)}, "
             f"B = {_coeff_pm(r.fit_offset, r.fit_offset_stderr)})"
         )
-        epg_stderr = None
-        if (
-            r.fidelity_stderr is not None
-            and r.average_gates_per_clifford is not None
-            and r.average_gates_per_clifford > 0
-        ):
-            epg_stderr = r.fidelity_stderr / r.average_gates_per_clifford
         lines.extend(
             [
                 f"\t2Q Clifford Fidelity = {format_fraction_pm(r.fidelity, r.fidelity_stderr)}",
                 f"\tError Per Clifford (EPC): 1 - 2Q Clifford Fidelity = "
-                f"{format_fraction_pm(r.epc, r.fidelity_stderr, as_error_rate=True)}",
+                f"{format_fraction_pm(r.epc, r.epc_stderr, as_error_rate=True)}",
                 f"\tError Per Gate (EPG) = EPC / N_gates_per_Clifford = "
-                f"{format_fraction_pm(r.epc, r.fidelity_stderr, as_error_rate=True)} / "
+                f"{format_fraction_pm(r.epc, r.epc_stderr, as_error_rate=True)} / "
                 f"{r.average_gates_per_clifford:.2f} = "
-                f"{format_fraction_pm(r.epg, epg_stderr, as_error_rate=True)}",
-                f"\tAvg. Gate Fidelity (1-EPG) = " f"{format_fraction_pm(r.average_gate_fidelity, epg_stderr)}",
+                f"{format_fraction_pm(r.epg, r.epg_stderr, as_error_rate=True)}",
+                f"\tAvg. Gate Fidelity (1-EPG) = " f"{format_fraction_pm(r.average_gate_fidelity, r.epg_stderr)}",
             ]
         )
         if r.implied_cz is not None and r.implied_cz.alpha_01 is not None:
@@ -144,7 +140,7 @@ def _format_srb_result(qp_name: str, r: SRBFitResult) -> str:
                     "\tNote: Interleaved RB (37b) measures CZ EPG directly.",
                 ]
             )
-        lines.extend(_format_coherence_limit(r, epg=r.epg, epg_stderr=epg_stderr))
+        lines.extend(_format_coherence_limit(r, epg=r.epg, epg_stderr=r.epg_stderr))
     lines.extend(_format_issues_and_warnings(r))
     return "\n".join(lines)
 
@@ -161,15 +157,20 @@ def _format_irb_result(qp_name: str, r: IRBFitResult) -> str:
         alpha_srb_text = (
             _coeff_pm(r.standard_rb_alpha, r.standard_rb_alpha_stderr) if r.standard_rb_alpha is not None else "n/a"
         )
-        srb_fidelity = 1 - r.epc if r.epc is not None else np.nan
-        srb_fidelity_stderr = fidelity_stderr_from_alpha(r.standard_rb_alpha_stderr, interleaved=False)
+        srb_ref = (
+            compute_srb_fidelity(r.standard_rb_alpha, r.standard_rb_alpha_stderr, None)
+            if r.standard_rb_alpha is not None
+            else None
+        )
+        srb_fidelity = srb_ref.fidelity if srb_ref is not None else np.nan
+        srb_fidelity_stderr = srb_ref.fidelity_stderr if srb_ref is not None else None
         lines.extend(
             [
                 "",
                 "\tStandard RB reference (37a):",
                 f"\t2Q Clifford Fidelity = {format_fraction_pm(srb_fidelity, srb_fidelity_stderr)}",
                 f"\tError Per Clifford (EPC) = 1 - 2Q Clifford Fidelity = "
-                f"{format_fraction_pm(r.epc, srb_fidelity_stderr, as_error_rate=True)}",
+                f"{format_fraction_pm(srb_ref.epc if srb_ref is not None else r.epc, srb_ref.epc_stderr if srb_ref is not None else r.epc_stderr, as_error_rate=True)}",
                 f"\talpha_SRB = {alpha_srb_text}",
                 "",
                 "\tInterleaved RB (this run):",

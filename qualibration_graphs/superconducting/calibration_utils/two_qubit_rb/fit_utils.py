@@ -398,7 +398,13 @@ def fit_srb_pair(da: xr.Dataset, average_gates_per_clifford: float | None) -> xr
     if fit_params is None:
         fit_amplitude = alpha = fit_offset = alpha_stderr = amplitude_stderr = offset_stderr = np.nan
         srb = fidelity.SRBFidelity(
-            fidelity=np.nan, fidelity_stderr=None, epc=np.nan, epg=None, average_gate_fidelity=None
+            fidelity=np.nan,
+            fidelity_stderr=None,
+            epc=np.nan,
+            epc_stderr=None,
+            epg=None,
+            epg_stderr=None,
+            average_gate_fidelity=None,
         )
         success, fit_issues = False, ("Exponential fit did not converge.",)
     else:
@@ -432,7 +438,9 @@ def fit_srb_pair(da: xr.Dataset, average_gates_per_clifford: float | None) -> xr
         "fidelity": srb.fidelity,
         "fidelity_stderr": srb.fidelity_stderr if srb.fidelity_stderr is not None else np.nan,
         "epc": srb.epc,
+        "epc_stderr": srb.epc_stderr if srb.epc_stderr is not None else np.nan,
         "epg": srb.epg if srb.epg is not None else np.nan,
+        "epg_stderr": srb.epg_stderr if srb.epg_stderr is not None else np.nan,
         "success": success,
         "fit_issues": "\n".join(fit_issues),
         "fit_warnings": "\n".join(stats["fit_warnings"]),
@@ -456,11 +464,19 @@ def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dat
 
     if fit_params is None:
         fit_amplitude = alpha = fit_offset = alpha_stderr = amplitude_stderr = offset_stderr = np.nan
-        irb = fidelity.IRBFidelity(fidelity=np.nan, fidelity_stderr=None, epc=np.nan, epg=np.nan, epg_stderr=None)
+        irb = fidelity.IRBFidelity(
+            fidelity=np.nan, fidelity_stderr=None, epc=np.nan, epc_stderr=None, epg=np.nan, epg_stderr=None
+        )
         success, fit_issues = False, ("Exponential fit did not converge.",)
     else:
         fit_amplitude, alpha, fit_offset, alpha_stderr, amplitude_stderr, offset_stderr = fit_params
-        irb = fidelity.compute_irb_fidelity(alpha, alpha_stderr, standard_rb_alpha, epc_reference=epc_reference)
+        irb = fidelity.compute_irb_fidelity(
+            alpha,
+            alpha_stderr,
+            standard_rb_alpha,
+            standard_rb_alpha_stderr=standard_rb_alpha_stderr,
+            epc_reference=epc_reference,
+        )
         success, fit_issues = _validate_rb_fit(
             circuit_depths,
             survival_vals,
@@ -490,7 +506,9 @@ def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dat
         fidelity=irb.fidelity,
         fidelity_stderr=irb.fidelity_stderr if irb.fidelity_stderr is not None else np.nan,
         epc=irb.epc,
+        epc_stderr=irb.epc_stderr if irb.epc_stderr is not None else np.nan,
         epg=irb.epg,
+        epg_stderr=irb.epg_stderr if irb.epg_stderr is not None else np.nan,
         success=success,
         fit_issues="\n".join(fit_issues),
         fit_warnings="\n".join(stats["fit_warnings"]),

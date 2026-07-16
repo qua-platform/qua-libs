@@ -136,7 +136,17 @@ def _extract_srb_results(ds_fit: xr.Dataset, node: QualibrationNode) -> Tuple[xr
             fit_warnings=_split_lines(qp_data, "fit_warnings"),
             coherence_limit_epg=try_coherence_limit_epg(qp, node.parameters.operation),
             epc=float(qp_data.epc.values) if "epc" in qp_data else None,
+            epc_stderr=(
+                float(qp_data.epc_stderr.values)
+                if "epc_stderr" in qp_data and np.isfinite(qp_data.epc_stderr.values)
+                else None
+            ),
             epg=float(qp_data.epg.values) if "epg" in qp_data else None,
+            epg_stderr=(
+                float(qp_data.epg_stderr.values)
+                if "epg_stderr" in qp_data and np.isfinite(qp_data.epg_stderr.values)
+                else None
+            ),
             average_gate_fidelity=(
                 float(qp_data.average_gate_fidelity.values) if "average_gate_fidelity" in qp_data else None
             ),
@@ -195,8 +205,17 @@ def _extract_irb_results(ds_fit: xr.Dataset, node: QualibrationNode) -> Tuple[xr
             fit_warnings=_split_lines(qp_data, "fit_warnings"),
             coherence_limit_epg=try_coherence_limit_epg(qp, node.parameters.operation),
             epc=float(qp_data.epc.values) if "epc" in qp_data else None,
+            epc_stderr=(
+                float(qp_data.epc_stderr.values)
+                if "epc_stderr" in qp_data and np.isfinite(qp_data.epc_stderr.values)
+                else None
+            ),
             epg=float(qp_data.epg.values) if "epg" in qp_data else None,
-            epg_stderr=fidelity_stderr,
+            epg_stderr=(
+                float(qp_data.epg_stderr.values)
+                if "epg_stderr" in qp_data and np.isfinite(qp_data.epg_stderr.values)
+                else None
+            ),
             standard_rb_alpha=(float(qp_data.standard_rb_alpha.values) if "standard_rb_alpha" in qp_data else None),
             standard_rb_alpha_stderr=standard_rb_alpha_stderr,
         )
