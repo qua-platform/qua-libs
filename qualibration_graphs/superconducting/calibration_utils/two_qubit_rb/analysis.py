@@ -61,13 +61,13 @@ def fit_raw_data(
 def _annotate_shared_attrs(ds_fit: xr.Dataset) -> None:
     """Attach display attrs shared by both modes (mutates in place)."""
     attrs_by_var = {
-        "survival_probability": {"long_name": "P(|00>)", "units": "a.u."},
-        "survival_per_sequence": {"long_name": "P(|00>) per random sequence", "units": "a.u."},
-        "fitted_curve": {"long_name": "exponential RB fit", "units": "a.u."},
-        "fidelity": {"long_name": "RB fidelity", "units": "a.u."},
-        "epc": {"long_name": "error per Clifford", "units": "a.u."},
-        "epg": {"long_name": "error per gate", "units": "a.u."},
-        "fit_alpha": {"long_name": "RB decay constant alpha", "units": "a.u."},
+        "survival_probability": {"long_name": "P(|00>)"},
+        "survival_per_sequence": {"long_name": "P(|00>) per random sequence"},
+        "fitted_curve": {"long_name": "exponential RB fit"},
+        "fidelity": {"long_name": "RB fidelity"},
+        "epc": {"long_name": "error per Clifford"},
+        "epg": {"long_name": "error per gate"},
+        "fit_alpha": {"long_name": "RB decay constant alpha"},
     }
     for var, attrs in attrs_by_var.items():
         if var in ds_fit.data_vars:
@@ -78,7 +78,7 @@ def _attach_shared_coherence_limits(ds_fit: xr.Dataset, node: QualibrationNode) 
     qubit_pairs = node.namespace["qubit_pairs"]
     coherence_limits = [try_coherence_limit_epg(qp, node.parameters.operation) or np.nan for qp in qubit_pairs]
     ds_fit = ds_fit.assign(coherence_limit_epg=("qubit_pair", np.asarray(coherence_limits, dtype=float)))
-    ds_fit.coherence_limit_epg.attrs = {"long_name": "coherence-limited EPG", "units": "a.u."}
+    ds_fit.coherence_limit_epg.attrs = {"long_name": "coherence-limited EPG"}
     return ds_fit
 
 
