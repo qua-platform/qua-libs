@@ -42,10 +42,10 @@ class NodeSpecificParameters(RunnableParameters):
     `declare(int, value=...)` array. This bypasses the OPX's ~16000 QUA variable
     budget cap on declared arrays, enabling longer circuit depths and/or more
     circuits per depth than the without-input-stream path can support."""
-    max_chunk_ints: int = 16000
+    max_chunk_ints: int = 15000
     """Maximum number of ints per input-stream chunk. Only used when
     use_input_stream=True. Must be < 16000 (the OPX QUA variable budget cap),
-    with some headroom for the program's other declared variables. Default 15500."""
+    with some headroom for the program's other declared variables. Default 15000."""
     verbose_memory_log: bool = False
     """Always logs per-depth transpile stats during encoding. When True, also
     logs RB circuit memory summary plus per-depth int and input-stream sub-chunk
