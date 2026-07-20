@@ -146,9 +146,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     effective_branch = opp
 
         # --- Try Ramsey curve ---
-        ramsey_run_id_q = (
-            node.parameters.ramsey_run_id
-            or (q.extras.get("ramsey_vs_flux_calibration_load_id") if hasattr(q, "extras") else None)
+        ramsey_run_id_q = node.parameters.ramsey_run_id or (
+            q.extras.get("ramsey_vs_flux_calibration_load_id") if hasattr(q, "extras") else None
         )
         if flux_amp_q is None and use_ramsey and ramsey_run_id_q is not None:
             ramsey_curve = _load_ramsey_curve(ramsey_run_id_q, q.name, q.xy.RF_frequency)
@@ -424,9 +423,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         fig_r, axes = plt.subplots(1, n_qubits, figsize=(5 * n_qubits, 4), squeeze=False)
         used_run_ids = set()
         for ax, qubit in zip(axes[0], qubits):
-            ramsey_run_id_q = (
-                node.parameters.ramsey_run_id
-                or (qubit.extras.get("ramsey_vs_flux_calibration_load_id") if hasattr(qubit, "extras") else None)
+            ramsey_run_id_q = node.parameters.ramsey_run_id or (
+                qubit.extras.get("ramsey_vs_flux_calibration_load_id") if hasattr(qubit, "extras") else None
             )
             if ramsey_run_id_q is None:
                 continue

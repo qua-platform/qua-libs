@@ -9,10 +9,10 @@ import numpy as np
 import xarray as xr
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
-
 # ---------------------------------------------------------------------------
 # Helper to get qubit names from either QubitList or plain list of strings
 # ---------------------------------------------------------------------------
+
 
 def _qubit_names(qubits) -> List[str]:
     """Return a list of qubit name strings regardless of input type."""
@@ -25,6 +25,7 @@ def _qubit_names(qubits) -> List[str]:
 # ---------------------------------------------------------------------------
 # Raw spectroscopy heatmaps
 # ---------------------------------------------------------------------------
+
 
 def plot_iq_abs_heatmap(ds: xr.Dataset, qubits, log_scale: bool = False):
     """Plot |IQ| vs (time, frequency) as a pcolormesh for each qubit.
@@ -73,8 +74,13 @@ def plot_phase_heatmap(ds: xr.Dataset, qubits):
         phase = q_ds["phase"].values  # (time, detuning)
 
         im = ax.pcolormesh(
-            times, freq_ghz, phase.T,
-            shading="auto", cmap="RdBu_r", vmin=-np.pi, vmax=np.pi,
+            times,
+            freq_ghz,
+            phase.T,
+            shading="auto",
+            cmap="RdBu_r",
+            vmin=-np.pi,
+            vmax=np.pi,
         )
         fig.colorbar(im, ax=ax).set_label("Phase (rad)")
         ax.set_xlabel("Time (ns)")
@@ -89,6 +95,7 @@ def plot_phase_heatmap(ds: xr.Dataset, qubits):
 # ---------------------------------------------------------------------------
 # 1-D line plots
 # ---------------------------------------------------------------------------
+
 
 def plot_center_freqs(ds: xr.Dataset, qubits, log_scale: bool = False):
     """Plot qubit frequency vs time for each qubit.
@@ -162,6 +169,7 @@ def plot_flux_response(ds: xr.Dataset, qubits, log_scale: bool = False):
 # Spectroscopy curve used for freq-to-flux mapping
 # ---------------------------------------------------------------------------
 
+
 def plot_spectroscopy_curve(ds: xr.Dataset, qubits) -> Optional[plt.Figure]:
     """Plot the extracted spectroscopy freq-vs-flux curve stored in *ds*.
 
@@ -200,6 +208,7 @@ def plot_spectroscopy_curve(ds: xr.Dataset, qubits) -> Optional[plt.Figure]:
 # ---------------------------------------------------------------------------
 # Exponential fit overlay (existing)
 # ---------------------------------------------------------------------------
+
 
 def plot_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fit_results: Dict[str, FluxDistortionExpFitResult]):
     """
