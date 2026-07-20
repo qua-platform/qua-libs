@@ -134,8 +134,6 @@ def launch_video_mode(
     if dc_set is not None:
         dc_set.set_voltages(base_point)
 
-    qmm = machine.connect()
-
     data_acquirer = SimulationDataAcquirer(
         machine=machine,
         gate_set=virtual_gate_set,  # Replace with your GateSet instance
