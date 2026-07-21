@@ -8,17 +8,6 @@ from qualibrate import QualibrationNode
 
 logger = logging.getLogger(__name__)
 
-# QUA `fixed` ~ [-8, 8). Shared with the QUA program in T1_ADE.py.
-QUA_FIXED_MAX = 8.0
-SAFE_CEILING = QUA_FIXED_MAX - 2.0
-TIME_SCALE_US = 4.0 * QUA_FIXED_MAX
-LN_ARG_FLOOR = float(np.exp(-QUA_FIXED_MAX))
-SQRT_ARG_FLOOR = (LN_ARG_FLOOR + 0.5) ** 2
-GAMMA_ADAPTIVE_FLOOR = 1.0 / TIME_SCALE_US
-DENOM_SQ_FLOOR = 1.0 / SAFE_CEILING
-GAMMA_FLOOR = 1e-4
-DENOM_MIN = float(np.sqrt(DENOM_SQ_FLOOR))
-
 
 def _extract_stream_base(input_string: str) -> Optional[str]:
     index = next((i for i, c in enumerate(input_string) if c.isdigit()), None)
@@ -54,7 +43,12 @@ def fetch_results_as_xarray_arb_var(handles, qubits, measurement_axis, var_name=
     )
 
 
-def fetch_raw_dataset(job, qubits, n_reps: int, n_avg: int) -> xr.Dataset:
+def fetch_raw_dataset(
+    job,
+    qubits,
+    n_reps: int,
+    n_avg: int,
+) -> xr.Dataset:
     """Fetch all ADE streams after job completion and merge into one dataset."""
     handles = job.result_handles
     repetition = np.arange(1, n_reps + 1)
@@ -69,9 +63,9 @@ def fetch_raw_dataset(job, qubits, n_reps: int, n_avg: int) -> xr.Dataset:
         fetch_results_as_xarray_arb_var(handles, qubits, rep_axis, "P1"),
         fetch_results_as_xarray_arb_var(handles, qubits, rep_axis, "P3"),
         fetch_results_as_xarray_arb_var(handles, qubits, rep_axis, "time_stamp"),
-        fetch_results_as_xarray_arb_var(handles, qubits, shot_axis, "shots0_"),
-        fetch_results_as_xarray_arb_var(handles, qubits, shot_axis, "shots1_"),
-        fetch_results_as_xarray_arb_var(handles, qubits, shot_axis, "shots3_"),
+        fetch_results_as_xarray_arb_var(handles, qubits, shot_axis, "P0_shots"),
+        fetch_results_as_xarray_arb_var(handles, qubits, shot_axis, "P1_shots"),
+        fetch_results_as_xarray_arb_var(handles, qubits, shot_axis, "P3_shots"),
     ]
     return xr.merge(ds_parts)
 
@@ -85,7 +79,7 @@ class T1ADEFit:
     clipped: np.ndarray
 
 
-def ade_gamma1_from_P(P0_, P1_, P3_, dt_us, sqrt_arg_floor=SQRT_ARG_FLOOR, ln_arg_floor=LN_ARG_FLOOR):
+def ade_gamma1_from_P(P0_, P1_, P3_, dt_us, *, sqrt_arg_floor, ln_arg_floor):
     """Host ADE gamma [1/us] with the same clip floors as the QUA program."""
     denom = P1_ - P0_
     valid_denom = np.isfinite(denom) & (np.abs(denom) > 1e-12)
@@ -98,7 +92,7 @@ def ade_gamma1_from_P(P0_, P1_, P3_, dt_us, sqrt_arg_floor=SQRT_ARG_FLOOR, ln_ar
     return np.where(valid_denom & np.isfinite(gamma) & (gamma > 0), gamma, np.nan)
 
 
-def ade_point_clipped(P0_, P1_, P3_, denom_min=DENOM_MIN, sqrt_arg_floor=SQRT_ARG_FLOOR, ln_arg_floor=LN_ARG_FLOOR):
+def ade_point_clipped(P0_, P1_, P3_, *, denom_min, sqrt_arg_floor, ln_arg_floor):
     """Flag reps where FPGA P values hit an ADE clip floor (sigma there is unreliable)."""
     denom = P1_ - P0_
     bad = ~np.isfinite(denom) | (np.abs(denom) < denom_min)
@@ -131,6 +125,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, T1ADEFit]]:
     """Compute T1, uncertainty bands, and clipping flags for each qubit."""
     qubits = node.namespace["qubits"]
+    clip_floors = node.namespace["ade_clip_floors"]
     log_callable = getattr(node, "log", None)
     return _extract_relevant_fit_parameters(
         ds,
@@ -138,11 +133,13 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         node.parameters.num_repetitions,
         node.parameters.n_avg_per_point,
         node.parameters.n_bootstrap,
+        clip_floors,
         log_callable=log_callable,
     )
 
 
-def _analytical_sigma_T1(ds, qubits, gamma_floor=GAMMA_FLOOR):
+def _analytical_sigma_T1(ds, qubits, clip_floors):
+    gamma_floor = clip_floors["gamma_floor"]
     clipped_by_qubit = {}
     sigma_T1_by_qubit = {}
     for qubit in qubits:
@@ -152,7 +149,14 @@ def _analytical_sigma_T1(ds, qubits, gamma_floor=GAMMA_FLOOR):
         P3_v = ds.P3.sel(qubit=qubit_name).values
         gamma_v = ds.estimated_gamma.sel(qubit=qubit_name).values
         sigma_gamma_v = ds.sigma_gamma.sel(qubit=qubit_name).values
-        clipped_v = ade_point_clipped(P0_v, P1_v, P3_v)
+        clipped_v = ade_point_clipped(
+            P0_v,
+            P1_v,
+            P3_v,
+            denom_min=clip_floors["denom_min"],
+            sqrt_arg_floor=clip_floors["sqrt_arg_floor"],
+            ln_arg_floor=clip_floors["ln_arg_floor"],
+        )
         clipped_v |= ~np.isfinite(gamma_v) | (gamma_v <= gamma_floor)
         clipped_by_qubit[qubit_name] = clipped_v
 
@@ -175,31 +179,36 @@ def _bootstrap_sigma_T1(
     n_avg,
     n_bootstrap,
     clipped_by_qubit,
-    gamma_floor=GAMMA_FLOOR,
+    clip_floors,
     rng=None,
 ):
     if rng is None:
         rng = np.random.default_rng()
 
+    gamma_floor = clip_floors["gamma_floor"]
     sigma_T1_boot_by_qubit = {}
     for qubit in qubits:
         qubit_name = qubit.name
-        shots0_v = ds["shots0_"].sel(qubit=qubit_name).values
-        shots1_v = ds["shots1_"].sel(qubit=qubit_name).values
-        shots3_v = ds["shots3_"].sel(qubit=qubit_name).values
+        P0_shots_v = ds["P0_shots"].sel(qubit=qubit_name).values
+        P1_shots_v = ds["P1_shots"].sel(qubit=qubit_name).values
+        P3_shots_v = ds["P3_shots"].sel(qubit=qubit_name).values
         dt_v = ds.dt_used.sel(qubit=qubit_name).values
         clipped_v = clipped_by_qubit[qubit_name]
 
-        n_r = shots0_v.shape[0]
+        n_r = P0_shots_v.shape[0]
         sigma_T1_boot_v = np.full(n_r, np.nan)
         for r in range(n_r):
             idx0 = rng.integers(0, n_avg, size=(n_bootstrap, n_avg))
             idx1 = rng.integers(0, n_avg, size=(n_bootstrap, n_avg))
             idx3 = rng.integers(0, n_avg, size=(n_bootstrap, n_avg))
-            P0_boot = shots0_v[r][idx0].mean(axis=1)
-            P1_boot = shots1_v[r][idx1].mean(axis=1)
-            P3_boot = shots3_v[r][idx3].mean(axis=1)
-            gamma_boot = ade_gamma1_from_P(P0_boot, P1_boot, P3_boot, dt_v[r])
+            P0_boot = P0_shots_v[r][idx0].mean(axis=1)
+            P1_boot = P1_shots_v[r][idx1].mean(axis=1)
+            P3_boot = P3_shots_v[r][idx3].mean(axis=1)
+            gamma_boot = ade_gamma1_from_P(
+                P0_boot, P1_boot, P3_boot, dt_v[r],
+                sqrt_arg_floor=clip_floors["sqrt_arg_floor"],
+                ln_arg_floor=clip_floors["ln_arg_floor"],
+            )
             valid = np.isfinite(gamma_boot) & (gamma_boot > gamma_floor)
             T1_boot = np.divide(1.0, gamma_boot, out=np.full_like(gamma_boot, np.nan), where=valid)
             if valid.sum() < n_bootstrap // 10:
@@ -240,12 +249,13 @@ def _extract_relevant_fit_parameters(
     n_reps,
     n_avg,
     n_bootstrap,
+    clip_floors,
     log_callable=None,
 ) -> Tuple[xr.Dataset, dict[str, T1ADEFit]]:
     """Add metadata to the dataset and per-qubit fit results."""
-    clipped_by_qubit, sigma_T1_by_qubit = _analytical_sigma_T1(ds, qubits)
+    clipped_by_qubit, sigma_T1_by_qubit = _analytical_sigma_T1(ds, qubits, clip_floors)
     sigma_T1_boot_by_qubit = _bootstrap_sigma_T1(
-        ds, qubits, n_avg, n_bootstrap, clipped_by_qubit,
+        ds, qubits, n_avg, n_bootstrap, clipped_by_qubit, clip_floors,
     )
 
     ds["estimated_T1"] = 1.0 / ds.estimated_gamma

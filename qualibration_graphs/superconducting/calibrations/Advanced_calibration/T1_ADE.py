@@ -1,6 +1,8 @@
 # %% {Imports}
 from dataclasses import asdict
+import math
 
+import numpy as np
 from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import fetching_tool, progress_counter
@@ -10,18 +12,31 @@ from quam_config import Quam
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from calibration_utils.T1_ADE import (
-    DENOM_SQ_FLOOR,
-    GAMMA_ADAPTIVE_FLOOR,
-    LN_ARG_FLOOR,
     Parameters,
-    SAFE_CEILING,
-    SQRT_ARG_FLOOR,
-    TIME_SCALE_US,
     fetch_raw_dataset,
     fit_raw_data,
     plot_raw_data_with_fit,
     process_raw_dataset,
 )
+
+# QUA `fixed` ~ [-8, 8). Clip floors for ADE gamma / sigma on FPGA.
+QUA_FIXED_MAX = 8.0
+SAFE_CEILING = QUA_FIXED_MAX - 2.0
+TIME_SCALE_US = 4.0 * QUA_FIXED_MAX
+LN_ARG_FLOOR = math.exp(-QUA_FIXED_MAX)
+SQRT_ARG_FLOOR = (LN_ARG_FLOOR + 0.5) ** 2
+GAMMA_ADAPTIVE_FLOOR = 1.0 / TIME_SCALE_US
+DENOM_SQ_FLOOR = 1.0 / SAFE_CEILING
+GAMMA_FLOOR = 1e-4
+DENOM_MIN = math.sqrt(DENOM_SQ_FLOOR)
+
+ADE_CLIP_FLOORS = {
+    "ln_arg_floor": LN_ARG_FLOOR,
+    "sqrt_arg_floor": SQRT_ARG_FLOOR,
+    "denom_min": DENOM_MIN,
+    "gamma_floor": GAMMA_FLOOR,
+}
+
 
 # %% {Node initialisation}
 description = """
@@ -55,7 +70,7 @@ Bootstrapped on host (comparison only; n_bootstrap parameter, not on hardware):
     delay (with replacement; independent indices for P0, P1, P3). Re-run the ADE formula on
     each draw to get gamma_boot, then T1_boot = 1 / gamma_boot. Report
     sigma_T1_boot = (P84(T1_boot) - P16(T1_boot)) / 2.
-    Requires per-shot streams (shots0_/1_/3_) -- same T1 point estimate as FPGA; only sigma differs.
+    Requires per-shot streams (P0_shots / P1_shots / P3_shots) -- same T1 point estimate as FPGA; only sigma differs.
 
 Numerical guards: sqrt/ln arguments and denom^2 are floored from the QUA fixed range [-8, 8).
 Derivatives ignore those clip floors (valid in the interior). Host flags clipped repetitions and
@@ -83,6 +98,7 @@ node = QualibrationNode[Parameters, Quam](
     parameters=Parameters(),
     machine=Quam.load(),
 )
+node.namespace["ade_clip_floors"] = ADE_CLIP_FLOORS
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -92,13 +108,12 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.qubits = ["qA1"]
     node.parameters.adaptive_dt = False
     node.parameters.min_dt_ns = 16
-    node.parameters.max_dt_ns = 150_000
+    node.parameters.max_dt_ns = 200_000
     node.parameters.alpha = 1.0
-    node.parameters.t1_guess_us = 40.0
+    node.parameters.t1_guess_us = 50.0
     node.parameters.n_avg_per_point = 50
     node.parameters.n_bootstrap = 300
-    node.parameters.reset_max_attempts = 1
-    pass
+    node.parameters.reset_max_attempts = 10
 
 
 # %% {Create_QUA_program}
@@ -109,6 +124,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num_qubits = len(qubits)
 
     n_reps = node.parameters.num_repetitions
+
     t0_cycles = node.parameters.t0_ns // 4
     initial_dt_cycles = max(1, round(node.parameters.alpha * node.parameters.t1_guess_us * 1000 / 4))
     min_dt_cycles = max(1, node.parameters.min_dt_ns // 4)
@@ -125,9 +141,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         P0_st = [declare_output_stream() for _ in range(num_qubits)]
         P1_st = [declare_output_stream() for _ in range(num_qubits)]
         P3_st = [declare_output_stream() for _ in range(num_qubits)]
-        shots0_st = [declare_output_stream() for _ in range(num_qubits)]
-        shots1_st = [declare_output_stream() for _ in range(num_qubits)]
-        shots3_st = [declare_output_stream() for _ in range(num_qubits)]
+        P0_shots_st = [declare_output_stream() for _ in range(num_qubits)]
+        P1_shots_st = [declare_output_stream() for _ in range(num_qubits)]
+        P3_shots_st = [declare_output_stream() for _ in range(num_qubits)]
 
         for i, qubit in enumerate(qubits):
             acc0 = declare(int)
@@ -182,7 +198,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     qubit.align()
                     qubit.readout_state(state[i])
                     assign(acc0, acc0 + state[i])
-                    save(state[i], shots0_st[i])
+                    save(state[i], P0_shots_st[i])
 
                     qubit.reset_qubit_active(
                         pi_pulse_name="x180",
@@ -195,7 +211,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     qubit.align()
                     qubit.readout_state(state[i])
                     assign(acc1, acc1 + state[i])
-                    save(state[i], shots1_st[i])
+                    save(state[i], P1_shots_st[i])
 
                     qubit.reset_qubit_active(
                         pi_pulse_name="x180",
@@ -208,7 +224,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     qubit.align()
                     qubit.readout_state(state[i])
                     assign(acc3, acc3 + state[i])
-                    save(state[i], shots3_st[i])
+                    save(state[i], P3_shots_st[i])
 
                 assign(P0, Cast.mul_fixed_by_int(inv_n_avg, acc0))
                 assign(P1, Cast.mul_fixed_by_int(inv_n_avg, acc1))
@@ -282,9 +298,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 P0_st[i].buffer(n_reps).save(f"P0{i + 1}")
                 P1_st[i].buffer(n_reps).save(f"P1{i + 1}")
                 P3_st[i].buffer(n_reps).save(f"P3{i + 1}")
-                shots0_st[i].buffer(n_reps, node.parameters.n_avg_per_point).save(f"shots0_{i + 1}")
-                shots1_st[i].buffer(n_reps, node.parameters.n_avg_per_point).save(f"shots1_{i + 1}")
-                shots3_st[i].buffer(n_reps, node.parameters.n_avg_per_point).save(f"shots3_{i + 1}")
+                P0_shots_st[i].buffer(n_reps, node.parameters.n_avg_per_point).save(f"P0_shots{i + 1}")
+                P1_shots_st[i].buffer(n_reps, node.parameters.n_avg_per_point).save(f"P1_shots{i + 1}")
+                P3_shots_st[i].buffer(n_reps, node.parameters.n_avg_per_point).save(f"P3_shots{i + 1}")
 
 
 # %% {Simulate}
@@ -328,6 +344,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(load_data_id)
     node.parameters.load_data_id = load_data_id
     node.namespace["qubits"] = get_qubits(node)
+    node.namespace["ade_clip_floors"] = ADE_CLIP_FLOORS
 
 
 # %% {Analyse_data}

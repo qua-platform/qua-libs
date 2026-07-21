@@ -26,7 +26,7 @@ def _sigma_clipped_from_fits(fits: Dict) -> tuple[dict, dict, dict]:
 
 def plot_raw_data_with_fit(
     node: QualibrationNode,
-    grid_size: int = 8,
+    grid_size: int = 4,
     bin_width_s: float = 0.25,
 ) -> Dict[str, Figure]:
     """Plot T1 vs lab time (analytical and bootstrap) and ADE wait-time fit per qubit.
@@ -166,7 +166,7 @@ def plot_individual_T1_lab_time(
         ax.plot(
             bin_centers,
             bin_T1,
-            color="0.45",
+            color="0.2",
             linewidth=1.0,
             zorder=3,
             label=rf"$\langle T_1 \rangle$ in {int(bin_width_s * 1e3)} ms",
