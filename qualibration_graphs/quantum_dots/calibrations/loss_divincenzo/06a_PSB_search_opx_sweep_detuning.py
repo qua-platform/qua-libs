@@ -1,0 +1,398 @@
+# %% {Imports}
+import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
+from dataclasses import asdict
+
+from qm.qua import *
+
+from qualang_tools.multi_user import qm_session
+from calibration_utils.common_utils.experiment import progress_counter_with_log
+from qualang_tools.loops import from_array
+from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
+from qualibrate.core import QualibrationNode
+from quam_config import Quam
+from calibration_utils.psb_search_sweep_detuning import (
+    Parameters,
+    generate_simulated_dataset,
+    plot_simulated_dataset_histograms,
+)
+from calibration_utils.psb_search_fixed_detuning import plot_rotated_iq_density_at_optimum
+from calibration_utils.common_utils.experiment import (
+    get_sensors,
+)
+from calibration_utils.common_utils.annotation import annotate_node_figures
+from qualibration_libs.runtime import simulate_and_plot
+from qualibration_libs.data import XarrayDataFetcher
+
+from calibration_utils.iq_sweep import (
+    fit_raw_data,
+    fit_raw_data_pca_gaussian,
+    log_fitted_results,
+    plot_fidelity_vs_sweep,
+    plot_histograms_vs_sweep,
+    plot_visibility_vs_sweep,
+    plot_sweep_summary,
+)
+
+from qualibrate.core.models.outcome import Outcome
+
+
+# %% {Node initialisation}
+description = """
+        PAULI SPIN BLOCKADE SEARCH - Sweep Detuning
+The goal of this sequence is to find the Pauli Spin Blockade (PSB) region.
+To do so, the following triangle in voltage space (empty - random initialization - measurement) is applied using OPX
+channels on the fast lines of the bias-tees while sweeping the "measure" voltage point along the detuning axis.
+
+The OPX measures the response via RF reflectometry or DC current sensing during the readout window
+(last segment of the triangle). A single-point averaging is performed and the data is extracted while
+the program is running to display the results.
+
+Depending on the cut-off frequency of the bias-tee, it may be necessary to adjust the barycenter (voltage offset) of each
+triangle so that the fast line of the bias-tees sees zero voltage on average. Otherwise, the high-pass filtering effect
+of the bias-tee will distort the fast pulses over time, unless a compensation pulse is played.
+
+Prerequisites:
+    - Having initialized the Quam (quam_config/populate_quam_state_*.py).
+    - Having calibrated the resonators coupled to the SensorDot components.
+    - Having calibrated the "empty" and "initialization" voltage points, and having defined the detuning axis.
+
+State update:
+    - The optimal detuning value for PSB readout, as the voltage point associated with the .measure macro.
+"""
+
+
+node = QualibrationNode[Parameters, Quam](
+    name="06a_PSB_search_opx_sweep_detuning",
+    description=description,
+    parameters=Parameters(),
+)
+
+
+# Any parameters that should change for debugging purposes only should go in here
+# These parameters are ignored when run through the GUI or as part of a graph
+@node.run_action(skip_if=node.modes.external)
+def custom_param(node: QualibrationNode[Parameters, Quam]):
+    # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.qubit_pairs = ["q1_q2"]
+    node.parameters.simulate = False
+    node.parameters.simulation_duration_ns = 60_000
+    node.parameters.use_simulated_data = False
+    node.parameters.detuning_points = 2
+    node.parameters.num_shots = 300
+
+
+# Instantiate the QUAM class from the state file
+node.machine = Quam.load()
+
+
+def _resolve_qubit_pairs(node: QualibrationNode[Parameters, Quam]):
+    """Resolve logical qubit pairs from parameters or default to all machine pairs."""
+    if node.parameters.qubit_pairs not in (None, ""):
+        return [node.machine.qubit_pairs[name] for name in node.parameters.qubit_pairs]
+
+    return list(node.machine.qubit_pairs.values())
+
+
+# %% {Create_QUA_program}
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
+def create_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+
+    qubit_pairs = _resolve_qubit_pairs(node)
+    dot_pair_objects = [qp.quantum_dot_pair for qp in qubit_pairs]
+
+    # Detuning axes may be added after the voltage sequence was first cached.
+    # Refresh the sequence so keep-level tracking includes the detuning virtual axis.
+    for gate_set_id in {dot_pair.voltage_sequence.gate_set.id for dot_pair in dot_pair_objects}:
+        node.machine.reset_voltage_sequence(gate_set_id)
+    for dot_pair in dot_pair_objects:
+        if len(dot_pair.sensor_dots) != 1:
+            raise ValueError(
+                f"06a_PSB_search_opx_sweep_detuning expects exactly one sensor dot per pair; "
+                f"{dot_pair.id!r} has {len(dot_pair.sensor_dots)}"
+            )
+
+    node.namespace["dot_pairs"] = dot_pair_objects
+    node.namespace["qubit_pairs"] = qubit_pairs
+
+    detuning_min = node.parameters.detuning_min
+    detuning_max = node.parameters.detuning_max
+    detuning_points = node.parameters.detuning_points
+    # detuning_step = (detuning_max - detuning_min) / detuning_points
+
+    detuning_array = np.linspace(detuning_min, detuning_max, detuning_points)
+
+    # The swept axes. n_runs is the shot index (inner→outer: detuning, n_runs).
+    # The qubit_pair dim is inferred from the per-pair stream names.
+    node.namespace["sweep_axes"] = {
+        "qubit_pair": xr.DataArray([pair.name for pair in qubit_pairs]),
+        "n_runs": xr.DataArray(np.arange(node.parameters.num_shots), attrs={"long_name": "shot"}),
+        "detuning": xr.DataArray(detuning_array, attrs={"long_name": "voltage", "units": "V"}),
+    }
+    with program() as node.namespace["qua_program"]:
+        n = declare(int)
+        n_st = declare_output_stream()
+
+        detuning = declare(fixed)
+
+        # Each logical qubit pair is read out through the single sensor dot of
+        # its underlying quantum-dot pair.
+        I_st = {qp.name: declare_output_stream() for qp in qubit_pairs}
+        Q_st = {qp.name: declare_output_stream() for qp in qubit_pairs}
+        I = {qp.name: declare(fixed) for qp in qubit_pairs}
+        Q = {qp.name: declare(fixed) for qp in qubit_pairs}
+
+        with for_(n, 0, n < node.parameters.num_shots, n + 1):
+            save(n, n_st)
+
+            # Perform them all sequentially for now. Can add footprint batching later
+            for qubit_pair in qubit_pairs:
+                dot_pair = qubit_pair.quantum_dot_pair
+                with for_(*from_array(detuning, detuning_array)):
+                    # ---------------------------------------------------------
+                    # Step 1: Initialize - load electron into dots (fixed duration)
+                    # ---------------------------------------------------------
+                    if node.parameters.qubit_pair_to_initialize is not None: 
+                        initialization_qubit_pair = node.machine.qubit_pairs[node.parameters.qubit_pair_to_initialize]
+                        dp = initialization_qubit_pair.quantum_dot_pair
+                        dp.macros[node.parameters.initialization_macro].apply()
+                    else: 
+                        dot_pair.macros[node.parameters.initialization_macro].apply()
+                    
+                    if node.parameters.qubit_to_pulse is not None: 
+                        q = node.machine.qubits[node.parameters.qubit_to_pulse]
+                        q.x180()
+                    # Requires the chosen macro on dot_pair.macros (empty or initialize)
+                    # ---------------------------------------------------------
+                    # Step 2: Measure
+                    # ---------------------------------------------------------
+                    # No macro used here, since this node will characterise the macro
+
+                    # First ramp to the fixed detuning point
+                    dot_pair.ramp_to_voltages(
+                        {dot_pair.name: detuning, dot_pair.barrier_gate.name : node.parameters.barrier_gate_voltage},
+                        ramp_duration=node.parameters.ramp_duration,
+                        duration=node.parameters.buffer_duration,
+                    )
+                    op_name = "readout" + f"_{dot_pair.name}"
+
+                    # And then explicitly measure using the pair's single sensor dot.
+                    sensor = dot_pair.sensor_dots[0]
+                    rr = sensor.readout_resonator
+                    readout_length = rr.operations[op_name].length
+                    dot_pair.voltage_sequence.track_sticky_duration(readout_length)
+                    align(rr.id, dot_pair.physical_channel.id)
+
+                    rr.measure(op_name, qua_vars=(I[qubit_pair.name], Q[qubit_pair.name]))
+                    
+
+                    save(I[qubit_pair.name], I_st[qubit_pair.name])
+                    save(Q[qubit_pair.name], Q_st[qubit_pair.name])
+                    align(rr.id, dot_pair.physical_channel.id)
+                    # Apply the compensation pulse via the voltage sequence
+                    dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero = True, return_to_zero = True)
+                    dot_pair.voltage_sequence.ramp_to_zero()
+
+                    wait(1000000//4)
+                    
+                    align()
+
+        with stream_processing():
+            n_st.save("n")
+            for qubit_pair in qubit_pairs:
+                # Shot-by-shot: inner buffer = detuning, outer buffer = n_runs.
+                I_st[qubit_pair.name].buffer(len(detuning_array)).buffer(node.parameters.num_shots).save(
+                    f"I_{qubit_pair.name}"
+                )
+                Q_st[qubit_pair.name].buffer(len(detuning_array)).buffer(node.parameters.num_shots).save(
+                    f"Q_{qubit_pair.name}"
+                )
+
+
+# %% {Simulate}
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None
+    or not node.parameters.simulate
+    or node.parameters.use_simulated_data
+)
+def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP and simulate the QUA program"""
+    # Connect to the QOP
+    qmm = node.machine.connect()
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Simulate the QUA program, generate the waveform report and plot the simulated samples
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    # Store the figure, waveform report and simulated samples
+    node.results["simulation"] = {
+        "figure": fig,
+        "wf_report": wf_report,
+        "samples": samples,
+    }
+
+
+# %% {Generate_simulated_data}
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Build synthetic shot-by-shot I/Q (Barthel forward model) for offline analysis."""
+    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.log("[sim] Simulated PSB detuning dataset generated successfully.")
+
+
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def plot_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Plot the simulated data."""
+    fig = plot_simulated_dataset_histograms(node.results["ds_raw"])
+    plt.show()
+
+
+# %% {Execute}
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
+)
+def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    # Connect to the QOP
+    qmm = node.machine.connect(timeout = node.parameters.timeout)
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        # The job is stored in the node namespace to be reused in the fetching_data run_action
+        node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        job.wait_until("Done")     
+        # Display the progress bar
+        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+        for dataset in data_fetcher:
+            progress_counter_with_log(
+                data_fetcher.get("n", 0),
+                node.parameters.num_shots,
+                start_time=data_fetcher.t_start,
+                node=node
+            )
+        # Display the execution report to expose possible runtime errors
+        node.log(job.execution_report())
+    # Reshape the per-pair streams into a qubit_pair-indexed ds with I/Q variables.
+    pair_names = [pair.name for pair in node.namespace["qubit_pairs"]]
+    I_arr = xr.concat([dataset[f"I_{p}"] for p in pair_names], dim="qubit_pair")
+    Q_arr = xr.concat([dataset[f"Q_{p}"] for p in pair_names], dim="qubit_pair")
+    I_arr = I_arr.assign_coords(qubit_pair=pair_names)
+    Q_arr = Q_arr.assign_coords(qubit_pair=pair_names)
+    node.results["ds_raw"] = xr.Dataset({"I": I_arr, "Q": Q_arr})
+
+
+# %% {Load_historical_data}
+@node.run_action(skip_if=node.parameters.load_data_id is None)
+def load_data(node: QualibrationNode[Parameters, Quam]):
+    """Load a previously acquired dataset."""
+    load_data_id = node.parameters.load_data_id
+    # Load the specified dataset
+    node.load_from_id(node.parameters.load_data_id)
+    node.parameters.load_data_id = load_data_id
+    node.namespace["qubit_pairs"] = _resolve_qubit_pairs(node)
+    # Get the active sensors from the loaded node parameters
+    node.namespace["sensors"] = get_sensors(node)
+
+
+# %% {Analyse_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def analyse_data(node: QualibrationNode[Parameters, Quam]):
+    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+
+    node.results["ds_fit"], fit_results = fit_raw_data_pca_gaussian(node.results["ds_raw"], node)
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+
+    # Log the relevant information extracted from the data analysis
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    node.outcomes = {
+        qubit_name: (Outcome.SUCCESSFUL if fit_result["success"] else Outcome.FAILED)
+        for qubit_name, fit_result in node.results["fit_results"].items()
+    }
+
+
+# %% {Plot_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def plot_data(node: QualibrationNode[Parameters, Quam]):
+    """Plot fidelity and visibility vs detuning for each qubit pair."""
+    qubit_pairs = node.namespace["qubit_pairs"]
+    sweep_name = node.parameters.sweep_name
+
+    fig_fidelity = plot_fidelity_vs_sweep(
+        node.results["ds_raw"],
+        qubit_pairs,
+        node.results["ds_fit"],
+        sweep_name=sweep_name,
+    )
+    fig_visibility = plot_visibility_vs_sweep(
+        node.results["ds_raw"],
+        qubit_pairs,
+        node.results["ds_fit"],
+        sweep_name=sweep_name,
+    )
+    fig_summary = plot_sweep_summary(
+        node.results["ds_raw"],
+        qubit_pairs,
+        node.results["ds_fit"],
+        sweep_name=sweep_name,
+    )
+    fig_histograms = plot_histograms_vs_sweep(
+        node.results["ds_raw"],
+        qubit_pairs,
+        node.results["ds_fit"],
+        sweep_name=sweep_name,
+    )
+    fig_iq = plot_rotated_iq_density_at_optimum(
+        node.results["ds_raw"],
+        node.results["fit_results"],
+        node.namespace["qubit_pairs"],
+    )
+    plt.show()
+    node.results["figures"] = {
+        "fidelity_vs_detuning": fig_fidelity,
+        "visibility_vs_detuning": fig_visibility,
+        "sweep_summary": fig_summary,
+        "histograms_vs_detuning": fig_histograms,
+        "rotated_iq_density": fig_iq,
+    }
+    annotate_node_figures(node)
+
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def update_state(node: QualibrationNode[Parameters, Quam]):
+    """Update the relevant parameters if the sensor data analysis was successful."""
+    with node.record_state_updates():
+        for qp in node.namespace["qubit_pairs"]:
+            fit_result = node.results["fit_results"][qp.name]
+            if not fit_result["success"]:
+                continue
+
+            dot_pair = qp.quantum_dot_pair
+            dot_pair.add_point(
+                VoltagePointName.MEASURE,
+                voltages={dot_pair.name: float(fit_result["optimal_sweep_value"]), dot_pair.barrier_gate.name: node.parameters.barrier_gate_voltage},
+                duration=node.parameters.buffer_duration,
+                replace_existing_point=True,
+            )
+
+            # Current PSB readout assumes the first sensor dot defines the pair readout.
+            sensor_dot = dot_pair.sensor_dots[0]
+
+            # SensorDot.measure("readout") already returns IQ demodulated using
+            # the operation's existing integration_weights_angle from prior
+            # readout calibration nodes (e.g. 05c), so 06a only updates the
+            # readout threshold for the selected detuning point.
+            pair_ids = {
+                getattr(dot_pair, "id", None),
+                getattr(dot_pair, "name", None),
+            } - {None, ""}
+            for pair_id in pair_ids:
+                sensor_dot._add_readout_params(pair_id, threshold=float(fit_result["I_threshold"]))
+
+
+# %% {Save_results}
+@node.run_action()
+def save_results(node: QualibrationNode[Parameters, Quam]):
+    node.save()
