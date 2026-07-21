@@ -48,7 +48,7 @@ def plot_raw_data_with_fit(
     else:
         sigma_T1_by_qubit, sigma_T1_boot_by_qubit, clipped_by_qubit = _sigma_clipped_from_ds(ds, qubits)
 
-    mean_dt_ms = float(ds.attrs.get("mean_dt_s", np.nan)) * 1e3
+    mean_dt_ms = float(node.results.get("time_to_decision_ms", {}).get("mean", np.nan))
     figures: Dict[str, Figure] = {}
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits], size=grid_size)

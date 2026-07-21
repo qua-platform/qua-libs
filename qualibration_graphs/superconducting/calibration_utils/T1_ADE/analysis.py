@@ -122,8 +122,10 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, T1ADEFit]]:
-    """Compute T1, uncertainty bands, and clipping flags for each qubit."""
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, dict[str, T1ADEFit], dict[str, float]]:
+    """Compute T1, uncertainty bands, clipping flags, and time-to-decision stats."""
     qubits = node.namespace["qubits"]
     clip_floors = node.namespace["ade_clip_floors"]
     log_callable = getattr(node, "log", None)
@@ -251,7 +253,7 @@ def _extract_relevant_fit_parameters(
     n_bootstrap,
     clip_floors,
     log_callable=None,
-) -> Tuple[xr.Dataset, dict[str, T1ADEFit]]:
+) -> Tuple[xr.Dataset, dict[str, T1ADEFit], dict[str, float]]:
     """Add metadata to the dataset and per-qubit fit results."""
     clipped_by_qubit, sigma_T1_by_qubit = _analytical_sigma_T1(ds, qubits, clip_floors)
     sigma_T1_boot_by_qubit = _bootstrap_sigma_T1(
@@ -275,11 +277,9 @@ def _extract_relevant_fit_parameters(
         coords={"qubit": [q.name for q in qubits], "repetition": ds.repetition},
     )
 
-    time_to_decision_ms, mean_dt = _time_to_decision_stats(
+    time_to_decision_ms, _ = _time_to_decision_stats(
         ds.time_stamp, n_reps, n_avg, log_callable=log_callable,
     )
-    ds.attrs["time_to_decision_ms"] = time_to_decision_ms
-    ds.attrs["mean_dt_s"] = mean_dt
 
     fit_results = {
         q.name: T1ADEFit(
@@ -289,4 +289,4 @@ def _extract_relevant_fit_parameters(
         )
         for q in qubits
     }
-    return ds, fit_results
+    return ds, fit_results, time_to_decision_ms
