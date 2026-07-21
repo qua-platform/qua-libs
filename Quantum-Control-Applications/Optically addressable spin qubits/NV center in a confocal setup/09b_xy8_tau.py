@@ -4,6 +4,8 @@ The program consists in playing two XY8 sequences successively (first ending wit
 and measure the photon counts received by the SPCM across varying idle times between pi-pulses.
 The times `tau_vec` are the times between pi-pulse centers. From this the pulse spacings are calculated by subtracting
 the duration of the pi-pulse. The same is done for tau_half. It is assumed that the pi/2-pulse has the same length.
+The program has a `gap_wait` parameter that is required to bridge gaps that would occur during the real-time
+processing. The waiting duration is subtracted from the following wait to ensure correct timing of the XY8 sequence.
 
 The data is post-processed to determine the coherence time T2 associated with the XY8 tau sweep measurement.
 
@@ -40,9 +42,11 @@ qm_log = logging.getLogger("qm")
 ##################
 # The time vector for the times between pi-pulse centers in clock cycles (4ns)
 # Each tau value must be a multiple of 2 clock cycles to ensure that tau_half is a multiple of a single clock cycle
-tau_vec = 2 * np.arange(12, 500, 20)
+tau_vec = 2 * np.arange(20, 500, 20)
 xy8_order = 4  # order n of the XY8-n measurement
 n_avg = 1_000_000
+
+gap_wait = 10  # in clock cycles; wait time to bridge real-time gaps
 
 tau_vec_spacing = tau_vec - x180_len_NV // 4  # interpulse spacing, i.e. from end of pulse to beginning of next pulse
 tau_half_vec_spacing = tau_vec // 2 - x90_len_NV // 4  # interpulse spacing for tau_half
@@ -54,8 +58,10 @@ if x180_len_NV != x90_len_NV:
 
 # check that all lengths are at least 4 four clock cycles (16ns)
 for ii in reversed(range(len(tau_vec))):
-    if tau_half_vec_spacing[ii] < 4:
-        qm_log.warning(f"Removed tau value {tau_vec[ii]}: interpulse spacing must be at least 4 clock cycles (16ns).")
+    if tau_half_vec_spacing[ii] < 4 + gap_wait:
+        qm_log.warning(
+            f"Removed tau value {tau_vec[ii]}: interpulse spacing must be at least {4 + gap_wait} clock cycles ({4 * (4 + gap_wait)}ns)."
+        )
         tau_half_vec_spacing = np.delete(tau_half_vec_spacing, ii)
         tau_vec_spacing = np.delete(tau_vec_spacing, ii)
         tau_vec = np.delete(tau_vec, ii)
@@ -82,7 +88,8 @@ def xy8_n(tau, order):
     loop or from two consecutive wait commands."""
     xy8_block(tau)
     with for_(i, 1, i <= order - 1, i + 1):
-        wait(tau, "NV")
+        wait(gap_wait, "NV")
+        wait(tau - gap_wait, "NV")
         xy8_block(tau)
 
 
@@ -142,7 +149,8 @@ with program() as xy8_tau:
                 play("x90", "NV")
                 wait(tau_half_spacing, "NV")
                 xy8_n(tau_spacing, xy8_order)
-                wait(tau_half_spacing, "NV")
+                wait(gap_wait, "NV")
+                wait(tau_half_spacing - gap_wait, "NV")
                 play("x90", "NV")
             align()  # Play the laser pulse after the XY8 sequence
             # Measure and detect the photons on SPCM1
@@ -164,7 +172,8 @@ with program() as xy8_tau:
                 play("x90", "NV")
                 wait(tau_half_spacing, "NV")
                 xy8_n(tau_spacing, xy8_order)
-                wait(tau_half_spacing, "NV")
+                wait(gap_wait, "NV")
+                wait(tau_half_spacing - gap_wait, "NV")
                 play("-x90", "NV")
             align()  # Play the laser pulse after the Echo sequence
             # Measure and detect the photons on SPCM1
