@@ -1,4 +1,4 @@
-from typing import  List, Literal, Optional
+from typing import List, Literal, Optional
 
 from qualibrate.core import QualibrationNode
 from qualibrate.core.parameters import RunnableParameters
@@ -11,13 +11,14 @@ from quam_builder.architecture.quantum_dots.components import SensorDot, Quantum
 from quam_builder.architecture.quantum_dots.operations.names import SingleQubitMacroName
 
 __all__ = [
-    "QuantumDotExperimentNodeParameters", 
+    "QuantumDotExperimentNodeParameters",
     "VideoModeCommonParameters",
-    "get_dots", 
+    "get_dots",
     "get_sensors",
-    "get_xy_reference_pulse_name", 
+    "get_xy_reference_pulse_name",
     "quantize_pulse_length_ns",
 ]
+
 
 class QuantumDotExperimentNodeParameters(BaseExperimentNodeParameters):
     quantum_dots: Optional[List[str]] = None
@@ -78,19 +79,13 @@ def get_xy_reference_pulse_name(qubit: AnySpinQubit) -> str:
 
     xy_drive_macro = qubit.macros.get(SingleQubitMacroName.XY_DRIVE)
     if xy_drive_macro is None:
-        raise KeyError(
-            f"Qubit '{qubit.id}' is missing the '{SingleQubitMacroName.XY_DRIVE}' macro."
-        )
+        raise KeyError(f"Qubit '{qubit.id}' is missing the '{SingleQubitMacroName.XY_DRIVE}' macro.")
 
     pulse_name = getattr(xy_drive_macro, "reference_pulse_name", None)
     if pulse_name is None:
-        raise ValueError(
-            f"Qubit '{qubit.id}' XY-drive macro has no reference_pulse_name configured."
-        )
+        raise ValueError(f"Qubit '{qubit.id}' XY-drive macro has no reference_pulse_name configured.")
     if pulse_name not in qubit.xy.operations:
-        raise KeyError(
-            f"Reference pulse '{pulse_name}' is not defined on qubit '{qubit.id}' XY drive."
-        )
+        raise KeyError(f"Reference pulse '{pulse_name}' is not defined on qubit '{qubit.id}' XY drive.")
 
     return pulse_name
 

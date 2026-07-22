@@ -1,10 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-__all__ = [
-    "plot_heralded_n_loops",
-    "plot_heralded_n_loops_2d"
-]
+__all__ = ["plot_heralded_n_loops", "plot_heralded_n_loops_2d"]
 
 
 def plot_heralded_n_loops(
@@ -78,11 +75,7 @@ def plot_heralded_n_loops_2d(
             continue
 
         n_loops_da = ds_raw[n_key].sel({item_dim: item_name})
-        if (
-            hasattr(n_loops_da, "dims")
-            and y_sweep_key in n_loops_da.dims
-            and x_sweep_key in n_loops_da.dims
-        ):
+        if hasattr(n_loops_da, "dims") and y_sweep_key in n_loops_da.dims and x_sweep_key in n_loops_da.dims:
             n_loops_da = n_loops_da.transpose(y_sweep_key, x_sweep_key)
         n_loops_vals = np.asarray(n_loops_da.values, dtype=float)
         image = ax.pcolormesh(x_vals, y_vals, n_loops_vals, shading="auto", cmap="viridis")

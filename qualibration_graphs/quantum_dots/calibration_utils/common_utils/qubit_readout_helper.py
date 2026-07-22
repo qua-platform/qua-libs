@@ -28,9 +28,7 @@ class QubitReadoutFootprint:
         return False
 
 
-def _get_qubit_readout_footprint(
-    machine: BaseQuamQD, qubit: AnySpinQubit
-) -> QubitReadoutFootprint:
+def _get_qubit_readout_footprint(machine: BaseQuamQD, qubit: AnySpinQubit) -> QubitReadoutFootprint:
     own_dot_id = qubit.quantum_dot.id
     readout_dot_id = qubit.preferred_readout_quantum_dot
 
@@ -40,9 +38,7 @@ def _get_qubit_readout_footprint(
     pair_id = machine.find_quantum_dot_pair(own_dot_id, readout_dot_id)
 
     if pair_id is None:
-        raise ValueError(
-            f"QuantumDotPair of {own_dot_id} and {readout_dot_id} not defined, for qubit {qubit.id}"
-        )
+        raise ValueError(f"QuantumDotPair of {own_dot_id} and {readout_dot_id} not defined, for qubit {qubit.id}")
 
     sensor_ids = {s.id for s in qubit.sensor_dots}
 
@@ -66,9 +62,7 @@ def _get_compatible_sensor_groups(
     return groups
 
 
-def _sensors_are_compatible(
-    sensors_a: Set[str], sensors_b: Set[str], compatible_groups: List[Set[str]]
-) -> bool:
+def _sensors_are_compatible(sensors_a: Set[str], sensors_b: Set[str], compatible_groups: List[Set[str]]) -> bool:
     combined = sensors_a | sensors_b
     for group in compatible_groups:
         if combined <= group:
@@ -95,9 +89,7 @@ def _build_readout_batches(
                     can_join = False
                     break
 
-                if not _sensors_are_compatible(
-                    footprint.sensor_ids, existing.sensor_ids, compatible_sensor_groups
-                ):
+                if not _sensors_are_compatible(footprint.sensor_ids, existing.sensor_ids, compatible_sensor_groups):
                     can_join = False
                     break
 

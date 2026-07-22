@@ -15,10 +15,10 @@ import numpy as np
 import xarray as xr
 
 __all__ = [
-    "declare_parity_streams", 
-    "buffer_parity_streams", 
-    "process_parity_streams", 
-    "get_parity_item_names", 
+    "declare_parity_streams",
+    "buffer_parity_streams",
+    "process_parity_streams",
+    "get_parity_item_names",
     "process_joint_streams",
 ]
 
@@ -166,8 +166,7 @@ def _select_item(
     item_index = item_names.index(item_name)
     if item_index >= da.sizes[item_dim]:
         raise ValueError(
-            f"Cannot select {item_name!r} from {da.name!r}: "
-            f"dimension {item_dim!r} has size {da.sizes[item_dim]}."
+            f"Cannot select {item_name!r} from {da.name!r}: " f"dimension {item_dim!r} has size {da.sizes[item_dim]}."
         )
     return da.isel({item_dim: item_index}, drop=True)
 
@@ -186,8 +185,7 @@ def _normalize_stream_dataarray(
         missing_dims = [dim for dim in sweep_dims if dim not in da.dims]
         if missing_dims:
             raise ValueError(
-                f"{da.name!r} for {item_name!r} is missing sweep dimension(s) "
-                f"{missing_dims}; dims are {da.dims}."
+                f"{da.name!r} for {item_name!r} is missing sweep dimension(s) " f"{missing_dims}; dims are {da.dims}."
             )
 
         for dim in list(da.dims):
@@ -308,18 +306,10 @@ def process_joint_streams(
     """
     new_vars = {}
     for name in qubit_names:
-        p0_p0_da = _stream_dataarray_for_item(
-            ds, "p0_p0", name, qubit_names, item_dim=item_dim, sweep_dims=sweep_dims
-        )
-        p0_p1_da = _stream_dataarray_for_item(
-            ds, "p0_p1", name, qubit_names, item_dim=item_dim, sweep_dims=sweep_dims
-        )
-        p1_p0_da = _stream_dataarray_for_item(
-            ds, "p1_p0", name, qubit_names, item_dim=item_dim, sweep_dims=sweep_dims
-        )
-        p1_p1_da = _stream_dataarray_for_item(
-            ds, "p1_p1", name, qubit_names, item_dim=item_dim, sweep_dims=sweep_dims
-        )
+        p0_p0_da = _stream_dataarray_for_item(ds, "p0_p0", name, qubit_names, item_dim=item_dim, sweep_dims=sweep_dims)
+        p0_p1_da = _stream_dataarray_for_item(ds, "p0_p1", name, qubit_names, item_dim=item_dim, sweep_dims=sweep_dims)
+        p1_p0_da = _stream_dataarray_for_item(ds, "p1_p0", name, qubit_names, item_dim=item_dim, sweep_dims=sweep_dims)
+        p1_p1_da = _stream_dataarray_for_item(ds, "p1_p1", name, qubit_names, item_dim=item_dim, sweep_dims=sweep_dims)
 
         p0_p0 = p0_p0_da.values.astype(np.float64)
         p0_p1 = p0_p1_da.values.astype(np.float64)
@@ -383,9 +373,9 @@ def process_parity_streams(
 
     new_vars = {}
     for name in item_names:
-        p2 = _stream_dataarray_for_item(
-            ds, "p", name, item_names, item_dim=item_dim, sweep_dims=sweep_dims
-        ).astype(np.float64)
+        p2 = _stream_dataarray_for_item(ds, "p", name, item_names, item_dim=item_dim, sweep_dims=sweep_dims).astype(
+            np.float64
+        )
         new_vars[f"E_p2_given_p1_0_{name}"] = p2.copy()
         new_vars[f"E_p2_given_p1_1_{name}"] = p2.copy()
 
