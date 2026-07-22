@@ -10,7 +10,7 @@ DEFAULT_QUAM_STATE_DIR = DIR / "quam_state"
 # Define the QUAM class that will be used in all calibration nodes
 # Should inherit from BaseQuamQD
 @quam_dataclass
-class Quam(LossDiVincenzoQuam):
+class Quam(BaseQuamQD):
     pass
 
 
