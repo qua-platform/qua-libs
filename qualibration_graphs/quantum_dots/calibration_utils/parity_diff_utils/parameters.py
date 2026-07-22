@@ -2,6 +2,7 @@ from typing import Literal
 
 from qualibrate.core.parameters import RunnableParameters
 
+
 class ParityDiffAnalysisParameters(RunnableParameters):
     analysis_signal: Literal["E_p2_given_p1_0", "E_p2_given_p1_1"] = "E_p2_given_p1_0"
     """Which conditional expectation to use for fitting.

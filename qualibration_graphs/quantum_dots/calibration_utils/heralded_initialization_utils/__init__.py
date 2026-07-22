@@ -2,6 +2,6 @@ from .parameters import HeraldedInitializeParameters
 from .plotting import *
 
 __all__ = [
-    "HeraldedInitializeParameters", 
+    "HeraldedInitializeParameters",
     *plotting.__all__,
 ]
