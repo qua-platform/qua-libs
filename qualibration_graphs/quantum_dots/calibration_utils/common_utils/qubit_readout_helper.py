@@ -1,20 +1,19 @@
-from typing import List, Set, Dict, Optional, Tuple, Literal
+from typing import List, Set, Literal, Union
 from dataclasses import dataclass
 
 from qualibrate.core import QualibrationNode
 from qualibration_libs.core import BatchableList
+from qualibration_libs.parameters.experiment import _get_qubits
 
-from quam_builder.architecture.quantum_dots.components import SensorDot
 from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD
 from quam_builder.architecture.quantum_dots.qubit import AnySpinQubit
-
-from calibration_utils.common_utils.experiment import _get_qubits, get_sensors
+from quam_builder.architecture.quantum_dots.components import SensorDot
 
 
 @dataclass
 class QubitReadoutFootprint:
-    qubit_id: str
-    own_dot_id: str
+    qubit_id: Union[str, int]
+    own_dot_id: Union[str, int]
     readout_pair_dot_id: str
     quantum_dot_pair_id: str
     sensor_ids: Set[str]
