@@ -1,21 +1,14 @@
-import logging
-import time
-from datetime import datetime
-import json
-from pathlib import Path
-from typing import Any, List, Literal, Optional
+from typing import  List, Literal, Optional
 
 from qualibrate.core import QualibrationNode
 from qualibrate.core.parameters import RunnableParameters
-from qualang_tools.results import progress_counter as _progress_counter
 from qualibration_libs.core import BatchableList
 from qualibration_libs.parameters.experiment import _make_batchable_list_from_multiplexed, BaseExperimentNodeParameters
 
-from quam_builder.architecture.quantum_dots.components import SensorDot, QuantumDot
-from quam_builder.architecture.quantum_dots.operations.names import SingleQubitMacroName
 from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD
 from quam_builder.architecture.quantum_dots.qubit import AnySpinQubit
-from quam_builder.architecture.quantum_dots.qubit_pair import AnySpinQubitPair
+from quam_builder.architecture.quantum_dots.components import SensorDot, QuantumDot
+from quam_builder.architecture.quantum_dots.operations.names import SingleQubitMacroName
 
 __all__ = [
     "QuantumDotExperimentNodeParameters", 
@@ -76,6 +69,7 @@ def get_sensors(node: QualibrationNode) -> BatchableList[SensorDot]:
     sensors_batchable_list = _make_batchable_list_from_multiplexed(sensors, multiplexed)
 
     return sensors_batchable_list
+
 
 def get_xy_reference_pulse_name(qubit: AnySpinQubit) -> str:
     """Resolve the pulse name backing the qubit's default XY macros."""
