@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 from quam_builder.builder.qop_connectivity import build_quam_wiring
-from quam_builder.builder.superconducting import build_quam
+from quam_builder.builder.quantum_dots import build_quam
+from quam_builder.architecture.quantum_dots.operations.macro_catalog import VoltageBalancedMacroCatalog
 from quam_config import Quam
 
 ########################################################################################################################
@@ -17,7 +18,7 @@ calibration_db_path = None  # "/path/to/some/config/folder"
 # %%                                      Define the available instrument setup
 ########################################################################################################################
 instruments = Instruments()
-instruments.add_lf_fem(controller=1, slots=[1, 2])
+instruments.add_lf_fem(controller=1, slots=[5, 6])
 instruments.add_octave(indices=1)
 
 ########################################################################################################################
@@ -59,7 +60,5 @@ if user_input.lower() == "y":
     machine = Quam()
     # Build the wiring (wiring_old.json) and initiate the QUAM
     build_quam_wiring(connectivity, host_ip, cluster_name, machine)
-
-    # Reload QUAM, build the QUAM object and save the state as state_old.json
-    machine = Quam.load()
-    build_quam(machine, calibration_db_path)
+    build_quam(machine, catalogs = [VoltageBalancedMacroCatalog()])
+    machine.save()
