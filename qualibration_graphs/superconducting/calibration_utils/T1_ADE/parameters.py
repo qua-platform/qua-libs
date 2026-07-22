@@ -1,6 +1,6 @@
 """Parameter definitions for T1 ADE tracking experiments."""
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
@@ -32,6 +32,18 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum adaptive wait dt in nanoseconds. Default is 150_000 ns."""
     reset_max_attempts: int = 15
     """Maximum active-reset attempts before giving up. Default is 15."""
+    measure_conventional_t1: bool = False
+    """If True, run a mid-run conventional T1 sweep at ``n == num_repetitions // 2``."""
+    min_wait_time_in_ns: int = 16
+    """Minimum idle time for the mid-run conventional T1 sweep (when enabled)."""
+    max_wait_time_in_ns: int = 200_000
+    """Maximum idle time for the mid-run conventional T1 sweep (when enabled)."""
+    wait_time_num_points: int = 20
+    """Number of idle-time points in the mid-run conventional T1 sweep (when enabled)."""
+    log_or_linear_sweep: Literal["log", "linear"] = "linear"
+    """Idle-time sweep type for the mid-run conventional T1 measurement (when enabled)."""
+    use_state_discrimination: bool = True
+    """Conventional T1 mid-run sweep uses ``readout_state`` (same as ADE)."""
     simulation_duration_ns: int = 2500
     """Simulation duration in nanoseconds. Default is 2500 ns."""
     timeout: int = 100

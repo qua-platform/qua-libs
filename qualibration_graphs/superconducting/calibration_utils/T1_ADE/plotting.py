@@ -27,7 +27,7 @@ def _sigma_clipped_from_fits(fits: Dict) -> tuple[dict, dict, dict]:
 def plot_raw_data_with_fit(
     node: QualibrationNode,
     grid_size: int = 4,
-    bin_width_s: float = 0.25,
+    bin_width_ms: float | None = None,
 ) -> Dict[str, Figure]:
     """Plot T1 vs lab time (analytical and bootstrap) and ADE wait-time fit per qubit.
 
@@ -36,7 +36,8 @@ def plot_raw_data_with_fit(
     Returns
     -------
     dict[str, Figure]
-        ``T1_vs_lab_time``, ``T1_vs_lab_time_bootstrap``, and ``wait_time_image``.
+        ``T1_vs_lab_time``, ``T1_vs_lab_time_bootstrap``, ``wait_time_image``, and
+        optionally ``t1_conventional_decay`` when mid-run conventional T1 data is present.
     """
     ds = node.results["ds_fit"]
     qubits = node.namespace["qubits"]
@@ -49,6 +50,12 @@ def plot_raw_data_with_fit(
         sigma_T1_by_qubit, sigma_T1_boot_by_qubit, clipped_by_qubit = _sigma_clipped_from_ds(ds, qubits)
 
     mean_dt_ms = float(node.results.get("time_to_decision_ms", {}).get("mean", np.nan))
+    if bin_width_ms is None:
+        conv_total_ms = (node.results.get("t1_conventional_time_to_decision_ms") or {}).get("total_ms")
+        if conv_total_ms is not None and np.isfinite(conv_total_ms) and conv_total_ms > 0:
+            bin_width_ms = float(conv_total_ms)
+        else:
+            bin_width_ms = 250.0
     figures: Dict[str, Figure] = {}
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits], size=grid_size)
@@ -60,9 +67,9 @@ def plot_raw_data_with_fit(
             ds.time_stamp.sel(qubit=qubit_name).values,
             ds.estimated_T1.sel(qubit=qubit_name).values,
             sigma_T1_by_qubit[qubit_name],
-            ds.estimated_gamma.sel(qubit=qubit_name).values,
+            ds.gamma1.sel(qubit=qubit_name).values,
             clipped_by_qubit[qubit_name],
-            bin_width_s=bin_width_s,
+            bin_width_ms=bin_width_ms,
             band_alpha=0.5,
             line_alpha=0.75,
         )
@@ -79,9 +86,9 @@ def plot_raw_data_with_fit(
             ds.time_stamp.sel(qubit=qubit_name).values,
             ds.estimated_T1.sel(qubit=qubit_name).values,
             sigma_T1_boot_by_qubit[qubit_name],
-            ds.estimated_gamma.sel(qubit=qubit_name).values,
+            ds.gamma1.sel(qubit=qubit_name).values,
             clipped_by_qubit[qubit_name],
-            bin_width_s=bin_width_s,
+            bin_width_ms=bin_width_ms,
             line_color="tab:blue",
             band_color="tab:blue",
             band_alpha=0.5,
@@ -99,7 +106,7 @@ def plot_raw_data_with_fit(
             ax,
             qubit_name,
             ds.dt_used.sel(qubit=qubit_name).values,
-            ds.estimated_gamma.sel(qubit=qubit_name).values,
+            ds.gamma1.sel(qubit=qubit_name).values,
             ds.P0.sel(qubit=qubit_name).values,
             ds.P1.sel(qubit=qubit_name).values,
             ds.P3.sel(qubit=qubit_name).values,
@@ -109,10 +116,34 @@ def plot_raw_data_with_fit(
         )
     title = r"$P_{|1\rangle}$ vs wait time (best $\sigma$ repetition)"
     if np.isfinite(mean_dt_ms):
-        title += f"\n({mean_dt_ms:.1f} ms/rep)"
+        title += f"\n(Time to decision: {mean_dt_ms:.1f} ms/rep)"
     grid.fig.suptitle(title)
     grid.fig.tight_layout(rect=[0, 0, 1, 0.92])
     figures["wait_time_image"] = grid.fig
+
+    if "t1_conventional_state" in ds and "fit_data" in ds:
+        from calibration_utils.T1.plotting import plot_raw_data_with_fit as plot_t1_raw_data_with_fit
+
+        ds_t1 = ds[["t1_conventional_state", "fit_data"]].rename(
+            {"t1_conventional_state": "state"}
+        )
+        fig_t1 = plot_t1_raw_data_with_fit(ds_t1, qubits, ds_t1)
+        ttd = node.results.get("t1_conventional_time_to_decision_ms")
+        if ttd is not None:
+            parts = []
+            for key, label in (
+                ("measurement_ms", "measurement"),
+                ("fetch_ms", "fetch"),
+                ("analysis_ms", "analysis"),
+                ("total_ms", "total"),
+            ):
+                val = ttd.get(key)
+                if val is not None and np.isfinite(val):
+                    parts.append(f"{label}={val:.1f} ms")
+            if parts:
+                fig_t1.suptitle("T1 vs. idle time\nConventional TTD: " + ", ".join(parts))
+                fig_t1.tight_layout(rect=[0, 0, 1, 0.92])
+        figures["t1_conventional_decay"] = fig_t1
 
     return figures
 
@@ -125,7 +156,7 @@ def plot_individual_T1_lab_time(
     sigma_T1_us,
     gamma_us,
     clipped,
-    bin_width_s: float = 0.25,
+    bin_width_ms: float = 250.0,
     line_color: str = "#b22222",
     band_color: str = "tab:red",
     band_alpha: float = 0.08,
@@ -133,6 +164,7 @@ def plot_individual_T1_lab_time(
     sigma_label: str = r"on-FPGA $T_1 \pm \sigma$",
 ) -> None:
     """Paper-style panel: T1 line, ±σ band, and binned median T1."""
+    bin_width_s = bin_width_ms / 1e3  # lab time ``t_s`` is in seconds
     valid = ~np.asarray(clipped) & np.isfinite(T1_us) & np.isfinite(sigma_T1_us)
     gamma_all = np.asarray(gamma_us)
     t_v = np.asarray(t_s)[valid]
@@ -169,7 +201,7 @@ def plot_individual_T1_lab_time(
             color="0.2",
             linewidth=1.0,
             zorder=3,
-            label=rf"$\langle T_1 \rangle$ in {int(bin_width_s * 1e3)} ms",
+            label=rf"$\langle T_1 \rangle$ in {bin_width_ms:.0f} ms",
         )
 
     ax.set_xlabel("Time (s)")

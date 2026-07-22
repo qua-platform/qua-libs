@@ -1,4 +1,5 @@
 import logging
+import time
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
@@ -48,16 +49,17 @@ def fetch_raw_dataset(
     qubits,
     n_reps: int,
     n_avg: int,
+    t1_conventional_idle_ns: np.ndarray | None = None,
 ) -> xr.Dataset:
-    """Fetch all ADE streams after job completion and merge into one dataset."""
+    """Fetch ADE streams and optional mid-run conventional T1 sweep."""
     handles = job.result_handles
     repetition = np.arange(1, n_reps + 1)
     rep_axis = {"repetition": repetition}
     shot_axis = {"shot": np.arange(n_avg), "repetition": repetition}
 
     ds_parts = [
-        fetch_results_as_xarray_arb_var(handles, qubits, rep_axis, "estimated_gamma"),
-        fetch_results_as_xarray_arb_var(handles, qubits, rep_axis, "sigma_gamma"),
+        fetch_results_as_xarray_arb_var(handles, qubits, rep_axis, "gamma1"),
+        fetch_results_as_xarray_arb_var(handles, qubits, rep_axis, "sigma_gamma1"),
         fetch_results_as_xarray_arb_var(handles, qubits, rep_axis, "dt_used"),
         fetch_results_as_xarray_arb_var(handles, qubits, rep_axis, "P0"),
         fetch_results_as_xarray_arb_var(handles, qubits, rep_axis, "P1"),
@@ -67,16 +69,71 @@ def fetch_raw_dataset(
         fetch_results_as_xarray_arb_var(handles, qubits, shot_axis, "P1_shots"),
         fetch_results_as_xarray_arb_var(handles, qubits, shot_axis, "P3_shots"),
     ]
-    return xr.merge(ds_parts)
+    ds = xr.merge(ds_parts)
+
+    if t1_conventional_idle_ns is not None and handles.get("t1_state1") is not None:
+        fetch_t0 = time.perf_counter()
+        ds_t1 = fetch_results_as_xarray_arb_var(
+            handles, qubits, {"idle_time": t1_conventional_idle_ns}, "t1_state"
+        )
+        ds_t1 = ds_t1.rename({"t1_state": "t1_conventional_state"})
+        ds_t1.idle_time.attrs = {"long_name": "idle time", "units": "ns"}
+        ds = xr.merge([ds, ds_t1])
+        ds.attrs["fetch_ms"] = (time.perf_counter() - fetch_t0) * 1e3
+        measurement_ms = conventional_measurement_ms_from_timestamps(handles, qubits)
+        if measurement_ms is not None:
+            ds.attrs["measurement_ms"] = measurement_ms
+
+    return ds
+
+
+def conventional_measurement_ms_from_timestamps(handles, qubits) -> float | None:
+    """FPGA duration of the mid-run conventional T1 sweep from ``t1_conv_start/end`` streams."""
+    if handles.get("t1_conv_start1") is None or handles.get("t1_conv_end1") is None:
+        return None
+
+    start_cycles = np.array(
+        [np.squeeze(handles.get(f"t1_conv_start{i + 1}").fetch_all()) for i in range(len(qubits))],
+        dtype=float,
+    )
+    end_cycles = np.array(
+        [np.squeeze(handles.get(f"t1_conv_end{i + 1}").fetch_all()) for i in range(len(qubits))],
+        dtype=float,
+    )
+    measurement_ms = float(np.nanmean(end_cycles - start_cycles) * 4e-6)
+    if not np.isfinite(measurement_ms) or measurement_ms <= 0:
+        return None
+    return measurement_ms
+
+
+def estimate_conventional_measurement_ms(ds: xr.Dataset, n_reps: int) -> float:
+    """Fallback FPGA duration estimate from the inflated ADE lab-time gap at mid-run.
+
+    The conventional sweep runs after the ADE timestamp at ``n == n_reps // 2``, so the
+    gap to the next repetition equals ``T_conventional + T_ADE_rep``.
+    """
+    per_rep_dt = np.diff(ds.time_stamp.values, axis=1)
+    mid_diff_idx = n_reps // 2
+    if mid_diff_idx <= 0 or mid_diff_idx >= per_rep_dt.shape[1]:
+        return np.nan
+
+    inflated_dt = float(np.nanmean(per_rep_dt[:, mid_diff_idx]))
+    mask = np.ones(per_rep_dt.shape[1], dtype=bool)
+    mask[mid_diff_idx] = False
+    mean_ade_dt = float(np.nanmean(per_rep_dt[:, mask]))
+    return max(0.0, (inflated_dt - mean_ade_dt) * 1e3)
 
 
 @dataclass
 class T1ADEFit:
-    """Stores the relevant T1 ADE analysis parameters for a single qubit."""
+    """Stores ADE and optional mid-run conventional T1 fit parameters per qubit."""
 
     sigma_T1_us: np.ndarray
     sigma_T1_boot_us: np.ndarray
     clipped: np.ndarray
+    t1_conventional_us: float | None = None
+    t1_conventional_error_us: float | None = None
+    t1_conventional_success: bool | None = None
 
 
 def ade_gamma1_from_P(P0_, P1_, P3_, dt_us, *, sqrt_arg_floor, ln_arg_floor):
@@ -122,24 +179,6 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     return ds
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, T1ADEFit], dict[str, float]]:
-    """Compute T1, uncertainty bands, clipping flags, and time-to-decision stats."""
-    qubits = node.namespace["qubits"]
-    clip_floors = node.namespace["ade_clip_floors"]
-    log_callable = getattr(node, "log", None)
-    return _extract_relevant_fit_parameters(
-        ds,
-        qubits,
-        node.parameters.num_repetitions,
-        node.parameters.n_avg_per_point,
-        node.parameters.n_bootstrap,
-        clip_floors,
-        log_callable=log_callable,
-    )
-
-
 def _analytical_sigma_T1(ds, qubits, clip_floors):
     gamma_floor = clip_floors["gamma_floor"]
     clipped_by_qubit = {}
@@ -149,8 +188,8 @@ def _analytical_sigma_T1(ds, qubits, clip_floors):
         P0_v = ds.P0.sel(qubit=qubit_name).values
         P1_v = ds.P1.sel(qubit=qubit_name).values
         P3_v = ds.P3.sel(qubit=qubit_name).values
-        gamma_v = ds.estimated_gamma.sel(qubit=qubit_name).values
-        sigma_gamma_v = ds.sigma_gamma.sel(qubit=qubit_name).values
+        gamma_v = ds.gamma1.sel(qubit=qubit_name).values
+        sigma_gamma1_v = ds.sigma_gamma1.sel(qubit=qubit_name).values
         clipped_v = ade_point_clipped(
             P0_v,
             P1_v,
@@ -164,7 +203,7 @@ def _analytical_sigma_T1(ds, qubits, clip_floors):
 
         valid = np.isfinite(gamma_v) & (gamma_v > gamma_floor)
         sigma_T1_v = np.divide(
-            sigma_gamma_v,
+            sigma_gamma1_v,
             gamma_v**2,
             out=np.full_like(gamma_v, np.nan),
             where=valid,
@@ -224,9 +263,36 @@ def _bootstrap_sigma_T1(
     return sigma_T1_boot_by_qubit
 
 
-def _time_to_decision_stats(time_stamp, n_reps, n_avg_per_point, log_callable=None):
+def _time_to_decision_stats(
+    time_stamp=None,
+    n_reps=None,
+    n_avg_per_point=None,
+    *,
+    conventional_ttd=None,
+    log_callable=None,
+):
     if log_callable is None:
-        log_callable = logging.getLogger(__name__).info
+        log_callable = logger.info
+
+    if conventional_ttd is not None:
+        measurement_ms = float(conventional_ttd.get("measurement_ms", np.nan))
+        fetch_ms = float(conventional_ttd.get("fetch_ms", np.nan))
+        analysis_ms = float(conventional_ttd.get("analysis_ms", np.nan))
+        total_ms = float(np.nansum([measurement_ms, fetch_ms, analysis_ms]))
+        stats = {
+            "measurement_ms": measurement_ms,
+            "fetch_ms": fetch_ms,
+            "analysis_ms": analysis_ms,
+            "total_ms": total_ms,
+        }
+        log_callable(
+            "Conventional T1 time-to-decision: "
+            f"measurement={measurement_ms:.2f} ms, "
+            f"fetch={fetch_ms:.2f} ms, "
+            f"analysis={analysis_ms:.2f} ms, "
+            f"total={total_ms:.2f} ms"
+        )
+        return stats
 
     t_vals = time_stamp.values
     per_rep_dt = np.diff(t_vals, axis=1)
@@ -253,14 +319,16 @@ def _extract_relevant_fit_parameters(
     n_bootstrap,
     clip_floors,
     log_callable=None,
+    conventional_fit_results: dict | None = None,
+    conventional_analysis_ms: float | None = None,
 ) -> Tuple[xr.Dataset, dict[str, T1ADEFit], dict[str, float]]:
-    """Add metadata to the dataset and per-qubit fit results."""
+    """Extract ADE fit parameters and optional mid-run conventional T1 fit parameters."""
     clipped_by_qubit, sigma_T1_by_qubit = _analytical_sigma_T1(ds, qubits, clip_floors)
     sigma_T1_boot_by_qubit = _bootstrap_sigma_T1(
         ds, qubits, n_avg, n_bootstrap, clipped_by_qubit, clip_floors,
     )
 
-    ds["estimated_T1"] = 1.0 / ds.estimated_gamma
+    ds["estimated_T1"] = 1.0 / ds.gamma1
     ds.estimated_T1.attrs = {"long_name": "T1", "units": "us"}
     ds["sigma_T1"] = xr.DataArray(
         np.array([sigma_T1_by_qubit[q.name] for q in qubits]),
@@ -289,4 +357,68 @@ def _extract_relevant_fit_parameters(
         )
         for q in qubits
     }
+
+    if conventional_fit_results is not None:
+        ttd = {
+            k: float(ds.attrs[k])
+            for k in ("fetch_ms", "measurement_ms")
+            if k in ds.attrs
+        }
+        if not np.isfinite(ttd.get("measurement_ms", np.nan)):
+            ttd["measurement_ms"] = estimate_conventional_measurement_ms(ds, n_reps)
+        ttd["analysis_ms"] = conventional_analysis_ms
+        ttd = _time_to_decision_stats(conventional_ttd=ttd, log_callable=log_callable)
+        for key, val in ttd.items():
+            ds.attrs[key] = val
+
+        for q in qubits:
+            conv = conventional_fit_results[q.name]
+            ade = fit_results[q.name]
+            fit_results[q.name] = T1ADEFit(
+                sigma_T1_us=ade.sigma_T1_us,
+                sigma_T1_boot_us=ade.sigma_T1_boot_us,
+                clipped=ade.clipped,
+                t1_conventional_us=float(conv.t1) * 1e-3,
+                t1_conventional_error_us=float(conv.t1_error) * 1e-3,
+                t1_conventional_success=bool(conv.success),
+            )
+
     return ds, fit_results, time_to_decision_ms
+
+
+def fit_raw_data(
+    ds: xr.Dataset, node: QualibrationNode
+) -> Tuple[xr.Dataset, dict[str, T1ADEFit], dict[str, float]]:
+    """Fit mid-run conventional T1 (if present) and extract ADE + conventional parameters."""
+    log_callable = getattr(node, "log", None)
+    conventional_fit_results = None
+    conventional_analysis_ms = None
+
+    if "t1_conventional_state" in ds and node.parameters.measure_conventional_t1:
+        from qualibration_libs.analysis import fit_decay_exp
+
+        from calibration_utils.T1 import log_fitted_results
+        from calibration_utils.T1.analysis import (
+            _extract_relevant_fit_parameters as extract_t1_fit_parameters,
+        )
+
+        analysis_t0 = time.perf_counter()
+        ds_t1 = ds[["t1_conventional_state"]].rename({"t1_conventional_state": "state"})
+        fit_data = fit_decay_exp(ds_t1.state, "idle_time")
+        ds_t1_fit = xr.merge([ds_t1, fit_data.rename("fit_data")])
+        ds_t1_fit, conventional_fit_results = extract_t1_fit_parameters(ds_t1_fit)
+        ds = xr.merge([ds, ds_t1_fit.drop_vars("state")])
+        conventional_analysis_ms = (time.perf_counter() - analysis_t0) * 1e3
+        log_fitted_results(ds_t1_fit, log_callable=log_callable)
+
+    return _extract_relevant_fit_parameters(
+        ds,
+        node.namespace["qubits"],
+        node.parameters.num_repetitions,
+        node.parameters.n_avg_per_point,
+        node.parameters.n_bootstrap,
+        node.namespace["ade_clip_floors"],
+        log_callable=log_callable,
+        conventional_fit_results=conventional_fit_results,
+        conventional_analysis_ms=conventional_analysis_ms,
+    )
