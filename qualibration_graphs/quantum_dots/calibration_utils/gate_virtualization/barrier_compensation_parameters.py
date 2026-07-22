@@ -1,1 +1,0 @@
-from .barrier_pat_parameters import BarrierCompensationParameters
