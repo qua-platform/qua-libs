@@ -16,12 +16,15 @@ cluster_name = "Cluster_1"  # Name of the cluster
 # %%                                      Define the available instrument setup
 ########################################################################################################################
 instruments = Instruments()
-instruments.add_mw_fem(controller=1, slots=[1, 2])
-instruments.add_lf_fem(controller=1, slots=[3, 5])
+instruments.add_mw_fem(controller=1, slots=[1])
+instruments.add_lf_fem(controller=1, slots=[2, 3])
 
 ########################################################################################################################
 # %%                                 Define which qubit ids are present in the system
 ########################################################################################################################
+quantum_dots=[1, 2, 3, 4]
+sensor_dots=[1, 2]
+quantum_dot_pairs=[(1, 2), (2, 3), (3, 4)]
 qubits = [1, 2, 3, 4, 5, 6, 7, 8]
 qubit_pairs = [(qubits[i], qubits[i + 1]) for i in range(len(qubits) - 1)]
 
@@ -40,18 +43,12 @@ q5to8_drive_ch = mw_fem_spec(con=1, slot=2, in_port=None, out_port=4)
 # %%                Allocate the wiring to the connectivity object based on the available instruments
 ########################################################################################################################
 connectivity = Connectivity()
-# The readout lines
-connectivity.add_resonator_line(qubits=qubits[:4], constraints=q1to4_res_ch)
-connectivity.add_resonator_line(qubits=qubits[4:], constraints=q5to8_res_ch)
-# The xy drive lines
-connectivity.add_qubit_drive_lines(qubits=qubits[:4], constraints=q1to4_drive_ch)
-for qubit in qubits[4:]:
-    connectivity.add_qubit_drive_lines(qubits=qubit, constraints=q5to8_drive_ch)
-    allocate_wiring(connectivity, instruments, block_used_channels=False)
-# The flux lines for the individual qubits
-connectivity.add_qubit_flux_lines(qubits=qubits)
-# The flux lines for the tunable couplers
-connectivity.add_qubit_pair_flux_lines(qubit_pairs=qubit_pairs)
+# Add the plunger gates and drive lines for each dot
+connectivity.add_quantum_dots(quantum_dots, add_drive_lines=True, use_mw_fem=True, shared_drive_line=True)
+# Add the sensor gates and rf-reflectometry readout components for each sensor dot
+connectivity.add_sensor_dots(sensor_dots, shared_resonator_line=False)
+# Add the barrier gates for each quantum dot pair
+connectivity.add_quantum_dot_pairs(quantum_dot_pairs)
 # Allocate the wiring
 allocate_wiring(connectivity, instruments)
 
