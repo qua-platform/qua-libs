@@ -69,7 +69,6 @@ def launch_video_mode(
     port: int = 8050,
     mid_scan_compensation: bool = True,
     use_buffered_stream: bool = False,
-    point_duration: int = 100,
 ) -> None:
     global _DASHBOARD_THREAD, _DASHBOARD_SERVER
 
@@ -85,6 +84,10 @@ def launch_video_mode(
         }
 
     qmm = machine.connect()
+    try: 
+        machine.create_virtual_dc_set(virtual_gate_id)
+    except: 
+        print("Was unable to create virtual DC set. Moving on without DC control. ")
     dc_set = machine.virtual_dc_sets.get(virtual_gate_id, None)
 
     voltage_control_tab, voltage_control_component = None, None
@@ -118,7 +121,7 @@ def launch_video_mode(
         mid_scan_compensation=mid_scan_compensation,
         use_buffered_stream=use_buffered_stream,
         acquisition_interval_s=0.05,
-        inner_loop_kwargs = {"point_duration": point_duration},
+        # inner_loop_kwargs = {"point_duration": point_duration},
     )
 
     def find_default(mode):
