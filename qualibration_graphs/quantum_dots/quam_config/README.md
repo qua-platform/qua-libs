@@ -57,7 +57,7 @@ This step creates the static part of the QUAM state, primarily defining the hard
   - Review the wiring allocation logic and adjust if needed.
 - Run the script: Execute `python generate_quam.py`. This uses the definitions in the script (leveraging `quam-builder` tools internally) to generate the QUAM state files (e.g., `wiring.json` and `state.json`) in your QUAM state folder (default: `quantum_dots/quam_state`). The `state.json` created at this stage contains the structure but is largely empty of specific operational parameters. This generated QUAM state should typically be populated with target values in the next step.
 
-![opx1000_wiring](../.img/opx1000_wiring.PNG)
+![opx1000_wiring](../.img/opx1000_wiring.png)
 
 ### 4️⃣ Initialize Dynamic Parameters (using `populate_quam_*.py`)
 
