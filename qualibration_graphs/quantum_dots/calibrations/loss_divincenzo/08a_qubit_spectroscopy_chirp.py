@@ -8,7 +8,7 @@ from qm.qua import *
 
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
+from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
@@ -20,7 +20,6 @@ from calibration_utils.common_utils.parity_streams import (
     buffer_parity_streams,
     process_parity_streams,
 )
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.qubit_spectroscopy_chirp_parity_diff import (
     Parameters,
     fit_raw_data,
@@ -63,15 +62,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["Q1", "Q2", "Q3", "Q4"]
-    # node.parameters.operation_len_in_ns = 2000
-    # node.parameters.use_simulated_data = False
-    # node.parameters.frequency_span_in_mhz = 100
-    # node.parameters.frequency_step_in_mhz = 1
-    # node.parameters.num_shots = 1
-    # node.parameters.simulate = True
-    # node.parameters.simulation_duration_ns = 100_000
-    # node.parameters.use_simulated_data = False
     pass
 
 
@@ -219,7 +209,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
+            progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
@@ -321,7 +311,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     node.results["figures"] = {
         "qubit_spectroscopy_chirp": fig_raw_fit,
     }
-    annotate_node_figures(node)
 
 
 # %% {Update_state}

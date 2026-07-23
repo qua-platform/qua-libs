@@ -10,7 +10,7 @@ from qm.qua import *
 
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
+from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
@@ -22,7 +22,6 @@ from calibration_utils.common_utils.parity_streams import (
     buffer_parity_streams,
     process_parity_streams,
 )
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.qubit_spectroscopy_parity_diff import (
     InitDurParameters as Parameters,
 )
@@ -59,10 +58,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["Q1", "Q2", "Q3", "Q4"]
-    # node.parameters.simulate = True
-    # node.parameters.qubits = ["q1"]
-    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -237,7 +232,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
+            progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
@@ -438,7 +433,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     node.results["figures"] = {
         "initialisation_map": fig_map,
     }
-    annotate_node_figures(node)
 
 
 # %% {Update_state}
