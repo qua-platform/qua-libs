@@ -38,6 +38,15 @@ simultaneously. This is done across various readout frequencies and amplitudes.
 Based on the results, one can then adjust the readout amplitude, choosing a
 readout amplitude value just before the observed frequency splitting.
 
+for each shot (1 … num_shots):
+    for each frequency offset df:
+        for each sensor:
+            tune readout tone to IF + df
+            for each amplitude scale a (→ readout power):
+                readout at power ∝ a²
+                save I, Q
+→ OPX returns a 2D map: frequency × power per sensor
+
 Prerequisites:
     - Having calibrated the resonator frequency (node 02a_resonator_spectroscopy.py).
     - Having instantiated a starting readout amplitude.
@@ -80,83 +89,115 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    # Class containing tools to help handle units and conversions.
+    """Build the 2D frequency × power sweep and the QUA pulse sequence."""
+
     u = unit(coerce_to_integer=True)
-    # Extract the sweep parameters and axes from the node parameters
-    n_avg = node.parameters.num_shots
-    # Power values as an array
+
+    # ── Experiment parameters (Python side) ──────────────────────────────
+
+    n_avg = node.parameters.num_shots  # repetitions averaged at each (frequency, power) point
+
+    # Readout power axis [dBm] — the quantity we ultimately want to calibrate
     power_dbm = np.linspace(
         node.parameters.min_power_dbm,
         node.parameters.max_power_dbm,
         node.parameters.num_power_points,
     )
-    # Get the active sensors from the node and organize them by batches
+
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
 
-    # Update the readout power to match the desired range, this change will be reverted at the end of the node.
+    # ── Prepare QuAM for the power sweep (Python side, before QUA runs) ──
+    #
+    # Strategy: configure the readout pulse at MAX power in QuAM, then in QUA
+    # scale it down with `amplitude_scale` to reach lower powers.
+    # tracked_updates remembers these edits so they can be reverted in update_state.
     node.namespace["tracked_resonators"] = []
     for i, sensor in enumerate(sensors):
         with tracked_updates(sensor.readout_resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
             if isinstance(resonator._obj, ReadoutResonatorSingle):
+                # Direct amplitude on a simple readout line: set voltage for max_power_dbm
                 base_amplitude = u.dBm2volts(node.parameters.max_power_dbm, Z=50)
-                # Set the resonator power to the max of the sweep.
                 resonator.operations["readout"].amplitude = base_amplitude
             else:
+                # More general resonator model: set output power via QuAM helper
                 resonator.set_output_power(
                     power_in_dbm=node.parameters.max_power_dbm,
                     max_amplitude=node.parameters.max_amp,
                 )
             node.namespace["tracked_resonators"].append(resonator)
 
-    # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
-    amp_min = calculate_voltage_scaling_factor(node.parameters.max_power_dbm, node.parameters.min_power_dbm)
+    # Dimensionless scale factors applied in QUA to the max-amplitude pulse.
+    # Geometric spacing: equal steps in log(power) from min_power to max_power.
+    # amp_min corresponds to min_power_dbm; 1.0 corresponds to max_power_dbm.
+    amp_min = calculate_voltage_scaling_factor(
+        node.parameters.max_power_dbm, node.parameters.min_power_dbm
+    )
     amps = np.geomspace(amp_min, 1, node.parameters.num_power_points)
 
-    # The frequency sweep around the resonator resonance frequency
+    # Readout-frequency axis: offsets relative to calibrated IF [Hz] (same as 02a)
     span = node.parameters.frequency_span_in_mhz * u.MHz
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span / 2, +span / 2, step)
 
-    # Register the sweep axes to be added to the dataset when fetching data
+    # Metadata for data fetching
     node.namespace["sweep_axes"] = {
         "sensor": xr.DataArray(sensors.get_names()),
         "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
         "power": xr.DataArray(power_dbm, attrs={"long_name": "readout power", "units": "dBm"}),
     }
 
-    # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
-        # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
-        # For instance, here 'I' is a python list containing two QUA fixed variables.
+
+        # Real-time variables:
+        #   I, Q, I_st, Q_st, n, n_st — same role as in 02a
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
-        a = declare(fixed)  # QUA variable for the readout amplitude pre-factor
-        df = declare(int)  # QUA variable for the readout frequency
+
+        a = declare(fixed)   # current amplitude scale factor (0…1 relative to max power)
+        df = declare(int)    # current readout frequency offset [Hz]
 
         for multiplexed_sensors in sensors.batch():
             align()
-            with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
+
+            # ── OUTERMOST LOOP: average over shots ───────────────────────
+            with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
-                with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
+
+                # ── MIDDLE LOOP: sweep readout frequency ─────────────────
+                with for_(*from_array(df, dfs)):
+
                     for i, sensor in multiplexed_sensors.items():
                         rr = sensor.readout_resonator
-                        # Update the resonator frequencies for all resonators
+
+                        # Retune readout tone to IF + df (same as 02a)
                         update_frequency(rr.name, df + rr.intermediate_frequency)
-                        # QUA for_ loop for sweeping the readout amplitude
-                        # with for_(*from_array(a, amps)):
+
+                        # ── INNER LOOP: sweep readout power ───────────────
+                        # `a` multiplies the pulse amplitude configured at max power.
+                        # Lower a → lower readout power.
                         with for_each_(a, amps):
-                            # readout the resonator
+
+                            # Readout pulse at scaled amplitude; result → I[i], Q[i]
                             rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=a)
-                            # wait for the resonator to deplete
+
+                            # Let the resonator ring down before the next point
                             rr.wait(1000 * u.ns)
-                            # save data
+
+                            # Store this (frequency, power) point
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
 
+        # ── Post-processing on the OPX ────────────────────────────────────
         with stream_processing():
             n_st.save("n")
+
             for i in range(num_sensors):
+                # Save order per stream: for each df, sweep all power values.
+                # .buffer(len(amps))  → inner axis = power
+                # .buffer(len(dfs))   → outer axis = frequency
+                # .average()         → average over shots
+                # Result: 2D map I(frequency, power) per sensor
                 I_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"I{i + 1}")
                 Q_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 

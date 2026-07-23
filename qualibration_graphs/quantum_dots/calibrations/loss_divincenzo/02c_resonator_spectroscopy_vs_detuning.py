@@ -118,11 +118,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
 
-        # Allocate real-time variables on the OPX:
-        #   I, Q     : demodulated quadratures for each sensor
-        #   I_st, Q_st : buffers that collect I/Q values before sending to PC
-        #   n        : shot counter (which repetition we are on)
-        #   n_st     : stream that reports progress to the PC
+        # Real-time variables:
+        #   I, Q, I_st, Q_st, n, n_st — same role as in 02a
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
 
         # Real-time sweep variables (updated inside the loops):
@@ -142,7 +139,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # ── MIDDLE LOOP: sweep readout frequency ───────────────────
                 with for_(*from_array(df, dfs)):
 
-                    # Retune each sensor's readout tone to (calibrated IF + df)
+                    # Retune readout tone to IF + df (same as 02a)
                     for i, sensor in multiplexed_sensors.items():
                         rr = sensor.readout_resonator
                         update_frequency(rr.name, df + rr.intermediate_frequency)
@@ -153,7 +150,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()  # sync before changing gate voltages
 
                         # Move the QD pair to detuning voltage `det`, hold for `point_duration`
-                        # (lets the dot relax to the new gate configuration before readout)
                         qd_pair.voltage_sequence.step_to_voltages(
                             {qd_pair.name: det}, duration=node.parameters.point_duration
                         )
