@@ -8,12 +8,11 @@ from qm.qua import *
 
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
+from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.experiment import get_sensors
 from calibration_utils.resonator_spectroscopy import (
     Parameters,
@@ -179,11 +178,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
+            progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-                node=node
+                start_time=data_fetcher.t_start
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -239,7 +237,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         "phase": fig_raw_phase,
         "amplitude": fig_fit_amplitude,
     }
-    annotate_node_figures(node)
+
 
 
 # %% {Update_state}
