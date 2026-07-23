@@ -1,6 +1,4 @@
 import numpy as np
-import json
-from pprint import pprint
 from qualang_tools.units import unit
 from quam_config import QubitQuam as Quam
 from quam_builder.architecture.quantum_dots.operations.names import DrivePulseName, VoltagePointName
@@ -216,6 +214,8 @@ machine.update_cross_compensation_submatrix(
 # save into state.json
 machine.save()
 # Visualize the QUA config and save it
+# import json
+# from pprint import pprint
 # pprint(machine.generate_config())
 # with open("qua_config.json", "w+") as f:
 #     json.dump(machine.generate_config(), f, indent=4)
