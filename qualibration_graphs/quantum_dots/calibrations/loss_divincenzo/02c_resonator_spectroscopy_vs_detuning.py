@@ -24,8 +24,7 @@ from calibration_utils.resonator_spectroscopy_vs_detuning import (
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-from calibration_utils.common_utils.annotation import annotate_node_figures
-from calibration_utils.common_utils.experiment import get_sensors, suppress_fetcher_axis_log_spam
+from calibration_utils.common_utils.experiment import get_sensors
 
 # %% {Node initialisation}
 description = """
@@ -34,7 +33,16 @@ This sequence involves measuring the resonator by sending a readout pulse and
 demodulating the signals to extract the 'I' and 'Q' quadratures for all resonators
 simultaneously. This is done across various readout frequencies and detuning values.
 Based on the results, one can then adjust the readout frequency, choosing a
-readout frequency value which shows the strongest signal. .
+readout frequency value which shows the strongest signal.
+
+for each shot (1 … num_shots):
+    for each readout frequency offset df:
+        tune all sensor readout tones to IF + df
+        for each QD detuning voltage det:
+            set gate voltages → det
+            readout all sensors → save I, Q
+        ramp gates back to 0 V
+→ OPX averages over shots and returns a 2D map: (frequency × detuning) per sensor
 
 Prerequisites:
     - Having calibrated the resonator frequency (node 02a_resonator_spectroscopy.py).
@@ -73,80 +81,118 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    # Class containing tools to help handle units and conversions.
-    u = unit(coerce_to_integer=True)
-    # Extract the sweep parameters and axes from the node parameters
-    n_avg = node.parameters.num_shots
+    """Build the 2D frequency × detuning sweep and the QUA pulse sequence."""
 
-    # Get the active sensors from the node and organize them by batches
+    u = unit(coerce_to_integer=True)
+
+    # ── Experiment parameters (Python side) ──────────────────────────────
+    n_avg = node.parameters.num_shots  # number of repeated measurements to average
+
+    # Sensors used for readout (each has its own resonator)
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
 
-    # Find QD pair
-    node.namespace["quantum_dot_pair"] = qd_pair = node.machine.get_component(node.parameters.quantum_dot_pair)
+    # The QD pair whose gate voltage we sweep (e.g. barrier/plunger combination)
+    node.namespace["quantum_dot_pair"] = qd_pair = node.machine.get_component(
+        node.parameters.quantum_dot_pair
+    )
 
-    # The detuning
+    # Gate-voltage detuning axis (physical detuning of the dot pair, in Volts)
     detuning_min = node.parameters.detuning_start
     detuning_max = node.parameters.detuning_stop
     detuning_step = node.parameters.detuning_step
     det_array = np.arange(detuning_min, detuning_max, detuning_step)
 
-    # The frequency sweep around the resonator resonance frequency
+    # Readout-frequency axis: offsets relative to each sensor's calibrated IF (Hz)
     span = node.parameters.frequency_span_in_mhz * u.MHz
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span / 2, +span / 2, step)
 
-    # Register the sweep axes to be added to the dataset when fetching data
+    # Metadata for data fetching: tells the system how to label the saved I/Q arrays
     node.namespace["sweep_axes"] = {
         "sensor": xr.DataArray(sensors.get_names()),
         "frequency": xr.DataArray(dfs, attrs={"long_name": "Frequency Detuning", "units": "Hz"}),
         "detuning": xr.DataArray(det_array, attrs={"long_name": "Quantum Dot Pair Detuning", "units": "V"}),
     }
 
-    # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
-        # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
-        # For instance, here 'I' is a python list containing two QUA fixed variables.
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
-        det = declare(fixed)  # QUA variable for the readout amplitude pre-factor
-        df = declare(int)  # QUA variable for the readout frequency
 
+        # Allocate real-time variables on the OPX:
+        #   I, Q     : demodulated quadratures for each sensor
+        #   I_st, Q_st : buffers that collect I/Q values before sending to PC
+        #   n        : shot counter (which repetition we are on)
+        #   n_st     : stream that reports progress to the PC
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
+
+        # Real-time sweep variables (updated inside the loops):
+        det = declare(fixed)  # current QD-pair detuning voltage [V]
+        df = declare(int)     # current readout frequency offset [Hz]
+
+        # Process sensors in batches if multiplexing is needed
         for multiplexed_sensors in sensors.batch():
+
+            # Wait until all channels in this batch are ready (synchronization barrier)
             align()
-            with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-                save(n, n_st)
+
+            # ── OUTERMOST LOOP: repeat the full 2D map n_avg times ───────
+            with for_(n, 0, n < n_avg, n + 1):
+                save(n, n_st)  # send current shot index to PC (for progress bar)
+
+                # ── MIDDLE LOOP: sweep readout frequency ───────────────────
                 with for_(*from_array(df, dfs)):
-                    # Update the sensor frequency
+
+                    # Retune each sensor's readout tone to (calibrated IF + df)
                     for i, sensor in multiplexed_sensors.items():
                         rr = sensor.readout_resonator
                         update_frequency(rr.name, df + rr.intermediate_frequency)
-                    # Loop over detuning values
+
+                    # ── INNER LOOP: sweep QD-pair detuning voltage ─────────
                     with for_(*from_array(det, det_array)):
-                        align()
+
+                        align()  # sync before changing gate voltages
+
+                        # Move the QD pair to detuning voltage `det`, hold for `point_duration`
+                        # (lets the dot relax to the new gate configuration before readout)
                         qd_pair.voltage_sequence.step_to_voltages(
                             {qd_pair.name: det}, duration=node.parameters.point_duration
                         )
-                        align()
+
+                        align()  # sync before readout pulses
+
+                        # Account for any "sticky" gate pulse duration in the voltage sequence
+                        # (used by the voltage engine to track timing of long pulses)
                         readout_pulse_length = sensor.readout_resonator.operations[
                             "readout" + f"_{qd_pair.name}"
                         ].length
                         qd_pair.voltage_sequence.track_sticky_duration(readout_pulse_length)
+
+                        # Send readout pulse and demodulate into I/Q for each sensor
                         for i, sensor in multiplexed_sensors.items():
                             rr = sensor.readout_resonator
-                            # QUA for_ loop for sweeping the readout amplitude
                             readout_pulse_name = "readout" + f"_{qd_pair.name}"
+
+                            # Measure = play readout pulse + integrate I and Q
                             rr.measure(readout_pulse_name, qua_vars=(I[i], Q[i]))
-                            # save data
+
+                            # Store this (frequency, detuning) point's I/Q in the stream buffer
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
 
-                    align()
+                    align()  # sync before ramping gates back
+
+                    # Return QD gates to zero after finishing the detuning slice at this frequency
                     qd_pair.voltage_sequence.ramp_to_zero()
 
+        # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
-            n_st.save("n")
+            n_st.save("n")  # expose shot counter as "n" in the fetched dataset
+
             for i in range(num_sensors):
+                # Each save() appends one (frequency, detuning) point.
+                # .buffer(len(det_array))  → group points along detuning axis
+                # .buffer(len(dfs))       → group those groups along frequency axis
+                # .average()              → average over all shots (n_avg repetitions)
                 I_st[i].buffer(len(det_array)).buffer(len(dfs)).average().save(f"I{i + 1}")
                 Q_st[i].buffer(len(det_array)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
@@ -179,7 +225,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
-    suppress_fetcher_axis_log_spam()
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
