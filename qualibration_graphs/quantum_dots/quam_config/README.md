@@ -14,7 +14,7 @@ quam_config/
 ├── populate_quam_*.py      # Scripts to populate QUAM with initial parameters for specific hardware.
 ├── instrument_limits.py    # Defines operational limits for instruments.
 ├── wiring_examples/        # Example wiring/connectivity configurations.
-│   ├── wiring_lffem_mwfem_qdac_1.py
+│   ├── wiring_lffem_mwfem_qdac.py
 │   ├── wiring_lffem_mwfem.py
 │   └── ...                 # Other specific hardware wiring examples.
 └── README.md               # Documentation for QUAM configuration (this file).
