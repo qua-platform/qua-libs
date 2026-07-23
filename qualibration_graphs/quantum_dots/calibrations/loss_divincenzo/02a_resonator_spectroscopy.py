@@ -34,6 +34,15 @@ This sequence involves measuring the resonator by sending a readout pulse and de
 The data is then post-processed to determine the resonator resonance frequency.
 This frequency is used to update the readout frequency in the state.
 
+for each shot (1 … num_shots):
+    for each frequency offset df:
+        for each sensor in batch:
+            tune readout tone to IF + df
+            send readout pulse → measure I, Q
+            wait for resonator to deplete
+            save I, Q
+→ OPX averages over shots and returns a 1D spectroscopy trace per sensor
+
 Prerequisites:
     - Having calibrated the time of flight, offsets, and gains (node 01a_time_of_flight.py).
     - Having initialized the QUAM state parameters for the readout pulse amplitude and duration.
@@ -70,57 +79,83 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    # Class containing tools to help handle units and conversions.
+    """Build the 1D frequency sweep and the QUA pulse sequence."""
+
     u = unit(coerce_to_integer=True)
 
-    # Get the relevant sensor dots rom the node
-    node.namespace["sensors"] = sensors = get_sensors(node)
+    # ── Experiment parameters (Python side) ──────────────────────────────
 
+    # Sensors used for readout (each has its own resonator line)
+    node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
 
-    # Extract the sweep parameters and axes from the node parameters
-    n_avg = node.parameters.num_shots
+    n_avg = node.parameters.num_shots  # number of repetitions averaged at each frequency
 
-    # The frequency sweep around the resonator resonance frequency
+    # Frequency axis: offsets relative to each sensor's current intermediate_frequency [Hz]
+    # e.g. span=30 MHz → sweep from IF−15 MHz to IF+15 MHz
     span = node.parameters.frequency_span_in_mhz * u.MHz
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span / 2, +span / 2, step)
 
-    # Register the sweep axes to be added to the dataset when fetching data
+    # Metadata for data fetching: labels the saved I/Q arrays when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "sensors": xr.DataArray(sensors.get_names()),
+        # "detuning" here means readout-frequency offset (Hz), NOT QD gate voltage (that is 02c)
         "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
     }
 
-    # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
 
+        # Allocate real-time variables on the OPX:
+        #   I[i], Q[i]   : demodulated quadratures for sensor i
+        #   I_st[i], Q_st[i] : buffers collecting I/Q before transfer to PC
+        #   n            : shot counter
+        #   n_st         : stream reporting shot index to PC (progress bar)
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
-        df = declare(int)  # QUA variable for the readout frequency
 
-        # No qubits yet at this point in the experiment - we only have sensors, batched by multiplexing. Simultaneous operation no problem
+        # Real-time variable holding the current frequency offset df [Hz]
+        df = declare(int)
+
+        # If several sensors share the same AWG resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
-            align()
+
+            align()  # sync all channels in this batch before starting
+
+            # ── OUTER LOOP: repeat the full frequency sweep n_avg times ──
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st)
+                save(n, n_st)  # tell the PC which shot we are on
+
+                # ── INNER LOOP: sweep readout frequency offset df ──────────
                 with for_(*from_array(df, dfs)):
+
                     for i, sensor in multiplexed_sensors.items():
                         rr = sensor.readout_resonator
-                        # Update the resonator frequencies for all resonators
+
+                        # Retune the readout tone to (calibrated IF + df)
                         rr.update_frequency(df + rr.intermediate_frequency)
-                        # Measure the resonator
+
+                        # Play the "readout" pulse and integrate I/Q into I[i], Q[i]
                         rr.measure("readout", qua_vars=(I[i], Q[i]))
-                        # wait for the resonator to deplete
+
+                        # Wait for the resonator to ring down before the next point
                         rr.wait(1000 * u.ns)
-                        # save data
+
+                        # Append this frequency point's I/Q to the stream buffer
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
-                    align()
 
+                    align()  # sync sensors before moving to the next frequency
+
+        # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
-            n_st.save("n")
+            n_st.save("n")  # expose shot counter as "n" in the fetched dataset
+
             for i in range(num_sensors):
+                # Each save() is one frequency point.
+                # .buffer(len(dfs)) : group points along the frequency axis
+                # .average()        : average over all shots (n_avg repetitions)
+                # Result: 1D trace I(detuning), Q(detuning) per sensor
                 I_st[i].buffer(len(dfs)).average().save(f"I{i + 1}")
                 Q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
 
