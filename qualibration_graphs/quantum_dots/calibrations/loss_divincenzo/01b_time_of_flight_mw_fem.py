@@ -68,10 +68,7 @@ node.machine = Quam.load()
 
 
 # %% {QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.use_simulated_data
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
@@ -84,17 +81,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     for s in sensors:
         resonator = s.readout_resonator
         # make temporary updates before running the program and revert at the end.
-        with tracked_updates(
-            resonator, auto_revert=False, dont_assign_to_none=True
-        ) as resonator:
+        with tracked_updates(resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
             if node.parameters.time_of_flight_in_ns is not None:
                 resonator.time_of_flight = node.parameters.time_of_flight_in_ns
-            resonator.operations["readout"].length = (
-                node.parameters.readout_length_in_ns
-            )
-            resonator.set_output_power(
-                node.parameters.readout_amplitude_in_dBm, operation="readout"
-            )
+            resonator.operations["readout"].length = node.parameters.readout_length_in_ns
+            resonator.set_output_power(node.parameters.readout_amplitude_in_dBm, operation="readout")
             node.namespace["tracked_resonators"].append(resonator)
 
     # Register the sweep axes to be added to the dataset when fetching data
@@ -109,9 +100,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     with program() as node.namespace["qua_program"]:
         n = declare(int)  # QUA variable for the averaging loop
         n_st = declare_stream()
-        adc_st = [
-            declare_stream(adc_trace=True) for _ in range(num_sensors)
-        ]  # The stream to store the raw ADC trace
+        adc_st = [declare_stream(adc_trace=True) for _ in range(num_sensors)]  # The stream to store the raw ADC trace
 
         for multiplexed_sensors in sensors.batch():
             with for_(n, 0, n < node.parameters.num_shots, n + 1):
@@ -153,9 +142,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -166,9 +153,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.use_simulated_data
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -184,10 +169,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter_with_log(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-                node=node
+                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -266,9 +248,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             fit_result = node.results["fit_results"][s.name]
             if node.parameters.time_of_flight_in_ns is not None:
-                s.readout_resonator.time_of_flight = (
-                    node.parameters.time_of_flight_in_ns + fit_result["tof_to_add"]
-                )
+                s.readout_resonator.time_of_flight = node.parameters.time_of_flight_in_ns + fit_result["tof_to_add"]
             else:
                 s.readout_resonator.time_of_flight += fit_result["tof_to_add"]
 
