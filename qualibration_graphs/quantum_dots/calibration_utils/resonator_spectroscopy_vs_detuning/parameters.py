@@ -1,16 +1,16 @@
+from typing import Optional, List
+
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.common_utils.experiment import BaseExperimentNodeParameters
-
-from typing import Optional, List
+from qualibration_libs.parameters.experiment import BaseExperimentNodeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
+    sensor_names: Optional[List[str]] = None
+    """The list of sensor dot names to be included in the measurement."""
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    sensor_names: Optional[List[str]] = None
-    """The list of sensor dot names to be included in the measurement. """
     quantum_dot_pair: str = "virtual_dot_1_virtual_dot_2_pair"
     """The name of the QD pair to sweep detuning."""
     detuning_start: float = 0
