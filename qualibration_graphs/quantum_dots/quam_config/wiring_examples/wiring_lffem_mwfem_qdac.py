@@ -27,7 +27,7 @@ def qdac_config(ip: str):
 ########################################################################################################################
 # QOP network setting
 host_ip = "127.0.0.1"  # QOP IP address
-cluster_name = "CS_4"  # Name of the cluster
+cluster_name = "Cluster_1"  # Name of the cluster
 
 # QDAC IP addresses
 qdac_ips = ["127.0.0.2", "127.0.0.3"]
