@@ -14,13 +14,13 @@ class NodeSpecificParameters(RunnableParameters):
     quantum_dot_pair: str = "virtual_dot_1_virtual_dot_2_pair"
     """The name of the QD pair to sweep detuning."""
     detuning_start: float = 0
-    """The first detuning value."""
+    """The first detuning value in V. Default is 0 V."""
     detuning_stop: float = 0.5
-    """The last detuning value."""
+    """The last detuning value in V. Default is 0.5 V."""
     detuning_step: float = 0.005
-    """The step in detuning. """
+    """The step in detuning in V. Default is 5 mV."""
     point_duration: int = 1000
-    """How long to stay on each detuning point for before measurement."""
+    """How long to stay on each detuning point for before measurement. Default is 1000 ns"""
     frequency_span_in_mhz: float = 15
     """Span of frequencies to sweep in MHz. Default is 15 MHz."""
     frequency_step_in_mhz: float = 0.1
