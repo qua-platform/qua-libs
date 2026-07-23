@@ -17,8 +17,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum pulse duration in nanoseconds. Default is 100000 ns (10 µs)."""
     tau_step: int = 16
     """Step size for the pulse duration sweep in nanoseconds. Default is 16 ns."""
-    operation: str = "x180"
-    """Name of the qubit operation to perform. Default is 'x180'."""
 
 
 class Parameters(
