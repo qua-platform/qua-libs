@@ -25,7 +25,6 @@ from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.experiment import get_sensors
 
 description = """
@@ -228,7 +227,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         "single_run": fig_single_run_fit,
         "averaged_run": fig_averaged_run_fit,
     }
-    annotate_node_figures(node)
 
 
 # %% {Update_state}

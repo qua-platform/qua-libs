@@ -16,7 +16,6 @@ from calibration_utils.hello_qua import Parameters
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.experiment import get_dots, get_sensors
 
 description = """
@@ -203,7 +202,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
             ax.legend()
         fig.tight_layout()
         node.results["figures"][qd.name] = fig
-    annotate_node_figures(node)
     plt.show()
 
 

@@ -21,7 +21,6 @@ from calibration_utils.time_of_flight import (
     plot_averaged_run_with_fit,
     generate_simulated_dataset,
 )
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.experiment import get_sensors
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -230,7 +229,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         "single_run": fig_single_run_fit,
         "averaged_run": fig_averaged_run_fit,
     }
-    annotate_node_figures(node)
 
 
 # %% {Update_state}
