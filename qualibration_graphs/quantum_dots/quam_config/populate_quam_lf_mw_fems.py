@@ -134,11 +134,6 @@ for i, q in enumerate(machine.qubits.values()):
     q.T2ramsey = 0.5e-6
     q.T2echo = 2e-6
 
-    # Same params for each qubit for now. Subject to change.
-    # q.macros[VoltagePointName.INITIALIZE].update(ramp_duration=2000, hold_duration=200)
-    # q.macros[VoltagePointName.MEASURE].update(buffer_duration=240)
-    # q.macros[VoltagePointName.EMPTY].update(hold_duration=80)
-
 
 ##############################
 # %%   Sensor Properties #####
