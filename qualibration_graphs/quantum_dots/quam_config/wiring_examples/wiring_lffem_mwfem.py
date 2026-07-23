@@ -9,9 +9,8 @@ from quam_config import Quam
 ########################################################################################################################
 # %%                                              Define static parameters
 ########################################################################################################################
-host_ip = "172.16.33.115"  # QOP IP address
-port = None  # QOP Port
-cluster_name = "CS_4"  # Name of the cluster
+host_ip = "127.0.0.1"  # QOP IP address
+cluster_name = "Cluster_1"  # Name of the cluster
 
 ########################################################################################################################
 # %%                                      Define the available instrument setup
