@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import numpy as np
 import xarray as xr
-from qualang_tools.units import unit
-
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from qualibrate.core import QualibrationNode
 
+from qualang_tools.units import unit
 from calibration_utils.common_utils.experiment import get_sensors
 
 
