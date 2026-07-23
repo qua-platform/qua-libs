@@ -7,7 +7,7 @@ from dataclasses import asdict
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
+from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
@@ -166,7 +166,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
+            progress_counter(
                 data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
             )
         # Display the execution report to expose possible runtime errors
