@@ -30,12 +30,11 @@ from qualibration_libs.data import XarrayDataFetcher
 description = """
         1D RESONATOR SPECTROSCOPY
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to extract the
-'I' and 'Q' quadratures across varying readout intermediate frequencies for sensors.
+'I' and 'Q' quadratures across varying readout intermediate frequencies for the sensors.
 The data is then post-processed to determine the resonator resonance frequency.
 This frequency is used to update the readout frequency in the state.
 
 Prerequisites:
-    - If applicable, having calibrated the IQ mixer/Octave connected to the readout line (node 01a_mixer_calibration.py).
     - Having calibrated the time of flight, offsets, and gains (node 01a_time_of_flight.py).
     - Having initialized the QUAM state parameters for the readout pulse amplitude and duration.
 
@@ -106,15 +105,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(df, dfs)):
-
                     for i, sensor in multiplexed_sensors.items():
                         rr = sensor.readout_resonator
                         # Update the resonator frequencies for all resonators
                         rr.update_frequency(df + rr.intermediate_frequency)
                         # Measure the resonator
                         rr.measure("readout", qua_vars=(I[i], Q[i]))
-                        # wait for the resonator
-                        rr.wait(1000)
+                        # wait for the resonator to deplete
+                        rr.wait(1000 * u.ns)
                         # save data
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
@@ -226,7 +224,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the sensor_name data analysis was successful."""
+    """Update the relevant parameters if the data analysis was successful."""
     with node.record_state_updates():
         for s in node.namespace["sensors"]:
             if node.outcomes[s.name] == "failed":
