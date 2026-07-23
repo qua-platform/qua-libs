@@ -71,10 +71,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.use_simulated_data
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
@@ -85,7 +82,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the active sensors from the node and organize them by batches
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
-
 
     # Find QD pair
     node.namespace["quantum_dot_pair"] = qd_pair = node.machine.get_component(node.parameters.quantum_dot_pair)
@@ -104,12 +100,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "sensor": xr.DataArray(sensors.get_names()),
-        "frequency" : xr.DataArray(
-            dfs, attrs={"long_name": "Frequency Detuning", "units": "Hz"}
-        ),
-        "detuning": xr.DataArray(
-            det_array, attrs={"long_name": "Quantum Dot Pair Detuning", "units": "V"}
-        ),
+        "frequency": xr.DataArray(dfs, attrs={"long_name": "Frequency Detuning", "units": "Hz"}),
+        "detuning": xr.DataArray(det_array, attrs={"long_name": "Quantum Dot Pair Detuning", "units": "V"}),
     }
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
@@ -126,27 +118,29 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(n, n_st)
                 with for_(*from_array(df, dfs)):
                     # Update the sensor frequency
-                    for i, sensor in multiplexed_sensors.items(): 
-                            rr = sensor.readout_resonator
-                            update_frequency(rr.name, df + rr.intermediate_frequency)
+                    for i, sensor in multiplexed_sensors.items():
+                        rr = sensor.readout_resonator
+                        update_frequency(rr.name, df + rr.intermediate_frequency)
                     # Loop over detuning values
-                    with for_(*from_array(det, det_array)): 
+                    with for_(*from_array(det, det_array)):
                         align()
-                        qd_pair.voltage_sequence.step_to_voltages({qd_pair.name : det}, duration = node.parameters.point_duration)
+                        qd_pair.voltage_sequence.step_to_voltages(
+                            {qd_pair.name: det}, duration=node.parameters.point_duration
+                        )
                         align()
-                        readout_pulse_length = sensor.readout_resonator.operations["readout" + f"_{qd_pair.name}"].length
+                        readout_pulse_length = sensor.readout_resonator.operations[
+                            "readout" + f"_{qd_pair.name}"
+                        ].length
                         qd_pair.voltage_sequence.track_sticky_duration(readout_pulse_length)
                         for i, sensor in multiplexed_sensors.items():
                             rr = sensor.readout_resonator
                             # QUA for_ loop for sweeping the readout amplitude
                             readout_pulse_name = "readout" + f"_{qd_pair.name}"
-                            rr.measure(
-                                readout_pulse_name, qua_vars=(I[i], Q[i])
-                            )
+                            rr.measure(readout_pulse_name, qua_vars=(I[i], Q[i]))
                             # save data
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
-                    
+
                     align()
                     qd_pair.voltage_sequence.ramp_to_zero()
 
@@ -170,9 +164,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -183,9 +175,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.use_simulated_data
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -201,11 +191,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start
-            )
+            progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
     # Register the raw dataset
@@ -252,12 +238,9 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
-    fig_raw_fit = plot_raw_data_with_fit(
-        node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
-    )
+    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"])
     plt.show()
     node.results["figures"] = {"amplitude": fig_raw_fit}
-
 
 
 # %% {Update_state}
@@ -270,9 +253,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             # Update the readout frequency
-            s.readout_resonator.intermediate_frequency += node.results["fit_results"][
-                s.name
-            ]["frequency_shift"]
+            s.readout_resonator.intermediate_frequency += node.results["fit_results"][s.name]["frequency_shift"]
 
 
 # %% {Save_results}

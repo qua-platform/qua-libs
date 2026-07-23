@@ -70,10 +70,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.use_simulated_data
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
@@ -95,17 +92,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "sensors": xr.DataArray(sensors.get_names()),
-        "detuning": xr.DataArray(
-            dfs, attrs={"long_name": "readout frequency", "units": "Hz"}
-        ),
+        "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
     }
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
 
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-            num_IQ_pairs=num_sensors
-        )
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
         df = declare(int)  # QUA variable for the readout frequency
 
         # No qubits yet at this point in the experiment - we only have sensors, batched by multiplexing. Simultaneous operation no problem
@@ -148,9 +141,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -161,9 +152,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.use_simulated_data
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -178,11 +167,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start
-            )
+            progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
     # Register the raw dataset
@@ -239,7 +224,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     }
 
 
-
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
@@ -249,9 +233,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.outcomes[s.name] == "failed":
                 continue
 
-            s.readout_resonator.intermediate_frequency = float(
-                node.results["fit_results"][s.name]["frequency"]
-            )
+            s.readout_resonator.intermediate_frequency = float(node.results["fit_results"][s.name]["frequency"])
 
 
 # %% {Save_results}

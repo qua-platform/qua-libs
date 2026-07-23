@@ -9,9 +9,7 @@ from quam_builder.architecture.quantum_dots.components import SensorDot
 def plot_raw_data_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Dataset):
     """Plot PCA signal maps and extracted optimal points for all sensors."""
     num_sensors = len(sensors)
-    fig, axes = plt.subplots(
-        1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False
-    )
+    fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
@@ -26,9 +24,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Da
     return fig
 
 
-def plot_individual_raw_data_with_fit(
-    ax: Axes, sensor_data: xr.Dataset, sensor_id: str, fit: xr.Dataset = None
-):
+def plot_individual_raw_data_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_id: str, fit: xr.Dataset = None):
     """Plot a single sensor PCA signal map with optional optimal-point marker."""
     sensor_data.assign_coords(freq_GHz=sensor_data.full_freq / 1e9).IQ_abs.plot(
         ax=ax, add_colorbar=False, x="freq_GHz", y="detuning", linewidth=0.5
@@ -38,9 +34,9 @@ def plot_individual_raw_data_with_fit(
     ax.set_title(sensor_id)
 
     if fit is not None:
-        sensor_data.assign_coords(
-            freq_GHz=sensor_data.full_freq / 1e9
-        ).assign({"pca_signal": fit.pca_signal_abs}).pca_signal.plot(
+        sensor_data.assign_coords(freq_GHz=sensor_data.full_freq / 1e9).assign(
+            {"pca_signal": fit.pca_signal_abs}
+        ).pca_signal.plot(
             ax=ax,
             add_colorbar=True,
             x="freq_GHz",

@@ -40,19 +40,14 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     """Add derived IQ fields and absolute readout-frequency coordinate."""
     ds = add_amplitude_and_phase(ds, "frequency", subtract_slope_flag=True)
     full_freq = np.array(
-        [
-            ds.frequency + sensor.readout_resonator.intermediate_frequency
-            for sensor in node.namespace["sensors"]
-        ]
+        [ds.frequency + sensor.readout_resonator.intermediate_frequency for sensor in node.namespace["sensors"]]
     )
     ds = ds.assign_coords(full_freq=(["sensor", "frequency"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     return ds
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """Compute a 2D PCA signal map and extract the peak point per sensor."""
     ds_fit = xr.Dataset(coords=ds.coords)
     pca_signal = np.full(ds.I.shape, np.nan, dtype=float)
@@ -66,8 +61,8 @@ def fit_raw_data(
         i_map = np.asarray(ds.I.sel(sensor=sensor_name).values, dtype=float)
         q_map = np.asarray(ds.Q.sel(sensor=sensor_name).values, dtype=float)
 
-        i_map = i_map - np.nanmean(i_map, axis = 1, keepdims=True)
-        q_map = q_map - np.nanmean(q_map, axis = 1, keepdims=True)
+        i_map = i_map - np.nanmean(i_map, axis=1, keepdims=True)
+        q_map = q_map - np.nanmean(q_map, axis=1, keepdims=True)
 
         i_flat = i_map.ravel()
         q_flat = q_map.ravel()
@@ -100,12 +95,8 @@ def fit_raw_data(
             optimal_detuning[i] = float(ds.detuning.values[det_idx])
             peak_pca_signal[i] = float(abs_map[max_index])
 
-    ds_fit["pca_signal"] = xr.DataArray(
-        pca_signal, dims=["sensor", "frequency", "detuning"], coords=ds.coords
-    )
-    ds_fit["pca_signal_abs"] = xr.DataArray(
-        pca_signal_abs, dims=["sensor", "frequency", "detuning"], coords=ds.coords
-    )
+    ds_fit["pca_signal"] = xr.DataArray(pca_signal, dims=["sensor", "frequency", "detuning"], coords=ds.coords)
+    ds_fit["pca_signal_abs"] = xr.DataArray(pca_signal_abs, dims=["sensor", "frequency", "detuning"], coords=ds.coords)
 
     ds_fit = ds_fit.assign_coords(
         {
@@ -128,9 +119,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
     span_hz = node.parameters.frequency_span_in_mhz * 1e6
     freq_success = np.abs(fit.optimal_frequency_shift.data) <= span_hz / 2.0
-    finite_success = np.isfinite(fit.optimal_frequency_shift.data) & np.isfinite(
-        fit.optimal_detuning.data
-    )
+    finite_success = np.isfinite(fit.optimal_frequency_shift.data) & np.isfinite(fit.optimal_detuning.data)
     success_criteria = freq_success & finite_success
     fit = fit.assign_coords(success=("sensor", success_criteria))
 
@@ -138,9 +127,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
         sensor_name: FitParameters(
             success=bool(fit.sel(sensor=sensor_name).success.values),
             resonator_frequency=float(fit.res_freq.sel(sensor=sensor_name).values),
-            frequency_shift=float(
-                fit.optimal_frequency_shift.sel(sensor=sensor_name).values
-            ),
+            frequency_shift=float(fit.optimal_frequency_shift.sel(sensor=sensor_name).values),
             optimal_detuning=float(fit.optimal_detuning.sel(sensor=sensor_name).values),
             peak_pca_signal=float(fit.peak_pca_signal.sel(sensor=sensor_name).values),
         )

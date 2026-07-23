@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import xarray as xr
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from qualibrate.core import QualibrationNode
 
@@ -62,9 +63,8 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
                 + ((det_grid - center_detuning) / sigma_detuning) ** 2
             )
         )
-        background = (
-            0.1e-3 * (freq_grid / max(np.max(np.abs(frequency)), 1.0))
-            + 0.1e-3 * (det_grid - np.mean(detuning))
+        background = 0.1e-3 * (freq_grid / max(np.max(np.abs(frequency)), 1.0)) + 0.1e-3 * (
+            det_grid - np.mean(detuning)
         )
         phase = rng.uniform(0, 2 * np.pi)
         signal = (0.8e-3 * transition + background) * np.exp(1j * phase)
