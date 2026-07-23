@@ -9,6 +9,8 @@ from quam_builder.architecture.quantum_dots.operations.names import (
     VoltagePointName,
 )
 
+QUAM_STATE_PATH = None
+
 def _apply_fem_output_port_delays(machine: Quam) -> None:
     """Set per-FEM analog output delays (LF path skew vs MW)."""
     for controller_ports in machine.ports.analog_outputs.values():
@@ -26,7 +28,7 @@ def _apply_fem_output_port_delays(machine: Quam) -> None:
 LF_FEM_DELAY_NS: int = 161
 MW_FEM_DELAY_NS: int = 0
 
-machine = Quam.load()
+machine = Quam.load(QUAM_STATE_PATH)
 
 #######################################
 ###### Qubits Physical Properties #####
@@ -38,9 +40,7 @@ machine = Quam.load()
 larmor_center_hz = 9.5e9
 mw_upconverter_hz = larmor_center_hz
 
-qubit_frequencies = [
-    i * 5e6 + larmor_center_hz for i, q in enumerate(machine.qubits.keys())
-]
+qubit_frequencies = [8e9, 8.2e9, 9e9, 9.6e9]
 
 #################################
 ###### Qubits Points Update #####
@@ -49,18 +49,25 @@ qubit_frequencies = [
 for i, q in enumerate(machine.qubits.values()):
     q.xy.opx_output.band = 3
     # Same params for each qubit for now. Subject to change.
-    q.macros[VoltagePointName.INITIALIZE].update(ramp_duration=2000, hold_duration=200)
-    q.macros[VoltagePointName.MEASURE].update(buffer_duration=240)
-    q.macros[VoltagePointName.EMPTY].update(hold_duration=80)
+    # q.macros[VoltagePointName.INITIALIZE].update(ramp_duration=2000, hold_duration=200)
+    # q.macros[VoltagePointName.MEASURE].update(buffer_duration=240)
+    # q.macros[VoltagePointName.EMPTY].update(hold_duration=80)
 
     # MW FEM LO on this XY line (shared port → same value each iteration is fine).
     q.xy.opx_output.upconverter_frequency = mw_upconverter_hz
 
     # Absolute drive / Larmor frequency (RF), not the OPX IF.
-    q_xy = q.macros[SingleQubitMacroName.XY_DRIVE]
-    q_xy.update(frequency=qubit_frequencies[i])
+    q.larmor_frequency = qubit_frequencies[i]
 
-    q.xy.operations[f"{DrivePulseName.GAUSSIAN}_x90"].amplitude = 0.17
+    # Update all the existing pulse names based on enum DrivePulseName
+    for name in DrivePulseName: 
+        # Ignore any pulses that are not mapped to the qubits (e.g. CROT, which is only mapped to the qubit_pair.)
+        x90 = q.xy.operations.get(f"{name}_x90", None)
+        x180 = q.xy.operations.get(f"{name}_x180", None)
+        if x90 is not None: 
+            x90.amplitude = 0.15
+        if x180 is not None: 
+            x180.amplitude = 0.3
 
     # Default values
     q.T1 = 1e-6
@@ -71,33 +78,35 @@ for i, q in enumerate(machine.qubits.values()):
 ###### State Points #####
 #########################
 
-for i, qdp in enumerate(machine.quantum_dot_pairs.values()):
-    qdp.add_point(
-        point_name=VoltagePointName.INITIALIZE,
-        voltages={d.id: (i + 1) * 0.015 for d in qdp.quantum_dots},
-        duration=1000,
-    )
-    qdp.add_point(
-        point_name=VoltagePointName.EMPTY,
-        voltages={d.id: (i + 1) * 0.02 for d in qdp.quantum_dots},
-        duration=1500,
-    )
-    qdp.add_point(
-        point_name=VoltagePointName.MEASURE,
-        voltages={d.id: (i + 1) * 0.025 for d in qdp.quantum_dots},
-        duration=1000,
-    )
-    qdp.add_point(
-        point_name=VoltagePointName.EXCHANGE,
-        voltages={d.id: (i + 1) * -0.025 for d in qdp.quantum_dots},
-        duration=1000,
-    )
+# ### Example generator method to add some default points. OPTIONAL
+
+# for i, qdp in enumerate(machine.quantum_dot_pairs.values()):
+#     qdp.add_point(
+#         point_name=VoltagePointName.INITIALIZE,
+#         voltages={d.id: (i + 1) * 0.015 for d in qdp.quantum_dots},
+#         duration=1000,
+#     )
+#     qdp.add_point(
+#         point_name=VoltagePointName.EMPTY,
+#         voltages={d.id: (i + 1) * 0.02 for d in qdp.quantum_dots},
+#         duration=1500,
+#     )
+#     qdp.add_point(
+#         point_name=VoltagePointName.MEASURE,
+#         voltages={d.id: (i + 1) * 0.025 for d in qdp.quantum_dots},
+#         duration=1000,
+#     )
+#     qdp.add_point(
+#         point_name=VoltagePointName.EXCHANGE,
+#         voltages={d.id: (i + 1) * -0.025 for d in qdp.quantum_dots},
+#         duration=1000,
+#     )
 
 ##############################
 ###### Sensor Properties #####
 ##############################
 
-resonator_frequencies = [i*5e6 + 250e6 for i, s in enumerate(machine.sensor_dots.keys())]
+resonator_frequencies = [250e6, 300e6]
 for i, s in enumerate(machine.sensor_dots.values()):
     s.readout_resonator.intermediate_frequency = resonator_frequencies[i]
     s.readout_resonator.operations["readout"].amplitude = 0.02
@@ -130,4 +139,4 @@ machine.update_cross_compensation_submatrix(
 
 _apply_fem_output_port_delays(machine)
 
-machine.save()
+machine.save(QUAM_STATE_PATH)
