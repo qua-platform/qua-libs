@@ -25,9 +25,9 @@ __all__ = [
 
 
 def declare_streams(node, items, stream_fn: Optional[Callable] = None):
-    """Declare QUA variables and streams for readout. 
-    - If a parity readout is desired, it will declare the corresponding streams. 
-    - Simply set the node parameter 'parity_measurement' to True. 
+    """Declare QUA variables and streams for readout.
+    - If a parity readout is desired, it will declare the corresponding streams.
+    - Simply set the node parameter 'parity_measurement' to True.
 
     Call inside a ``with program()`` block before the main loop.
 
@@ -86,8 +86,8 @@ def declare_streams(node, items, stream_fn: Optional[Callable] = None):
 
 def save_measurement(node, name: str, p0, p1, streams: dict) -> None:
     """Save one shot's outcome to the appropriate QUA streams.
-    - If a parity readout is desired, it will save the corresponding measurement. 
-    - Simply set the node parameter 'parity_measurement' to True. 
+    - If a parity readout is desired, it will save the corresponding measurement.
+    - Simply set the node parameter 'parity_measurement' to True.
 
     Call inside the inner measurement loop, once per item per shot.
 
@@ -137,8 +137,8 @@ def save_measurement(node, name: str, p0, p1, streams: dict) -> None:
 
 def buffer_streams(node, name: str, streams: dict, *buffer_dims: int) -> None:
     """Buffer and save streams inside a ``stream_processing()`` block.
-    - If a parity readout is desired, it will buffer the corresponding dimensions. 
-    - Simply set the node parameter 'parity_measurement' to True. 
+    - If a parity readout is desired, it will buffer the corresponding dimensions.
+    - Simply set the node parameter 'parity_measurement' to True.
 
     Args:
         node: QualibrationNode with the ``parity_measurement`` flag.
@@ -150,7 +150,7 @@ def buffer_streams(node, name: str, streams: dict, *buffer_dims: int) -> None:
         None. Saves e.g. ``"p0_p0_{name}"``..``"p1_p1_{name}"`` (or just
         ``"p_{name}"`` when ``parity_measurement`` is ``False``).
 
-    Example for a 2D parity sweep: 
+    Example for a 2D parity sweep:
         >>> with stream_processing():
         ...     for qubit in qubits:
         ...         buffer_streams(node, qubit.name, streams, (num_x_vals, num_y_vals))
