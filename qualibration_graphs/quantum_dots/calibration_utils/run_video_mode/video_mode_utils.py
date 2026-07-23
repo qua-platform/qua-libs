@@ -1,6 +1,8 @@
 from typing import Dict, List, Optional, Union
 import time
 from werkzeug.serving import make_server
+import os
+import signal
 
 from quam.core import QuamRoot
 from qua_dashboards.video_mode import VideoModeComponent, OPXDataAcquirer, scan_modes
@@ -15,6 +17,7 @@ import subprocess
 _DASHBOARD_THREAD: Optional[threading.Thread] = None
 _DASHBOARD_SERVER = None
 
+__all__ = ["create_video_mode", "stop_dashboard"]
 
 def stop_dashboard(port: int = 8050):
     """Nuclear option: kill anything on the given port."""
@@ -81,11 +84,8 @@ def launch_video_mode(
             "Spiral_Scan": scan_modes.SpiralScan(),
         }
 
-    dc_set = None
-    if dc_control:
-        external_qdac = "qdac_ip" in machine.network
-        machine.connect_to_external_source(external_qdac=external_qdac)
-        dc_set = machine.virtual_dc_sets.get(virtual_gate_id, None)
+    qmm = machine.connect()
+    dc_set = machine.virtual_dc_sets.get(virtual_gate_id, None)
 
     voltage_control_tab, voltage_control_component = None, None
     if dc_set is not None:
@@ -100,7 +100,7 @@ def launch_video_mode(
 
         voltage_control_tab = VoltageControlTabController(voltage_control_component=voltage_control_component)
 
-    qmm = machine.connect()
+    
     virtual_gate_set = machine.virtual_gate_sets[virtual_gate_id]
     data_acquirer = OPXDataAcquirer(
         qmm=qmm,
@@ -118,7 +118,7 @@ def launch_video_mode(
         mid_scan_compensation=mid_scan_compensation,
         use_buffered_stream=use_buffered_stream,
         acquisition_interval_s=0.05,
-        # inner_loop_kwargs = {"point_duration": point_duration},
+        inner_loop_kwargs = {"point_duration": point_duration},
     )
 
     def find_default(mode):
@@ -170,7 +170,7 @@ def launch_video_mode(
     time.sleep(0.5)
     webbrowser.open(f"http://localhost:{port}")
 
-    log("Dashboard running at http://localhost:8050")
+    log(f"Dashboard running at http://localhost:{port}")
 
 
 def create_video_mode(
