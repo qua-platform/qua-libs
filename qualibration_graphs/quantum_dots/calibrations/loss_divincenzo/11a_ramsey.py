@@ -5,8 +5,8 @@ import xarray as xr
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
 from qualang_tools.loops import from_array
+from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
@@ -18,7 +18,6 @@ from calibration_utils.ramsey_parity_diff import (
     plot_raw_data_with_fit,
 )
 from calibration_utils.common_utils.experiment import get_qubits
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.parity_streams import (
     declare_parity_streams,
     save_parity_measurement,
@@ -112,7 +111,6 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
 
         n_st = declare_output_stream()
 
-
         for qubit in qubits:
             intermediate_frequency = qubit.xy.intermediate_frequency
             with for_(n, 0, n < n_avg, n + 1):
@@ -122,7 +120,7 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
                     with for_each_(t, tau_values):
 
                         qubit.xy.update_frequency(intermediate_frequency)
-                        #reset_frame(qubit.xy.name)
+                        reset_frame(qubit.xy.name)
 
                         align()
 
@@ -130,11 +128,7 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
                             qubit.empty()
                             a1 = qubit.measure()
 
-                        qubit.initialize(
-                            target_state=node.parameters.target_state,
-                            max_loops=node.parameters.max_loops,
-                            conditional_drive=True,
-                        )
+                        qubit.initialize()
 
                         align()
                         qubit.xy.update_frequency(intermediate_frequency + df)
@@ -202,11 +196,11 @@ def execute_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
+            progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
-                node=node
+                node=node,
             )
         node.log(job.execution_report())
     node.results["ds_raw"] = dataset
@@ -259,7 +253,6 @@ def plot_data(node: QualibrationNode[RamseyParameters, Quam]):
         analysis_signal=node.parameters.analysis_signal,
     )
     node.results["figure"] = fig
-    annotate_node_figures(node)
 
 
 # %% {Update_state}

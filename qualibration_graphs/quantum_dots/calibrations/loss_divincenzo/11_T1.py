@@ -5,8 +5,8 @@ import xarray as xr
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
 from qualang_tools.loops import from_array
+from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
@@ -17,7 +17,6 @@ from calibration_utils.T1_parity_diff import (
     plot_raw_data_with_fit,
 )
 from calibration_utils.common_utils.experiment import get_qubits
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.parity_streams import (
     declare_parity_streams,
     save_parity_measurement,
@@ -77,7 +76,6 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    # You can get type hinting in your IDE by typing node.parameters.
     pass
 
 
@@ -124,11 +122,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.empty()
                         a1 = qubit.measure()
 
-                    qubit.initialize(
-                        target_state=node.parameters.target_state,
-                        max_loops=node.parameters.max_loops,
-                        conditional_drive=True,
-                    )
+                    qubit.initialize()
 
                     align()
 
@@ -201,11 +195,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
+            progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
-                node=node
+                node=node,
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -265,7 +259,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         analysis_signal=node.parameters.analysis_signal,
     )
     node.results["figure"] = fig
-    annotate_node_figures(node)
 
 
 # %% {Update_state}
