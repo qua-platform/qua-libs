@@ -94,8 +94,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the active sensors from the node and organize them by batches
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
-    # Update the readout power to match the desired range, this change will be reverted at the end of the node.
 
+    # Update the readout power to match the desired range, this change will be reverted at the end of the node.
     node.namespace["tracked_resonators"] = []
     for i, sensor in enumerate(sensors):
         with tracked_updates(sensor.readout_resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
@@ -136,7 +136,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         for multiplexed_sensors in sensors.batch():
             align()
-
             with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
                 save(n, n_st)
                 with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
@@ -150,7 +149,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # readout the resonator
                             rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=a)
                             # wait for the resonator to deplete
-                            rr.wait(1000)
+                            rr.wait(1000 * u.ns)
                             # save data
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
@@ -270,11 +269,17 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             for op in s.readout_resonator.operations:
                 if not op.startswith("readout"):
                     continue
-                s.readout_resonator.set_output_power(
-                    power_in_dbm=node.results["fit_results"][s.name]["optimal_power"],
-                    max_amplitude=node.parameters.max_amp,
-                    operation=op,
-                )
+                if isinstance(s.readout_resonator._obj, ReadoutResonatorSingle):
+                    u = unit(coerce_to_integer=True)
+                    s.readout_resonator.operations[op].amplitude = u.dBm2volts(
+                        node.results["fit_results"][s.name]["optimal_power"]
+                    )
+                else:
+                    s.readout_resonator.set_output_power(
+                        power_in_dbm=node.results["fit_results"][s.name]["optimal_power"],
+                        max_amplitude=node.parameters.max_amp,
+                        operation=op,
+                    )
             # Update the readout frequency
             s.readout_resonator.intermediate_frequency += node.results["fit_results"][s.name]["frequency_shift"]
 
