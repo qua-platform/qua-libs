@@ -48,6 +48,8 @@ instruments.add_qdac2(indices=[1, 2])
 ########################################################################################################################
 plunger_dots = [1, 2, 3, 4]  # P1, P2
 sensor_dots = [1, 2]
+
+# Quantum Dot Pairs defines the Barrier Gates
 quantum_dot_pairs = [(plunger_dots[i], plunger_dots[i + 1]) for i in range(len(plunger_dots) - 1)]
 
 # # Example: map qubit pairs to specific sensor dots (supports multiple sensors per pair).

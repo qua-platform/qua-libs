@@ -25,9 +25,9 @@ instruments.add_lf_fem(controller=1, slots=[5, 6])
 # Use only integers for naming the dots and qubits
 quantum_dots = [1, 2, 3, 4]
 sensor_dots = [1, 2]
+
+# Quantum Dot Pairs defines the Barrier Gates
 quantum_dot_pairs = [(1, 2), (2, 3), (3, 4)]
-qubits = [1, 2, 3, 4]
-qubit_pairs = [(qubits[i], qubits[i + 1]) for i in range(len(qubits) - 1)]
 
 # # Example: map qubit pairs to specific sensor dots (supports multiple sensors per pair).
 # # Pair keys: q1_q2 or q1-2. Sensor ids: virtual_sensor_<n>, sensor_<n>, or s<n> (e.g., virtual_sensor_1, sensor_1, s1).
