@@ -66,7 +66,11 @@ connectivity = Connectivity()
 # Add plunger gates
 # Given the constraints that we would like to put on the outputs (i.e. which dot is from which channel), we add them individually with their own constraint, 
 # Rather than using connectivity.add_quantum_dots(plunger_dots)
+
+# The first arg for the spec is the INDEX, i.e. which controller you are referring to. In order to auto-allocate channels from the specified controller, we can 
+# make a convenience variable here to combine the OPX CON1 & QDAC1
 qdac_lf_spec = qdac2_spec(1) & lf_fem_spec(1)
+
 connectivity.add_quantum_dot_voltage_gate_lines(1, True, constraints=lf_fem_spec(1) & qdac2_spec(index = 1, out_port = 1, trigger_in_port=1))
 connectivity.add_quantum_dot_voltage_gate_lines(2, True, lf_fem_spec(1) & qdac2_spec(index = 2, out_port = 2, trigger_in_port=2))
 connectivity.add_quantum_dot_voltage_gate_lines(3, True, qdac_lf_spec)
