@@ -23,9 +23,9 @@ instruments.add_lf_fem(controller=1, slots=[5, 6])
 ########################################################################################################################
 # %%                                 Define which qubit ids are present in the system
 ########################################################################################################################
-quantum_dots=[1, 2, 3, 4]
-sensor_dots=[1, 2]
-quantum_dot_pairs=[(1, 2), (2, 3), (3, 4)]
+quantum_dots = [1, 2, 3, 4]
+sensor_dots = [1, 2]
+quantum_dot_pairs = [(1, 2), (2, 3), (3, 4)]
 qubits = [1, 2, 3, 4]
 qubit_pairs = [(qubits[i], qubits[i + 1]) for i in range(len(qubits) - 1)]
 
@@ -43,8 +43,8 @@ qubit_pair_sensor_map = {
 connectivity = Connectivity()
 # Add the plunger gates and drive lines for each dot
 connectivity.add_quantum_dots(quantum_dots, add_drive_lines=True, use_mw_fem=True, shared_drive_line=True)
-# Add the sensor gates and rf-reflectometry readout components for each sensor dot
-connectivity.add_sensor_dots(sensor_dots, shared_resonator_line=False)
+# Add the sensor gates and rf-reflectometry readout components for each sensor dot with the constraint of being on the 2nd LF-FEM
+connectivity.add_sensor_dots(sensor_dots, shared_resonator_line=False, constraints=lf_fem_spec(out_slot=6, in_slot=6))
 # Add the barrier gates for each quantum dot pair
 connectivity.add_quantum_dot_pairs(quantum_dot_pairs)
 # Allocate the wiring
@@ -61,5 +61,5 @@ user_input = input("Do you want to save the updated QUAM? (y/n)")
 if user_input.lower() == "y":
     machine = Quam()
     build_quam_wiring(connectivity, host_ip, cluster_name, machine)
-    build_quam(machine, qubit_pair_sensor_map=qubit_pair_sensor_map, catalogs = [VoltageBalancedMacroCatalog()])
+    build_quam(machine, qubit_pair_sensor_map=qubit_pair_sensor_map, catalogs=[VoltageBalancedMacroCatalog()])
     machine.save()
