@@ -22,6 +22,7 @@ instruments.add_lf_fem(controller=1, slots=[5, 6])
 ########################################################################################################################
 # %%                                 Define which qubit ids are present in the system
 ########################################################################################################################
+# Use only integers for naming the dots and qubits
 quantum_dots = [1, 2, 3, 4]
 sensor_dots = [1, 2]
 quantum_dot_pairs = [(1, 2), (2, 3), (3, 4)]
