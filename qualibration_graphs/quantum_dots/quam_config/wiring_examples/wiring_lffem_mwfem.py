@@ -29,23 +29,20 @@ quantum_dot_pairs=[(1, 2), (2, 3), (3, 4)]
 qubits = [1, 2, 3, 4]
 qubit_pairs = [(qubits[i], qubits[i + 1]) for i in range(len(qubits) - 1)]
 
-########################################################################################################################
-# %%                                 Define any custom/hardcoded channel addresses
-########################################################################################################################
-# multiplexed readout for qubits 1 to 4 and 5 to 8 on two feed-lines
-q1to4_res_ch = mw_fem_spec(con=1, slot=1, in_port=1, out_port=1)
-q5to8_res_ch = mw_fem_spec(con=1, slot=2, in_port=1, out_port=1)
-# individual xy drive for qubits 1 to 4 on MW-FEM 1
-q1to4_drive_ch = mw_fem_spec(con=1, slot=1, in_port=None, out_port=None)
-# multiplexed xy drive for qubits 5 to 8 on MW-FEM 2 port 4
-q5to8_drive_ch = mw_fem_spec(con=1, slot=2, in_port=None, out_port=4)
+# # Example: map qubit pairs to specific sensor dots (supports multiple sensors per pair).
+# # Pair keys: q1_q2 or q1-2. Sensor ids: virtual_sensor_<n>, sensor_<n>, or s<n> (e.g., virtual_sensor_1, sensor_1, s1).
+qubit_pair_sensor_map = {
+    "q1_q2": ["sensor_1"],
+    "q2_q3": ["sensor_1", "sensor_2"],
+    "q3_q4": ["sensor_2"],
+}
 
 ########################################################################################################################
 # %%                Allocate the wiring to the connectivity object based on the available instruments
 ########################################################################################################################
 connectivity = Connectivity()
 # Add the plunger gates and drive lines for each dot
-connectivity.add_quantum_dots(quantum_dots, add_drive_lines=True, use_mw_fem=True, shared_drive_line=False)
+connectivity.add_quantum_dots(quantum_dots, add_drive_lines=True, use_mw_fem=True, shared_drive_line=True)
 # Add the sensor gates and rf-reflectometry readout components for each sensor dot
 connectivity.add_sensor_dots(sensor_dots, shared_resonator_line=False)
 # Add the barrier gates for each quantum dot pair
@@ -63,7 +60,6 @@ plt.show(block=False)
 user_input = input("Do you want to save the updated QUAM? (y/n)")
 if user_input.lower() == "y":
     machine = Quam()
-    # Build the wiring (wiring_old.json) and initiate the QUAM
     build_quam_wiring(connectivity, host_ip, cluster_name, machine)
-    build_quam(machine, catalogs = [VoltageBalancedMacroCatalog()])
+    build_quam(machine, qubit_pair_sensor_map=qubit_pair_sensor_map, catalogs = [VoltageBalancedMacroCatalog()])
     machine.save()

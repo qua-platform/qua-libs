@@ -2,12 +2,13 @@ import matplotlib.pyplot as plt
 from qualang_tools.wirer import Connectivity, Instruments, allocate_wiring, visualize
 
 from qualang_tools.wirer.wirer.channel_specs import *
-from quam.components import MWChannel
 
-from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD
-from my_quam import Quam, Nanowire, NanowireDrive
+from quam_builder.architecture.quantum_dots.operations.macro_catalog import VoltageBalancedMacroCatalog
+from quam_config import Quam
 from quam_builder.builder.qop_connectivity import build_quam_wiring
 from quam_builder.builder.quantum_dots import build_quam
+
+QUAM_STATE_PATH = "/Users/kalidu_laptop/merge_libs/quam_state"
 
 def qdac_config(ip: str):
     return {
@@ -40,7 +41,7 @@ for i, qdac in enumerate(qdac_ips):
 instruments = Instruments()
 instruments.add_lf_fem(controller=1, slots=[5, 6])
 instruments.add_mw_fem(controller=1, slots=[1])
-instruments.add_qdac2(indices=1)
+instruments.add_qdac2(indices=[1,2])
 
 ########################################################################################################################
 # %%                           Define which quantum elements are present in the system
@@ -49,12 +50,13 @@ plunger_dots = [1, 2, 3, 4]  # P1, P2
 sensor_dots = [1, 2]
 # global_gates = [1]
 
-########################################################################################################################
-# %%                                 Define any custom/hardcoded channel addresses
-########################################################################################################################
-# multiplexed readout for sensor 1 to 2 and 3 to 4 on two feed-lines
-# s1to2_res_ch = mw_fem_spec(con=1, slot=1, in_port=1, out_port=1)
-# s3to4_res_ch = mw_fem_spec(con=1, slot=2, in_port=1, out_port=1)
+# # Example: map qubit pairs to specific sensor dots (supports multiple sensors per pair).
+# # Pair keys: q1_q2 or q1-2. Sensor ids: virtual_sensor_<n>, sensor_<n>, or s<n> (e.g., virtual_sensor_1, sensor_1, s1).
+qubit_pair_sensor_map = {
+    "q1_q2": ["sensor_1"],
+    "q2_q3": ["sensor_1", "sensor_2"],
+    "q3_q4": ["sensor_2"],
+}
 
 ########################################################################################################################
 # %%                Allocate the wiring to the connectivity object based on the available instruments
@@ -62,9 +64,11 @@ sensor_dots = [1, 2]
 connectivity = Connectivity()
 
 # Add plunger gates
+# Given the constraints that we would like to put on the outputs (i.e. which dot is from which channel), we add them individually with their own constraint, 
+# Rather than using connectivity.add_quantum_dots(plunger_dots)
 qdac_lf_spec = qdac2_spec(1) & lf_fem_spec(1)
-connectivity.add_quantum_dot_voltage_gate_lines(1, True, constraints=qdac_lf_spec & qdac2_spec(trigger_in_port=1))
-connectivity.add_quantum_dot_voltage_gate_lines(2, True, qdac_lf_spec & qdac2_spec(trigger_in_port=2))
+connectivity.add_quantum_dot_voltage_gate_lines(1, True, constraints=lf_fem_spec(1) & qdac2_spec(index = 1, out_port = 1, trigger_in_port=1))
+connectivity.add_quantum_dot_voltage_gate_lines(2, True, lf_fem_spec(1) & qdac2_spec(index = 2, out_port = 2, trigger_in_port=2))
 connectivity.add_quantum_dot_voltage_gate_lines(3, True, qdac_lf_spec)
 connectivity.add_quantum_dot_voltage_gate_lines(4, constraints=qdac_lf_spec)
 # Add global gates
@@ -85,37 +89,25 @@ visualize(connectivity.elements, instruments.available_channels)
 ########################################################################################################################
 # %%                                   Build the wiring and QUAM
 ########################################################################################################################
-machine = BaseQuamQD()
 
-build_quam_wiring(
-    connectivity,
-    host_ip,
-    cluster_name,
-    machine,
-    dac_config=dac_config,
-    path="/quam_state",
-)
+user_input = input("Do you want to save the updated QUAM? (y/n)")
+if user_input.lower() == "y":
+    machine = Quam()
 
-# # Example: map qubit pairs to specific sensor dots (supports multiple sensors per pair).
-# # Pair keys: q1_q2 or q1-2. Sensor ids: virtual_sensor_<n>, sensor_<n>, or s<n> (e.g., virtual_sensor_1, sensor_1, s1).
-qubit_pair_sensor_map = {
-    "q1_q2": ["sensor_1"],
-    "q2_q3": ["sensor_1", "sensor_2"],
-    "q3_q4": ["sensor_2"],
-}
+    build_quam_wiring(
+        connectivity,
+        host_ip,
+        cluster_name,
+        machine,
+        dac_config=dac_config,
+        path=QUAM_STATE_PATH,
+    )
+    build_quam(
+        machine,
+        qubit_pair_sensor_map=qubit_pair_sensor_map,
+        save=False,
+        connect_qdac=False,
+        catalogs = [VoltageBalancedMacroCatalog()],
+    )
 
-build_quam(
-    machine,
-    qubit_pair_sensor_map=qubit_pair_sensor_map,
-    save=False,
-    connect_qdac=False,
-)
-# Register the quantum dot pairs
-machine.register_quantum_dot_pair(
-    id="dot1_dot2_pair",
-    quantum_dot_ids=["virtual_dot_1", "virtual_dot_2"],
-    sensor_dot_ids=["virtual_sensor_1"],
-)
-# machine.connect_to_external_source()
-# machine.create_virtual_dc_set("main_qpu")
-machine.save("./quam_state/")
+    machine.save(QUAM_STATE_PATH)
