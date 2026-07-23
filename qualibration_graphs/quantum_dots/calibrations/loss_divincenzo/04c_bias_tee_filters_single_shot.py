@@ -1,20 +1,17 @@
 # %% {Imports}
+from dataclasses import asdict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
-
 from qm.qua import *
 
-from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
-from qualang_tools.units import unit
+from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.annotation import annotate_node_figures
-from calibration_utils.common_utils.experiment import get_sensors, get_dots
+from calibration_utils.common_utils.experiment import get_sensors
 from calibration_utils.bias_tee_filters_single_shot import (
     Parameters,
     process_raw_dataset,
@@ -59,18 +56,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.sensor_names = ["virtual_sensor_1"]
-    # node.parameters.elements = ["virtual_dot_1"]
-    # node.parameters.num_shots = 1
-    # node.parameters.num_shots = 2
-    # node.parameters.measurement_time = 1000
-    # node.parameters.integration_time = 100
-    # node.parameters.use_simulated_data = False
-    # node.parameters.estimated_bias_tee_tau_ns = 10000
-    # node.parameters.simulate = True
-    # node.parameters.simulation_duration_ns = 100000
-    # node.parameters.simulate = True
     pass
 
 
@@ -85,43 +70,48 @@ node.machine = Quam.load()
 )
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    # Class containing tools to help handle units and conversions.
-    u = unit(coerce_to_integer=True)
-
-    n_avg = node.parameters.num_shots
-
     if node.parameters.elements is None:
         node.parameters.elements = list(node.machine.quantum_dots.keys())
-
     node.namespace["elements"] = elements = [
         node.machine.get_component(el) for el in node.parameters.elements
     ]
     node.namespace["sensors"] = sensors = get_sensors(node)
-    num_elements = len(elements)
-    num_sensors = len(sensors)
-
-    # TODO: Add a check for this. Possible to perform this node for dots in different gate sets?
-    vgs_id = elements[0].voltage_sequence.gate_set.id
-
-    node.namespace["tracked_resonators"] = []
-    for s in sensors:
-        with tracked_updates(
-            s.readout_resonator, auto_revert=False, dont_assign_to_none=True
-        ) as resonator:
-            resonator.operations["readout"].length = node.parameters.measurement_time
-            node.namespace["tracked_resonators"].append(resonator)
+    if len(sensors) != 1:
+        raise ValueError(
+            "04c_bias_tee_filters_single_shot requires exactly one sensor "
+            "because it writes one output filter per element."
+        )
 
     num_chunks = node.parameters.measurement_time // node.parameters.integration_time
+    if num_chunks < 1:
+        raise ValueError("measurement_time must be at least integration_time.")
+
     time_array = (np.arange(num_chunks) + 0.5) * node.parameters.integration_time
-
-    pulse_time = int(np.round(node.parameters.measurement_time * 1.2 / 4) * 4)
-
     node.namespace["sweep_axes"] = {
         "time_array": xr.DataArray(
             time_array,
             attrs={"long_name": "time", "units": "ns"},
         ),
     }
+
+    tracked_resonators = []
+    for sensor in sensors:
+        resonator = tracked_updates(
+            sensor.readout_resonator,
+            auto_revert=False,
+            dont_assign_to_none=True,
+        ).__enter__()
+        resonator.operations["readout"].length = node.parameters.measurement_time
+        tracked_resonators.append(resonator)
+    node.namespace["tracked_resonators"] = tracked_resonators
+
+    n_avg = node.parameters.num_shots
+    num_sensors = len(sensors)
+
+    # TODO: Add a check for this. Possible to perform this node for dots in different gate sets?
+    vgs_id = elements[0].voltage_sequence.gate_set.id
+
+    pulse_time = int(np.round(node.parameters.measurement_time * 1.2 / 4) * 4)
 
     with program() as node.namespace["qua_program"]:
         seq = node.machine.voltage_sequences[vgs_id]
@@ -178,7 +168,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             save(Q[i][ind], Q_st[i])
 
                     align()
-                    seq.apply_compensation_pulse(return_to_zero=True, go_to_zero=True)
+                    seq.apply_compensation_pulse(
+                        return_to_zero=True, go_to_zero=True
+                    )
 
         with stream_processing():
             n_st.save("n")
@@ -214,6 +206,8 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
         "wf_report": wf_report,
         "samples": samples,
     }
+    for resonator in node.namespace.pop("tracked_resonators", []):
+        resonator.revert_changes()
 
 
 # %% {Execute}
@@ -235,22 +229,45 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
+            progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
-                node=node
+                node=node,
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
+    for resonator in node.namespace.pop("tracked_resonators", []):
+        resonator.revert_changes()
 
 
 # %% {Generate_simulated_data}
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     """Generate simulated IQ data so the full analysis pipeline can run without hardware."""
+    if node.parameters.elements is None:
+        node.parameters.elements = list(node.machine.quantum_dots.keys())
+    node.namespace["elements"] = [
+        node.machine.get_component(el) for el in node.parameters.elements
+    ]
+    node.namespace["sensors"] = get_sensors(node)
+    if len(node.namespace["sensors"]) != 1:
+        raise ValueError(
+            "04c_bias_tee_filters_single_shot requires exactly one sensor "
+            "because it writes one output filter per element."
+        )
+    num_chunks = node.parameters.measurement_time // node.parameters.integration_time
+    if num_chunks < 1:
+        raise ValueError("measurement_time must be at least integration_time.")
+    time_array = (np.arange(num_chunks) + 0.5) * node.parameters.integration_time
+    node.namespace["sweep_axes"] = {
+        "time_array": xr.DataArray(
+            time_array,
+            attrs={"long_name": "time", "units": "ns"},
+        ),
+    }
     node.results["ds_raw"] = generate_simulated_dataset(node)
     node.log("[sim] Simulated dataset generated successfully.")
 
@@ -259,10 +276,22 @@ def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset."""
+    for resonator in node.namespace.pop("tracked_resonators", []):
+        resonator.revert_changes()
     load_data_id = node.parameters.load_data_id
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
+    if node.parameters.elements is None:
+        node.parameters.elements = list(node.machine.quantum_dots.keys())
+    node.namespace["elements"] = [
+        node.machine.get_component(el) for el in node.parameters.elements
+    ]
     node.namespace["sensors"] = get_sensors(node)
+    if len(node.namespace["sensors"]) != 1:
+        raise ValueError(
+            "04c_bias_tee_filters_single_shot requires exactly one sensor "
+            "because it writes one output filter per element."
+        )
 
 
 # %% {Analyse_data}
@@ -287,8 +316,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         fit_results=node.results.get("fit_results"),
     )
     plt.show()
-    node.results["figures"] = {"signal_vs_frequency": fig}
-    annotate_node_figures(node)
+    node.results["figures"] = {"signal_vs_time": fig}
 
 
 # %% {Update_state}
@@ -302,27 +330,21 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
     See https://docs.quantum-machines.co/latest/docs/Guides/output_filter/
     """
-    for tracked_resonator in node.namespace.get("tracked_resonators", []):
-        tracked_resonator.revert_changes()
+    for resonator in node.namespace.pop("tracked_resonators", []):
+        resonator.revert_changes()
 
     elements = node.namespace["elements"]
-    sensors = node.namespace["sensors"]
+    sensor = node.namespace["sensors"][0]
 
     with node.record_state_updates():
         for el in elements:
-            best_fit = None
-            for sensor in sensors:
-                key = f"{el.name}_{sensor.name}"
-                fr = node.results["fit_results"].get(key)
-                if fr is not None and fr["success"]:
-                    best_fit = fr
-                    break
-
-            if best_fit is None:
+            fit_key = f"{el.name}_{sensor.name}"
+            fit_result = node.results["fit_results"].get(fit_key)
+            if fit_result is None or not fit_result["success"]:
                 node.log(f"Skipping filter update for {el.name}: no successful fit")
                 continue
 
-            tau_ns = best_fit["time_constant_ns"]
+            tau_ns = fit_result["time_constant_ns"]
             port = el.physical_channel.opx_output
 
             if hasattr(port, "exponential_filter"):
@@ -330,7 +352,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 node.log(
                     f"Updated {el.physical_channel.id} exponential_filter: "
                     f"[(1.0, {tau_ns:.1f})] (τ = {tau_ns:.1f} ns, "
-                    f"f_c = {best_fit['cutoff_frequency_Hz']:.1f} Hz)"
+                    f"f_c = {fit_result['cutoff_frequency_Hz']:.1f} Hz)"
                 )
             else:
                 node.log(
