@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 from quam_builder.builder.qop_connectivity import build_quam_wiring
@@ -9,6 +8,7 @@ from quam_config import Quam
 ########################################################################################################################
 # %%                                              Define static parameters
 ########################################################################################################################
+# QOP network setting
 host_ip = "127.0.0.1"  # QOP IP address
 cluster_name = "Cluster_1"  # Name of the cluster
 
@@ -52,7 +52,6 @@ allocate_wiring(connectivity, instruments)
 
 # View wiring schematic
 visualize(connectivity.elements, available_channels=instruments.available_channels)
-plt.show(block=False)
 
 ########################################################################################################################
 # %%                                   Build the wiring and QUAM
