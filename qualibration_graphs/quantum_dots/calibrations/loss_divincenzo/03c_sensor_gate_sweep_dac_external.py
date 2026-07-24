@@ -15,7 +15,7 @@ from qualang_tools.loops import from_array
 from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.sensor_dot import VirtualDCSetParameters as Parameters
+from calibration_utils.sensor_dot import ExternalDacSweepParameters as Parameters
 from calibration_utils.sensor_dot import (
     process_raw_dataset,
     fit_raw_data,
@@ -31,7 +31,7 @@ from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
 description = """
-        CHARGE SENSOR GATE SWEEP with the DAC using the VirtualDCSet
+        CHARGE SENSOR GATE SWEEP with an external DAC
 
 The measurement performs a voltage sweep across a specified range with configurable step size. The voltage is stepped by your 
 external DAC, which must be configured in the execute_qua_program run_action first. You can optionally step to the measure point
@@ -53,7 +53,7 @@ State update:
 
 
 node = QualibrationNode[Parameters, Quam](
-    name="03b_sensor_gate_sweep_dac", description=description, parameters=Parameters()
+    name="03c_sensor_gate_sweep_dac_external", description=description, parameters=Parameters()
 )
 
 
@@ -95,21 +95,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     num_sensors = len(sensors)
 
-    # Collect sensor gate set IDs and ensure that the GateSets have a corresponding VirtualDCSet
-    for s_name in node.parameters.sensor_names: 
-        s = node.machine.sensor_dots[s_name]
-        node.namespace["gate_set_id"] = gate_set_id = s.voltage_sequence.gate_set.name
-
-        # Look for the corresponding VirtualDCSet
-        virtual_dc_set = node.machine.dc_sets.get(gate_set_id, None)
-
-        # Try to create a VirtualDCSet with the same gate set ID if not found
-        if virtual_dc_set is None: 
-            # Throw an error if the VirtualDCSet cannot be created
-            node.machine.create_virtual_dc_set(
-                gate_set_id, 
-            )
-    
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_shots
 
@@ -216,6 +201,12 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Connect to the QOP
     qmm = node.machine.connect()
 
+    # Prepare DAC
+    raise NotImplementedError(
+        "Hardware execution for this node requires a DAC/gate-manager driver that is "
+        "specific to your lab's setup. Plug in your own driver here to obtain a `gates` "
+        "handle exposing `get_voltage`/`set_voltage` for `node.parameters.dac_sensor_name`."
+    )
 
     # Get the config from the machine
     config = node.machine.generate_config()
