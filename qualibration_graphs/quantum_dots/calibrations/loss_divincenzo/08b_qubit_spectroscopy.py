@@ -76,7 +76,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
-    num_qubits = len(qubits)
 
     # Adjust the pulse duration and amplitude to drive the qubit into a mixed state - can be None
     operation_len = node.parameters.operation_len_in_ns
@@ -101,9 +100,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "detuning": xr.DataArray(
-            dfs, attrs={"long_name": "drive frequency", "units": "Hz"}
-        ),
+        "detuning": xr.DataArray(dfs, attrs={"long_name": "drive frequency", "units": "Hz"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -115,15 +112,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         i_st = {qubit.name: declare_output_stream() for qubit in qubits}
         q_st = {qubit.name: declare_output_stream() for qubit in qubits}
 
-        if node.parameters.return_n_loops: 
+        if node.parameters.return_n_loops:
             n_loops_st = {qubit.name: declare_output_stream() for qubit in qubits}
 
         n_st = declare_output_stream()
 
         for qubit in qubits:
             intermediate_frequency = qubit.xy.intermediate_frequency
-            qd_pair = node.machine.quantum_dot_pairs[node.machine.find_quantum_dot_pair(qubit.quantum_dot.name, qubit.preferred_readout_quantum_dot)]
-            qubit_pair = [qp for qp_name, qp in node.machine.qubit_pairs.items() if qp.quantum_dot_pair == qd_pair][0]
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(df, dfs)):
@@ -134,7 +129,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     if node.parameters.parity_pre_measurement:
                         qubit.empty()
                         a1 = qubit.measure()
-                    
+
                     n_init = qubit.initialize(
                         return_n_loops=node.parameters.return_n_loops,
                         target_state=node.parameters.target_state,
@@ -144,16 +139,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     align()
                     qubit.xy.update_frequency(intermediate_frequency + df)
-                    # qubit.empty(
-                    #     measure_and_conditional_drive=True,
-                    #     state="less_than_one",
-                    #     drive_at_readout_point=True,
-                    #     amplitude_scale=1,
-                    #     ramp_duration=4000,
-                    #     buffer_duration=16,
-                    #     hold_duration=1000000,
-                    #     # drive_point={qd_pair.name: -0.36},
-                    # )
 
                     align()
                     qubit.x180()
@@ -173,7 +158,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     save_parity_measurement(node, qubit.name, p1, p2, parity_streams)
                     save(i, i_st[qubit.name])
                     save(q, q_st[qubit.name])
-                    if node.parameters.return_n_loops: 
+                    if node.parameters.return_n_loops:
                         save(n_init, n_loops_st[qubit.name])
 
             qubit.xy.update_frequency(intermediate_frequency)
@@ -185,13 +170,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 buffer_parity_streams(node, qubit.name, parity_streams, n_dfs)
                 i_st[qubit.name].buffer(n_dfs).average().save(f"I_{qubit.name}")
                 q_st[qubit.name].buffer(n_dfs).average().save(f"Q_{qubit.name}")
-                if node.parameters.return_n_loops: 
+                if node.parameters.return_n_loops:
                     n_loops_st[qubit.name].buffer(n_dfs).average().save(f"n_loops_{qubit.name}")
 
+
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -199,9 +183,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -211,9 +193,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -228,10 +208,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-                node=node
+                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -304,8 +281,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         q_vals = ds_raw[q_key].sel(qubit=qname).values
         detuning_mhz = ds_raw["detuning"].values / 1e6
         ax_q = ax.twinx()
-        line_i, = ax.plot(detuning_mhz, i_vals, color="C0", label="I", zorder=3)
-        line_q, = ax_q.plot(detuning_mhz, q_vals, color="C1", label="Q", zorder=2)
+        (line_i,) = ax.plot(detuning_mhz, i_vals, color="C0", label="I", zorder=3)
+        (line_q,) = ax_q.plot(detuning_mhz, q_vals, color="C1", label="Q", zorder=2)
         ax.set_xlabel("Detuning [MHz]")
         ax.set_ylabel("I", color="C0")
         ax_q.set_ylabel("Q", color="C1")
@@ -362,19 +339,18 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 try:
                     readout_dot_id = q.preferred_readout_quantum_dot
                     readout_qubit = next(
-                        rq for rq in node.machine.qubits.values()
-                        if rq.quantum_dot.id == readout_dot_id
+                        rq for rq in node.machine.qubits.values() if rq.quantum_dot.id == readout_dot_id
                     )
                     readout_qubit.larmor_frequency = readout_freq
                     readout_qubit.x.update(frequency=readout_freq)
                     logger.info(
                         "%s: updated readout qubit %s frequency to %.3f GHz",
-                        q.name, readout_qubit.name, readout_freq * 1e-9,
+                        q.name,
+                        readout_qubit.name,
+                        readout_freq * 1e-9,
                     )
                 except Exception as exc:
-                    logger.warning(
-                        "%s: could not update readout qubit — %s", q.name, exc
-                    )
+                    logger.warning("%s: could not update readout qubit — %s", q.name, exc)
 
 
 # %% {Save_results}

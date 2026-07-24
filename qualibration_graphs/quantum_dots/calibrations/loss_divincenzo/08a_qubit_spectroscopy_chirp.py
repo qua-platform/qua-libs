@@ -70,10 +70,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.use_simulated_data
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Get the active qubits from the node and organize them by batches
@@ -87,9 +84,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     operation_amp_factor = node.parameters.operation_amplitude_factor
 
     chirp_rate = (
-        node.parameters.frequency_step_in_mhz
-        * 1e6
-        / node.parameters.operation_len_in_ns
+        node.parameters.frequency_step_in_mhz * 1e6 / node.parameters.operation_len_in_ns
     )  # Rate will be Hz/nsec
 
     for qubit in qubits:
@@ -97,10 +92,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             amplitude_scale=operation_amp_factor,
             duration=operation_len,
         )
-        # qubit.xy.operations[operation].length = operation_len
-        # qubit.xy.operations[operation].amplitude = (
-        #     qubit.xy.operations[operation].amplitude * operation_amp_factor
-        # )
 
     u = unit(coerce_to_integer=True)
     n_avg = node.parameters.num_shots  # The number of averages
@@ -113,9 +104,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "detuning": xr.DataArray(
-            dfs, attrs={"long_name": "drive frequency", "units": "Hz"}
-        ),
+        "detuning": xr.DataArray(dfs, attrs={"long_name": "drive frequency", "units": "Hz"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -179,9 +168,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -192,9 +179,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.use_simulated_data
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -210,10 +195,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-                node=node
+                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -260,21 +242,13 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     # Always run threshold-based frequency detection
     threshold_results = find_frequency_by_threshold(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in threshold_results.items()}
-    log_fitted_results(
-        node.results["fit_results"], log_callable=node.log, label="Threshold"
-    )
+    log_fitted_results(node.results["fit_results"], log_callable=node.log, label="Threshold")
 
     # Optionally run peak fitting and compare
     if node.parameters.fit_peak:
-        node.results["ds_fit"], peak_results = fit_raw_data(
-            node.results["ds_raw"], node
-        )
-        node.results["peak_fit_results"] = {
-            k: asdict(v) for k, v in peak_results.items()
-        }
-        log_fitted_results(
-            node.results["peak_fit_results"], log_callable=node.log, label="Peak fit"
-        )
+        node.results["ds_fit"], peak_results = fit_raw_data(node.results["ds_raw"], node)
+        node.results["peak_fit_results"] = {k: asdict(v) for k, v in peak_results.items()}
+        log_fitted_results(node.results["peak_fit_results"], log_callable=node.log, label="Peak fit")
 
         for q_name, thr in node.results["fit_results"].items():
             peak = node.results["peak_fit_results"].get(q_name, {})

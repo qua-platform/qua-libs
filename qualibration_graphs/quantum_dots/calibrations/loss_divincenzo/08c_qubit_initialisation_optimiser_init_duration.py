@@ -71,36 +71,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
-    num_qubits = len(qubits)
-    # operation = node.parameters.operation  # The qubit operation to play
 
-    # # Adjust the pulse duration and amplitude to drive the qubit into a mixed state - can be None
-    # operation_len = node.parameters.operation_len_in_ns
+    hold_durations = np.arange(
+        node.parameters.hold_duration_start, node.parameters.hold_duration_stop, node.parameters.hold_duration_step
+    )
+    ramp_durations = np.arange(
+        node.parameters.ramp_duration_start, node.parameters.ramp_duration_stop, node.parameters.ramp_duration_step
+    )
 
-    # # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
-    # operation_amp_factor = node.parameters.operation_amplitude_factor
-
-    # for qubit in qubits:
-    #     qubit.x.update(
-    #         amplitude_scale=operation_amp_factor,
-    #         duration=operation_len,
-    #     )
-
-    hold_durations = np.arange(node.parameters.hold_duration_start, node.parameters.hold_duration_stop, node.parameters.hold_duration_step)
-    ramp_durations = np.arange(node.parameters.ramp_duration_start, node.parameters.ramp_duration_stop, node.parameters.ramp_duration_step)
-
-    u = unit(coerce_to_integer=True)
     n_avg = node.parameters.num_shots  # The number of averages
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "hold_durations": xr.DataArray(
-            hold_durations, attrs={"long_name": "Init hold duration", "units": "ns"}
-        ),
-        "ramp_durations": xr.DataArray(
-            ramp_durations, attrs={"long_name": "Init ramp duration", "units": "ns"}
-        ),
+        "hold_durations": xr.DataArray(hold_durations, attrs={"long_name": "Init hold duration", "units": "ns"}),
+        "ramp_durations": xr.DataArray(ramp_durations, attrs={"long_name": "Init ramp duration", "units": "ns"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -126,9 +111,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
                 with for_(*from_array(hold, hold_durations)):
-                #for hold in hold_durations:
-                    with for_(*from_array(ramp, ramp_durations)): 
-                    
+                    with for_(*from_array(ramp, ramp_durations)):
                         # 1: Baseline, no pulse
                         qubit.initialize(
                             hold_duration=10000,
@@ -173,30 +156,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_ramp = len(ramp_durations)
 
             for qubit in qubits:
-                # buffer_parity_streams(node, qubit.name, parity_streams, [n_hold, n_ramp])
-                i_st_no_pulse[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(
-                    f"I_no_pulse_{qubit.name}"
-                )
-                q_st_no_pulse[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(
-                    f"Q_no_pulse_{qubit.name}"
-                )
-                i_st_pulse[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(
-                    f"I_pulse_{qubit.name}"
-                )
-                q_st_pulse[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(
-                    f"Q_pulse_{qubit.name}"
-                )
+                i_st_no_pulse[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(f"I_no_pulse_{qubit.name}")
+                q_st_no_pulse[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(f"Q_no_pulse_{qubit.name}")
+                i_st_pulse[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(f"I_pulse_{qubit.name}")
+                q_st_pulse[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(f"Q_pulse_{qubit.name}")
                 state_st_no_pulse[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(
                     f"state_no_pulse_{qubit.name}"
                 )
-                state_st_pulse[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(
-                    f"state_pulse_{qubit.name}"
-                )
+                state_st_pulse[qubit.name].buffer(n_ramp).buffer(n_hold).average().save(f"state_pulse_{qubit.name}")
+
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -204,9 +175,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -216,13 +185,11 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
-    qmm = node.machine.connect(timeout = node.parameters.timeout)
+    qmm = node.machine.connect(timeout=node.parameters.timeout)
     # Get the config from the machine
     config = node.machine.generate_config()
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
@@ -233,10 +200,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-                node=node
+                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -267,12 +231,12 @@ def process_raw_data(node: QualibrationNode[Parameters, Quam]):
         qname = qubit.name
         qbase = qname.rstrip("0123456789")
 
-        i_no = ds_raw[f"I_no_pulse_{qbase}"].sel(qubit = qname).astype(np.float64)
-        q_no = ds_raw[f"Q_no_pulse_{qbase}"].sel(qubit = qname).astype(np.float64)
-        i_p = ds_raw[f"I_pulse_{qbase}"].sel(qubit = qname).astype(np.float64)
-        q_p = ds_raw[f"Q_pulse_{qbase}"].sel(qubit = qname).astype(np.float64)
-        state_no = ds_raw[f"state_no_pulse_{qbase}"].sel(qubit = qname).astype(np.float64)
-        state_p = ds_raw[f"state_pulse_{qbase}"].sel(qubit = qname).astype(np.float64)
+        i_no = ds_raw[f"I_no_pulse_{qbase}"].sel(qubit=qname).astype(np.float64)
+        q_no = ds_raw[f"Q_no_pulse_{qbase}"].sel(qubit=qname).astype(np.float64)
+        i_p = ds_raw[f"I_pulse_{qbase}"].sel(qubit=qname).astype(np.float64)
+        q_p = ds_raw[f"Q_pulse_{qbase}"].sel(qubit=qname).astype(np.float64)
+        state_no = ds_raw[f"state_no_pulse_{qbase}"].sel(qubit=qname).astype(np.float64)
+        state_p = ds_raw[f"state_pulse_{qbase}"].sel(qubit=qname).astype(np.float64)
 
         i_diff = i_p - i_no
         q_diff = q_p - q_no
@@ -292,9 +256,7 @@ def process_raw_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Analysis_helpers}
-def _get_analysis_signal_for_qubit(
-    ds: xr.Dataset, qubit_name: str, signal_prefix: str
-) -> xr.DataArray:
+def _get_analysis_signal_for_qubit(ds: xr.Dataset, qubit_name: str, signal_prefix: str) -> xr.DataArray:
     """Return the selected analysis signal for one qubit."""
     by_qubit_var = f"{signal_prefix}_{qubit_name}"
     if by_qubit_var in ds:
@@ -306,9 +268,7 @@ def _get_analysis_signal_for_qubit(
             return signal.sel(qubit=qubit_name)
         return signal
 
-    raise KeyError(
-        f"Could not find analysis signal '{signal_prefix}' for qubit '{qubit_name}'."
-    )
+    raise KeyError(f"Could not find analysis signal '{signal_prefix}' for qubit '{qubit_name}'.")
 
 
 # %% {Analyse_data}
@@ -354,10 +314,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
             "hold_duration": hold_duration,
             "ramp_duration": ramp_duration,
         }
-        node.log(
-            f"{qname}: maximum {maximum_value:.6g} at "
-            f"hold={hold_duration} ns, ramp={ramp_duration} ns."
-        )
+        node.log(f"{qname}: maximum {maximum_value:.6g} at " f"hold={hold_duration} ns, ramp={ramp_duration} ns.")
 
     # Keep this key for compatibility with existing tooling.
     node.results["ds_fit"] = ds_raw
@@ -378,8 +335,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     _PANELS = [
         ("I_no_pulse", "I, raw"),
         ("Q_no_pulse", "Q, raw"),
-        ("I_diff",     "I, diff"),
-        ("Q_diff",     "Q, diff"),
+        ("I_diff", "I, diff"),
+        ("Q_diff", "Q, diff"),
         ("state_no_pulse", "state, raw"),
         ("state_diff", "state, diff"),
     ]
@@ -443,8 +400,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         fit = node.results["fit_results"].get(q.name, {})
         if fit.get("success"):
             node.log(
-                f"{q.name}: selected maximum at hold={fit['hold_duration']} ns, "
-                f"ramp={fit['ramp_duration']} ns."
+                f"{q.name}: selected maximum at hold={fit['hold_duration']} ns, " f"ramp={fit['ramp_duration']} ns."
             )
 
 
