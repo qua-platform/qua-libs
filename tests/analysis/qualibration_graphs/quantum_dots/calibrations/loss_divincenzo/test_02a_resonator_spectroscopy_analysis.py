@@ -64,31 +64,31 @@ def _ensure_video_mode_parameters_stub() -> None:
 
 def _build_resonator_ds_raw() -> xr.Dataset:
     """Return synthetic raw data in the format expected by the node."""
-    detuning = np.linspace(-6e6, 6e6, 301, dtype=float)
+    frequency_detuning = np.linspace(-6e6, 6e6, 301, dtype=float)
 
     width_hz = 0.7e6
     baseline = 1.0
     depth = 0.35
 
-    dip = depth / (1.0 + ((detuning - DETUNING_CENTER_HZ) / width_hz) ** 2)
+    dip = depth / (1.0 + ((frequency_detuning - DETUNING_CENTER_HZ) / width_hz) ** 2)
 
     # Mild baseline tilt and quadrature component for realistic IQ traces.
-    i_trace = baseline - dip + 0.01 * (detuning / np.max(np.abs(detuning)))
+    i_trace = baseline - dip + 0.01 * (frequency_detuning / np.max(np.abs(frequency_detuning)))
     q_trace = 0.02 * np.sin(
-        2.0 * np.pi * (detuning - detuning.min()) / (np.ptp(detuning))
+        2.0 * np.pi * (frequency_detuning - frequency_detuning.min()) / (np.ptp(frequency_detuning))
     )
 
     return xr.Dataset(
         data_vars={
-            "I": (("sensors", "detuning"), i_trace[np.newaxis, :]),
-            "Q": (("sensors", "detuning"), q_trace[np.newaxis, :]),
+            "I": (("sensor", "frequency_detuning"), i_trace[np.newaxis, :]),
+            "Q": (("sensor", "frequency_detuning"), q_trace[np.newaxis, :]),
         },
         coords={
-            "sensors": [SENSOR_NAME],
-            "detuning": xr.DataArray(
-                detuning,
-                dims="detuning",
-                attrs={"long_name": "readout frequency", "units": "Hz"},
+            "sensor": [SENSOR_NAME],
+            "frequency_detuning": xr.DataArray(
+                frequency_detuning,
+                dims="frequency_detuning",
+                attrs={"long_name": "readout frequency detuning from IF", "units": "Hz"},
             ),
         },
     )

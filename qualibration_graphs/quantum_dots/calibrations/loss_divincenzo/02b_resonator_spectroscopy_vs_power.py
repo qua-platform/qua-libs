@@ -140,7 +140,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Metadata for data fetching
     node.namespace["sweep_axes"] = {
         "sensor": xr.DataArray(sensors.get_names()),
-        "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
+        "frequency_detuning": xr.DataArray(
+            dfs,
+            attrs={"long_name": "readout frequency detuning from IF", "units": "Hz"},
+        ),
         "power": xr.DataArray(power_dbm, attrs={"long_name": "readout power", "units": "dBm"}),
     }
 

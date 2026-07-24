@@ -29,7 +29,7 @@ def plot_raw_phase(ds: xr.Dataset, sensors: List) -> Figure:
     Notes
     -----
     - The function creates a grid of subplots, one for each sensor.
-    - Each subplot contains two x-axes: one for the full frequency in GHz and one for the detuning in MHz.
+    - Each subplot contains two x-axes: one for the full frequency in GHz and one for the frequency shift in MHz.
     """
     num_sensors = len(sensors)
 
@@ -37,7 +37,7 @@ def plot_raw_phase(ds: xr.Dataset, sensors: List) -> Figure:
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
-        sensor_data = ds.sel(sensors=sensor.name)
+        sensor_data = ds.sel(sensor=sensor.name)
 
         # Create a first x-axis for full_freq_GHz
         ax.plot(sensor_data.full_freq / u.GHz, sensor_data.phase, "o-", markersize=2)
@@ -45,10 +45,10 @@ def plot_raw_phase(ds: xr.Dataset, sensors: List) -> Figure:
         ax.set_ylabel("Phase [rad]")
         ax.set_title(f"Sensor: {sensor.name}")
 
-        # Create a second x-axis for detuning_MHz
+        # Create a second x-axis for frequency_detuning_MHz
         ax2 = ax.twiny()
-        ax2.plot(sensor_data.detuning / u.MHz, sensor_data.phase, "o-", markersize=2, alpha=0)
-        ax2.set_xlabel("Detuning [MHz]")
+        ax2.plot(sensor_data.frequency_detuning / u.MHz, sensor_data.phase, "o-", markersize=2, alpha=0)
+        ax2.set_xlabel("Frequency detuning [MHz]")
 
     fig.suptitle("Resonator spectroscopy (phase)")
     fig.tight_layout()
@@ -78,8 +78,8 @@ def plot_raw_amplitude_with_fit(ds: xr.Dataset, sensors: List, fits: xr.Dataset 
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
-        sensor_data = ds.sel(sensors=sensor.name)
-        fit_data = fits.sel(sensors=sensor.name) if fits is not None else None
+        sensor_data = ds.sel(sensor=sensor.name)
+        fit_data = fits.sel(sensor=sensor.name) if fits is not None else None
 
         plot_individual_amplitude_with_fit(ax, sensor_data, sensor.name, fit_data)
 
@@ -115,27 +115,27 @@ def plot_individual_amplitude_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor
     ax.set_ylabel(r"$R=\sqrt{I^2 + Q^2}$ [mV]")
     ax.set_title(f"Sensor: {sensor_id}")
 
-    # Create a second x-axis for detuning_MHz
+    # Create a second x-axis for frequency_detuning_MHz
     ax2 = ax.twiny()
     ax2.plot(
-        sensor_data.detuning / u.MHz,
+        sensor_data.frequency_detuning / u.MHz,
         sensor_data.IQ_abs / u.mV,
         "o-",
         markersize=2,
         alpha=0,
     )
-    ax2.set_xlabel("Detuning [MHz]")
+    ax2.set_xlabel("Frequency detuning [MHz]")
 
     # Plot the fitted data if available
     if fit is not None and all(k in fit for k in ["amplitude", "position", "width", "base_line"]):
         fitted_data = lorentzian_dip(
-            sensor_data.detuning,
+            sensor_data.frequency_detuning,
             float(fit.amplitude.values),
             float(fit.position.values),
             float(fit.width.values) / 2,
             float(fit.base_line.mean().values),
         )
-        ax2.plot(sensor_data.detuning / u.MHz, fitted_data / u.mV, "r--", label="Fit")
+        ax2.plot(sensor_data.frequency_detuning / u.MHz, fitted_data / u.mV, "r--", label="Fit")
         ax.legend()
 
     ax.grid(True, alpha=0.3)

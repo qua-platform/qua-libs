@@ -96,9 +96,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Metadata for data fetching: labels the saved I/Q arrays when results come back from the OPX
     node.namespace["sweep_axes"] = {
-        "sensors": xr.DataArray(sensors.get_names()),
-        # "detuning" here means readout-frequency offset (Hz), NOT QD gate voltage (that is 02c)
-        "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
+        "sensor": xr.DataArray(sensors.get_names()),
+        "frequency_detuning": xr.DataArray(
+            dfs,
+            attrs={"long_name": "readout frequency detuning from IF", "units": "Hz"},
+        ),
     }
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
@@ -152,7 +154,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Each save() is one frequency point.
                 # .buffer(len(dfs)) : group points along the frequency axis
                 # .average()        : average over all shots (n_avg repetitions)
-                # Result: 1D trace I(detuning), Q(detuning) per sensor
+                # Result: 1D trace I(frequency_detuning), Q(frequency_detuning) per sensor
                 I_st[i].buffer(len(dfs)).average().save(f"I{i + 1}")
                 Q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
 

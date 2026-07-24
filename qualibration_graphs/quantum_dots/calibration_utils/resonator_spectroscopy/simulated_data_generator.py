@@ -35,10 +35,10 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     dfs = np.arange(-span / 2, +span / 2, step)
 
     node.namespace["sweep_axes"] = {
-        "sensors": xr.DataArray(sensors.get_names()),
-        "detuning": xr.DataArray(
+        "sensor": xr.DataArray(sensors.get_names()),
+        "frequency_detuning": xr.DataArray(
             dfs,
-            attrs={"long_name": "readout frequency", "units": "Hz"},
+            attrs={"long_name": "readout frequency detuning from IF", "units": "Hz"},
         ),
     }
 
@@ -80,8 +80,8 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         Q_data.append(signal.imag + rng.normal(0, noise, size=len(dfs)))
 
     sensor_names = sensors.get_names()
-    coords = {"sensors": sensor_names, "detuning": dfs}
-    dims = ["sensors", "detuning"]
+    coords = {"sensor": sensor_names, "frequency_detuning": dfs}
+    dims = ["sensor", "frequency_detuning"]
 
     return xr.Dataset(
         {

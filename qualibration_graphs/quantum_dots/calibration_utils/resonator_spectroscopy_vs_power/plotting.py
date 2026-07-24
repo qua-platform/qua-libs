@@ -70,10 +70,10 @@ def plot_individual_raw_data_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_
     ax.set_ylabel("Power (dBm)")
 
     ax2 = ax.twiny()
-    sensor_data.assign_coords(detuning_MHz=sensor_data.detuning / u.MHz).IQ_abs_norm.plot(
-        ax=ax2, add_colorbar=False, x="detuning_MHz", y="power", robust=True
+    sensor_data.assign_coords(frequency_detuning_MHz=sensor_data.frequency_detuning / u.MHz).IQ_abs_norm.plot(
+        ax=ax2, add_colorbar=False, x="frequency_detuning_MHz", y="power", robust=True
     )
-    ax2.set_xlabel("Detuning [MHz]")
+    ax2.set_xlabel("Frequency detuning [MHz]")
     ax2.set_title(sensor_id)
 
     if fit is not None:
@@ -81,6 +81,6 @@ def plot_individual_raw_data_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_
         try:
             if bool(fit.success):
                 ax2.axhline(y=float(fit.optimal_power), color="g", linestyle="-")
-                ax2.axvline(x=float(fit.freq_shift) * 1e-6, color="blue", linestyle="--")
+                ax2.axvline(x=float(fit.frequency_shift) * 1e-6, color="blue", linestyle="--")
         except Exception:
             pass

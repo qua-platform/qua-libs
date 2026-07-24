@@ -73,7 +73,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     pca_signal = np.full(ds.I.shape, np.nan, dtype=float)
     pca_signal_abs = np.full(ds.I.shape, np.nan, dtype=float)
 
-    optimal_frequency_shift = np.full(len(ds.sensor), np.nan, dtype=float)
+    frequency_shift = np.full(len(ds.sensor), np.nan, dtype=float)
     optimal_detuning = np.full(len(ds.sensor), np.nan, dtype=float)
     peak_pca_signal = np.full(len(ds.sensor), np.nan, dtype=float)
 
@@ -111,7 +111,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         if np.any(np.isfinite(abs_map)):
             max_index = np.unravel_index(np.nanargmax(abs_map), abs_map.shape)
             freq_idx, det_idx = max_index
-            optimal_frequency_shift[i] = float(ds.frequency.values[freq_idx])
+            frequency_shift[i] = float(ds.frequency.values[freq_idx])
             optimal_detuning[i] = float(ds.detuning.values[det_idx])
             peak_pca_signal[i] = float(abs_map[max_index])
 
@@ -120,11 +120,12 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 
     ds_fit = ds_fit.assign_coords(
         {
-            "optimal_frequency_shift": ("sensor", optimal_frequency_shift),
+            "frequency_shift": ("sensor", frequency_shift),
             "optimal_detuning": ("sensor", optimal_detuning),
             "peak_pca_signal": ("sensor", peak_pca_signal),
         }
     )
+    ds_fit.frequency_shift.attrs = {"long_name": "readout frequency offset from IF", "units": "Hz"}
     return _extract_relevant_fit_parameters(ds_fit, node)
 
 
@@ -133,24 +134,24 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     intermediate_freq = np.array(
         [sensor.readout_resonator.intermediate_frequency for sensor in node.namespace["sensors"]]
     )
-    res_freq = fit.optimal_frequency_shift.data + intermediate_freq
+    res_freq = fit.frequency_shift.data + intermediate_freq
     fit = fit.assign_coords(res_freq=("sensor", res_freq))
     fit.res_freq.attrs = {"long_name": "resonator frequency", "units": "Hz"}
 
     span_hz = node.parameters.frequency_span_in_mhz * 1e6
-    freq_success = np.abs(fit.optimal_frequency_shift.data) <= span_hz / 2.0
-    finite_success = np.isfinite(fit.optimal_frequency_shift.data) & np.isfinite(fit.optimal_detuning.data)
+    freq_success = np.abs(fit.frequency_shift.data) <= span_hz / 2.0
+    finite_success = np.isfinite(fit.frequency_shift.data) & np.isfinite(fit.optimal_detuning.data)
     success_criteria = freq_success & finite_success
     fit = fit.assign_coords(success=("sensor", success_criteria))
 
     fit_results = {
-        sensor_name: FitParameters(
-            success=bool(fit.sel(sensor=sensor_name).success.values),
-            resonator_frequency=float(fit.res_freq.sel(sensor=sensor_name).values),
-            frequency_shift=float(fit.optimal_frequency_shift.sel(sensor=sensor_name).values),
-            optimal_detuning=float(fit.optimal_detuning.sel(sensor=sensor_name).values),
-            peak_pca_signal=float(fit.peak_pca_signal.sel(sensor=sensor_name).values),
+        s: FitParameters(
+            success=bool(fit.sel(sensor=s).success.values),
+            resonator_frequency=float(fit.res_freq.sel(sensor=s).values),
+            frequency_shift=float(fit.frequency_shift.sel(sensor=s).values),
+            optimal_detuning=float(fit.optimal_detuning.sel(sensor=s).values),
+            peak_pca_signal=float(fit.peak_pca_signal.sel(sensor=s).values),
         )
-        for sensor_name in fit.sensor.values
+        for s in fit.sensor.values
     }
     return fit, fit_results
