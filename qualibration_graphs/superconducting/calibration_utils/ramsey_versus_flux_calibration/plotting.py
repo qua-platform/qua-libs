@@ -103,8 +103,8 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
 
     ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
     ax.set_title(qubit["qubit"])
-    ax.set_xlabel("Idle_time (uS)")
-    ax.set_ylabel(" Flux (V)")
+    ax.set_xlabel("Idle time (ns)")
+    ax.set_ylabel("Flux (V)")
 
     flux_offset = fit.flux_offset
 
