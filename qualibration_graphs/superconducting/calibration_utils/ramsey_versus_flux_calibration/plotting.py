@@ -130,7 +130,7 @@ def plot_individual_parabolas_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    detuning = fit.artifitial_detuning
+    detuning = fit.artificial_detuning
 
     (fit.unfolded_frequency * 1e3 - detuning).plot(ax=ax, linestyle="--", marker=".", label="Unfolded freq")
 
