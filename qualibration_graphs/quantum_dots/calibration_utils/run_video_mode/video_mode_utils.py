@@ -1,10 +1,11 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Literal
 import time
 from werkzeug.serving import make_server
 import os
 import signal
 
 from quam.core import QuamRoot
+from qualibrate.core.parameters import RunnableParameters
 from qua_dashboards.video_mode import VideoModeComponent, OPXDataAcquirer, scan_modes
 from qua_dashboards.voltage_control import VoltageControlComponent
 from qua_dashboards.core import build_dashboard
@@ -17,7 +18,20 @@ import subprocess
 _DASHBOARD_THREAD: Optional[threading.Thread] = None
 _DASHBOARD_SERVER = None
 
-__all__ = ["create_video_mode", "stop_dashboard"]
+__all__ = ["VideoModeCommonParameters", "create_video_mode", "stop_dashboard"]
+
+
+class VideoModeCommonParameters(RunnableParameters):
+    run_in_video_mode: bool = True
+    """Optionally open Video Mode with the qualibration node."""
+    virtual_gate_set_id: Optional[str] = None
+    """Name of the associated VirtualGateSet in your QPU. """
+    video_mode_port: int = 8002
+    """Localhost port to open VideoMode with"""
+    dc_control: bool = False
+    """If an associated external DC offset exists."""
+    result_type: Literal["I", "Q", "Amplitude", "Phase"] = "I"
+
 
 def stop_dashboard(port: int = 8050):
     """Nuclear option: kill anything on the given port."""
