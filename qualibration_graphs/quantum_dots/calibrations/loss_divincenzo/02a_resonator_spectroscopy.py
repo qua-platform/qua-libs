@@ -19,8 +19,7 @@ from calibration_utils.resonator_spectroscopy import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
-    plot_raw_amplitude_with_fit,
-    plot_raw_phase,
+    plot_all,
     generate_simulated_dataset,
 )
 from qualibration_libs.runtime import simulate_and_plot
@@ -242,17 +241,10 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
-    fig_raw_phase = plot_raw_phase(node.results["ds_fit"], node.namespace["sensors"])
-    fig_fit_amplitude = plot_raw_amplitude_with_fit(
-        node.results["ds_fit"], node.namespace["sensors"]
-    )
-    plt.show()
-    # Store the generated figures
-    node.results["figures"] = {
-        "phase": fig_raw_phase,
-        "amplitude": fig_fit_amplitude,
-    }
+    """Plot processed data and fit overlays; store figures in ``node.results["figures"]``."""
+    node.results["figures"] = plot_all(node.results["ds_fit"], node.namespace["sensors"])
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Update_state}

@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import xarray as xr
@@ -30,6 +30,11 @@ def _add_rf_frequency_top_axis(ax: Axes, sensor_data: xr.Dataset) -> None:
     ax2.set_xticks(detuning_ticks_mhz)
     ax2.set_xticklabels([f"{if_hz / 1e9 + tick / 1e3:.6f}" for tick in detuning_ticks_mhz])
     ax2.set_xlabel("RF frequency [GHz]")
+
+
+def plot_all(ds_fit: xr.Dataset, sensors: List) -> Dict[str, Figure]:
+    """Return all standard figures for resonator spectroscopy vs power."""
+    return {"amplitude": plot_raw_data_with_fit(ds_fit, sensors)}
 
 
 def plot_raw_data_with_fit(ds_fit: xr.Dataset, sensors: List) -> Figure:

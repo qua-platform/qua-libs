@@ -104,6 +104,19 @@ Analysis lives in `calibration_utils/<package>/analysis.py`:
 - `fit_raw_data(ds, node)` — inference; returns `(ds_fit, dict[str, FitParameters])`
 - `log_fitted_results(...)` — human-readable per-entity log lines
 
+### Standard `plot_data` body
+
+```python
+node.results["figures"] = plot_all(node.results["ds_fit"], node.namespace["sensors"])
+if not node.modes.external:
+    plt.show()
+```
+
+Plotting lives in `calibration_utils/<package>/plotting.py`:
+
+- `plot_all(ds_fit, sensors)` — returns `dict[str, Figure]` (e.g. `"phase"`, `"amplitude"`)
+- Individual `plot_*` helpers are optional building blocks; nodes should call `plot_all` only
+
 ---
 
 ## xarray conventions

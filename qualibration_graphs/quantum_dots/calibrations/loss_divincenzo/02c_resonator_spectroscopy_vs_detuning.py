@@ -16,7 +16,7 @@ from quam_config import Quam
 from calibration_utils.resonator_spectroscopy_vs_detuning import (
     Parameters,
     process_raw_dataset,
-    plot_raw_data_with_fit,
+    plot_all,
     log_fitted_results,
     fit_raw_data,
     generate_simulated_dataset,
@@ -276,10 +276,10 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_fit"], node.namespace["sensors"])
-    plt.show()
-    node.results["figures"] = {"amplitude": fig_raw_fit}
+    """Plot processed data and fit overlays; store figures in ``node.results["figures"]``."""
+    node.results["figures"] = plot_all(node.results["ds_fit"], node.namespace["sensors"])
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Update_state}

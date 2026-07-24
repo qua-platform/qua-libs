@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import xarray as xr
@@ -20,6 +20,11 @@ PCA_PEAK_LEGEND = [
         label="PCA peak",
     ),
 ]
+
+
+def plot_all(ds_fit: xr.Dataset, sensors: List) -> Dict[str, Figure]:
+    """Return all standard figures for resonator spectroscopy vs detuning."""
+    return {"amplitude": plot_raw_data_with_fit(ds_fit, sensors)}
 
 
 def plot_raw_data_with_fit(ds_fit: xr.Dataset, sensors: List) -> Figure:
