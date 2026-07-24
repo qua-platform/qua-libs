@@ -4,14 +4,14 @@ Fits 2D chevron (parity diff vs duration × frequency) to extract resonant frequ
 and π-time via generalized Rabi formula. Backends: scipy curve_fit or NumPyro MCMC.
 """
 
-from calibration_utils.time_rabi_chevron_parity_diff.parameters import Parameters
-from calibration_utils.time_rabi_chevron_parity_diff.analysis import (
+from calibration_utils.time_rabi_chevron.parameters import Parameters
+from calibration_utils.time_rabi_chevron.analysis import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
 )
-from calibration_utils.time_rabi_chevron_parity_diff.plotting import plot_all
-from calibration_utils.time_rabi_chevron_parity_diff.simulated_data_generator import (
+from calibration_utils.time_rabi_chevron.plotting import plot_all
+from calibration_utils.time_rabi_chevron.simulated_data_generator import (
     generate_simulated_dataset,
 )
 

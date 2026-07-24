@@ -15,7 +15,7 @@ from calibration_utils.common_utils.plot_style import (
     qubit_success,
 )
 from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
-from calibration_utils.time_rabi_chevron_parity_diff.init_utils import (
+from calibration_utils.time_rabi_chevron.init_utils import (
     FFT_FREQ_MIN,
     FFT_FREQ_MAX,
     compute_fft_diagnostics,

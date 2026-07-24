@@ -10,12 +10,14 @@ from calibration_utils.measurement_utils import ParityDiffAnalysisParameters
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    min_amp_factor: float = 0.001
-    """Minimum amplitude factor for the operation. Default is 0.001."""
-    max_amp_factor: float = 1.99
-    """Maximum amplitude factor for the operation. Default is 1.99."""
-    amp_factor_step: float = 0.01
-    """Step size for the amplitude factor. Default is 0.01."""
+    min_amp_factor: float = 0.85
+    """Minimum amplitude prefactor. Narrow window around expected a_π after node 09a."""
+    max_amp_factor: float = 1.15
+    """Maximum amplitude prefactor. Narrow window around expected a_π after node 09a."""
+    amp_factor_step: float = 0.001
+    """Step size for the amplitude prefactor sweep. Default is 0.001."""
+    max_n_pulses: int = 40
+    """Number of pulses in the error-amplified power Rabi pulse sequence."""
     operation: Literal["x180", "x90", "y90"] = "x180"
     """The operation to perform to drive the qubit."""
     parity_measurement: bool = False
@@ -28,10 +30,8 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
+    HeraldedInitializeParameters,
     ParityDiffAnalysisParameters,
 ):
-    """Parameter set for 09a_power_rabi."""
-
-    amp_default: float = 1
+    """Parameter set for 09b_power_rabi_error_amplification."""

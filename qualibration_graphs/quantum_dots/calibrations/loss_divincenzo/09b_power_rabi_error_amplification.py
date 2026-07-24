@@ -17,14 +17,14 @@ from calibration_utils.measurement_utils import (
     save_measurement,
     buffer_streams,
 )
-from calibration_utils.power_rabi.error_amplification_plotting import plot_all
-from calibration_utils.power_rabi import (
-    ErrorAmplifiedParameters as Parameters,
-    fit_raw_data_error_amplified,
-    log_fitted_results_error_amplified,
-    generate_simulated_dataset_error_amplified,
+from calibration_utils.power_rabi_error_amplification import (
+    Parameters,
+    process_raw_dataset,
+    fit_raw_data,
+    log_fitted_results,
+    plot_all,
+    generate_simulated_dataset,
 )
-from calibration_utils.power_rabi.error_amplification_analysis import process_raw_dataset
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
@@ -203,7 +203,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     """Generate simulated error-amplified power-Rabi data so the full analysis pipeline can run without hardware."""
-    node.results["ds_raw"] = generate_simulated_dataset_error_amplified(node)
+    node.results["ds_raw"] = generate_simulated_dataset(node)
     node.log("[sim] Simulated dataset generated successfully.")
 
 
@@ -212,9 +212,9 @@ def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process joint-outcome streams, fit error-amplified power-Rabi data, and store results."""
     ds_processed = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data_error_amplified(ds_processed, node)
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = fit_results
-    log_fitted_results_error_amplified(fit_results, log_callable=node.log)
+    log_fitted_results(fit_results, log_callable=node.log)
     node.outcomes = {
         qname: ("successful" if r["success"] else "failed")
         for qname, r in fit_results.items()

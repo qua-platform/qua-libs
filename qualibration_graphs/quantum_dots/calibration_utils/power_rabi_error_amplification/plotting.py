@@ -1,4 +1,4 @@
-"""Plotting for the error-amplified power-Rabi analysis."""
+"""Plotting for error-amplified power-Rabi analysis."""
 
 from __future__ import annotations
 
@@ -38,7 +38,6 @@ def _plot_heatmap_ax(
     fit_result: dict | None = None,
     success: bool | None = None,
 ) -> None:
-    """Plot raw 2-D heatmap: amplitude (x) vs n_pulses (y)."""
     vmin = float(np.nanmin(signal_2d))
     vmax = float(np.nanmax(signal_2d))
     vcenter = (vmin + vmax) / 2.0
@@ -78,7 +77,6 @@ def _plot_resonance_ax(
     mean_signal_fit: np.ndarray | None = None,
     success: bool | None = None,
 ) -> None:
-    """Plot mean signal vs amplitude with analytic model fit."""
     if mean_signal is None:
         apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Optimal amplitude")
         ax.text(0.5, 0.5, "No diagnostics", transform=ax.transAxes, ha="center")
@@ -86,13 +84,7 @@ def _plot_resonance_ax(
 
     ax.plot(amps, mean_signal, "bo-", ms=3, lw=1, label="Mean signal")
     if mean_signal_fit is not None:
-        ax.plot(
-            amps,
-            mean_signal_fit,
-            "r-",
-            lw=1.5,
-            label="Analytic fit",
-        )
+        ax.plot(amps, mean_signal_fit, "r-", lw=1.5, label="Analytic fit")
 
     if fit_result and fit_result.get("success"):
         opt = fit_result.get("opt_amp", 0)
@@ -121,7 +113,6 @@ def plot_heatmaps(
     fit_results: dict,
     analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
-    """Plot error-amplified Rabi heatmaps (one panel per qubit)."""
     qubit_names = _get_qubit_names_from_ds(ds_fit, qubits, analysis_signal)
     if not qubit_names:
         return empty_figure("No qubit data found in ds_fit.")
@@ -157,7 +148,6 @@ def plot_resonance_profiles(
     fit_results: dict,
     analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
-    """Plot n_pulses-averaged resonance profiles (one panel per qubit)."""
     qubit_names = _get_qubit_names_from_ds(ds_fit, qubits, analysis_signal)
     if not qubit_names:
         return empty_figure("No qubit data found in ds_fit.")
@@ -211,7 +201,6 @@ def plot_all(
     fit_results: dict | None = None,
     analysis_signal: str = "E_p1_given_p0_0",
 ) -> Dict[str, Figure]:
-    """Return all standard figures for error-amplified power-Rabi analysis."""
     fit_results = fit_results or {}
     return {
         "heatmap": plot_heatmaps(ds_fit, qubits, fit_results, analysis_signal),

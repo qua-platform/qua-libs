@@ -12,7 +12,7 @@ from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.time_rabi_parity_diff import (
+from calibration_utils.time_rabi import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,

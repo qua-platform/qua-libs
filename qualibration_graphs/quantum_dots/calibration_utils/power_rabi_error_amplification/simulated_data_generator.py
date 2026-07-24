@@ -1,4 +1,4 @@
-"""Synthetic power-Rabi datasets for offline analysis validation."""
+"""Synthetic error-amplified power-Rabi datasets for offline analysis validation."""
 
 from __future__ import annotations
 
@@ -13,18 +13,6 @@ if TYPE_CHECKING:
     from qualibrate.core import QualibrationNode
 
 
-def _damped_rabi(
-    x: np.ndarray,
-    *,
-    center: float,
-    frequency: float,
-    decay: float,
-) -> np.ndarray:
-    x = np.asarray(x, dtype=float)
-    envelope = np.exp(-decay * np.abs(x - center))
-    return 0.5 + 0.45 * envelope * np.sin(2.0 * np.pi * frequency * (x - center)) ** 2
-
-
 def _assign_stream(
     data_vars: dict,
     qname: str,
@@ -33,7 +21,7 @@ def _assign_stream(
     *,
     parity_measurement: bool,
     rng: np.random.Generator,
-    noise_scale: float = 0.015,
+    noise_scale: float = 0.02,
 ) -> None:
     prob = np.clip(
         np.asarray(probability, dtype=float) + rng.normal(0.0, noise_scale, probability.shape),
@@ -51,7 +39,7 @@ def _assign_stream(
 
 
 def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
-    """Generate simulated power-Rabi data so the full analysis pipeline can run without hardware."""
+    """Generate simulated error-amplified power-Rabi data for offline validation."""
     node.namespace["qubits"] = qubits = get_qubits(node)
 
     amps = np.arange(
@@ -60,9 +48,11 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         node.parameters.amp_factor_step,
         dtype=float,
     )
+    n_pulses = np.arange(2, node.parameters.max_n_pulses, 2, dtype=float)
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
+        "n_pulses": xr.DataArray(n_pulses, attrs={"long_name": "number of pi pulses"}),
         "amp_prefactor": xr.DataArray(
             amps, attrs={"long_name": "pulse amplitude prefactor"}
         ),
@@ -72,22 +62,26 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     data_vars: dict[str, tuple[tuple[str, ...], np.ndarray]] = {}
 
     for index, qubit in enumerate(qubits):
-        probability = _damped_rabi(
-            amps,
-            center=1.0 + 0.015 * (index % 4),
-            frequency=3.2 + 0.2 * (index % 3),
-            decay=0.6 + 0.1 * (index % 2),
-        )
+        a_pi = 1.0 + 0.02 * (index % 5)
+        scale = 2.8 + 0.15 * (index % 3)
+        envelope = np.exp(-0.004 * n_pulses)[:, None]
+        phase = scale * n_pulses[:, None] * (amps[None, :] - a_pi)
+        probability = np.sin(phase) ** 2 * envelope
+        probability[0, :] = 0.0
         _assign_stream(
             data_vars,
             qubit.name,
             probability,
-            ("amp_prefactor",),
+            ("n_pulses", "amp_prefactor"),
             parity_measurement=node.parameters.parity_measurement,
             rng=rng,
         )
 
     return xr.Dataset(
         {name: (dims, values) for name, (dims, values) in data_vars.items()},
-        coords={"amp_prefactor": amps, "n": np.array([0], dtype=int)},
+        coords={
+            "n_pulses": n_pulses,
+            "amp_prefactor": amps,
+            "n": np.array([0], dtype=int),
+        },
     )
