@@ -135,8 +135,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     )
 
                     align()
-                    qubit.apply(operation, amplitude_scale = a)
-                    # qubit.x180(amplitude_scale=a)
+                    getattr(qubit, operation)(amplitude_scale=a)
                     align()
 
                     a2 = qubit.measure()

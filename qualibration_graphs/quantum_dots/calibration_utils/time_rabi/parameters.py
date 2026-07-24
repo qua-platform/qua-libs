@@ -1,3 +1,5 @@
+from typing import Literal
+
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
@@ -14,8 +16,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum pulse duration in nanoseconds. Default is 10000 ns (10 us)."""
     time_step_in_ns: int = 52
     """Step size for the pulse duration sweep in nanoseconds. Default is 52 ns."""
-    operation: str = "x180"
-    """Name of the qubit operation to perform. Default is 'x180'."""
+    operation: Literal["x180", "x90"] = "x180"
+    """The operation to perform to drive the qubit."""
     parity_measurement: bool = False
     """Whether or not to perform parity measurement."""
     use_simulated_data: bool = False

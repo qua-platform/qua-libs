@@ -16,7 +16,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum amplitude factor for the operation. Default is 1.99."""
     amp_factor_step: float = 0.01
     """Step size for the amplitude factor. Default is 0.01."""
-    operation: Literal["x180", "x90", "y90"] = "x180"
+    operation: Literal["x180", "x90"] = "x180"
     """The operation to perform to drive the qubit."""
     parity_measurement: bool = False
     """Whether or not to perform parity measurement."""

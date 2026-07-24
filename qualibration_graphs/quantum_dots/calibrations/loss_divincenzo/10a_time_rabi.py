@@ -66,7 +66,7 @@ Figures (``node.results["figures"]``):
     - ``"fft"``: FFT magnitude spectrum with peak fit per qubit.
 
 State update:
-    - The x180 pulse duration (``q.x.duration``).
+    - The pulse duration of the selected operation (``node.parameters.operation``).
 """
 
 
@@ -108,6 +108,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             pulse_durations, attrs={"long_name": "qubit pulse duration", "units": "ns"}
         ),
     }
+    operation = node.parameters.operation
 
     with program() as node.namespace["qua_program"]:
         # Declare QUA variables
@@ -135,7 +136,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     )
 
                     align()
-                    qubit.x(duration=t)
+                    getattr(qubit, operation)(duration=t)
                     align()
 
                     a2 = qubit.measure()
@@ -277,7 +278,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             fit_result = node.results["fit_results"][qubit.name]
-            qubit.x.update(duration=fit_result["optimal_duration"])
+            getattr(qubit, node.parameters.operation).update(
+                duration=fit_result["optimal_duration"]
+            )
 
 
 # %% {Save_results}

@@ -1,5 +1,7 @@
 """Node parameters for time Rabi chevron calibration."""
 
+from typing import Literal
+
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
@@ -20,8 +22,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Span of frequencies to sweep in MHz. Default is 5 MHz."""
     frequency_step_in_mhz: float = 0.05
     """Step size for the frequency detuning sweep in MHz. Default is 0.05 MHz."""
-    operation: str = "x180"
-    """Name of the qubit operation to perform. Default is 'x180'."""
+    operation: Literal["x180", "x90"] = "x180"
+    """The operation to perform to drive the qubit."""
     parity_measurement: bool = False
     """Whether or not to perform parity measurement."""
     use_simulated_data: bool = False

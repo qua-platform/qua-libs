@@ -71,7 +71,7 @@ Figures (``node.results["figures"]``):
     - ``"diagnostics"``: FFT at resonance and t_π vs detuning with Rabi fit per qubit.
 
 State update:
-    - The x180 pulse duration (``q.x.duration``).
+    - The pulse duration of the selected operation (``node.parameters.operation``).
     - The qubit Larmor frequency, adjusted by the fitted frequency offset from the current XY intermediate frequency.
 """
 
@@ -128,6 +128,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             pulse_durations, attrs={"long_name": "qubit pulse duration", "units": "ns"}
         ),
     }
+    operation = node.parameters.operation
 
     with program() as node.namespace["qua_program"]:
         # Declare QUA variables using machine's method
@@ -160,7 +161,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         )
 
                         align()
-                        qubit.x(duration=t)
+                        getattr(qubit, operation)(duration=t)
                         align()
 
                         a2 = qubit.measure()
@@ -304,7 +305,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             fit_result = node.results["fit_results"][qubit.name]
             try:
-                qubit.x.update(
+                getattr(qubit, node.parameters.operation).update(
                     duration=fit_result["optimal_duration"],
                 )
                 qubit.larmor_frequency += fit_result["optimal_frequency"] - qubit.xy.intermediate_frequency

@@ -61,7 +61,8 @@ Figures (``node.results["figures"]``):
     - ``"resonance"``: n_pulses-averaged signal vs amplitude with analytic fit overlay.
 
 State update:
-    - The x180 pulse amplitude (``q.x.pi_amplitude``) scaled by the fitted amplitude prefactor.
+    - The amplitude prefactor of the selected operation (``node.parameters.operation``).
+    - When calibrating x180, x90 is also updated to half the x180 prefactor.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -109,6 +110,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             amps, attrs={"long_name": "pulse amplitude prefactor"}
         ),
     }
+    operation = node.parameters.operation
 
     with program() as node.namespace["qua_program"]:
         # Declare QUA variables
@@ -140,7 +142,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                         align()
                         with for_(m, 0, m < n_rabi, m + 1):
-                            qubit.x180(amplitude_scale=a)
+                            getattr(qubit, operation)(amplitude_scale=a)
                         align()
 
                         a2 = qubit.measure()
@@ -264,7 +266,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             opt_prefactor = node.results["fit_results"][q.name]["opt_amp"]
-            q.x.update(pi_amplitude=opt_prefactor * q.x.pi_pulse.amplitude)
+            getattr(q, node.parameters.operation).update(amplitude_scale=opt_prefactor)
+            if node.parameters.operation == "x180":
+                getattr(q, "x90").update(amplitude_scale=opt_prefactor / 2)
 
 # %% {Save_results}
 @node.run_action()

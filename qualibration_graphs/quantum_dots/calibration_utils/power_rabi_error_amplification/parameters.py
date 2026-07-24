@@ -18,7 +18,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Step size for the amplitude prefactor sweep. Default is 0.001."""
     max_n_pulses: int = 40
     """Number of pulses in the error-amplified power Rabi pulse sequence."""
-    operation: Literal["x180", "x90", "y90"] = "x180"
+    operation: Literal["x180", "x90"] = "x180"
     """The operation to perform to drive the qubit."""
     parity_measurement: bool = False
     """Whether or not to perform parity measurement."""
