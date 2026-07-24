@@ -249,7 +249,7 @@ def fit_raw_data(
     1. Find the optimal integration time from the SNR threshold crossing.
     2. Derive the integration weight angle from the blob separation at max integration time
        (best statistics for direction), orienting so (1,1) maps to higher rotated I.
-    3. Rotate the data at the optimal integration time and characterise the (0,2) blob:
+    3. Rotate the data at the optimal integration time and characterize the (0,2) blob:
        - If its aspect ratio along the rotated I axis exceeds _ELONGATION_THRESHOLD, fit a
          double Gaussian and use the component furthest from (1,1) as the true (0,2) reference
          (T1-limited readout).

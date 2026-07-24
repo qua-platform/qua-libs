@@ -36,10 +36,10 @@ from qualibration_libs.core import tracked_updates
 # %% {Node initialisation}
 description = """
         CHARGE STATE READOUT TIME OPTIMIZATION
-This measurement aims to characterise the minimum integration time necessary to achieve SNR = 1 for readout. In this node,
-a double-quantum-dot is ramped from charge configuration (1,1) to state (0,2), in order to characterise the charge state readout
-fidelity. The aim is to characterise the integration time necessary to reach SNR = 1, for use with PSB readout. The measured IQ
-blobs in the IQ state distribution map is analysed, and the SNR is extracted through the relevant axis.
+This measurement aims to characterize the minimum integration time necessary to achieve SNR = 1 for readout. In this node,
+a double-quantum-dot is ramped from charge configuration (1,1) to state (0,2), in order to characterize the charge state readout
+fidelity. The aim is to characterize the integration time necessary to reach SNR = 1, for use with PSB readout. The measured IQ
+blobs in the IQ state distribution map is analyzed, and the SNR is extracted through the relevant axis.
 
 
 Prerequisites:

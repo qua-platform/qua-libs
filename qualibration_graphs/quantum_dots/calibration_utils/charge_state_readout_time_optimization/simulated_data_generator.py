@@ -19,7 +19,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
 
     Produces (1,1) and (0,2) IQ blobs whose separation grows linearly with
     integration time while noise grows as sqrt(t), giving SNR proportional to
-    t_int — the expected behaviour for coherent charge sensing with
+    t_int — the expected behavior for coherent charge sensing with
     ``measure_accumulated``.
 
     The returned :class:`xr.Dataset` has the same variable layout as real OPX

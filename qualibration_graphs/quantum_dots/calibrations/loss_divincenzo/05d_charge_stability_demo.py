@@ -140,7 +140,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 with for_(*from_array(x, x_volts)):
                     with for_(*from_array(y, y_volts)):
 
-                        # Simultaneous stepping of the voltage of the virtualised gates.
+                        # Simultaneous stepping of the voltage of the virtualized gates.
                         # If ramps are preferred, specify ramp_duration as arg in simultaneous()
                         with seq.simultaneous():
                             x_obj.go_to_voltages(

@@ -238,7 +238,7 @@ def overlay_voltage_points(
     y_axis_name: str,
     pair_prefix: str = None,
 ):
-    """Overlay labelled voltage tuning points on a 2D charge-stability axis.
+    """Overlay labeled voltage tuning points on a 2D charge-stability axis.
 
     Parameters
     ----------

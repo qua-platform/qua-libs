@@ -68,7 +68,7 @@ class OPXQDACParameters(
     y_from_qdac: bool = False
     "Check to perform 2D map using the QDAC instead of the OPX"
     post_trigger_wait_ns: int = 10000
-    """A pause in the QUA programme to allow the QDAC to get to the correct level."""
+    """A pause in the QUA program to allow the QDAC to get to the correct level."""
     qdac_dwell_time_us: float = 200
     """The dwell time in microseconds for the QDAC."""
 
