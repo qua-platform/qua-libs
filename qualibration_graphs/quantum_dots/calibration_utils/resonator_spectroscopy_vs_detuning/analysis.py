@@ -30,18 +30,29 @@ class FitParameters:
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
-    """Log fitted PCA-map optimal points for all sensors."""
+    """Log fitted results for all sensors.
+
+    Parameters
+    ----------
+    fit_results : dict
+        ``fit_results[sensor_name]`` mapping to the fitted values.
+    log_callable : callable, optional
+        Logging function (typically ``node.log``). Defaults to the module logger.
+    """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
+
     for sensor_name, result in fit_results.items():
-        status = "SUCCESS!" if result["success"] else "FAIL!"
-        msg = (
-            f"Results for sensor {sensor_name}: {status}\n"
-            f"Peak PCA signal: {result['peak_pca_signal']:.3e} | "
-            f"Optimal detuning: {result['optimal_detuning']:.4f} V | "
-            f"Resonator frequency: {1e-9 * result['resonator_frequency']:.3f} GHz "
-            f"(shift of {1e-6 * result['frequency_shift']:.2f} MHz)"
-        )
+        if result["success"]:
+            msg = (
+                f"[{sensor_name}] SUCCESS | "
+                f"resonator_frequency = {1e-9 * result['resonator_frequency']:.6f} GHz | "
+                f"frequency_shift = {1e-6 * result['frequency_shift']:.2f} MHz | "
+                f"optimal_detuning = {result['optimal_detuning']:.4f} V | "
+                f"peak_pca_signal = {result['peak_pca_signal']:.3e}"
+            )
+        else:
+            msg = f"[{sensor_name}] FAIL | fit did not pass sanity checks"
         log_callable(msg)
 
 

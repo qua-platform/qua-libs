@@ -24,26 +24,28 @@ class FitParameters:
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
-    """
-    Logs the node-specific fitted results for all sensors from the fit results
-    Parameters:
-    -----------
+    """Log fitted results for all sensors.
+
+    Parameters
+    ----------
     fit_results : dict
-        Dictionary containing the fitted results for all sensors.
-    logger : logging.Logger, optional
-        Logger for logging the fitted results. If None, a default logger is used.
+        ``fit_results[sensor_name]`` mapping to the fitted values (Hz in storage).
+    log_callable : callable, optional
+        Logging function (typically ``node.log``). Defaults to the module logger.
     """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
-    for q in fit_results.keys():
-        s_sensor = f"Results for sensor {q}: "
-        s_freq = f"\tResonator frequency: {1e-9 * fit_results[q]['frequency']:.3f} GHz | "
-        s_fwhm = f"FWHM: {1e-3 * fit_results[q]['fwhm']:.1f} kHz | "
-        if fit_results[q]["success"]:
-            s_sensor += " SUCCESS!\n"
+
+    for sensor_name, result in fit_results.items():
+        if result["success"]:
+            msg = (
+                f"[{sensor_name}] SUCCESS | "
+                f"frequency = {1e-9 * result['frequency']:.6f} GHz | "
+                f"fwhm = {1e-3 * result['fwhm']:.1f} kHz"
+            )
         else:
-            s_sensor += " FAIL!\n"
-        log_callable(s_sensor + s_freq + s_fwhm)
+            msg = f"[{sensor_name}] FAIL | fit did not pass sanity checks"
+        log_callable(msg)
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
