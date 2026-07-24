@@ -47,9 +47,7 @@ def _ensure_video_mode_parameters_stub() -> None:
         from qualibrate.core.parameters import RunnableParameters
 
         package_mod = types.ModuleType("calibration_utils.run_video_mode")
-        params_mod = types.ModuleType(
-            "calibration_utils.run_video_mode.video_mode_specific_parameters"
-        )
+        params_mod = types.ModuleType("calibration_utils.run_video_mode.video_mode_specific_parameters")
 
         class VideoModeCommonParameters(RunnableParameters):
             """Minimal stub used only for analysis tests."""
@@ -57,9 +55,7 @@ def _ensure_video_mode_parameters_stub() -> None:
         params_mod.VideoModeCommonParameters = VideoModeCommonParameters
         package_mod.video_mode_specific_parameters = params_mod
         sys.modules["calibration_utils.run_video_mode"] = package_mod
-        sys.modules[
-            "calibration_utils.run_video_mode.video_mode_specific_parameters"
-        ] = params_mod
+        sys.modules["calibration_utils.run_video_mode.video_mode_specific_parameters"] = params_mod
 
 
 def _build_resonator_ds_raw() -> xr.Dataset:
@@ -115,9 +111,7 @@ def test_02a_resonator_spectroscopy_analysis_and_plot_actions(analysis_runner):
     assert "IQ_abs" not in node.results["ds_raw"], "ds_raw should remain unprocessed after analysis."
     assert "IQ_abs" in node.results["ds_fit"], "Analysis preprocessing should add IQ_abs to ds_fit."
     assert "phase" in node.results["ds_fit"], "Analysis preprocessing should add phase to ds_fit."
-    assert (
-        "full_freq" in node.results["ds_fit"].coords
-    ), "Processed data should include full_freq coordinate in ds_fit."
+    assert "full_freq" in node.results["ds_fit"].coords, "Processed data should include full_freq coordinate in ds_fit."
 
     assert "ds_fit" in node.results
     assert "fit_results" in node.results
@@ -132,26 +126,18 @@ def test_02a_resonator_spectroscopy_analysis_and_plot_actions(analysis_runner):
     ), f"Expected dip near {DETUNING_CENTER_HZ:.0f} Hz, got {fitted_shift:.0f} Hz"
 
     fwhm = float(fit["fwhm"])
-    assert (
-        np.isfinite(fwhm) and fwhm > 0.0
-    ), f"Expected positive finite FWHM, got {fwhm}"
+    assert np.isfinite(fwhm) and fwhm > 0.0, f"Expected positive finite FWHM, got {fwhm}"
 
     figures = node.results.get("figures")
-    assert isinstance(
-        figures, dict
-    ), "plot_data should store figures under node.results['figures']."
-    assert {"phase", "amplitude"}.issubset(
-        figures.keys()
-    ), "plot_data should create phase and amplitude figures."
+    assert isinstance(figures, dict), "plot_data should store figures under node.results['figures']."
+    assert {"phase", "amplitude"}.issubset(figures.keys()), "plot_data should create phase and amplitude figures."
     assert isinstance(figures["phase"], Figure)
     assert isinstance(figures["amplitude"], Figure)
     assert len(figures["phase"].axes) > 0
     assert len(figures["amplitude"].axes) > 0
 
     # update_state should set the sensor IF to the fitted resonance frequency.
-    updated_if = float(
-        node.machine.sensor_dots[SENSOR_NAME].readout_resonator.intermediate_frequency
-    )
+    updated_if = float(node.machine.sensor_dots[SENSOR_NAME].readout_resonator.intermediate_frequency)
     assert np.isclose(
         updated_if, fit["resonator_frequency"], rtol=0.0, atol=1e-3
     ), f"Expected state IF update to {fit['resonator_frequency']}, got {updated_if}"
