@@ -1,4 +1,4 @@
-"""Node parameters for time Rabi chevron parity difference calibration."""
+"""Node parameters for time Rabi chevron calibration."""
 
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters

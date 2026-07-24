@@ -1,4 +1,4 @@
-"""Plot 1D time-Rabi parity difference: raw trace and FFT diagnostics."""
+"""Plot 1D time-Rabi conditional expectations: raw trace and FFT diagnostics."""
 
 from __future__ import annotations
 
