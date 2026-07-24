@@ -87,7 +87,7 @@ connectivity.add_sensor_dot_resonator_line(sensor_dots, shared_line=False)
 # Add drive lines
 connectivity.add_quantum_dot_drive_lines(plunger_dots, shared_line=True, use_mw_fem=True)
 # Add the barrier gates for each quantum dot pair
-connectivity.add_quantum_dot_pairs(quantum_dot_pairs, constraints=lf_fem_spec(out_slot=6))
+connectivity.add_quantum_dot_pairs(quantum_dot_pairs, constraints=lf_fem_spec(out_slot=6) & qdac2_spec(index=1))
 # Allocate the wiring
 allocate_wiring(connectivity, instruments)
 
