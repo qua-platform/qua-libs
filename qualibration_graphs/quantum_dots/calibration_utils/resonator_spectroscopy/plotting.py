@@ -31,8 +31,8 @@ def plot_raw_phase(ds_fit: xr.Dataset, sensors: List) -> Figure:
         sensor_data = ds_fit.sel(sensor=sensor.name)
         success = sensor_success(ds_fit, sensor.name)
 
-        ax.plot(sensor_data.full_freq / u.GHz, sensor_data.phase, "o-", markersize=2)
-        ax.set_xlabel("RF frequency [GHz]")
+        ax.plot(sensor_data.full_freq / u.MHz, sensor_data.phase, "o-", markersize=2)
+        ax.set_xlabel("RF frequency [MHz]")
         ax.set_ylabel("Phase [rad]")
 
         ax2 = ax.twiny()
@@ -74,13 +74,13 @@ def plot_individual_amplitude_with_fit(
 ):
     """Plot one sensor amplitude trace with optional Lorentzian fit and markers."""
     ax.plot(
-        sensor_data.full_freq / u.GHz,
+        sensor_data.full_freq / u.MHz,
         sensor_data.IQ_abs / u.mV,
         "o-",
         markersize=2,
         label="Data",
     )
-    ax.set_xlabel("RF frequency [GHz]")
+    ax.set_xlabel("RF frequency [MHz]")
     ax.set_ylabel(r"$R=\sqrt{I^2 + Q^2}$ [mV]")
 
     ax2 = ax.twiny()

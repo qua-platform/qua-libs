@@ -76,6 +76,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.min_power_dbm = -60
     # node.parameters.num_power_points = 100
     # node.parameters.use_simulated_data = True
+    node.parameters.use_simulated_data = True
     pass
 
 
@@ -310,7 +311,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             for op in s.readout_resonator.operations:
                 if not op.startswith("readout"):
                     continue
-                if isinstance(s.readout_resonator._obj, ReadoutResonatorSingle):
+                if isinstance(s.readout_resonator, ReadoutResonatorSingle):
                     u = unit(coerce_to_integer=True)
                     s.readout_resonator.operations[op].amplitude = u.dBm2volts(
                         node.results["fit_results"][s.name]["optimal_power"]

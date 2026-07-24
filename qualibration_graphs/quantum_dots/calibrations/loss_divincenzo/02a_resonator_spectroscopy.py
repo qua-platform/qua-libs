@@ -65,6 +65,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.num_shots = 2
     # node.parameters.frequency_span_in_mhz = 10
     # node.parameters.frequency_step_in_mhz = 5
+    node.parameters.use_simulated_data = True
     pass
 
 

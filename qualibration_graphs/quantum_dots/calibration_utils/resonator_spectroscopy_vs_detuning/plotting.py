@@ -57,23 +57,23 @@ def plot_individual_raw_data_with_fit(
     success: bool | None,
 ):
     """Plot IQ background with PCA signal overlay and optional peak marker."""
-    sensor_data.assign_coords(freq_GHz=sensor_data.full_freq / 1e9).IQ_abs.plot(
+    sensor_data.assign_coords(freq_MHz=sensor_data.full_freq / 1e6).IQ_abs.plot(
         ax=ax,
         add_colorbar=False,
-        x="freq_GHz",
+        x="freq_MHz",
         y="detuning",
         linewidth=0.5,
     )
-    ax.set_xlabel("Readout frequency [GHz]")
+    ax.set_xlabel("Readout frequency [MHz]")
     ax.set_ylabel("Detuning [V]")
 
     if "pca_signal_abs" in fit:
-        sensor_data.assign_coords(freq_GHz=sensor_data.full_freq / 1e9).assign(
+        sensor_data.assign_coords(freq_MHz=sensor_data.full_freq / 1e6).assign(
             {"pca_signal": fit.pca_signal_abs}
         ).pca_signal.plot(
             ax=ax,
             add_colorbar=True,
-            x="freq_GHz",
+            x="freq_MHz",
             y="detuning",
             cmap="magma",
             alpha=0.7,
@@ -81,7 +81,7 @@ def plot_individual_raw_data_with_fit(
 
     if success and "res_freq" in fit.coords and "optimal_detuning" in fit.coords:
         ax.scatter(
-            float(fit.res_freq) / 1e9,
+            float(fit.res_freq) / 1e6,
             float(fit.optimal_detuning),
             color="cyan",
             s=80,

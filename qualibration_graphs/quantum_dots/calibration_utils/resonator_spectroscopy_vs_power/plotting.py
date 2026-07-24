@@ -19,17 +19,22 @@ MARKER_LEGEND = [
 ]
 
 
-def _add_rf_frequency_top_axis(ax: Axes, sensor_data: xr.Dataset) -> None:
-    """Add a GHz RF-frequency axis linked linearly to the MHz detuning axis below."""
-    if_hz = float(
-        sensor_data.full_freq.isel(frequency_detuning=0) - sensor_data.frequency_detuning.isel(frequency_detuning=0)
-    )
+def _add_detuning_top_axis(ax: Axes, if_hz: float) -> Axes:
+    """Add a frequency-detuning axis on top, linked to the readout-frequency axis below."""
+    if_mhz = if_hz / 1e6
     ax2 = ax.twiny()
     ax2.set_xlim(ax.get_xlim())
-    detuning_ticks_mhz = ax.get_xticks()
-    ax2.set_xticks(detuning_ticks_mhz)
-    ax2.set_xticklabels([f"{if_hz / 1e9 + tick / 1e3:.6f}" for tick in detuning_ticks_mhz])
-    ax2.set_xlabel("RF frequency [GHz]")
+    readout_ticks_mhz = ax.get_xticks()
+    ax2.set_xticks(readout_ticks_mhz)
+    ax2.set_xticklabels([f"{tick - if_mhz:.2f}" for tick in readout_ticks_mhz])
+    ax2.set_xlabel("Frequency detuning [MHz]")
+    return ax2
+
+
+def _readout_if_hz(sensor_data: xr.Dataset) -> float:
+    return float(
+        sensor_data.full_freq.isel(frequency_detuning=0) - sensor_data.frequency_detuning.isel(frequency_detuning=0)
+    )
 
 
 def plot_all(ds_fit: xr.Dataset, sensors: List) -> Dict[str, Figure]:
@@ -64,24 +69,25 @@ def plot_individual_raw_data_with_fit(
     fit: xr.Dataset,
     success: bool | None,
 ):
-    """Plot IQ_abs_norm vs detuning × power with MHz (bottom) and GHz (top) x-axes."""
+    """Plot IQ_abs_norm vs readout frequency × power with MHz readout (bottom) and detuning (top) x-axes."""
+    if_hz = _readout_if_hz(sensor_data)
     sensor_data.assign_coords(
-        frequency_detuning_MHz=sensor_data.frequency_detuning / u.MHz
+        readout_frequency_MHz=sensor_data.full_freq / u.MHz
     ).IQ_abs_norm.plot(
         ax=ax,
         add_colorbar=True,
-        x="frequency_detuning_MHz",
+        x="readout_frequency_MHz",
         y="power",
         robust=True,
     )
-    ax.set_xlabel("Frequency detuning [MHz]")
+    ax.set_xlabel("RF frequency [MHz]")
     ax.set_ylabel("Power [dBm]")
-    _add_rf_frequency_top_axis(ax, sensor_data)
+    _add_detuning_top_axis(ax, if_hz)
 
     if success:
         resonance_vs_power = sensor_data.IQ_abs_norm.idxmin(dim="frequency_detuning")
         ax.plot(
-            resonance_vs_power * 1e-6,
+            (if_hz + resonance_vs_power) / u.MHz,
             sensor_data.power,
             color="orange",
             linewidth=1.5,
@@ -89,7 +95,12 @@ def plot_individual_raw_data_with_fit(
         if "optimal_power" in fit.coords:
             ax.axhline(y=float(fit.optimal_power), color="green", linewidth=1.5)
         if "frequency_shift" in fit.coords:
-            ax.axvline(x=float(fit.frequency_shift) * 1e-6, color="blue", linestyle="--", linewidth=1.5)
+            ax.axvline(
+                x=(if_hz + float(fit.frequency_shift)) / u.MHz,
+                color="blue",
+                linestyle="--",
+                linewidth=1.5,
+            )
         ax.legend(handles=MARKER_LEGEND, loc="upper right", fontsize=8)
 
     apply_sensor_outcome_style(ax, sensor_id, success)
