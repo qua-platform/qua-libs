@@ -9,7 +9,7 @@ import numpy as np
 import xarray as xr
 
 from calibration_utils.time_rabi_parity_diff.analysis import FFT_FREQ_MIN, FFT_FREQ_MAX
-from calibration_utils.common_utils.parity_streams import get_parity_item_names
+from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 
 def _get_qubit_names_from_ds(

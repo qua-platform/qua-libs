@@ -2,12 +2,9 @@
 
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
-from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.common_utils.experiment import (
-    HeraldedInitializeParameters,
-    ParityDiffAnalysisParameters,
-    QubitsExperimentNodeParameters,
-)
+from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
+from calibration_utils.heralded_initialization_utils import HeraldedInitializeParameters
+from calibration_utils.measurement_utils import ParityDiffAnalysisParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -25,7 +22,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Step size for the frequency detuning sweep in MHz. Default is 0.025 MHz."""
     operation: str = "x180"
     """Name of the qubit operation to perform. Default is 'x180'."""
-
+    parity_measurement: bool = False
+    """Whether or not to perform parity measurement."""
 
 class Parameters(
     NodeParameters,

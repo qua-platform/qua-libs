@@ -16,7 +16,7 @@ import xarray as xr
 
 from qualibrate.core import QualibrationNode
 
-from calibration_utils.common_utils.parity_streams import get_parity_item_names
+from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 from calibration_utils.time_rabi_chevron_parity_diff.init_utils import (
     _estimate_f_res_and_omega_from_chevron,
 )

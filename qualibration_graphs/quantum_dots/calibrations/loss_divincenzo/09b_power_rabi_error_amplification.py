@@ -6,18 +6,17 @@ from qm.qua import *
 
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
+from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import get_qubits
-from calibration_utils.common_utils.parity_streams import (
-    declare_parity_streams,
-    save_parity_measurement,
-    buffer_parity_streams,
-    process_parity_streams,
+from qualibration_libs.parameters.experiment import get_qubits
+from calibration_utils.measurement_utils import (
+    declare_streams,
+    save_measurement,
+    buffer_streams,
+    process_streams,
 )
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.power_rabi import (
     ErrorAmplifiedParameters as Parameters,
     fit_raw_data_error_amplified,
@@ -98,7 +97,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n_rabi = declare(int)
 
         # Post measurement (and optional pre measurement)
-        p2, p1, parity_streams = declare_parity_streams(node, qubits)
+        p2, p1, parity_streams = declare_streams(node, qubits)
 
         n_st = declare_output_stream()
 
@@ -133,7 +132,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         if node.parameters.parity_pre_measurement:
                             assign(p1, Cast.to_int(a1))
 
-                        save_parity_measurement(node, qubit.name, p1, p2, parity_streams)
+                        save_measurement(node, qubit.name, p1, p2, parity_streams)
 
         # Stream processing
         with stream_processing():
@@ -141,7 +140,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_amps = len(amps)
             pulse_number = len(n_pulses)
             for qubit in qubits:
-                buffer_parity_streams(node, qubit.name, parity_streams, pulse_number, n_amps)
+                buffer_streams(node, qubit.name, parity_streams, pulse_number, n_amps)
 
 
 # %% {Simulate}
@@ -174,11 +173,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
+            progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
-                node=node
             )
         node.log(job.execution_report())
     node.results["ds_raw"] = dataset
@@ -198,7 +196,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def process_raw_data(node: QualibrationNode[Parameters, Quam]):
     """Compute conditional expectations from joint-outcome streams."""
-    node.results["ds_raw"] = process_parity_streams(
+    node.results["ds_raw"] = process_streams(
         node.results["ds_raw"],
         [q.name for q in node.namespace["qubits"]],
         parity_pre_measurement=node.parameters.parity_pre_measurement,
@@ -232,7 +230,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         analysis_signal=node.parameters.analysis_signal,
     )
     node.results["figure"] = fig
-    annotate_node_figures(node)
+
 
 
 # %% {Update_state}

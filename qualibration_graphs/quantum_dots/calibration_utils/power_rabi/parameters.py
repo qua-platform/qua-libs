@@ -1,15 +1,9 @@
 from typing import Literal
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
-from qualibration_libs.parameters import (
-    CommonNodeParameters,
-    QubitsExperimentNodeParameters,
-)
-
-from calibration_utils.common_utils.experiment import (
-    HeraldedInitializeParameters,
-    ParityDiffAnalysisParameters,
-)
+from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
+from calibration_utils.heralded_initialization_utils import HeraldedInitializeParameters
+from calibration_utils.measurement_utils import ParityDiffAnalysisParameters
 
 
 class BaseRabiSpecificParameters(RunnableParameters):
@@ -25,6 +19,8 @@ class BaseRabiSpecificParameters(RunnableParameters):
     """Step size for the amplitude factor. Default is 0.005."""
     operation: Literal["x180", "x90", "y90"] = "x180"
     """The operation to perform to drive the qubit."""
+    parity_measurement: bool = False
+    """Whether or not to perform parity measurement."""
 
 class ErrorAmplifiedSpecificParameters(BaseRabiSpecificParameters):
     max_n_pulses: int = 40
