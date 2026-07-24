@@ -10,48 +10,48 @@ from typing import List, Literal, Dict, Union, Callable, Optional
 
 
 class NodeSpecificParameters(RunnableParameters):
-    num_shots: int = 10
-    """Number of averages to perform. Default is 100."""
+    num_shots: int = 100
+    """The number of averages to perform. Default is 100."""
     scan_pattern: Literal["raster", "switch_raster", "spiral"] = "switch_raster"
-    """The scanning pattern."""
+    """The scanning pattern. Default is switch_raster."""
     sensor_names: List[str] = ["virtual_sensor_1"]
-    """List of sensor dot names to measure in your measurement."""
+    """List of sensor dot names to measure in during the scan."""
     x_axis_name: str = "virtual_dot_1_virtual_dot_2_pair"
-    """The name of the swept element in the X axis."""
+    """The name of the element swept on the X axis."""
     y_axis_name: str = "virtual_dot_2_virtual_dot_3_pair"
-    """The name of the swept element in the Y axis."""
+    """The name of the element swept on the Y axis."""
     x_points: int = 121
-    """Number of measurement points in the X axis."""
+    """The number of measurement points on the X axis. Default is 121."""
     y_points: int = 121
-    """Number of measurement points in the Y axis."""
+    """The number of measurement points on the Y axis. Default is 121."""
     x_span: float = 1
-    """The X axis span in volts"""
+    """The X axis span in volts. Default is 1V."""
     y_span: float = 1
-    """The Y axis span in volts"""
+    """The Y axis span in volts. Default is 1V."""
     ramp_duration: int = 100
-    """The ramp duration to each pixel. Set to zero for a step."""
+    """The ramp duration to each pixel. Set to zero for a step instead of a ramp. Default is 100ns."""
     hold_duration: int = 100
-    """Dwell time on each point in nanoseconds. If using the QDAC, this must be slow enough."""
+    """The dwell time on each point in nanoseconds. If using the QDAC, this must be slow enough. Default is 100ns."""
     per_line_compensation: bool = True
-    """Whether to send a compensation pulse at the end of each scan line."""
+    """Send a compensation pulse at the end of each scan line. Default is True."""
     max_compensation_voltage: float = 0.05
-    """The maximum voltage for the compensation pulse."""
+    """The maximum voltage for the compensation pulse. Default is 0.05V."""
     x_center: Optional[float] = None
     """The center of the X axis sweep. If dc_control = True, then this will be applied to the external source. Else, it will be applied by the OPX."""
     y_center: Optional[float] = None
     """The center of the Y axis sweep. If dc_control = True, then this will be applied to the external source. Else, it will be applied by the OPX."""
     plot_points: bool = False
-    """Plots the existing points saved in the VirtualGateSet. Default True."""
+    """Plot the existing points saved in the VirtualGateSet. Default is False."""
     perform_edge_analysis: bool = False
-    """Whether to perform edge analysis on the data."""
+    """Perform edge analysis on the data. Default is False."""
     pre_measurement_delay: int = 0
-    """A deliberate delay time after the hold_duration and before the resonator measurement."""
+    """The deliberate delay time after the hold_duration and before the resonator measurement. Default is 0ns."""
     per_line_wait: int = 0
-    """Wait time at the start of each line, in order to allow the electrostatics to settle."""
+    """The wait time at the start of each line, in order to allow the electrostatics to settle. Default is 0ns."""
     use_validation: bool = True
-    """Whether to use validation with simulated data."""
+    """Use validation with simulated data. Default is True."""
     spiral_use_precomputed_scan: bool = False
-    """Use the legacy precomputed spiral lookup lists (default False). Set True to force list-based spiral generation."""
+    """Use the legacy precomputed spiral lookup lists. Default is False. Set to True to force list-based spiral generation."""
 
 
 class Parameters(
@@ -70,13 +70,13 @@ class OPXQDACParameters(
     NodeSpecificParameters,
 ):
     x_from_qdac: bool = False
-    "Check to perform 2D map using the QDAC instead of the OPX"
+    "Sweep the x axis of the 2D map using the QDAC instead of the OPX. Default is False."
     y_from_qdac: bool = False
-    "Check to perform 2D map using the QDAC instead of the OPX"
+    "Sweep the y axis of the 2D map using the QDAC instead of the OPX. Default is False."
     post_trigger_wait_ns: int = 10000
-    """A pause in the QUA programme to allow the QDAC to get to the correct level."""
+    """The pause in the QUA programme to allow the QDAC to get to the correct level. Default is 10000ns."""
     qdac_dwell_time_us: float = 200
-    """The dwell time in microseconds for the QDAC."""
+    """The dwell time in microseconds for the QDAC. Default is 200us."""
 
 
 class SimulationParameters(
@@ -94,7 +94,6 @@ import numpy as np
 # Backward-compatible aliases kept for existing nodes/tests that still use the
 # legacy OPX/OPXQDAC parameter class names.
 OPXParameters = Parameters
-# OPXQDACParameters = Parameters
 
 def get_axis_names(node): 
     """In the case that x_axis_name or y_axis_name is None, assign the first and second elements of QDs."""
