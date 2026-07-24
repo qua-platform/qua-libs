@@ -39,9 +39,10 @@ Prerequisites:
     - Having initialized the QUAM state parameters for the readout pulse amplitude and duration.
 
 Results (``node.results["fit_results"][<sensor>]``):
-    - ``frequency`` [Hz]: absolute readout frequency at the resonance dip (IF + fitted offset).
-    - ``fwhm`` [Hz]: Lorentzian linewidth (full width at half maximum of the |I + iQ| dip).
     - ``success``: whether the fit passed sanity checks and the state update is applied.
+    - ``resonator_frequency`` [Hz]: absolute readout frequency at the resonance dip.
+    - ``frequency_shift`` [Hz]: fitted readout frequency offset from IF.
+    - ``fwhm`` [Hz]: Lorentzian linewidth (full width at half maximum of the |I + iQ| dip).
 
 State update:
     - The readout frequency: sensor.readout_resonator.intermediate_frequency
@@ -261,7 +262,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.outcomes[s.name] == "failed":
                 continue
 
-            s.readout_resonator.intermediate_frequency = float(node.results["fit_results"][s.name]["frequency"])
+            s.readout_resonator.intermediate_frequency = float(
+                node.results["fit_results"][s.name]["resonator_frequency"]
+            )
 
 
 # %% {Save_results}

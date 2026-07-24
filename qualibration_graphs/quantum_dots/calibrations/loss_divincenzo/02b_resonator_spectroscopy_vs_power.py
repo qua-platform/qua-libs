@@ -43,10 +43,10 @@ Prerequisites:
     - Having instantiated a starting readout amplitude.
 
 Results (``node.results["fit_results"][<sensor>]``):
-    - ``optimal_power`` [dBm]: readout power just below the onset of frequency splitting.
-    - ``resonator_frequency`` [Hz]: absolute readout frequency at ``optimal_power``.
-    - ``frequency_shift`` [Hz]: fitted frequency offset at ``optimal_power`` (added to IF).
     - ``success``: whether the fit passed sanity checks and the state update is applied.
+    - ``resonator_frequency`` [Hz]: absolute readout frequency at ``optimal_power``.
+    - ``frequency_shift`` [Hz]: fitted readout frequency offset at ``optimal_power``.
+    - ``optimal_power`` [dBm]: readout power just below the onset of frequency splitting.
 
 State update:
     - The readout power: sensor.readout_resonator.set_output_power()

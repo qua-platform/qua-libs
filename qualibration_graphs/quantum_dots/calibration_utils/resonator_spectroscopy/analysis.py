@@ -11,16 +11,19 @@ from qualibration_libs.analysis import peaks_dips
 
 @dataclass
 class FitParameters:
-    """Fitted resonator spectroscopy results for a single sensor."""
+    """Fitted resonator spectroscopy results for a single sensor (02a)."""
 
-    frequency: float
+    success: bool
+    """True if the fit passed sanity checks and is safe for the state update."""
+
+    resonator_frequency: float
     """Absolute readout frequency at the resonance dip, in Hz."""
+
+    frequency_shift: float
+    """Fitted readout frequency offset from IF, in Hz."""
 
     fwhm: float
     """Lorentzian linewidth (FWHM of the |I + iQ| dip), in Hz."""
-
-    success: bool
-    """True if the fit is within the sweep span and safe to use for the state update."""
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
@@ -29,7 +32,7 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     Parameters
     ----------
     fit_results : dict
-        ``fit_results[sensor_name]`` mapping to the fitted values (Hz in storage).
+        ``fit_results[sensor_name]`` mapping to the fitted values.
     log_callable : callable, optional
         Logging function (typically ``node.log``). Defaults to the module logger.
     """
@@ -40,7 +43,8 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         if result["success"]:
             msg = (
                 f"[{sensor_name}] SUCCESS | "
-                f"frequency = {1e-9 * result['frequency']:.6f} GHz | "
+                f"resonator_frequency = {1e-9 * result['resonator_frequency']:.6f} GHz | "
+                f"frequency_shift = {1e-6 * result['frequency_shift']:.2f} MHz | "
                 f"fwhm = {1e-3 * result['fwhm']:.1f} kHz"
             )
         else:
@@ -83,9 +87,12 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the dataset and fit results."""
     full_freq = np.array([q.readout_resonator.intermediate_frequency for q in node.namespace["sensors"]])
-    res_freq = fit.position + full_freq
-    fit = fit.assign_coords(res_freq=("sensors", res_freq.data))
+    frequency_shift = fit.position.data
+    res_freq = frequency_shift + full_freq
+    fit = fit.assign_coords(res_freq=("sensors", res_freq))
     fit.res_freq.attrs = {"long_name": "resonator frequency", "units": "Hz"}
+    fit = fit.assign_coords(frequency_shift=("sensors", frequency_shift))
+    fit.frequency_shift.attrs = {"long_name": "readout frequency offset", "units": "Hz"}
     # Get the fitted FWHM
     fwhm = np.abs(fit.width)
     fit = fit.assign_coords(fwhm=("sensors", fwhm.data))
@@ -98,9 +105,10 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 
     fit_results = {
         q: FitParameters(
-            frequency=fit.sel(sensors=q).res_freq.values.__float__(),
-            fwhm=fit.sel(sensors=q).fwhm.values.__float__(),
             success=fit.sel(sensors=q).success.values.__bool__(),
+            resonator_frequency=fit.sel(sensors=q).res_freq.values.__float__(),
+            frequency_shift=fit.sel(sensors=q).frequency_shift.values.__float__(),
+            fwhm=fit.sel(sensors=q).fwhm.values.__float__(),
         )
         for q in fit.sensors.values
     }

@@ -11,10 +11,10 @@ from qualibration_libs.data import add_amplitude_and_phase
 
 @dataclass
 class FitParameters:
-    """Fitted resonator spectroscopy vs detuning results for a single sensor."""
+    """Fitted resonator spectroscopy vs detuning results for a single sensor (02c)."""
 
     success: bool
-    """True if the fit is within the sweep span and safe to use for the state update."""
+    """True if the fit passed sanity checks and is safe for the state update."""
 
     resonator_frequency: float
     """Absolute readout frequency at the PCA signal peak, in Hz."""

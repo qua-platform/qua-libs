@@ -11,10 +11,10 @@ from qualibration_libs.analysis import peaks_dips
 
 @dataclass
 class FitParameters:
-    """Fitted resonator spectroscopy vs power results for a single sensor."""
+    """Fitted resonator spectroscopy vs power results for a single sensor (02b)."""
 
     success: bool
-    """True if the fit is within the sweep span and safe to use for the state update."""
+    """True if the fit passed sanity checks and is safe for the state update."""
 
     resonator_frequency: float
     """Absolute readout frequency at the optimal power, in Hz."""
@@ -43,9 +43,9 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         if result["success"]:
             msg = (
                 f"[{sensor_name}] SUCCESS | "
-                f"optimal_power = {result['optimal_power']:.2f} dBm | "
                 f"resonator_frequency = {1e-9 * result['resonator_frequency']:.6f} GHz | "
-                f"frequency_shift = {1e-6 * result['frequency_shift']:.2f} MHz"
+                f"frequency_shift = {1e-6 * result['frequency_shift']:.2f} MHz | "
+                f"optimal_power = {result['optimal_power']:.2f} dBm"
             )
         else:
             msg = f"[{sensor_name}] FAIL | fit did not pass sanity checks"

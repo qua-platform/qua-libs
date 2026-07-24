@@ -127,12 +127,10 @@ def test_02a_resonator_spectroscopy_analysis_and_plot_actions(analysis_runner):
     fit = node.results["fit_results"][SENSOR_NAME]
     assert fit["success"], f"Resonator fit should succeed, got: {fit}"
 
-    fitted_detuning = float(
-        node.results["ds_fit"].sel(sensors=SENSOR_NAME).position.values
-    )
+    fitted_shift = float(fit["frequency_shift"])
     assert (
-        abs(fitted_detuning - DETUNING_CENTER_HZ) < 0.8e6
-    ), f"Expected dip near {DETUNING_CENTER_HZ:.0f} Hz, got {fitted_detuning:.0f} Hz"
+        abs(fitted_shift - DETUNING_CENTER_HZ) < 0.8e6
+    ), f"Expected dip near {DETUNING_CENTER_HZ:.0f} Hz, got {fitted_shift:.0f} Hz"
 
     fwhm = float(fit["fwhm"])
     assert (
@@ -156,5 +154,5 @@ def test_02a_resonator_spectroscopy_analysis_and_plot_actions(analysis_runner):
         node.machine.sensor_dots[SENSOR_NAME].readout_resonator.intermediate_frequency
     )
     assert np.isclose(
-        updated_if, fit["frequency"], rtol=0.0, atol=1e-3
-    ), f"Expected state IF update to {fit['frequency']}, got {updated_if}"
+        updated_if, fit["resonator_frequency"], rtol=0.0, atol=1e-3
+    ), f"Expected state IF update to {fit['resonator_frequency']}, got {updated_if}"

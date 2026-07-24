@@ -41,11 +41,11 @@ Prerequisites:
     - Having identified a suitable detuning transition.
 
 Results (``node.results["fit_results"][<sensor>]``):
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
     - ``resonator_frequency`` [Hz]: absolute readout frequency at the PCA signal peak.
-    - ``frequency_shift`` [Hz]: fitted readout frequency offset at the peak (added to IF).
+    - ``frequency_shift`` [Hz]: fitted readout frequency offset at the peak.
     - ``optimal_detuning`` [V]: QD pair gate voltage at the PCA signal peak.
     - ``peak_pca_signal``: PCA signal amplitude at the peak (arb. units).
-    - ``success``: whether the fit passed sanity checks and the state update is applied.
 
 State update:
     - The readout frequency which maximises the PCA signal.
