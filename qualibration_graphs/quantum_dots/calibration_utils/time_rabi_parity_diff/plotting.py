@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
-from typing import Any, List
+from typing import Any, Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from matplotlib.figure import Figure
 
+from calibration_utils.common_utils.plot_style import (
+    apply_qubit_outcome_style,
+    empty_figure,
+    qubit_success,
+)
+from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 from calibration_utils.time_rabi_parity_diff.analysis import (
     FFT_FREQ_MIN,
     FFT_FREQ_MAX,
     compute_fft_diagnostic,
 )
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 
 def _get_qubit_names_from_ds(
@@ -29,20 +35,21 @@ def _get_qubit_names_from_ds(
 
 
 def _plot_rabi_trace_ax(
-    ax: "plt.Axes",
+    ax: plt.Axes,
     pdiff: np.ndarray,
     duration_ns: np.ndarray,
     qubit_name: str,
     analysis_signal: str,
     fit_result: dict | None = None,
     fitted_curve: np.ndarray | None = None,
+    success: bool | None = None,
 ) -> None:
     """Plot raw analysis trace vs pulse duration on the given axes."""
     ax.plot(duration_ns, pdiff, "b-", lw=1, alpha=0.8)
     ax.scatter(duration_ns, pdiff, c="b", s=6, alpha=0.5, zorder=3)
     ax.set_xlabel("Pulse duration (ns)")
     ax.set_ylabel(analysis_signal)
-    ax.set_title(f"{qubit_name} — Rabi oscillation")
+    apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Rabi oscillation")
     ax.set_ylim(-0.05, 1.05)
 
     if fit_result and fit_result.get("success"):
@@ -65,11 +72,12 @@ def _plot_rabi_trace_ax(
 
 
 def _plot_fft_ax(
-    ax: "plt.Axes",
+    ax: plt.Axes,
     qubit_name: str,
     trace: np.ndarray,
     duration_ns: np.ndarray,
     fit_result: dict | None = None,
+    success: bool | None = None,
 ) -> None:
     """Plot FFT magnitude spectrum with peak fit on the given axes."""
     diag = compute_fft_diagnostic(trace, duration_ns)
@@ -86,7 +94,7 @@ def _plot_fft_ax(
 
     ax.set_xlabel("Frequency (1/μs)")
     ax.set_ylabel("|FFT|")
-    ax.set_title(f"{qubit_name} — FFT spectrum")
+    apply_qubit_outcome_style(ax, qubit_name, success, subtitle="FFT spectrum")
     ax.set_xlim(f_plot[0], f_plot[-1])
 
     if fit_result and fit_result.get("success"):
@@ -104,69 +112,97 @@ def _plot_fft_ax(
     ax.legend(loc="upper right", fontsize=8)
 
 
-def plot_raw_data_with_fit(
-    ds: xr.Dataset,
-    ds_fit: xr.Dataset | None,
+def plot_rabi_traces(
+    ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict,
     analysis_signal: str = "E_p1_given_p0_0",
-) -> "plt.Figure":
-    """Plot Rabi trace and FFT for each qubit.
-
-    ``ds`` should be the processed dataset (``ds_fit``) containing
-    ``{analysis_signal}_{qubit}`` variables.
-    """
-    plot_ds = ds_fit if ds_fit is not None else ds
-    qubit_names = _get_qubit_names_from_ds(plot_ds, qubits, analysis_signal)
+) -> Figure:
+    """Plot time-Rabi traces with fit overlays (one panel per qubit)."""
+    qubit_names = _get_qubit_names_from_ds(ds_fit, qubits, analysis_signal)
     if not qubit_names:
-        fig, _ = plt.subplots(figsize=(6, 4))
-        return fig
+        return empty_figure("No qubit data found in ds_fit.")
 
     n = len(qubit_names)
-    ncol = 2
-    fig, axes = plt.subplots(n, ncol, figsize=(6 * ncol, 4 * n), squeeze=False)
+    fig, axes = plt.subplots(1, n, figsize=(max(5 * n, 8), 4), squeeze=False)
+    axes = axes.flatten()
 
-    for i, qname in enumerate(qubit_names):
-        ax_trace, ax_fft = axes[i, 0], axes[i, 1]
+    durations_ns = np.asarray(ds_fit.pulse_duration.values, dtype=float)
+    for ax, qname in zip(axes, qubit_names):
         signal_var = f"{analysis_signal}_{qname}"
+        success = qubit_success(fit_results, qname)
         fr = fit_results.get(qname, {})
 
-        durations_ns = np.asarray(plot_ds.pulse_duration.values, dtype=float)
-
-        if signal_var not in plot_ds.data_vars:
-            ax_trace.text(
-                0.5,
-                0.5,
-                f"No data for {qname}",
-                transform=ax_trace.transAxes,
-                ha="center",
-            )
-            ax_fft.text(
-                0.5,
-                0.5,
-                f"No data for {qname}",
-                transform=ax_fft.transAxes,
-                ha="center",
-            )
+        if signal_var not in ds_fit.data_vars:
+            apply_qubit_outcome_style(ax, qname, success, subtitle="Rabi oscillation")
+            ax.text(0.5, 0.5, f"No data for {qname}", transform=ax.transAxes, ha="center")
             continue
 
-        trace = np.asarray(plot_ds[signal_var].values, dtype=float)
+        trace = np.asarray(ds_fit[signal_var].values, dtype=float)
         fit_var = f"{signal_var}_fit"
-        fitted_curve = None
-        if plot_ds is not None and fit_var in plot_ds.data_vars:
-            fitted_curve = np.asarray(plot_ds[fit_var].values, dtype=float)
-
+        fitted_curve = (
+            np.asarray(ds_fit[fit_var].values, dtype=float)
+            if fit_var in ds_fit.data_vars
+            else None
+        )
         _plot_rabi_trace_ax(
-            ax_trace,
+            ax,
             trace,
             durations_ns,
             qname,
             analysis_signal,
             fit_result=fr,
             fitted_curve=fitted_curve,
+            success=success,
         )
-        _plot_fft_ax(ax_fft, qname, trace, durations_ns, fit_result=fr)
 
     fig.suptitle(f"Time Rabi ({analysis_signal})")
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
+
+
+def plot_fft_spectra(
+    ds_fit: xr.Dataset,
+    fit_results: dict,
+    analysis_signal: str = "E_p1_given_p0_0",
+) -> Figure:
+    """Plot FFT magnitude spectra (one panel per qubit)."""
+    qubit_names = _get_qubit_names_from_ds(ds_fit, qubits, analysis_signal)
+    if not qubit_names:
+        return empty_figure("No qubit data found in ds_fit.")
+
+    n = len(qubit_names)
+    fig, axes = plt.subplots(1, n, figsize=(max(5 * n, 8), 4), squeeze=False)
+    axes = axes.flatten()
+
+    durations_ns = np.asarray(ds_fit.pulse_duration.values, dtype=float)
+    for ax, qname in zip(axes, qubit_names):
+        signal_var = f"{analysis_signal}_{qname}"
+        success = qubit_success(fit_results, qname)
+        fr = fit_results.get(qname, {})
+
+        if signal_var not in ds_fit.data_vars:
+            apply_qubit_outcome_style(ax, qname, success, subtitle="FFT spectrum")
+            ax.text(0.5, 0.5, f"No data for {qname}", transform=ax.transAxes, ha="center")
+            continue
+
+        trace = np.asarray(ds_fit[signal_var].values, dtype=float)
+        _plot_fft_ax(ax, qname, trace, durations_ns, fit_result=fr, success=success)
+
+    fig.suptitle(f"Time Rabi FFT ({analysis_signal})")
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    return fig
+
+
+def plot_all(
+    ds_fit: xr.Dataset,
+    qubits: List[Any],
+    fit_results: dict | None = None,
+    analysis_signal: str = "E_p1_given_p0_0",
+) -> Dict[str, Figure]:
+    """Return all standard figures for time-Rabi analysis."""
+    fit_results = fit_results or {}
+    return {
+        "rabi": plot_rabi_traces(ds_fit, qubits, fit_results, analysis_signal),
+        "fft": plot_fft_spectra(ds_fit, fit_results, analysis_signal),
+    }

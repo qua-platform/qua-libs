@@ -17,7 +17,7 @@ from calibration_utils.time_rabi_parity_diff import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
-    plot_raw_data_with_fit,
+    plot_all,
     generate_simulated_dataset,
 )
 from qualibration_libs.parameters.experiment import get_qubits
@@ -238,15 +238,15 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the processed and fitted data."""
-    fig = plot_raw_data_with_fit(
+    """Plot processed data and fit overlays; store figures in ``node.results["figures"]``."""
+    node.results["figures"] = plot_all(
         node.results["ds_fit"],
-        node.results.get("ds_fit"),
         node.namespace["qubits"],
         node.results.get("fit_results", {}),
         analysis_signal=node.parameters.analysis_signal,
     )
-    node.results["figure"] = fig
+    if not node.modes.external:
+        plt.show()
 
 
 

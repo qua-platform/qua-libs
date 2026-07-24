@@ -222,11 +222,6 @@ def compute_fft_diagnostics(
         "omega_est": omega_est,
         "ridge_curve_cyc_ns": ridge_curve_cyc_ns,
         "rabi_curve": rabi_curve,
-        # Backward-compatible aliases
-        "lorentzian_mean_per_slice": [
-            float(f) if np.isfinite(f) else None for f in peak_freq_per_slice
-        ],
-        "lorentzian_curve_per_slice": peak_curve_per_slice,
     }
 
 

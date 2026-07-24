@@ -401,7 +401,6 @@ def fit_raw_data(
     for qname in qubit_names:
         signal_var = f"{analysis_signal}_{qname}"
         if signal_var not in ds.data_vars and f"p_{qname}" in ds.data_vars:
-            # Backwards-compatible fallback for pre-normalized single-shot data.
             signal_var = f"p_{qname}"
         if signal_var not in ds.data_vars:
             fp = FitParameters(

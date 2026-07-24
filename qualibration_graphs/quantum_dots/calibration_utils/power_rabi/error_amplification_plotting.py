@@ -1,22 +1,19 @@
-"""Plotting for the error-amplified power-Rabi analysis.
-
-Produces a multi-panel figure per qubit with two columns (mirroring the
-Ramsey chevron layout):
-
-1. **Heatmap** — 2-D map of the analysis signal (amplitude vs
-   n_pulses) with the fitted optimal amplitude overlaid.
-2. **Resonance profile** — n_pulses-averaged signal vs amplitude,
-   showing the measured data and the analytic model fit.
-"""
+"""Plotting for the error-amplified power-Rabi analysis."""
 
 from __future__ import annotations
 
-from typing import Any, List
+from typing import Any, Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from matplotlib.figure import Figure
 
+from calibration_utils.common_utils.plot_style import (
+    apply_qubit_outcome_style,
+    empty_figure,
+    qubit_success,
+)
 from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 
@@ -33,12 +30,13 @@ def _get_qubit_names_from_ds(
 
 
 def _plot_heatmap_ax(
-    ax: "plt.Axes",
+    ax: plt.Axes,
     signal_2d: np.ndarray,
     amps: np.ndarray,
     n_pulses: np.ndarray,
     qubit_name: str,
     fit_result: dict | None = None,
+    success: bool | None = None,
 ) -> None:
     """Plot raw 2-D heatmap: amplitude (x) vs n_pulses (y)."""
     vmin = float(np.nanmin(signal_2d))
@@ -56,7 +54,7 @@ def _plot_heatmap_ax(
     )
     ax.set_xlabel("Amplitude prefactor")
     ax.set_ylabel("Number of pulses")
-    ax.set_title(f"{qubit_name} — Error-amplified Rabi")
+    apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Error-amplified Rabi")
 
     if fit_result and fit_result.get("success"):
         opt = fit_result.get("opt_amp", 0)
@@ -72,17 +70,18 @@ def _plot_heatmap_ax(
 
 
 def _plot_resonance_ax(
-    ax: "plt.Axes",
+    ax: plt.Axes,
     amps: np.ndarray,
     qubit_name: str,
     fit_result: dict | None = None,
     mean_signal: np.ndarray | None = None,
     mean_signal_fit: np.ndarray | None = None,
+    success: bool | None = None,
 ) -> None:
     """Plot mean signal vs amplitude with analytic model fit."""
     if mean_signal is None:
+        apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Optimal amplitude")
         ax.text(0.5, 0.5, "No diagnostics", transform=ax.transAxes, ha="center")
-        ax.set_title(f"{qubit_name} — Resonance")
         return
 
     ax.plot(amps, mean_signal, "bo-", ms=3, lw=1, label="Mean signal")
@@ -112,74 +111,109 @@ def _plot_resonance_ax(
 
     ax.set_xlabel("Amplitude prefactor")
     ax.set_ylabel("Mean signal")
-    ax.set_title(f"{qubit_name} — Optimal amplitude")
+    apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Optimal amplitude")
     ax.legend(loc="upper right", fontsize=7)
 
 
-def plot_raw_data_error_amplified(
-    ds: xr.Dataset,
-    ds_fit: xr.Dataset | None,  # noqa: ARG001
-    qubits: List[Any],  # noqa: ARG001
+def plot_heatmaps(
+    ds_fit: xr.Dataset,
+    qubits: List[Any],
     fit_results: dict,
     analysis_signal: str = "E_p1_given_p0_0",
-) -> "plt.Figure":
-    """Plot error-amplified power Rabi for each qubit.
-
-    ``ds`` should be the processed dataset (``ds_fit``) containing
-    ``{analysis_signal}_{qubit}`` variables.
-    """
-    plot_ds = ds_fit if ds_fit is not None else ds
-    qubit_names = _get_qubit_names_from_ds(plot_ds, qubits, analysis_signal)
+) -> Figure:
+    """Plot error-amplified Rabi heatmaps (one panel per qubit)."""
+    qubit_names = _get_qubit_names_from_ds(ds_fit, qubits, analysis_signal)
     if not qubit_names:
-        fig, _ = plt.subplots(figsize=(6, 4))
-        return fig
+        return empty_figure("No qubit data found in ds_fit.")
 
     n = len(qubit_names)
-    ncol = 2
-    fig, axes = plt.subplots(n, ncol, figsize=(6 * ncol, 4 * n), squeeze=False)
+    fig, axes = plt.subplots(1, n, figsize=(max(5 * n, 8), 4), squeeze=False)
+    axes = axes.flatten()
 
-    for i, qname in enumerate(qubit_names):
+    amps = np.asarray(ds_fit.amp_prefactor.values, dtype=float)
+    n_pulses = np.asarray(ds_fit.n_pulses.values, dtype=float)
+
+    for ax, qname in zip(axes, qubit_names):
         signal_var = f"{analysis_signal}_{qname}"
+        success = qubit_success(fit_results, qname)
         fr = fit_results.get(qname, {})
 
-        amps = np.asarray(plot_ds.amp_prefactor.values, dtype=float)
-        n_pulses = np.asarray(plot_ds.n_pulses.values, dtype=float)
-
-        if signal_var not in plot_ds.data_vars:
-            for j in range(ncol):
-                axes[i, j].text(
-                    0.5,
-                    0.5,
-                    f"No data for {qname}",
-                    transform=axes[i, j].transAxes,
-                    ha="center",
-                )
+        if signal_var not in ds_fit.data_vars:
+            apply_qubit_outcome_style(ax, qname, success, subtitle="Error-amplified Rabi")
+            ax.text(0.5, 0.5, f"No data for {qname}", transform=ax.transAxes, ha="center")
             continue
 
-        signal_2d = np.asarray(plot_ds[signal_var].values, dtype=float)
+        signal_2d = np.asarray(ds_fit[signal_var].values, dtype=float)
+        _plot_heatmap_ax(ax, signal_2d, amps, n_pulses, qname, fr, success)
+
+    fig.suptitle(f"Error-amplified Power Rabi heatmap ({analysis_signal})")
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    return fig
+
+
+def plot_resonance_profiles(
+    ds_fit: xr.Dataset,
+    qubits: List[Any],
+    fit_results: dict,
+    analysis_signal: str = "E_p1_given_p0_0",
+) -> Figure:
+    """Plot n_pulses-averaged resonance profiles (one panel per qubit)."""
+    qubit_names = _get_qubit_names_from_ds(ds_fit, qubits, analysis_signal)
+    if not qubit_names:
+        return empty_figure("No qubit data found in ds_fit.")
+
+    n = len(qubit_names)
+    fig, axes = plt.subplots(1, n, figsize=(max(5 * n, 8), 4), squeeze=False)
+    axes = axes.flatten()
+
+    amps = np.asarray(ds_fit.amp_prefactor.values, dtype=float)
+
+    for ax, qname in zip(axes, qubit_names):
+        signal_var = f"{analysis_signal}_{qname}"
+        success = qubit_success(fit_results, qname)
+        fr = fit_results.get(qname, {})
+
+        if signal_var not in ds_fit.data_vars:
+            apply_qubit_outcome_style(ax, qname, success, subtitle="Optimal amplitude")
+            ax.text(0.5, 0.5, f"No data for {qname}", transform=ax.transAxes, ha="center")
+            continue
+
         mean_var = f"{signal_var}_mean"
         mean_fit_var = f"{signal_var}_mean_fit"
         mean_signal = (
-            np.asarray(plot_ds[mean_var].values, dtype=float)
-            if mean_var in plot_ds.data_vars
+            np.asarray(ds_fit[mean_var].values, dtype=float)
+            if mean_var in ds_fit.data_vars
             else None
         )
         mean_signal_fit = (
-            np.asarray(plot_ds[mean_fit_var].values, dtype=float)
-            if mean_fit_var in plot_ds.data_vars
+            np.asarray(ds_fit[mean_fit_var].values, dtype=float)
+            if mean_fit_var in ds_fit.data_vars
             else None
         )
-
-        _plot_heatmap_ax(axes[i, 0], signal_2d, amps, n_pulses, qname, fr)
         _plot_resonance_ax(
-            axes[i, 1],
+            ax,
             amps,
             qname,
             fr,
             mean_signal=mean_signal,
             mean_signal_fit=mean_signal_fit,
+            success=success,
         )
 
-    fig.suptitle(f"Error-amplified Power Rabi ({analysis_signal})")
-    fig.tight_layout()
+    fig.suptitle(f"Error-amplified Power Rabi resonance ({analysis_signal})")
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
+
+
+def plot_all(
+    ds_fit: xr.Dataset,
+    qubits: List[Any],
+    fit_results: dict | None = None,
+    analysis_signal: str = "E_p1_given_p0_0",
+) -> Dict[str, Figure]:
+    """Return all standard figures for error-amplified power-Rabi analysis."""
+    fit_results = fit_results or {}
+    return {
+        "heatmap": plot_heatmaps(ds_fit, qubits, fit_results, analysis_signal),
+        "resonance": plot_resonance_profiles(ds_fit, qubits, fit_results, analysis_signal),
+    }

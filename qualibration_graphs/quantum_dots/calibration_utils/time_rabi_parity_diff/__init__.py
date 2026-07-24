@@ -7,7 +7,7 @@ from calibration_utils.time_rabi_parity_diff.analysis import (
 from calibration_utils.time_rabi_parity_diff.simulated_data_generator import (
     generate_simulated_dataset,
 )
-from calibration_utils.time_rabi_parity_diff.plotting import plot_raw_data_with_fit
+from calibration_utils.time_rabi_parity_diff.plotting import plot_all
 
 __all__ = [
     "Parameters",
@@ -15,5 +15,5 @@ __all__ = [
     "log_fitted_results",
     "process_raw_dataset",
     "generate_simulated_dataset",
-    "plot_raw_data_with_fit",
+    "plot_all",
 ]

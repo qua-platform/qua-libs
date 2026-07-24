@@ -1,4 +1,5 @@
 # %% {Imports}
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
@@ -16,12 +17,12 @@ from calibration_utils.measurement_utils import (
     save_measurement,
     buffer_streams,
 )
+from calibration_utils.power_rabi.error_amplification_plotting import plot_all
 from calibration_utils.power_rabi import (
     ErrorAmplifiedParameters as Parameters,
     fit_raw_data_error_amplified,
     log_fitted_results_error_amplified,
-    plot_raw_data_error_amplified,
-    generate_simulated_dataset_error_amplified as generate_simulated_dataset,
+    generate_simulated_dataset_error_amplified,
 )
 from calibration_utils.power_rabi.error_amplification_analysis import process_raw_dataset
 from qualibration_libs.runtime import simulate_and_plot
@@ -202,7 +203,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     """Generate simulated error-amplified power-Rabi data so the full analysis pipeline can run without hardware."""
-    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.results["ds_raw"] = generate_simulated_dataset_error_amplified(node)
     node.log("[sim] Simulated dataset generated successfully.")
 
 
@@ -223,15 +224,15 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the processed and fitted data."""
-    fig = plot_raw_data_error_amplified(
+    """Plot processed data and fit overlays; store figures in ``node.results["figures"]``."""
+    node.results["figures"] = plot_all(
         node.results["ds_fit"],
-        node.results.get("ds_fit"),
         node.namespace["qubits"],
         node.results.get("fit_results", {}),
         analysis_signal=node.parameters.analysis_signal,
     )
-    node.results["figure"] = fig
+    if not node.modes.external:
+        plt.show()
 
 
 
