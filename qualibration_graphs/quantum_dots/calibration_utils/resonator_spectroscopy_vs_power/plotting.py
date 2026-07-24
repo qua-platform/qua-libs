@@ -77,7 +77,8 @@ def plot_individual_raw_data_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_
     ax2.set_title(sensor_id)
 
     if fit is not None:
-        ax2.plot((fit.rr_min_response) * 1e-6, fit.power, color="orange", linewidth=0.5)
+        resonance_vs_power = sensor_data.IQ_abs_norm.idxmin(dim="frequency_detuning")
+        ax2.plot(resonance_vs_power * 1e-6, sensor_data.power, color="orange", linewidth=0.5)
         try:
             if bool(fit.success):
                 ax2.axhline(y=float(fit.optimal_power), color="g", linestyle="-")

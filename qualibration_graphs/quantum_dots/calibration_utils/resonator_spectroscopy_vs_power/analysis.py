@@ -85,54 +85,41 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     Returns:
     --------
     xr.Dataset
-        Processed dataset with power-scan fit variables and summary coordinates added.
+        Processed dataset with optimal-power summary coordinates added.
     """
 
     ds_fit = ds
-    # Generate 1D dataset tracking the minimum IQ value, as a proxy for resonator frequency
-    ds_fit["rr_min_response"] = ds.IQ_abs_norm.idxmin(dim="frequency_detuning")
-    # Calculate the derivative along the power axis
-    ds_fit["rr_min_response_diff"] = ds_fit.rr_min_response.differentiate(coord="power").dropna("power")
-    ds_fit["rr_min_response_filtered"] = ds_fit.rr_min_response.where(np.abs(ds_fit["rr_min_response_diff"]) < 1e6)
-    # Calculate the moving average of the derivative
-    ds_fit["rr_min_response_avg"] = (
-        ds_fit.rr_min_response_filtered.rolling(
+
+    rr_min_response = ds.IQ_abs_norm.idxmin(dim="frequency_detuning")
+    rr_min_response_diff = rr_min_response.differentiate(coord="power").dropna("power")
+    rr_min_response_filtered = rr_min_response.where(np.abs(rr_min_response_diff) < 1e6)
+    rr_min_response_avg = (
+        rr_min_response_filtered.rolling(
             power=node.parameters.derivative_smoothing_window_num_points,
-            center=True,  # window size in points
+            center=True,
         )
         .mean()
         .dropna("power")
     )
-    # ensure rr_min_response_avg buffer is writeable
-    ds_fit["rr_min_response_avg"].data = ds_fit["rr_min_response_avg"].data.copy()
-    # Apply a filter to scale down the initial noisy values in the moving average if needed
+    rr_min_response_avg = rr_min_response_avg.copy(deep=True)
     for j in range(node.parameters.moving_average_filter_window_num_points):
-        ds_fit.rr_min_response_avg.isel(power=j).data /= node.parameters.moving_average_filter_window_num_points - j
-    # Find the first position where the moving average crosses below the threshold
-    ds_fit["below_threshold"] = ds_fit.rr_min_response_avg < node.parameters.derivative_crossing_threshold_in_hz_per_dbm
-    # Get the first occurrence below the derivative threshold
-    optimal_power = ds_fit.below_threshold.idxmax(dim="power")
+        rr_min_response_avg.isel(power=j).data /= node.parameters.moving_average_filter_window_num_points - j
+    below_threshold = rr_min_response_avg < node.parameters.derivative_crossing_threshold_in_hz_per_dbm
+    optimal_power = below_threshold.idxmax(dim="power")
     optimal_power = optimal_power - node.parameters.buffer_from_crossing_threshold_in_dbm
     ds_fit = ds_fit.assign_coords({"optimal_power": (["sensor"], optimal_power.data)})
 
-    # Define a function to fit the resonator line at the optimal power for each qubit
     def _select_optimal_power(ds, sensor):
         return peaks_dips(
             ds.sel(power=ds["optimal_power"].sel(sensor=sensor).data, method="nearest").sel(sensor=sensor).IQ_abs,
             "frequency_detuning",
         )
 
-    # Get the resonance frequency shift at the optimal power
-    fit_position = []
+    frequency_shift = []
     for q in node.namespace["sensors"]:
         fit_at_power = _select_optimal_power(ds_fit, q.name)
-        fit_position.append(float(fit_at_power.position.data))
-    ds_fit = ds_fit.assign_coords(
-        {
-            "position": (["sensor"], fit_position),
-            "frequency_shift": (["sensor"], fit_position),
-        }
-    )
+        frequency_shift.append(float(fit_at_power.position.data))
+    ds_fit = ds_fit.assign_coords({"frequency_shift": (["sensor"], frequency_shift)})
     ds_fit.frequency_shift.attrs = {"long_name": "readout frequency offset from IF", "units": "Hz"}
 
     # Extract the relevant fitted parameters
