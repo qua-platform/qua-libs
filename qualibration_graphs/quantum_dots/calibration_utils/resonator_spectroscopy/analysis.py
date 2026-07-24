@@ -63,25 +63,24 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
-    Fit the resonator dip for each sensor and return the resonance frequency and FWHM.
+    Fit the resonator dip for each sensor and return the processed dataset with fit outputs.
 
     Parameters:
     -----------
     ds : xr.Dataset
-        Dataset containing the raw data.
+        Processed dataset containing amplitude and phase information.
     node : QualibrationNode
         The QUAlibrate node.
 
     Returns:
     --------
     xr.Dataset
-        Dataset containing the fit results.
+        Processed dataset with Lorentzian fit variables and summary coordinates added.
     """
-    # Fit the resonator line
-    fit_results = peaks_dips(ds.IQ_abs, "detuning")
-    # Extract the relevant fitted parameters
-    fit_data, fit_results = _extract_relevant_fit_parameters(fit_results, node)
-    return fit_data, fit_results
+    fit_vars = peaks_dips(ds.IQ_abs, "detuning")
+    ds_fit = xr.merge([ds, fit_vars])
+    ds_fit, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
+    return ds_fit, fit_results
 
 
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):

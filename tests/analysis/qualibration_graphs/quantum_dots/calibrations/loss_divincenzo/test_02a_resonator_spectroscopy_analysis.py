@@ -112,13 +112,12 @@ def test_02a_resonator_spectroscopy_analysis_and_plot_actions(analysis_runner):
         },
     )
 
+    assert "IQ_abs" not in node.results["ds_raw"], "ds_raw should remain unprocessed after analysis."
+    assert "IQ_abs" in node.results["ds_fit"], "Analysis preprocessing should add IQ_abs to ds_fit."
+    assert "phase" in node.results["ds_fit"], "Analysis preprocessing should add phase to ds_fit."
     assert (
-        "IQ_abs" in node.results["ds_raw"]
-    ), "Analysis preprocessing should add IQ_abs."
-    assert "phase" in node.results["ds_raw"], "Analysis preprocessing should add phase."
-    assert (
-        "full_freq" in node.results["ds_raw"].coords
-    ), "Processed data should include full_freq coordinate."
+        "full_freq" in node.results["ds_fit"].coords
+    ), "Processed data should include full_freq coordinate in ds_fit."
 
     assert "ds_fit" in node.results
     assert "fit_results" in node.results

@@ -68,19 +68,19 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
-    Fit the T1 relaxation time for each sensor according to ``a * np.exp(t * decay) + offset``.
+    Find the optimal readout power and fit the resonator line at that power for each sensor.
 
     Parameters:
     -----------
     ds : xr.Dataset
-        Dataset containing the raw data.
-    node_parameters : Parameters
-        Parameters related to the node, including whether state discrimination is used.
+        Processed dataset containing amplitude and phase information.
+    node : QualibrationNode
+        The QUAlibrate node.
 
     Returns:
     --------
     xr.Dataset
-        Dataset containing the fit results.
+        Processed dataset with power-scan fit variables and summary coordinates added.
     """
 
     ds_fit = ds

@@ -68,8 +68,8 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
-    """Compute a 2D PCA signal map and extract the peak point per sensor."""
-    ds_fit = xr.Dataset(coords=ds.coords)
+    """Compute a 2D PCA signal map on the processed dataset and extract the peak point per sensor."""
+    ds_fit = ds
     pca_signal = np.full(ds.I.shape, np.nan, dtype=float)
     pca_signal_abs = np.full(ds.I.shape, np.nan, dtype=float)
 
