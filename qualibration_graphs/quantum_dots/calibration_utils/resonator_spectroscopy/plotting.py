@@ -32,7 +32,7 @@ def plot_raw_phase(ds_fit: xr.Dataset, sensors: List) -> Figure:
         success = sensor_success(ds_fit, sensor.name)
 
         ax.plot(sensor_data.full_freq / u.MHz, sensor_data.phase, "o-", markersize=2)
-        ax.set_xlabel("RF frequency [MHz]")
+        ax.set_xlabel("Readout frequency [MHz]")
         ax.set_ylabel("Phase [rad]")
 
         ax2 = ax.twiny()
@@ -78,9 +78,9 @@ def plot_individual_amplitude_with_fit(
         sensor_data.IQ_abs / u.mV,
         "o-",
         markersize=2,
-        label="Data",
+        label="Measured |I+iQ|",
     )
-    ax.set_xlabel("RF frequency [MHz]")
+    ax.set_xlabel("Readout frequency [MHz]")
     ax.set_ylabel(r"$R=\sqrt{I^2 + Q^2}$ [mV]")
 
     ax2 = ax.twiny()
@@ -106,12 +106,12 @@ def plot_individual_amplitude_with_fit(
             sensor_data.frequency_detuning / u.MHz,
             fitted_data / u.mV,
             "r--",
-            label="Fit",
+            label="Lorentzian fit",
         )
 
     if success and "frequency_shift" in fit.coords:
         shift_mhz = float(fit.frequency_shift.values) * 1e-6
-        ax2.axvline(shift_mhz, color="blue", linestyle="--", label="frequency_shift")
+        ax2.axvline(shift_mhz, color="blue", linestyle="--", label="Fitted frequency shift")
 
     apply_sensor_outcome_style(ax, sensor_id, success)
     if success is not False and has_fit_vars:

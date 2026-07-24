@@ -13,21 +13,21 @@ from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
+
+from calibration_utils.common_utils.experiment import get_sensors
 from calibration_utils.resonator_spectroscopy_vs_power import (
     Parameters,
     process_raw_dataset,
-    plot_all,
-    log_fitted_results,
     fit_raw_data,
+    log_fitted_results,
+    plot_all,
     generate_simulated_dataset,
 )
-from quam_builder.tools.power_tools import calculate_voltage_scaling_factor
 from quam_builder.architecture.quantum_dots.components import ReadoutResonatorSingle
-from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher
+from quam_builder.tools.power_tools import calculate_voltage_scaling_factor
 from qualibration_libs.core import tracked_updates
-
-from calibration_utils.common_utils.experiment import get_sensors
+from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
@@ -42,11 +42,21 @@ Prerequisites:
     - Having calibrated the resonator frequency (node 02a_resonator_spectroscopy.py).
     - Having instantiated a starting readout amplitude.
 
+Datasets:
+    - ``ds_raw``: untouched I/Q fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed sweeps plus analysis outputs (derived fields and per-sensor summary
+      coordinates). Used by ``plot_data``.
+    - ``fit_results``: compact per-sensor calibration dict (``FitParameters`` serialized with
+      ``asdict``). Used by logging, ``node.outcomes``, and ``update_state``.
+
 Results (``node.results["fit_results"][<sensor>]``):
     - ``success``: whether the fit passed sanity checks and the state update is applied.
     - ``resonator_frequency`` [Hz]: absolute readout frequency at ``optimal_power``.
     - ``frequency_shift`` [Hz]: fitted readout frequency offset at ``optimal_power``.
     - ``optimal_power`` [dBm]: readout power just below the onset of frequency splitting.
+
+Figures (``node.results["figures"]``):
+    - ``"amplitude"``: normalized |I + iQ| heatmap vs readout frequency and power, with fit markers.
 
 State update:
     - The readout power: sensor.readout_resonator.set_output_power()
@@ -76,7 +86,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.min_power_dbm = -60
     # node.parameters.num_power_points = 100
     # node.parameters.use_simulated_data = True
-    node.parameters.use_simulated_data = True
     pass
 
 
@@ -170,9 +179,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     for i, sensor in multiplexed_sensors.items():
                         rr = sensor.readout_resonator
-
-                        # Retune readout tone to IF + df (same as 02a)
-                        update_frequency(rr.name, df + rr.intermediate_frequency)
+                        rr.update_frequency(df + rr.intermediate_frequency)
 
                         # ── INNER LOOP: sweep readout power ───────────────
                         # `a` multiplies the pulse amplitude configured at max power.

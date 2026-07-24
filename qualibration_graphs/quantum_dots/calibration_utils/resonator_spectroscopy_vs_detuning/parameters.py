@@ -9,10 +9,14 @@ from qualibration_libs.parameters.experiment import BaseExperimentNodeParameters
 class NodeSpecificParameters(RunnableParameters):
     sensor_names: Optional[List[str]] = None
     """The list of sensor dot names to be included in the measurement."""
-    quantum_dot_pair: Optional[List[str]] = None
-    """The name of the quantum dot pair for which the detuning is swept. Default is 'virtual_dot_1_virtual_dot_2_pair'."""
+    quantum_dot_pair: Optional[str] = "virtual_dot_1_virtual_dot_2_pair"
+    """Name of the quantum dot pair whose gate detuning is swept. Default is ``virtual_dot_1_virtual_dot_2_pair``."""
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
+    frequency_span_in_mhz: float = 15
+    """Span of frequencies to sweep in MHz. Default is 15 MHz."""
+    frequency_step_in_mhz: float = 0.1
+    """Step size for frequency sweep in MHz. Default is 0.1 MHz."""
     detuning_start: float = 0
     """The first detuning value in V. Default is 0 V."""
     detuning_stop: float = 0.5
@@ -21,10 +25,6 @@ class NodeSpecificParameters(RunnableParameters):
     """The step in detuning in V. Default is 5 mV."""
     point_duration: int = 1000
     """How long to stay on each detuning point for before measurement. Default is 1000 ns"""
-    frequency_span_in_mhz: float = 15
-    """Span of frequencies to sweep in MHz. Default is 15 MHz."""
-    frequency_step_in_mhz: float = 0.1
-    """Step size for frequency sweep in MHz. Default is 0.1 MHz."""
     use_simulated_data: bool = False
     """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 

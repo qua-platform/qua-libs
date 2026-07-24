@@ -13,18 +13,18 @@ from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
+
+from calibration_utils.common_utils.experiment import get_sensors
 from calibration_utils.resonator_spectroscopy_vs_detuning import (
     Parameters,
     process_raw_dataset,
-    plot_all,
-    log_fitted_results,
     fit_raw_data,
+    log_fitted_results,
+    plot_all,
     generate_simulated_dataset,
 )
-from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-
-from calibration_utils.common_utils.experiment import get_sensors
+from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
@@ -40,15 +40,27 @@ Prerequisites:
     - Having calibrated the resonator power (node 02b_resonator_spectroscopy_vs_power.py).
     - Having identified a suitable detuning transition.
 
+Datasets:
+    - ``ds_raw``: untouched I/Q fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed sweeps plus analysis outputs (derived fields and per-sensor summary
+      coordinates). Used by ``plot_data``.
+    - ``fit_results``: compact per-sensor calibration dict (``FitParameters`` serialized with
+      ``asdict``). Used by logging, ``node.outcomes``, and ``update_state``.
+
 Results (``node.results["fit_results"][<sensor>]``):
     - ``success``: whether the fit passed sanity checks and the state update is applied.
     - ``resonator_frequency`` [Hz]: absolute readout frequency at the PCA signal peak.
     - ``frequency_shift`` [Hz]: fitted readout frequency offset at the peak.
-    - ``optimal_detuning`` [V]: QD pair gate voltage at the PCA signal peak.
+    - ``optimal_detuning`` [V]: QD pair gate voltage at the PCA signal peak (reported only; not written to QuAM).
     - ``peak_pca_signal``: PCA signal amplitude at the peak (arb. units).
 
+Figures (``node.results["figures"]``):
+    - ``"amplitude"``: IQ background with PCA signal overlay and peak marker for each sensor.
+
 State update:
-    - The readout frequency which maximises the PCA signal.
+    - The readout frequency which maximises the PCA signal: sensor.readout_resonator.intermediate_frequency.
+    - ``optimal_detuning`` is stored in ``fit_results`` for reference; apply the gate voltage separately in
+      subsequent experiments or via your dot-pair operating-point workflow.
 """
 
 
@@ -68,7 +80,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.quantum_dot_pair = "virtual_dot_1_virtual_dot_2_pair"
     # node.parameters.sensor_names = ["virtual_sensor_1"]
-    node.parameters.use_simulated_data = True
+    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -140,7 +152,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Retune readout tone to IF + df (same as 02a)
                     for i, sensor in multiplexed_sensors.items():
                         rr = sensor.readout_resonator
-                        update_frequency(rr.name, df + rr.intermediate_frequency)
+                        rr.update_frequency(df + rr.intermediate_frequency)
 
                     # ── INNER LOOP: sweep QD-pair detuning voltage ─────────
                     with for_(*from_array(det, det_array)):
@@ -240,7 +252,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Generate_simulated_data}
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
-    """Generate simulated resonator spectroscopy vs power data so the full analysis pipeline can run without hardware."""
+    """Generate simulated resonator spectroscopy vs detuning data so the full analysis pipeline can run without hardware."""
     node.results["ds_raw"] = generate_simulated_dataset(node)
     node.log("[sim] Simulated dataset generated successfully.")
 
@@ -293,7 +305,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             # Update the readout frequency
             s.readout_resonator.intermediate_frequency += node.results["fit_results"][s.name]["frequency_shift"]
-
+            # TODO: any reason not to update the detuning here?
 
 # %% {Save_results}
 @node.run_action()

@@ -14,8 +14,8 @@ u = unit(coerce_to_integer=True)
 
 MARKER_LEGEND = [
     Line2D([0], [0], color="orange", linewidth=1.5, label="Resonance vs power"),
-    Line2D([0], [0], color="green", linewidth=1.5, label="optimal_power"),
-    Line2D([0], [0], color="blue", linewidth=1.5, linestyle="--", label="frequency_shift"),
+    Line2D([0], [0], color="green", linewidth=1.5, label="Optimal readout power"),
+    Line2D([0], [0], color="blue", linewidth=1.5, linestyle="--", label="Fitted frequency shift"),
 ]
 
 
@@ -80,7 +80,7 @@ def plot_individual_raw_data_with_fit(
         y="power",
         robust=True,
     )
-    ax.set_xlabel("RF frequency [MHz]")
+    ax.set_xlabel("Readout frequency [MHz]")
     ax.set_ylabel("Power [dBm]")
     _add_detuning_top_axis(ax, if_hz)
 

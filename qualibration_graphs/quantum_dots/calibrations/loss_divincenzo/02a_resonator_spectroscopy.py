@@ -13,6 +13,7 @@ from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
+
 from calibration_utils.common_utils.experiment import get_sensors
 from calibration_utils.resonator_spectroscopy import (
     Parameters,
@@ -22,8 +23,8 @@ from calibration_utils.resonator_spectroscopy import (
     plot_all,
     generate_simulated_dataset,
 )
-from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
@@ -37,11 +38,22 @@ Prerequisites:
     - Having calibrated the time of flight, offsets, and gains (node 01a_time_of_flight.py).
     - Having initialized the QUAM state parameters for the readout pulse amplitude and duration.
 
+Datasets:
+    - ``ds_raw``: untouched I/Q fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed sweeps plus analysis outputs (derived fields and per-sensor summary
+      coordinates). Used by ``plot_data``.
+    - ``fit_results``: compact per-sensor calibration dict (``FitParameters`` serialized with
+      ``asdict``). Used by logging, ``node.outcomes``, and ``update_state``.
+
 Results (``node.results["fit_results"][<sensor>]``):
     - ``success``: whether the fit passed sanity checks and the state update is applied.
     - ``resonator_frequency`` [Hz]: absolute readout frequency at the resonance dip.
     - ``frequency_shift`` [Hz]: fitted readout frequency offset from IF.
     - ``fwhm`` [Hz]: Lorentzian linewidth (full width at half maximum of the |I + iQ| dip).
+
+Figures (``node.results["figures"]``):
+    - ``"phase"``: phase vs readout frequency for each sensor.
+    - ``"amplitude"``: |I + iQ| with Lorentzian fit overlay for each sensor.
 
 State update:
     - The readout frequency: sensor.readout_resonator.intermediate_frequency
@@ -65,7 +77,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.num_shots = 2
     # node.parameters.frequency_span_in_mhz = 10
     # node.parameters.frequency_step_in_mhz = 5
-    node.parameters.use_simulated_data = True
+    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -130,7 +142,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     for i, sensor in multiplexed_sensors.items():
                         rr = sensor.readout_resonator
-
                         # Retune the readout tone to (calibrated IF + df)
                         rr.update_frequency(df + rr.intermediate_frequency)
 
