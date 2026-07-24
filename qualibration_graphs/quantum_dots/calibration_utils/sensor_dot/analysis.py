@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Lorentzian fitting for sensor dot Coulomb peak tuning.
 
 The standard Lorentzian used here is
@@ -10,7 +12,6 @@ highest charge sensitivity — sit at  x0 ± γ / (2√3).
 
 
 import logging
-from __future__ import annotations
 from dataclasses import dataclass
 from typing import Tuple, Dict, NamedTuple
 import numpy as np
