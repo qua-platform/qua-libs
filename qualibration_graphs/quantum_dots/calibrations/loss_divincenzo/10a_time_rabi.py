@@ -31,27 +31,35 @@ from qualibration_libs.data import XarrayDataFetcher
 
 # %% {Node initialisation}
 description = """
-        TIME RABI PARITY DIFFERENCE
-This sequence performs a time Rabi measurement with parity difference to characterize qubit coherence and
-coupling. The measurement involves sweeping the duration of a qubit control pulse (typically an X180 pulse)
-while measuring the parity state before and after the pulse using charge sensing via RF reflectometry or DC
-current sensing.
-
-The sequence uses voltage gate sequences to navigate through a triangle in voltage space (empty -
-initialization - measurement) using OPX channels on the fast lines of the bias-tees. At each pulse duration,
-the parity is measured before (P1) and after (P2) the qubit pulse, and the parity difference (P_diff) is
-calculated. When P1 == P2, P_diff = 0; otherwise P_diff = 1.
-
-The parity difference signal reveals Rabi oscillations as a function of pulse duration, which can be used
-to extract the qubit coupling strength, coherence time, and optimal pulse parameters.
+        TIME RABI
+This sequence sweeps the duration of a qubit control pulse while measuring the spin state before and after the
+manipulation window. Joint-outcome streams are averaged and reduced to conditional expectations for analysis.
+Rabi oscillations in the analysis signal versus pulse duration are fitted to extract the π-pulse duration.
 
 Prerequisites:
-    - Having calibrated the resonators coupled to the SensorDot components.
-    - Having calibrated the voltage points (empty - initialization - measurement).
-    - Qubit pulse calibration (X180 pulse amplitude and frequency).
+    - Having calibrated the resonators coupled to the sensor dots.
+    - Having calibrated the voltage points (empty, initialization, measurement).
+    - Having a rough qubit XY drive calibration (frequency and amplitude).
+
+Datasets:
+    - ``ds_raw``: untouched joint-outcome streams fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed sweeps plus analysis outputs (conditional expectations and fitted traces). Used by
+      ``plot_data``.
+    - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with ``asdict``). Used by
+      logging, ``node.outcomes``, and ``update_state``.
+
+Results (``node.results["fit_results"][qubit]``):
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
+    - ``optimal_duration`` [ns]: π-pulse duration extracted from the Rabi oscillation.
+    - ``rabi_frequency`` [rad / ns]: fitted Rabi frequency in the time domain.
+    - ``decay_rate`` [1 / ns]: fitted decay rate of the Rabi envelope (γ ≈ 1/T₂*).
+
+Figures (``node.results["figures"]``):
+    - ``"rabi"``: conditional expectation vs pulse duration with damped-sinusoid fit overlay.
+    - ``"fft"``: FFT magnitude spectrum with peak fit per qubit.
 
 State update:
-    - The qubit x180 operation duration.
+    - The x180 pulse duration (``q.x.duration``).
 """
 
 

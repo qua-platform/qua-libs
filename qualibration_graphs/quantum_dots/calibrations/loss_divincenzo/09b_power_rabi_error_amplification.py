@@ -28,22 +28,40 @@ from calibration_utils.power_rabi_error_amplification import (
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-# %% {Description}
+# %% {Node initialisation}
 description = """
-        Power Rabi with Error Amplification
-This sequence is a power Rabi sequence augmented with error-amplification. It involves parking the qubit at the
-manipulation bias point, playing a pulse sequence with N pulses, and measuring the state of the resonator across
-different qubit pulse amplitudes, showing Rabi oscillations. With error amplification, small amplitude errors accumulate
-rapidly, allowing for a more precise calibration of the pulse amplitude. The results are then analyzed to determine the
-qubit pulse amplitude suitable for the selected gate duration.
+        POWER RABI WITH ERROR AMPLIFICATION
+This sequence performs a 2D power-Rabi measurement with error amplification: for each amplitude prefactor, an even
+number of π pulses is played and the spin state is measured. Joint-outcome streams are averaged and reduced to
+conditional expectations. Small amplitude errors accumulate over many pulses, enabling a precise refinement of
+the π-pulse amplitude prefactor in a narrow window around the value from node 09a.
 
 Prerequisites:
     - Having calibrated the relevant voltage points.
-    - Having calibrated the qubit frequency.
-    - Having set the qubit gate duration.
+    - Having calibrated the qubit frequency and gate duration.
+    - Having run node 09a_power_rabi to obtain a coarse π-pulse amplitude prefactor.
+
+Datasets:
+    - ``ds_raw``: untouched joint-outcome streams fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed 2D sweeps plus analysis outputs (conditional expectations and mean-signal diagnostics).
+      Used by ``plot_data``.
+    - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with ``asdict``). Used by
+      logging, ``node.outcomes``, and ``update_state``.
+
+Results (``node.results["fit_results"][qubit]``):
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
+    - ``opt_amp``: refined amplitude prefactor for a π rotation.
+    - ``rabi_frequency`` [rad / (unit amplitude · pulse)]: fitted Rabi frequency from the mean-signal model.
+    - ``decay_rate`` [1 / pulse]: exponential decay rate per pulse in the error-amplification sequence.
+    - ``gauss_decay_rate`` [1 / pulse]: Gaussian decay contribution per pulse.
+    - ``n_eff``: effective number of pulses before the contrast envelope decays to 1/e.
+
+Figures (``node.results["figures"]``):
+    - ``"heatmap"``: 2D map of the analysis signal vs amplitude prefactor and number of pulses.
+    - ``"resonance"``: n_pulses-averaged signal vs amplitude with analytic fit overlay.
 
 State update:
-    - The qubit pulse amplitude corresponding to the specified operation (x180, x90...).
+    - The x180 pulse amplitude (``q.x.pi_amplitude``) scaled by the fitted amplitude prefactor.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting

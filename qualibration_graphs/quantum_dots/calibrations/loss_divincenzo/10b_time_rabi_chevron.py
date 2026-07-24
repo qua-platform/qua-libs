@@ -34,29 +34,38 @@ from qualibration_libs.data import XarrayDataFetcher
 
 # %% {Node initialisation}
 description = """
-        TIME RABI CHEVRON PARITY DIFFERENCE
-This sequence performs a 2D chevron measurement with parity difference to characterize qubit coherence and
-coupling as a function of both pulse duration and frequency detuning. The measurement involves sweeping both
-the duration of a qubit control pulse (typically an X180 pulse) and the frequency detuning while measuring
-the parity state before and after the pulse using charge sensing via RF reflectometry or DC current sensing.
-
-The sequence uses voltage gate sequences to navigate through a triangle in voltage space (empty -
-initialization - measurement) using OPX channels on the fast lines of the bias-tees. At each combination
-of pulse duration and frequency detuning, the parity is measured before and after the manipulation pulse;
-joint-outcome streams are averaged and reduced to conditional expectations for analysis.
-
-The 2D chevron pattern in the analysis signal reveals the qubit coupling strength as a function
-of both time and frequency, creating a characteristic chevron shape. This measurement is particularly useful
-for characterizing two-qubit gates, understanding the dynamics of coupled quantum dots, and identifying
-optimal operating points for qubit control.
+        TIME RABI CHEVRON
+This sequence performs a 2D Rabi chevron measurement: the qubit control pulse duration and drive frequency
+detuning are swept while measuring the spin state before and after the manipulation window. Joint-outcome
+streams are averaged and reduced to conditional expectations for analysis. The resulting chevron pattern
+reveals the resonant drive frequency and π-pulse duration.
 
 Prerequisites:
-    - Having calibrated the resonators coupled to the SensorDot components.
-    - Having calibrated the voltage points (empty - initialization - measurement), including sensor the dot bias.
-    - Rough guess of the qubit pulse calibration (X180 pulse amplitude and frequency).
+    - Having calibrated the resonators coupled to the sensor dots.
+    - Having calibrated the voltage points (empty, initialization, measurement), including sensor dot bias.
+    - Having a rough qubit XY drive calibration (amplitude, frequency, and duration).
+
+Datasets:
+    - ``ds_raw``: untouched joint-outcome streams fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed 2D sweeps plus analysis outputs (conditional expectations). Used by ``plot_data``.
+    - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with ``asdict``). Used by
+      logging, ``node.outcomes``, and ``update_state``.
+
+Results (``node.results["fit_results"][qubit]``):
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
+    - ``optimal_frequency`` [Hz]: resonant drive frequency at the chevron crossing.
+    - ``optimal_duration`` [ns]: π-pulse duration at resonance.
+    - ``rabi_frequency`` [rad / ns]: fitted on-resonance Rabi frequency.
+    - ``decay_rate`` [1 / ns]: fitted decay rate of the Rabi envelope (γ ≈ 1/T₂*).
+
+Figures (``node.results["figures"]``):
+    - ``"chevron"``: 2D heatmap of the analysis signal vs pulse duration and drive detuning.
+    - ``"fft_2d"``: 2D FFT magnitude map with hyperbolic ridge overlay.
+    - ``"diagnostics"``: FFT at resonance and t_π vs detuning with Rabi fit per qubit.
 
 State update:
-    - The qubit x180 operation duration and frequency.
+    - The x180 pulse duration (``q.x.duration``).
+    - The qubit Larmor frequency, adjusted by the fitted frequency offset from the current XY intermediate frequency.
 """
 
 

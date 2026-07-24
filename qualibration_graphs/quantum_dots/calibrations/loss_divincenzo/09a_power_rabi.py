@@ -29,20 +29,39 @@ from calibration_utils.measurement_utils import (
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-# %% {Description}
+# %% {Node initialisation}
 description = """
         POWER RABI
-This sequence involves parking the qubit at the manipulation bias point, playing the qubit pulse (such as x180) and
-measuring the state of the resonator across different qubit pulse amplitudes, exhibit Rabi oscillations.
-The results are then analyzed to determine the qubit pulse amplitude suitable for the selected gate duration.
+This sequence parks the qubit at the manipulation bias point, plays the selected qubit operation (e.g. x180) at
+different amplitude prefactors, and measures the spin state. Joint-outcome streams are averaged and reduced to
+conditional expectations for analysis. Rabi oscillations in the analysis signal versus amplitude prefactor are
+fitted to extract the π-pulse amplitude prefactor.
 
 Prerequisites:
     - Having calibrated the relevant voltage points.
     - Having calibrated the qubit frequency.
     - Having set the qubit gate duration.
 
+Datasets:
+    - ``ds_raw``: untouched joint-outcome streams fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed sweeps plus analysis outputs (conditional expectations and fitted traces). Used by
+      ``plot_data``.
+    - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with ``asdict``). Used by
+      logging, ``node.outcomes``, and ``update_state``.
+
+Results (``node.results["fit_results"][qubit]``):
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
+    - ``opt_amp``: amplitude prefactor for a π rotation at the selected gate duration.
+    - ``rabi_frequency`` [rad / unit amplitude]: fitted Rabi frequency in the amplitude domain.
+    - ``decay_rate`` [1 / unit amplitude]: fitted decay envelope versus amplitude prefactor.
+
+Figures (``node.results["figures"]``):
+    - ``"rabi"``: conditional expectation vs pulse amplitude with damped-sinusoid fit overlay.
+    - ``"fft"``: FFT magnitude spectrum with peak fit per qubit.
+
 State update:
-    - The qubit pulse amplitude corresponding to the specified operation (x180, x90...).
+    - The amplitude prefactor of the selected operation (``node.parameters.operation``).
+    - When calibrating x180, x90 is also updated to half the x180 prefactor.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
