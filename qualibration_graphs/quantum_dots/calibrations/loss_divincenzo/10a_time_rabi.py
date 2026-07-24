@@ -32,9 +32,14 @@ from qualibration_libs.data import XarrayDataFetcher
 # %% {Node initialisation}
 description = """
         TIME RABI
-This sequence sweeps the duration of a qubit control pulse while measuring the spin state before and after the
-manipulation window. Joint-outcome streams are averaged and reduced to conditional expectations for analysis.
-Rabi oscillations in the analysis signal versus pulse duration are fitted to extract the π-pulse duration.
+After heralded initialization to the target spin state, this sequence optionally records a pre-measurement
+outcome (when ``parity_measurement`` is True), applies an XY drive pulse whose duration is swept, and
+measures the dot again afterward. Each shot contributes to joint-outcome streams (e.g. ``p0_p0``, ``p1_p0``,
+``p0_p1``, ``p1_p1``) that are averaged on the OPX and fetched as ``ds_raw``.
+
+In ``analyse_data``, those streams are converted to conditional expectations. By default the analysis signal is
+``E_p1_given_p0_0`` (spin-up probability given the dot was empty before the manipulation window). Rabi
+oscillations in that signal versus pulse duration are fitted to extract the π-pulse duration. The node does not form a parity-difference (XOR) scalar from the two measurements.
 
 Prerequisites:
     - Having calibrated the resonators coupled to the sensor dots.
@@ -53,6 +58,8 @@ Results (``node.results["fit_results"][qubit]``):
     - ``optimal_duration`` [ns]: π-pulse duration extracted from the Rabi oscillation.
     - ``rabi_frequency`` [rad / ns]: fitted Rabi frequency in the time domain.
     - ``decay_rate`` [1 / ns]: fitted decay rate of the Rabi envelope (γ ≈ 1/T₂*).
+
+The default ``analysis_signal`` is ``E_p1_given_p0_0``; set ``E_p1_given_p0_1`` to post-select on a loaded dot.
 
 Figures (``node.results["figures"]``):
     - ``"rabi"``: conditional expectation vs pulse duration with damped-sinusoid fit overlay.

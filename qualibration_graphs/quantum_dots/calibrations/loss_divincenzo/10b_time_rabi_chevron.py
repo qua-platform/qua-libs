@@ -35,10 +35,15 @@ from qualibration_libs.data import XarrayDataFetcher
 # %% {Node initialisation}
 description = """
         TIME RABI CHEVRON
-This sequence performs a 2D Rabi chevron measurement: the qubit control pulse duration and drive frequency
-detuning are swept while measuring the spin state before and after the manipulation window. Joint-outcome
-streams are averaged and reduced to conditional expectations for analysis. The resulting chevron pattern
-reveals the resonant drive frequency and π-pulse duration.
+After heralded initialization to the target spin state, this sequence optionally records a pre-measurement
+outcome (when ``parity_measurement`` is True), applies an XY drive pulse whose duration and frequency detuning
+are swept, and measures the dot again afterward. Each shot contributes to joint-outcome streams (e.g.
+``p0_p0``, ``p1_p0``, ``p0_p1``, ``p1_p1``) that are averaged on the OPX and fetched as ``ds_raw``.
+
+In ``analyse_data``, those streams are converted to conditional expectations. By default the analysis signal is
+``E_p1_given_p0_0`` (spin-up probability given the dot was empty before the manipulation window). The
+resulting 2D chevron in that signal versus pulse duration and detuning reveals the resonant drive frequency
+and π-pulse duration. The node does not form a parity-difference (XOR) scalar from the two measurements.
 
 Prerequisites:
     - Having calibrated the resonators coupled to the sensor dots.
@@ -57,6 +62,8 @@ Results (``node.results["fit_results"][qubit]``):
     - ``optimal_duration`` [ns]: π-pulse duration at resonance.
     - ``rabi_frequency`` [rad / ns]: fitted on-resonance Rabi frequency.
     - ``decay_rate`` [1 / ns]: fitted decay rate of the Rabi envelope (γ ≈ 1/T₂*).
+
+The default ``analysis_signal`` is ``E_p1_given_p0_0``; set ``E_p1_given_p0_1`` to post-select on a loaded dot.
 
 Figures (``node.results["figures"]``):
     - ``"chevron"``: 2D heatmap of the analysis signal vs pulse duration and drive detuning.
