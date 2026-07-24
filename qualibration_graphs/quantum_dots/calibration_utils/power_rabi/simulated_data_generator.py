@@ -63,9 +63,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "amp_prefactor": xr.DataArray(
-            amps, attrs={"long_name": "pulse amplitude prefactor"}
-        ),
+        "amp_prefactor": xr.DataArray(amps, attrs={"long_name": "pulse amplitude prefactor"}),
     }
 
     rng = np.random.default_rng(42)

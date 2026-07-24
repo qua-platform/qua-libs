@@ -170,15 +170,9 @@ def plot_resonance_profiles(
 
         mean_var = f"{signal_var}_mean"
         mean_fit_var = f"{signal_var}_mean_fit"
-        mean_signal = (
-            np.asarray(ds_fit[mean_var].values, dtype=float)
-            if mean_var in ds_fit.data_vars
-            else None
-        )
+        mean_signal = np.asarray(ds_fit[mean_var].values, dtype=float) if mean_var in ds_fit.data_vars else None
         mean_signal_fit = (
-            np.asarray(ds_fit[mean_fit_var].values, dtype=float)
-            if mean_fit_var in ds_fit.data_vars
-            else None
+            np.asarray(ds_fit[mean_fit_var].values, dtype=float) if mean_fit_var in ds_fit.data_vars else None
         )
         _plot_resonance_ax(
             ax,

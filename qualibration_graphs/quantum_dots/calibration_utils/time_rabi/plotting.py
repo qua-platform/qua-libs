@@ -65,9 +65,7 @@ def _plot_rabi_trace_ax(
                 label="Damped sinusoid fit",
             )
 
-        ax.axvline(
-            t_pi, color="lime", ls="--", lw=1.5, alpha=0.9, label=f"t_π = {t_pi:.0f} ns"
-        )
+        ax.axvline(t_pi, color="lime", ls="--", lw=1.5, alpha=0.9, label=f"t_π = {t_pi:.0f} ns")
         ax.legend(loc="upper right", fontsize=8)
 
 
@@ -140,11 +138,7 @@ def plot_rabi_traces(
 
         trace = np.asarray(ds_fit[signal_var].values, dtype=float)
         fit_var = f"{signal_var}_fit"
-        fitted_curve = (
-            np.asarray(ds_fit[fit_var].values, dtype=float)
-            if fit_var in ds_fit.data_vars
-            else None
-        )
+        fitted_curve = np.asarray(ds_fit[fit_var].values, dtype=float) if fit_var in ds_fit.data_vars else None
         _plot_rabi_trace_ax(
             ax,
             trace,

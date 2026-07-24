@@ -29,6 +29,7 @@ class NodeSpecificParameters(RunnableParameters):
     use_simulated_data: bool = False
     """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 
+
 class Parameters(
     NodeParameters,
     CommonNodeParameters,

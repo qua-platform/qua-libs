@@ -139,11 +139,7 @@ def _analyse_single_qubit(
 
         n_max = float(n_pulses[-1])
         scale_min = 0.1 / (n_max * amp_range) if n_max * amp_range > 0 else 0.01
-        scale_max = (
-            50.0 / (float(n_pulses[0]) * amp_range)
-            if float(n_pulses[0]) * amp_range > 0
-            else 100.0
-        )
+        scale_max = 50.0 / (float(n_pulses[0]) * amp_range) if float(n_pulses[0]) * amp_range > 0 else 100.0
 
         extremum_sign = float(np.sign(mean_signal[extremum_idx] - median_val))
         if extremum_sign > 0:
@@ -279,10 +275,7 @@ def _as_n_pulses_amp_signal(da: xr.DataArray, qname: str) -> np.ndarray:
 
     data = np.asarray(da.values, dtype=float)
     if data.ndim != 2:
-        raise ValueError(
-            f"{da.name!r} for {qname!r} must be 2-D over {expected_dims}; "
-            f"shape is {data.shape}."
-        )
+        raise ValueError(f"{da.name!r} for {qname!r} must be 2-D over {expected_dims}; " f"shape is {data.shape}.")
     return data
 
 

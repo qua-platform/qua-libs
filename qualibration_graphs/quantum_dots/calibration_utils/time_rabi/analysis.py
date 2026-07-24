@@ -85,9 +85,7 @@ def _fit_peak_to_fft(
 # ── Damped-sinusoid model ────────────────────────────────────────────────────
 
 
-def _damped_sinusoid(
-    t: np.ndarray, offset: float, amp: float, freq: float, gamma: float, phi: float
-) -> np.ndarray:
+def _damped_sinusoid(t: np.ndarray, offset: float, amp: float, freq: float, gamma: float, phi: float) -> np.ndarray:
     """offset + amp * exp(-gamma * t) * cos(2π * freq * t + phi)."""
     return offset + amp * np.exp(-gamma * t) * np.cos(2.0 * np.pi * freq * t + phi)
 
@@ -200,13 +198,9 @@ def _fft_analyse_single_qubit(
     magnitude = np.abs(np.fft.rfft(trace_centered))
 
     # ── Step 1: FFT peak detection (seed) ────────────────────────────────
-    mu, amp, peak_curve = _fit_peak_to_fft(
-        freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian"
-    )
+    mu, amp, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian")
     if mu is None:
-        mu, amp, peak_curve = _fit_peak_to_fft(
-            freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian"
-        )
+        mu, amp, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian")
 
     if mu is None or mu < 1e-6:
         return {
@@ -255,8 +249,7 @@ def _fft_analyse_single_qubit(
         t_pi = 1.0 / (2.0 * f_rabi)  # ns
         gamma = sinusoid_result["gamma"]  # 1/ns (direct from envelope)
         _logger.debug(
-            "1D Rabi damped-sinusoid fit: f = %.5f cycles/ns, Ω = %.5f rad/ns, "
-            "t_π = %.1f ns, γ = %.6f /ns",
+            "1D Rabi damped-sinusoid fit: f = %.5f cycles/ns, Ω = %.5f rad/ns, " "t_π = %.1f ns, γ = %.6f /ns",
             f_rabi,
             omega,
             t_pi,
@@ -269,8 +262,7 @@ def _fft_analyse_single_qubit(
         t_pi = 1.0 / (2.0 * f_rabi)
         gamma = gamma_seed
         _logger.debug(
-            "1D Rabi FFT fallback: f = %.5f cycles/ns, Ω = %.5f rad/ns, "
-            "t_π = %.1f ns, γ = %.6f /ns",
+            "1D Rabi FFT fallback: f = %.5f cycles/ns, Ω = %.5f rad/ns, " "t_π = %.1f ns, γ = %.6f /ns",
             f_rabi,
             omega,
             t_pi,
@@ -314,13 +306,9 @@ def compute_fft_diagnostic(
     freqs_fft = np.fft.rfftfreq(n, dx)
     magnitude = np.abs(np.fft.rfft(trace_centered))
 
-    mu, _, peak_curve = _fit_peak_to_fft(
-        freqs_fft, magnitude, freq_min, freq_max, "gaussian"
-    )
+    mu, _, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, freq_min, freq_max, "gaussian")
     if mu is None:
-        _, _, peak_curve = _fit_peak_to_fft(
-            freqs_fft, magnitude, freq_min, freq_max, "lorentzian"
-        )
+        _, _, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, freq_min, freq_max, "lorentzian")
 
     return {
         "fft_freqs": freqs_fft,

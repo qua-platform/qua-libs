@@ -22,11 +22,7 @@ def _get_qubit_names_from_ds(
     analysis_signal: str = "E_p1_given_p0_0",
 ) -> List[str]:
     signal_prefix = f"{analysis_signal}_"
-    signal_vars = [
-        v
-        for v in ds.data_vars
-        if v.startswith(signal_prefix) and not v.endswith("_fit")
-    ]
+    signal_vars = [v for v in ds.data_vars if v.startswith(signal_prefix) and not v.endswith("_fit")]
     if signal_vars:
         return [v.replace(signal_prefix, "") for v in sorted(signal_vars)]
 
@@ -201,11 +197,7 @@ def plot_rabi_traces(
         ref_amp = _reference_amplitude(qubit) if qubit is not None else 1.0
         trace = np.asarray(ds_fit[signal_var].values, dtype=float)
         fit_var = f"{signal_var}_fit"
-        fitted_curve = (
-            np.asarray(ds_fit[fit_var].values, dtype=float)
-            if fit_var in ds_fit.data_vars
-            else None
-        )
+        fitted_curve = np.asarray(ds_fit[fit_var].values, dtype=float) if fit_var in ds_fit.data_vars else None
         _plot_rabi_trace_ax(
             ax,
             trace,
@@ -218,15 +210,8 @@ def plot_rabi_traces(
             success=success,
         )
 
-    parity_measurement = any(
-        v.startswith(f"{analysis_signal}_") or v.startswith("p0_p0_")
-        for v in ds_fit.data_vars
-    )
-    fig.suptitle(
-        f"Power Rabi ({analysis_signal})"
-        if parity_measurement
-        else "Power Rabi (single measurement)"
-    )
+    parity_measurement = any(v.startswith(f"{analysis_signal}_") or v.startswith("p0_p0_") for v in ds_fit.data_vars)
+    fig.suptitle(f"Power Rabi ({analysis_signal})" if parity_measurement else "Power Rabi (single measurement)")
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
 

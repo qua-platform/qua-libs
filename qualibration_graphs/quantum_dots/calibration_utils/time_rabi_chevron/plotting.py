@@ -49,11 +49,7 @@ def _resolve_qubit(
     qubits_by_name: dict,
     qubit_by_index: dict,
 ) -> Any | None:
-    return (
-        qubits_by_name.get(qname)
-        or qubit_by_index.get(qname)
-        or (qubits[0] if qubits else None)
-    )
+    return qubits_by_name.get(qname) or qubit_by_index.get(qname) or (qubits[0] if qubits else None)
 
 
 def _plot_chevron_ax(
@@ -177,9 +173,7 @@ def _plot_fft_diagnostics_panels(
     lcurve = diag["peak_curve_per_slice"][idx]
     if lcurve is None:
         valid_idxs = [
-            i
-            for i in range(len(diag["peak_curve_per_slice"]))
-            if diag["peak_curve_per_slice"][i] is not None
+            i for i in range(len(diag["peak_curve_per_slice"])) if diag["peak_curve_per_slice"][i] is not None
         ]
         if valid_idxs:
             idx = int(valid_idxs[np.argmin(np.abs(np.array(valid_idxs) - idx))])
@@ -235,27 +229,17 @@ def _iter_qubit_plot_context(
 ):
     qubit_names = _get_qubit_names_from_ds(ds_fit, qubits, analysis_signal)
     qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
-    qubit_by_index = dict(
-        zip(qubit_names, (qubits[i] for i in range(min(len(qubits), len(qubit_names)))))
-    )
+    qubit_by_index = dict(zip(qubit_names, (qubits[i] for i in range(min(len(qubits), len(qubit_names))))))
     durations_ns = np.asarray(ds_fit.pulse_duration.values, dtype=float)
 
     for qname in qubit_names:
         qubit = _resolve_qubit(qname, qubits, qubits_by_name, qubit_by_index)
-        freq_hz = (
-            _get_freq_axis_hz(ds_fit, qubit)
-            if qubit
-            else np.asarray(ds_fit.detuning.values, dtype=float)
-        )
+        freq_hz = _get_freq_axis_hz(ds_fit, qubit) if qubit else np.asarray(ds_fit.detuning.values, dtype=float)
         fr = fit_results.get(qname, {})
         f_res = fr.get("optimal_frequency") if fr.get("success") else None
         success = qubit_success(fit_results, qname)
         signal_var = f"{analysis_signal}_{qname}"
-        signal_2d = (
-            np.asarray(ds_fit[signal_var].values)
-            if signal_var in ds_fit.data_vars
-            else None
-        )
+        signal_2d = np.asarray(ds_fit[signal_var].values) if signal_var in ds_fit.data_vars else None
         yield qname, signal_2d, freq_hz, durations_ns, fr, f_res, success
 
 

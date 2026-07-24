@@ -62,9 +62,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "pulse_duration": xr.DataArray(
-            durations_ns, attrs={"long_name": "qubit pulse duration", "units": "ns"}
-        ),
+        "pulse_duration": xr.DataArray(durations_ns, attrs={"long_name": "qubit pulse duration", "units": "ns"}),
     }
 
     rng = np.random.default_rng(42)

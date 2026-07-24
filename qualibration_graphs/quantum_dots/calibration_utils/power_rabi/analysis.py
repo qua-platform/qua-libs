@@ -85,9 +85,7 @@ def _fit_peak_to_fft(
 # ── Damped-sinusoid model ────────────────────────────────────────────────────
 
 
-def _damped_sinusoid(
-    a: np.ndarray, offset: float, amp: float, freq: float, gamma: float, phi: float
-) -> np.ndarray:
+def _damped_sinusoid(a: np.ndarray, offset: float, amp: float, freq: float, gamma: float, phi: float) -> np.ndarray:
     """offset + amp * exp(-gamma * a) * cos(2π * freq * a + phi)."""
     return offset + amp * np.exp(-gamma * a) * np.cos(2.0 * np.pi * freq * a + phi)
 
@@ -186,13 +184,9 @@ def _analyse_single_qubit(
     magnitude = np.abs(np.fft.rfft(trace_centered))
 
     # ── Step 1: FFT peak detection (seed) ────────────────────────────────
-    mu, amp_peak, peak_curve = _fit_peak_to_fft(
-        freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian"
-    )
+    mu, amp_peak, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian")
     if mu is None:
-        mu, amp_peak, peak_curve = _fit_peak_to_fft(
-            freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian"
-        )
+        mu, amp_peak, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian")
 
     if mu is None or mu < 1e-6:
         return {
@@ -295,13 +289,9 @@ def compute_fft_diagnostic(
     freqs_fft = np.fft.rfftfreq(n, dx)
     magnitude = np.abs(np.fft.rfft(trace_centered))
 
-    mu, _, peak_curve = _fit_peak_to_fft(
-        freqs_fft, magnitude, freq_min, freq_max, "gaussian"
-    )
+    mu, _, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, freq_min, freq_max, "gaussian")
     if mu is None:
-        _, _, peak_curve = _fit_peak_to_fft(
-            freqs_fft, magnitude, freq_min, freq_max, "lorentzian"
-        )
+        _, _, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, freq_min, freq_max, "lorentzian")
 
     return {
         "fft_freqs": freqs_fft,
@@ -329,11 +319,7 @@ def _power_rabi_qubit_names(
     qubits,
 ) -> list[str]:
     signal_prefix = f"{analysis_signal}_"
-    signal_vars = [
-        v
-        for v in sorted(ds.data_vars)
-        if v.startswith(signal_prefix) and not v.endswith("_fit")
-    ]
+    signal_vars = [v for v in sorted(ds.data_vars) if v.startswith(signal_prefix) and not v.endswith("_fit")]
     names = [v.removeprefix(signal_prefix) for v in signal_vars]
 
     if not names:
@@ -343,9 +329,7 @@ def _power_rabi_qubit_names(
         names = [
             v[2:]
             for v in sorted(ds.data_vars)
-            if v.startswith("p_")
-            and "qubit" not in ds[v].dims
-            and not v.startswith(("p0_", "p1_", "pdiff_", "E_"))
+            if v.startswith("p_") and "qubit" not in ds[v].dims and not v.startswith(("p0_", "p1_", "pdiff_", "E_"))
         ]
     if not names:
         names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
@@ -367,8 +351,7 @@ def _as_amp_trace(da: xr.DataArray, qname: str) -> np.ndarray:
 
     if "amp_prefactor" not in da.dims:
         raise ValueError(
-            f"{da.name!r} for {qname!r} must contain an 'amp_prefactor' "
-            f"dimension; dims are {da.dims}."
+            f"{da.name!r} for {qname!r} must contain an 'amp_prefactor' " f"dimension; dims are {da.dims}."
         )
 
     for dim in list(da.dims):
